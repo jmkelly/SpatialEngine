@@ -10,8 +10,12 @@
   <Folder Name="/tests/" />
   <Folder Name="/tests/unit/">
     <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.PluginHost.DotNet.Tests/Spatial.PluginHost.DotNet.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Runtime.Tests/Spatial.Runtime.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/conformance/">
+    <Project Path="tests/conformance/Spatial.Conformance.Tests/Spatial.Conformance.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/architecture/">
     <Project Path="tests/architecture/Spatial.Architecture.Tests/Spatial.Architecture.Tests.csproj" />

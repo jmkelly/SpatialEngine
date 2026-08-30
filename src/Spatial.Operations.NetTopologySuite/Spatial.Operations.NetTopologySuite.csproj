@@ -20,4 +20,9 @@
     <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The unit tests pin the private adapter's conversion behaviour. -->
+    <InternalsVisibleTo Include="Spatial.Operations.NetTopologySuite.Tests" />
+  </ItemGroup>
+
 </Project>

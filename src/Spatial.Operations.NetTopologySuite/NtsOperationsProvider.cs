@@ -1,6 +1,6 @@
+using Spatial.Operations.NetTopologySuite.Operations;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Operations;
-using Spatial.Operations.NetTopologySuite.Operations;
 
 namespace Spatial.Operations.NetTopologySuite;
 

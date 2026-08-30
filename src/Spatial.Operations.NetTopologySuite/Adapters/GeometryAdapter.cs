@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Spatial.Core.Geometry;
+using NtsFactory = NetTopologySuite.Geometries.GeometryFactory;
 using NtsGeometry = NetTopologySuite.Geometries.Geometry;
 using NtsGeometryCollection = NetTopologySuite.Geometries.GeometryCollection;
 using NtsLinearRing = NetTopologySuite.Geometries.LinearRing;
@@ -11,7 +12,6 @@ using NtsOrdinate = NetTopologySuite.Geometries.Ordinate;
 using NtsPoint = NetTopologySuite.Geometries.Point;
 using NtsPolygon = NetTopologySuite.Geometries.Polygon;
 using NtsSequence = NetTopologySuite.Geometries.CoordinateSequence;
-using NtsFactory = NetTopologySuite.Geometries.GeometryFactory;
 using NtsSequenceFactory = NetTopologySuite.Geometries.Implementation.CoordinateArraySequenceFactory;
 
 namespace Spatial.Operations.NetTopologySuite.Adapters;
@@ -168,32 +168,49 @@ internal static class GeometryAdapter
         return GeometryFactory.CreatePoint(coordinate, crs);
     }
 
-    private static LineString LineStringToCore(NtsLineString lineString, CoordinateReference? crs) =>
-        GeometryFactory.CreateLineString(AsSpan(ReadCoordinates(lineString.CoordinateSequence)), crs);
+    private static LineString LineStringToCore(NtsLineString lineString, CoordinateReference? crs)
+    {
+        var coordinates = ReadCoordinates(lineString.CoordinateSequence);
+        return GeometryFactory.CreateLineString(
+            AsSpan(coordinates),
+            LayoutFor(lineString.CoordinateSequence),
+            crs);
+    }
 
     private static Polygon PolygonToCore(NtsPolygon polygon, CoordinateReference? crs) =>
         GeometryFactory.CreatePolygon(
-            LineStringToCore(polygon.Shell, crs),
-            polygon.Holes.Select(hole => LineStringToCore(hole, crs)),
+            LineStringToCore(polygon.Shell, crs: null),
+            polygon.Holes.Select(hole => LineStringToCore(hole, crs: null)),
             crs);
 
     private static MultiPoint MultiPointToCore(NtsMultiPoint multiPoint, CoordinateReference? crs) =>
         GeometryFactory.CreateMultiPoint(
-            multiPoint.Geometries.Cast<NtsPoint>().Select(point => PointToCore(point, crs)),
+            multiPoint.Geometries.Cast<NtsPoint>().Select(point => PointToCore(point, crs: null)),
             crs);
 
     private static MultiLineString MultiLineStringToCore(NtsMultiLineString multiLineString, CoordinateReference? crs) =>
         GeometryFactory.CreateMultiLineString(
-            multiLineString.Geometries.Cast<NtsLineString>().Select(lineString => LineStringToCore(lineString, crs)),
+            multiLineString.Geometries.Cast<NtsLineString>().Select(lineString => LineStringToCore(lineString, crs: null)),
             crs);
 
     private static MultiPolygon MultiPolygonToCore(NtsMultiPolygon multiPolygon, CoordinateReference? crs) =>
         GeometryFactory.CreateMultiPolygon(
-            multiPolygon.Geometries.Cast<NtsPolygon>().Select(polygon => PolygonToCore(polygon, crs)),
+            multiPolygon.Geometries.Cast<NtsPolygon>().Select(polygon => PolygonToCore(polygon, crs: null)),
             crs);
 
     private static GeometryCollection GeometryCollectionToCore(NtsGeometryCollection collection, CoordinateReference? crs) =>
-        GeometryFactory.CreateGeometryCollection(collection.Geometries.Select(geometry => ToCore(geometry, crs)), crs);
+        GeometryFactory.CreateGeometryCollection(
+            collection.Geometries.Select(geometry => ToCore(geometry, crs: null)),
+            crs);
+
+    /// <summary>The layout that can represent every ordinate the sequence stores.</summary>
+    private static CoordinateLayout LayoutFor(NtsSequence sequence) => (sequence.HasZ, sequence.HasM) switch
+    {
+        (true, true) => CoordinateLayout.Xyzm,
+        (true, false) => CoordinateLayout.Xyz,
+        (false, true) => CoordinateLayout.Xym,
+        (false, false) => CoordinateLayout.Xy,
+    };
 
     private static Span<Coordinate> AsSpan(List<Coordinate> coordinates) =>
         CollectionsMarshal.AsSpan(coordinates);

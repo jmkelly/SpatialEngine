@@ -1,8 +1,8 @@
 using NetTopologySuite.Operation.Overlay;
 using NetTopologySuite.Operation.OverlayNG;
+using Spatial.Operations.NetTopologySuite.Adapters;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Operations;
-using Spatial.Operations.NetTopologySuite.Adapters;
 
 namespace Spatial.Operations.NetTopologySuite.Operations;
 

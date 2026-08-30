@@ -19,14 +19,22 @@ internal static class GeometryValidity
     {
         foreach (var part in geometry.DepthFirst())
         {
-            if (part is not LineString ring)
+            if (part is not Polygon polygon)
             {
                 continue;
             }
 
-            if (!RingIsValid(ring))
+            if (!RingIsValid(polygon.ExteriorRing))
             {
                 return false;
+            }
+
+            foreach (var hole in polygon.InteriorRings)
+            {
+                if (!RingIsValid(hole))
+                {
+                    return false;
+                }
             }
         }
 

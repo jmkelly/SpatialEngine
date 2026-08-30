@@ -59,7 +59,7 @@ internal static class OperationArguments
         return true;
     }
 
-    /// <summary>Reads an optional positive integer argument with a fallback when absent.</summary>
+    /// <summary>Reads an optional positive integer argument with a fallback when absent; accepts int32 and int64 wire forms.</summary>
     public static bool TryOptionalPositiveInt(
         CapabilityInvocation invocation,
         string name,
@@ -69,24 +69,25 @@ internal static class OperationArguments
     {
         value = fallback;
         error = null;
-        if (!invocation.Arguments.ContainsKey(name))
+        if (!invocation.Arguments.TryGetValue(name, out var raw))
         {
             return true;
         }
 
-        if (!invocation.TryGetArgument<int>(name, out var parsed))
+        var parsed = raw switch
         {
-            error = CapabilityError.InvalidArguments($"'{name}', when provided, must be a positive int32.");
-            return false;
-        }
-
+            int number => (long)number,
+            long number => number,
+            _ => -1L,
+        };
         if (parsed < 1)
         {
-            error = CapabilityError.InvalidArguments($"'{name}' must be at least 1, got {parsed}.");
+            error = CapabilityError.InvalidArguments(
+                $"'{name}', when provided, must be a positive int32, got {(raw is null ? "nothing" : $"'{raw.GetType().Name}'")}.");
             return false;
         }
 
-        value = parsed;
+        value = (int)parsed;
         return true;
     }
 

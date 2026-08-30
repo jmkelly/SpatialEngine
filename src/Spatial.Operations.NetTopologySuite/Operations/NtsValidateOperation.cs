@@ -1,7 +1,7 @@
 using NetTopologySuite.Operation.Valid;
+using Spatial.Operations.NetTopologySuite.Adapters;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Operations;
-using Spatial.Operations.NetTopologySuite.Adapters;
 
 namespace Spatial.Operations.NetTopologySuite.Operations;
 
