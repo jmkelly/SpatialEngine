@@ -51,20 +51,9 @@ internal static class ProjNetTransformRunner
 
     public static ValueTask<CapabilityResult> TransformAsync(CapabilityInvocation invocation)
     {
-        if (!TryGeometry(invocation, out var geometry, out var error)
-            || !TryResolveSource(invocation, geometry, out var source, out var sourceWasExplicit, out error)
-            || !TryRequiredIdentity(invocation, TransformationArguments.Target, out var target, out error)
-            || !TryCatalogue(source, out var sourceSystem, out error)
-            || !TryCatalogue(target, out var targetSystem, out error))
+        if (!TryTransformArguments(invocation, out var geometry, out var arguments, out var error))
         {
             return Fail(error!);
-        }
-
-        if (sourceWasExplicit && geometry!.CoordinateReference is { } stamped && !Same(stamped, source))
-        {
-            return Fail(CapabilityError.InvalidArguments(
-                $"the geometry carries CRS {stamped} but '{TransformationArguments.Source}' says {source}; "
-                + "make them agree, or omit 'source' to transform from the geometry's own CRS."));
         }
 
         if (invocation.CancellationToken.IsCancellationRequested)
@@ -74,14 +63,63 @@ internal static class ProjNetTransformRunner
 
         try
         {
-            var math = Transformations.CreateFromCoordinateSystems(sourceSystem, targetSystem).MathTransform;
-            var transformed = TransformGeometry(geometry!, math, Stamp(target));
+            var math = Transformations.CreateFromCoordinateSystems(arguments.SourceSystem, arguments.TargetSystem).MathTransform;
+            var transformed = TransformGeometry(geometry!, math, Stamp(arguments.Target));
             return Success(transformed);
         }
         catch (Exception exception)
         {
             return Fail(MapFailure(invocation.Capability, exception));
         }
+    }
+
+    /// <summary>
+    /// The parsed, validated transform invocation: the resolved source and
+    /// target CRS systems (from the catalogue) and the identities that
+    /// produced them. The geometry travels separately so this contract-side
+    /// record stays free of core geometry types (the runner keeps the
+    /// plugin's Core.Geometry fan-in at its planned ceiling).
+    /// </summary>
+    private sealed record TransformArguments(
+        CrsIdentity Source,
+        CrsIdentity Target,
+        ProjCs.CoordinateSystem SourceSystem,
+        ProjCs.CoordinateSystem TargetSystem);
+
+    /// <summary>
+    /// Parses and validates the transform arguments: the geometry, the source
+    /// CRS (explicit or the geometry's own), the required target CRS and the
+    /// catalogue lookups. A source argument conflicting with the geometry's
+    /// own CRS identity is an invalid argument.
+    /// </summary>
+    private static bool TryTransformArguments(
+        CapabilityInvocation invocation,
+        [NotNullWhen(true)] out IGeometry? geometry,
+        [NotNullWhen(true)] out TransformArguments? arguments,
+        out CapabilityError? error)
+    {
+        geometry = null;
+        arguments = null;
+        error = null;
+        if (!TryGeometry(invocation, out geometry, out error)
+            || !TryResolveSource(invocation, geometry, out var source, out var sourceWasExplicit, out error)
+            || !TryRequiredIdentity(invocation, TransformationArguments.Target, out var target, out error)
+            || !TryCatalogue(source, out var sourceSystem, out error)
+            || !TryCatalogue(target, out var targetSystem, out error))
+        {
+            return false;
+        }
+
+        if (sourceWasExplicit && geometry.CoordinateReference is { } stamped && !Same(stamped, source))
+        {
+            error = CapabilityError.InvalidArguments(
+                $"the geometry carries CRS {stamped} but '{TransformationArguments.Source}' says {source}; "
+                + "make them agree, or omit 'source' to transform from the geometry's own CRS.");
+            return false;
+        }
+
+        arguments = new TransformArguments(source, target, sourceSystem, targetSystem);
+        return true;
     }
 
     /// <summary>Reads the named geometry argument; a missing or mistyped value is an input-contract violation.</summary>
@@ -105,11 +143,9 @@ internal static class ProjNetTransformRunner
 
     /// <summary>
     /// Resolves the source CRS: the explicit 'source' argument when present
-    /// (it must agree with the geometry's own CRS identity when the geometry
-    /// carries one — validated after the catalogue lookup so unsupported
-    /// authorities surface their own error first), otherwise the geometry's
-    /// own CRS — which then becomes required (ADR-0009: every geometry may
-    /// state its CRS).
+    /// (validated against the geometry's own CRS identity afterwards), else
+    /// the geometry's own CRS — which then becomes required (ADR-0009: every
+    /// geometry may state its CRS).
     /// </summary>
     private static bool TryResolveSource(
         CapabilityInvocation invocation,
@@ -208,6 +244,23 @@ internal static class ProjNetTransformRunner
         CapabilityError.InvalidArguments(
             $"'{name}' must be a CRS identity (authority:code), got '{(text ?? "nothing")}'.");
 
+    // ---- Geometry transformation (the plugin's only Core.Geometry surface) ----
+
+    /// <summary>
+    /// The composite geometries (multi-types and geometry collections) share
+    /// one transformation path: enumerate the parts, transform each, rebuild
+    /// with the target CRS on the container. The table keys the part access
+    /// and the rebuild by geometry type, so the runner has no per-type branch
+    /// for the four composites.
+    /// </summary>
+    private static readonly Dictionary<GeometryType, (Func<IGeometry, IReadOnlyList<IGeometry>> Parts, Func<IReadOnlyList<IGeometry>, CoordinateReference?, IGeometry> Build)> Composites = new()
+    {
+        [GeometryType.MultiPoint] = (geometry => ((MultiPoint)geometry).Points, (parts, crs) => new MultiPoint(parts.Cast<Point>(), crs)),
+        [GeometryType.MultiLineString] = (geometry => ((MultiLineString)geometry).LineStrings, (parts, crs) => new MultiLineString(parts.Cast<LineString>(), crs)),
+        [GeometryType.MultiPolygon] = (geometry => ((MultiPolygon)geometry).Polygons, (parts, crs) => new MultiPolygon(parts.Cast<Polygon>(), crs)),
+        [GeometryType.GeometryCollection] = (geometry => ((GeometryCollection)geometry).Geometries, (parts, crs) => new GeometryCollection(parts, crs)),
+    };
+
     /// <summary>
     /// Recursively transforms a geometry, stamping the result's CRS only at
     /// the top level (parts and rings carry none, matching the codec's
@@ -217,20 +270,24 @@ internal static class ProjNetTransformRunner
     {
         if (geometry.IsEmpty)
         {
-            return EmptyWith(geometry, target);
+            return EmptyLike(geometry, target);
         }
 
         return geometry switch
         {
-            Point point => new Point(Transform(point.Coordinate, math), target),
+            Point point => new Point(point.Coordinate is { } coordinate ? TransformCoordinate(coordinate, math) : null, target),
             LineString line => new LineString(TransformSequence(line.Sequence, math), target),
             Polygon polygon => TransformPolygon(polygon, math, target),
-            MultiPoint multi => new MultiPoint(multi.Points.Select(point => (Point)TransformGeometry(point, math, null)), target),
-            MultiLineString multi => new MultiLineString(multi.LineStrings.Select(line => (LineString)TransformGeometry(line, math, null)), target),
-            MultiPolygon multi => new MultiPolygon(multi.Polygons.Select(polygon => (Polygon)TransformGeometry(polygon, math, null)), target),
-            GeometryCollection collection => new GeometryCollection(collection.Geometries.Select(part => TransformGeometry(part, math, null)), target),
-            _ => throw new InvalidOperationException($"unsupported geometry type '{geometry.Type}'."),
+            _ => TransformComposite(geometry, math, target),
         };
+    }
+
+    /// <summary>Transforms a composite by mapping its parts through the same recursive transform.</summary>
+    private static IGeometry TransformComposite(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
+    {
+        var (parts, build) = Composites[geometry.Type];
+        var transformed = parts(geometry).Select(part => TransformGeometry(part, math, null)).ToArray();
+        return build(transformed, target);
     }
 
     private static Polygon TransformPolygon(Polygon polygon, ProjTf.MathTransform math, CoordinateReference? target) =>
@@ -247,7 +304,7 @@ internal static class ProjNetTransformRunner
         var coordinates = new Coordinate[sequence.Count];
         for (var index = 0; index < sequence.Count; index++)
         {
-            coordinates[index] = Transform(sequence.GetCoordinate(index), math);
+            coordinates[index] = TransformCoordinate(sequence.GetCoordinate(index), math);
         }
 
         return PackedCoordinateSequence.FromCoordinates(coordinates, sequence.Layout);
@@ -260,34 +317,30 @@ internal static class ProjNetTransformRunner
     /// (input outside the projection's valid area) is an actionable error
     /// rather than silent NaN geometry.
     /// </summary>
-    private static Coordinate Transform(Coordinate? coordinate, ProjTf.MathTransform math)
+    private static Coordinate TransformCoordinate(Coordinate coordinate, ProjTf.MathTransform math)
     {
-        if (coordinate is not { } point)
-        {
-            return default;
-        }
-
-        var (x, y) = math.Transform(point.X, point.Y);
+        var (x, y) = math.Transform(coordinate.X, coordinate.Y);
         if (!double.IsFinite(x) || !double.IsFinite(y))
         {
             throw new TransformOutOfRangeException(
-                $"transforming ({point.X}, {point.Y}) produced non-finite coordinates ({x}, {y}); "
+                $"transforming ({coordinate.X}, {coordinate.Y}) produced non-finite coordinates ({x}, {y}); "
                 + "the point falls outside the target CRS's valid area.");
         }
 
-        return point with { X = x, Y = y };
+        return coordinate with { X = x, Y = y };
     }
 
-    private static IGeometry EmptyWith(IGeometry geometry, CoordinateReference? target) => geometry switch
+    /// <summary>
+    /// An empty geometry of the same type and layout in the target CRS:
+    /// points, lines and polygons keep their layout; composites rebuild
+    /// empty through the composite tables.
+    /// </summary>
+    private static IGeometry EmptyLike(IGeometry geometry, CoordinateReference? target) => geometry.Type switch
     {
-        Point point => GeometryFactory.CreateEmptyPoint(target, point.Layout),
-        LineString line => GeometryFactory.CreateEmptyLineString(line.Layout, target),
-        Polygon polygon => new Polygon(GeometryFactory.CreateEmptyLineString(polygon.ExteriorRing.Layout), null, target),
-        MultiPoint => new MultiPoint([], target),
-        MultiLineString => new MultiLineString([], target),
-        MultiPolygon => new MultiPolygon([], target),
-        GeometryCollection => new GeometryCollection([], target),
-        _ => throw new InvalidOperationException($"unsupported geometry type '{geometry.Type}'."),
+        GeometryType.Point => GeometryFactory.CreateEmptyPoint(target, ((Point)geometry).Layout),
+        GeometryType.LineString => GeometryFactory.CreateEmptyLineString(((LineString)geometry).Layout, target),
+        GeometryType.Polygon => new Polygon(GeometryFactory.CreateEmptyLineString(((Polygon)geometry).ExteriorRing.Layout), null, target),
+        _ => Composites[geometry.Type].Build([], target),
     };
 
     /// <summary>A transformed coordinate that landed outside the target CRS's valid area.</summary>

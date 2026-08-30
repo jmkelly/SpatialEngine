@@ -46,6 +46,65 @@ public sealed class ProjNetToleranceTests
     }
 
     [Fact]
+    public async Task Every_geometry_family_transforms_and_keeps_its_shape()
+    {
+        // Top-level line strings hit the LineString arm of the transform;
+        // the four composites exercise the shared composite path.
+        var line = GeometryFactory.CreateLineString(
+            [new Coordinate(13.35, 52.50), new Coordinate(13.45, 52.55), new Coordinate(13.55, 52.50)],
+            CoordinateReference.Epsg(4326));
+        var multiPoint = new MultiPoint(
+            [GeometryFactory.CreatePoint(13.35, 52.50, CoordinateReference.Epsg(4326)),
+             GeometryFactory.CreatePoint(13.45, 52.55, CoordinateReference.Epsg(4326))],
+            CoordinateReference.Epsg(4326));
+        var multiLine = new MultiLineString([line], CoordinateReference.Epsg(4326));
+        var polygon = GeometryFactory.CreatePolygon(
+        [
+            new Coordinate(13.35, 52.50),
+            new Coordinate(13.45, 52.50),
+            new Coordinate(13.45, 52.55),
+            new Coordinate(13.35, 52.55),
+            new Coordinate(13.35, 52.50),
+        ], CoordinateReference.Epsg(4326));
+        var multiPolygon = new MultiPolygon([polygon], CoordinateReference.Epsg(4326));
+        var collection = new GeometryCollection([line, polygon], CoordinateReference.Epsg(4326));
+
+        IGeometry[] inputs = [line, multiPoint, multiLine, multiPolygon, collection];
+        foreach (var input in inputs)
+        {
+            var result = await TransformAsync(
+                TransformationArguments.Geometry, input,
+                TransformationArguments.Source, "EPSG:4326",
+                TransformationArguments.Target, "EPSG:32632");
+            var transformed = (IGeometry)Assert.IsType<CapabilitySuccess>(result).Value!;
+            Assert.Same(input.GetType(), transformed.GetType());
+            Assert.False(transformed.IsEmpty);
+            Assert.Equal(input.CoordinateCount, transformed.CoordinateCount);
+            Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
+        }
+    }
+
+    [Fact]
+    public async Task Empty_composites_and_lines_keep_their_type_in_the_target_CRS()
+    {
+        var emptyLine = GeometryFactory.CreateEmptyLineString(CoordinateLayout.Xyz, CoordinateReference.Epsg(4326));
+        var emptyMultiPoint = new MultiPoint([], CoordinateReference.Epsg(4326));
+        var emptyCollection = new GeometryCollection([], CoordinateReference.Epsg(4326));
+
+        foreach (var input in new IGeometry[] { emptyLine, emptyMultiPoint, emptyCollection })
+        {
+            var result = await TransformAsync(
+                TransformationArguments.Geometry, input,
+                TransformationArguments.Source, "EPSG:4326",
+                TransformationArguments.Target, "EPSG:32632");
+            var transformed = (IGeometry)Assert.IsType<CapabilitySuccess>(result).Value!;
+            Assert.Same(input.GetType(), transformed.GetType());
+            Assert.True(transformed.IsEmpty);
+            Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
+        }
+    }
+
+    [Fact]
     public async Task Polygon_rings_and_multi_part_collections_are_transformed_recursively()
     {
         var polygon = GeometryFactory.CreatePolygon(

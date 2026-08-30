@@ -24,13 +24,13 @@ internal static class ProjNetCrsMapper
             axes[index] = AxisOf(coordinateSystem, index);
         }
 
-        // ProjNet 2.1's projected CRSs expose the horizontal datum through
-        // their geographic coordinate system, not directly (their own
-        // HorizontalDatum stays null) - read the datum from wherever the
-        // family carries it.
+        // ProjNet 2.1's projected and geocentric CRSs expose the horizontal
+        // datum through their own members (their inherited HorizontalDatum
+        // stays null) - read the datum from wherever the family carries it.
         var datum = coordinateSystem switch
         {
             ProjCs.ProjectedCoordinateSystem projected => projected.GeographicCoordinateSystem.HorizontalDatum,
+            ProjCs.GeocentricCoordinateSystem geocentric => geocentric.HorizontalDatum,
             ProjCs.HorizontalCoordinateSystem horizontal => horizontal.HorizontalDatum,
             _ => null,
         };
@@ -69,15 +69,18 @@ internal static class ProjNetCrsMapper
         return new CrsAxis(axis.Name, OrientationOf(axis.Orientation), UnitName(coordinateSystem.GetUnits(index)));
     }
 
-    private static AxisOrientation OrientationOf(ProjCs.AxisOrientationEnum orientation) => orientation switch
+    private static AxisOrientation OrientationOf(ProjCs.AxisOrientationEnum orientation) =>
+        Orientations.TryGetValue(orientation, out var mapped) ? mapped : AxisOrientation.Other;
+
+    /// <summary>Maps ProjNet's axis orientations to the contract's vocabulary (ADR-0005: no ProjNet types across the surface).</summary>
+    private static readonly Dictionary<ProjCs.AxisOrientationEnum, AxisOrientation> Orientations = new()
     {
-        ProjCs.AxisOrientationEnum.East => AxisOrientation.East,
-        ProjCs.AxisOrientationEnum.North => AxisOrientation.North,
-        ProjCs.AxisOrientationEnum.West => AxisOrientation.West,
-        ProjCs.AxisOrientationEnum.South => AxisOrientation.South,
-        ProjCs.AxisOrientationEnum.Up => AxisOrientation.Up,
-        ProjCs.AxisOrientationEnum.Down => AxisOrientation.Down,
-        _ => AxisOrientation.Other,
+        [ProjCs.AxisOrientationEnum.East] = AxisOrientation.East,
+        [ProjCs.AxisOrientationEnum.North] = AxisOrientation.North,
+        [ProjCs.AxisOrientationEnum.West] = AxisOrientation.West,
+        [ProjCs.AxisOrientationEnum.South] = AxisOrientation.South,
+        [ProjCs.AxisOrientationEnum.Up] = AxisOrientation.Up,
+        [ProjCs.AxisOrientationEnum.Down] = AxisOrientation.Down,
     };
 
     private static string UnitName(ProjCs.IUnit? unit) => string.IsNullOrWhiteSpace(unit?.Name) ? "unknown" : unit.Name!;

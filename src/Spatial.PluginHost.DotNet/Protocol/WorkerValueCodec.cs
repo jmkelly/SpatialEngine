@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Spatial.Core.Geometry;
@@ -87,34 +88,60 @@ public static class WorkerValueCodec
 
     private static object DecodeObject(JsonObject obj)
     {
-        if (obj.TryGetPropertyValue("$i64", out var i64Node) && i64Node is JsonValue i64Value)
+        if (TryValueTag(obj, "$i64", out var i64Node))
         {
-            return ReadInt64(i64Value, "$i64");
+            return ReadInt64(i64Node, "$i64");
         }
 
-        if (obj.TryGetPropertyValue("$bytes", out var bytesNode) && bytesNode is JsonValue bytesValue)
+        if (TryValueTag(obj, "$bytes", out var bytesNode))
         {
-            return ReadBytes(bytesValue, "$bytes");
+            return ReadBytes(bytesNode, "$bytes");
         }
 
-        if (obj.TryGetPropertyValue("$geometry", out var geometryNode) && geometryNode is JsonValue geometryValue)
+        if (TryValueTag(obj, "$geometry", out var geometryNode))
         {
-            return ReadGeometry(geometryValue);
+            return ReadGeometry(geometryNode);
         }
 
-        if (obj.TryGetPropertyValue("$crs", out var crsNode) && crsNode is JsonObject crs)
+        if (TryObjectTag(obj, "$crs", out var crsNode))
         {
-            return ReadCrs(crs);
+            return ReadCrs(crsNode);
         }
 
-        if (obj.TryGetPropertyValue("$resource", out var resourceNode) && resourceNode is JsonObject resource)
+        if (TryObjectTag(obj, "$resource", out var resourceNode))
         {
-            return ReadResource(resource);
+            return ReadResource(resourceNode);
         }
 
         throw new WorkerValueException(
             "object values are not supported as inline worker values; "
             + "remember to tag 64-bit integers ($i64), bytes ($bytes), geometry ($geometry), CRS descriptions ($crs) and resource handles ($resource)");
+    }
+
+    /// <summary>Reads a scalar-valued tag (<c>$i64</c>, <c>$bytes</c>, <c>$geometry</c>).</summary>
+    private static bool TryValueTag(JsonObject obj, string tag, [NotNullWhen(true)] out JsonValue? value)
+    {
+        if (obj.TryGetPropertyValue(tag, out var node) && node is JsonValue typed)
+        {
+            value = typed;
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    /// <summary>Reads an object-valued tag (<c>$crs</c>, <c>$resource</c>).</summary>
+    private static bool TryObjectTag(JsonObject obj, string tag, [NotNullWhen(true)] out JsonObject? value)
+    {
+        if (obj.TryGetPropertyValue(tag, out var node) && node is JsonObject typed)
+        {
+            value = typed;
+            return true;
+        }
+
+        value = null;
+        return false;
     }
 
     private static object DecodeValue(JsonValue value)
