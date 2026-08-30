@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json.Nodes;
 
@@ -134,39 +133,9 @@ public sealed class WorkerChannel : IAsyncDisposable
     {
         try
         {
-            while (true)
+            while (await _lines.ReadLineAsync(_input, MaxLineBytes, cancellationToken) is { } line)
             {
-                var line = await _lines.ReadLineAsync(_input, MaxLineBytes, cancellationToken);
-                if (line is null)
-                {
-                    return; // clean peer EOF
-                }
-
-                if (line.Length == 0)
-                {
-                    continue;
-                }
-
-                WorkerEnvelope envelope;
-                try
-                {
-                    envelope = WorkerWireCodec.Decode(line);
-                }
-                catch (WorkerProtocolException exception)
-                {
-                    await TrySendErrorAsync(exception.Message);
-                    continue;
-                }
-
-                if (envelope.Id is { } id
-                    && envelope.IsProtocolV1
-                    && _pending.TryGetValue(id, out var pending)
-                    && pending.ResolveOrReject(envelope))
-                {
-                    continue;
-                }
-
-                await _onMessage(envelope);
+                await DispatchLineAsync(line);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -188,6 +157,47 @@ public sealed class WorkerChannel : IAsyncDisposable
 
             _pending.Clear();
         }
+    }
+
+    /// <summary>
+    /// Handles one complete wire line: empty lines are ignored, malformed JSON
+    /// is answered with an error envelope, a correlated response resolves the
+    /// matching pending request and anything else is delivered to the message
+    /// handler in read order.
+    /// </summary>
+    private async ValueTask DispatchLineAsync(string line)
+    {
+        if (line.Length == 0)
+        {
+            return;
+        }
+
+        WorkerEnvelope envelope;
+        try
+        {
+            envelope = WorkerWireCodec.Decode(line);
+        }
+        catch (WorkerProtocolException exception)
+        {
+            await TrySendErrorAsync(exception.Message);
+            return;
+        }
+
+        if (TryConsumeResponse(envelope))
+        {
+            return;
+        }
+
+        await _onMessage(envelope);
+    }
+
+    /// <summary>Whether the envelope answers a pending request (and was consumed by it).</summary>
+    private bool TryConsumeResponse(WorkerEnvelope envelope)
+    {
+        return envelope.Id is { } id
+            && envelope.IsProtocolV1
+            && _pending.TryGetValue(id, out var pending)
+            && pending.ResolveOrReject(envelope);
     }
 
     private async ValueTask TrySendErrorAsync(string message)
@@ -258,81 +268,5 @@ public sealed class WorkerChannel : IAsyncDisposable
         }
 
         public void Fail(WorkerDisconnectedException exception) => _completion.TrySetException(exception);
-    }
-
-    /// <summary>
-    /// A bounded, chunked line reader for the protocol stream: reads the next
-    /// <c>\n</c>-terminated UTF-8 line, carrying partial data between calls so
-    /// lines split across OS reads still arrive whole, and refuses lines above
-    /// <see cref="MaxLineBytes"/> (a host resource limit, plan §19).
-    /// </summary>
-    private sealed class LineReader
-    {
-        private readonly byte[] _chunk = new byte[8192];
-        private readonly List<byte> _carry = new(256);
-        private int _consumed;
-
-        public async ValueTask<string?> ReadLineAsync(Stream stream, int maxBytes, CancellationToken cancellationToken)
-        {
-            while (true)
-            {
-                var newline = FindNewline();
-                if (newline >= 0)
-                {
-                    return TakeLine(newline);
-                }
-
-                if (_consumed == 0)
-                {
-                    _consumed = await stream.ReadAsync(_chunk.AsMemory(), cancellationToken);
-                    if (_consumed == 0)
-                    {
-                        return _carry.Count == 0 ? null : TakeDanglingLine();
-                    }
-                }
-
-                _carry.AddRange(_chunk.AsSpan(0, _consumed));
-                _consumed = 0;
-                if (_carry.Count > maxBytes)
-                {
-                    throw new WorkerProtocolException(
-                        $"a worker line exceeded the {maxBytes}-byte limit; the peer violated the protocol");
-                }
-            }
-        }
-
-        private int FindNewline()
-        {
-            for (var i = 0; i < _carry.Count; i++)
-            {
-                if (_carry[i] == (byte)'\n')
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
-        private string TakeLine(int newline)
-        {
-            var line = PickLineSansCr(newline);
-            _carry.RemoveRange(0, newline + 1);
-            return line;
-        }
-
-        private string TakeDanglingLine()
-        {
-            var line = PickLineSansCr(_carry.Count);
-            _carry.Clear();
-            return line;
-        }
-
-        private string PickLineSansCr(int count)
-        {
-            var span = CollectionsMarshal.AsSpan(_carry)[..count];
-            var end = span.Length > 0 && span[^1] == (byte)'\r' ? span.Length - 1 : span.Length;
-            return Encoding.UTF8.GetString(span[..end]);
-        }
     }
 }

@@ -28,17 +28,22 @@ public static class WorkerValueCodec
         {
             null => null,
             bool flag => JsonValue.Create(flag),
-            int number => JsonValue.Create(number),
-            long number => Int64Node(number),
-            double number => JsonValue.Create(number),
-            float number => JsonValue.Create((double)number),
             string text => JsonValue.Create(text),
             byte[] bytes => BytesNode(bytes),
             ResourceHandle handle => ResourceNode(handle),
             ProviderId id => JsonValue.Create(id.ToString()),
-            _ => throw Unsupported(value),
+            _ => EncodeNumber(value),
         };
     }
+
+    private static JsonNode? EncodeNumber(object value) => value switch
+    {
+        int number => JsonValue.Create(number),
+        long number => Int64Node(number),
+        double number => JsonValue.Create(number),
+        float number => JsonValue.Create((double)number),
+        _ => throw Unsupported(value),
+    };
 
     /// <summary>
     /// Decodes a wire node back to a CLR value: JSON numbers become

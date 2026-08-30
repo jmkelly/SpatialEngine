@@ -34,7 +34,6 @@ public static class PluginPackageLoader
         ManifestCompatibility.EnsureCompatible(manifest, provider.Id, provider.Descriptors);
         return new WorkerProviderSurface(manifest, provider, loadContext);
     }
-
     private static ICapabilityProvider ResolveProvider(Assembly assembly, PluginManifest manifest)
     {
         if (manifest.AssemblyType is { Length: > 0 } typeName)
@@ -63,8 +62,10 @@ public static class PluginPackageLoader
     }
 
     private static bool IsServedProvider(Type type) =>
-        !type.IsAbstract
-        && typeof(ICapabilityProvider).IsAssignableFrom(type)
+        !type.IsAbstract && IsInstantiableProvider(type);
+
+    private static bool IsInstantiableProvider(Type type) =>
+        typeof(ICapabilityProvider).IsAssignableFrom(type)
         && type.GetConstructor(Type.EmptyTypes) is not null;
 
     private static ICapabilityProvider InstantiateProvider(Type type)
@@ -77,34 +78,6 @@ public static class PluginPackageLoader
         {
             throw new PluginManifestException(
                 $"cannot instantiate the provider '{type.FullName}': {exception.Message}", exception);
-        }
-    }
-
-    /// <summary>
-    /// Resolves package payloads from the package directory but lets the
-    /// default context provide every assembly it already knows (Spatial.Core,
-    /// Spatial.PluginSdk, the runtime, framework assemblies) — both sides of
-    /// the boundary must share one identity for contract types (ADR-0005), or
-    /// <c>is</c> checks and method signatures across the boundary would
-    /// silently break. Preferring the default context first also means a
-    /// package's bundled contract copies are never double-loaded.
-    /// </summary>
-    private sealed class PackageLoadContext(string packageDirectory)
-        : AssemblyLoadContext($"spatial-plugin-{Guid.NewGuid():N}", isCollectible: true)
-    {
-        protected override Assembly? Load(AssemblyName assemblyName)
-        {
-            try
-            {
-                return AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
-            }
-            catch (FileNotFoundException)
-            {
-                // Not part of the host's dependency set — a package payload.
-            }
-
-            var candidate = Path.Combine(packageDirectory, assemblyName.Name + ".dll");
-            return File.Exists(candidate) ? LoadFromAssemblyPath(candidate) : null;
         }
     }
 }

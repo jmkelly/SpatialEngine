@@ -21,7 +21,10 @@ honoured on stream reads, and reclaimed when a client never releases it
 (owner teardown reports the leak count). Providers mint handles through the
 invocation facilities (`facilities.Resources.Create(kind)`); the owning
 provider is derived from the handle during resolution (resolution step 2 —
-the compatible resource-local provider).
+the compatible resource-local provider). The SDK exposes the handle's read
+surface as `IResourceHandle` so consumer code can depend on the
+abstraction while the runtime hands out the immutable concrete
+`ResourceHandle`.
 
 ## Consequences
 

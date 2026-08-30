@@ -54,14 +54,19 @@ internal sealed class CapabilityResolver
             return ToResolved(activeMatch, ResolutionStep.ActivePreferred);
         }
 
-        if (_configuration.PreferredProviderFor(capability) is { } preferred
-            && MatchOrNull(candidates, preferred) is { } preferredMatch)
+        if (ResolvePreference(
+                candidates,
+                _configuration.PreferredProviderFor(capability),
+                ResolutionStep.ConfiguredPreferred) is { } configured)
         {
-            return ToResolved(preferredMatch, ResolutionStep.ConfiguredPreferred);
+            return configured;
         }
 
         return candidates.Count == 0 ? null : ToResolved(candidates[0], ResolutionStep.FirstHealthy);
     }
+
+    private static ResolvedProvider? ResolvePreference(List<Candidate> candidates, ProviderId? preferred, ResolutionStep step) =>
+        preferred is { } id && MatchOrNull(candidates, id) is { } match ? ToResolved(match, step) : null;
 
     /// <summary>The actionable error for a failed resolution, naming the reason.</summary>
     public CapabilityError DescribeUnavailable(CapabilityId capability, InvocationOptions options)

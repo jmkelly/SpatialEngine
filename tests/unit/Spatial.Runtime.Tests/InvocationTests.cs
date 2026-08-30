@@ -270,13 +270,12 @@ public sealed class InvocationTests
         var reports = new List<ProgressReport>();
         var invocation = CapabilityInvocation.Create(Count, new Dictionary<string, object?> { ["batch"] = batch })
             with
-        { Progress = new Progress<ProgressReport>(reports.Add) };
+        { Progress = new RecordingProgress(reports) };
 
         var outcome = await host.Runtime.InvokeAsync(invocation);
 
         Assert.True(outcome.IsSuccess);
-        Assert.Equal(3, reports.Count);
-        Assert.All(reports, report => Assert.InRange(report.Fraction!.Value, 0, 1));
+        Assert.True(reports.Count == 3, $"expected 3 reports, got {reports.Count}: [{string.Join(", ", reports.Select(r => r.Fraction))}]"); Assert.All(reports, report => Assert.InRange(report.Fraction!.Value, 0, 1));
         Assert.Equal(1, reports[^1].Fraction);
     }
 

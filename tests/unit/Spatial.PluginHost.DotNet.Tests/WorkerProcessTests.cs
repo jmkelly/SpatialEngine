@@ -169,6 +169,12 @@ public sealed class WorkerProcessTests : IAsyncDisposable
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
         Assert.Equal(CapabilityErrorKind.ContractViolation, outcome.Error!.Kind);
         Assert.Contains("capability", outcome.Error.Message);
+
+        // Drain cleanly: a killed worker's coverlet results are never flushed.
+        await rig.Channel.SendAsync(WorkerProtocol.Close, new System.Text.Json.Nodes.JsonObject { ["reason"] = "test done" });
+        Assert.Equal(0, await rig.Closed.WaitAsync(TimeSpan.FromSeconds(10)));
+        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, await rig.ExitCode);
     }
 
     [Fact]
@@ -191,6 +197,29 @@ public sealed class WorkerProcessTests : IAsyncDisposable
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
         Assert.Equal(CapabilityErrorKind.ContractViolation, outcome.Error!.Kind);
         Assert.Contains("argument 'unexpected'", outcome.Error.Message);
+    }
+
+    [Fact]
+    public async Task An_invoke_without_an_id_is_a_protocol_error()
+    {
+        await using var rig = Start(FixtureManifest.V1());
+        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+
+        var payload = WorkerPayload.Invoke(
+            FixtureProviderV1.PeekCapability.ToString(),
+            new Dictionary<string, object?>(),
+            [],
+            null);
+        await rig.Channel.SendAsync(WorkerProtocol.Invoke, payload);
+
+        var message = await rig.ProtocolError.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Contains("must carry an id", message);
+
+        // Drain cleanly: a killed worker's coverlet results are never flushed.
+        await rig.Channel.SendAsync(WorkerProtocol.Close, new System.Text.Json.Nodes.JsonObject { ["reason"] = "test done" });
+        Assert.Equal(0, await rig.Closed.WaitAsync(TimeSpan.FromSeconds(10)));
+        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, await rig.ExitCode);
     }
 
     [Fact]

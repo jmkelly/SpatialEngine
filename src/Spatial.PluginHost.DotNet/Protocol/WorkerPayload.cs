@@ -135,32 +135,10 @@ public static class WorkerPayload
 
         if (obj["ok"]?.GetValue<bool>() != true)
         {
-            var error = ReadError(obj["error"]);
-            throw new WorkerProtocolException(
-                $"the supervisor rejected the facility request: {error.Code}: {error.Message}");
+            throw RejectedResult(obj);
         }
 
-        if (obj["handle"] is not JsonObject handle
-            || handle["token"]?.GetValue<string>() is not { } token
-            || handle["kind"]?.GetValue<string>() is not { } kind
-            || handle["owner"]?.GetValue<string>() is not { } owner
-            || handle["createdAt"]?.GetValue<string>() is not { } createdAt)
-        {
-            throw new WorkerProtocolException("a successful facility result must carry token, kind, owner and createdAt");
-        }
-
-        try
-        {
-            return new ResourceHandle(
-                new ResourceId(Guid.Parse(token)),
-                ResourceKind.Parse(kind),
-                ProviderId.Parse(owner),
-                DateTimeOffset.Parse(createdAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
-        }
-        catch (Exception exception) when (exception is FormatException or ArgumentException)
-        {
-            throw new WorkerProtocolException($"the facility handle is malformed: {exception.Message}", exception);
-        }
+        return ParseHandle(ReadHandleFields(obj));
     }
 
     /// <summary>Throws when a facility-result payload reports a failure (used for acks that carry no handle).</summary>
@@ -168,12 +146,67 @@ public static class WorkerPayload
     {
         if (payload is not JsonObject obj || obj["ok"]?.GetValue<bool>() != true)
         {
-            var errorNode = (payload as JsonObject)?["error"];
-            var error = errorNode is null ? null : ReadError(errorNode);
-            throw new WorkerProtocolException(
-                error is null
-                    ? "the supervisor did not acknowledge the facility request"
-                    : $"the supervisor rejected the facility request: {error.Code}: {error.Message}");
+            throw RejectedAck(payload);
+        }
+    }
+
+    /// <summary>Builds the rejection for a facility result that reports <c>ok: false</c>.</summary>
+    private static WorkerProtocolException RejectedResult(JsonObject obj) =>
+        RejectedError(ReadError(obj["error"]));
+
+    /// <summary>Builds the rejection for a failed facility ack; a missing error node is a generic refusal.</summary>
+    private static WorkerProtocolException RejectedAck(JsonNode? payload)
+    {
+        var error = ReadAckError(payload);
+        if (error is null)
+        {
+            return new WorkerProtocolException("the supervisor did not acknowledge the facility request");
+        }
+
+        return RejectedError(error);
+    }
+
+    private static CapabilityError? ReadAckError(JsonNode? payload) =>
+        (payload as JsonObject)?["error"] is { } errorNode ? ReadError(errorNode) : null;
+
+    private static WorkerProtocolException RejectedError(CapabilityError error) =>
+        new($"the supervisor rejected the facility request: {error.Code}: {error.Message}");
+
+    /// <summary>Returns the handle node after checking every required field is present.</summary>
+    private static JsonObject ReadHandleFields(JsonObject obj)
+    {
+        if (obj["handle"] is not JsonObject handle)
+        {
+            throw MissingHandleFields();
+        }
+
+        if (HandleFieldNames.Any(name => handle[name]?.GetValue<string>() is null))
+        {
+            throw MissingHandleFields();
+        }
+
+        return handle;
+    }
+
+    private static readonly string[] HandleFieldNames = ["token", "kind", "owner", "createdAt"];
+
+    private static WorkerProtocolException MissingHandleFields() =>
+        new("a successful facility result must carry token, kind, owner and createdAt");
+
+    /// <summary>Parses the validated handle fields, wrapping format errors as protocol errors.</summary>
+    private static ResourceHandle ParseHandle(JsonObject handle)
+    {
+        try
+        {
+            return new ResourceHandle(
+                new ResourceId(Guid.Parse(handle["token"]!.GetValue<string>())),
+                ResourceKind.Parse(handle["kind"]!.GetValue<string>()),
+                ProviderId.Parse(handle["owner"]!.GetValue<string>()),
+                DateTimeOffset.Parse(handle["createdAt"]!.GetValue<string>(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new WorkerProtocolException($"the facility handle is malformed: {exception.Message}", exception);
         }
     }
 

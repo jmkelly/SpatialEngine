@@ -1,3 +1,4 @@
+using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
 
@@ -100,6 +101,39 @@ public sealed class WorkerInstance
         LastError = message;
         Transition(WorkerState.Failed, message);
     }
+
+    /// <summary>Records the message from a wire <c>error</c> envelope as the worker's last error.</summary>
+    internal ValueTask RecordPayloadError(WorkerEnvelope envelope)
+    {
+        LastError = envelope.Payload?["error"]?["message"]?.GetValue<string>() ?? "protocol error";
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>The lightweight wire-level handshake check: identity and capability-id set vs the manifest.</summary>
+    internal string? ValidateHandshake(HelloDocument hello)
+    {
+        var problems = new List<string>();
+        if (hello.Id != ProviderId.ToString())
+        {
+            problems.Add($"the worker reported id {hello.Id}, the manifest declares {ProviderId}");
+        }
+
+        var declared = (Package.Manifest.Capabilities ?? []).Select(capability => capability.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        var reported = hello.Capabilities.ToHashSet(StringComparer.Ordinal);
+        if (!declared.SetEquals(reported))
+        {
+            problems.Add("the worker's reported capability set differs from the manifest");
+        }
+
+        return problems.Count == 0
+            ? null
+            : $"the worker's handshake diverged from its manifest: {string.Join("; ", problems)}";
+    }
+
+    /// <summary>Builds the capability descriptors the manifest declares, for the provider proxy.</summary>
+    internal IReadOnlyList<CapabilityDescriptor> BuildDescriptors() =>
+        ManifestDescriptorBuilder.ToDescriptors(Package.Manifest);
 
     public override string ToString() => $"{ProviderId} ({State})";
 }

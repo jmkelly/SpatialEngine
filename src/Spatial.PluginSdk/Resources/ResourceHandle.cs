@@ -9,7 +9,7 @@ namespace Spatial.PluginSdk.Resources;
 /// actual state (open, leased, closed) behind the id, so a client can never
 /// re-create or forge a usable handle.
 /// </summary>
-public sealed record ResourceHandle
+public sealed record ResourceHandle : IResourceHandle
 {
     public ResourceHandle(ResourceId id, ResourceKind kind, ProviderId owner, DateTimeOffset createdAt)
     {

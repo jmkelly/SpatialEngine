@@ -21,10 +21,40 @@ public sealed class WorkerFacilityServer
 {
     private readonly ResourceRegistry _resources;
     private readonly ConcurrentDictionary<Guid, BoundedStream> _streams = new();
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _gates = new();
 
     public WorkerFacilityServer(ResourceRegistry resources)
     {
         _resources = resources ?? throw new ArgumentNullException(nameof(resources));
+    }
+
+    /// <summary>
+    /// Runs one facility request off the read loop under a per-worker gate
+    /// (each worker's requests stay ordered — single-writer streams). Errors
+    /// are swallowed and reported through <paramref name="onFailure"/> so the
+    /// loop can keep serving the worker.
+    /// </summary>
+    public async Task ProcessAsync(
+        WorkerChannel channel,
+        WorkerEnvelope envelope,
+        ProviderId owner,
+        Guid workerId,
+        Action<Guid, string> onFailure)
+    {
+        var gate = _gates.GetOrAdd(workerId, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+        try
+        {
+            await HandleAsync(channel, envelope, owner);
+        }
+        catch (Exception exception)
+        {
+            onFailure(workerId, exception.Message);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     /// <summary>Handles one facility request and sends the correlated <c>facility.result</c> answer.</summary>
@@ -84,10 +114,16 @@ public sealed class WorkerFacilityServer
                 "a facility.stream.write request must carry a known stream token"));
         }
 
+        var items = payload!["items"] as JsonArray;
+        return await WriteItemsAsync(stream, items);
+    }
+
+    /// <summary>Writes every decoded item to the bounded stream; a closed/cancelled stream becomes a provider-failure result.</summary>
+    private static async ValueTask<JsonObject> WriteItemsAsync(BoundedStream stream, JsonArray? items)
+    {
         try
         {
-            var items = payload!["items"] as JsonArray ?? new JsonArray();
-            foreach (var node in items)
+            foreach (var node in items ?? new JsonArray())
             {
                 await stream.WriteAsync(WorkerValueCodec.Decode(node));
             }

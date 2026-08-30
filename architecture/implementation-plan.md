@@ -760,9 +760,13 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 5: Native Plugin Packaging and Isolation
 
-- Finalise manifest schema.
-- Implement separate-process .NET workers over language-neutral contracts.
-- Add supervision, health checks, restart, side-by-side activation, draining and rollback.
+**Status:** complete (Epic F).
+
+- Finalise the plugin manifest schema (ADR-0025, `architecture/plugin-manifest.md`).
+- Implement separate-process .NET workers over language-neutral contracts
+  (`Spatial.PluginHost.DotNet` worker host, `architecture/worker-protocol.md`).
+- Add supervision, health checks, restart, side-by-side activation, draining
+  and rollback (`architecture/plugin-lifecycle.md`).
 - Add crash, timeout and cancellation fault fixtures.
 
 ### Phase 6: NetTopologySuite Operations Plugin
@@ -977,12 +981,12 @@ Root agent instructions must include:
 
 ### Epic F: Plugin workers
 
-- [ ] Language-neutral worker protocol
-- [ ] .NET worker SDK
-- [ ] Process supervisor
-- [ ] Health and restart
-- [ ] Side-by-side activation
-- [ ] Draining and rollback
+- [x] Language-neutral worker protocol (ADR-0025, `architecture/worker-protocol.md`)
+- [x] .NET worker SDK (manifest schema + worker host executable)
+- [x] Process supervisor (discovery, validation, activation, health, restart)
+- [x] Health and restart
+- [x] Side-by-side activation (active-preference routing)
+- [x] Draining and rollback
 
 ### Epic G: Spatial implementations
 
@@ -1103,6 +1107,7 @@ ADR-0021 Native AOT requires measured benefit and compatibility evidence
 ADR-0022 Resource handles are runtime-owned with leases
 ADR-0023 Bounded streams carry the backpressure
 ADR-0024 Jobs are observable state machines with events and timeouts
+ADR-0025 Worker boundaries speak versioned line-delimited JSON with runtime-owned facilities
 ```
 
 ## 25. Recommended Starting Sequence

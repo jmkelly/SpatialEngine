@@ -153,15 +153,7 @@ public sealed class FixtureProviderV1 : CapabilityProviderBase
     {
         try
         {
-            for (var i = 1; i <= chunks; i++)
-            {
-                await channel.Writer.WriteAsync($"chunk-{i - 1}", cancellationToken);
-                if (delayMilliseconds > 0)
-                {
-                    await Task.Delay(delayMilliseconds, cancellationToken);
-                }
-            }
-
+            await WriteChunksAsync(channel, chunks, delayMilliseconds, cancellationToken);
             channel.Writer.Complete();
         }
         catch (OperationCanceledException)
@@ -171,6 +163,19 @@ public sealed class FixtureProviderV1 : CapabilityProviderBase
         catch (Exception exception)
         {
             channel.Writer.Complete(CapabilityError.ProviderFailure(exception.Message));
+        }
+    }
+
+    /// <summary>Writes one chunk per iteration, pausing between chunks when the caller asks for backpressure/telemetry delay.</summary>
+    private static async Task WriteChunksAsync(StreamChannel channel, int chunks, int delayMilliseconds, CancellationToken cancellationToken)
+    {
+        for (var i = 1; i <= chunks; i++)
+        {
+            await channel.Writer.WriteAsync($"chunk-{i - 1}", cancellationToken);
+            if (delayMilliseconds > 0)
+            {
+                await Task.Delay(delayMilliseconds, cancellationToken);
+            }
         }
     }
 

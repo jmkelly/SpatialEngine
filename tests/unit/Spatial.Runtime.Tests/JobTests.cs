@@ -228,7 +228,7 @@ public sealed class JobTests
     {
         var host = InMemoryComponentHost.Create();
         var reports = new List<ProgressReport>();
-        var job = host.Runtime.StartJob(SleepInvocation(80) with { Progress = new Progress<ProgressReport>(reports.Add) });
+        var job = host.Runtime.StartJob(SleepInvocation(80) with { Progress = new RecordingProgress(reports) });
 
         var result = await job.WaitForCompletionAsync();
         Assert.True(result.IsSuccess);

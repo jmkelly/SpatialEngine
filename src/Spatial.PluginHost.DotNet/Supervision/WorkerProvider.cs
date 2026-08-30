@@ -25,8 +25,8 @@ public sealed class WorkerProvider : ICapabilityProvider
     internal WorkerProvider(WorkerInstance instance)
     {
         _instance = instance ?? throw new ArgumentNullException(nameof(instance));
-        _id = ProviderId.Parse(instance.Package.Manifest.Id);
-        _descriptors = ManifestDescriptorBuilder.ToDescriptors(instance.Package.Manifest);
+        _id = instance.ProviderId;
+        _descriptors = instance.BuildDescriptors();
     }
 
     public ProviderId Id => _id;
@@ -36,71 +36,60 @@ public sealed class WorkerProvider : ICapabilityProvider
     public async ValueTask<CapabilityResult> InvokeAsync(CapabilityInvocation invocation)
     {
         ArgumentNullException.ThrowIfNull(invocation);
-        if (_instance.Channel is not { } channel || !WorkerStateSupport.CanServe(_instance.State))
+        if (CurrentChannel() is not { } channel)
         {
-            return Unavailable(invocation);
+            return InvokeFailureMapper.Unavailable(invocation, _instance);
         }
 
         try
         {
-            var payload = WorkerPayload.Invoke(
-                invocation.Capability.ToString(),
-                invocation.Arguments,
-                invocation.GrantedPermissions.Select(permission => permission.Name),
-                invocation.Deadline);
-            var invokeId = Guid.NewGuid().ToString("N");
-            _instance.Relay?.Begin(invokeId, invocation.Progress);
-            try
-            {
-                using var cancellation = invocation.CancellationToken.Register(() => SendCancel(channel, invokeId));
-                var response = await channel.RequestAsync(
-                    WorkerProtocol.Invoke,
-                    payload,
-                    WorkerProtocol.Result,
-                    timeout: null,
-                    id: invokeId,
-                    cancellationToken: invocation.CancellationToken);
-                return MapOutcome(invocation, WorkerPayload.ReadOutcome(response));
-            }
-            finally
-            {
-                _instance.Relay?.End(invokeId);
-            }
+            return await InvokeOnChannelAsync(channel, invocation);
         }
-        catch (WorkerValueException exception)
+        catch (Exception exception)
         {
-            return CapabilityResult.Failure(CapabilityError.ContractViolation(
-                $"an argument of {invocation.Capability} cannot cross the worker boundary: {exception.Message}"));
-        }
-        catch (OperationCanceledException)
-        {
-            return CapabilityResult.Failure(
-                invocation.Deadline is { } due && DateTimeOffset.UtcNow >= due
-                    ? CapabilityError.DeadlineExceeded(invocation.Capability)
-                    : CapabilityError.Cancelled(invocation.Capability));
-        }
-        catch (WorkerDisconnectedException exception)
-        {
-            return CapabilityResult.Failure(CapabilityError.ProviderFailure(
-                $"worker {_instance.ProviderId} disconnected while serving {invocation.Capability}: {exception.Message}"));
-        }
-        catch (WorkerProtocolException exception)
-        {
-            return CapabilityResult.Failure(CapabilityError.ProviderFailure(
-                $"worker {_instance.ProviderId} violated the protocol while serving {invocation.Capability}: {exception.Message}"));
+            return InvokeFailureMapper.For(invocation, _instance.ProviderId, exception);
         }
     }
 
-    private static CapabilityResult MapOutcome(CapabilityInvocation invocation, WorkerOutcome outcome) =>
-        outcome.Kind == WorkerOutcomeKind.Success
-            ? CapabilityResult.Success(outcome.Value)
-            : CapabilityResult.Failure(outcome.Error ?? CapabilityError.ProviderFailure(
-                $"an invocation of {invocation.Capability} completed without a shaped error"));
+    private WorkerChannel? CurrentChannel()
+    {
+        var channel = _instance.Channel;
+        if (channel is null || !WorkerStateSupport.CanServe(_instance.State))
+        {
+            return null;
+        }
 
-    private CapabilityFailure Unavailable(CapabilityInvocation invocation) =>
-        CapabilityResult.Failure(CapabilityError.ProviderUnavailable(
-            $"worker {_instance.ProviderId} is {_instance.State} and cannot serve {invocation.Capability} right now"
-            + (_instance.LastError is null ? string.Empty : $"; last error: {_instance.LastError}")));
+        return channel;
+    }
+
+    private async ValueTask<CapabilityResult> InvokeOnChannelAsync(
+        WorkerChannel channel,
+        CapabilityInvocation invocation)
+    {
+        var payload = WorkerPayload.Invoke(
+            invocation.Capability.ToString(),
+            invocation.Arguments,
+            invocation.GrantedPermissions.Select(permission => permission.Name),
+            invocation.Deadline);
+        var invokeId = Guid.NewGuid().ToString("N");
+        _instance.Relay?.Begin(invokeId, invocation.Progress);
+        try
+        {
+            using var cancellation = invocation.CancellationToken.Register(() => SendCancel(channel, invokeId));
+            var response = await channel.RequestAsync(
+                WorkerProtocol.Invoke,
+                payload,
+                WorkerProtocol.Result,
+                timeout: null,
+                id: invokeId,
+                cancellationToken: invocation.CancellationToken);
+            return InvokeFailureMapper.ShapeResult(invocation, WorkerPayload.ReadOutcome(response));
+        }
+        finally
+        {
+            _instance.Relay?.End(invokeId);
+        }
+    }
 
     private static void SendCancel(WorkerChannel channel, string invokeId)
     {

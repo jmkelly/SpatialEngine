@@ -16,6 +16,23 @@ implementations.
 
 ## Status
 
+Phase 5 — native plugin packaging and isolation. Immutable plugin packages
+(manifest schema v1: id, version, capabilities, runtime hints — see
+`architecture/plugin-manifest.md`) are discovered, validated and launched as
+separate .NET worker processes over the versioned, language-neutral wire
+protocol (`architecture/worker-protocol.md`, ADR-0025). The process
+supervisor (`Spatial.PluginHost.DotNet`) health-checks with ping, restarts
+crashed workers with backoff, activates versions side by side (routing new
+work through the runtime's active-preference table, consulted between
+resource-local and configured preference), drains a version without stopping
+the host (wait in-flight, reclaim resources via
+`ResourceRegistry.DisposeOwnerAsync`, graceful close) and rolls back to the
+previous version. Resources and bounded streams stay runtime-owned across
+the boundary (facility RPCs), so backpressure and leases are real for
+out-of-process providers; crash, timeout and cancellation fault fixtures
+exercise every path with real child processes. Phase 6 (NTS operations
+plugin) is next.
+
 Phase 4 — resources, streams and jobs. Opaque runtime-owned resource
 handles with leases, disposal and leak reclamation (ADR-0022); bounded,
 backpressured streaming with the `Streaming` trait enforced (ADR-0023); and
@@ -23,10 +40,10 @@ long-running invocations routed through observable, cancellable,
 timeout-bounded job state machines with events and progress (ADR-0008/
 ADR-0024). Versioned capability contracts (`spatial.feature.count@1`, …)
 and the registry, deterministic provider resolution (explicit →
-resource-local → configured preferred → first healthy), invocation routing
-with structured errors, deadlines, cancellation and permissions all ship in
-`Spatial.PluginSdk`/`Spatial.Runtime`, with the in-memory component host as
-the test vehicle. Phase 5 (plugin packaging and isolation) is next.
+resource-local → active-preferred → configured preferred → first healthy),
+invocation routing with structured errors, deadlines, cancellation and
+permissions all ship in `Spatial.PluginSdk`/`Spatial.Runtime`, with the
+in-memory component host as the test vehicle.
 
 ## Repository layout
 

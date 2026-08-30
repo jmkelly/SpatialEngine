@@ -230,6 +230,23 @@ public sealed class SupervisorLifecycleTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Health_check_loop_probes_workers_until_cancellation()
+    {
+        await using var rig = CreateRig();
+        await rig.Supervisor.ActivateAsync(rig.V1Package);
+        using var cts = new CancellationTokenSource();
+
+        var loop = rig.Supervisor.RunHealthChecksAsync(cts.Token);
+        await Task.Delay(1300); // let at least one probe + ping interval elapse
+        cts.Cancel();
+        await loop; // cancellation during the delay ends the loop cleanly, no OCE
+
+        Assert.False(loop.IsCanceled);
+        Assert.Equal(WorkerState.Healthy, rig.Supervisor.Workers.Single().State);
+        Assert.Contains(rig.Supervisor.Events, e => e.Kind == SupervisorEventKind.Started);
+    }
+
+    [Fact]
     public async Task Service_worker_remains_registered_across_a_restart()
     {
         await using var rig = CreateRig();

@@ -39,5 +39,27 @@ implementation-plan.md §8 and ADR-0020.
   handles are readable while the job runs), progress, cancellation and
   timeouts — one job API for polling and subscription.
 
+## Across the worker boundary (Phase 5, ADR-0025)
+
+Workers speak the versioned wire protocol (`architecture/worker-protocol.md`)
+over stdin/stdout. Handles and streams stay runtime-owned even when the
+provider runs out of process:
+
+- A worker mints a resource or creates a bounded stream through facility
+  RPCs (`facility.mint`, `facility.stream.*`); the supervisor's facility
+  server performs the work in the host's `ResourceRegistry`, so the handle
+  the worker returns is a real host handle and leases/leak reclamation
+  work unchanged. Stream writes from a worker block until the host
+  consumer reads — backpressure is cross-process.
+- Inline values are scalars plus `$i64` (64-bit integers), `$bytes`
+  (binary) and `$resource` (opaque handle) tags. Spatial values are
+  rejected by the codec: geometries and feature batches cross the boundary
+  as canonical binary interchange (ADR-0020) once the operation/store
+  plugins ship it — the runtime never routes geometry through JSON between
+  workers.
+- Draining a worker version reclaims its resources through
+  `ResourceRegistry.DisposeOwnerAsync` (the draining call site) before the
+  worker process is stopped.
+
 Encoding/decoding is core behaviour (canonical round trips are tested in
 Phase 1).

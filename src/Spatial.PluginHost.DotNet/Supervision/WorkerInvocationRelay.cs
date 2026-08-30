@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json.Nodes;
 using Spatial.PluginSdk.Capabilities;
 
 namespace Spatial.PluginHost.DotNet.Supervision;
@@ -32,6 +33,31 @@ public sealed class WorkerInvocationRelay
         {
             sink.Report(report);
         }
+    }
+
+    /// <summary>
+    /// Parses a wire <c>progress</c> payload (fraction, message or a bare milestone) and forwards it
+    /// as a <see cref="ProgressReport"/>; unknown or malformed invocations are dropped. Keeps the
+    /// protocol read-loop handler a one-liner.
+    /// </summary>
+    public ValueTask TryRelayProgress(string? invokeId, JsonNode? payload)
+    {
+        if (invokeId is not null && payload is JsonObject obj)
+        {
+            ReportProgress(invokeId, ReadProgress(obj));
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private static ProgressReport ReadProgress(JsonObject obj)
+    {
+        if (obj["fraction"] is JsonValue fraction)
+        {
+            return ProgressReport.Create(fraction.GetValue<double>(), obj["message"]?.GetValue<string>());
+        }
+
+        return ProgressReport.Milestone(obj["message"]?.GetValue<string>() ?? string.Empty);
     }
 
     /// <summary>Ends an in-flight invocation (result arrived or the caller gave up).</summary>

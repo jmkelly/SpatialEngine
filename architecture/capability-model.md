@@ -91,9 +91,15 @@ A provider registers with its descriptors. Rejected with an actionable
    `InvocationOptions.Resource` (the resource's owning provider — derived
    from resource ownership, ADR-0022) or, when absent, the explicit
    `ResourceLocalProvider` option.
-3. **Configured preferred provider** — soft; an absent or unhealthy preferred
+3. **Active preferred provider** (Phase 5, ADR-0025) — the supervisor-driven
+   preference table (`CapabilityRuntime.SetActivePreference`), consulted
+   while both sides of a side-by-side replacement are healthy. Soft; falls
+   through when absent or unhealthy. This is what "route new work to the new
+   version" (plan §10.4) manipulates — reversible, without touching the
+   immutable start-up configuration.
+4. **Configured preferred provider** — soft; an absent or unhealthy preferred
    provider falls through.
-4. **First healthy provider by stable provider ID** — ordinal by `ProviderId`
+5. **First healthy provider by stable provider ID** — ordinal by `ProviderId`
    (name, then version).
 
 `Healthy` and `Degraded` providers can serve; `Unhealthy` cannot. The step

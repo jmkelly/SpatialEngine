@@ -26,6 +26,7 @@ internal sealed class WorkerRig : IAsyncDisposable
     private readonly ConcurrentQueue<ProgressSample> _progress = new();
     private readonly TaskCompletionSource<HelloDocument> _hello = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource<int> _closed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<string> _protocolError = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Task _stderrDrained;
 
     private WorkerRig(string packageDirectory, Process process, StringBuilder stderr, Task stderrDrained)
@@ -43,6 +44,9 @@ internal sealed class WorkerRig : IAsyncDisposable
 
     /// <summary>Completes when the worker answers <c>closed</c> during a drain.</summary>
     public Task<int> Closed => _closed.Task;
+
+    /// <summary>Completes with the message of the worker's first protocol-error envelope.</summary>
+    public Task<string> ProtocolError => _protocolError.Task;
 
     public IReadOnlyList<ProgressSample> Progress => _progress.ToArray();
 
@@ -149,6 +153,10 @@ internal sealed class WorkerRig : IAsyncDisposable
                 break;
             case WorkerProtocol.Closed:
                 _closed.TrySetResult(envelope.Payload?["inFlight"]?.GetValue<int>() ?? -1);
+                break;
+            case WorkerProtocol.Error:
+                _protocolError.TrySetResult(
+                    envelope.Payload?["error"]?["message"]?.GetValue<string>() ?? string.Empty);
                 break;
             default:
                 break;

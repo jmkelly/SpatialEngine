@@ -119,31 +119,7 @@ public sealed class PluginWorkerHost : IAsyncDisposable
 
         if (TryBuildInvocation(envelope.Payload, invokeId, out var invocation, out var parseError))
         {
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
-            if (invocation.Deadline is { } due)
-            {
-                var remaining = due - DateTimeOffset.UtcNow;
-                if (remaining <= TimeSpan.Zero)
-                {
-                    cts.Cancel();
-                }
-                else
-                {
-                    cts.CancelAfter(remaining);
-                }
-            }
-
-            var effective = invocation with { CancellationToken = cts.Token };
-            var state = new InvokeState(cts);
-            // Run the provider on the thread pool: the provider may block
-            // synchronously on a facility RPC (GetResult), and that must never
-            // stall the read loop that answers the RPC.
-            state.Task = Task.Factory.StartNew(
-                () => RunInvokeAsync(invokeId, effective, cts),
-                CancellationToken.None,
-                TaskCreationOptions.DenyChildAttach,
-                TaskScheduler.Default).Unwrap();
-            _invokes[invokeId] = state;
+            StartInvocation(invokeId, invocation);
         }
         else
         {
@@ -152,9 +128,58 @@ public sealed class PluginWorkerHost : IAsyncDisposable
         }
     }
 
+    /// <summary>Starts the provider invocation off the read loop with the invocation's
+    /// own deadline watch; the caller (run loop) reports the outcome.</summary>
+    private void StartInvocation(string invokeId, CapabilityInvocation invocation)
+    {
+        var cts = CreateDeadlineCts(invocation, _shutdown.Token);
+        var effective = invocation with { CancellationToken = cts.Token };
+        var state = new InvokeState(cts);
+        // Run the provider on the thread pool: the provider may block
+        // synchronously on a facility RPC (GetResult), and that must never
+        // stall the read loop that answers the RPC.
+        state.Task = Task.Factory.StartNew(
+            () => RunInvokeAsync(invokeId, effective, cts),
+            CancellationToken.None,
+            TaskCreationOptions.DenyChildAttach,
+            TaskScheduler.Default).Unwrap();
+        _invokes[invokeId] = state;
+    }
+
+    private static CancellationTokenSource CreateDeadlineCts(
+        CapabilityInvocation invocation,
+        CancellationToken shutdown)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(shutdown);
+        if (invocation.Deadline is { } due)
+        {
+            var remaining = due - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero)
+            {
+                cts.Cancel();
+            }
+            else
+            {
+                cts.CancelAfter(remaining);
+            }
+        }
+
+        return cts;
+    }
+
     private void HandleCancel(string? invokeId)
     {
-        if (invokeId is not null && _invokes.TryGetValue(invokeId, out var state))
+        if (invokeId is null)
+        {
+            return;
+        }
+
+        CancelIfRunning(invokeId);
+    }
+
+    private void CancelIfRunning(string invokeId)
+    {
+        if (_invokes.TryGetValue(invokeId, out var state))
         {
             state.Cancel();
         }
@@ -169,10 +194,7 @@ public sealed class PluginWorkerHost : IAsyncDisposable
         }
         catch (OperationCanceledException)
         {
-            await SendResultAsync(invokeId, CapabilityResult.Failure(
-                invocation.Deadline is { } due && DateTimeOffset.UtcNow >= due
-                    ? CapabilityError.DeadlineExceeded(invocation.Capability)
-                    : CapabilityError.Cancelled(invocation.Capability)));
+            await SendResultAsync(invokeId, CapabilityResult.Failure(CancellationError(invocation)));
         }
         catch (Exception exception)
         {
@@ -186,6 +208,11 @@ public sealed class PluginWorkerHost : IAsyncDisposable
             TryFinishDrain();
         }
     }
+
+    private static CapabilityError CancellationError(CapabilityInvocation invocation) =>
+        invocation.Deadline is { } due && DateTimeOffset.UtcNow >= due
+            ? CapabilityError.DeadlineExceeded(invocation.Capability)
+            : CapabilityError.Cancelled(invocation.Capability);
 
     private async ValueTask HandleCloseAsync()
     {
@@ -312,12 +339,17 @@ public sealed class PluginWorkerHost : IAsyncDisposable
     {
         var granted = new HashSet<Permission>();
         permissions = granted;
-        error = null;
         if (permissionsNode is null)
         {
+            error = null;
             return true;
         }
 
+        return FillPermissions(granted, permissionsNode, out error);
+    }
+
+    private static bool FillPermissions(HashSet<Permission> granted, JsonArray permissionsNode, out string? error)
+    {
         foreach (var node in permissionsNode)
         {
             if (!Permission.TryParse(node?.GetValue<string>(), out var permission))
@@ -329,6 +361,7 @@ public sealed class PluginWorkerHost : IAsyncDisposable
             granted.Add(permission);
         }
 
+        error = null;
         return true;
     }
 

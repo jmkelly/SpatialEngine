@@ -27,9 +27,8 @@ public sealed class WorkerSupervisor : IAsyncDisposable
     private readonly List<SupervisorEvent> _events = [];
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource<HelloDocument>> _handshakes = new();
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource> _drains = new();
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _facilityGates = new();
-    private readonly ConcurrentDictionary<Guid, int> _healthFailures = new();
     private readonly ConcurrentDictionary<Guid, byte> _restarting = new();
+    private readonly WorkerHealthMonitor _health;
     private readonly object _eventsGate = new();
     private int _disposed;
 
@@ -38,6 +37,11 @@ public sealed class WorkerSupervisor : IAsyncDisposable
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _facilities = new WorkerFacilityServer(runtime.Resources);
+        _health = new WorkerHealthMonitor(
+            options.Health,
+            canCheck: instance => instance.Channel is not null && WorkerStateSupport.CanServe(instance.State),
+            probe: ProbeHealthAsync,
+            restartUnhealthy: RestartUnhealthyAsync);
     }
 
     /// <summary>The worker host executable next to this assembly (the default for new supervisors).</summary>
@@ -185,57 +189,11 @@ public sealed class WorkerSupervisor : IAsyncDisposable
     }
 
     /// <summary>Probes one worker; repeated failures trip the threshold and restart it.</summary>
-    public async Task<bool> HealthCheckOnceAsync(Guid workerId)
-    {
-        var instance = Find(workerId);
-        if (instance.Channel is null || !WorkerStateSupport.CanServe(instance.State))
-        {
-            return false;
-        }
-
-        var alive = await WorkerHealth.ProbeAsync(
-            instance.Channel, TimeSpan.FromMilliseconds(_options.Health.PingTimeoutMilliseconds));
-        if (alive)
-        {
-            _healthFailures.TryRemove(workerId, out _);
-            instance.Transition(WorkerState.Healthy, "health check passed");
-            return true;
-        }
-
-        var failures = _healthFailures.AddOrUpdate(workerId, 1, static (_, count) => count + 1);
-        if (failures >= _options.Health.FailureThreshold)
-        {
-            _runtime.Registry.SetHealth(instance.ProviderId, ProviderHealth.Unhealthy);
-            Record(SupervisorEventKind.Crashed, instance.Id, $"health check failed {failures} times; restarting");
-            await RestartAsync(workerId);
-        }
-
-        return false;
-    }
+    public Task<bool> HealthCheckOnceAsync(Guid workerId) => _health.CheckAsync(Find(workerId));
 
     /// <summary>Runs periodic health checks for every serving worker until cancellation.</summary>
-    public async Task RunHealthChecksAsync(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            foreach (var instance in _workers.ToArray())
-            {
-                if (WorkerStateSupport.CanServe(instance.State))
-                {
-                    await HealthCheckOnceAsync(instance.Id);
-                }
-            }
-
-            try
-            {
-                await Task.Delay(_options.Health.PingIntervalMilliseconds, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
-    }
+    public Task RunHealthChecksAsync(CancellationToken cancellationToken) =>
+        _health.RunAsync(() => _workers.ToArray(), cancellationToken);
 
     /// <summary>
     /// Restarts a crashed or unhealthy worker with backoff: a fresh process
@@ -315,7 +273,7 @@ public sealed class WorkerSupervisor : IAsyncDisposable
         var failureMessage = hello is null
             ? $"the worker {instance.ProviderId} did not handshake within {_options.StartupTimeout}; "
                 + $"stderr: {process.StandardError}"
-            : HandshakeProblems(instance, hello);
+            : instance.ValidateHandshake(hello);
         if (failureMessage is not null)
         {
             instance.Fail(failureMessage);
@@ -369,13 +327,26 @@ public sealed class WorkerSupervisor : IAsyncDisposable
         }
     }
 
-    private async Task<WorkerInstance> ReactivateAsync(WorkerInstance instance)
-    {
-        if (instance.Channel is not null && WorkerStateSupport.CanServe(instance.State))
-        {
-            return instance;
-        }
+    private Task<bool> ProbeHealthAsync(WorkerInstance instance) =>
+        WorkerHealth.ProbeAsync(
+            instance.Channel!, TimeSpan.FromMilliseconds(_options.Health.PingTimeoutMilliseconds));
 
+    /// <summary>The health monitor's escalation hook: mark the worker unhealthy, record the crash and restart it.</summary>
+    internal async Task RestartUnhealthyAsync(WorkerInstance instance, int failures)
+    {
+        _runtime.Registry.SetHealth(instance.ProviderId, ProviderHealth.Unhealthy);
+        Record(SupervisorEventKind.Crashed, instance.Id, $"health check failed {failures} times; restarting");
+        await RestartAsync(instance.Id);
+    }
+
+    private Task<WorkerInstance> ReactivateAsync(WorkerInstance instance) =>
+        Serving(instance) ? Task.FromResult(instance) : ReactivateProcessAsync(instance);
+
+    private static bool Serving(WorkerInstance instance) =>
+        instance.Channel is not null && WorkerStateSupport.CanServe(instance.State);
+
+    private async Task<WorkerInstance> ReactivateProcessAsync(WorkerInstance instance)
+    {
         await ActivateProcessAsync(instance);
         return instance;
     }
@@ -384,9 +355,11 @@ public sealed class WorkerSupervisor : IAsyncDisposable
         envelope.Type switch
         {
             WorkerProtocol.Hello => CompleteHandshake(instance, envelope),
-            WorkerProtocol.Progress => RelayProgress(instance, envelope),
+            WorkerProtocol.Progress => instance.Relay is { } relay
+                ? relay.TryRelayProgress(envelope.Id, envelope.Payload)
+                : ValueTask.CompletedTask,
             WorkerProtocol.Closed => CompleteDrain(instance),
-            WorkerProtocol.Error => RecordError(instance, envelope),
+            WorkerProtocol.Error => instance.RecordPayloadError(envelope),
             WorkerProtocol.FacilityMint or WorkerProtocol.FacilityStreamCreate
                 or WorkerProtocol.FacilityStreamWrite or WorkerProtocol.FacilityStreamComplete
                 => HandleFacilityAsync(instance, envelope),
@@ -397,29 +370,18 @@ public sealed class WorkerSupervisor : IAsyncDisposable
     {
         // Process facility requests off the read loop: a stream write can block
         // on cross-process backpressure, which must never stall the loop that
-        // answers the worker's next request. A per-worker semaphore keeps each
-        // worker's facility requests ordered (single-writer streams).
+        // answers the worker's next request. The facility server gates each
+        // worker's requests (single-writer streams).
         _ = ProcessFacilityAsync(instance, envelope);
         return ValueTask.CompletedTask;
     }
 
     private async Task ProcessFacilityAsync(WorkerInstance instance, WorkerEnvelope envelope)
     {
-        var gate = _facilityGates.GetOrAdd(instance.Id, _ => new SemaphoreSlim(1, 1));
-        await gate.WaitAsync();
-        try
-        {
-            await _facilities.HandleAsync(instance.Channel!, envelope, instance.ProviderId);
-        }
-        catch (Exception exception)
-        {
-            Record(SupervisorEventKind.Diagnostic, instance.Id,
-                $"facility request failed: {exception.Message}");
-        }
-        finally
-        {
-            gate.Release();
-        }
+        await _facilities.ProcessAsync(
+            instance.Channel!, envelope, instance.ProviderId, instance.Id,
+            (workerId, message) => Record(SupervisorEventKind.Diagnostic, workerId,
+                $"facility request failed: {message}"));
     }
 
     private ValueTask CompleteHandshake(WorkerInstance instance, WorkerEnvelope envelope)
@@ -440,51 +402,6 @@ public sealed class WorkerSupervisor : IAsyncDisposable
         }
 
         await ValueTask.CompletedTask;
-    }
-
-    private static ValueTask RecordError(WorkerInstance instance, WorkerEnvelope envelope)
-    {
-        instance.LastError = envelope.Payload?["error"]?["message"]?.GetValue<string>() ?? "protocol error";
-        return ValueTask.CompletedTask;
-    }
-
-    private static ValueTask RelayProgress(WorkerInstance instance, WorkerEnvelope envelope)
-    {
-        var invokeId = envelope.Id;
-        if (invokeId is not null
-            && envelope.Payload is JsonObject obj
-            && instance.Relay is not null)
-        {
-            var fraction = obj["fraction"] is JsonValue value ? value.GetValue<double>() : (double?)null;
-            var message = obj["message"] is JsonValue text ? text.GetValue<string>() : null;
-            instance.Relay.ReportProgress(
-                invokeId,
-                fraction is null ? ProgressReport.Milestone(message ?? string.Empty) : ProgressReport.Create(fraction.Value, message));
-        }
-
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>The lightweight wire-level handshake check: identity and capability-id set vs the manifest.</summary>
-    private static string? HandshakeProblems(WorkerInstance instance, HelloDocument hello)
-    {
-        var problems = new List<string>();
-        if (hello.Id != instance.ProviderId.ToString())
-        {
-            problems.Add($"the worker reported id {hello.Id}, the manifest declares {instance.ProviderId}");
-        }
-
-        var declared = (instance.Package.Manifest.Capabilities ?? []).Select(capability => capability.Id)
-            .ToHashSet(StringComparer.Ordinal);
-        var reported = hello.Capabilities.ToHashSet(StringComparer.Ordinal);
-        if (!declared.SetEquals(reported))
-        {
-            problems.Add("the worker's reported capability set differs from the manifest");
-        }
-
-        return problems.Count == 0
-            ? null
-            : $"the worker's handshake diverged from its manifest: {string.Join("; ", problems)}";
     }
 
     private void Record(SupervisorEventKind kind, Guid workerId, string message)
