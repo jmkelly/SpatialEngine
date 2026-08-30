@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Spatial.Core.Geometry;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Resources;
+using Spatial.PluginSdk.Transformations;
 
 namespace Spatial.PluginHost.DotNet.Protocol;
 
@@ -12,9 +13,10 @@ namespace Spatial.PluginHost.DotNet.Protocol;
 /// language-neutral encoding of argument and result values. The inline
 /// protocol carries scalars, <c>$i64</c>-tagged 64-bit integers, base64
 /// bytes, <c>$geometry</c>-tagged canonical binary geometry (ADR-0020,
-/// Phase 6) and opaque resource-handle tags; spatial values other than
-/// geometry (feature batches in particular) are rejected. The runtime
-/// therefore never routes geometry through JSON between workers.
+/// Phase 6), <c>$crs</c>-tagged CRS descriptions (ADR-0027, Phase 7) and
+/// opaque resource-handle tags; spatial values other than geometry (feature
+/// batches in particular) are rejected. The runtime therefore never routes
+/// geometry through JSON between workers.
 /// </summary>
 public static class WorkerValueCodec
 {
@@ -35,6 +37,7 @@ public static class WorkerValueCodec
             ResourceHandle handle => ResourceNode(handle),
             ProviderId id => JsonValue.Create(id.ToString()),
             IGeometry geometry => GeometryNode(geometry),
+            CrsDescription description => CrsNode(description),
             _ => EncodeNumber(value),
         };
     }
@@ -99,6 +102,11 @@ public static class WorkerValueCodec
             return ReadGeometry(geometryValue);
         }
 
+        if (obj.TryGetPropertyValue("$crs", out var crsNode) && crsNode is JsonObject crs)
+        {
+            return ReadCrs(crs);
+        }
+
         if (obj.TryGetPropertyValue("$resource", out var resourceNode) && resourceNode is JsonObject resource)
         {
             return ReadResource(resource);
@@ -106,7 +114,7 @@ public static class WorkerValueCodec
 
         throw new WorkerValueException(
             "object values are not supported as inline worker values; "
-            + "remember to tag 64-bit integers ($i64), bytes ($bytes), geometry ($geometry) and resource handles ($resource)");
+            + "remember to tag 64-bit integers ($i64), bytes ($bytes), geometry ($geometry), CRS descriptions ($crs) and resource handles ($resource)");
     }
 
     private static object DecodeValue(JsonValue value)
@@ -184,6 +192,36 @@ public static class WorkerValueCodec
     private static JsonObject GeometryNode(IGeometry geometry) =>
         new() { ["$geometry"] = Convert.ToBase64String(GeometryCodec.Encode(geometry)) };
 
+    private static JsonObject CrsNode(CrsDescription description) => new()
+    {
+        ["$crs"] = new JsonObject
+        {
+            ["authority"] = description.Authority,
+            ["code"] = description.Code,
+            ["name"] = description.Name,
+            ["kind"] = description.Kind.ToString().ToLowerInvariant(),
+            ["dimension"] = description.Dimension,
+            ["axes"] = new JsonArray(description.Axes
+                .Select(axis => (JsonNode)new JsonObject
+                {
+                    ["name"] = axis.Name,
+                    ["orientation"] = axis.Orientation.ToString().ToLowerInvariant(),
+                    ["unit"] = axis.UnitName,
+                })
+                .ToArray()),
+            ["datum"] = description.Datum,
+            ["ellipsoid"] = description.Ellipsoid is { } ellipsoid
+                ? new JsonObject
+                {
+                    ["name"] = ellipsoid.Name,
+                    ["semiMajor"] = ellipsoid.SemiMajorAxis,
+                    ["semiMinor"] = ellipsoid.SemiMinorAxis,
+                    ["unit"] = ellipsoid.UnitName,
+                }
+                : null,
+        },
+    };
+
     private static IGeometry ReadGeometry(JsonValue node)
     {
         byte[] bytes;
@@ -206,6 +244,78 @@ public static class WorkerValueCodec
                 $"the $geometry tag must carry canonical geometry bytes (SGEOM, ADR-0020): {exception.Message}", exception);
         }
     }
+
+    private static CrsDescription ReadCrs(JsonObject crs)
+    {
+        try
+        {
+            var authority = RequiredString(crs, "authority");
+            var code = RequiredString(crs, "code");
+            var name = RequiredString(crs, "name");
+            var kind = EnumParse<CrsKind>(RequiredString(crs, "kind"));
+            var dimension = RequiredInt(crs, "dimension");
+            var axes = ReadAxes(crs);
+            var datum = crs["datum"]?.GetValue<string>();
+            var ellipsoid = ReadEllipsoid(crs["ellipsoid"] as JsonObject);
+            return new CrsDescription(authority, code, name, kind, dimension, axes, datum, ellipsoid);
+        }
+        catch (Exception exception) when (exception is FormatException or InvalidOperationException or ArgumentException)
+        {
+            throw new WorkerValueException(
+                $"the $crs tag must carry a structured CRS description: {exception.Message}", exception);
+        }
+    }
+
+    private static string RequiredString(JsonObject obj, string property) =>
+        obj[property]?.GetValue<string>()
+        ?? throw new FormatException($"'{property}' is missing");
+
+    private static int RequiredInt(JsonObject obj, string property) =>
+        obj[property]?.GetValue<int>()
+        ?? throw new FormatException($"'{property}' is missing");
+
+    private static T EnumParse<T>(string text)
+        where T : struct, Enum =>
+        Enum.TryParse<T>(text, ignoreCase: true, out var value)
+            ? value
+            : throw new FormatException($"'{text}' is not a valid {typeof(T).Name}");
+
+    private static List<CrsAxis> ReadAxes(JsonObject crs)
+    {
+        if (crs["axes"] is not JsonArray axesNode)
+        {
+            throw new FormatException("'axes' is missing");
+        }
+
+        var axes = new List<CrsAxis>(axesNode.Count);
+        foreach (var element in axesNode)
+        {
+            if (element is not JsonObject axis)
+            {
+                throw new FormatException("axes entries must be objects");
+            }
+
+            axes.Add(new CrsAxis(
+                RequiredString(axis, "name"),
+                EnumParse<AxisOrientation>(RequiredString(axis, "orientation")),
+                RequiredString(axis, "unit")));
+        }
+
+        return axes;
+    }
+
+    private static CrsEllipsoid? ReadEllipsoid(JsonObject? ellipsoid) =>
+        ellipsoid is null
+            ? null
+            : new CrsEllipsoid(
+                RequiredString(ellipsoid, "name"),
+                RequiredDouble(ellipsoid, "semiMajor"),
+                RequiredDouble(ellipsoid, "semiMinor"),
+                RequiredString(ellipsoid, "unit"));
+
+    private static double RequiredDouble(JsonObject obj, string property) =>
+        obj[property]?.GetValue<double>()
+        ?? throw new FormatException($"'{property}' is missing");
 
     private static ResourceHandle ReadResource(JsonObject resource)
     {
@@ -241,7 +351,7 @@ public static class WorkerValueCodec
             : string.Empty;
         return new WorkerValueException(
             $"'{type.FullName}' is not supported by the inline worker protocol; supported values are "
-            + "null, bool, int32, int64 ($i64), double, string, byte[] ($bytes), IGeometry ($geometry), ResourceHandle ($resource) and ProviderId."
+            + "null, bool, int32, int64 ($i64), double, string, byte[] ($bytes), IGeometry ($geometry), CrsDescription ($crs), ResourceHandle ($resource) and ProviderId."
             + hint);
     }
 }

@@ -6,6 +6,7 @@ using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Resources;
+using Spatial.PluginSdk.Transformations;
 
 namespace Spatial.PluginHost.DotNet.Tests;
 
@@ -177,6 +178,62 @@ public sealed class ProtocolCodecTests
     {
         var node = WorkerValueCodec.Encode(ProviderId.Parse("fixture@1"));
         Assert.Equal("fixture@1", node!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Crs_descriptions_travel_as_tagged_objects()
+    {
+        // Phase 7 (ADR-0027): a structured CRS description crosses the worker
+        // boundary in a dedicated $crs tag, the same explicit-tag pattern as
+        // $geometry/$bytes — never as bare JSON objects.
+        var description = new CrsDescription(
+            "EPSG",
+            "4326",
+            "WGS 84",
+            CrsKind.Geographic,
+            2,
+            [new CrsAxis("Lon", AxisOrientation.East, "degree"), new CrsAxis("Lat", AxisOrientation.North, "degree")],
+            "World Geodetic System 1984",
+            new CrsEllipsoid("WGS 84", 6378137.0, 6356752.314245179, "metre"));
+
+        var node = WorkerValueCodec.Encode(description);
+        var tag = Assert.IsType<JsonObject>(node);
+        var inner = Assert.IsType<JsonObject>(tag["$crs"]);
+        Assert.Equal("EPSG", inner["authority"]!.GetValue<string>());
+        Assert.Equal("geographic", inner["kind"]!.GetValue<string>());
+
+        var back = Assert.IsType<CrsDescription>(WorkerValueCodec.Decode(node));
+        Assert.Equal(description.Authority, back.Authority);
+        Assert.Equal(description.Code, back.Code);
+        Assert.Equal(description.Name, back.Name);
+        Assert.Equal(description.Kind, back.Kind);
+        Assert.Equal(description.Dimension, back.Dimension);
+        Assert.Equal(description.Datum, back.Datum);
+        Assert.Equal(description.Axes.Select(axis => (axis.Name, axis.Orientation, axis.UnitName)),
+            back.Axes.Select(axis => (axis.Name, axis.Orientation, axis.UnitName)));
+        Assert.Equal(description.Ellipsoid!.Name, back.Ellipsoid!.Name);
+        Assert.Equal(description.Ellipsoid.SemiMajorAxis, back.Ellipsoid.SemiMajorAxis);
+        Assert.Equal(description.Ellipsoid.SemiMinorAxis, back.Ellipsoid.SemiMinorAxis);
+        Assert.Equal(description.Ellipsoid.UnitName, back.Ellipsoid.UnitName);
+    }
+
+    [Fact]
+    public void Malformed_crs_tags_are_actionable()
+    {
+        var missingFields = Assert.Throws<WorkerValueException>(() =>
+            WorkerValueCodec.Decode(JsonNode.Parse("{\"$crs\":{\"authority\":\"EPSG\"}}")));
+        Assert.Contains("structured CRS description", missingFields.Message);
+        Assert.Contains("'code'", missingFields.Message);
+
+        var badKind = Assert.Throws<WorkerValueException>(() =>
+            WorkerValueCodec.Decode(JsonNode.Parse(
+                "{\"$crs\":{\"authority\":\"EPSG\",\"code\":\"4326\",\"name\":\"WGS 84\","
+                + "\"kind\":\"warp\",\"dimension\":2,\"axes\":[]}}")));
+        Assert.Contains("not a valid CrsKind", badKind.Message);
+
+        var notAnObject = Assert.Throws<WorkerValueException>(() =>
+            WorkerValueCodec.Decode(JsonNode.Parse("{\"$crs\":\"EPSG:4326\"}")));
+        Assert.Contains("$crs", notAnObject.Message);
     }
 
     [Fact]
