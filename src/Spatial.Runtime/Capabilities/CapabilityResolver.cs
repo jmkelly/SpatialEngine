@@ -33,35 +33,20 @@ internal sealed class CapabilityResolver
 
         if (options.ExplicitProvider is { } explicitId)
         {
-            var match = candidates.FirstOrDefault(candidate => candidate.Registration.Id == explicitId);
-            return match is null ? null : ToResolved(match, ResolutionStep.Explicit);
+            return MatchOrNull(candidates, explicitId) is { } explicitMatch
+                ? ToResolved(explicitMatch, ResolutionStep.Explicit)
+                : null;
         }
 
-        if (options.Resource is { } resource)
+        if (LocalProvider(options) is { } localId && MatchOrNull(candidates, localId) is { } localMatch)
         {
-            var match = candidates.FirstOrDefault(candidate => candidate.Registration.Id == resource.Owner);
-            if (match is not null)
-            {
-                return ToResolved(match, ResolutionStep.ResourceLocal);
-            }
+            return ToResolved(localMatch, ResolutionStep.ResourceLocal);
         }
 
-        if (options.ResourceLocalProvider is { } localId)
+        if (_configuration.PreferredProviderFor(capability) is { } preferred
+            && MatchOrNull(candidates, preferred) is { } preferredMatch)
         {
-            var match = candidates.FirstOrDefault(candidate => candidate.Registration.Id == localId);
-            if (match is not null)
-            {
-                return ToResolved(match, ResolutionStep.ResourceLocal);
-            }
-        }
-
-        if (_configuration.PreferredProviderFor(capability) is { } preferred)
-        {
-            var match = candidates.FirstOrDefault(candidate => candidate.Registration.Id == preferred);
-            if (match is not null)
-            {
-                return ToResolved(match, ResolutionStep.ConfiguredPreferred);
-            }
+            return ToResolved(preferredMatch, ResolutionStep.ConfiguredPreferred);
         }
 
         return candidates.Count == 0 ? null : ToResolved(candidates[0], ResolutionStep.FirstHealthy);
@@ -93,11 +78,7 @@ internal sealed class CapabilityResolver
         if (serving.Count > 0)
         {
             var providers = string.Join(", ", serving.Select(registration => $"{registration.Id} ({registration.Health})"));
-            var localHint = options.ResourceLocalProvider is { } local
-                ? $" The resource-local provider {local} does not serve {capability}."
-                : options.Resource is { } resource
-                    ? $" The resource owner {resource.Owner} does not serve {capability}."
-                    : string.Empty;
+            var localHint = LocalHint(options, capability);
             return CapabilityError.ProviderUnavailable(
                 $"No usable provider serves {capability}. Registered: {providers}.{localHint} "
                 + "Mark one healthy or register another provider.");
@@ -106,6 +87,20 @@ internal sealed class CapabilityResolver
         return CapabilityError.CapabilityNotFound(
             $"No provider serves {capability}. Registered capabilities: {ListRegisteredCapabilities()}.");
     }
+
+    private static Candidate? MatchOrNull(List<Candidate> candidates, ProviderId id) =>
+        candidates.FirstOrDefault(candidate => candidate.Registration.Id == id);
+
+    /// <summary>The resource-local preference: the owning provider of a passed resource, else the explicit option.</summary>
+    private static ProviderId? LocalProvider(InvocationOptions options) =>
+        options.Resource is { } resource ? resource.Owner : options.ResourceLocalProvider;
+
+    private static string LocalHint(InvocationOptions options, CapabilityId capability) =>
+        options.ResourceLocalProvider is { } local
+            ? $" The resource-local provider {local} does not serve {capability}."
+            : options.Resource is { } resource
+                ? $" The resource owner {resource.Owner} does not serve {capability}."
+                : string.Empty;
 
     private List<Candidate> Candidates(CapabilityId capability)
     {

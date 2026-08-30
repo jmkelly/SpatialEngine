@@ -111,16 +111,16 @@ public sealed class ResourceRegistry
                 return false;
             }
 
-            PruneExpired(record);
-            if (!record.Leases.Remove(lease))
-            {
-                return false;
-            }
-
             var grant = duration ?? lease.Duration;
             if (grant <= TimeSpan.Zero)
             {
                 throw new ArgumentOutOfRangeException(nameof(duration), grant, "A lease duration must be positive.");
+            }
+
+            PruneExpired(record);
+            if (!record.Leases.Remove(lease))
+            {
+                return false;
             }
 
             var now = _clock();

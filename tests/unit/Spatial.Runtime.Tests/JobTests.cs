@@ -260,6 +260,43 @@ public sealed class JobTests
         Assert.Equal(JobEventKind.TimedOut, JobEvent.TimedOut(CapabilityError.Cancelled(Sleep)).Kind);
     }
 
+    [Fact]
+    public async Task Cancelling_a_job_with_a_deadline_is_a_cancel_not_a_timeout()
+    {
+        var host = InMemoryComponentHost.Create();
+        var job = host.Runtime.StartJob(
+            SleepInvocation(5000) with { Deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10) });
+
+        await WaitForStateAsync(job, JobState.Running);
+        await job.CancelAsync();
+
+        var result = await job.WaitForCompletionAsync();
+        Assert.False(result.IsSuccess);
+        Assert.Equal(CapabilityErrorKind.Cancelled, Assert.IsType<CapabilityFailure>(result).Error.Kind);
+        Assert.Equal(JobState.Cancelled, job.State);
+    }
+
+    [Fact]
+    public async Task A_caller_token_cancel_with_a_deadline_is_a_cancel_not_a_timeout()
+    {
+        var host = InMemoryComponentHost.Create();
+        using var cts = new CancellationTokenSource();
+        var job = host.Runtime.StartJob(
+            SleepInvocation(5000)
+            with
+            {
+                Deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10),
+                CancellationToken = cts.Token,
+            });
+
+        await WaitForStateAsync(job, JobState.Running);
+        await cts.CancelAsync();
+
+        var result = await job.WaitForCompletionAsync();
+        Assert.False(result.IsSuccess);
+        Assert.Equal(CapabilityErrorKind.Cancelled, Assert.IsType<CapabilityFailure>(result).Error.Kind);
+    }
+
     private static CapabilityInvocation SleepInvocation(long milliseconds) =>
         CapabilityInvocation.Create(Sleep, new Dictionary<string, object?> { ["milliseconds"] = milliseconds });
 

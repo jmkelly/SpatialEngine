@@ -1,4 +1,6 @@
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Jobs;
+using Spatial.PluginSdk.Resources;
 using Spatial.Runtime.Capabilities;
 
 namespace Spatial.Runtime.Tests;
@@ -128,5 +130,32 @@ public sealed class InvocationSurfaceTests
         Assert.False(failureOutcome.IsSuccess);
         Assert.False(failureOutcome.TryGetValue(out _));
         Assert.Equal(CapabilityErrorKind.Cancelled, failureOutcome.Error?.Kind);
+    }
+
+    [Fact]
+    public void Provenance_toString_describes_the_serving_provider_and_job()
+    {
+        var routed = new InvocationProvenance(
+            Count, DateTimeOffset.UtcNow, TimeSpan.FromMilliseconds(4), ProviderId.Parse("alpha@1"),
+            ResolutionStep.FirstHealthy, null, JobId.Create());
+        Assert.Contains("spatial.feature.count@1", routed.ToString());
+        Assert.Contains("alpha@1", routed.ToString());
+        Assert.Contains("job", routed.ToString());
+
+        var unresolved = new InvocationProvenance(Count, DateTimeOffset.UtcNow, TimeSpan.Zero, null, null, null);
+        Assert.Contains("no provider", unresolved.ToString());
+        Assert.DoesNotContain("job", unresolved.ToString());
+    }
+
+    [Fact]
+    public void Invocation_options_toString_names_the_resource()
+    {
+        var handle = new ResourceHandle(
+            ResourceId.Create(), ResourceKind.Parse("dataset"), ProviderId.Parse("alpha@1"), DateTimeOffset.UtcNow);
+
+        var text = new InvocationOptions(ResourceLocalProvider: ProviderId.Parse("beta@1"), Resource: handle).ToString();
+
+        Assert.Contains("beta@1", text);
+        Assert.Contains("dataset", text);
     }
 }

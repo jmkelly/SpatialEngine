@@ -5,26 +5,15 @@ using Spatial.Runtime.Resources;
 namespace Spatial.Runtime.Capabilities;
 
 /// <summary>
-/// The default permission policy (plan §6.1 "permission evaluation"): a
-/// required permission is granted only when it is a member of the
-/// invocation's granted set. Hosts may supply another
-/// <see cref="IPermissionEvaluator"/> to the runtime.
-/// </summary>
-internal sealed class GrantedPermissionsEvaluator : IPermissionEvaluator
-{
-    public IReadOnlyList<Permission> Missing(
-        IReadOnlySet<Permission> granted,
-        IReadOnlyList<Permission> required) =>
-        required.Where(permission => !granted.Contains(permission)).ToArray();
-}
-
-/// <summary>
-/// Routes invocations to providers for a registered capability: deterministic
-/// resolution (delegated to <see cref="CapabilityResolver"/>), permission
-/// checks, deadline and cancellation enforcement, structured errors and
-/// outcome provenance — and, for long-running capabilities, the job model
-/// (ADR-0008): the invocation runs as a tracked job with state, events and
-/// cancellation. Also owns the runtime's <see cref="ResourceRegistry"/> and
+/// Routes invocations to providers for a registered capability — the public
+/// invocation facade: deterministic resolution (delegated to
+/// <see cref="CapabilityResolver"/>), the shared permission gate, deadline
+/// enforcement, structured outcomes and provenance. Long-running
+/// capabilities run as tracked jobs with state, events and cancellation
+/// (ADR-0008); the mechanical details live in
+/// <see cref="InlineInvocation"/>, <see cref="JobLauncher"/> and
+/// <see cref="PermissionGate"/> so this type stays a thin composition root.
+/// The facade owns the runtime's <see cref="ResourceRegistry"/> and
 /// <see cref="JobRegistry"/>. Never references a concrete provider — only
 /// <see cref="ICapabilityProvider"/> (architecture tests).
 /// </summary>
@@ -45,7 +34,7 @@ public sealed class CapabilityRuntime
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _resolver = new CapabilityResolver(registry, configuration ?? CapabilityConfiguration.Empty);
-        _permissions = permissionEvaluator ?? new GrantedPermissionsEvaluator();
+        _permissions = permissionEvaluator ?? PermissionDefaults.Membership;
         _resources = resourceRegistry ?? new ResourceRegistry();
         _jobs = jobRegistry ?? new JobRegistry();
     }
@@ -83,29 +72,27 @@ public sealed class CapabilityRuntime
 
         if (invocation.Deadline is { } due && due <= startedAt)
         {
-            return CapabilityOutcomeFactory.Expired(invocation, startedAt, due);
+            return InlineInvocation.Expired(invocation, startedAt, due);
         }
 
         var resolved = Resolve(invocation.Capability, options);
         if (resolved is null)
         {
-            return UnavailableOutcome(invocation, options, startedAt);
+            return InlineInvocation.Unavailable(
+                invocation, _resolver.DescribeUnavailable(invocation.Capability, options), startedAt);
         }
 
-        if (DeniedPermissions(invocation, resolved) is { } denied)
+        if (PermissionGate.Denied(_permissions, invocation, resolved) is { } denied)
         {
-            return CapabilityOutcomeFactory.Routed(
-                CapabilityResult.Failure(CapabilityError.PermissionDenied(denied)),
-                resolved, startedAt, invocation.Deadline);
+            return InlineInvocation.Denied(invocation, resolved, denied, startedAt);
         }
 
-        if ((resolved.Descriptor.Traits & CapabilityTraits.LongRunning) != 0)
+        if (JobLauncher.IsLongRunning(resolved))
         {
-            var job = StartResolvedJob(invocation, options, resolved);
-            return await job.WhenOutcomeAsync();
+            return await JobLauncher.Launch(_jobs, _resources, invocation, resolved).WhenOutcomeAsync();
         }
 
-        return await InvokeInlineAsync(invocation, resolved, startedAt);
+        return await InlineInvocation.RunAsync(_resources, invocation, resolved, startedAt);
     }
 
     /// <summary>
@@ -131,72 +118,11 @@ public sealed class CapabilityRuntime
             return _jobs.CreateFailed(invocation, _resolver.DescribeUnavailable(invocation.Capability, options));
         }
 
-        if (DeniedPermissions(invocation, resolved) is { } denied)
+        if (PermissionGate.Denied(_permissions, invocation, resolved) is { } denied)
         {
-            return _jobs.CreateFailed(invocation, CapabilityError.PermissionDenied(denied), resolved);
+            return _jobs.CreateFailed(invocation, denied, resolved);
         }
 
-        return StartResolvedJob(invocation, options, resolved);
+        return JobLauncher.Launch(_jobs, _resources, invocation, resolved);
     }
-
-    private async Task<CapabilityOutcome> InvokeInlineAsync(
-        CapabilityInvocation invocation,
-        ResolvedProvider resolved,
-        DateTimeOffset startedAt)
-    {
-        using var deadlineCts = CreateDeadlineCts(invocation.Deadline, startedAt, invocation.CancellationToken);
-        var effective = invocation with
-        {
-            CancellationToken = deadlineCts?.Token ?? invocation.CancellationToken,
-            Facilities = WithFacilities(invocation, resolved),
-        };
-
-        var result = await CapabilityInvoker.InvokeSafelyAsync(resolved, effective);
-        result = StreamingContractValidator.Validate(resolved, result, _resources);
-        return CapabilityOutcomeFactory.Routed(result, resolved, startedAt, invocation.Deadline);
-    }
-
-    private CapabilityJob StartResolvedJob(
-        CapabilityInvocation invocation,
-        InvocationOptions options,
-        ResolvedProvider resolved)
-    {
-        var job = _jobs.Create(invocation);
-        var facilities = CapabilityFacilities.Create(_resources, resolved.Provider.Id, job);
-        _ = JobRunner.RunAsync(_resources, facilities, job, resolved, invocation);
-        return job;
-    }
-
-    private static CancellationTokenSource? CreateDeadlineCts(
-        DateTimeOffset? deadline,
-        DateTimeOffset startedAt,
-        CancellationToken callerToken)
-    {
-        if (deadline is not { } due || due <= startedAt)
-        {
-            return null;
-        }
-
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(callerToken);
-        cts.CancelAfter(due - startedAt);
-        return cts;
-    }
-
-    private CapabilityOutcome UnavailableOutcome(
-        CapabilityInvocation invocation,
-        InvocationOptions options,
-        DateTimeOffset startedAt)
-    {
-        var error = _resolver.DescribeUnavailable(invocation.Capability, options);
-        return CapabilityOutcomeFactory.Unavailable(invocation, error, startedAt);
-    }
-
-    private IReadOnlyList<Permission>? DeniedPermissions(CapabilityInvocation invocation, ResolvedProvider resolved)
-    {
-        var missing = _permissions.Missing(invocation.GrantedPermissions, resolved.Descriptor.RequiredPermissions);
-        return missing.Count > 0 ? missing : null;
-    }
-
-    private ICapabilityFacilities WithFacilities(CapabilityInvocation invocation, ResolvedProvider resolved) =>
-        CapabilityFacilities.Create(_resources, resolved.Provider.Id);
 }

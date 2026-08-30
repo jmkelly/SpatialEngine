@@ -20,9 +20,14 @@ public sealed record InvocationProvenance(
     DateTimeOffset? Deadline,
     JobId? JobId = null)
 {
-    public override string ToString() =>
-        Provider is { } provider
-            ? $"{Capability} served by {provider} via {Step} in {Duration.TotalMilliseconds:0.##} ms"
-                + (JobId is { } job ? $" (job {job})" : string.Empty)
-            : $"{Capability}: no provider ({(Step?.ToString() ?? "unresolved")})";
+    public override string ToString()
+    {
+        if (Provider is not { } provider)
+        {
+            return $"{Capability}: no provider ({(Step?.ToString() ?? "unresolved")})";
+        }
+
+        var job = JobId is { } jobId ? $" (job {jobId})" : string.Empty;
+        return $"{Capability} served by {provider} via {Step} in {Duration.TotalMilliseconds:0.##} ms{job}";
+    }
 }

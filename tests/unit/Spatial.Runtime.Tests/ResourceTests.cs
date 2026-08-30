@@ -121,6 +121,41 @@ public sealed class ResourceTests
     }
 
     [Fact]
+    public void Renewing_a_lease_keeps_the_original_duration_when_none_is_given()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var registry = new ResourceRegistry(() => now);
+        var handle = registry.Create(Owner, ResourceKind.Parse("dataset"));
+
+        Assert.True(registry.TryAcquireLease(handle, TimeSpan.FromSeconds(10), out var lease));
+        Assert.True(registry.TryRenewLease(lease, null, out var renewed));
+        Assert.Equal(TimeSpan.FromSeconds(10), renewed.Duration);
+        Assert.True(renewed.IsActive(now.AddSeconds(9)));
+    }
+
+    [Fact]
+    public async Task Renewing_rejects_closed_unknown_and_unheld_leases()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var registry = new ResourceRegistry(() => now);
+        var handle = registry.Create(Owner, ResourceKind.Parse("dataset"));
+        Assert.True(registry.TryAcquireLease(handle, TimeSpan.FromSeconds(10), out var held));
+
+        var unheld = new ResourceLease(handle.Id, now.AddMinutes(1), TimeSpan.FromMinutes(1));
+        Assert.False(registry.TryRenewLease(unheld, null, out _));
+
+        var unknown = new ResourceLease(ResourceId.Create(), now.AddMinutes(1), TimeSpan.FromMinutes(1));
+        Assert.False(registry.TryRenewLease(unknown, null, out _));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => registry.TryRenewLease(held, TimeSpan.Zero, out _));
+        Assert.True(registry.TryRenewLease(held, null, out var renewed));
+        Assert.Equal(TimeSpan.FromSeconds(10), renewed.Duration);
+
+        await registry.DisposeOwnerAsync(Owner);
+        Assert.False(registry.TryRenewLease(renewed, null, out _));
+    }
+
+    [Fact]
     public void An_expired_lease_cannot_be_renewed_or_used()
     {
         var now = DateTimeOffset.UtcNow;
@@ -237,6 +272,28 @@ public sealed class ResourceTests
         Assert.True(outcome.IsSuccess);
         Assert.Equal(ProviderId.Parse("beta@1"), outcome.Provenance.Provider);
         Assert.Equal(ResolutionStep.FirstHealthy, outcome.Provenance.Step);
+    }
+
+    [Fact]
+    public async Task Unavailable_resolution_names_the_resource_local_preference()
+    {
+        var host = InMemoryComponentHost.Create();
+        var serve = CapabilityId.Parse("spatial.feature.scan@1");
+        host.Registry.Register(new StubProvider("alpha", 1, serve));
+        host.Registry.SetHealth(ProviderId.Parse("alpha@1"), ProviderHealth.Unhealthy);
+        var handle = await Mint(host);
+
+        var byResource = await host.Runtime.InvokeAsync(
+            CapabilityInvocation.Create(serve, new Dictionary<string, object?>()),
+            new InvocationOptions(Resource: handle));
+        Assert.Equal(CapabilityErrorKind.ProviderUnavailable, byResource.Error?.Kind);
+        Assert.Contains("example@1", byResource.Error?.Message);
+
+        var byOption = await host.Runtime.InvokeAsync(
+            CapabilityInvocation.Create(serve, new Dictionary<string, object?>()),
+            new InvocationOptions(ResourceLocalProvider: ProviderId.Parse("local@1")));
+        Assert.Equal(CapabilityErrorKind.ProviderUnavailable, byOption.Error?.Kind);
+        Assert.Contains("local@1", byOption.Error?.Message);
     }
 
     private static async Task<ResourceHandle> Mint(InMemoryComponentHost host)
