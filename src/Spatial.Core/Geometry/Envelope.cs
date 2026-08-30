@@ -23,8 +23,16 @@ public readonly struct Envelope : IEquatable<Envelope>
 
     public Envelope(double minX, double minY, double maxX, double maxY)
     {
-        if (double.IsNaN(minX) || double.IsNaN(minY) || double.IsNaN(maxX) || double.IsNaN(maxY)
-            || double.IsInfinity(minX) || double.IsInfinity(minY) || double.IsInfinity(maxX) || double.IsInfinity(maxY))
+        ThrowIfInvalid(minX, minY, maxX, maxY);
+        _minX = minX;
+        _minY = minY;
+        _maxX = maxX;
+        _maxY = maxY;
+    }
+
+    private static void ThrowIfInvalid(double minX, double minY, double maxX, double maxY)
+    {
+        if (!double.IsFinite(minX) || !double.IsFinite(minY) || !double.IsFinite(maxX) || !double.IsFinite(maxY))
         {
             throw new ArgumentException(
                 FormattableString.Invariant($"Envelope bounds must be finite, got ({minX}, {minY}) to ({maxX}, {maxY})."));
@@ -35,11 +43,6 @@ public readonly struct Envelope : IEquatable<Envelope>
             throw new ArgumentException(
                 FormattableString.Invariant($"Invalid envelope: minimum ({minX}, {minY}) exceeds maximum ({maxX}, {maxY})."));
         }
-
-        _minX = minX;
-        _minY = minY;
-        _maxX = maxX;
-        _maxY = maxY;
     }
 
     private Envelope(bool empty)
@@ -77,18 +80,15 @@ public readonly struct Envelope : IEquatable<Envelope>
     /// </summary>
     public static Envelope FromCoordinates(ReadOnlySpan<Coordinate> coordinates)
     {
-        var minX = double.PositiveInfinity;
-        var minY = double.PositiveInfinity;
-        var maxX = double.NegativeInfinity;
-        var maxY = double.NegativeInfinity;
-        var found = false;
-
+        var accumulator = new Accumulator();
         foreach (var coordinate in coordinates)
         {
-            Expand(ref minX, ref minY, ref maxX, ref maxY, ref found, coordinate.X, coordinate.Y);
+            accumulator.Expand(coordinate.X, coordinate.Y);
         }
 
-        return found ? new Envelope(minX, minY, maxX, maxY) : Empty;
+        return accumulator.Found
+            ? new Envelope(accumulator.MinX, accumulator.MinY, accumulator.MaxX, accumulator.MaxY)
+            : Empty;
     }
 
     /// <summary>
@@ -99,18 +99,15 @@ public readonly struct Envelope : IEquatable<Envelope>
     {
         ArgumentNullException.ThrowIfNull(sequence);
 
-        var minX = double.PositiveInfinity;
-        var minY = double.PositiveInfinity;
-        var maxX = double.NegativeInfinity;
-        var maxY = double.NegativeInfinity;
-        var found = false;
-
+        var accumulator = new Accumulator();
         for (var i = 0; i < sequence.Count; i++)
         {
-            Expand(ref minX, ref minY, ref maxX, ref maxY, ref found, sequence.GetOrdinate(i, Ordinate.X), sequence.GetOrdinate(i, Ordinate.Y));
+            accumulator.Expand(sequence.GetOrdinate(i, Ordinate.X), sequence.GetOrdinate(i, Ordinate.Y));
         }
 
-        return found ? new Envelope(minX, minY, maxX, maxY) : Empty;
+        return accumulator.Found
+            ? new Envelope(accumulator.MinX, accumulator.MinY, accumulator.MaxX, accumulator.MaxY)
+            : Empty;
     }
 
     /// <summary>Whether <paramref name="x"/>, <paramref name="y"/> lie inside the envelope (boundaries included).</summary>
@@ -167,17 +164,35 @@ public readonly struct Envelope : IEquatable<Envelope>
         IsEmpty ? "Envelope [empty]" :
         FormattableString.Invariant($"Envelope [{_minX}, {_minY}] to [{_maxX}, {_maxY}]");
 
-    private static void Expand(ref double minX, ref double minY, ref double maxX, ref double maxY, ref bool found, double x, double y)
+    /// <summary>Rolling minima/maxima with NaN skip; empty state is the default.</summary>
+    private struct Accumulator
     {
-        if (double.IsNaN(x) || double.IsNaN(y))
+        public double MinX;
+        public double MinY;
+        public double MaxX;
+        public double MaxY;
+        public bool Found;
+
+        public Accumulator()
         {
-            return;
+            MinX = double.PositiveInfinity;
+            MinY = double.PositiveInfinity;
+            MaxX = double.NegativeInfinity;
+            MaxY = double.NegativeInfinity;
         }
 
-        found = true;
-        minX = Math.Min(minX, x);
-        minY = Math.Min(minY, y);
-        maxX = Math.Max(maxX, x);
-        maxY = Math.Max(maxY, y);
+        public void Expand(double x, double y)
+        {
+            if (double.IsNaN(x) || double.IsNaN(y))
+            {
+                return;
+            }
+
+            Found = true;
+            MinX = Math.Min(MinX, x);
+            MinY = Math.Min(MinY, y);
+            MaxX = Math.Max(MaxX, x);
+            MaxY = Math.Max(MaxY, y);
+        }
     }
 }

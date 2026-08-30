@@ -132,21 +132,21 @@ public static class GeometryCodec
             throw new ArgumentException($"Geometry nests deeper than the canonical format limit of {MaxNestingDepth} levels.", nameof(geometry));
         }
 
-        var length = 2L + CrsLength(geometry.CoordinateReference);
-        length += geometry switch
-        {
-            // The point body carries a coordinate-present flag plus the coordinate itself.
-            Point point => 1 + (point.IsEmpty ? 0 : point.Layout.OrdinateCount() * 8L),
-            LineString lineString => 4L + (long)lineString.Sequence.Count * lineString.Layout.OrdinateCount() * 8,
-            Polygon polygon => 4L + ComputeNodeLength(polygon.ExteriorRing, depth + 1) + polygon.InteriorRings.Sum(ring => ComputeNodeLength(ring, depth + 1)),
-            MultiPoint multiPoint => 4L + multiPoint.Points.Sum(part => ComputeNodeLength(part, depth + 1)),
-            MultiLineString multiLineString => 4L + multiLineString.LineStrings.Sum(part => ComputeNodeLength(part, depth + 1)),
-            MultiPolygon multiPolygon => 4L + multiPolygon.Polygons.Sum(part => ComputeNodeLength(part, depth + 1)),
-            GeometryCollection collection => 4L + collection.Geometries.Sum(part => ComputeNodeLength(part, depth + 1)),
-            _ => throw new ArgumentException($"Unknown geometry type '{geometry.Type}'.", nameof(geometry)),
-        };
-        return length;
+        return 2L + CrsLength(geometry.CoordinateReference) + ComputeBodyLength(geometry, depth);
     }
+
+    private static long ComputeBodyLength(IGeometry geometry, int depth) => geometry switch
+    {
+        // The point body carries a coordinate-present flag plus the coordinate itself.
+        Point point => 1 + (point.IsEmpty ? 0 : point.Layout.OrdinateCount() * 8L),
+        LineString lineString => 4L + (long)lineString.Sequence.Count * lineString.Layout.OrdinateCount() * 8,
+        Polygon polygon => 4L + ComputeNodeLength(polygon.ExteriorRing, depth + 1) + polygon.InteriorRings.Sum(ring => ComputeNodeLength(ring, depth + 1)),
+        MultiPoint multiPoint => 4L + multiPoint.Points.Sum(part => ComputeNodeLength(part, depth + 1)),
+        MultiLineString multiLineString => 4L + multiLineString.LineStrings.Sum(part => ComputeNodeLength(part, depth + 1)),
+        MultiPolygon multiPolygon => 4L + multiPolygon.Polygons.Sum(part => ComputeNodeLength(part, depth + 1)),
+        GeometryCollection collection => 4L + collection.Geometries.Sum(part => ComputeNodeLength(part, depth + 1)),
+        _ => throw new ArgumentException($"Unknown geometry type '{geometry.Type}'.", nameof(geometry)),
+    };
 
     private static int CrsLength(CoordinateReference? crs) => crs is { } value
         ? 1 + 4 + Encoding.UTF8.GetByteCount(value.Authority) + 4 + Encoding.UTF8.GetByteCount(value.Code)
@@ -166,12 +166,7 @@ public static class GeometryCodec
         switch (geometry)
         {
             case Point point:
-                writer.WriteByte(point.IsEmpty ? (byte)0 : (byte)1);
-                if (point.Coordinate is { } coordinate)
-                {
-                    WriteCoordinate(ref writer, coordinate, point.Layout);
-                }
-
+                WritePointBody(ref writer, point);
                 break;
 
             case LineString lineString:
@@ -179,53 +174,63 @@ public static class GeometryCodec
                 break;
 
             case Polygon polygon:
-                writer.WriteInt32(1 + polygon.InteriorRings.Count);
-                WriteNode(ref writer, polygon.ExteriorRing, depth + 1);
-                foreach (var ring in polygon.InteriorRings)
-                {
-                    WriteNode(ref writer, ring, depth + 1);
-                }
-
+                WritePolygonBody(ref writer, polygon, depth);
                 break;
 
             case MultiPoint multiPoint:
-                writer.WriteInt32(multiPoint.Points.Count);
-                foreach (var part in multiPoint.Points)
-                {
-                    WriteNode(ref writer, part, depth + 1);
-                }
-
+                WriteParts(ref writer, multiPoint.Points, depth);
                 break;
 
             case MultiLineString multiLineString:
-                writer.WriteInt32(multiLineString.LineStrings.Count);
-                foreach (var part in multiLineString.LineStrings)
-                {
-                    WriteNode(ref writer, part, depth + 1);
-                }
-
+                WriteParts(ref writer, multiLineString.LineStrings, depth);
                 break;
 
             case MultiPolygon multiPolygon:
-                writer.WriteInt32(multiPolygon.Polygons.Count);
-                foreach (var part in multiPolygon.Polygons)
-                {
-                    WriteNode(ref writer, part, depth + 1);
-                }
-
+                WriteParts(ref writer, multiPolygon.Polygons, depth);
                 break;
 
             case GeometryCollection collection:
-                writer.WriteInt32(collection.Geometries.Count);
-                foreach (var part in collection.Geometries)
-                {
-                    WriteNode(ref writer, part, depth + 1);
-                }
-
+                WriteParts(ref writer, collection.Geometries, depth);
                 break;
 
             default:
                 throw new ArgumentException($"Unknown geometry type '{geometry.Type}'.", nameof(geometry));
+        }
+    }
+
+    private static void WritePointBody(ref Writer writer, Point point)
+    {
+        writer.WriteByte(point.IsEmpty ? (byte)0 : (byte)1);
+        if (point.Coordinate is { } coordinate)
+        {
+            WriteCoordinate(ref writer, coordinate, point.Layout);
+        }
+    }
+
+    private static void WritePolygonBody(ref Writer writer, Polygon polygon, int depth)
+    {
+        writer.WriteInt32(1 + polygon.InteriorRings.Count);
+        WriteNode(ref writer, polygon.ExteriorRing, depth + 1);
+        foreach (var ring in polygon.InteriorRings)
+        {
+            WriteNode(ref writer, ring, depth + 1);
+        }
+    }
+
+    private static void WriteParts(ref Writer writer, IEnumerable<IGeometry> parts, int depth)
+    {
+        // All call sites pass IReadOnlyList implementations (covariant to
+        // IReadOnlyCollection<IGeometry>), so the count is known up front and
+        // must be written before the parts.
+        if (parts is not IReadOnlyCollection<IGeometry> collection)
+        {
+            throw new ArgumentException("Parts must be a count-known collection.", nameof(parts));
+        }
+
+        writer.WriteInt32(collection.Count);
+        foreach (var part in parts)
+        {
+            WriteNode(ref writer, part, depth + 1);
         }
     }
 
@@ -277,48 +282,80 @@ public static class GeometryCodec
             return false;
         }
 
+        if (!TryReadNodeHeader(ref reader, out var node, out error))
+        {
+            return false;
+        }
+
+        if (!TryReadCrs(ref reader, out var crs, out error))
+        {
+            return false;
+        }
+
+        return TryDecodeBody(ref reader, node, crs, depth, out geometry, out error);
+    }
+
+    /// <summary>Reads the layout and type bytes with bounds and value validation.</summary>
+    private static bool TryReadNodeHeader(ref Reader reader, out NodeInfo node, [NotNullWhen(false)] out string? error)
+    {
         var offset = reader.Position;
         if (!reader.TryReadByte(out var layoutByte))
         {
             error = Error(offset, "expected a coordinate layout byte; input is truncated.");
+            node = default;
             return false;
         }
 
         if (!Enum.IsDefined(typeof(CoordinateLayout), (CoordinateLayout)layoutByte))
         {
             error = Error(offset, $"unknown coordinate layout byte {layoutByte}.");
+            node = default;
             return false;
         }
 
         if (!reader.TryReadByte(out var typeByte))
         {
             error = Error(offset, "expected a geometry type byte; input is truncated.");
+            node = default;
             return false;
         }
 
         if (!Enum.IsDefined(typeof(GeometryType), (GeometryType)typeByte))
         {
             error = Error(offset, $"unknown geometry type byte {typeByte}.");
+            node = default;
             return false;
         }
 
-        var layout = (CoordinateLayout)layoutByte;
-        if (!TryReadCrs(ref reader, out var crs, out error))
-        {
-            return false;
-        }
+        node = new NodeInfo((CoordinateLayout)layoutByte, (GeometryType)typeByte, offset);
+        error = null;
+        return true;
+    }
 
-        return (GeometryType)typeByte switch
+    private static bool TryDecodeBody(ref Reader reader, NodeInfo node, CoordinateReference? crs, int depth, [NotNullWhen(true)] out IGeometry? geometry, [NotNullWhen(false)] out string? error)
+    {
+        geometry = null;
+        return node.Type switch
         {
-            GeometryType.Point => TryReadPoint(ref reader, layout, crs, out geometry, out error),
-            GeometryType.LineString => TryReadLineString(ref reader, layout, crs, out geometry, out error),
-            GeometryType.Polygon => TryReadPolygon(ref reader, layout, crs, depth, out geometry, out error),
-            GeometryType.MultiPoint => TryReadMultiPoint(ref reader, layout, crs, depth, out geometry, out error),
-            GeometryType.MultiLineString => TryReadMultiLineString(ref reader, layout, crs, depth, out geometry, out error),
-            GeometryType.MultiPolygon => TryReadMultiPolygon(ref reader, layout, crs, depth, out geometry, out error),
-            GeometryType.GeometryCollection => TryReadGeometryCollection(ref reader, layout, crs, depth, out geometry, out error),
-            _ => Fail(offset, $"geometry type byte {typeByte} is not supported.", out geometry, out error),
+            GeometryType.Point => TryReadPoint(ref reader, node.Layout, crs, out geometry, out error),
+            GeometryType.LineString => TryReadLineString(ref reader, node.Layout, crs, out geometry, out error),
+            GeometryType.Polygon => TryReadPolygon(ref reader, node.Layout, crs, depth, out geometry, out error),
+            GeometryType.MultiPoint => TryReadMultiPoint(ref reader, node.Layout, crs, depth, out geometry, out error),
+            GeometryType.MultiLineString => TryReadMultiLineString(ref reader, node.Layout, crs, depth, out geometry, out error),
+            GeometryType.MultiPolygon => TryReadMultiPolygon(ref reader, node.Layout, crs, depth, out geometry, out error),
+            GeometryType.GeometryCollection => TryReadGeometryCollection(ref reader, node.Layout, crs, depth, out geometry, out error),
+            _ => Fail(node.Offset, $"geometry type byte {(byte)node.Type} is not supported.", out geometry, out error),
         };
+    }
+
+    /// <summary>Layout, type and node-start offset of one node in the stream.</summary>
+    private readonly struct NodeInfo(CoordinateLayout Layout, GeometryType Type, int Offset)
+    {
+        public CoordinateLayout Layout { get; } = Layout;
+
+        public GeometryType Type { get; } = Type;
+
+        public int Offset { get; } = Offset;
     }
 
     private static bool TryReadCrs(ref Reader reader, out CoordinateReference? crs, [NotNullWhen(false)] out string? error)
@@ -391,14 +428,20 @@ public static class GeometryCodec
             return true;
         }
 
-        var stride = layout.OrdinateCount();
-        var requiredBytes = stride * 8;
-        if (reader.Remaining < requiredBytes)
+        if (!TryReadCoordinate(ref reader, layout, out var coordinate, out error))
         {
-            error = Error(offset, $"point body is truncated: {reader.Remaining} bytes remain but {requiredBytes} are required for layout {layout}.");
+            error = Error(offset, $"point body is truncated for layout {layout}: {error}");
             return false;
         }
 
+        geometry = new Point(coordinate, crs, layout);
+        error = null;
+        return true;
+    }
+
+    /// <summary>Reads one coordinate's ordinates; fails on truncated input.</summary>
+    private static bool TryReadCoordinate(ref Reader reader, CoordinateLayout layout, out Coordinate coordinate, [NotNullWhen(false)] out string? error)
+    {
         var hasZ = layout.HasZ();
         var hasM = layout.HasM();
         double z = 0, m = 0;
@@ -407,11 +450,12 @@ public static class GeometryCodec
             || (hasZ && !reader.TryReadDouble(out z))
             || (hasM && !reader.TryReadDouble(out m)))
         {
-            error = Error(offset, $"point body is truncated for layout {layout}.");
+            error = $"unexpected end of input at byte offset {reader.Position} while reading a coordinate.";
+            coordinate = default;
             return false;
         }
 
-        geometry = new Point(new Coordinate(x, y, hasZ ? z : null, hasM ? m : null), crs, layout);
+        coordinate = new Coordinate(x, y, hasZ ? z : null, hasM ? m : null);
         error = null;
         return true;
     }
@@ -493,7 +537,7 @@ public static class GeometryCodec
             return false;
         }
 
-        if (!TryReadChildNodes(ref reader, count, GeometryType.Point, "point", depth, out var children, out error))
+        if (!TryReadChildNodes(ref reader, count, GeometryType.Point, depth, out var children, out error))
         {
             return false;
         }
@@ -511,7 +555,7 @@ public static class GeometryCodec
             return false;
         }
 
-        if (!TryReadChildNodes(ref reader, count, GeometryType.LineString, "line string", depth, out var children, out error))
+        if (!TryReadChildNodes(ref reader, count, GeometryType.LineString, depth, out var children, out error))
         {
             return false;
         }
@@ -529,7 +573,7 @@ public static class GeometryCodec
             return false;
         }
 
-        if (!TryReadChildNodes(ref reader, count, GeometryType.Polygon, "polygon", depth, out var children, out error))
+        if (!TryReadChildNodes(ref reader, count, GeometryType.Polygon, depth, out var children, out error))
         {
             return false;
         }
@@ -547,7 +591,7 @@ public static class GeometryCodec
             return false;
         }
 
-        if (!TryReadChildNodes(ref reader, count, GeometryType.GeometryCollection, "part", depth, out var children, out error))
+        if (!TryReadChildNodes(ref reader, count, GeometryType.GeometryCollection, depth, out var children, out error))
         {
             return false;
         }
@@ -557,8 +601,17 @@ public static class GeometryCodec
         return true;
     }
 
-    private static bool TryReadChildNodes(ref Reader reader, int count, GeometryType expectedType, string elementName, int depth, out List<IGeometry> children, out string? error)
+    /// <param name="expectedType">Type every element must decode to; collections accept any.</param>
+    private static bool TryReadChildNodes(ref Reader reader, int count, GeometryType expectedType, int depth, out List<IGeometry> children, out string? error)
     {
+        var elementName = expectedType switch
+        {
+            GeometryType.Point => "point",
+            GeometryType.LineString => "line string",
+            GeometryType.Polygon => "polygon",
+            _ => "part",
+        };
+
         children = new List<IGeometry>(count);
         for (var i = 0; i < count; i++)
         {

@@ -90,28 +90,25 @@ public static class CoordinateSequenceComparer
             return false;
         }
 
-        var hasZ = left.Layout.HasZ();
-        var hasM = left.Layout.HasM();
         for (var i = 0; i < left.Count; i++)
         {
-            if (!left.GetOrdinate(i, Ordinate.X).Equals(right.GetOrdinate(i, Ordinate.X))
-                || !left.GetOrdinate(i, Ordinate.Y).Equals(right.GetOrdinate(i, Ordinate.Y)))
-            {
-                return false;
-            }
-
-            if (hasZ && !left.GetOrdinate(i, Ordinate.Z).Equals(right.GetOrdinate(i, Ordinate.Z)))
-            {
-                return false;
-            }
-
-            if (hasM && !left.GetOrdinate(i, Ordinate.M).Equals(right.GetOrdinate(i, Ordinate.M)))
+            if (!CoordinatesEqual(left, right, i))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private static bool CoordinatesEqual(ICoordinateSequence left, ICoordinateSequence right, int index)
+    {
+        var hasZ = left.Layout.HasZ();
+        var hasM = left.Layout.HasM();
+        return left.GetOrdinate(index, Ordinate.X).Equals(right.GetOrdinate(index, Ordinate.X))
+            && left.GetOrdinate(index, Ordinate.Y).Equals(right.GetOrdinate(index, Ordinate.Y))
+            && (!hasZ || left.GetOrdinate(index, Ordinate.Z).Equals(right.GetOrdinate(index, Ordinate.Z)))
+            && (!hasM || left.GetOrdinate(index, Ordinate.M).Equals(right.GetOrdinate(index, Ordinate.M)));
     }
 
     /// <summary>Hashes layout and every ordinate value, consistent with <see cref="ValuesEqual"/>.</summary>

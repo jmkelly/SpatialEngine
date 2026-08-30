@@ -29,24 +29,8 @@ public readonly struct ArrayCoordinateSequence : ICoordinateSequence, IEquatable
         for (var i = 0; i < coordinates.Length; i++)
         {
             var coordinate = coordinates[i];
-            if (coordinate.Z is null && hasZ)
-            {
-                coordinate = coordinate with { Z = double.NaN };
-            }
-            else if (coordinate.Z is not null && !hasZ)
-            {
-                ThrowOrdinateNotStored(i, coordinate.Z, "Z", resolved);
-            }
-
-            if (coordinate.M is null && hasM)
-            {
-                coordinate = coordinate with { M = double.NaN };
-            }
-            else if (coordinate.M is not null && !hasM)
-            {
-                ThrowOrdinateNotStored(i, coordinate.M, "M", resolved);
-            }
-
+            coordinate = WithNormalizedOrdinate(coordinate, coordinate.Z, hasZ, "Z", i, resolved);
+            coordinate = WithNormalizedOrdinate(coordinate, coordinate.M, hasM, "M", i, resolved);
             stored[i] = coordinate;
         }
 
@@ -93,9 +77,18 @@ public readonly struct ArrayCoordinateSequence : ICoordinateSequence, IEquatable
 
     public override string ToString() => $"ArrayCoordinateSequence [{_coordinates.Length} × {_layout}]";
 
-    private static void ThrowOrdinateNotStored(int index, double? value, string name, CoordinateLayout layout) =>
-        throw new ArgumentException(
-            FormattableString.Invariant($"Coordinate at index {index} has {name}={value} but layout {layout} does not store {name}; choose a layout that includes {name} or strip the ordinate explicitly."));
+    /// <summary>
+    /// Normalises one ordinate to the layout: null becomes NaN when the layout
+    /// stores the ordinate, a value the layout does not store is rejected.
+    /// </summary>
+    private static Coordinate WithNormalizedOrdinate(Coordinate coordinate, double? value, bool stored, string name, int index, CoordinateLayout layout) => value switch
+    {
+        null when stored => name == "Z" ? coordinate with { Z = double.NaN } : coordinate with { M = double.NaN },
+        null => coordinate,
+        _ when !stored => throw new ArgumentException(
+            FormattableString.Invariant($"Coordinate at index {index} has {name}={value} but layout {layout} does not store {name}; choose a layout that includes {name} or strip the ordinate explicitly.")),
+        _ => coordinate,
+    };
 
     private static ArgumentOutOfRangeException OrdinateNotStored(Ordinate ordinate, CoordinateLayout layout) =>
         new(nameof(ordinate), ordinate, $"Layout {layout} does not store {ordinate}.");

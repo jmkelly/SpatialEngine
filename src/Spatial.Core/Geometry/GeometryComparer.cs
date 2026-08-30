@@ -18,18 +18,23 @@ public static class GeometryComparer
             return false;
         }
 
-        return left switch
-        {
-            Point point => right is Point otherPoint && point.Equals(otherPoint),
-            LineString lineString => right is LineString otherLine && lineString.Equals(otherLine),
-            Polygon polygon => right is Polygon otherPolygon && polygon.Equals(otherPolygon),
-            MultiPoint multiPoint => right is MultiPoint otherMultiPoint && multiPoint.Equals(otherMultiPoint),
-            MultiLineString multiLineString => right is MultiLineString otherMultiLine && multiLineString.Equals(otherMultiLine),
-            MultiPolygon multiPolygon => right is MultiPolygon otherMultiPolygon && multiPolygon.Equals(otherMultiPolygon),
-            GeometryCollection collection => right is GeometryCollection otherCollection && collection.Equals(otherCollection),
-            _ => false,
-        };
+        return EqualsByType(left, right);
     }
+
+    private static bool EqualsByType(IGeometry left, IGeometry right) => left switch
+    {
+        // Type equality is already established by the caller, so the casts
+        // cannot fail; a foreign implementation claiming a core type casts to
+        // null and compares unequal instead of throwing.
+        Point point => point.Equals(right as Point),
+        LineString lineString => lineString.Equals(right as LineString),
+        Polygon polygon => polygon.Equals(right as Polygon),
+        MultiPoint multiPoint => multiPoint.Equals(right as MultiPoint),
+        MultiLineString multiLineString => multiLineString.Equals(right as MultiLineString),
+        MultiPolygon multiPolygon => multiPolygon.Equals(right as MultiPolygon),
+        GeometryCollection collection => collection.Equals(right as GeometryCollection),
+        _ => false,
+    };
 
     public static int GetHashCode(IGeometry geometry) => geometry switch
     {
