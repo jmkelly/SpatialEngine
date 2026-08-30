@@ -51,7 +51,8 @@ public sealed class InMemoryHostTests
             CapabilityInvocation.Create(
                 ExampleFeatureProvider.EnvelopeCapability,
                 new Dictionary<string, object?> { ["batch"] = FixtureBatches.Points((0, 0), (2, 0), (1, 3)) })
-            with { GrantedPermissions = new HashSet<Permission> { ExampleFeatureProvider.ReadPermission } });
+            with
+            { GrantedPermissions = new HashSet<Permission> { ExampleFeatureProvider.ReadPermission } });
 
         Assert.True(outcome.IsSuccess);
         Assert.True(outcome.TryGetValue(out var value));

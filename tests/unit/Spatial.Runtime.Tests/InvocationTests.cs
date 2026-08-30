@@ -75,7 +75,8 @@ public sealed class InvocationTests
         var invocation = CapabilityInvocation.Create(
             ExampleFeatureProvider.EnvelopeCapability,
             new Dictionary<string, object?> { ["batch"] = FixtureBatches.Points((0, 0), (2, 3), (1, 1)) })
-            with { GrantedPermissions = new HashSet<Permission> { ExampleFeatureProvider.ReadPermission } };
+            with
+        { GrantedPermissions = new HashSet<Permission> { ExampleFeatureProvider.ReadPermission } };
 
         var outcome = await host.Runtime.InvokeAsync(invocation);
 
@@ -100,7 +101,8 @@ public sealed class InvocationTests
         var invocation = CapabilityInvocation.Create(
             ExampleFeatureProvider.EnvelopeCapability,
             new Dictionary<string, object?> { ["batch"] = batch })
-            with { GrantedPermissions = new HashSet<Permission> { ExampleFeatureProvider.ReadPermission } };
+            with
+        { GrantedPermissions = new HashSet<Permission> { ExampleFeatureProvider.ReadPermission } };
 
         var outcome = await host.Runtime.InvokeAsync(invocation);
 
@@ -115,7 +117,8 @@ public sealed class InvocationTests
         var invocation = CapabilityInvocation.Create(
             ExampleFeatureProvider.SleepCapability,
             new Dictionary<string, object?> { ["milliseconds"] = 600L })
-            with { CancellationToken = cts.Token };
+            with
+        { CancellationToken = cts.Token };
         var task = host.Runtime.InvokeAsync(invocation);
 
         await Task.Delay(30);
@@ -133,7 +136,8 @@ public sealed class InvocationTests
         var invocation = CapabilityInvocation.Create(
             ExampleFeatureProvider.SleepCapability,
             new Dictionary<string, object?> { ["milliseconds"] = 1500L })
-            with { Deadline = DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(30) };
+            with
+        { Deadline = DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(30) };
 
         var outcome = await host.Runtime.InvokeAsync(invocation);
 
@@ -148,10 +152,11 @@ public sealed class InvocationTests
     {
         var host = InMemoryComponentHost.Create();
         var invocation = CapabilityInvocation.Create(Count, new Dictionary<string, object?>()
-            {
-                ["batch"] = FixtureBatches.Points((0, 0)),
-            })
-            with { Deadline = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1) };
+        {
+            ["batch"] = FixtureBatches.Points((0, 0)),
+        })
+            with
+        { Deadline = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1) };
 
         var outcome = await host.Runtime.InvokeAsync(invocation);
 
@@ -264,7 +269,8 @@ public sealed class InvocationTests
         var batch = FixtureBatches.Points(points);
         var reports = new List<ProgressReport>();
         var invocation = CapabilityInvocation.Create(Count, new Dictionary<string, object?> { ["batch"] = batch })
-            with { Progress = new Progress<ProgressReport>(reports.Add) };
+            with
+        { Progress = new Progress<ProgressReport>(reports.Add) };
 
         var outcome = await host.Runtime.InvokeAsync(invocation);
 
