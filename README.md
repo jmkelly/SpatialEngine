@@ -16,13 +16,17 @@ implementations.
 
 ## Status
 
-Phase 3 — capability runtime. Versioned capability contracts
-(`spatial.feature.count@1`, …) ship in `Spatial.PluginSdk`; the registry,
-deterministic provider resolution (explicit → resource-local → configured
-preferred → first healthy), and invocation routing with structured errors,
-deadlines, cancellation, progress and permissions land in
-`Spatial.Runtime`. An in-memory component host with example capabilities
-serves as the test vehicle. Phase 4 (resources, streams, jobs) is next.
+Phase 4 — resources, streams and jobs. Opaque runtime-owned resource
+handles with leases, disposal and leak reclamation (ADR-0022); bounded,
+backpressured streaming with the `Streaming` trait enforced (ADR-0023); and
+long-running invocations routed through observable, cancellable,
+timeout-bounded job state machines with events and progress (ADR-0008/
+ADR-0024). Versioned capability contracts (`spatial.feature.count@1`, …)
+and the registry, deterministic provider resolution (explicit →
+resource-local → configured preferred → first healthy), invocation routing
+with structured errors, deadlines, cancellation and permissions all ship in
+`Spatial.PluginSdk`/`Spatial.Runtime`, with the in-memory component host as
+the test vehicle. Phase 5 (plugin packaging and isolation) is next.
 
 ## Repository layout
 

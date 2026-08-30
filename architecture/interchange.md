@@ -22,9 +22,22 @@ implementation-plan.md §8 and ADR-0020.
 ## Handles and streams
 
 - Handles are runtime-owned resources with leases; a client failing to
-  release them is a leak test case.
-- Streams honour backpressure and cancellation; long streams are jobs with
-  progress.
+  release them is a leak test case. `ResourceRegistry` (Phase 4,
+  ADR-0022) mints opaque `ResourceId`s, tracks open/leased/closed state,
+  issues and honours time-bounded leases, closes resources on disposal and
+  reclaims — and reports — resources leaked by clients when their owning
+  provider is disposed. Providers mint handles through the invocation
+  facilities and return the handle as the invocation value.
+- Streams honour backpressure and cancellation; long streams are jobs
+  with progress. `BoundedStream` (Phase 4, ADR-0023) is a fixed-capacity
+  pipe: the provider writes through `IStreamWriter`, the consumer reads
+  under a lease through `ICapabilityStream`; a full buffer makes writes
+  wait until the consumer reads. The `Streaming` trait is enforced — a
+  streaming capability must return a stream-backed handle.
+- Long-running invocations run as jobs (Phase 4, ADR-0024): a tracked
+  state machine with append-only events, published resources (stream
+  handles are readable while the job runs), progress, cancellation and
+  timeouts — one job API for polling and subscription.
 
 Encoding/decoding is core behaviour (canonical round trips are tested in
 Phase 1).

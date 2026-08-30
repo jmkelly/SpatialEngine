@@ -36,20 +36,38 @@ permissions follow the same dotted-lowercase rule (`nts@1`,
   references only `Spatial.Core`; contracts carry only core types (ADR-0005).
 - **`src/Spatial.Runtime/Capabilities`** owns routing: `CapabilityRegistry`
   (registrations + descriptor validation), `CapabilityConfiguration`
-  (configured preferences), `CapabilityRuntime` (invocation facade),
+  (configured preferences), `CapabilityRuntime` (thin invocation facade),
   `CapabilityResolver` (deterministic resolution + unavailable
   diagnostics), `CapabilityInvoker` (provider-boundary error guard),
-  `CapabilityOutcomeFactory` (outcomes + provenance), `ProviderHealth`,
+  `CapabilityOutcomeFactory` (outcomes + provenance), `InlineInvocation`
+  and `PermissionGate` (inline mechanics + shared permission pre-check),
+  `StreamingContractValidator` (the Streaming trait has teeth), `ProviderHealth`,
   `ResolutionStep`, `ResolvedProvider`, `InvocationOptions`,
   `InvocationProvenance`, `CapabilityOutcome`. Permission checks run through
   the injected `IPermissionEvaluator` (default: set membership
   `GrantedPermissionsEvaluator`).
+- **`src/Spatial.PluginSdk/Resources` + `Spatial.Runtime/Resources`** (Phase 4,
+  ADR-0022): `ResourceId`, `ResourceKind`, `ResourceHandle`, `ResourceLease`,
+  `ResourceState`, `ICapabilityResource`, `IResourceFactory` and the runtime's
+  `ResourceRegistry` — opaque, runtime-owned handles with leases, disposal and
+  leak reclamation; `ICapabilityFacilities` on the invocation context carries
+  the provider-side minting surfaces.
+- **`src/Spatial.PluginSdk/Streams` + `Spatial.Runtime/Streams`** (Phase 4,
+  ADR-0023): `IStreamFactory`, `StreamChannel`, `IStreamWriter`,
+  `ICapabilityStream`, `StreamCompletion` and the runtime's `BoundedStream` —
+  bounded buffering, backpressure and the enforced `Streaming` result shape.
+- **`src/Spatial.PluginSdk/Jobs` + `Spatial.Runtime/Jobs`** (Phase 4, ADR-0024):
+  `JobId`, `JobState`, `JobEventKind`, `JobEvent`, `IJob : IInvocationContext`
+  and the runtime's `JobRegistry`, `CapabilityJob`, `JobRunner`, `JobLauncher`
+  — observable state machines with events, cancellation and timeouts for
+  long-running invocations.
 - **Tests** (`tests/unit/Spatial.Runtime.Tests/Fixtures`) host the plan's
   **in-memory component host** (`InMemoryComponentHost`) and example
   capability provider (`ExampleFeatureProvider`: feature count, feature
-  envelope, sleep fixture). This is the test vehicle for resolution,
-  invocation, errors, deadlines, cancellation, progress and permissions, and
-  the template for real providers in later phases.
+  envelope, sleep, and the Phase 4 mint/peek/stream/jobstream fixtures). This
+  is the test vehicle for resolution, invocation, errors, deadlines,
+  cancellation, progress, permissions, resources, streams and jobs, and the
+  template for real providers in later phases.
 
 ## Registration rules (enforced by the registry)
 
@@ -69,8 +87,10 @@ A provider registers with its descriptors. Rejected with an actionable
    pinned provider is not registered, does not serve the capability, or is
    unhealthy, resolution fails with `ProviderUnavailable` naming the reason.
 2. **Compatible resource-local provider** — preferred when the owning
-   provider can serve; falls through otherwise (Phase 4 derives it from
-   resource ownership).
+   provider can serve; falls through otherwise. The preference comes from
+   `InvocationOptions.Resource` (the resource's owning provider — derived
+   from resource ownership, ADR-0022) or, when absent, the explicit
+   `ResourceLocalProvider` option.
 3. **Configured preferred provider** — soft; an absent or unhealthy preferred
    provider falls through.
 4. **First healthy provider by stable provider ID** — ordinal by `ProviderId`
@@ -95,18 +115,36 @@ provenance.
    thrown exceptions become structured `ContractViolation`/`ProviderFailure`
    outcomes. `OperationCanceledException` becomes `Cancelled` or, when the
    deadline passed, `DeadlineExceeded`.
+6. The result must match the *declared* shape: a `Streaming` capability must
+   return a stream-backed handle and a non-streaming capability must not
+   (ADR-0023); anything else becomes `ContractViolation`.
+7. **Long-running capabilities route through the job model** (ADR-0008/
+   ADR-0024): `InvokeAsync` creates a job, awaits it and returns its outcome
+   with the job id in the provenance; `StartJob` returns the handle
+   immediately for polling or subscription. Job state, events (progress via
+   `ProgressReport`, failures via `ICapabilityError`, published resources via
+   `ResourceHandle`) and timeout/cancellation behaviour are uniform across
+   providers. Pre-check failures still yield a tracked job (terminal state).
 
 Every outcome carries `InvocationProvenance`: capability, provider, the
-resolution step, started-at, duration and the deadline. Progress reports
-(`ProgressReport`, fraction in [0, 1] or unquantified) flow from provider to
-caller through the invocation.
+resolution step, started-at, duration, the deadline and — for job-routed
+invocations — the job id. Progress reports (`ProgressReport`, fraction in
+[0, 1] or unquantified) flow from provider to caller through the invocation
+and are recorded as job events when a job runs.
 
 ## Rules
 
 - Providers may push down work but must pass the same conformance fixtures.
 - Small, focused contracts beat one large `ISpatialDataStore` (ADR-0003).
-- Long-running capabilities run as jobs in Phase 4, always cancellable
-  (ADR-0008); the `LongRunning` trait is declared now and routed then.
+- Long-running capabilities always run as jobs, always cancellable
+  (ADR-0008/ADR-0024); `StartJob` exposes the job API for any invocation.
+- Resources are runtime-owned with leases (ADR-0022): a provider mints them
+  through `invocation.Facilities.Resources/Streams` and returns the handle;
+  the runtime tracks leases, disposal and leak reclamation, and derives the
+  resource-local provider from a handle's owner during resolution.
+- Streaming results are enforced (ADR-0023): the `Streaming` trait means the
+  result IS a stream handle; long streams run as jobs that publish the handle
+  and report progress.
 - Resolution and invocation live in `Spatial.Runtime`; implementations are
   never referenced there (architecture tests).
 - Permissions carry no meaning by themselves: the runtime checks the caller's

@@ -752,6 +752,8 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 4: Resources, Streams and Jobs
 
+**Status:** complete (Epic E).
+
 - Implement opaque handles, ownership, leases and disposal.
 - Implement bounded streaming and backpressure.
 - Implement job state, events, cancellation and timeout behaviour.
@@ -968,10 +970,10 @@ Root agent instructions must include:
 
 ### Epic E: Resources and jobs
 
-- [ ] Handles and leases
-- [ ] Streams and backpressure
-- [ ] Job state and events
-- [ ] Leak and cancellation tests
+- [x] Handles and leases
+- [x] Streams and backpressure
+- [x] Job state and events
+- [x] Leak and cancellation tests
 
 ### Epic F: Plugin workers
 
@@ -1098,6 +1100,9 @@ ADR-0018 Spatial.Host remains independently executable
 ADR-0019 Tauri may bundle Spatial.Host as an optional sidecar
 ADR-0020 Canonical binary interchange is required
 ADR-0021 Native AOT requires measured benefit and compatibility evidence
+ADR-0022 Resource handles are runtime-owned with leases
+ADR-0023 Bounded streams carry the backpressure
+ADR-0024 Jobs are observable state machines with events and timeouts
 ```
 
 ## 25. Recommended Starting Sequence
