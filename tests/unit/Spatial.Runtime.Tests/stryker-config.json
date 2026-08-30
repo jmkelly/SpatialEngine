@@ -1,0 +1,16 @@
+{
+  "stryker-config": {
+    "project": "/home/james/Work/SpatialEngine/src/Spatial.Runtime/Spatial.Runtime.csproj",
+    "mutation-level": "Standard",
+    "coverage-analysis": "perTest",
+    "additional-timeout": 2,
+    "reporters": ["cleartext", "json", "html"],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 60
+    },
+    "disable-bail": false,
+    "verbosity": "info"
+  }
+}

@@ -20,7 +20,11 @@ public sealed class InMemoryHostTests
             [
                 ExampleFeatureProvider.CountCapability,
                 ExampleFeatureProvider.EnvelopeCapability,
+                ExampleFeatureProvider.JobStreamCapability,
+                ExampleFeatureProvider.MintCapability,
+                ExampleFeatureProvider.PeekCapability,
                 ExampleFeatureProvider.SleepCapability,
+                ExampleFeatureProvider.StreamCapability,
             ],
             host.Registry.Capabilities);
         Assert.Equal(1, host.Registry.ProviderCount);

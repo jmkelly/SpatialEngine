@@ -37,6 +37,15 @@ internal sealed class CapabilityResolver
             return match is null ? null : ToResolved(match, ResolutionStep.Explicit);
         }
 
+        if (options.Resource is { } resource)
+        {
+            var match = candidates.FirstOrDefault(candidate => candidate.Registration.Id == resource.Owner);
+            if (match is not null)
+            {
+                return ToResolved(match, ResolutionStep.ResourceLocal);
+            }
+        }
+
         if (options.ResourceLocalProvider is { } localId)
         {
             var match = candidates.FirstOrDefault(candidate => candidate.Registration.Id == localId);
@@ -86,7 +95,9 @@ internal sealed class CapabilityResolver
             var providers = string.Join(", ", serving.Select(registration => $"{registration.Id} ({registration.Health})"));
             var localHint = options.ResourceLocalProvider is { } local
                 ? $" The resource-local provider {local} does not serve {capability}."
-                : string.Empty;
+                : options.Resource is { } resource
+                    ? $" The resource owner {resource.Owner} does not serve {capability}."
+                    : string.Empty;
             return CapabilityError.ProviderUnavailable(
                 $"No usable provider serves {capability}. Registered: {providers}.{localHint} "
                 + "Mark one healthy or register another provider.");

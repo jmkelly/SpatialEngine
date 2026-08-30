@@ -16,7 +16,8 @@ public sealed record CapabilityInvocation(
     IReadOnlySet<Permission> GrantedPermissions,
     DateTimeOffset? Deadline,
     IProgress<ProgressReport>? Progress,
-    CancellationToken CancellationToken) : IInvocationContext
+    CancellationToken CancellationToken,
+    ICapabilityFacilities? Facilities = null) : IInvocationContext
 {
     /// <summary>
     /// A minimal invocation: no permissions, no deadline, no progress and an

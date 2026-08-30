@@ -15,8 +15,9 @@ public sealed class StubProvider : CapabilityProviderBase
         string name,
         int version,
         IReadOnlyList<CapabilityId> capabilities,
-        Func<CapabilityInvocation, ValueTask<CapabilityResult>>? handler = null)
-        : base(capabilities.Select(StubDescriptor).ToArray())
+        Func<CapabilityInvocation, ValueTask<CapabilityResult>>? handler = null,
+        CapabilityTraits traits = CapabilityTraits.Cancellable)
+        : base(capabilities.Select(capability => StubDescriptor(capability, traits)).ToArray())
     {
         Id = new ProviderId(name, version);
         _handler = handler
@@ -33,7 +34,7 @@ public sealed class StubProvider : CapabilityProviderBase
     public override ValueTask<CapabilityResult> InvokeAsync(CapabilityInvocation invocation) =>
         _handler(invocation);
 
-    private static CapabilityDescriptor StubDescriptor(CapabilityId capability) =>
+    private static CapabilityDescriptor StubDescriptor(CapabilityId capability, CapabilityTraits traits) =>
         new(
             capability,
             $"Stub serving {capability}.",
@@ -41,6 +42,6 @@ public sealed class StubProvider : CapabilityProviderBase
             new SchemaDescriptor("stub.out"),
             [new ErrorVariant("stub.error", "A stub capability error.")],
             [],
-            CapabilityTraits.Cancellable,
+            traits,
             []);
 }
