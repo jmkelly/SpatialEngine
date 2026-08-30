@@ -720,6 +720,8 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 1: Core Geometry
 
+**Status:** complete (Epic B).
+
 - Implement coordinate layouts, CRS identity and envelope.
 - Implement packed coordinate sequences.
 - Implement immutable simple-feature geometry types.
@@ -733,6 +735,8 @@ Tauri loads the same React application configured to connect to a remote spatial
 - Large sequences do not require one heap object per coordinate.
 
 ### Phase 2: Features and Schemas
+
+**Status:** complete (Epic C).
 
 - Implement typed attributes, fields, feature identity and schemas.
 - Implement feature batches and versioned encoding.
@@ -947,10 +951,10 @@ Root agent instructions must include:
 
 ### Epic C: Features and batches
 
-- [ ] Attribute-value model
-- [ ] Schemas and feature identity
-- [ ] Feature batches
-- [ ] Batch encoding
+- [x] Attribute-value model
+- [x] Schemas and feature identity
+- [x] Feature batches
+- [x] Batch encoding
 
 ### Epic D: Capability runtime
 
@@ -1100,7 +1104,7 @@ ADR-0021 Native AOT requires measured benefit and compatibility evidence
 2. Core coordinate sequence and Point
 3. LineString and Polygon
 4. Multi-geometries and binary round trip
-5. Feature and schema model
+5. Feature and schema model (Phase 2, complete)
 6. Capability descriptor, registry and invocation
 7. Out-of-process .NET example worker
 8. Resource handles, streams and jobs

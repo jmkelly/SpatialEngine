@@ -1,163 +1,164 @@
 # Handoff — Spatial Engine
 
 > Written for the next agent taking over. Read `AGENTS.md`, then
-> `architecture/implementation-plan.md` (the source of truth). Phase 1 is
-> complete; Phase 2 (features and schemas) is next.
+> `architecture/implementation-plan.md` (the source of truth). Phase 2
+> (features and schemas) is complete; Phase 3 (capability runtime) is next.
 
 ## Repository state
 
-- **Branch:** `main`, clean working tree.
-- **Recent commits:** `eadfb14` (audit-artifact ignore + stryker config) ·
-  `1841471` (quality-loop complexity reductions) · `01fd3fb` (Phase 1: core
-  geometry) · `10ab8a8` (Phase 0: guardrails).
-- **Solution:** `SpatialEngine.slnx` (XML solution format — note the quality
-  loop tooling was patched to support it, see below).
+- **Branch:** `main`.
+- **Recent commits:** Phase 0 (`10ab8a8`), Phase 1 (`01fd3fb`, `1841471`),
+  Phase 2 (this handoff). **A quality-loop implementor session may still have
+  uncommitted Phase-1 mutation-hardening edits in the working tree**
+  (Envelope.cs, GeometryCodec.cs, *EdgeTests/*MutationTests files) — see
+  "Concurrent quality loop" below. Stage carefully; do not sweep those into a
+  feature commit.
+- **Solution:** `SpatialEngine.slnx`.
 - **Verification:** `./eng/verify.sh` (format check + build + full test run).
-  Currently: 8 architecture + 144 core unit + 3 host integration tests, all
-  passing.
 
 ## Completed
 
 ### Phase 0 — guardrails (commit `10ab8a8`)
 
-Solution layout, `Directory.Packages.props` (central versions), architecture
-tests (`tests/architecture`) enforcing: core has no dependencies, runtime
-references no plugins, host references only platform projects, package
-allowlist, no inline versions, no Tauri in web clients, exact solution
-membership. All ADRs ADR-0001…0021 committed.
+Solution layout, central versions, architecture tests (core has no
+dependencies, runtime references no plugins, host references only platform
+projects, package allowlist, no inline versions, no Tauri in web clients,
+exact solution membership). ADRs ADR-0001…0021 committed.
 
 ### Phase 1 — core geometry (commits `01fd3fb`, `1841471`)
 
-All in `src/Spatial.Core/Geometry/`, namespace `Spatial.Core.Geometry`,
+Coordinate layouts, CRS identity, envelopes, packed/array coordinate
+sequences, immutable simple-feature hierarchy, traversal, builders,
+`GeometryCodec` (canonical binary v1, spec in `architecture/geometry-model.md`),
+`GeometryComparer`. Zero dependencies.
+
+### Phase 2 — features and schemas (this handoff)
+
+All in `src/Spatial.Core/Features/`, namespace `Spatial.Core.Features`,
 zero dependencies:
 
-- `Coordinate` (record struct, `double? Z/M`), `Ordinate`, `CoordinateLayout`
-  (`Xy/Xyz/Xym/Xyzm`) with `OrdinateCount/HasZ/HasM/Infer`.
-- `CoordinateReference` — authority+code identity, `Epsg(int)`; validation;
-  **value types are the structural default** (record structs with explicit
-  constructors — C# 12 primary constructors cannot have validation bodies).
-- `Envelope` — finite-bounds struct, `Empty` (infinities), NaN-skipping
-  computed creators; explicit construction rejects NaN/infinity.
-- `ICoordinateSequence` + `PackedCoordinateSequence` (one `double[]` per
-  sequence) + `ArrayCoordinateSequence` + `CoordinateSequenceComparer`
-  (ordinate-wise equality across backings, NaN-equal semantics).
-- Simple-feature geometry hierarchy: `IGeometry`, `Point`, `LineString`,
-  `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`,
-  `GeometryCollection` (+ `GeometryCollectionBase<TChild>`), all immutable
-  with defensive copies.
-- `GeometryFactory` (builders; composites carry **at most one distinct
-  non-null CRS** — conflicts throw), `GeometryTraversal` (`Parts`,
-  `DepthFirst`, `Coordinates`), `GeometryComparer` (exact structural
-  equality/hash for `IGeometry`).
-- `GeometryCodec` — canonical binary v1, documented in
-  `architecture/geometry-model.md`. Header `SGEOM` + version byte;
-  self-describing nodes (layout, type, CRS per node); **Point body starts
-  with an explicit `hasCoordinate` byte** (empty points must be unambiguous
-  inside collections); nesting ≤ 256; count-vs-remaining guards; strict
-  UTF-8; `TryDecode` errors carry byte offsets; deterministic (`Encode` of
-  equal geometries is byte-identical).
+- `AttributeKind` — explicit byte values (wire-stable).
+- `AttributeValue` — **boxing-free** tagged union (bool/long/double/Guid/
+  DateTimeOffset inline; string/geometry are references; default is `Null`).
+  Structural equality: NaN-equal doubles, ordinal strings,
+  `GeometryComparer`, date-times by UTC ticks **and** offset (stricter than
+  BCL instant-only equality, so equal ⇒ identical bytes). Kind-checking
+  getters throw actionable errors. CA1720 is suppressed repo-wide for the
+  enum member names (documented in `.editorconfig`).
+- `FieldDefinition` — name/kind (never Null)/nullable/description; equality
+  includes description; `IsDecodableFrom` (name+kind equal, reader-nullable ≥
+  writer-nullable).
+- `FeatureSchema` — ordered, ordinal-unique names, `IndexOf`,
+  `IsDecodableFrom`/`TryIsDecodableFrom` (**append-only prefix rule** with
+  actionable reasons), content equality incl. descriptions.
+- `FeatureId` — non-empty string.
+- `Feature` — id + schema + validated parallel attribute list (count, kind,
+  nullability at construction; defensive copies); indexers by index and name.
+- `FeatureBatch` — features must carry the exact batch schema (content
+  equality); defensive copy; content equality.
+- `FeatureBatchCodec` — canonical batch binary v1, spec in
+  `architecture/feature-model.md`. Magic `SFBAT`, strict UTF-8, little-endian;
+  length/remaining guards before allocation; deterministic (equal ⇒ identical
+  bytes); geometry attributes embed `GeometryCodec` bytes; date-times as
+  int64 UTC ticks + int16 whole-minute offset with numerical range checks so
+  hostile buffers can never throw `ArgumentOutOfRangeException`;
+  `FeatureBatchFormatException` + `TryDecode` errors carry byte offsets.
+  **Projection overloads** `Decode(data, targetSchema)` validate prefix
+  compatibility — the schema-evolution test vehicle.
 
-### Quality loop (skill-level patches under `~/.pi/agent/skills/quality-loop`)
+Tests (`tests/unit/Spatial.Core.Tests/`): `AttributeValueTests`,
+`FeatureSchemaTests`, `FeatureTests`, `FeatureBatchCodecTests` (round trips
+for every kind, determinism, projection matrix, ~25 malformed-input cases),
+`FeatureBatchCodecPropertyTests` (seeded 1/7/42/1337/20260214/987654321,
+random schemas/features, round trip + projection to every prefix). Note:
+random strings are built from whole pieces, never lone surrogate halves
+(strict UTF-8 replaces them and round trips break).
 
-The loop now runs green for this repo. Patches made to the skill tooling
-(all backward-compatible):
+Docs: `architecture/feature-model.md` (batch v1 spec), plan §16/§21/§25
+status ticks, `README.md` status, `src/Spatial.Core/AGENTS.md` owned list.
 
-- `scripts/quality-loop.py`, `scripts/dotnet/audit.py`,
-  `scripts/dotnet/warnings-audit.py` — accept `*.slnx` solutions.
-- `scripts/dotnet/audit.py` — runs coverage per test project and merges
-  cobertura files (`coverage_common.py`, method-level line-rate maxima);
-  rematch layer that fixes crap4dotnet's signature matcher for nullable
-  (`Point?` vs `Point`) and `in`-parameter signatures by normalising against
-  the cobertura data; multi-test-project namespace exclusion.
-- `scripts/dotnet/metrics-audit.py` — gates on the JSON report, not the
-  tool's (buggy, always-1) exit code.
-- `scripts/dotnet/stryker-audit.py` — skips reference-free test projects and
-  prefers projects carrying their own `stryker-config.json`.
-- `crap4dotnet` 0.1.1 accepts a directory, not `.slnx` — audit passes the
-  repo root in that case.
+## Concurrent quality loop — READ BEFORE COMMITTING
 
-Repo policy: `tests/unit/Spatial.Core.Tests/stryker-config.json` pins the
-mutation target to Spatial.Core (break 60). Audit artifacts
-(`crap-queue.md`, `*-report.json`, `stryker-queue.md`, …) are gitignored and
-regenerated per run.
+A quality-loop run is **active on this repo** (`quality-loop.py` + a
+`quality-implementor` pi session, started ~19:48/20:02). It edits Phase 1
+files directly in the working tree (no commits). At handoff time it had
+uncommitted changes to `Envelope.cs`, `GeometryCodec.cs`,
+`CoordinateSequenceTests.cs`, `EnvelopeTests.cs`, `GeometryCodecTests.cs`,
+`GeometryConstructionTests.cs` plus new `CodecEdgeTests.cs`,
+`EnvelopeMutationTests.cs`, `GeometryEdgeTests.cs` — mostly removing
+"unreachable defensive guards" (finite bounds make empty-envelope checks
+redundant) and pinning error strings to kill surviving mutants. Its last
+iteration (unguarded `Envelope.Union`) was *broken* for `Empty.Union(Empty)`
+(mid-edit). Actions:
 
-**Last gate status:** quality PASS (0/379 CRAP ≥ 10, after complexity
-reductions — every authored method is now cc ≤ 9, enforced by the gate),
-coverage PASS (85–90% authored branch ≥ 70), metrics PASS (0 findings),
-warnings PASS, **Stryker RED — 26.24% < 60% break** (full run, 979
-mutants; the initial 89.59% figure was a narrowly-scoped run and is wrong).
-The quality loop drives implementor passes against `stryker-queue.md`;
-survivors are mostly missing behavioral assertions (layout-merge changes,
-boundary comparisons, null/empty guards, mutator arithmetic) — add real
-tests, do not lower the break threshold.
+1. Check `implementor-summary.txt` in
+   `~/.pi/sessions/quality-implementor/SpatialEngine-*/` and the queue files
+   before trusting the tree.
+2. Commit only your own files (`git add` explicitly); leave its edits
+   unstaged for its pass or review them first.
+3. Do not run Stryker or the full quality loop while it is mid-pass —
+   concurrent Stryker runs thrash `StrykerOutput/` and the audits will flap.
+   Fast gates (crap/coverage/metrics/warnings) are safe.
+4. The loop's gates are: CRAP < 10 per method (already passing), coverage ≥
+   70% branch (passing at 85–90%), metrics 0 findings, zero warnings, Stryker
+   ≥ 60% (was 26.24% — the implementor is driving this).
 
-## Hard-won gotchas (read before touching geometry code)
+## Hard-won gotchas (read before touching geometry/feature code)
 
-- **XYM layout packs M at offset +2** (not +3); XYZM at +3. The sequence
-  `GetOrdinate` and `FromCoordinates` both encode this. A property test
+- **XYM layout packs M at offset +2** (not +3); XYZM at +3. Property test
   caught the original bug — keep it.
+- **DateTimeOffset**: BCL accepts only whole-minute offsets; store UTC ticks
+  + minutes; reconstruct via
+  `new DateTimeOffset(new DateTime(utcTicks + offsetTicks, DateTimeKind.Unspecified), TimeSpan.FromMinutes(offsetMinutes))`
+  (the `(long, TimeSpan)` ctor treats ticks as *local* — wrong).
+  Valid offsets are ±840 minutes; valid `UtcTicks` stay within
+  `DateTime.MaxValue.Ticks`.
 - Default interface members (`ICoordinateSequence.GetCoordinate`) are only
   callable through the interface — tests must cast.
-- `dotnet-crap` gate effectively requires **complexity ≤ 9 for every
-  authored method** (CRAP = cc²(1−cov) + cc; at full coverage CRAP = cc).
-  Keep new methods under cc 10; split switches with `_` arms into helper
-  dispatch methods when needed. Also `long-parameter-list` flags ≥ 7 params.
-- Unreachable defensive branches tank Cobertura line-rate — prefer reachable
-  error paths (e.g. the point-body truncation is reported from the read
-  path, not a pre-check).
-- Keep tests deterministic: seeded property tests use fixed seeds; no
-  randomness in fixtures.
+- `dotnet-crap` gate: complexity ≤ 9 per authored method; flag `_` arms into
+  helper dispatch throws (the FeatureBatchCodec does this). Also
+  `long-parameter-list` flags ≥ 7 params — the codec passes a small
+  `AttributeSite` struct to avoid it.
+- Unreachable defensive branches tank Cobertura line-rate — keep error paths
+  reachable (the implementor is removing such guards).
+- Keep tests deterministic: seeded property tests, no randomness in
+  fixtures; strings in property tests must be whole pieces (see above).
+- `dotnet format` requires a final newline in every file.
+- `ThrowIfNullOrWhiteSpace(null)` throws `ArgumentNullException`, not
+  `ArgumentException` — tests must expect the right one.
 
-## Next up — Phase 2: Features and Schemas
+## Next up — Phase 3: Capability Runtime
 
-From the plan (§16, Epic C, §6.1): implement in `src/Spatial.Core/Features/`
-(namespace `Spatial.Core.Features`), no dependencies:
+From the plan (§16, Epic D, §6.1 "Runtime model"): lands in
+`src/Spatial.Runtime` (currently an empty project) and
+`src/Spatial.PluginSdk` (empty). Scope per plan:
 
-1. `AttributeKind` (enum) and `AttributeValue` — a boxing-free tagged union:
-   `Null | Boolean | Int64 | Double | String | Geometry | DateTimeOffset |
-   Guid`; private per-kind constructors (watch the 7-param rule), public
-   `From*` factories, kind-checking getters that throw actionable errors,
-   structural equality (geometry values via `GeometryComparer`, NaN-equal
-   doubles, ordinal strings).
-2. `FieldDefinition` — name, kind (never Null), nullable flag, description;
-   `IsDecodableFrom` (name + kind equal, reader-nullable ≥ writer-nullable);
-   `FeatureSchema` — ordered fields, duplicate-name rejection, `IndexOf`,
-   `IsDecodableFrom` = **prefix compatibility** (reader fields must be a
-   decodable prefix of writer fields — the append-only column evolution
-   rule); equality includes description.
-3. `FeatureId` (non-empty string), `Feature` (id + schema + parallel
-   attribute list; count/kind/nullability validated at construction;
-   defensive copies), `FeatureBatch` (features must carry the exact batch
-   schema).
-4. `FeatureBatchCodec` — versioned batch format v1 (magic `SFBAT`, schema
-   header, per-feature id + null-marker + schema-driven typed payloads;
-   geometry attributes are length-prefixed `GeometryCodec` blobs; strict
-   UTF-8; count/bounds guards; `FeatureBatchFormatException`), plus a
-   `Decode(data, targetSchema)` projection overload that validates prefix
-   compatibility — this is the schema-compatibility test vehicle.
-5. Tests: `tests/unit/Spatial.Core.Tests/FeaturesTests.cs` family — value
-   semantics, schema compat matrix (exact/prefix/reorder/kind-change/
-   nullability rules), round trips with every attribute kind, malformed
-   input, determinism, projection.
-6. Docs: new `architecture/feature-model.md` (batch v1 spec), ticks for
-   Epic C in the plan, README status, `src/Spatial.Core/AGENTS.md` already
-   lists the owned types.
+1. Capability descriptors (versioned ids like `spatial.geometry.buffer@1`,
+   purpose, input/output schemas, error variants, permissions, side effects,
+   streaming/cancellation traits, provenance fields) — see
+   `architecture/capability-model.md`.
+2. Registry with deterministic resolution (explicit provider → resource-local
+   → configured preferred → first healthy by stable id).
+3. Invocation routing with structured errors, deadlines, cancellation and
+   permissions.
+4. In-memory component host + example capability (the plan's test vehicle).
+5. Tests: resolution order, descriptor validation, error paths, cancellation,
+   no plugin references from the runtime (architecture tests already guard).
 
-Then Phase 3 (capability runtime) and Phase 4 (resources, streams, jobs) —
-see plan §16; both land in `src/Spatial.Runtime` (currently empty) and
-`src/Spatial.PluginSdk`.
+Contracts with public behaviour must land in `src/Spatial.PluginSdk` (the
+SDK ships contracts; the runtime routes). Phase 4 (resources, streams, jobs)
+builds on it. Keep every method cc ≤ 9 and run the fast quality gates; run
+the full loop only when no implementor pass is in flight.
 
 ## Commands
 
 ```bash
 ./eng/verify.sh                 # format + build + all tests (required before done)
-python3 ~/.pi/agent/skills/quality-loop/scripts/quality-loop.py  # full gate loop (~15 min, runs Stryker)
+python3 ~/.pi/agent/skills/quality-loop/scripts/quality-loop.py  # full gate loop (~15 min)
 # single gates, fast feedback:
-python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/audit.py           # CRAP (~1 min)
+python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/audit.py           # CRAP
 python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/coverage-audit.py  # branch coverage
 python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/metrics-audit.py   # MI/cyclomatic/params
 python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/warnings-audit.py  # zero-warning build
 python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/stryker-audit.py   # mutation (~11 min)
 ```
-
-Run the quality loop at the end of every phase, not just before handoff.

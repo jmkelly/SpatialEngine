@@ -16,11 +16,11 @@ implementations.
 
 ## Status
 
-Phase 1 — core geometry. Coordinate layouts, CRS identity, envelopes,
-packed/array coordinate sequences, the immutable simple-feature geometry
-hierarchy, traversal, builders and the canonical binary codec (v1) are
-implemented with unit, seeded-property and allocation tests. Features and
-schemas (Phase 2) are next.
+Phase 2 — features and schemas. The boxing-free `AttributeValue` union,
+field definitions, schema compatibility rules (append-only prefix), feature
+and batch values, and the canonical batch codec (v1) are implemented with
+unit, seeded-property and malformed-input tests. Phase 3 (capability
+runtime) is next.
 
 ## Repository layout
 
