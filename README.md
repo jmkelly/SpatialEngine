@@ -16,6 +16,25 @@ implementations.
 
 ## Status
 
+Phase 7 — coordinate transformation plugin. The CRS description and
+coordinate transformation contracts ship in
+`Spatial.PluginSdk.Transformations` (`spatial.crs.describe@1` /
+`spatial.coordinate.transform@1`, ADR-0027,
+`architecture/transformation-contracts.md`), and
+`Spatial.Transformations.ProjNet` (`projnet@1`) implements them on ProjNet
+2.1 with a private adapter over a curated embedded EPSG catalogue (WGS 84,
+ETRS89, NAD83, OSGB36, RGF93; Web Mercator, UTM zones, British National
+Grid, Lambert-93). The engine's x-first coordinate convention (x is
+longitude/easting) is ProjNet's own math-transform order, so no axis swaps
+are needed; describe reports the declared axes. Control-point, axis-order,
+error and tolerance tests pin the adapter against authoritative PROJ-9
+values to sub-centimetre for datum-free pairs and 0.1 m for the
+Helmert-based OSGB36 path. Results keep Z/M and layout and are stamped with
+the target CRS; CRS descriptions cross the worker boundary as a new `$crs`
+wire tag (`$geometry` stays the interchange for transformed geometry,
+ADR-0020). The shared conformance suite runs the same fixtures in-process
+and as an isolated worker package.
+
 Phase 6 — NetTopologySuite operations plugin. The standard geometry
 operation contracts ship in `Spatial.PluginSdk.Operations`
 (`spatial.geometry.buffer@1` / `intersection@1` / `validate@1` /
@@ -30,8 +49,7 @@ geometry. A shared conformance suite (`tests/conformance`, plan §18) runs
 the same success / empty-input / unsupported-input / cancellation /
 diagnostics / provenance fixtures against the provider both in-process and
 as an isolated worker package, and every invocation outcome carries
-provenance naming the serving provider. Phase 7 (coordinate transformation
-plugin) is next.
+provenance naming the serving provider.
 
 Phase 5 — native plugin packaging and isolation. Immutable plugin packages
 (manifest schema v1: id, version, capabilities, runtime hints — see
@@ -70,6 +88,7 @@ in-memory component host as the test vehicle.
 | `src/Spatial.PluginSdk` | Public contracts and SDK for plugin developers |
 | `src/Spatial.PluginHost.DotNet` | Language-neutral worker protocol for .NET plugins |
 | `src/Spatial.Operations.NetTopologySuite` | Standard geometry operations (buffer, intersection, validate, simplify) |
+| `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation (spatial.crs.describe@1, spatial.coordinate.transform@1) |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host |
 | `tests/` | unit / architecture / contract / conformance / integration suites |
 | `architecture/` | Plan, principles, boundary docs and ADRs |

@@ -779,6 +779,8 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 7: Coordinate Transformation Plugin
 
+**Status:** complete (Epic G).
+
 - Define CRS description and transformation contracts.
 - Implement the selected transformation library adapter.
 - Add control-point, axis-order, error and tolerance tests.
@@ -993,7 +995,7 @@ Root agent instructions must include:
 ### Epic G: Spatial implementations
 
 - [x] NTS adapters and operations
-- [ ] Transformation provider
+- [x] Transformation provider
 - [x] Shared conformance suite
 - [ ] PostGIS provider
 
@@ -1111,6 +1113,7 @@ ADR-0023 Bounded streams carry the backpressure
 ADR-0024 Jobs are observable state machines with events and timeouts
 ADR-0025 Worker boundaries speak versioned line-delimited JSON with runtime-owned facilities
 ADR-0026 Standard geometry operations are versioned capability contracts
+ADR-0027 Coordinate transformation contracts and the ProjNet adapter
 ```
 
 ## 25. Recommended Starting Sequence
