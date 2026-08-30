@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Spatial.Core/Spatial.Core.csproj" />
+    <Project Path="src/Spatial.Host/Spatial.Host.csproj" />
+    <Project Path="src/Spatial.PluginHost.DotNet/Spatial.PluginHost.DotNet.csproj" />
+    <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
+    <Project Path="src/Spatial.Runtime/Spatial.Runtime.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/architecture/">
+    <Project Path="tests/architecture/Spatial.Architecture.Tests/Spatial.Architecture.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/integration/">
+    <Project Path="tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj" />
+  </Folder>
+</Solution>

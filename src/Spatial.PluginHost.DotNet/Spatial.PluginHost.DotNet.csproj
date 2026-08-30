@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Language-neutral worker protocol and supervision for out-of-process .NET plugins. -->
+
+</Project>

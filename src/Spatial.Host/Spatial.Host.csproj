@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Independently executable ASP.NET Core host. Must run with no desktop shell. -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Host</AssemblyName>
+    <RootNamespace>Spatial.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.Runtime\Spatial.Runtime.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\Spatial.PluginHost.DotNet\Spatial.PluginHost.DotNet.csproj" />
+  </ItemGroup>
+
+</Project>

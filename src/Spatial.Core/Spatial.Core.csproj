@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Spatial value model. No packages, no project references. Enforced by tests/architecture. -->
+
+</Project>

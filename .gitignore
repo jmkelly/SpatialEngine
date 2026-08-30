@@ -1,0 +1,26 @@
+# --- .NET ---
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+TestResults/
+
+# --- Node ---
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# --- Editors / OS ---
+.vs/
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# --- Local config (never commit) ---
+.env
+*.local.json
+appsettings.Local.json

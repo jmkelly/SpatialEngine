@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Public capability contracts and SDK types for plugin developers and clients. -->
+
+</Project>
