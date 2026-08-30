@@ -1,5 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Language-neutral worker protocol and supervision for out-of-process .NET plugins. -->
+  <!--
+    Language-neutral worker protocol and supervision for out-of-process .NET
+    plugins: the plugin manifest schema and validation, the versioned wire
+    protocol and value codec, the worker host executable (the other side of
+    stdin/stdout), and the process supervisor with health checks, restart,
+    side-by-side activation, draining and rollback (plan §16 Phase 5,
+    ADR-0006/0013/0025).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\Spatial.Runtime\Spatial.Runtime.csproj" />
+  </ItemGroup>
 
 </Project>
