@@ -12,8 +12,9 @@ Spatial.Runtime only — implementations are never linked in
 `SchemaDescriptor`, `ErrorVariant`, `ConformanceExample`,
 `CapabilityDescriptor`, `CapabilityErrorKind`, `CapabilityError`,
 `CapabilityResult` (`CapabilitySuccess`/`CapabilityFailure`),
-`ProgressReport`, `CapabilityInvocation`, `ICapabilityProvider`,
-`CapabilityProviderBase`.
+`ProgressReport`, `CapabilityInvocation`, the behavioral abstractions
+`ICapabilityCatalog`, `ICapabilityProvider`, `IInvocationContext`,
+`IPermissionEvaluator`, `ICapabilityError`, and `CapabilityProviderBase`.
 
 ## Rules
 

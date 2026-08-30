@@ -129,39 +129,62 @@ public sealed class CapabilityRegistry
 
     private static void ValidateDescriptor(ProviderId providerId, CapabilityDescriptor descriptor)
     {
-        var id = descriptor.Id;
+        ValidatePurpose(providerId, descriptor);
+        ValidateSchemas(providerId, descriptor);
+        ValidateErrors(providerId, descriptor);
+        ValidatePermissions(providerId, descriptor);
+        ValidateTraits(providerId, descriptor);
+    }
+
+    private static void ValidatePurpose(ProviderId providerId, CapabilityDescriptor descriptor)
+    {
         if (string.IsNullOrWhiteSpace(descriptor.Purpose))
         {
-            throw new CapabilityRegistrationException($"Provider {providerId}: capability {id} must declare a purpose (plan §9).");
+            throw new CapabilityRegistrationException(
+                $"Provider {providerId}: capability {descriptor.Id} must declare a purpose (plan §9).");
         }
+    }
 
+    private static void ValidateSchemas(ProviderId providerId, CapabilityDescriptor descriptor)
+    {
         if (descriptor.Input is null || string.IsNullOrWhiteSpace(descriptor.Input.Name))
         {
-            throw new CapabilityRegistrationException($"Provider {providerId}: capability {id} must declare a named input schema.");
+            throw new CapabilityRegistrationException(
+                $"Provider {providerId}: capability {descriptor.Id} must declare a named input schema.");
         }
 
         if (descriptor.Output is null || string.IsNullOrWhiteSpace(descriptor.Output.Name))
         {
-            throw new CapabilityRegistrationException($"Provider {providerId}: capability {id} must declare a named output schema.");
+            throw new CapabilityRegistrationException(
+                $"Provider {providerId}: capability {descriptor.Id} must declare a named output schema.");
         }
+    }
 
+    private static void ValidateErrors(ProviderId providerId, CapabilityDescriptor descriptor)
+    {
         if (descriptor.Errors is null || descriptor.Errors.Count == 0)
         {
             throw new CapabilityRegistrationException(
-                $"Provider {providerId}: capability {id} must declare at least one error variant (plan §9).");
+                $"Provider {providerId}: capability {descriptor.Id} must declare at least one error variant (plan §9).");
         }
+    }
 
+    private static void ValidatePermissions(ProviderId providerId, CapabilityDescriptor descriptor)
+    {
         if (descriptor.RequiredPermissions is null)
         {
             throw new CapabilityRegistrationException(
-                $"Provider {providerId}: capability {id} must declare its required permissions (possibly none).");
+                $"Provider {providerId}: capability {descriptor.Id} must declare its required permissions (possibly none).");
         }
+    }
 
+    private static void ValidateTraits(ProviderId providerId, CapabilityDescriptor descriptor)
+    {
         if ((descriptor.Traits & CapabilityTraits.LongRunning) != 0
             && (descriptor.Traits & CapabilityTraits.Cancellable) == 0)
         {
             throw new CapabilityRegistrationException(
-                $"Provider {providerId}: capability {id} is long-running but not cancellable; "
+                $"Provider {providerId}: capability {descriptor.Id} is long-running but not cancellable; "
                 + "long-running capabilities are always cancellable (ADR-0008).");
         }
     }

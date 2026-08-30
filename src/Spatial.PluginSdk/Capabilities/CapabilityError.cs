@@ -6,7 +6,7 @@ namespace Spatial.PluginSdk.Capabilities;
 /// that tells the caller exactly what to fix. Factories keep the codes
 /// wire-stable and the messages consistent.
 /// </summary>
-public sealed record CapabilityError(CapabilityErrorKind Kind, string Code, string Message)
+public sealed record CapabilityError(CapabilityErrorKind Kind, string Code, string Message) : ICapabilityError
 {
     public static CapabilityError InvalidArguments(string message) =>
         new(CapabilityErrorKind.InvalidArguments, "invalid.arguments", message);

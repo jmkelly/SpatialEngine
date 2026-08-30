@@ -16,7 +16,7 @@ public sealed record CapabilityInvocation(
     IReadOnlySet<Permission> GrantedPermissions,
     DateTimeOffset? Deadline,
     IProgress<ProgressReport>? Progress,
-    CancellationToken CancellationToken)
+    CancellationToken CancellationToken) : IInvocationContext
 {
     /// <summary>
     /// A minimal invocation: no permissions, no deadline, no progress and an
@@ -35,7 +35,13 @@ public sealed record CapabilityInvocation(
     /// </summary>
     public bool TryGetArgument<T>(string name, [NotNullWhen(true)] out T? value)
     {
-        if (Arguments.TryGetValue(name, out var raw) && raw is T typed)
+        value = default;
+        return Arguments.TryGetValue(name, out var raw) && TryCast(raw, out value);
+    }
+
+    private static bool TryCast<T>(object? raw, [NotNullWhen(true)] out T? value)
+    {
+        if (raw is T typed)
         {
             value = typed;
             return true;

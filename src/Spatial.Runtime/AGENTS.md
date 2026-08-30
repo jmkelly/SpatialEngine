@@ -9,6 +9,7 @@ The host wires registries and configurations; the runtime serves.
 ## Owned here (Phase 3 — see architecture/capability-model.md)
 
 `CapabilityRegistry`, `CapabilityConfiguration`, `CapabilityRuntime`,
+`CapabilityResolver`, `CapabilityInvoker`, `CapabilityOutcomeFactory`,
 `ProviderHealth`, `ProviderRegistration`, `ResolutionStep`,
 `ResolvedProvider`, `InvocationOptions`, `InvocationProvenance`,
 `CapabilityOutcome`, `CapabilityRegistrationException`.

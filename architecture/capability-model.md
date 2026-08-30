@@ -28,13 +28,22 @@ permissions follow the same dotted-lowercase rule (`nts@1`,
   `ErrorVariant`, `ConformanceExample`, `CapabilityDescriptor`,
   `CapabilityErrorKind`/`CapabilityError`, `CapabilityResult`,
   `ProgressReport`, `CapabilityInvocation`, `ICapabilityProvider`,
-  `CapabilityProviderBase`. The SDK references only `Spatial.Core`; contracts
-  carry only core types (ADR-0005).
+  `CapabilityProviderBase`. The behavioral abstractions providers, the
+  runtime and hosts depend on are `ICapabilityCatalog` (declaration surface),
+  `ICapabilityProvider` (declaration + invocation), `IInvocationContext`
+  (read-only invocation view), `IPermissionEvaluator` (pluggable permission
+  policy) and `ICapabilityError` (structured error surface). The SDK
+  references only `Spatial.Core`; contracts carry only core types (ADR-0005).
 - **`src/Spatial.Runtime/Capabilities`** owns routing: `CapabilityRegistry`
   (registrations + descriptor validation), `CapabilityConfiguration`
-  (configured preferences), `CapabilityRuntime` (resolution + invocation),
-  `ProviderHealth`, `ResolutionStep`, `ResolvedProvider`,
-  `InvocationOptions`, `InvocationProvenance`, `CapabilityOutcome`.
+  (configured preferences), `CapabilityRuntime` (invocation facade),
+  `CapabilityResolver` (deterministic resolution + unavailable
+  diagnostics), `CapabilityInvoker` (provider-boundary error guard),
+  `CapabilityOutcomeFactory` (outcomes + provenance), `ProviderHealth`,
+  `ResolutionStep`, `ResolvedProvider`, `InvocationOptions`,
+  `InvocationProvenance`, `CapabilityOutcome`. Permission checks run through
+  the injected `IPermissionEvaluator` (default: set membership
+  `GrantedPermissionsEvaluator`).
 - **Tests** (`tests/unit/Spatial.Runtime.Tests/Fixtures`) host the plan's
   **in-memory component host** (`InMemoryComponentHost`) and example
   capability provider (`ExampleFeatureProvider`: feature count, feature

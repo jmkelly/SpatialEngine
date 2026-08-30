@@ -298,6 +298,23 @@ public sealed class InvocationTests
         Assert.Equal(ResolutionStep.Explicit, outcome.Provenance.Step);
     }
 
+    [Fact]
+    public async Task A_custom_permission_evaluator_is_consulted_per_invocation()
+    {
+        var registry = new CapabilityRegistry();
+        registry.Register(new ExampleFeatureProvider());
+        var runtime = new CapabilityRuntime(
+            registry,
+            permissionEvaluator: new AllowAllEvaluator());
+        var invocation = CapabilityInvocation.Create(
+            ExampleFeatureProvider.EnvelopeCapability,
+            new Dictionary<string, object?> { ["batch"] = FixtureBatches.Points((0, 0)) });
+
+        var outcome = await runtime.InvokeAsync(invocation);
+
+        Assert.True(outcome.IsSuccess);
+    }
+
     private static (CapabilityRegistry Registry, CapabilityRuntime Runtime) CreateRuntime(
         params ICapabilityProvider[] providers)
     {
@@ -308,5 +325,13 @@ public sealed class InvocationTests
         }
 
         return (registry, new CapabilityRuntime(registry));
+    }
+
+    private sealed class AllowAllEvaluator : IPermissionEvaluator
+    {
+        public IReadOnlyList<Permission> Missing(
+            IReadOnlySet<Permission> granted,
+            IReadOnlyList<Permission> required) =>
+            [];
     }
 }
