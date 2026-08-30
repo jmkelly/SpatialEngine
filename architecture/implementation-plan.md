@@ -771,9 +771,11 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 6: NetTopologySuite Operations Plugin
 
-- Define buffer, intersection, validation and simplify contracts.
-- Implement adapters without public NTS types.
-- Add shared conformance fixtures and provenance.
+**Status:** complete (Epic G).
+
+- Define buffer, intersection, validation and simplify contracts (`Spatial.PluginSdk.Operations`, ADR-0026, `architecture/operation-contracts.md`).
+- Implement adapters without public NTS types (`Spatial.Operations.NetTopologySuite`, ADR-0005; `$geometry` canonical-binary wire tag, ADR-0020).
+- Add shared conformance fixtures and provenance (`tests/conformance`, plan §18).
 
 ### Phase 7: Coordinate Transformation Plugin
 
@@ -990,9 +992,9 @@ Root agent instructions must include:
 
 ### Epic G: Spatial implementations
 
-- [ ] NTS adapters and operations
+- [x] NTS adapters and operations
 - [ ] Transformation provider
-- [ ] Shared conformance suite
+- [x] Shared conformance suite
 - [ ] PostGIS provider
 
 ### Epic H: Host and browser workbench
