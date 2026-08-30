@@ -6,6 +6,7 @@
     <Project Path="src/Spatial.PluginHost.DotNet/Spatial.PluginHost.DotNet.csproj" />
     <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
     <Project Path="src/Spatial.Runtime/Spatial.Runtime.csproj" />
+    <Project Path="src/Spatial.Transformations.ProjNet/Spatial.Transformations.ProjNet.csproj" />
   </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/unit/">
@@ -13,6 +14,7 @@
     <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.PluginHost.DotNet.Tests/Spatial.PluginHost.DotNet.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Runtime.Tests/Spatial.Runtime.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Transformations.ProjNet.Tests/Spatial.Transformations.ProjNet.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/conformance/">
     <Project Path="tests/conformance/Spatial.Conformance.Tests/Spatial.Conformance.Tests.csproj" />

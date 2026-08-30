@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The ProjNet coordinate transformation plugin (plan §16 Phase 7, Epic G):
+    a capability provider implementing the CRS description and coordinate
+    transformation contracts (spatial.crs.describe@1,
+    spatial.coordinate.transform@1 - ADR-0027) on top of ProjNet 2.1 (the
+    NetTopologySuite-team continuation of PROJ.NET). It is a plugin
+    implementation, never linked into the runtime or host (ADR-0006/0002):
+    it implements Spatial.PluginSdk only and is launched as a worker by the
+    PluginHost. ProjNet types live inside this package's private adapters and
+    catalogue (ADR-0005) and never cross a public boundary.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="ProjNET" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The unit tests pin the private adapters' conversion behaviour. -->
+    <InternalsVisibleTo Include="Spatial.Transformations.ProjNet.Tests" />
+  </ItemGroup>
+
+</Project>
