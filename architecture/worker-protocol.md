@@ -59,15 +59,19 @@ values:
 | int64 | `{"$i64":"80"}` (decimal string — the only lossless JSON form) |
 | double | JSON number |
 | `byte[]` | `{"$bytes":"aGVsbG8="}` (base64) |
+| `IGeometry` | `{"$geometry":"base64…"}` (canonical SGEOM binary interchange, ADR-0020, Phase 6) |
 | `ResourceHandle` | `{"$resource":{"token","kind","owner","createdAt"}}` (opaque token) |
 | `ProviderId` | its canonical `name@version` string |
 
 Decoding maps JSON numbers to int32 when integral and in range, else int64,
-else double. **Spatial values (geometries, feature batches) are rejected by
-the codec with a structured error**: they cross the boundary as canonical
-binary interchange (ADR-0020), which the operation/store plugins add in later
-phases — the runtime never routes geometry through JSON between workers
-(`architecture/interchange.md`).
+else double. **Geometry crosses the boundary as canonical binary interchange**
+(ADR-0020): the `$geometry` tag carries the base64 SGEOM encoding from
+`Spatial.Core.Geometry.GeometryCodec`, and the codec rejects malformed
+payloads with a byte-accurate error, so arguments and results of the
+operation contracts (Phase 6) never travel as JSON geometry. **Other spatial
+values (feature batches) are rejected by the codec with a structured ADR-0020
+hint** — they cross as streams; the runtime never routes geometry through
+JSON between workers (`architecture/interchange.md`).
 
 ## Resources and streams cross the boundary as facilities
 

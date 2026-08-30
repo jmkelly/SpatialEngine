@@ -35,6 +35,19 @@ abstractions `ICapabilityCatalog`, `ICapabilityProvider`,
 `JobId`, `JobState`, `JobEventKind`, `JobEvent`, `IJob` (which extends
 `IInvocationContext`).
 
+### Operations (Phase 6 — ADR-0026)
+
+`BufferContract`, `IntersectionContract`, `ValidateContract` and
+`SimplifyContract` declare the versioned geometry operation capabilities
+(`spatial.geometry.buffer@1`, `spatial.geometry.intersection@1`,
+`spatial.geometry.validate@1`, `spatial.geometry.simplify@1`): capability
+ids, interchange schema names, error variants, traits and the shared
+`GeometryOperationConformanceExamples` (plan §9 "conformance examples", §18
+conformance tests). `GeometryOperationArguments` holds the stable argument
+names providers read and the conformance suite builds from. Geometry
+arguments and results cross boundaries as canonical binary interchange
+(ADR-0020); values in examples are core types only (ADR-0005).
+
 ## Rules
 
 - Public contracts carry only `Spatial.Core` types (ADR-0005); identifiers

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
@@ -94,6 +95,63 @@ public sealed class ProtocolCodecTests
         var node = WorkerValueCodec.Encode(bytes);
         Assert.Equal("AQID/w==", node!["$bytes"]!.GetValue<string>());
         Assert.Equal(bytes, WorkerValueCodec.Decode(node));
+    }
+
+    [Fact]
+    public void Geometry_travels_as_tagged_canonical_binary()
+    {
+        // Phase 6 (ADR-0026/0020): geometry crosses the worker boundary as
+        // canonical binary interchange (SGEOM) in a dedicated $geometry tag,
+        // never as JSON geometry.
+        var polygon = GeometryFactory.CreatePolygon(
+        [
+            new Coordinate(0, 0),
+            new Coordinate(4, 0),
+            new Coordinate(4, 4),
+            new Coordinate(0, 4),
+            new Coordinate(0, 0),
+        ], new CoordinateReference("EPSG", "4326"));
+
+        var node = WorkerValueCodec.Encode(polygon);
+        var tag = Assert.IsType<JsonObject>(node);
+        var base64 = tag["$geometry"]!.GetValue<string>();
+        Assert.StartsWith("U0dFT00", base64); // 'SGEOM' magic, base64
+        Assert.Equal(GeometryCodec.Encode(polygon), Convert.FromBase64String(base64));
+
+        var back = Assert.IsType<Polygon>(WorkerValueCodec.Decode(node));
+        Assert.Equal(polygon, back);
+        Assert.Equal(new CoordinateReference("EPSG", "4326"), back.CoordinateReference);
+    }
+
+    [Fact]
+    public void Geometry_arguments_and_results_round_trip_through_the_invoke_payload()
+    {
+        var point = GeometryFactory.CreatePoint(1.5, -2.25);
+        var payload = WorkerPayload.Invoke(
+            "spatial.geometry.buffer@1",
+            new Dictionary<string, object?> { ["geometry"] = point, ["distance"] = 1.0 },
+            [],
+            null);
+
+        Assert.Equal(point, Assert.IsType<Point>(WorkerValueCodec.Decode(payload["arguments"]!["geometry"])));
+        Assert.Equal(point, Assert.IsType<Point>(WorkerValueCodec.Decode(WorkerValueCodec.Encode(point))));
+        Assert.Equal(1.0, WorkerValueCodec.Decode(payload["arguments"]!["distance"]));
+
+        var success = WorkerPayload.ResultSuccess(point);
+        var outcome = WorkerPayload.ReadOutcome(success);
+        Assert.Equal(point, Assert.IsType<Point>(outcome.Value));
+    }
+
+    [Fact]
+    public void Malformed_geometry_tags_are_actionable()
+    {
+        var notBase64 = Assert.Throws<WorkerValueException>(() =>
+            WorkerValueCodec.Decode(JsonNode.Parse("{\"$geometry\":\"!!!\"}")));
+        Assert.Contains("base64", notBase64.Message);
+
+        var notCanonical = Assert.Throws<WorkerValueException>(() =>
+            WorkerValueCodec.Decode(JsonNode.Parse("{\"$geometry\":\"aGVsbG8=\"}")));
+        Assert.Contains("canonical geometry", notCanonical.Message);
     }
 
     [Fact]

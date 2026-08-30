@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using Spatial.Core.Geometry;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Resources;
 
@@ -10,17 +11,18 @@ namespace Spatial.PluginHost.DotNet.Protocol;
 /// "inline values for points, envelopes, options and small geometries"): the
 /// language-neutral encoding of argument and result values. The inline
 /// protocol carries scalars, <c>$i64</c>-tagged 64-bit integers, base64
-/// bytes and opaque resource-handle tags; it deliberately rejects spatial
-/// values — those require canonical binary interchange (ADR-0020), which the
-/// store/operation plugins add in later phases. The runtime therefore never
-/// routes geometry through JSON between workers.
+/// bytes, <c>$geometry</c>-tagged canonical binary geometry (ADR-0020,
+/// Phase 6) and opaque resource-handle tags; spatial values other than
+/// geometry (feature batches in particular) are rejected. The runtime
+/// therefore never routes geometry through JSON between workers.
 /// </summary>
 public static class WorkerValueCodec
 {
     /// <summary>
     /// Encodes a value to its wire form. Throws <see cref="WorkerValueException"/>
-    /// for values the inline protocol does not carry (spatial values in
-    /// particular, with an ADR-0020 hint).
+    /// for values the inline protocol does not carry (spatial values other than
+    /// geometry in particular, with an ADR-0020 hint). Geometry travels as a
+    /// <c>$geometry</c> tag carrying canonical binary interchange (SGEOM).
     /// </summary>
     public static JsonNode? Encode(object? value)
     {
@@ -32,6 +34,7 @@ public static class WorkerValueCodec
             byte[] bytes => BytesNode(bytes),
             ResourceHandle handle => ResourceNode(handle),
             ProviderId id => JsonValue.Create(id.ToString()),
+            IGeometry geometry => GeometryNode(geometry),
             _ => EncodeNumber(value),
         };
     }
@@ -49,6 +52,9 @@ public static class WorkerValueCodec
     /// Decodes a wire node back to a CLR value: JSON numbers become
     /// <see cref="int"/> when integral and in range, else <see cref="long"/>,
     /// else <see cref="double"/>; tagged nodes become their tagged type.
+    /// A <c>$geometry</c> node decodes to an <see cref="IGeometry"/> via the
+    /// canonical binary decoder (<see cref="Spatial.Core.Geometry.GeometryCodec"/>)
+    /// and rejects malformed payloads with a byte-accurate error.
     /// </summary>
     public static object? Decode(JsonNode? node)
     {
@@ -65,7 +71,7 @@ public static class WorkerValueCodec
         if (node is JsonArray)
         {
             throw new WorkerValueException(
-                "arrays are not supported as inline worker values; a worker value is a scalar, $i64, $bytes or $resource");
+                "arrays are not supported as inline worker values; a worker value is a scalar, $i64, $bytes, $geometry or $resource");
         }
 
         if (node is JsonValue value)
@@ -88,6 +94,11 @@ public static class WorkerValueCodec
             return ReadBytes(bytesValue, "$bytes");
         }
 
+        if (obj.TryGetPropertyValue("$geometry", out var geometryNode) && geometryNode is JsonValue geometryValue)
+        {
+            return ReadGeometry(geometryValue);
+        }
+
         if (obj.TryGetPropertyValue("$resource", out var resourceNode) && resourceNode is JsonObject resource)
         {
             return ReadResource(resource);
@@ -95,7 +106,7 @@ public static class WorkerValueCodec
 
         throw new WorkerValueException(
             "object values are not supported as inline worker values; "
-            + "remember to tag 64-bit integers ($i64), bytes ($bytes) and resource handles ($resource)");
+            + "remember to tag 64-bit integers ($i64), bytes ($bytes), geometry ($geometry) and resource handles ($resource)");
     }
 
     private static object DecodeValue(JsonValue value)
@@ -170,6 +181,32 @@ public static class WorkerValueCodec
         }
     }
 
+    private static JsonObject GeometryNode(IGeometry geometry) =>
+        new() { ["$geometry"] = Convert.ToBase64String(GeometryCodec.Encode(geometry)) };
+
+    private static IGeometry ReadGeometry(JsonValue node)
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = Convert.FromBase64String(node.GetValue<string>());
+        }
+        catch (Exception exception) when (exception is FormatException or InvalidOperationException)
+        {
+            throw new WorkerValueException($"the $geometry tag must carry a base64 canonical geometry: {exception.Message}", exception);
+        }
+
+        try
+        {
+            return GeometryCodec.Decode(bytes);
+        }
+        catch (CanonicalFormatException exception)
+        {
+            throw new WorkerValueException(
+                $"the $geometry tag must carry canonical geometry bytes (SGEOM, ADR-0020): {exception.Message}", exception);
+        }
+    }
+
     private static ResourceHandle ReadResource(JsonObject resource)
     {
         try
@@ -200,11 +237,11 @@ public static class WorkerValueCodec
     {
         var type = value.GetType();
         var hint = type.FullName?.StartsWith("Spatial.Core.", StringComparison.Ordinal) == true
-            ? " Spatial values cross the worker boundary as canonical binary interchange (ADR-0020), not through the inline JSON protocol."
+            ? " Spatial values other than geometry cross the worker boundary as canonical binary interchange (ADR-0020): geometry uses the $geometry tag, feature batches use streams."
             : string.Empty;
         return new WorkerValueException(
             $"'{type.FullName}' is not supported by the inline worker protocol; supported values are "
-            + "null, bool, int32, int64 ($i64), double, string, byte[] ($bytes), ResourceHandle ($resource) and ProviderId."
+            + "null, bool, int32, int64 ($i64), double, string, byte[] ($bytes), IGeometry ($geometry), ResourceHandle ($resource) and ProviderId."
             + hint);
     }
 }

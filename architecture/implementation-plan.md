@@ -1108,6 +1108,7 @@ ADR-0022 Resource handles are runtime-owned with leases
 ADR-0023 Bounded streams carry the backpressure
 ADR-0024 Jobs are observable state machines with events and timeouts
 ADR-0025 Worker boundaries speak versioned line-delimited JSON with runtime-owned facilities
+ADR-0026 Standard geometry operations are versioned capability contracts
 ```
 
 ## 25. Recommended Starting Sequence

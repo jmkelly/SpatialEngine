@@ -52,11 +52,11 @@ provider runs out of process:
   work unchanged. Stream writes from a worker block until the host
   consumer reads — backpressure is cross-process.
 - Inline values are scalars plus `$i64` (64-bit integers), `$bytes`
-  (binary) and `$resource` (opaque handle) tags. Spatial values are
-  rejected by the codec: geometries and feature batches cross the boundary
-  as canonical binary interchange (ADR-0020) once the operation/store
-  plugins ship it — the runtime never routes geometry through JSON between
-  workers.
+  (binary), `$geometry` (canonical binary geometry, Phase 6) and
+  `$resource` (opaque handle) tags. Geometry crosses the boundary as
+  canonical binary interchange (ADR-0020) in the `$geometry` tag — the
+  runtime never routes geometry through JSON between workers. Feature
+  batches still cross only as streams.
 - Draining a worker version reclaims its resources through
   `ResourceRegistry.DisposeOwnerAsync` (the draining call site) before the
   worker process is stopped.
