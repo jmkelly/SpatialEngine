@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Spatial.Core/Spatial.Core.csproj" />
     <Project Path="src/Spatial.Host/Spatial.Host.csproj" />
+    <Project Path="src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
     <Project Path="src/Spatial.PluginHost.DotNet/Spatial.PluginHost.DotNet.csproj" />
     <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
     <Project Path="src/Spatial.Runtime/Spatial.Runtime.csproj" />
