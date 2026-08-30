@@ -1,0 +1,198 @@
+using System.Globalization;
+using System.Text.Json.Nodes;
+using Spatial.Core.Features;
+using Spatial.PluginHost.DotNet.Manifest;
+using Spatial.PluginHost.DotNet.Protocol;
+using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Resources;
+
+namespace Spatial.PluginHost.DotNet.Tests;
+
+/// <summary>
+/// Phase 5 worker wire protocol (ADR-0025): the versioned envelope codec, the
+/// inline value codec (scalars, $i64, $bytes, $resource — and the deliberate
+/// rejection of spatial values, which require canonical binary interchange,
+/// ADR-0020) and the shared payload builders/readers.
+/// </summary>
+public sealed class ProtocolCodecTests
+{
+    [Fact]
+    public void Envelope_round_trips_through_the_wire_shape()
+    {
+        var payload = new JsonObject { ["n"] = 7 };
+        var line = WorkerWireCodec.Encode(new WorkerEnvelope(WorkerProtocol.Version, WorkerProtocol.Ping, "abc", payload));
+        var envelope = WorkerWireCodec.Decode(line);
+
+        Assert.Equal(WorkerProtocol.Version, envelope.Protocol);
+        Assert.Equal(WorkerProtocol.Ping, envelope.Type);
+        Assert.Equal("abc", envelope.Id);
+        Assert.Equal(7, envelope.Payload!["n"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void Envelope_omits_absent_id_and_payload()
+    {
+        var line = WorkerWireCodec.Encode(new WorkerEnvelope(WorkerProtocol.Version, WorkerProtocol.Hello, null, null));
+        Assert.DoesNotContain("\"id\"", line);
+        Assert.DoesNotContain("\"payload\"", line);
+        Assert.Equal(WorkerProtocol.Hello, WorkerWireCodec.Decode(line).Type);
+    }
+
+    [Theory]
+    [InlineData("{ not json")]
+    [InlineData("[1,2,3]")]
+    [InlineData("\"just a string\"")]
+    public void Malformed_envelopes_are_rejected(string line)
+    {
+        Assert.Throws<WorkerProtocolException>(() => WorkerWireCodec.Decode(line));
+    }
+
+    [Fact]
+    public void Wrong_protocol_and_missing_type_are_rejected()
+    {
+        Assert.Throws<WorkerProtocolException>(() => WorkerWireCodec.Decode("{\"protocol\":\"spatial.worker/2\",\"type\":\"ping\"}"));
+        Assert.Throws<WorkerProtocolException>(() => WorkerWireCodec.Decode("{\"protocol\":\"spatial.worker/1\"}"));
+        Assert.Throws<WorkerProtocolException>(() =>
+            WorkerWireCodec.Encode(new WorkerEnvelope(WorkerProtocol.Version, string.Empty, null, null)));
+    }
+
+    [Fact]
+    public void Scalar_values_round_trip()
+    {
+        Assert.Null(WorkerValueCodec.Decode(WorkerValueCodec.Encode(null)));
+        Assert.Equal(true, WorkerValueCodec.Decode(WorkerValueCodec.Encode(true)));
+        Assert.Equal(5, WorkerValueCodec.Decode(WorkerValueCodec.Encode(5)));
+        Assert.Equal(80L, WorkerValueCodec.Decode(WorkerValueCodec.Encode(80L)));
+        Assert.Equal(2.5, WorkerValueCodec.Decode(WorkerValueCodec.Encode(2.5)));
+        Assert.Equal("hello", WorkerValueCodec.Decode(WorkerValueCodec.Encode("hello")));
+    }
+
+    [Fact]
+    public void Int64_travels_as_a_tagged_decimal_string()
+    {
+        var node = WorkerValueCodec.Encode(80L);
+        Assert.IsType<JsonObject>(node);
+        Assert.Equal("80", node!["$i64"]!.GetValue<string>());
+        Assert.Equal(80L, WorkerValueCodec.Decode(node));
+
+        var huge = 9_000_000_000L;
+        Assert.Equal(huge, WorkerValueCodec.Decode(WorkerValueCodec.Encode(huge)));
+    }
+
+    [Fact]
+    public void Integers_decode_to_int_when_they_fit()
+    {
+        Assert.Equal(5, WorkerValueCodec.Decode(JsonNode.Parse("5")));
+        Assert.Equal(80, WorkerValueCodec.Decode(JsonNode.Parse("80")));
+        Assert.Equal(2.5, WorkerValueCodec.Decode(JsonNode.Parse("2.5")));
+    }
+
+    [Fact]
+    public void Bytes_travel_as_base64()
+    {
+        var bytes = new byte[] { 1, 2, 3, 255 };
+        var node = WorkerValueCodec.Encode(bytes);
+        Assert.Equal("AQID/w==", node!["$bytes"]!.GetValue<string>());
+        Assert.Equal(bytes, WorkerValueCodec.Decode(node));
+    }
+
+    [Fact]
+    public void Resource_handles_travel_as_opaque_tags()
+    {
+        var handle = new ResourceHandle(
+            new ResourceId(Guid.Parse("11111111-2222-3333-4444-555555555555")),
+            ResourceKind.Parse("fixture.dataset"),
+            ProviderId.Parse("fixture@1"),
+            DateTimeOffset.Parse("2025-01-02T03:04:05.0000000Z", CultureInfo.InvariantCulture));
+
+        var node = WorkerValueCodec.Encode(handle);
+        var back = Assert.IsType<ResourceHandle>(WorkerValueCodec.Decode(node));
+
+        Assert.Equal(handle.Id, back.Id);
+        Assert.Equal(handle.Kind, back.Kind);
+        Assert.Equal(handle.Owner, back.Owner);
+        Assert.Equal(handle.CreatedAt, back.CreatedAt);
+    }
+
+    [Fact]
+    public void Provider_ids_travel_as_their_canonical_string()
+    {
+        var node = WorkerValueCodec.Encode(ProviderId.Parse("fixture@1"));
+        Assert.Equal("fixture@1", node!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Spatial_values_are_rejected_with_an_override_hint()
+    {
+        var feature = new FeatureBatch(
+            new FeatureSchema([new FieldDefinition("count", AttributeKind.Int64)]), []);
+        var exception = Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Encode(feature));
+        Assert.Contains("canonical binary interchange (ADR-0020)", exception.Message);
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Encode(new object()));
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("[1,2]")));
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"x\":1}")));
+    }
+
+    [Fact]
+    public void Tag_errors_are_actionable()
+    {
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$i64\":\"not-a-number\"}")));
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$bytes\":\"!!!\"}")));
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$resource\":{}}")));
+        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$resource\":{\"token\":\"x\",\"kind\":\"a\",\"owner\":\"b@1\",\"createdAt\":\"2025-01-01T00:00:00Z\"}}")));
+    }
+
+    [Fact]
+    public void Invoke_payload_builds_and_round_trips_arguments_and_deadline()
+    {
+        var deadline = DateTimeOffset.Parse("2025-06-01T12:00:00Z", CultureInfo.InvariantCulture);
+        var payload = WorkerPayload.Invoke(
+            "spatial.fixture.sleep@1",
+            new Dictionary<string, object?> { ["milliseconds"] = 80L, ["label"] = "x" },
+            ["spatial.fixture.read"],
+            deadline);
+
+        Assert.Equal("spatial.fixture.sleep@1", payload["capability"]!.GetValue<string>());
+        Assert.Equal(80L, WorkerValueCodec.Decode(payload["arguments"]!["milliseconds"]));
+        Assert.Equal("x", WorkerValueCodec.Decode(payload["arguments"]!["label"]));
+        Assert.Equal("x", payload["arguments"]!["label"]!.GetValue<string>());
+        Assert.Equal(deadline, DateTimeOffset.Parse(payload["deadline"]!.GetValue<string>(), CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void Result_outcomes_round_trip_success_and_failure()
+    {
+        var success = WorkerPayload.ResultSuccess(80L);
+        var outcome = WorkerPayload.ReadOutcome(success);
+        Assert.Equal(WorkerOutcomeKind.Success, outcome.Kind);
+        Assert.Equal(80L, outcome.Value);
+
+        var failure = WorkerPayload.ResultFailure(CapabilityError.Cancelled(CapabilityId.Parse("spatial.fixture.sleep@1")));
+        var failed = WorkerPayload.ReadOutcome(failure);
+        Assert.Equal(WorkerOutcomeKind.Failure, failed.Kind);
+        Assert.Equal(CapabilityErrorKind.Cancelled, failed.Error!.Kind);
+        Assert.Equal("operation.cancelled", failed.Error.Code);
+    }
+
+    [Fact]
+    public void Hello_payload_builds_and_reads()
+    {
+        var manifest = FixtureManifest.V1();
+        var hello = WorkerPayload.Hello(manifest);
+        var document = WorkerPayload.ReadHello(hello);
+
+        Assert.Equal("fixture@1", document.Id);
+        Assert.Equal("dotnet", document.Runtime);
+        Assert.Equal(FixtureManifest.AssemblyName, document.Assembly);
+        Assert.Equal(FixtureManifest.V1ProviderType, document.AssemblyType);
+        Assert.Equal(manifest.Capabilities.Select(capability => capability.Id), document.Capabilities);
+    }
+
+    [Fact]
+    public void Unknown_and_missing_result_shapes_are_rejected()
+    {
+        Assert.Throws<WorkerProtocolException>(() => WorkerPayload.ReadOutcome(JsonNode.Parse("{\"kind\":\"maybe\"}")));
+        Assert.Throws<WorkerProtocolException>(() => WorkerPayload.ReadOutcome(JsonNode.Parse("{\"kind\":\"failure\"}")));
+        Assert.Throws<WorkerProtocolException>(() => WorkerPayload.ReadHello(JsonNode.Parse("{}")));
+    }
+}
