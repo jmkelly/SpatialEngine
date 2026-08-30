@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-30T09:47:07.779230+00:00",
+  "timestamp": "2026-08-30T10:02:37.836580+00:00",
   "coverageFile": "/home/james/Work/SpatialEngine/artifacts/test-results/merged/coverage.cobertura.xml",
   "policy": {
     "branchFloor": 70,
@@ -7,21 +7,21 @@
   },
   "stats": {
     "total": {
-      "covered": 1064,
-      "valid": 1172,
-      "pct": 90.8,
-      "branchesCovered": 483,
-      "branchesValid": 567,
-      "branchPct": 85.2
+      "covered": 1073,
+      "valid": 1181,
+      "pct": 90.9,
+      "branchesCovered": 487,
+      "branchesValid": 571,
+      "branchPct": 85.3
     },
     "perCategory": {
       "authored": {
-        "covered": 1064,
-        "valid": 1172,
-        "pct": 90.8,
-        "branchesCovered": 483,
-        "branchesValid": 567,
-        "branchPct": 85.2
+        "covered": 1073,
+        "valid": 1181,
+        "pct": 90.9,
+        "branchesCovered": 487,
+        "branchesValid": 571,
+        "branchPct": 85.3
       },
       "compilerGenerated": {
         "covered": 37,
@@ -74,9 +74,9 @@
         "branchPct": null
       },
       "Envelope.cs": {
-        "covered": 92,
-        "valid": 96,
-        "pct": 95.8,
+        "covered": 94,
+        "valid": 98,
+        "pct": 95.9,
         "branchesCovered": 66,
         "branchesValid": 70,
         "branchPct": 94.3
@@ -90,12 +90,12 @@
         "branchPct": 95.5
       },
       "GeometryCodec.cs": {
-        "covered": 419,
-        "valid": 486,
-        "pct": 86.2,
-        "branchesCovered": 166,
-        "branchesValid": 194,
-        "branchPct": 85.6
+        "covered": 426,
+        "valid": 493,
+        "pct": 86.4,
+        "branchesCovered": 170,
+        "branchesValid": 198,
+        "branchPct": 85.9
       },
       "GeometryCollection.cs": {
         "covered": 18,
@@ -221,7 +221,7 @@
   },
   "gate": {
     "rule": "authored branch coverage >= 70%",
-    "branchCoverage": 85.2,
+    "branchCoverage": 85.3,
     "passed": true,
     "untestedAuthoredMethods": 32,
     "uncoveredAuthoredLines": 42
@@ -269,7 +269,7 @@
     },
     {
       "filePath": "/home/james/Work/SpatialEngine/GeometryCodec.cs",
-      "lineNumber": 668,
+      "lineNumber": 677,
       "className": "GeometryCodec",
       "methodName": "Fail",
       "complexity": 1,
@@ -329,7 +329,7 @@
     },
     {
       "filePath": "/home/james/Work/SpatialEngine/GeometryCodec.cs",
-      "lineNumber": 650,
+      "lineNumber": 659,
       "className": "GeometryCodec",
       "methodName": "TryReadDoubles",
       "complexity": 4,
@@ -339,7 +339,7 @@
     },
     {
       "filePath": "/home/james/Work/SpatialEngine/GeometryCodec.cs",
-      "lineNumber": 697,
+      "lineNumber": 706,
       "className": "Reader",
       "methodName": "TryReadByte",
       "complexity": 2,
@@ -349,7 +349,7 @@
     },
     {
       "filePath": "/home/james/Work/SpatialEngine/GeometryCodec.cs",
-      "lineNumber": 731,
+      "lineNumber": 740,
       "className": "Reader",
       "methodName": "TryReadString",
       "complexity": 6,
@@ -399,7 +399,7 @@
     },
     {
       "filePath": "/home/james/Work/SpatialEngine/Envelope.cs",
-      "lineNumber": 170,
+      "lineNumber": 164,
       "className": "Envelope",
       "methodName": "ToString",
       "complexity": 2,
@@ -409,7 +409,7 @@
     },
     {
       "filePath": "/home/james/Work/SpatialEngine/GeometryCodec.cs",
-      "lineNumber": 709,
+      "lineNumber": 718,
       "className": "Reader",
       "methodName": "TryReadInt32",
       "complexity": 2,
