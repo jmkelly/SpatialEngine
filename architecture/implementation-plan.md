@@ -787,9 +787,22 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 8: PostGIS Provider
 
+**Status:** complete (Epic G).
+
 - Implement catalogue, schema discovery, feature scan, filtering, streaming, writing and transactions.
 - Integrate host-managed secrets and command cancellation.
 - Add containerised integration tests.
+
+Contract surface: `Spatial.PluginSdk.Providers` (ADR-0028,
+`architecture/data-provider-contracts.md`) — `spatial.catalogue.list@1`,
+`spatial.dataset.describe@1`, `spatial.dataset.create@1`,
+`spatial.feature.scan@1`, `spatial.feature.query@1`,
+`spatial.feature.write@1`, `spatial.transaction.begin/commit/rollback@1` —
+implemented by `Spatial.Provider.PostGIS` (`postgis@1`) on Npgsql 10.
+Feature data crosses as canonical binary (stream items and batch
+arguments), metadata as JSON text items; secrets reach the worker through
+its launch environment; containerised integration tests run on
+Testcontainers PostGIS.
 
 ### Phase 9: ASP.NET Core Host and SDKs
 
@@ -997,7 +1010,7 @@ Root agent instructions must include:
 - [x] NTS adapters and operations
 - [x] Transformation provider
 - [x] Shared conformance suite
-- [ ] PostGIS provider
+- [x] PostGIS provider
 
 ### Epic H: Host and browser workbench
 
@@ -1114,6 +1127,7 @@ ADR-0024 Jobs are observable state machines with events and timeouts
 ADR-0025 Worker boundaries speak versioned line-delimited JSON with runtime-owned facilities
 ADR-0026 Standard geometry operations are versioned capability contracts
 ADR-0027 Coordinate transformation contracts and the ProjNet adapter
+ADR-0028 PostGIS provider contracts and data interchange
 ```
 
 ## 25. Recommended Starting Sequence

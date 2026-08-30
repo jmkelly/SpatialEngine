@@ -88,6 +88,16 @@ through it.
 
 ## The two ends
 
+The host side supervises the worker process: it spawns the worker host
+apphost against a package directory, health-pings, restarts crashed workers
+and relays invocations. The worker side announces its validated package,
+serves invocations and relays progress/outcomes. **Provider secrets are
+host-managed and reach the worker through its launch environment**: the
+supervisor options carry a `WorkerEnvironment` dictionary applied to the
+spawned process (Phase 8, ADR-0028, `architecture/security-model.md`), so a
+provider reads its connection configuration from an environment variable at
+startup — never from an invocation or the web client.
+
 - **Worker host** (`Spatial.PluginHost.DotNet` executable): loads one package
   (manifest + assembly) in an isolated load context, validates the loaded
   provider against the manifest, answers `hello`, serves `invoke`/`cancel`/

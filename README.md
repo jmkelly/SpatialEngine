@@ -16,6 +16,26 @@ implementations.
 
 ## Status
 
+Phase 8 — PostGIS data provider. The data-provider contracts ship in
+`Spatial.PluginSdk.Providers` (`spatial.catalogue.list@1`,
+`spatial.dataset.describe@1`, `spatial.dataset.create@1`,
+`spatial.feature.scan@1`, `spatial.feature.query@1`,
+`spatial.feature.write@1`, `spatial.transaction.begin@1` / `commit@1` /
+`rollback@1` — ADR-0028, `architecture/data-provider-contracts.md`), and
+`Spatial.Provider.PostGIS` (`postgis@1`) implements them on Npgsql 10.
+Schema discovery (information_schema/geometry_columns/pg_class), streaming
+feature scans with canonical binary batches both directions
+(`ST_AsEWKB`/`ST_GeomFromEWKB`, ADR-0020), bounding-box and parameterised
+attribute filtering (every literal bound, columns resolved against
+discovered fields), single-transaction appends, result-table creation and
+commit/rollback/enlisted transactions are covered by 128 DB-free unit
+tests, a shared conformance matrix (in-process and as a packaged worker)
+and a containerised integration suite (Testcontainers PostGIS) that also
+proves mid-stream database cancellation and secret redaction. Secrets stay
+host-managed: the supervisor hands providers their connection configuration
+through the worker launch environment (`SPATIAL_POSTGIS_CONNECTION`), never
+through invocations.
+
 Phase 7 — coordinate transformation plugin. The CRS description and
 coordinate transformation contracts ship in
 `Spatial.PluginSdk.Transformations` (`spatial.crs.describe@1` /
@@ -89,6 +109,7 @@ in-memory component host as the test vehicle.
 | `src/Spatial.PluginHost.DotNet` | Language-neutral worker protocol for .NET plugins |
 | `src/Spatial.Operations.NetTopologySuite` | Standard geometry operations (buffer, intersection, validate, simplify) |
 | `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation (spatial.crs.describe@1, spatial.coordinate.transform@1) |
+| `src/Spatial.Provider.PostGIS` | Data provider: catalogue, dataset, feature scan/query/write and transactions |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host |
 | `tests/` | unit / architecture / contract / conformance / integration suites |
 | `architecture/` | Plan, principles, boundary docs and ADRs |
