@@ -77,9 +77,10 @@ public sealed class WorkerChannel : IAsyncDisposable
         JsonNode? payload,
         string responseType,
         TimeSpan? timeout = null,
+        string? id = null,
         CancellationToken cancellationToken = default)
     {
-        var id = Guid.NewGuid().ToString("N");
+        id ??= Guid.NewGuid().ToString("N");
         var pending = new PendingRequest(id, responseType, _name);
         if (!_pending.TryAdd(id, pending))
         {
@@ -159,9 +160,9 @@ public sealed class WorkerChannel : IAsyncDisposable
 
                 if (envelope.Id is { } id
                     && envelope.IsProtocolV1
-                    && _pending.TryGetValue(id, out var pending))
+                    && _pending.TryGetValue(id, out var pending)
+                    && pending.ResolveOrReject(envelope))
                 {
-                    pending.Resolve(envelope);
                     continue;
                 }
 
@@ -231,16 +232,29 @@ public sealed class WorkerChannel : IAsyncDisposable
 
         public Task<JsonNode?> Completion => _completion.Task;
 
-        public void Resolve(WorkerEnvelope envelope)
+        /// <summary>
+        /// Consumes the envelope when it resolves or violates the pending
+        /// request: a matching response resolves it, a wrong *response* type
+        /// is a protocol violation. Async messages that share the id space
+        /// (progress, cancel) are NOT consumed — the caller delivers them to
+        /// the message handler.
+        /// </summary>
+        public bool ResolveOrReject(WorkerEnvelope envelope)
         {
-            if (envelope.Type != responseType)
+            if (envelope.Type == responseType)
+            {
+                _completion.TrySetResult(envelope.Payload);
+                return true;
+            }
+
+            if (WorkerProtocol.ResponseTypes.Contains(envelope.Type))
             {
                 _completion.TrySetException(new WorkerProtocolException(
                     $"request {id} on '{channelName}' expected a '{responseType}' response but received '{envelope.Type}'"));
-                return;
+                return true;
             }
 
-            _completion.TrySetResult(envelope.Payload);
+            return false;
         }
 
         public void Fail(WorkerDisconnectedException exception) => _completion.TrySetException(exception);

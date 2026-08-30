@@ -9,6 +9,11 @@
     ADR-0006/0013/0025).
   -->
 
+  <PropertyGroup>
+    <!-- The worker host is an executable: the supervisor spawns this apphost. -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />

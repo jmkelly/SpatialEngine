@@ -155,7 +155,7 @@ public sealed class WorkerChannelTests : IAsyncDisposable
         var (a, b) = CreatePair(b => EchoAs(b, WorkerProtocol.Pong));
         using var caller = new CancellationTokenSource();
 
-        var request = a.RequestAsync(WorkerProtocol.Ping, null, WorkerProtocol.Pong, timeout: null, caller.Token).AsTask();
+        var request = a.RequestAsync(WorkerProtocol.Ping, null, WorkerProtocol.Pong, timeout: null, id: null, caller.Token).AsTask();
         caller.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request);
         Assert.True(a.IsConnected);

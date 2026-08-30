@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Resources;
 
 namespace Spatial.PluginHost.DotNet.Protocol;
 
@@ -109,11 +110,12 @@ public static class WorkerPayload
             ["error"] = error is null ? null : ErrorNode(error),
         };
 
-    /// <summary>Builds a successful <see cref="WorkerProtocol.FacilityResult"/> payload (minted handle).</summary>
-    public static JsonObject FacilityResultOk(string token, string kind, string owner, DateTimeOffset createdAt) =>
+    /// <summary>Builds a successful <see cref="WorkerProtocol.FacilityResult"/> payload (minted handle, optional stream capacity hint).</summary>
+    public static JsonObject FacilityResultOk(string token, string kind, string owner, DateTimeOffset createdAt, int capacity = 0) =>
         new()
         {
             ["ok"] = true,
+            ["capacity"] = capacity > 0 ? JsonValue.Create(capacity) : null,
             ["handle"] = new JsonObject
             {
                 ["token"] = token,
@@ -122,6 +124,58 @@ public static class WorkerPayload
                 ["createdAt"] = createdAt.ToString("O", CultureInfo.InvariantCulture),
             },
         };
+
+    /// <summary>Reads a facility-result success into the minted <see cref="Spatial.PluginSdk.Resources.ResourceHandle"/>; throws with the structured error on failure.</summary>
+    public static ResourceHandle ReadFacilityHandle(JsonNode? payload)
+    {
+        if (payload is not JsonObject obj)
+        {
+            throw new WorkerProtocolException("a facility result must be a JSON object");
+        }
+
+        if (obj["ok"]?.GetValue<bool>() != true)
+        {
+            var error = ReadError(obj["error"]);
+            throw new WorkerProtocolException(
+                $"the supervisor rejected the facility request: {error.Code}: {error.Message}");
+        }
+
+        if (obj["handle"] is not JsonObject handle
+            || handle["token"]?.GetValue<string>() is not { } token
+            || handle["kind"]?.GetValue<string>() is not { } kind
+            || handle["owner"]?.GetValue<string>() is not { } owner
+            || handle["createdAt"]?.GetValue<string>() is not { } createdAt)
+        {
+            throw new WorkerProtocolException("a successful facility result must carry token, kind, owner and createdAt");
+        }
+
+        try
+        {
+            return new ResourceHandle(
+                new ResourceId(Guid.Parse(token)),
+                ResourceKind.Parse(kind),
+                ProviderId.Parse(owner),
+                DateTimeOffset.Parse(createdAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new WorkerProtocolException($"the facility handle is malformed: {exception.Message}", exception);
+        }
+    }
+
+    /// <summary>Throws when a facility-result payload reports a failure (used for acks that carry no handle).</summary>
+    public static void EnsureFacilityOk(JsonNode? payload)
+    {
+        if (payload is not JsonObject obj || obj["ok"]?.GetValue<bool>() != true)
+        {
+            var errorNode = (payload as JsonObject)?["error"];
+            var error = errorNode is null ? null : ReadError(errorNode);
+            throw new WorkerProtocolException(
+                error is null
+                    ? "the supervisor did not acknowledge the facility request"
+                    : $"the supervisor rejected the facility request: {error.Code}: {error.Message}");
+        }
+    }
 
     /// <summary>Builds a failed <see cref="WorkerProtocol.FacilityResult"/> payload.</summary>
     public static JsonObject FacilityResultError(CapabilityError error) =>

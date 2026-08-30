@@ -15,6 +15,9 @@
   <Folder Name="/tests/architecture/">
     <Project Path="tests/architecture/Spatial.Architecture.Tests/Spatial.Architecture.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests/fixtures/">
+    <Project Path="tests/fixtures/Spatial.Plugin.Fixtures/Spatial.Plugin.Fixtures.csproj" />
+  </Folder>
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj" />
   </Folder>

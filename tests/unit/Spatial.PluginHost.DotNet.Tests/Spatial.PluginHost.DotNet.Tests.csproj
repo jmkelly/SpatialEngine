@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginHost.DotNet\Spatial.PluginHost.DotNet.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
+    <ProjectReference Include="..\..\fixtures\Spatial.Plugin.Fixtures\Spatial.Plugin.Fixtures.csproj" />
   </ItemGroup>
 
 </Project>
