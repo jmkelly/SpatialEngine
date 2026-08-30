@@ -1,167 +1,170 @@
 # Handoff — Spatial Engine
 
 > Written for the next agent taking over. Read `AGENTS.md`, then
-> `architecture/implementation-plan.md` (the source of truth). **Phase 6
-> (NetTopologySuite operations plugin) is complete**; Phase 7 (coordinate
-> transformation plugin) is next.
+> `architecture/implementation-plan.md` (the source of truth). **Phase 7
+> (coordinate transformation plugin) is complete**; Phase 8 (PostGIS
+> provider) is next.
 
 ## Repository state
 
-- **Branch:** `main`. Working tree clean at handoff... **except**: the four
-  quality-gate queue/report files at the repo root (`crap-queue.md`,
-  `coverage-queue.md`, `metrics-queue.md`, `warnings-queue.md`,
-  `stryker-queue.md`, `*.report.json`, `coverage-history.csv`) are
-  gitignored and currently exist on disk **reporting the FINAL GREEN state**
-  (all four audits exit 0 on the current HEAD) — do not commit them.
-- **Phase 6 commits:**
-  - `232fdde` — geometry operation contracts in `Spatial.PluginSdk.Operations`
-    (buffer/intersection/validate/simplify @1, ADR-0026) + the `$geometry`
-    canonical-binary wire tag in the worker value codec (ADR-0020)
-  - `a845be4` — `src/Spatial.Operations.NetTopologySuite` plugin
-    (`nts@1`, NetTopologySuite 2.6.0) with the private core↔NTS adapter
-  - `64e89f8` — plugin unit tests + the shared conformance suite
-    (`tests/conformance`, runs same fixtures in-process and against the
-    worker package)
-  - `01e5735` — `architecture/operation-contracts.md`, plan ticks, README
-  - `19adbf4` — operation-runner consolidation for the metrics gate (see
-    gotchas below)
-- **Tests:** 631 total (Core 308, Runtime 201, PluginHost 76 (43 s — spawns),
-  Operations 31, Conformance 4 (7 s — spawns), Architecture 8, Host 3).
+- **Branch:** `main`. Working tree clean at handoff. The four quality-gate
+  queue/report files at the repo root (`crap-queue.md`, `coverage-queue.md`,
+  `metrics-queue.md`, `warnings-queue.md`, `*.report.json`,
+  `coverage-history.csv`) are gitignored and currently on disk reporting the
+  GREEN state — do not commit them.
+- **Phase 7 commits:**
+  - `0229241` — transformation contracts in `Spatial.PluginSdk.Transformations`
+    (`spatial.crs.describe@1`, `spatial.coordinate.transform@1`, `CrsIdentity`,
+    `CrsDescription`, ADR-0027) + the `$crs` wire tag in `WorkerValueCodec`
+  - `b77196c` — `src/Spatial.Transformations.ProjNet` plugin (`projnet@1`,
+    ProjNet 2.1.0) with the curated programmatic EPSG catalogue + 39 unit tests
+  - `040b00c` — the shared transformation conformance suite (in-process +
+    isolated worker package)
+  - `f212660` — ADR-0027, `architecture/transformation-contracts.md`, plan
+    ticks, README
+  - `245e192` — quality-gate refinements (codec/runner complexity splits,
+    fan-in ceiling held at Ca 7)
+- **Tests:** 685 total (Core 308, Runtime 201, PluginHost 78 (44 s — spawns),
+  ProjNet 48, NTS 31, Conformance 8 (7 s — spawns), Architecture 8, Host 3).
   `./eng/verify.sh` passes from this tree.
 
-## Completed — Phase 6 (Epic G): NetTopologySuite operations plugin
+## Completed — Phase 7 (Epic G): coordinate transformation plugin
 
-- **Contracts (ADR-0026, `architecture/operation-contracts.md`)**: the four
-  versioned capability contracts ship in `Spatial.PluginSdk.Operations` —
-  `spatial.geometry.buffer@1` / `intersection@1` / `validate@1` /
-  `simplify@1`. Each declares input/output schema names, one error variant
-  (`invalid.arguments`), `Cancellable` traits (inline, never long-running)
-  and shared conformance examples (`GeometryOperationConformanceExamples`)
-  whose values are core geometry types only (ADR-0005). Argument names in
-  `GeometryOperationArguments`.
-- **Wire interchange**: geometry now crosses the worker boundary as canonical
-  binary interchange in a `$geometry` wire tag (SGEOM bytes, base64) — the
-  inline codec decodes to real `IGeometry` values and rejects malformed
-  payloads with byte-accurate errors (tested in `ProtocolCodecTests`).
-  Feature batches are still rejected (ADR-0020 hint). JSON cannot represent
-  NaN/infinity, so the `non-finite-distance` example runs only in-process
-  (the conformance suite skips wire-incompatible examples for the worker).
-- **Plugin** (`src/Spatial.Operations.NetTopologySuite`, provider `nts@1`):
-  NetTopologySuite 2.6.0. Private `Adapters/GeometryAdapter` converts every
-  core shape ⇄ NTS (ring closure normalised — open rings get their first
-  coordinate appended; Z/M ordinates carried where the planar algorithms
-  preserve them; simplify keeps Z, buffer/intersection are XY; the input CRS
-  identity goes on results; rings/children carry no CRS). Validation
-  pre-checks OGC ring rules (≥4 coords, closed) that NTS LinearRings cannot
-  represent, then `IsValidOp` — an invalid geometry is a successful `false`.
-  NTS `TopologyException`/`ArgumentException` → `invalid.arguments` naming
-  the cause; everything else → provider failure. Cancellation is honoured
-  before the synchronous run.
-- **Conformance** (`tests/conformance/Spatial.Conformance.Tests`): the
-  shared suite (`GeometryOperationConformance`) runs the same success /
-  empty-input / unsupported-input / cancellation / diagnostics / provenance
-  fixtures against the provider **both in-process and as an isolated worker
-  package** (supervisor + real child process, `$geometry` over the wire).
-  Every outcome asserts provenance (capability, provider, step, duration,
-  no job id). A unit suite pins the adapter round trips and the provider's
-  argument contract; an ADR-0005 reflection test asserts no NTS type appears
-  on the plugin's public surface.
+- **Contracts (ADR-0027, `architecture/transformation-contracts.md`)**: two
+  versioned capability contracts in `Spatial.PluginSdk.Transformations` —
+  `spatial.crs.describe@1` (input `crs.identity`, output `crs.description`
+  carried as a new `$crs` wire value) and `spatial.coordinate.transform@1`
+  (input `geometry.transform` — a geometry, optional `source` defaulting to
+  the geometry's own CRS, required `target`; output geometry stamped with
+  the target CRS). One error variant `invalid.arguments` naming the value.
+  **Axis convention**: the engine is x-first for every CRS (x = longitude /
+  easting); describe reports declared axes. The describe contract's
+  conformance examples (string-only) are embedded in the contract; the
+  transform fixtures ship **with the conformance suite** (`Transform
+  ConformanceExamples`) — a fan-in-budget decision documented in ADR-0027.
+- **Wire**: `CrsDescription` crosses the worker boundary as a `$crs` inline
+  tag (same explicit-tag rule as `$geometry`, ADR-0020/0025); malformed
+  payloads fail with field-level errors. The `$geometry` tag carries
+  transformed results unchanged — no other codec change.
+- **Plugin** (`src/Spatial.Transformations.ProjNet`, provider `projnet@1`):
+  ProjNet 2.1.0. The embedded **curated EPSG catalogue** (`ProjEpsgCatalog`,
+  12 CRSs) is built programmatically through ProjNet's factory — NOT WKT
+  parsed, because ProjNet 2.1's WKT reader maps "Popular Visualisation
+  Pseudo-Mercator" to Mercator_1SP (~33 km northing error). Datum shifts are
+  zero for modern datums, the classic Helmert for OSGB36 (no grid support).
+  Control points verified against PROJ 9 (pyproj): sub-millimetre for
+  datum-free pairs, 0.1 m tolerance (documented) for the Helmert path.
+- **Adapter** (`ProjNetTransformRunner` + `ProjNetCrsMapper`): engine
+  convention == ProjNet 2.1 math order → no axis swaps; Z/M and layout kept;
+  non-finite out-of-area results are `invalid.arguments`, never poisoned
+  geometry; mismatched explicit source vs geometry CRS is invalid; empty
+  geometries keep type/layout with target CRS.
 
-## Quality gates (Phase 6 — all green)
+## Quality gates (Phase 7 — all green)
 
-All four audits exit 0 on HEAD: **CRAP 0** of 1571 methods (floor < 10);
-**coverage 79.1% branch** (floor 70%); **metrics 0 findings**; **warnings 0**.
+All four audits exit 0 on HEAD: **CRAP 0 of 1714 methods** (threshold < 10);
+**coverage 79.4% branch** (floor 70%); **metrics 0 findings**
+(`Spatial.Core.Geometry` Ca 7 — the fan-in ceiling, see gotchas); **warnings 0**.
 
-**Stryker (my call — NOT run).** The repo's only stryker-config.json pins
+**Stryker (my call — NOT run).** The repo's stryker-config.json pins
 `Spatial.Runtime.csproj`, which this phase did not change; the phase's new
-assemblies (PluginSdk contracts, PluginHost.DotNet codec, the NTS plugin)
-have no mutation config. An ~11-min run would therefore measure unchanged
-code and miss this phase entirely — skip is honest, not evasion. Last known
-score (Phase 5 handoff): run-level 87.27% / last-scores 93.09%, break-60
-green. **Recommendation for the loop's final repo-wide pass**: decide
-whether to add a stryker config for `Spatial.Operations.NetTopologySuite`
-(policy decision, like Phase 5's PluginHost one; the conformance project
-spawns a worker, so mutations will be slow per-test).
+assemblies (PluginSdk.Transformations contracts, ProjNet plugin, the codec's
+`$crs` extension) have no mutation config. Same reasoning as Phase 6: an
+~11-min run would measure unchanged Runtime code and miss this phase. Last
+known score (Phase 5 handoff): run-level 87.27% / last-scores 93.09%,
+break-60 green. **Recommendation for the loop's final repo-wide pass**: add
+stryker configs for `Spatial.Transformations.ProjNet` and (now that the
+codec carries `$geometry`/`$crs`/`$resource`) `Spatial.PluginHost.DotNet` —
+both were policy decisions like Phase 5's PluginHost one.
 
 ## Hard-won gotchas (read before touching this code)
 
-- **The metrics gate's `architectural-rigidity` diagnosis is a fan-in count
-  on `Spatial.Core.Geometry`** — codemetrics fires it when ≥ 8 distinct
-  *production types* reference the namespace (D ≥ 0.6, abstractness < 0.3,
-  not data-only). Phase 5 had Ca 2; this phase's nine geometry-referencing
-  types pushed it to 11 and tripped the HIGH diagnosis. It is an
-  interpreted namespace diagnosis: **NOT suppressible via `.dependably`
-  exceptions or failOn severity** (exceptions only apply to metric rules
-  cyclomatic/cognitive/nesting/mi/lcom4/coupling; verified against the
-  tool's source at /tmp/cm). The only levers are code: reduce the count of
-  types referencing Core.Geometry (I consolidated the four duplicated
-  operation runners + parsing + validity + failure mapping into one
-  `NtsOperationRunner` — Ca now 6), or raise Core's abstractness (the
-  quality loop's fixer added an `IPoint`/`ILineString` interface layer to
-  Core — **I reverted it**: it rewrites the Phase 1 core's public surface
-  for a gate artifact and violates the Core boundary; if a future phase
-  tips Ca ≥ 8 again, prefer consolidation in the phase's own code).
-- **The quality loop spawns autonomous fix sessions**: when I ran
-  `quality-loop.py --skip stryker`, its headless implementor edited the
-  tree itself (Core interfaces + a dispatch refactor) before I killed the
-  loop after 30 min. Run the loop with a tight budget, or run the four
-  audits directly (`scripts/dotnet/{audit,coverage-audit,metrics-audit,
-  warnings-audit}.py`) and drive fixes yourself — the audits are
-  deterministic and exit 0/1.
-- **The loop's `.dependably` default excludes only `**/*.Tests/**`** — the
-  fixture plugin project (`tests/fixtures/Spatial.Plugin.Fixtures/`) is
-  scanned as a production namespace (Ca 0, no geometry refs — fine today,
-  but keep it that way; NTS mutations there would count).
-- **NTS 2.6 changed the coordinate classes**: plain `Coordinate` is 2D
-  (`Coordinate.Z` setter throws); 3D is `CoordinateZ`. The adapter never
-  touches coordinate classes — it builds sequences with
-  `CoordinateArraySequenceFactory.Create(size, dimension, measures)` and
-  reads ordinates via `GetOrdinate(i, Ordinate.X/Z/M)` + `HasZ`/`HasM`.
-  Buffer/intersection output is dim-2 (XY); simplify preserves Z.
-- **A namespace named `Spatial.Operations.NetTopologySuite...` shadows the
-  `NetTopologySuite` root namespace** — any qualified `NetTopologySuite.…`
-  reference inside the plugin's namespaces fails to resolve. Use aliases
-  (`using NtsGeometry = …`, `NtsTopologyException = …`).
-- **`CapabilityId` is a record struct — it keys a `Dictionary` fine**; the
-  provider dispatch is now a table (`Handlers`) which also killed the
-  `deep-nesting` metrics finding the ternary chain caused.
-- **`Progress<T>` / spawn-test gotchas from Phase 5 still apply**; ditto
-  `Assert.NotNull` binds to the void overload (use `Assert.IsType`), cc ≤ 9
-  per method, final newline in every file.
-- **Conformance on the worker path**: pre-cancelled caller tokens yield
-  `Cancelled` through the supervisor (`WorkerChannel.RequestAsync` aborts on
-  the linked token) even though the wire invoke has no token — the shared
-  cancellation fixture passes on both paths.
-- **`TryOptionalPositiveInt` accepts int32 and int64** wire forms (JSON
-  numbers decode to int, `$i64` to long) — the conformance example passes
-  `12L`; a strict `TryGetArgument<int>` would reject the wire form.
+- **The Ca-7 ceiling is the hardest constraint in this repo.** The metrics
+  gate fires the HIGH `architectural-rigidity` diagnosis when ≥ 8 production
+  types reference `Spatial.Core.Geometry` (D 0.91, abstractness 0.09 —
+  not configurable via `.dependably`, verified against the tool at
+  /tmp/cm/src). Phase 7 sits at Ca 7, exactly **one slot from red**. Phase 8's
+  PostGIS provider MUST plan for this: reading PostGIS rows → `IGeometry`
+  values will need geometry-referencing production types. Consolidate into
+  one type, reuse `WorkerValueCodec`-style geometry marshalling, or — the
+  strongest option — put the feature/geometry conversion in ONE interior
+  class. Watch **nested records**: a nested `record TransformArguments` that
+  held an `IGeometry` field tripped Ca 7→8 mid-phase (I moved the geometry
+  out of the record). Nested types count as separate referrers.
+- **The CRAP tool (crap4dotnet 0.1.1) uses the CUBIC formula
+  `cc²×(1−cov)³+cc` and rates conditional methods by BRANCH-rate** (from the
+  cobertura `<method branch-rate>` when conditions exist). Consequences: a
+  method with cc ≥ 10 fails even at 100% coverage (split it); switch/chain
+  methods must have **reachable branches only** — an unreachable `default`
+  arm caps branch coverage and fails cc ≥ 7ish. Phase 7's fix pattern:
+  dispatch **tables** for per-type/per-enum mapping (the composite geometry
+  table, the orientation lookup) instead of exhaustive switches with dead
+  default arms; extracted `TryX` helpers for argument chains.
+- **ProjNet 2.1 specifics**: (1) inside any namespace under
+  `Spatial.Transformations.ProjNet`, bare `ProjNet.…` references shadow to
+  the plugin namespace — use file-level aliases (`using ProjCs =
+  ProjNet.CoordinateSystems;` resolves globally) or `global::`. (2) The WKT
+  reader misclassifies Pseudo-Mercator (catalogue is programmatic). (3)
+  Projected CRSs expose their datum via `GeographicCoordinateSystem.
+  HorizontalDatum`; geocentric via its own `HorizontalDatum`; the inherited
+  one is null. (4) No custom exception types — map
+  `ArgumentException`/`NotSupportedException`/`FormatException`. (5) Static
+  field init order matters: `Entries = BuildEntries()` must be declared
+  after the `Geographic`/`Projected` arrays it reads (NRE otherwise).
+- **coverage collection noise**: the merged cobertura mixes filename styles
+  per test project (`src/…` for PluginHost tests, `ProjectName/…` for
+  cross-project runs) and crap4dotnet matches by canonical key; expect
+  hundreds of `[UNMATCHED_METHODS]` warnings. It's noise as long as the
+  FLAGGED list stays empty — verify by watching the gate, not the warnings.
+  Keep the queue files out of commits (gitignored).
+- **The worker-package pattern to copy** (already in `tests/conformance`):
+  `NtsManifest`/`NtsPackageWriter` → for Phase 7, `ProjNetManifest`/
+  `ProjNetPackageWriter` copies `ProjNET.dll` next to the plugin assembly
+  (the conformance project is the only project that references the plugin,
+  so coverlet covers it from both runs — fine). `WorkerValueCodec` decodes
+  `$crs` only for `JsonObject` tags — the reject-path message lists all
+  supported tags; keep it in sync when adding tags in Phase 8 (feature
+  batches still cross only as streams — ADR-0020).
+- **Style traps**: `dotnet format` before every commit (the write tool drops
+  trailing newlines; the format check fails otherwise — FINALNEWLINE/
+  WHITESPACE/IMPORTS). CA1859 wants private methods/fields concrete-typed
+  (`Dictionary`, `PackedCoordinateSequence`…). xUnit2018 forbids
+  `Assert.IsType<IGeometry>` (cast instead); xUnit1031 forbids
+  `.GetAwaiter().GetResult()` in test methods (await). The formula-gate
+  means **about half the branch coverage burden is "keep methods small"** —
+  per AGENTS.md.
+- **The `$crs` decode tests live in `ProtocolCodecTests`**; the conformance
+  `$crs` round trip goes through the real worker in
+  `WorkerTransformConformanceTests`.
 
-## Next up — Phase 7: Coordinate Transformation Plugin
+## Next up — Phase 8: PostGIS Provider
 
-From the plan (§16, Epic G): define CRS description and transformation
-contracts; implement the selected transformation library adapter; add
-control-point, axis-order, error and tolerance tests. What Phase 6 leaves
+From the plan (§16, Epic G): catalogue, schema discovery, feature scan,
+filtering, streaming, writing and transactions; host-managed secrets and
+command cancellation; containerised integration tests. What Phase 7 leaves
 ready:
 
 1. **The patterns to copy wholesale**: contracts in
-   `Spatial.PluginSdk.Operations`-style static classes (+ ADR), a plugin
-   project with a private adapter (NTS-free though — Phase 7 picks its own
-   library), unit tests pinning the adapter, and the conformance suite that
-   runs the same fixtures in-process and against the worker package
-   (`NtsManifest` deriving the manifest from the provider's descriptors +
-   `NtsPackageWriter` copying the plugin's dependency assemblies — a Proj
-   library would be copied the same way).
-2. **Plan §16 Phase 7 tick list**: "Define CRS description and
-   transformation contracts" (Phase 7 owns ADR-0009's *transformation is a
-   plugin* contract shape), "Implement the selected transformation library
-   adapter", "Add control-point, axis-order, error and tolerance tests".
-   Epic G's remaining unticked bullets are "Transformation provider" and
-   "PostGIS provider".
-3. **The `$geometry` wire tag is the interchange for CRS-transformed
-   results too** — no wire change needed; only new contract ids
-   (e.g. `spatial.transform.*@1` or `spatial.crs.describe@1`).
-4. **Mind the metrics fan-in gotcha**: a transformation plugin will add
-   more Core.Geometry referrers — keep the probe at Ca < 8 for
-   `Spatial.Core.Geometry` (consolidate; today Ca 6).
-5. **Host wiring is still Phase 9**; Phase 7 can stay on the test rigs like
-   Phase 6 did.
+   `Spatial.PluginSdk…` static classes (+ ADR), a plugin project with private
+   adapters (PostGIS-backed), unit tests, and the shared conformance rig that
+   runs the same fixtures in-process and against the worker package. The
+   transform provider shows the worker-package flow end to end including the
+   dependency copy.
+2. **The fan-in budget is spent**: `Spatial.Core.Geometry` is at Ca 7 —
+   Phase 8's row→geometry conversion must fit in the remaining **one**
+   referrer slot (or consolidate an existing one, e.g. fold `WorkerValueCodec`
+   dependencies — risky; prefer a single interior conversion type).
+3. **Plan §16 Phase 8 ticks** are the Epic G bullets "PostGIS provider" plus
+   the phase bullets (catalogue, schema discovery, scan/filter/stream/write/
+   transactions, secrets, cancellation, containerised integration tests).
+   `architecture/security-model.md` covers provider secrets; the plan §18
+   test matrix covers conformance + integration (the audit already mentions
+   Testcontainers Postgres ~40–60 s).
+4. **Wire**: feature batches still cross the worker boundary only as streams
+   (ADR-0020); the inline codec rejects them deliberately — Phase 8's
+   streaming path is the Phase 4 `Streaming` trait + `$resource` handles, not
+   a new inline tag.
+5. **PostGIS needs a `postgis@1`-style provider id and its own curated
+   capabilities** (e.g. `spatial.feature.scan@1`, `spatial.feature.query@1`,
+   `spatial.feature.write@1` from plan §9); the geometry interchange for
+   results is the existing `$geometry` tag.
