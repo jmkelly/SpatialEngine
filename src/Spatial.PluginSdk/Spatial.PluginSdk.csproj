@@ -2,4 +2,18 @@
 
   <!-- Public capability contracts and SDK types for plugin developers and clients. -->
 
+  <!--
+    CA1711 flags reserved suffixes in type names. 'Permission' is the
+    documented contract name for a permission it holds (plan §9 "required
+    permissions"); the flag suffix rule is for BCL-facing names and does not
+    apply to the capability contract vocabulary.
+  -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);CA1711</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+  </ItemGroup>
+
 </Project>

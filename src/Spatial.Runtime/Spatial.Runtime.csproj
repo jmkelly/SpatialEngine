@@ -4,6 +4,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
   </ItemGroup>
 
 </Project>
