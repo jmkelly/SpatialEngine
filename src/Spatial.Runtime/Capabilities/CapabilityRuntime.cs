@@ -24,6 +24,7 @@ public sealed class CapabilityRuntime
     private readonly IPermissionEvaluator _permissions;
     private readonly ResourceRegistry _resources;
     private readonly JobRegistry _jobs;
+    private readonly ActivePreferenceTable _active = new();
 
     public CapabilityRuntime(
         CapabilityRegistry registry,
@@ -33,13 +34,33 @@ public sealed class CapabilityRuntime
         JobRegistry? jobRegistry = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
-        _resolver = new CapabilityResolver(registry, configuration ?? CapabilityConfiguration.Empty);
+        _resolver = new CapabilityResolver(
+            registry, configuration ?? CapabilityConfiguration.Empty, _active);
         _permissions = permissionEvaluator ?? PermissionDefaults.Membership;
         _resources = resourceRegistry ?? new ResourceRegistry();
         _jobs = jobRegistry ?? new JobRegistry();
     }
 
     public CapabilityRegistry Registry => _registry;
+
+    /// <summary>
+    /// Sets the active provider preference — which provider new work routes to
+    /// when none is pinned — replacing the previous active value. The process
+    /// supervisor uses this to steer side-by-side activation (plan §10.4
+    /// "route new work to the new version") and rollback without touching the
+    /// immutable start-up configuration.
+    /// </summary>
+    public void SetActivePreference(CapabilityId capability, ProviderId provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider.Name);
+        _active.SetPreferred(capability, provider);
+    }
+
+    /// <summary>Removes the active preference; resolution falls back to the configured preference.</summary>
+    public void ClearActivePreference(CapabilityId capability) => _active.ClearPreferred(capability);
+
+    /// <summary>A snapshot of every active preference (diagnostics).</summary>
+    public IReadOnlyDictionary<CapabilityId, ProviderId> ActivePreferences => _active.Snapshot();
 
     /// <summary>The runtime's resource tracker (opaque handles, leases, disposal, leak detection).</summary>
     public ResourceRegistry Resources => _resources;

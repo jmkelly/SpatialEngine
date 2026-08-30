@@ -55,9 +55,8 @@ internal sealed class WorkerRig : IAsyncDisposable
 
     public static WorkerRig Start(PluginManifest manifest)
     {
-        var packageDirectory = Directory.CreateTempSubdirectory("spatial-package-").FullName;
-        WritePackage(packageDirectory, manifest);
-
+        var packageRoot = Directory.CreateTempSubdirectory("spatial-package-").FullName;
+        var packageDirectory = PackageWriter.Write(packageRoot, manifest);
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -121,7 +120,7 @@ internal sealed class WorkerRig : IAsyncDisposable
             _process.Dispose();
             try
             {
-                Directory.Delete(_packageDirectory, recursive: true);
+                Directory.Delete(Path.GetDirectoryName(_packageDirectory)!, recursive: true);
             }
             catch (IOException)
             {
@@ -168,19 +167,6 @@ internal sealed class WorkerRig : IAsyncDisposable
         return new ProgressSample(
             obj["fraction"] is JsonValue fraction ? fraction.GetValue<double>() : null,
             obj["message"] is JsonValue message ? message.GetValue<string>() : null);
-    }
-
-    private static void WritePackage(string packageDirectory, PluginManifest manifest)
-    {
-        File.WriteAllText(
-            Path.Combine(packageDirectory, PluginManifest.FileName),
-            FixtureManifest.ToJson(manifest));
-
-        var fixtureDirectory = Path.GetDirectoryName(typeof(FixtureProviderV1).Assembly.Location)!;
-        foreach (var assembly in new[] { "Spatial.Plugin.Fixtures.dll", "Spatial.Core.dll", "Spatial.PluginSdk.dll" })
-        {
-            File.Copy(Path.Combine(fixtureDirectory, assembly), Path.Combine(packageDirectory, assembly));
-        }
     }
 
     private static string WorkerHostExecutable =>

@@ -52,7 +52,7 @@ public sealed class PluginWorkerHost : IAsyncDisposable
             input,
             output,
             envelope => host.HandleAsync(envelope),
-            $"worker:{provider.Id}");
+            $"host:{provider.Id}");
         host = new PluginWorkerHost(channel, manifest, provider);
         return host;
     }
@@ -135,7 +135,14 @@ public sealed class PluginWorkerHost : IAsyncDisposable
 
             var effective = invocation with { CancellationToken = cts.Token };
             var state = new InvokeState(cts);
-            state.Task = RunInvokeAsync(invokeId, effective, cts);
+            // Run the provider on the thread pool: the provider may block
+            // synchronously on a facility RPC (GetResult), and that must never
+            // stall the read loop that answers the RPC.
+            state.Task = Task.Factory.StartNew(
+                () => RunInvokeAsync(invokeId, effective, cts),
+                CancellationToken.None,
+                TaskCreationOptions.DenyChildAttach,
+                TaskScheduler.Default).Unwrap();
             _invokes[invokeId] = state;
         }
         else

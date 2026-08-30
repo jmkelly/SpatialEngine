@@ -10,6 +10,7 @@ public enum ResolutionStep
 {
     Explicit = 0,
     ResourceLocal = 1,
-    ConfiguredPreferred = 2,
-    FirstHealthy = 3,
+    ActivePreferred = 2,
+    ConfiguredPreferred = 3,
+    FirstHealthy = 4,
 }

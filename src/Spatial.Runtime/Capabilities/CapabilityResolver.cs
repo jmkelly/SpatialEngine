@@ -13,11 +13,16 @@ internal sealed class CapabilityResolver
 {
     private readonly CapabilityRegistry _registry;
     private readonly CapabilityConfiguration _configuration;
+    private readonly ActivePreferenceTable _active;
 
-    public CapabilityResolver(CapabilityRegistry registry, CapabilityConfiguration configuration)
+    public CapabilityResolver(
+        CapabilityRegistry registry,
+        CapabilityConfiguration configuration,
+        ActivePreferenceTable? active = null)
     {
         _registry = registry;
         _configuration = configuration;
+        _active = active ?? new ActivePreferenceTable();
     }
 
     /// <summary>
@@ -41,6 +46,12 @@ internal sealed class CapabilityResolver
         if (LocalProvider(options) is { } localId && MatchOrNull(candidates, localId) is { } localMatch)
         {
             return ToResolved(localMatch, ResolutionStep.ResourceLocal);
+        }
+
+        if (_active.PreferredFor(capability) is { } active
+            && MatchOrNull(candidates, active) is { } activeMatch)
+        {
+            return ToResolved(activeMatch, ResolutionStep.ActivePreferred);
         }
 
         if (_configuration.PreferredProviderFor(capability) is { } preferred

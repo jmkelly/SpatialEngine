@@ -55,7 +55,7 @@ public sealed class ResourceRegistry
     }
 
     /// <summary>Mints and registers an open resource carrying a runtime-held payload (streams).</summary>
-    internal ResourceHandle Create(ProviderId owner, ResourceKind kind, object payload)
+    public ResourceHandle Create(ProviderId owner, ResourceKind kind, object payload)
     {
         lock (_gate)
         {
