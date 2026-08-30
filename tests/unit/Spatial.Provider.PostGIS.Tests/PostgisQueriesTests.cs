@@ -1,0 +1,92 @@
+using Spatial.Core.Features;
+using Spatial.Provider.PostGIS.Core;
+using Spatial.Provider.PostGIS.Data;
+
+namespace Spatial.Provider.PostGIS.Tests;
+
+/// <summary>
+/// Generated SQL (PostgisQueries): deterministic statements built from
+/// validated identifiers and discovered columns — never from client text —
+/// with all parameter placeholders positional and matching the bound-value
+/// order, so injection-shaped input cannot become SQL structure.
+/// </summary>
+public sealed class PostgisQueriesTests
+{
+    private static readonly FeatureSchema Schema = FeatureTests.Schema(
+        ("id", AttributeKind.Int64, false),
+        ("name", AttributeKind.String, false),
+        ("geom", AttributeKind.Geometry, false));
+
+    [Fact]
+    public void Select_quotes_the_qualified_name_and_wraps_geometry_in_ewkb()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        var sql = PostgisQueries.Select(dataset, Schema);
+
+        Assert.Equal("SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\"", sql);
+    }
+
+    [Fact]
+    public void Query_appends_the_predicate_after_where()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" WHERE \"name\" = @p0",
+            PostgisQueries.Query(dataset, Schema, "\"name\" = @p0"));
+    }
+
+    [Fact]
+    public void Insert_uses_one_parameter_per_batch_field_in_order()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            "INSERT INTO \"public\".\"places\" (\"id\", \"name\", \"geom\") VALUES (@p0, @p1, ST_GeomFromEWKB(@p2, 4326))",
+            PostgisQueries.Insert(dataset, Schema, 4326));
+    }
+
+    [Fact]
+    public void Create_table_types_columns_and_geometry_at_the_srid()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.result", out var dataset, out _));
+        var schema = FeatureTests.Schema(
+            ("id", AttributeKind.Int64, false),
+            ("name", AttributeKind.String, false),
+            ("geom", AttributeKind.Geometry, false),
+            ("seen", AttributeKind.DateTimeOffset, true),
+            ("token", AttributeKind.Guid, true),
+            ("flag", AttributeKind.Boolean, false),
+            ("score", AttributeKind.Double, false));
+
+        var sql = PostgisQueries.CreateTable(dataset, schema, 3857);
+
+        Assert.Equal(
+            "CREATE TABLE \"public\".\"result\" (\"id\" bigint, \"name\" text, \"geom\" geometry(Geometry, 3857), "
+            + "\"seen\" timestamptz, \"token\" uuid, \"flag\" boolean, \"score\" double precision)",
+            sql);
+    }
+
+    [Fact]
+    public void Catalogue_optional_pattern_is_a_bound_parameter()
+    {
+        var without = PostgisQueries.Catalogue(null);
+        Assert.DoesNotContain("@p0", without);
+
+        var with = PostgisQueries.Catalogue("roads_%");
+        Assert.Contains("LIKE @p0", with);
+        Assert.DoesNotContain("roads_%", with);
+    }
+
+    [Fact]
+    public void Metadata_queries_use_positional_placeholders_and_never_client_text()
+    {
+        Assert.Contains("@p0", PostgisQueries.ColumnsMetadata());
+        Assert.Contains("@p1", PostgisQueries.ColumnsMetadata());
+        Assert.Contains("@p0", PostgisQueries.GeometryColumnsMetadata());
+        Assert.Contains("@p0", PostgisQueries.PrimaryKeyColumns());
+        Assert.Contains("@p0", PostgisQueries.RowEstimate());
+        Assert.Contains("@p0", PostgisQueries.TableExists());
+    }
+}

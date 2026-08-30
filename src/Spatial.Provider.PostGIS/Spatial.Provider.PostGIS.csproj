@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The PostGIS data provider plugin (plan §16 Phase 8, ADR-0010/0028): a
+    capability provider implementing the catalogue, dataset, feature and
+    transaction contracts (Spatial.PluginSdk.Providers) on Npgsql 10. It is a
+    plugin implementation, never linked into the runtime or host
+    (ADR-0006/0002): it implements Spatial.PluginSdk only and is launched as
+    a worker by the PluginHost, receiving its connection configuration from
+    the worker process environment (host-managed secrets, ADR-0028).
+    Npgsql types, SQL and EWKB live inside this package's private adapters
+    (ADR-0005) and never cross a public boundary.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tests pin the private adapters' conversion and validation behaviour. -->
+    <InternalsVisibleTo Include="Spatial.Provider.PostGIS.Tests" />
+    <InternalsVisibleTo Include="Spatial.PostGIS.Tests" />
+    <InternalsVisibleTo Include="Spatial.Conformance.Tests" />
+  </ItemGroup>
+
+</Project>

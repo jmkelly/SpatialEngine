@@ -255,7 +255,8 @@ public sealed class WorkerSupervisor : IAsyncDisposable
         var handshake = new TaskCompletionSource<HelloDocument>(TaskCreationOptions.RunContinuationsAsynchronously);
         _handshakes[instance.Id] = handshake;
         var process = WorkerProcess.Start(
-            _options.WorkerExecutable, instance.Package.Path, $"worker:{instance.ProviderId}", HandlerFor(instance));
+            _options.WorkerExecutable, instance.Package.Path, $"worker:{instance.ProviderId}", HandlerFor(instance),
+            _options.WorkerEnvironment);
         instance.Channel = process.Channel;
         instance.Process = process;
         instance.MarkProcess(process.ProcessId);

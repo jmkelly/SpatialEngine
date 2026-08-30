@@ -5,6 +5,7 @@
     <Project Path="src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
     <Project Path="src/Spatial.PluginHost.DotNet/Spatial.PluginHost.DotNet.csproj" />
     <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
+    <Project Path="src/Spatial.Provider.PostGIS/Spatial.Provider.PostGIS.csproj" />
     <Project Path="src/Spatial.Runtime/Spatial.Runtime.csproj" />
     <Project Path="src/Spatial.Transformations.ProjNet/Spatial.Transformations.ProjNet.csproj" />
   </Folder>
@@ -13,6 +14,7 @@
     <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.PluginHost.DotNet.Tests/Spatial.PluginHost.DotNet.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Provider.PostGIS.Tests/Spatial.Provider.PostGIS.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Runtime.Tests/Spatial.Runtime.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Transformations.ProjNet.Tests/Spatial.Transformations.ProjNet.Tests.csproj" />
   </Folder>
@@ -27,5 +29,6 @@
   </Folder>
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj" />
+    <Project Path="tests/integration/Spatial.PostGIS.Tests/Spatial.PostGIS.Tests.csproj" />
   </Folder>
 </Solution>

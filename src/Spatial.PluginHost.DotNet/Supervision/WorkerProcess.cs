@@ -41,14 +41,16 @@ public sealed class WorkerProcess : IAsyncDisposable
 
     /// <summary>
     /// Spawns the worker host executable with <c>--package &lt;dir&gt;</c> and
-    /// starts the channel. Throws <see cref="InvalidOperationException"/> when
-    /// the executable cannot be launched (missing apphost — diagnostics).
+    /// starts the channel, applying the launch environment (host-managed
+    /// provider secrets, ADR-0028). Throws <see cref="InvalidOperationException"/>
+    /// when the executable cannot be launched (missing apphost — diagnostics).
     /// </summary>
     public static WorkerProcess Start(
         string workerExecutable,
         string packageDirectory,
         string name,
-        Func<WorkerEnvelope, ValueTask> onMessage)
+        Func<WorkerEnvelope, ValueTask> onMessage,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         var process = new Process
         {
@@ -62,6 +64,14 @@ public sealed class WorkerProcess : IAsyncDisposable
                 RedirectStandardError = true,
             },
         };
+
+        if (environment is not null)
+        {
+            foreach (var (key, value) in environment)
+            {
+                process.StartInfo.Environment[key] = value;
+            }
+        }
 
         try
         {

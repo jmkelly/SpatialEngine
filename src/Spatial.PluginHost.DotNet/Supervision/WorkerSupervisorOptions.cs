@@ -13,13 +13,15 @@ public sealed class WorkerSupervisorOptions
         WorkerHealthOptions? health = null,
         RestartPolicy? restartPolicy = null,
         TimeSpan? startupTimeout = null,
-        TimeSpan? drainTimeout = null)
+        TimeSpan? drainTimeout = null,
+        IReadOnlyDictionary<string, string>? workerEnvironment = null)
     {
         WorkerExecutable = workerExecutable ?? WorkerSupervisor.DefaultExecutable;
         Health = health ?? WorkerHealthOptions.Default;
         RestartPolicy = restartPolicy ?? RestartPolicy.Default;
         StartupTimeout = startupTimeout ?? TimeSpan.FromSeconds(10);
         DrainTimeout = drainTimeout ?? TimeSpan.FromSeconds(30);
+        WorkerEnvironment = workerEnvironment ?? new Dictionary<string, string>();
     }
 
     /// <summary>The worker host apphost to spawn (defaults to the one next to this assembly).</summary>
@@ -32,4 +34,12 @@ public sealed class WorkerSupervisorOptions
     public TimeSpan StartupTimeout { get; }
 
     public TimeSpan DrainTimeout { get; }
+
+    /// <summary>
+    /// The launch environment handed to every spawned worker process
+    /// (host-managed provider secrets, ADR-0028/security-model.md): providers
+    /// read connection configuration from these variables at startup — never
+    /// from invocations or the web client. Empty by default.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> WorkerEnvironment { get; }
 }
