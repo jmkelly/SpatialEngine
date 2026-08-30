@@ -19,6 +19,15 @@ public sealed class NtsOperationsProvider : CapabilityProviderBase
     /// <summary>The stable provider identity (<c>nts@1</c>).</summary>
     public static readonly ProviderId ProviderIdentifier = ProviderId.Parse("nts@1");
 
+    private static readonly Dictionary<CapabilityId, Func<CapabilityInvocation, ValueTask<CapabilityResult>>> Handlers =
+        new()
+        {
+            [BufferContract.Id] = NtsOperationRunner.BufferAsync,
+            [IntersectionContract.Id] = NtsOperationRunner.IntersectionAsync,
+            [ValidateContract.Id] = NtsOperationRunner.ValidateAsync,
+            [SimplifyContract.Id] = NtsOperationRunner.SimplifyAsync,
+        };
+
     private static readonly IReadOnlyList<CapabilityDescriptor> ContractDescriptors =
     [
         BufferContract.Descriptor,
@@ -35,10 +44,8 @@ public sealed class NtsOperationsProvider : CapabilityProviderBase
     public override ProviderId Id => ProviderIdentifier;
 
     public override ValueTask<CapabilityResult> InvokeAsync(CapabilityInvocation invocation) =>
-        invocation.Capability == BufferContract.Id ? NtsBufferOperation.RunAsync(invocation)
-        : invocation.Capability == IntersectionContract.Id ? NtsIntersectionOperation.RunAsync(invocation)
-        : invocation.Capability == ValidateContract.Id ? NtsValidateOperation.RunAsync(invocation)
-        : invocation.Capability == SimplifyContract.Id ? NtsSimplifyOperation.RunAsync(invocation)
-        : new ValueTask<CapabilityResult>(CapabilityResult.Failure(CapabilityError.ContractViolation(
-            $"The NetTopologySuite operations provider does not serve {invocation.Capability}.")));
+        Handlers.TryGetValue(invocation.Capability, out var handler)
+            ? handler(invocation)
+            : new ValueTask<CapabilityResult>(CapabilityResult.Failure(CapabilityError.ContractViolation(
+                $"The NetTopologySuite operations provider does not serve {invocation.Capability}.")));
 }
