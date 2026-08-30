@@ -13,7 +13,8 @@ no project references, no algorithms (enforced by
 Owned here: `Coordinate`, `CoordinateLayout`, `ICoordinateSequence`,
 `Envelope`, `IGeometry` and simple-feature types, `CoordinateReference`,
 `Feature`/`FeatureId`/`AttributeValue`/`FieldDefinition`/`FeatureSchema`,
-canonical binary encoding (from Phase 1 onward).
+canonical binary encoding (Phase 1: `GeometryCodec`, version 1 — spec in
+`architecture/geometry-model.md`), `GeometryFactory`, `GeometryTraversal`,
 
 ## Never here
 

@@ -7,6 +7,9 @@
     <Project Path="src/Spatial.Runtime/Spatial.Runtime.csproj" />
   </Folder>
   <Folder Name="/tests/" />
+  <Folder Name="/tests/unit/">
+    <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
+  </Folder>
   <Folder Name="/tests/architecture/">
     <Project Path="tests/architecture/Spatial.Architecture.Tests/Spatial.Architecture.Tests.csproj" />
   </Folder>

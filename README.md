@@ -16,9 +16,11 @@ implementations.
 
 ## Status
 
-Phase 0 — architecture guardrails. Repository structure, build configuration,
-architecture tests and decision records are in place. Geometry (Phase 1) is
-next.
+Phase 1 — core geometry. Coordinate layouts, CRS identity, envelopes,
+packed/array coordinate sequences, the immutable simple-feature geometry
+hierarchy, traversal, builders and the canonical binary codec (v1) are
+implemented with unit, seeded-property and allocation tests. Features and
+schemas (Phase 2) are next.
 
 ## Repository layout
 

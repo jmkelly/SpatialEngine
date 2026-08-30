@@ -929,21 +929,21 @@ Root agent instructions must include:
 
 ### Epic A: Repository and guardrails
 
-- [ ] Create .NET 10 solution and package structure
-- [ ] Add architecture tests
-- [ ] Add build scripts
-- [ ] Add agent instructions
-- [ ] Add initial decision records
+- [x] Create .NET 10 solution and package structure
+- [x] Add architecture tests
+- [x] Add build scripts
+- [x] Add agent instructions
+- [x] Add initial decision records
 
 ### Epic B: Geometry foundation
 
-- [ ] Coordinate and layout types
-- [ ] CRS identity
-- [ ] Packed coordinate sequence
-- [ ] Geometry hierarchy
-- [ ] Envelope and traversal
-- [ ] Binary encoding
-- [ ] Builders and property tests
+- [x] Coordinate and layout types
+- [x] CRS identity
+- [x] Packed coordinate sequence
+- [x] Geometry hierarchy
+- [x] Envelope and traversal
+- [x] Binary encoding
+- [x] Builders and property tests
 
 ### Epic C: Features and batches
 

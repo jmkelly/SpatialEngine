@@ -11,7 +11,8 @@ implementation-plan.md §8 and ADR-0020.
 - **Opaque handles** for datasets, transactions and intermediate results,
   with ownership, leases and disposal.
 - Canonical binary geometry: WKB/EWKB-derived, wrapped with CRS and
-  coordinate-layout metadata.
+  coordinate-layout metadata (version 1 spec: `geometry-model.md`
+  "Canonical binary format", implemented by `GeometryCodec`).
 - Versioned feature batches.
 - JSON exists for debugging and public API usability only; the runtime never
   routes geometry through JSON between workers.
