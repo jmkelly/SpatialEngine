@@ -84,7 +84,12 @@ regenerated per run.
 **Last gate status:** quality PASS (0/379 CRAP ≥ 10, after complexity
 reductions — every authored method is now cc ≤ 9, enforced by the gate),
 coverage PASS (85–90% authored branch ≥ 70), metrics PASS (0 findings),
-warnings PASS, Stryker PASS (89.59% ≥ 60 break).
+warnings PASS, **Stryker RED — 26.24% < 60% break** (full run, 979
+mutants; the initial 89.59% figure was a narrowly-scoped run and is wrong).
+The quality loop drives implementor passes against `stryker-queue.md`;
+survivors are mostly missing behavioral assertions (layout-merge changes,
+boundary comparisons, null/empty guards, mutator arithmetic) — add real
+tests, do not lower the break threshold.
 
 ## Hard-won gotchas (read before touching geometry code)
 
