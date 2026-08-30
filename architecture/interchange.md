@@ -44,7 +44,6 @@ implementation-plan.md §8 and ADR-0020.
 Workers speak the versioned wire protocol (`architecture/worker-protocol.md`)
 over stdin/stdout. Handles and streams stay runtime-owned even when the
 provider runs out of process:
-
 - A worker mints a resource or creates a bounded stream through facility
   RPCs (`facility.mint`, `facility.stream.*`); the supervisor's facility
   server performs the work in the host's `ResourceRegistry`, so the handle
@@ -60,6 +59,29 @@ provider runs out of process:
 - Draining a worker version reclaims its resources through
   `ResourceRegistry.DisposeOwnerAsync` (the draining call site) before the
   worker process is stopped.
+
+## Data provider value forms (Phase 8, ADR-0028)
+
+Providers exchange data through the capability contracts in
+`Spatial.PluginSdk.Providers` (`architecture/data-provider-contracts.md`):
+
+- **Feature data is canonical binary, both directions** (ADR-0020):
+  scan/query stream items are `FeatureBatchCodec` v1 byte arrays (one item
+  per batch); write/create batch arguments are the same bytes. The provider
+  encodes identically on the in-process and worker paths so conformance
+  fixtures see one shape.
+- **Metadata is JSON text items**: catalogue entries (`catalogue.metadata`)
+  and dataset descriptions (`dataset.description`) are small, debuggable
+  JSON documents defined by `DatasetMetadataJson` in the SDK — the plan's
+  "JSON for debugging and public API usability" rule, never applied to
+  feature or geometry payloads.
+- **Transactions are opaque handles** (ADR-0022): `transaction.begin`
+  returns a runtime-owned `$resource` handle; commit/rollback and enlisted
+  writes carry it back; provider-side state dies with the handle's
+  transaction or the worker instance.
+- **No new inline tags**: the Phase 5 codec vocabulary is unchanged
+  (scalars, `$i64`, `$bytes`, `$geometry`, `$crs`, `$resource`, `ProviderId`);
+  stream items are values it already carries.
 
 Encoding/decoding is core behaviour (canonical round trips are tested in
 Phase 1).

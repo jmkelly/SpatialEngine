@@ -68,6 +68,16 @@ permissions follow the same dotted-lowercase rule (`nts@1`,
   is the test vehicle for resolution, invocation, errors, deadlines,
   cancellation, progress, permissions, resources, streams and jobs, and the
   template for real providers in later phases.
+- **`src/Spatial.PluginSdk/Providers`** (Phase 8, ADR-0028) ships the
+  **data-provider contracts**: `spatial.catalogue.list@1`,
+  `spatial.dataset.describe@1`, `spatial.dataset.create@1`,
+  `spatial.feature.scan@1`, `spatial.feature.query@1`,
+  `spatial.feature.write@1` and `spatial.transaction.begin/commit/rollback@1`
+  (input/output schemas, error variants, required permissions, traits). The
+  shared metadata interchange (`DatasetSummary`, `DatasetDescription`,
+  `DatasetMetadataJson`) and provider resource kinds live here too. The
+  reference implementation is `Spatial.Provider.PostGIS` (`postgis@1`) —
+  see `architecture/data-provider-contracts.md`.
 
 ## Registration rules (enforced by the registry)
 

@@ -30,5 +30,5 @@ public static class SimplifyContract
         [new ErrorVariant("invalid.arguments", "An argument is missing, of the wrong kind, or an input geometry the algorithm cannot process.")],
         [],
         CapabilityTraits.Cancellable,
-        GeometryOperationConformanceExamples.Simplify);
+        []);
 }

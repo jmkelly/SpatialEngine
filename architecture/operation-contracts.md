@@ -68,9 +68,16 @@ core geometry to NTS and back:
 
 Every provider of a standard capability must pass the same fixtures (plan
 §18). The shared suite (`tests/conformance/Spatial.Conformance.Tests`,
-`GeometryOperationConformance`) runs the contract's own conformance examples
-(`GeometryOperationConformanceExamples` in the SDK) — success, empty input,
-unsupported input, cancellation and diagnostics — and asserts the invocation
-provenance (capability, provider, resolution step, duration) on every
-outcome. The same invoker delegate drives the in-process provider and the
-isolated worker package, so both must agree on every result shape.
+`GeometryOperationConformance`) runs the shared conformance examples —
+success, empty input, unsupported input, cancellation and diagnostics — and
+asserts the invocation provenance (capability, provider, resolution step,
+duration) on every outcome. The examples live **with the conformance suite**
+(`GeometryOperationConformanceExamples`, tests/ namespace): they carry
+geometry values, and SDK-embedded geometry fixtures would push
+`Spatial.Core.Geometry`'s production fan-in past the code-metrics diagnosis
+threshold (Ca < 8, ADR-0027/0028) — the same reason ADR-0027 moved the
+geometry-carrying transform fixtures out of the SDK. The operation
+**descriptors** therefore register no embedded examples (their manifest
+compatibility check survives by construction, like transform's). The same
+invoker delegate drives the in-process provider and the isolated worker
+package, so both must agree on every result shape.

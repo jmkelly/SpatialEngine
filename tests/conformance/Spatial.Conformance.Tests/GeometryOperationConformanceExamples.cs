@@ -1,16 +1,26 @@
 using Spatial.Core.Geometry;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Operations;
 
-namespace Spatial.PluginSdk.Operations;
+namespace Spatial.Conformance.Tests;
 
 /// <summary>
 /// The shared conformance examples of the Phase 6 operation contracts (plan
 /// §9 "conformance examples", §18 "every provider of a standard capability
 /// runs the same fixtures"). Each example is a named invocation with argument
 /// values; a conforming provider must serve every example the same way, and
-/// the conformance suite (tests/conformance) runs them against every
-/// provider of the contract — in-process and across the worker boundary.
-/// Argument values carry only core geometry types (ADR-0005).
+/// the conformance suite runs them against every provider of the contract —
+/// in-process and across the worker boundary. Argument values carry only
+/// core geometry types (ADR-0005).
+///
+/// The class lives with the conformance suite, not in the production SDK,
+/// because its fixtures carry geometry values: ADR-0027 moved geometry-carrying
+/// fixtures out of the SDK to keep <c>Spatial.Core.Geometry</c>'s production
+/// fan-in below the code-metrics diagnosis threshold (Ca &lt; 8), and ADR-0028
+/// applies the same rule to the operation examples so the PostGIS provider's
+/// geometry interchange can take the freed slot. The operation descriptors
+/// therefore register no embedded examples; the fixtures are equally
+/// data-driven from here.
 /// </summary>
 public static class GeometryOperationConformanceExamples
 {
