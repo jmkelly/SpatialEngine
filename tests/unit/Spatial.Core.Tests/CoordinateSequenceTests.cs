@@ -155,6 +155,18 @@ public class CoordinateSequenceComparerTests
     }
 
     [Fact]
+    public void Same_layout_and_count_with_differing_ordinates_are_unequal()
+    {
+        var a = PackedCoordinateSequence.FromCoordinates([new Coordinate(1, 2), new Coordinate(3, 4)]);
+        var b = PackedCoordinateSequence.FromCoordinates([new Coordinate(1, 2), new Coordinate(9, 4)]);
+        var c = PackedCoordinateSequence.FromCoordinates([new Coordinate(1, 2), new Coordinate(3, 9)]);
+        Assert.False(CoordinateSequenceComparer.Equals(a, b));
+        Assert.False(CoordinateSequenceComparer.Equals(a, c));
+        Assert.False(CoordinateSequenceComparer.ValuesEqual(a, b));
+        Assert.False(CoordinateSequenceComparer.ValuesEqual(a, c));
+    }
+
+    [Fact]
     public void Nan_values_compare_equal()
     {
         var a = PackedCoordinateSequence.FromCoordinates([new Coordinate(1, 2, Z: double.NaN)], CoordinateLayout.Xyz);

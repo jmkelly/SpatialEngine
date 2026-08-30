@@ -76,6 +76,16 @@ public class EnvelopeTests
     }
 
     [Fact]
+    public void FromSequence_returns_empty_for_no_or_all_skipped_coordinates()
+    {
+        Assert.Equal(Envelope.Empty, Envelope.FromSequence(PackedCoordinateSequence.FromCoordinates([])));
+        Assert.Equal(Envelope.Empty, Envelope.FromSequence(PackedCoordinateSequence.FromCoordinates([
+            new Coordinate(double.NaN, 5),
+            new Coordinate(2, double.NaN),
+        ])));
+    }
+
+    [Fact]
     public void FromSequence_rejects_null() =>
         Assert.Throws<ArgumentNullException>(() => Envelope.FromSequence(null!));
 
@@ -124,10 +134,26 @@ public class EnvelopeTests
     [InlineData(1, 1, 3, 3, true)] // overlap
     [InlineData(5, 0, 8, 5, true)] // touching boundary
     [InlineData(-3, -3, -1, -1, false)] // disjoint
+    [InlineData(1, -4, 4, 0, true)] // touching in Y (other._maxY == this._minY)
+    [InlineData(-4, 2, 0, 3, true)] // touching in X (other._maxX == this._minX)
+    [InlineData(1, 5, 4, 8, true)] // touching in Y (other._minY == this._maxY)
+    [InlineData(5, -1, 8, 2, true)] // touching in X (other._minX == this._maxX)
+    [InlineData(6, -5, 10, 5, false)] // X disjoint to the right, Y overlaps
+    [InlineData(-8, 2, -1, 8, false)] // X disjoint to the left, Y overlaps
     public void Intersects_overlap_touch_and_disjoint(double minX, double minY, double maxX, double maxY, bool expected)
     {
         var envelope = new Envelope(0, 0, 5, 5);
         Assert.Equal(expected, envelope.Intersects(new Envelope(minX, minY, maxX, maxY)));
+    }
+
+    [Fact]
+    public void Contains_outside_points_are_false()
+    {
+        var envelope = new Envelope(0, 0, 5, 5);
+        Assert.False(envelope.Contains(5.1, 5));
+        Assert.False(envelope.Contains(2, -0.1));
+        Assert.False(envelope.Contains(-0.1, 2));
+        Assert.False(envelope.Contains(2, 5.1));
     }
 
     [Fact]
@@ -165,6 +191,8 @@ public class EnvelopeTests
         Assert.Equal(a, b);
         Assert.Equal(a.GetHashCode(), b.GetHashCode());
         Assert.NotEqual(a, c);
+        Assert.NotEqual(a, new Envelope(0, 1, 5, 5)); // differing minY
+        Assert.NotEqual(a, new Envelope(1, 0, 5, 5)); // differing minX
         Assert.Equal(Envelope.Empty, Envelope.FromCoordinates([]));
         Assert.Equal(Envelope.Empty.GetHashCode(), Envelope.FromCoordinates([]).GetHashCode());
     }

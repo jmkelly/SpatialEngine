@@ -111,8 +111,13 @@ public readonly struct Envelope : IEquatable<Envelope>
     }
 
     /// <summary>Whether <paramref name="x"/>, <paramref name="y"/> lie inside the envelope (boundaries included).</summary>
+    /// <remarks>
+    /// Bounds are guaranteed finite, so an empty envelope (infinite minima /
+    /// negative-infinite maxima) fails the inequalities for any finite point
+    /// and needs no explicit emptiness guard.
+    /// </remarks>
     public bool Contains(double x, double y) =>
-        !IsEmpty && x >= _minX && x <= _maxX && y >= _minY && y <= _maxY;
+        x >= _minX && x <= _maxX && y >= _minY && y <= _maxY;
 
     /// <summary>Whether the coordinate lies inside the envelope (boundaries included).</summary>
     public bool Contains(Coordinate coordinate) => Contains(coordinate.X, coordinate.Y);
@@ -124,9 +129,13 @@ public readonly struct Envelope : IEquatable<Envelope>
         && _minY <= other._minY && other._maxY <= _maxY;
 
     /// <summary>Whether the two envelopes share any point (touching boundaries count).</summary>
+    /// <remarks>
+    /// Bounds are guaranteed finite, so an empty envelope's infinite minima /
+    /// maxima fail the interval comparisons against any other envelope and
+    /// need no explicit emptiness guard.
+    /// </remarks>
     public bool Intersects(in Envelope other) =>
-        !IsEmpty && !other.IsEmpty
-        && _minX <= other._maxX && other._minX <= _maxX
+        _minX <= other._maxX && other._minX <= _maxX
         && _minY <= other._maxY && other._minY <= _maxY;
 
     /// <summary>The smallest envelope containing both this and <paramref name="other"/>.</summary>

@@ -115,6 +115,9 @@ public class GeometryCodecTests
         GeometryCodec.Magic.CopyTo(bytes);
         bytes[GeometryCodec.HeaderLength - 1] = 9; // version 9
         AssertFailed(bytes, "version 9");
+        // The offending byte is the version byte at offset 5 (magic 0..4 + version).
+        Assert.False(GeometryCodec.TryDecode(bytes, out _, out var error));
+        Assert.Contains("byte offset 5", error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -148,12 +151,31 @@ public class GeometryCodecTests
     }
 
     [Fact]
+    public void Decode_rejects_truncated_point_coordinate_with_actionable_error()
+    {
+        // A point flagged present whose body holds one double instead of two (layout Xy needs 16 bytes).
+        var bytes = Payload([0x00], [0x01], [0x00], [0x01], Int64Bits(1.0));
+        Assert.False(GeometryCodec.TryDecode(bytes, out var geometry, out var error));
+        Assert.Null(geometry);
+        Assert.Contains("point body is truncated", error, StringComparison.Ordinal);
+        Assert.Contains("unexpected end of input", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Decode_rejects_negative_and_impossible_counts()
     {
         // Line string declaring a negative coordinate count.
         AssertFailed(Payload([0x00], [0x02], [0x00], Int32(-1)), "element count");
-        // Line string declaring more coordinates than the input can hold.
+        // Line string declaring more elements than the input can hold at all.
         AssertFailed(Payload([0x00], [0x02], [0x00], Int32(1_000_000)), "declares 1000000");
+        // Line string whose declared coordinates need more bytes than remain:
+        // 10 coordinates × stride 2 × 8 bytes = 160 required, only 40 present.
+        // The required-byte figure in the error must stay exactly count × stride × 8.
+        var truncated = Payload([0x00], [0x02], [0x00], Int32(10),
+            Int64Bits(1.0), Int64Bits(2.0), Int64Bits(3.0), Int64Bits(4.0), Int64Bits(5.0));
+        Assert.False(GeometryCodec.TryDecode(truncated, out _, out var error));
+        Assert.Contains("declares 10 coordinates", error, StringComparison.Ordinal);
+        Assert.Contains("160 required", error, StringComparison.Ordinal);
         // Multi-point declaring more elements than the input can hold.
         AssertFailed(Payload([0x00], [0x04], [0x00], Int32(100_000)), "declares 100000 elements");
     }
@@ -184,7 +206,8 @@ public class GeometryCodecTests
             geometry = GeometryFactory.CreateGeometryCollection(geometry);
         }
 
-        Assert.Throws<ArgumentException>(() => GeometryCodec.Encode(geometry));
+        var exception = Assert.Throws<ArgumentException>(() => GeometryCodec.Encode(geometry));
+        Assert.Contains($"nests deeper than the canonical format limit of {GeometryCodec.MaxNestingDepth} levels", exception.Message);
     }
 
     [Fact]
@@ -218,7 +241,7 @@ public class GeometryCodecTests
         Assert.Contains(expectedFragment, error, StringComparison.Ordinal);
     }
 
-    private static byte[] Payload(params byte[][] chunks)
+    internal static byte[] Payload(params byte[][] chunks)
     {
         var payload = chunks.SelectMany(chunk => chunk).ToArray();
         var bytes = new byte[GeometryCodec.HeaderLength + payload.Length];
@@ -228,7 +251,7 @@ public class GeometryCodecTests
         return bytes;
     }
 
-    private static byte[] Int32(int value)
+    internal static byte[] Int32(int value)
     {
         var bytes = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(bytes, value);
@@ -244,7 +267,7 @@ public class GeometryCodecTests
 
     private static byte[] Str(string value) => System.Text.Encoding.UTF8.GetBytes(value);
 
-    private static byte[] BuildNestedCollection(int levels)
+    internal static byte[] BuildNestedCollection(int levels)
     {
         var chunks = new List<byte[]>();
         for (var i = 0; i < levels; i++)

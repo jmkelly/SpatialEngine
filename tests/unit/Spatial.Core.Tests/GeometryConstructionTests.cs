@@ -121,6 +121,7 @@ public class GeometryConstructionTests
             GeometryFactory.CreatePoint(3, 4, 5));
         Assert.Equal(CoordinateLayout.Xyz, mixed.Layout);
         Assert.Equal(2, mixed.CoordinateCount);
+        Assert.False(mixed.IsEmpty); // a non-empty child keeps the composite non-empty
 
         var zAndM = GeometryFactory.CreateMultiPoint(
             GeometryFactory.CreatePoint(1, 2, 5),
@@ -131,6 +132,7 @@ public class GeometryConstructionTests
         Assert.True(allEmpty.IsEmpty);
         Assert.Equal(0, allEmpty.CoordinateCount);
         Assert.Null(allEmpty.Envelope);
+        Assert.False(GeometryFactory.CreateGeometryCollection(GeometryFactory.CreatePoint(1, 2)).IsEmpty);
     }
 
     [Fact]

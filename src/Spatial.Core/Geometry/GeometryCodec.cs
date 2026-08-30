@@ -127,6 +127,11 @@ public static class GeometryCodec
 
     private static long ComputeNodeLength(IGeometry geometry, int depth)
     {
+        // Single nesting-depth guard for the encode path: sizing rejects a
+        // too-deep geometry before any buffer is allocated, and bounding the
+        // recursion here also keeps the sizing pass itself stack-safe (the
+        // write pass below is only entered after this check, so it needs no
+        // guard of its own).
         if (depth > MaxNestingDepth)
         {
             throw new ArgumentException($"Geometry nests deeper than the canonical format limit of {MaxNestingDepth} levels.", nameof(geometry));
@@ -154,11 +159,8 @@ public static class GeometryCodec
 
     private static void WriteNode(ref Writer writer, IGeometry geometry, int depth)
     {
-        if (depth > MaxNestingDepth)
-        {
-            throw new ArgumentException($"Geometry nests deeper than the canonical format limit of {MaxNestingDepth} levels.", nameof(geometry));
-        }
-
+        // Depth is already bounded by the sizing pass (ComputeNodeLength),
+        // which runs before any buffer is written.
         writer.WriteByte((byte)geometry.Layout);
         writer.WriteByte((byte)geometry.Type);
         WriteCrs(ref writer, geometry.CoordinateReference);
