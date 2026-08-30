@@ -744,6 +744,8 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 ### Phase 3: Capability Runtime
 
+**Status:** complete (Epic D).
+
 - Implement capability descriptors, registry, resolution and invocation.
 - Implement structured errors, deadlines, cancellation, progress and permissions.
 - Add an in-memory component host and example capability.
@@ -958,11 +960,11 @@ Root agent instructions must include:
 
 ### Epic D: Capability runtime
 
-- [ ] Descriptors and registry
-- [ ] Provider resolution
-- [ ] Invocation routing
-- [ ] Errors and diagnostics
-- [ ] Cancellation and permissions
+- [x] Descriptors and registry
+- [x] Provider resolution
+- [x] Invocation routing
+- [x] Errors and diagnostics
+- [x] Cancellation and permissions
 
 ### Epic E: Resources and jobs
 

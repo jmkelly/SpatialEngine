@@ -16,11 +16,13 @@ implementations.
 
 ## Status
 
-Phase 2 — features and schemas. The boxing-free `AttributeValue` union,
-field definitions, schema compatibility rules (append-only prefix), feature
-and batch values, and the canonical batch codec (v1) are implemented with
-unit, seeded-property and malformed-input tests. Phase 3 (capability
-runtime) is next.
+Phase 3 — capability runtime. Versioned capability contracts
+(`spatial.feature.count@1`, …) ship in `Spatial.PluginSdk`; the registry,
+deterministic provider resolution (explicit → resource-local → configured
+preferred → first healthy), and invocation routing with structured errors,
+deadlines, cancellation, progress and permissions land in
+`Spatial.Runtime`. An in-memory component host with example capabilities
+serves as the test vehicle. Phase 4 (resources, streams, jobs) is next.
 
 ## Repository layout
 
