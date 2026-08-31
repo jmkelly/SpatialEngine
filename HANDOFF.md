@@ -28,8 +28,18 @@
     private adapters (EWKB interchange, schema discovery, row mapping, filter
     DSL, SQL builders, transaction registry, redaction), the supervisor's
     worker launch environment (`WorkerSupervisorOptions.WorkerEnvironment`),
-    128 unit tests, the conformance worker rig, and the Testcontainers
-    integration suite (17 tests, skip cleanly without Docker).
+    the conformance worker rig, and the Testcontainers integration suite
+    (17 tests, skip cleanly without Docker).
+  - `33c2e12` — docs/plan/README/HANDOFF.
+  - `5131d9d` — **metrics-gate resolution** (see below): ADR-0029,
+    `IFeature`/`IFeatureSchema`/`IFeatureBatch`/`IFieldDefinition`
+    (`Spatial.Core.Features`), `FeatureBatchCodec` moved to
+    `Spatial.Core.Features.Codec`, `PostgisEwkb.LayoutFlags` decoupled from
+    `CoordinateLayout`, plus the quality-loop implementor session's carve of
+    `PostgisRunner` into `PostgisInvocationValidator`/`PostgisStoreExecutor`/
+    `PostgisSchemaReader`/`PostgisFeatureScan`/`PostgisFeatureBatchEmitter`/
+    `PostgisMetadataEmitter`/`PostgisCatalogueService`/`PostgisTransactionService`/
+    `PostgisCapabilities` (+ 40 unit tests).
 - **Tests:** 817 total (Core 308, Runtime 201, PluginHost 78 (~44 s — spawns),
   ProjNet 48, PostGIS unit 128, NTS 31, Conformance 12 (postgis worker rig
   adds ~1.5 s), Architecture 8, Host 3, PostGIS integration 17 (SKIPPED
@@ -147,8 +157,11 @@ leaves ready:
 1. **The host API needs stream decoding helpers.** A scan/query handle
    yields `byte[]` canonical batches; the catalogue/describe streams carry
    JSON text items. Phase 9 should expose typed readers (decode
-   `FeatureBatchCodec` server-side; parse `DatasetMetadataJson`) — and
-   remember the Ca-7 budget when those helpers touch Core.Geometry.
+   `FeatureBatchCodec` — now in `Spatial.Core.Features.Codec` —
+   server-side; parse `DatasetMetadataJson`) — and remember the Ca-7 budget
+   when those helpers touch Core.Geometry. The model's `IFeature`/
+   `IFeatureSchema`/`IFeatureBatch` faces (ADR-0029) are the natural types
+   for the HTTP/streaming API layers.
 2. **Provider launch wiring**: the host will configure
    `WorkerSupervisorOptions.WorkerEnvironment` (e.g. from its own config or
    env) and activate `postgis@1` packages. The worker rig in
@@ -166,14 +179,29 @@ leaves ready:
    notes below); the loop's final repo-wide pass should add configs for
    `Spatial.Provider.PostGIS` and `Spatial.PluginSdk`.
 
-## Quality gates (Phase 8 — see the session artifacts)
+## Quality gates (Phase 8 — green, verified twice over)
 
-- **CRAP < 10**: green at handoff (the loop run's report). The plugin's
-  DB-only leaves were kept cc ≤ 2 so local coverage gaps don't trip CRAP.
-- **Coverage ≥ 70% branch**: green at handoff (the loop run's report).
-- **Metrics**: green — `Spatial.Core.Geometry` stays at Ca 7 (the Phase 6
-  relocation traded one slot for the interchange).
-- **Warnings**: zero.
+All four gates exit 0 on `5131d9d`: **CRAP 0 of 2176 methods**; **coverage
+81.6% branch** (floor 70%); **metrics 0 findings**; **warnings 0**.
+
+**The metrics episode (read this before touching the core):** the first
+loop run after the provider landed flagged two HIGH `architectural-rigidity`
+findings. `Spatial.Core.Geometry` hit Ca 8 because the EWKB module's nested
+`LayoutFlags` struct held a `CoordinateLayout` — nested types count as
+separate referrers; fixed by computing the layout at use sites (Ca back to
+7). `Spatial.Core.Features` became a designed hub (plan §6.1) that can never
+drop below the Ca-8 trigger, so ADR-0029 gave the feature model the contract
+faces every other wide namespace in the repo carries: `IFeature`,
+`IFeatureSchema`, `IFeatureBatch`, `IFieldDefinition` (bound by the SDK's
+`DatasetDescription.Schema` and the provider's schema adapters), and moved
+`FeatureBatchCodec` to its own `Spatial.Core.Features.Codec` namespace so
+the value namespace's abstractness (0.33) carries the hub role. **New code
+that references `Spatial.Core.Features` broadly is fine; code that mentions
+`Spatial.Core.Geometry` types must stay inside the single-referrer
+discipline (Ca < 8 across the whole repo).** The loop's implementor session
+also carved the provider (kept, committed): the runner now chains pure
+guards (`PostgisInvocationValidator.FirstError`) and delegates to store
+executors; cc ≤ 2 discipline preserved for the DB-only paths.
 - **Stryker (my call — NOT run):** the repo's stryker-config.json pins
   `Spatial.Runtime.csproj`, which this phase did not change; the new
   assemblies (PluginSdk.Providers, Spatial.Provider.PostGIS,
