@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The .NET client SDK for the public spatial host API (plan §12, Epic H):
+    a thin HttpClient wrapper that speaks the versioned HTTP contracts
+    (Spatial.PluginSdk.Http) with the SDK's shared value codec for inline
+    values. Automation and service clients reference this library; browser
+    clients use the TypeScript SDK (same wire shapes). Not part of the
+    solution: it is exercised (and quality-gated) through the client test
+    project under tests/.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Client</AssemblyName>
+    <RootNamespace>Spatial.Client</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,12 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Unit tests of the .NET client SDK (clients/dotnet/Spatial.Client) against
+    a stub HTTP handler: URL construction, the shared JSON contract, value
+    codec round trips, job polling, stream decoding and error mapping. The
+    client is quality-gated through this project (it is not part of the
+    solution itself — see tests/architecture solution-membership rule).
+  -->
+
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -17,12 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Spatial.Host\Spatial.Host.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\..\..\clients\dotnet\Spatial.Client\Spatial.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
   </ItemGroup>
 
 </Project>
