@@ -1,214 +1,177 @@
 # Handoff — Spatial Engine
 
 > Written for the next agent taking over. Read `AGENTS.md`, then
-> `architecture/implementation-plan.md` (the source of truth). **Phase 8
-> (PostGIS provider) is complete**; Phase 9 (ASP.NET Core host and SDKs) is
+> `architecture/implementation-plan.md` (the source of truth). **Phase 9
+> (ASP.NET Core Host and SDKs) is complete**; Phase 10 (Browser Workbench) is
 > next.
 
 ## Repository state
 
 - **Branch:** `main`. Working tree clean at handoff. The four quality-gate
-  queue/report files at the repo root (`crap-queue.md`, `coverage-queue.md`,
+  queue/report files (`crap-queue.md`, `coverage-queue.md`,
   `metrics-queue.md`, `warnings-queue.md`, `*.report.json`,
-  `coverage-history.csv`) are gitignored and currently on disk reporting the
-  GREEN state — do not commit them.
-- **Phase 7 commits** (see the previous handoff for `0229241`, `b77196c`,
-  `040b00c`, `f212660`, `245e192`).
-- **Phase 8 commits:**
-  - `4aa1ea4` — the nine data-provider contracts in
-    `Spatial.PluginSdk.Providers` (catalogue.list, dataset.describe/create,
-    feature.scan/query/write, transaction.begin/commit/rollback) + the shared
-    metadata JSON interchange (`DatasetSummary`/`DatasetDescription`/
-    `DatasetMetadataJson`) + ADR-0028 + `architecture/data-provider-contracts.md`.
-    **Moved the Phase 6 operation conformance examples out of the production
-    SDK into the conformance suite** (the ADR-0027 precedent) — this is the
-    fan-in budget trade that gives the PostGIS provider its one
-    Core.Geometry slot; operation *contracts* are unchanged.
-  - `104c6a2` — `src/Spatial.Provider.PostGIS` (`postgis@1`, Npgsql 10) with
-    private adapters (EWKB interchange, schema discovery, row mapping, filter
-    DSL, SQL builders, transaction registry, redaction), the supervisor's
-    worker launch environment (`WorkerSupervisorOptions.WorkerEnvironment`),
-    the conformance worker rig, and the Testcontainers integration suite
-    (17 tests, skip cleanly without Docker).
-  - `33c2e12` — docs/plan/README/HANDOFF.
-  - `5131d9d` — **metrics-gate resolution** (see below): ADR-0029,
-    `IFeature`/`IFeatureSchema`/`IFeatureBatch`/`IFieldDefinition`
-    (`Spatial.Core.Features`), `FeatureBatchCodec` moved to
-    `Spatial.Core.Features.Codec`, `PostgisEwkb.LayoutFlags` decoupled from
-    `CoordinateLayout`, plus the quality-loop implementor session's carve of
-    `PostgisRunner` into `PostgisInvocationValidator`/`PostgisStoreExecutor`/
-    `PostgisSchemaReader`/`PostgisFeatureScan`/`PostgisFeatureBatchEmitter`/
-    `PostgisMetadataEmitter`/`PostgisCatalogueService`/`PostgisTransactionService`/
-    `PostgisCapabilities` (+ 40 unit tests).
-- **Tests:** 817 total (Core 308, Runtime 201, PluginHost 78 (~44 s — spawns),
-  ProjNet 48, PostGIS unit 128, NTS 31, Conformance 12 (postgis worker rig
-  adds ~1.5 s), Architecture 8, Host 3, PostGIS integration 17 (SKIPPED
-  without a Docker daemon — see gotchas)). `./eng/verify.sh` passes from a
-  clean checkout on this machine (integration tests skip honestly).
+  `coverage-history.csv`, `stryker-queue.md`) are gitignored and currently on
+  disk reporting the ALL-GREEN state — do not commit them.
+- **Phase 9 commits** (new since the Phase 8 handoff):
+  - `6bfb111` — value codec graduates to `Spatial.PluginSdk.Codec.ValueCodec`
+    (ex `WorkerValueCodec`, ADR-0030), HTTP contract shapes in
+    `Spatial.PluginSdk.Http`, and the ASP.NET Core host runtime
+    (`SpatialHostRuntime`, supervisor-backed package activation).
+  - `bb57717` — host API integration tests (fixture provider, every endpoint,
+    the real isolated NTS worker buffering through HTTP).
+  - `83a089c` — .NET client SDK with stub-handler unit tests and full-stack
+    integration tests against the real host.
+  - `c99f216` — the TypeScript SDK (`clients/typescript`) generated from the
+    host's OpenAPI, plus `eng/e2e-web.sh` and `eng/tools/PluginPacker`.
+  - `3f983d5` — docs: ADR-0030, `architecture/host-api.md`, plan
+    §12/§16/§21(§24 ticks), boundary doc updates, README status.
+  - `2af82d1` — quality gates green: metrics fan-out splits, CRAP branch
+    tests, coverage unit tests (incl. the loop implementor sessions' units),
+    Stryker result recorded.
+  - (final, after the quality gates) — this handoff.
+- **Tests:** 936 total across 10 suites (Core 308, Runtime 201, PluginHost
+  85, Host 42 [was 3], Client 9, PostGIS unit 170, NTS 31, ProjNet 65,
+  Conformance 12, Architecture 8). `./eng/verify.sh` passes from a clean
+  checkout (PostGIS integration still skips honestly without Docker).
 
-## Completed — Phase 8 (Epic G): PostGIS provider
+## Completed — Phase 9 (Epic H: ASP.NET Core API + TypeScript SDK)
 
-- **Contracts (ADR-0028, `architecture/data-provider-contracts.md`)**:
-  `spatial.catalogue.list@1` (optional `pattern`; stream of
-  `catalogue.metadata` JSON items), `spatial.dataset.describe@1` (stream of
-  one `dataset.description` JSON item: fields in column order, geometry
-  column + SRID + type, row estimate, PK identity columns),
-  `spatial.dataset.create@1` (defining canonical batch → result table at an
-  SRID), `spatial.feature.scan@1` (stream of canonical feature-batch bytes),
-  `spatial.feature.query@1` (bbox `minx/miny/maxx/maxy` +
-  parameterised filter DSL), `spatial.feature.write@1` (single-transaction
-  append, optional enlist), `spatial.transaction.begin@1` (runtime-owned
-  `transaction` handle) / `commit@1` / `rollback@1`.
-- **Interchange**: feature data crosses as **canonical binary** in both
-  directions — stream items and write/create batch arguments are
-  `FeatureBatchCodec` v1 bytes (`$bytes` on the wire, no new codec tags).
-  Metadata crosses as **JSON text items** (the documented plan exception).
-  Geometry reads use `ST_AsEWKB(geom)` and writes use
-  `ST_GeomFromEWKB(@p, srid)` so bytes are EWKB deterministically (no
-  dependence on Npgsql's default mapping).
-- **Secrets (security-model.md)**: the supervisor applies a
-  `WorkerEnvironment` dictionary to spawned worker processes; `postgis@1`
-  reads `SPATIAL_POSTGIS_CONNECTION` at worker startup. Redaction is an
-  invariant: connection strings and passwords never appear in errors
-  (unit-tested). The worker conformance rig runs the worker with a blank env
-  → `provider.unavailable` is the honest unconfigured shape.
-- **Cancellation**: pre-cancelled invocations fail before touching the
-  store; Npgsql commands run with the invocation token; a mid-stream cancel
-  fails the stream with `operation.cancelled` (integration-tested against
-  the 200k-row fixture).
-- **Filter DSL** (`feature.query`): `= != <> < <= > >= LIKE`, `IS [NOT]
-  NULL`, strings/numbers/booleans, `AND`/`OR`/parens. Columns must resolve
-  against the discovered schema (geometry columns rejected with a bbox
-  hint); every literal becomes a bound parameter — nothing client-supplied
-  reaches SQL structure (dataset and column identifiers are validated
-  against a strict `[a-z_][a-z0-9_]*` grammar).
+- **The host API** (`architecture/host-api.md`, ADR-0030): capabilities list/
+  detail, `POST /api/invocations` (inline `completed` or `202 job` routing —
+  long-running never parks the request), jobs (get/cancel/events: JSON page
+  or SSE), resources (metadata/delete/stream → `application/x-ndjson` of
+  codec-encoded items, `$error` line on failure), plugins (supervised worker
+  packages + lifecycle), health, and OpenAPI at `/openapi/v1.json`.
+- **One contract set**: the inline value codec moved from the worker protocol
+  to `Spatial.PluginSdk.Codec.ValueCodec` (shared by worker wire + HTTP API);
+  request/response shapes live in `Spatial.PluginSdk.Http`; the host configures
+  its JSON options from `HostApiJson`; OpenAPI is generated from the same
+  DTOs; the TS wire types are generated from the OpenAPI snapshot.
+- **.NET SDK** (`clients/dotnet/Spatial.Client`, NOT in the solution — built/
+  gated through `tests/unit/Spatial.Client.Tests` + `tests/integration/
+  Spatial.Host.Tests`): typed methods over HttpClient, `ReadStreamAsync`,
+  `ReadFeatureBatchesAsync` (SFBAT decode), `WaitForJobAsync` extension.
+- **TypeScript SDK** (`clients/typescript/@spatial/client`, zero runtime deps):
+  fetch-based client, wire codec (`$i64`/`$bytes`/`$geometry`/`$crs`/
+  `$resource`, `encodeGeometry`), SFBAT v1 decoder pinned against a .NET
+  produced vector, `scripts/generate.mjs` + `scripts/check-generated.mjs`
+  (drift gate in `npm test`).
+- **Independent-host proof**: `eng/e2e-web.sh` packs the NTS worker
+  (`eng/tools/PluginPacker` → `artifacts/plugins`), runs the REAL host
+  process, refreshes the OpenAPI snapshot, and drives it from the TS SDK
+  over real HTTP — passes. `tests/integration/.../NtsWorkerHostTests.cs`
+  proves the same in-suite (buffer through the isolated worker over HTTP).
 
 ## Hard-won gotchas (read before touching this code)
 
 - **The Ca-7 ceiling is the hardest constraint (Spatial.Core.Geometry).**
-  The codemetrics `architectural-rigidity` diagnosis fires at
-  **AfferentCoupling ≥ 8** (D 0.91, abstractness 0.09; see
-  `/tmp/cm/src/CodeMetrics/Diagnostics.cs` — `ForNamespace`). Phase 8 is at
-  Ca 7: the Phase 6 example relocation freed one slot and
-  `PostgisGeometryInterchange` (the plugin's **only** Core.Geometry
-  referrer) took it. New production code that mentions `IGeometry`/
-  `CoordinateReference`/`GeometryFactory` **outside the interchange or the
-  core itself will make the metrics gate red**. The plugin's row mapper and
-  write path pass geometry around as `AttributeValue` and let the
-  interchange do the conversion. Phase 9 (host API) must keep this in mind —
-  the host is a platform project and decoding canonical batches will need
-  geometry… either reuse a Core/PluginSdk-level decode or budget carefully.
-- **Integration-only methods must stay cc ≤ 2.** crap4dotnet's cubic formula
-  fails any method with cc ≥ 3 at 0% coverage — and integration tests skip
-  on this machine, so the plugin's DB leaves run at 0% branch coverage
-  locally. Every Npgsql-touching method is a tiny leaf (open/read/write
-  loops decomposed into ≤ cc-2 helpers with the loop bodies in
-  pure/testable functions); the runner's try/catch bodies delegate to
-  unit-tested mappers. Keep future DB-touching code in the same shape.
-- **The JSON wire loses double-ness of integral numbers**: a bbox bound of
-  `1.0` decodes server-side as `int 1` (`WorkerValueCodec.Decode` tries
-  int/long first). `ReadBoundingBox` uses a `TryReadNumber` that accepts
-  double/int/long. If you add numeric arguments in later phases, do the
-  same or pin the number type (e.g. `$i64`).
-- **Non-finite numbers cannot cross the worker wire** (System.Text.Json
-  rejects NaN in `JsonValue.Create`): the NaN bbox conformance case is
-  `skipWireIncompatible` for the worker matrix (same rule as Phase 6's
-  `non-finite-distance`).
-- **Stream items are canonical batch BYTES on both paths** — the plugin
-  encodes `FeatureBatch` → `FeatureBatchCodec` bytes before writing, even
-  in-process, so conformance/integration shapes are identical and ADR-0020
-  holds. Consumers decode with `FeatureBatchCodec.Decode((byte[])item)`.
-  **Phase 9's host API will need a typed reader for these items** (and for
-  the metadata JSON strings) — see "Next up".
-- **Testcontainers 4.7 has a vulnerable transitive SSH.NET (NU1903 → build
-  error via TreatWarningsAsErrors).** Pinned Testcontainers 4.14.0 (and
-  Testcontainers.PostgreSql 4.14.0) whose SSH.NET is patched. The
-  parameterless `PostgreSqlBuilder()` ctor is obsolete in 4.14 — use
-  `new PostgreSqlBuilder("postgis/postgis:16-3.4")`.
-- **Integration tests must skip cleanly without Docker**: `dotnet test`
-  includes them (solution-wide); the fixture catches the start failure and
-  every test is `[SkippableFact]` with `Skip.If(!DockerAvailable, reason)`.
-  `Assert.Skip` does NOT exist in xunit 2.9.3 and raw `SkipException` is not
-  intercepted by this runner combo — `Xunit.SkippableFact` is the repo's
-  mechanism. Do not replace it with silent returns.
-- **`IClassFixture` runs one container per test class** — the worker-mode
-  integration test reuses the shared fixture instead of starting its own.
-- **Write test `DROP TABLE`s create unique tables per run**; the fixture
-  seeds `places`/`roads`/`bigpoints` once per class (200k-row `bigpoints`
-  via `generate_series` — the mid-stream cancellation test needs it; do not
-  shrink it).
+  The codemetrics `architectural-rigidity` diagnosis fires at Ca ≥ 8 (D 0.91).
+  Phase 9's metrics episode: `eng/tools/PluginPacker/Program.cs` used
+  `typeof(Spatial.Core.Geometry.IGeometry)` to locate Spatial.Core.dll and
+  pushed Ca to 8 — **avoid naming Core.Geometry types anywhere outside the
+  core or the deliberate single referrers** (use a non-geometry Core type
+  like `FeatureId` to locate the assembly). The host API layer reads feature
+  data through `FeatureBatch`/`AttributeValue` (ADR-0029 faces) and never
+  names an `IGeometry` — keep it that way.
+- **Metrics coupling ceiling (in-repo coupling ≥ 20 → hub finding) and the
+  god-class rule (coupling ≥ 15 + LCOM4 ≥ 3 + WMC ≥ 20 + ≥ 8 methods).** The
+  quality audit gates on ZERO findings of any severity — moderate hubs count.
+  The host API layer is deliberately split into small mapper classes
+  (`CapabilityApiMappers`, `JobApiMappers`, `JobEventMappers`,
+  `ResourceApiMappers`, `PluginApiMappers`, `InvocationOutcomeMapper`,
+  `InvocationRequestBuilder`) and the client into `SpatialClient` +
+  `SpatialStreamReader` + `SpatialClientExtensions`. **New endpoint/handler
+  code must stay fan-out-small and delegate heavy loops to tiny helpers**
+  (and every branch needs a test — CRAP < 10 gates on branch coverage; see
+  the `TryBuildOptions` episode).
+- **Jobs must NOT receive the request's CancellationToken.** `POST
+  /api/invocations` builds the invocation with `CancellationToken.None` —
+  job-runner links the job's own token + deadline; passing RequestAborted
+  would cancel the job the moment the 202 response returns. Inline
+  invocations DO use RequestAborted (client disconnect cancels them).
+- **Consuming a stream to its end closes the resource** (the NDJSON reader
+  closes in its finally). After reading a stream, its metadata is 404 —
+  streams are one-shot. A failed stream ends with an `$error` line; the SDKs
+  throw `CapabilityStreamException`/`CapabilityStreamError`.
+- **The `$geometry` tag needs explicit encode on the TS side**: plain
+  `Uint8Array` encodes as `$bytes`. The SDK's `encodeGeometry(bytes)` /
+  `GeometryValue` emit `$geometry`. The hand-built SGEOM point in
+  `test/e2e.test.ts` (26 bytes: magic/version/layout/type/crs/present + two
+  zero doubles) matches `GeometryCodec` byte-for-byte — see
+  `feature-batch.test.ts` for the .NET-produced pin vector.
+- **Full GUIDs in SFBAT are .NET mixed-endian** (`Guid.TryWriteBytes`): the
+  TS decoder flips the first three groups. The vector test pins it.
+- **Node 26 runs TS tests directly** (type stripping): SDK and tests must be
+  erasable-syntax — no parameter properties, no enums — `tsconfig` sets
+  `erasableSyntaxOnly`. Import paths use `.ts` extensions +
+  `allowImportingTsExtensions`.
+- **`npm test` includes the generated-types drift check** — refresh with
+  `npm run generate` (the e2e script does it from the live host). The
+  generator header must NOT embed the output path (drift-check compares files
+  written to different names).
+- **`dotnet run` runs the app with CWD = the project directory**, so the
+  e2e script passes an ABSOLUTE `Spatial__PackagesRoot` (env var double
+  underscore maps to `Spatial:PackagesRoot`). launchSettings overrides
+  `ASPNETCORE_URLS` — use `dotnet run --no-launch-profile --urls`.
 - **Style traps from earlier phases still apply**: format before every
-  commit (trailing newlines), CA1859/CA1822/CA1869 (cache
-  `JsonSerializerOptions` — static fields), xUnit2018/1031, dispatch tables
-  over dead-default switches, `out string?` vs `out string` on the codec's
-  `TryDecode`.
-- **Worker package needs Npgsql.dll + Microsoft.Extensions.Logging.
-  Abstractions.dll** (Npgsql 10's only net10 dependency) copied next to the
-  plugin assembly — `PostgisPackageWriter` shows the pattern.
+  commit (trailing newlines — `dotnet format`), CA1859/CA1826/CA1068 (last
+  param CancellationToken), LoggerMessage delegates for ILogger
+  (CA1848/CA1873 — see `HostLog.cs`), `Results<...>` typed results so
+  OpenAPI gets schemas, `Produces<T>` annotations.
+- **Codemetrics exit-code quirk**: `codemetrics` exits 1 even with zero
+  findings; the audit gates on the reported finding count (0 = green). The
+  stryker audit picks ONE pinned test project (`configured[0]` — currently
+  `Spatial.Core.Tests`), so Stryker measures only Spatial.Core each full run.
 
-## Next up — Phase 9: ASP.NET Core Host and SDKs
+## Quality gates (Phase 9 — all four green, verified twice)
 
-From the plan (§16, Epic H start): HTTP, streaming, job, resource, plugin and
-health APIs; TypeScript and .NET SDKs; the host must run independently and
-serve the browser workbench ("PostGIS → core geometry → replaceable buffer
-plugin → rendered in a browser → written back", plan §17). What Phase 8
-leaves ready:
+- **CRAP**: 0 of 2411 methods ≥ 10.
+- **Coverage**: authored branch 81.8% ≥ 70% (line 92.5%).
+- **Metrics**: 0 findings (the Ca-8 and fan-out episodes above resolved).
+- **Warnings**: 0.
+- **Stryker (my call — RUN)**: the phase changed Runtime behavior
+  (`ResourceRegistry.TryGetHandle`, `CapabilityJob.Resolved`) and moved the
+  codec, so I ran the full gate: **94.44%** score on Spatial.Core (the
+  project the audit pins; 974 killed, 17 surviving pre-existing mutants, 49
+  no-coverage), break-60 **green**. The survivors (Core Feature/Field
+  definitions, codec statements, envelope internals) predate Phase 9. The
+  final repo-wide pass should add mutation configs for the NEW behavioral
+  assemblies: `Spatial.PluginSdk` (codec + DTOs — needs a dedicated test
+  project reference), `Spatial.Host`, and `Spatial.Client` (a
+  `Spatial.Client.Tests` config would measure the client via its stub-handler
+  suite).
 
-1. **The host API needs stream decoding helpers.** A scan/query handle
-   yields `byte[]` canonical batches; the catalogue/describe streams carry
-   JSON text items. Phase 9 should expose typed readers (decode
-   `FeatureBatchCodec` — now in `Spatial.Core.Features.Codec` —
-   server-side; parse `DatasetMetadataJson`) — and remember the Ca-7 budget
-   when those helpers touch Core.Geometry. The model's `IFeature`/
-   `IFeatureSchema`/`IFeatureBatch` faces (ADR-0029) are the natural types
-   for the HTTP/streaming API layers.
-2. **Provider launch wiring**: the host will configure
-   `WorkerSupervisorOptions.WorkerEnvironment` (e.g. from its own config or
-   env) and activate `postgis@1` packages. The worker rig in
-   `tests/conformance/PostgisWorkerConformanceRig.cs` is the template
-   (supervisor + runtime + env).
-3. **Conformance**: the Phase 8 matrix lives in
-   `tests/conformance/Spatial.Conformance.Tests/PostgisProviderConformance.cs`
-   (DB-free, in-process + worker); the store-backed matrix lives in
-   `tests/integration/Spatial.PostGIS.Tests` (Testcontainers). Extend the
-   read-side expectations there if the host API changes wire shapes.
-4. **The `bigpoints` fixture** is the performance/cancel test vehicle (200k
-   points); plan §18's performance list (feature-stream throughput, time to
-   first feature) can use it once an HTTP path exists.
-5. **Stryker** has no coverage of the new assemblies (see the quality gate
-   notes below); the loop's final repo-wide pass should add configs for
-   `Spatial.Provider.PostGIS` and `Spatial.PluginSdk`.
+## Next up — Phase 10: Browser Workbench
 
-## Quality gates (Phase 8 — green, verified twice over)
+From the plan (§16 Epic H remainder, §17): React + TypeScript + MapLibre
+workbench served by the Phase 9 host; browse PostGIS, render features,
+select, invoke the buffer plugin, watch job progress, preview/persist results,
+and demonstrate side-by-side plugin replacement — Playwright e2e, no Tauri.
 
-All four gates exit 0 on `5131d9d`: **CRAP 0 of 2176 methods**; **coverage
-81.6% branch** (floor 70%); **metrics 0 findings**; **warnings 0**.
-
-**The metrics episode (read this before touching the core):** the first
-loop run after the provider landed flagged two HIGH `architectural-rigidity`
-findings. `Spatial.Core.Geometry` hit Ca 8 because the EWKB module's nested
-`LayoutFlags` struct held a `CoordinateLayout` — nested types count as
-separate referrers; fixed by computing the layout at use sites (Ca back to
-7). `Spatial.Core.Features` became a designed hub (plan §6.1) that can never
-drop below the Ca-8 trigger, so ADR-0029 gave the feature model the contract
-faces every other wide namespace in the repo carries: `IFeature`,
-`IFeatureSchema`, `IFeatureBatch`, `IFieldDefinition` (bound by the SDK's
-`DatasetDescription.Schema` and the provider's schema adapters), and moved
-`FeatureBatchCodec` to its own `Spatial.Core.Features.Codec` namespace so
-the value namespace's abstractness (0.33) carries the hub role. **New code
-that references `Spatial.Core.Features` broadly is fine; code that mentions
-`Spatial.Core.Geometry` types must stay inside the single-referrer
-discipline (Ca < 8 across the whole repo).** The loop's implementor session
-also carved the provider (kept, committed): the runner now chains pure
-guards (`PostgisInvocationValidator.FirstError`) and delegates to store
-executors; cc ≤ 2 discipline preserved for the DB-only paths.
-- **Stryker (my call — NOT run):** the repo's stryker-config.json pins
-  `Spatial.Runtime.csproj`, which this phase did not change; the new
-  assemblies (PluginSdk.Providers, Spatial.Provider.PostGIS,
-  PluginHost.DotNet's supervisor env plumbing) have no mutation config.
-  Same reasoning as Phase 6/7: an ~11-min run would measure unchanged
-  Runtime code and miss this phase. Last known score (Phase 5 handoff):
-  run-level 87.27% / last-scores 93.09%, break-60 green.
-  **Recommendation for the loop's final repo-wide pass**: add stryker
-  configs for `Spatial.Provider.PostGIS` and `Spatial.PluginSdk` (and
-  review `Spatial.PluginHost.DotNet` now that it passes environments).
+1. **The API and SDKs are ready**: `clients/typescript/@spatial/client`
+   (fetch-based, generated types, SFBAT decoder, stream reads, job
+   wait/cancel/events) is the workbench's only channel to the host. `apps/
+   workbench-web/` is the Phase 10 home (repo layout §15); the
+   `Web_clients_do_not_depend_on_tauri` architecture test already guards it.
+2. **Running a full stack for development**: `eng/e2e-web.sh` shows the
+   pattern — pack `nts` (PluginPacker) or `postgis` (+
+   `Spatial__PackagesRoot` + `SPATIAL_POSTGIS_CONNECTION` in
+   `Spatial:WorkerEnvironment`), run the host with `--no-launch-profile`,
+   point the client at it. For PostGIS browse the phase-8 conformance fixture
+   (`bigpoints`, 200k rows) is the performance vehicle (plan §18).
+3. **Stream decoding is in both SDKs**: the TS `readStream` +
+   `decodeFeatureBatch` handle scans; `$geometry` attributes stay raw SGEOM
+   bytes — the renderer needs a MapLibre geometry adapter (Phase 10's first
+   real piece of client code). Job progress arrives via the SSE events
+   endpoint or `waitForJob`.
+4. **Plugin replacement demo (plan §17.9-11)**: the host has
+   `CapabilityRuntime.SetActivePreference` (route new work to v2) and
+   drain/rollback via the supervisor; the `/api/plugins` surface shows both
+   versions. Phase 10 needs a second NTS package version to demonstrate
+   side-by-side routing.
+5. **Playwright**: not yet in the repo; the workbench tests live under
+   `tests/end-to-end-web/` (plan §15) — out of the solution (like the
+   clients), driven by an eng script + npm.
+6. **Conformance/OpenAPI drift**: if Phase 10 changes the API, regenerate the
+   TS types (`npm run generate`) and refresh
+   `clients/typescript/scripts/openapi.snapshot.json` via `eng/e2e-web.sh`.
