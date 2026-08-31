@@ -78,6 +78,12 @@ permissions follow the same dotted-lowercase rule (`nts@1`,
   `DatasetMetadataJson`) and provider resource kinds live here too. The
   reference implementation is `Spatial.Provider.PostGIS` (`postgis@1`) —
   see `architecture/data-provider-contracts.md`.
+- **`src/Spatial.PluginSdk/Http` + `Codec`** (Phase 9, ADR-0030) ship the
+  public host API: the HTTP request/response shapes (`Spatial.PluginSdk.Http`,
+  `architecture/host-api.md`) and the shared inline value codec
+  (`Spatial.PluginSdk.Codec.ValueCodec`) used by the worker wire and the
+  HTTP API alike. The .NET and TypeScript client SDKs consume the same
+  shapes — one contract set across host, worker wire, OpenAPI and clients.
 
 ## Registration rules (enforced by the registry)
 

@@ -49,7 +49,7 @@ so a silent worker cannot hang a job past its deadline.
 
 ## Inline values
 
-Argument and result values use the inline value codec — scalars plus tagged
+Argument and result values use the inline value codec (`Spatial.PluginSdk.Codec.ValueCodec`, ADR-0030) — scalars plus tagged
 values:
 
 | Value | Wire form |
@@ -62,6 +62,11 @@ values:
 | `IGeometry` | `{"$geometry":"base64…"}` (canonical SGEOM binary interchange, ADR-0020, Phase 6) |
 | `ResourceHandle` | `{"$resource":{"token","kind","owner","createdAt"}}` (opaque token) |
 | `ProviderId` | its canonical `name@version` string |
+
+The codec lives in the SDK (ADR-0030): the worker boundary and the HTTP host
+API share it, so a value never changes shape between boundaries (`$geometry`
+and `$bytes` already make the host's stream surface byte-compatible with the
+worker wire).
 
 Decoding maps JSON numbers to int32 when integral and in range, else int64,
 else double. **Geometry crosses the boundary as canonical binary interchange**

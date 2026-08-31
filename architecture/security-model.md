@@ -49,3 +49,16 @@ anything handling secrets. See implementation-plan.md §19.
   adapter validates dataset identifiers against a strict grammar, resolves
   filter columns against the discovered schema and binds every literal as a
   parameter (ADR-0028, `architecture/data-provider-contracts.md`).
+
+## HTTP host permissions (Phase 9)
+
+- The HTTP API is the public enforcement point for scoping. A caller declares
+  the permission names it wants in the invocation request (`permissions`);
+  the host grants those scopes against its own policy and the runtime's
+  permission gate (set membership by default — `GrantedPermissionsEvaluator`)
+  rejects invocations whose declared requirements are not granted. Secrets
+  and connection material never ride the request: the only channel is the
+  worker launch environment above.
+- The host binds loopback by default in local profiles; a remote deployment
+  is a deliberate configuration choice (deployment-profiles.md). The desktop
+  shell inherits the same API and enforcement (ADR-0017).

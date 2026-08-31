@@ -515,30 +515,45 @@ The initial PostGIS provider supports:
 
 ## 12. Host API and SDKs
 
-The .NET host is independently executable and must not assume it is running under Tauri.
+The .NET host is independently executable and must not assume it is running under Tauri. The API is an ASP.NET Core minimal API documented in `architecture/host-api.md` (ADR-0030); its request/response shapes live in `Spatial.PluginSdk.Http`, inline values use the SDK's value codec (`Spatial.PluginSdk.Codec`, shared with the worker wire), and the OpenAPI description is served at `/openapi/v1.json`.
 
-Initial endpoints:
+Endpoints:
 
 ```text
+GET  /health/ready                     # host wired, plugins counted
+GET  /health/live                      # process up
 GET  /api/capabilities
 GET  /api/capabilities/{id}
-POST /api/invocations
+POST /api/invocations                  # inline completion OR 202 job routing
 GET  /api/jobs/{id}
 POST /api/jobs/{id}/cancel
-GET  /api/jobs/{id}/events
+GET  /api/jobs/{id}/events             # JSON page, or SSE (Accept: text/event-stream)
 GET  /api/resources/{id}/metadata
 DELETE /api/resources/{id}
+GET  /api/resources/{id}/stream        # NDJSON of codec-encoded stream items
 GET  /api/plugins
 GET  /api/plugins/{id}
-GET  /health/ready
-GET  /health/live
+GET  /openapi/v1.json                  # OpenAPI description
 ```
 
-Generate:
+Generated/tested SDKs (same wire shapes, both quality-gated through their
+test projects):
 
-- TypeScript SDK for React and other web clients
-- .NET SDK for automation and service clients
-- OpenAPI description for public HTTP contracts
+- **TypeScript SDK** (`clients/typescript/@spatial/client`) for React and
+  other web clients: fetch-based, wire types GENERATED from the OpenAPI
+  description (`scripts/generate.mjs`, drift-checked in `npm test`), the
+  SFBAT v1 feature-batch decoder, and an env-gated e2e against the real
+  host (`eng/e2e-web.sh` = pack NTS worker + run host + drive it from Node).
+- **.NET SDK** (`clients/dotnet/Spatial.Client`) for automation and service
+  clients: typed methods over `HttpClient`, shared codec and DTOs,
+  `ReadFeatureBatchesAsync`, `WaitForJobAsync`.
+
+Runtime outcomes are always 2xx `completed` (or `202 job`); HTTP 4xx/5xx
+are reserved for undecodable requests and host failures. Long-running
+capabilities never block the request: they answer `202` with the job to
+poll or subscribe (ADR-0008). The host reads its plugin packages from
+`Spatial:PackagesRoot` (empty = no plugins) and hands host-managed
+variables to workers through `Spatial:WorkerEnvironment` (ADR-0028).
 
 ## 13. Browser Workbench, Milestone 1
 
@@ -806,9 +821,26 @@ Testcontainers PostGIS.
 
 ### Phase 9: ASP.NET Core Host and SDKs
 
+**Status:** complete (Epic H — ASP.NET Core API and the TypeScript SDK; the
+workbench bullets of Epic H remain for Phase 10).
+
 - Implement HTTP, streaming, job, resource, plugin and health APIs.
 - Generate and test TypeScript and .NET SDKs.
 - Confirm the host runs independently through browser and automated clients.
+
+Contract surface: the HTTP API (`architecture/host-api.md`, ADR-0030) —
+capabilities, invocations (inline completion or 202 job routing), jobs with
+JSON/SSE events, resources with the NDJSON stream read, plugins, health and
+OpenAPI. Inline values share the SDK's value codec
+(`Spatial.PluginSdk.Codec.ValueCodec`, moved here from the worker protocol,
+ADR-0030); request/response shapes live in `Spatial.PluginSdk.Http`.
+Generated SDKS: `clients/typescript` (`@spatial/client`, wire types emitted
+from the OpenAPI snapshot, SFBAT decoder, drift-checked in `npm test`) and
+`clients/dotnet/Spatial.Client` (.NET; tested unit and against the real
+host). `eng/e2e-web.sh` packs the NTS worker, runs the real host process and
+drives it from the TypeScript SDK over real HTTP — the independent-host
+proof; `Spatial.Host` activation reads `Spatial:PackagesRoot`,
+`Spatial:Preferences` and `Spatial:WorkerEnvironment`.
 
 ### Phase 10: Browser Workbench
 
@@ -1014,8 +1046,8 @@ Root agent instructions must include:
 
 ### Epic H: Host and browser workbench
 
-- [ ] ASP.NET Core API
-- [ ] TypeScript SDK
+- [x] ASP.NET Core API
+- [x] TypeScript SDK
 - [ ] React shell
 - [ ] Dataset browser
 - [ ] Map display
@@ -1129,6 +1161,7 @@ ADR-0026 Standard geometry operations are versioned capability contracts
 ADR-0027 Coordinate transformation contracts and the ProjNet adapter
 ADR-0028 PostGIS provider contracts and data interchange
 ADR-0029 Feature model contract faces and the codec namespace
+ADR-0030 Host API contract shapes and value codec live in the SDK
 ```
 
 ## 25. Recommended Starting Sequence

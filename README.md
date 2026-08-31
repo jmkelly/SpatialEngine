@@ -16,6 +16,25 @@ implementations.
 
 ## Status
 
+Phase 9 — ASP.NET Core host and SDKs. The independently executable host now
+serves the public HTTP API (`architecture/host-api.md`, ADR-0030):
+`/api/capabilities`, `POST /api/invocations` (inline completion, or 202 job
+routing for long-running work), `/api/jobs/{id}` with cancel and JSON/SSE
+events, `/api/resources/{id}` metadata/delete and the NDJSON stream read
+(string, `$bytes` and `$error` lines), `/api/plugins`, health, and the
+OpenAPI description at `/openapi/v1.json`. Inline values share the SDK's
+value codec — `WorkerValueCodec` graduated to `Spatial.PluginSdk.Codec`
+(ADR-0030), shared with the worker wire — and the request/response shapes
+live in `Spatial.PluginSdk.Http`. Two generated/tested SDKs ship:
+`clients/typescript` (`@spatial/client`: fetch-based, wire types generated
+from the OpenAPI snapshot, the canonical SFBAT feature-batch decoder, drift
+checked in `npm test`) and `clients/dotnet/Spatial.Client` (.NET typed
+client with unit and real-host integration tests). The host activates plugin
+packages from `Spatial:PackagesRoot` and routes capabilities while a real
+NTS worker runs out of process — `eng/e2e-web.sh` packs the worker, runs the
+real host process and drives it from the TypeScript SDK over real HTTP
+(plan §17.1–6 over the wire, no Docker, no Tauri).
+
 Phase 8 — PostGIS data provider. The data-provider contracts ship in
 `Spatial.PluginSdk.Providers` (`spatial.catalogue.list@1`,
 `spatial.dataset.describe@1`, `spatial.dataset.create@1`,

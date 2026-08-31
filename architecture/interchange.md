@@ -59,6 +59,11 @@ provider runs out of process:
 - Draining a worker version reclaims its resources through
   `ResourceRegistry.DisposeOwnerAsync` (the draining call site) before the
   worker process is stopped.
+- **Over HTTP (Phase 9, ADR-0030, `architecture/host-api.md`)** the host's
+  stream surface carries the same items as line-delimited JSON of
+  codec-encoded values (`{"$bytes": …}` for feature batches, JSON text for
+  metadata), so the browser and .NET clients decode with the same rules as
+  the worker wire.
 
 ## Data provider value forms (Phase 8, ADR-0028)
 
