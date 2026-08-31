@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Codec;
 using Spatial.PluginSdk.Resources;
 using Spatial.Runtime.Resources;
 using Spatial.Runtime.Streams;
@@ -125,7 +126,7 @@ public sealed class WorkerFacilityServer
         {
             foreach (var node in items ?? new JsonArray())
             {
-                await stream.WriteAsync(WorkerValueCodec.Decode(node));
+                await stream.WriteAsync(ValueCodec.Decode(node));
             }
 
             return FacilityOk();

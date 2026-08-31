@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Codec;
 using Spatial.PluginSdk.Resources;
 
 namespace Spatial.PluginHost.DotNet.Protocol;
@@ -49,7 +50,7 @@ public static class WorkerPayload
         var args = new JsonObject();
         foreach (var entry in arguments)
         {
-            args[entry.Key] = WorkerValueCodec.Encode(entry.Value);
+            args[entry.Key] = ValueCodec.Encode(entry.Value);
         }
 
         payload["arguments"] = args;
@@ -58,7 +59,7 @@ public static class WorkerPayload
 
     /// <summary>Builds a <see cref="WorkerProtocol.Result"/> success payload.</summary>
     public static JsonObject ResultSuccess(object? value) =>
-        new() { ["kind"] = "success", ["value"] = WorkerValueCodec.Encode(value) };
+        new() { ["kind"] = "success", ["value"] = ValueCodec.Encode(value) };
 
     /// <summary>Builds a <see cref="WorkerProtocol.Result"/> failure payload.</summary>
     public static JsonObject ResultFailure(CapabilityError error)
@@ -99,7 +100,7 @@ public static class WorkerPayload
         new()
         {
             ["token"] = token.ToString("N"),
-            ["items"] = new JsonArray(items.Select(item => WorkerValueCodec.Encode(item) ?? JsonValue.Create((string?)null)).ToArray()),
+            ["items"] = new JsonArray(items.Select(item => ValueCodec.Encode(item) ?? JsonValue.Create((string?)null)).ToArray()),
         };
 
     /// <summary>Builds a <see cref="WorkerProtocol.FacilityStreamComplete"/> payload (optional completion error).</summary>
@@ -228,7 +229,7 @@ public static class WorkerPayload
 
         if (kind == "success")
         {
-            return new WorkerOutcome(WorkerOutcomeKind.Success, WorkerValueCodec.Decode(obj["value"]));
+            return new WorkerOutcome(WorkerOutcomeKind.Success, ValueCodec.Decode(obj["value"]));
         }
 
         if (kind == "failure")

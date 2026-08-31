@@ -14,4 +14,8 @@
     <ProjectReference Include="..\Spatial.PluginHost.DotNet\Spatial.PluginHost.DotNet.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
 </Project>

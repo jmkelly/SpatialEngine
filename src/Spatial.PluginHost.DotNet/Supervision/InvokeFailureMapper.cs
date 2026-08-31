@@ -1,6 +1,7 @@
 using System.Runtime.ExceptionServices;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Codec;
 
 namespace Spatial.PluginHost.DotNet.Supervision;
 
@@ -17,7 +18,7 @@ internal static class InvokeFailureMapper
         ProviderId providerId,
         Exception exception)
     {
-        if (exception is WorkerValueException { Message: var message })
+        if (exception is ValueCodecException { Message: var message })
         {
             return ContractViolationResult(invocation, message);
         }

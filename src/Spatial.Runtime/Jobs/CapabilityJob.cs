@@ -36,6 +36,23 @@ public sealed class CapabilityJob : IJob, IDisposable
 
     public JobId Id { get; }
 
+    /// <summary>
+    /// The provider resolution serving this job (the provider, its descriptor
+    /// and the deterministic resolution step), or null before it starts and
+    /// for pre-check failures that never reached a provider. Hosts surface
+    /// this as job provenance (plan §9).
+    /// </summary>
+    public ResolvedProvider? Resolved
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _resolved;
+            }
+        }
+    }
+
     public DateTimeOffset CreatedAt { get; }
 
     public JobState State

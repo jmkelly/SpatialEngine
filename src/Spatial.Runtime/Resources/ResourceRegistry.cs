@@ -161,6 +161,27 @@ public sealed class ResourceRegistry
         }
     }
 
+    /// <summary>
+    /// Resolves a registered handle from its opaque id (the <c>token</c> a
+    /// client carries), so hosts can open resources without the full handle
+    /// the provider minted. Returns false for unknown or already-closed
+    /// resources — a client cannot forge a usable handle by inventing an id.
+    /// </summary>
+    public bool TryGetHandle(ResourceId id, [NotNullWhen(true)] out ResourceHandle? handle)
+    {
+        lock (_gate)
+        {
+            if (_records.TryGetValue(id, out var record) && record.State != ResourceState.Closed)
+            {
+                handle = record.Handle;
+                return true;
+            }
+
+            handle = null;
+            return false;
+        }
+    }
+
     /// <summary>The read-only view of a registered resource (identity, owner, state).</summary>
     public bool TryGetResource(ResourceHandle handle, [NotNullWhen(true)] out ICapabilityResource? resource)
     {

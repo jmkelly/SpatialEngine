@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Codec;
 
 namespace Spatial.PluginHost.DotNet.WorkerHost;
 
@@ -320,9 +321,9 @@ public sealed class PluginWorkerHost : IAsyncDisposable
         {
             try
             {
-                map.Add(entry.Key, WorkerValueCodec.Decode(entry.Value));
+                map.Add(entry.Key, ValueCodec.Decode(entry.Value));
             }
-            catch (WorkerValueException exception)
+            catch (ValueCodecException exception)
             {
                 error = $"the argument '{entry.Key}' cannot cross the worker boundary: {exception.Message}";
                 return false;

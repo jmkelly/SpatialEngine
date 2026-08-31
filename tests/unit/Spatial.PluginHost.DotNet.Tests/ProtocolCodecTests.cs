@@ -5,6 +5,7 @@ using Spatial.Core.Geometry;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk.Codec;
 using Spatial.PluginSdk.Resources;
 using Spatial.PluginSdk.Transformations;
 
@@ -61,41 +62,41 @@ public sealed class ProtocolCodecTests
     [Fact]
     public void Scalar_values_round_trip()
     {
-        Assert.Null(WorkerValueCodec.Decode(WorkerValueCodec.Encode(null)));
-        Assert.Equal(true, WorkerValueCodec.Decode(WorkerValueCodec.Encode(true)));
-        Assert.Equal(5, WorkerValueCodec.Decode(WorkerValueCodec.Encode(5)));
-        Assert.Equal(80L, WorkerValueCodec.Decode(WorkerValueCodec.Encode(80L)));
-        Assert.Equal(2.5, WorkerValueCodec.Decode(WorkerValueCodec.Encode(2.5)));
-        Assert.Equal("hello", WorkerValueCodec.Decode(WorkerValueCodec.Encode("hello")));
+        Assert.Null(ValueCodec.Decode(ValueCodec.Encode(null)));
+        Assert.Equal(true, ValueCodec.Decode(ValueCodec.Encode(true)));
+        Assert.Equal(5, ValueCodec.Decode(ValueCodec.Encode(5)));
+        Assert.Equal(80L, ValueCodec.Decode(ValueCodec.Encode(80L)));
+        Assert.Equal(2.5, ValueCodec.Decode(ValueCodec.Encode(2.5)));
+        Assert.Equal("hello", ValueCodec.Decode(ValueCodec.Encode("hello")));
     }
 
     [Fact]
     public void Int64_travels_as_a_tagged_decimal_string()
     {
-        var node = WorkerValueCodec.Encode(80L);
+        var node = ValueCodec.Encode(80L);
         Assert.IsType<JsonObject>(node);
         Assert.Equal("80", node!["$i64"]!.GetValue<string>());
-        Assert.Equal(80L, WorkerValueCodec.Decode(node));
+        Assert.Equal(80L, ValueCodec.Decode(node));
 
         var huge = 9_000_000_000L;
-        Assert.Equal(huge, WorkerValueCodec.Decode(WorkerValueCodec.Encode(huge)));
+        Assert.Equal(huge, ValueCodec.Decode(ValueCodec.Encode(huge)));
     }
 
     [Fact]
     public void Integers_decode_to_int_when_they_fit()
     {
-        Assert.Equal(5, WorkerValueCodec.Decode(JsonNode.Parse("5")));
-        Assert.Equal(80, WorkerValueCodec.Decode(JsonNode.Parse("80")));
-        Assert.Equal(2.5, WorkerValueCodec.Decode(JsonNode.Parse("2.5")));
+        Assert.Equal(5, ValueCodec.Decode(JsonNode.Parse("5")));
+        Assert.Equal(80, ValueCodec.Decode(JsonNode.Parse("80")));
+        Assert.Equal(2.5, ValueCodec.Decode(JsonNode.Parse("2.5")));
     }
 
     [Fact]
     public void Bytes_travel_as_base64()
     {
         var bytes = new byte[] { 1, 2, 3, 255 };
-        var node = WorkerValueCodec.Encode(bytes);
+        var node = ValueCodec.Encode(bytes);
         Assert.Equal("AQID/w==", node!["$bytes"]!.GetValue<string>());
-        Assert.Equal(bytes, WorkerValueCodec.Decode(node));
+        Assert.Equal(bytes, ValueCodec.Decode(node));
     }
 
     [Fact]
@@ -113,13 +114,13 @@ public sealed class ProtocolCodecTests
             new Coordinate(0, 0),
         ], new CoordinateReference("EPSG", "4326"));
 
-        var node = WorkerValueCodec.Encode(polygon);
+        var node = ValueCodec.Encode(polygon);
         var tag = Assert.IsType<JsonObject>(node);
         var base64 = tag["$geometry"]!.GetValue<string>();
         Assert.StartsWith("U0dFT00", base64); // 'SGEOM' magic, base64
         Assert.Equal(GeometryCodec.Encode(polygon), Convert.FromBase64String(base64));
 
-        var back = Assert.IsType<Polygon>(WorkerValueCodec.Decode(node));
+        var back = Assert.IsType<Polygon>(ValueCodec.Decode(node));
         Assert.Equal(polygon, back);
         Assert.Equal(new CoordinateReference("EPSG", "4326"), back.CoordinateReference);
     }
@@ -134,9 +135,9 @@ public sealed class ProtocolCodecTests
             [],
             null);
 
-        Assert.Equal(point, Assert.IsType<Point>(WorkerValueCodec.Decode(payload["arguments"]!["geometry"])));
-        Assert.Equal(point, Assert.IsType<Point>(WorkerValueCodec.Decode(WorkerValueCodec.Encode(point))));
-        Assert.Equal(1.0, WorkerValueCodec.Decode(payload["arguments"]!["distance"]));
+        Assert.Equal(point, Assert.IsType<Point>(ValueCodec.Decode(payload["arguments"]!["geometry"])));
+        Assert.Equal(point, Assert.IsType<Point>(ValueCodec.Decode(ValueCodec.Encode(point))));
+        Assert.Equal(1.0, ValueCodec.Decode(payload["arguments"]!["distance"]));
 
         var success = WorkerPayload.ResultSuccess(point);
         var outcome = WorkerPayload.ReadOutcome(success);
@@ -146,12 +147,12 @@ public sealed class ProtocolCodecTests
     [Fact]
     public void Malformed_geometry_tags_are_actionable()
     {
-        var notBase64 = Assert.Throws<WorkerValueException>(() =>
-            WorkerValueCodec.Decode(JsonNode.Parse("{\"$geometry\":\"!!!\"}")));
+        var notBase64 = Assert.Throws<ValueCodecException>(() =>
+            ValueCodec.Decode(JsonNode.Parse("{\"$geometry\":\"!!!\"}")));
         Assert.Contains("base64", notBase64.Message);
 
-        var notCanonical = Assert.Throws<WorkerValueException>(() =>
-            WorkerValueCodec.Decode(JsonNode.Parse("{\"$geometry\":\"aGVsbG8=\"}")));
+        var notCanonical = Assert.Throws<ValueCodecException>(() =>
+            ValueCodec.Decode(JsonNode.Parse("{\"$geometry\":\"aGVsbG8=\"}")));
         Assert.Contains("canonical geometry", notCanonical.Message);
     }
 
@@ -164,8 +165,8 @@ public sealed class ProtocolCodecTests
             ProviderId.Parse("fixture@1"),
             DateTimeOffset.Parse("2025-01-02T03:04:05.0000000Z", CultureInfo.InvariantCulture));
 
-        var node = WorkerValueCodec.Encode(handle);
-        var back = Assert.IsType<ResourceHandle>(WorkerValueCodec.Decode(node));
+        var node = ValueCodec.Encode(handle);
+        var back = Assert.IsType<ResourceHandle>(ValueCodec.Decode(node));
 
         Assert.Equal(handle.Id, back.Id);
         Assert.Equal(handle.Kind, back.Kind);
@@ -176,7 +177,7 @@ public sealed class ProtocolCodecTests
     [Fact]
     public void Provider_ids_travel_as_their_canonical_string()
     {
-        var node = WorkerValueCodec.Encode(ProviderId.Parse("fixture@1"));
+        var node = ValueCodec.Encode(ProviderId.Parse("fixture@1"));
         Assert.Equal("fixture@1", node!.GetValue<string>());
     }
 
@@ -196,13 +197,13 @@ public sealed class ProtocolCodecTests
             "World Geodetic System 1984",
             new CrsEllipsoid("WGS 84", 6378137.0, 6356752.314245179, "metre"));
 
-        var node = WorkerValueCodec.Encode(description);
+        var node = ValueCodec.Encode(description);
         var tag = Assert.IsType<JsonObject>(node);
         var inner = Assert.IsType<JsonObject>(tag["$crs"]);
         Assert.Equal("EPSG", inner["authority"]!.GetValue<string>());
         Assert.Equal("geographic", inner["kind"]!.GetValue<string>());
 
-        var back = Assert.IsType<CrsDescription>(WorkerValueCodec.Decode(node));
+        var back = Assert.IsType<CrsDescription>(ValueCodec.Decode(node));
         Assert.Equal(description.Authority, back.Authority);
         Assert.Equal(description.Code, back.Code);
         Assert.Equal(description.Name, back.Name);
@@ -220,19 +221,19 @@ public sealed class ProtocolCodecTests
     [Fact]
     public void Malformed_crs_tags_are_actionable()
     {
-        var missingFields = Assert.Throws<WorkerValueException>(() =>
-            WorkerValueCodec.Decode(JsonNode.Parse("{\"$crs\":{\"authority\":\"EPSG\"}}")));
+        var missingFields = Assert.Throws<ValueCodecException>(() =>
+            ValueCodec.Decode(JsonNode.Parse("{\"$crs\":{\"authority\":\"EPSG\"}}")));
         Assert.Contains("structured CRS description", missingFields.Message);
         Assert.Contains("'code'", missingFields.Message);
 
-        var badKind = Assert.Throws<WorkerValueException>(() =>
-            WorkerValueCodec.Decode(JsonNode.Parse(
+        var badKind = Assert.Throws<ValueCodecException>(() =>
+            ValueCodec.Decode(JsonNode.Parse(
                 "{\"$crs\":{\"authority\":\"EPSG\",\"code\":\"4326\",\"name\":\"WGS 84\","
                 + "\"kind\":\"warp\",\"dimension\":2,\"axes\":[]}}")));
         Assert.Contains("not a valid CrsKind", badKind.Message);
 
-        var notAnObject = Assert.Throws<WorkerValueException>(() =>
-            WorkerValueCodec.Decode(JsonNode.Parse("{\"$crs\":\"EPSG:4326\"}")));
+        var notAnObject = Assert.Throws<ValueCodecException>(() =>
+            ValueCodec.Decode(JsonNode.Parse("{\"$crs\":\"EPSG:4326\"}")));
         Assert.Contains("$crs", notAnObject.Message);
     }
 
@@ -241,20 +242,20 @@ public sealed class ProtocolCodecTests
     {
         var feature = new FeatureBatch(
             new FeatureSchema([new FieldDefinition("count", AttributeKind.Int64)]), []);
-        var exception = Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Encode(feature));
+        var exception = Assert.Throws<ValueCodecException>(() => ValueCodec.Encode(feature));
         Assert.Contains("canonical binary interchange (ADR-0020)", exception.Message);
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Encode(new object()));
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("[1,2]")));
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"x\":1}")));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Encode(new object()));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Decode(JsonNode.Parse("[1,2]")));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Decode(JsonNode.Parse("{\"x\":1}")));
     }
 
     [Fact]
     public void Tag_errors_are_actionable()
     {
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$i64\":\"not-a-number\"}")));
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$bytes\":\"!!!\"}")));
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$resource\":{}}")));
-        Assert.Throws<WorkerValueException>(() => WorkerValueCodec.Decode(JsonNode.Parse("{\"$resource\":{\"token\":\"x\",\"kind\":\"a\",\"owner\":\"b@1\",\"createdAt\":\"2025-01-01T00:00:00Z\"}}")));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Decode(JsonNode.Parse("{\"$i64\":\"not-a-number\"}")));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Decode(JsonNode.Parse("{\"$bytes\":\"!!!\"}")));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Decode(JsonNode.Parse("{\"$resource\":{}}")));
+        Assert.Throws<ValueCodecException>(() => ValueCodec.Decode(JsonNode.Parse("{\"$resource\":{\"token\":\"x\",\"kind\":\"a\",\"owner\":\"b@1\",\"createdAt\":\"2025-01-01T00:00:00Z\"}}")));
     }
 
     [Fact]
@@ -268,8 +269,8 @@ public sealed class ProtocolCodecTests
             deadline);
 
         Assert.Equal("spatial.fixture.sleep@1", payload["capability"]!.GetValue<string>());
-        Assert.Equal(80L, WorkerValueCodec.Decode(payload["arguments"]!["milliseconds"]));
-        Assert.Equal("x", WorkerValueCodec.Decode(payload["arguments"]!["label"]));
+        Assert.Equal(80L, ValueCodec.Decode(payload["arguments"]!["milliseconds"]));
+        Assert.Equal("x", ValueCodec.Decode(payload["arguments"]!["label"]));
         Assert.Equal("x", payload["arguments"]!["label"]!.GetValue<string>());
         Assert.Equal(deadline, DateTimeOffset.Parse(payload["deadline"]!.GetValue<string>(), CultureInfo.InvariantCulture));
     }

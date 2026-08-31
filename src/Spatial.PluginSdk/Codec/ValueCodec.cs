@@ -6,23 +6,24 @@ using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Resources;
 using Spatial.PluginSdk.Transformations;
 
-namespace Spatial.PluginHost.DotNet.Protocol;
+namespace Spatial.PluginSdk.Codec;
 
 /// <summary>
-/// The inline value codec of the worker protocol (ADR-0020/0025, plan §8
-/// "inline values for points, envelopes, options and small geometries"): the
-/// language-neutral encoding of argument and result values. The inline
-/// protocol carries scalars, <c>$i64</c>-tagged 64-bit integers, base64
-/// bytes, <c>$geometry</c>-tagged canonical binary geometry (ADR-0020,
-/// Phase 6), <c>$crs</c>-tagged CRS descriptions (ADR-0027, Phase 7) and
-/// opaque resource-handle tags; spatial values other than geometry (feature
-/// batches in particular) are rejected. The runtime therefore never routes
-/// geometry through JSON between workers.
+/// The language-neutral inline value codec shared by every public boundary
+/// (ADR-0025/0030): the worker wire protocol (<c>Spatial.PluginHost.DotNet</c>)
+/// and the HTTP host API (<c>Spatial.Host</c>) carry argument and result
+/// values with this one encoding, so a value never changes shape between
+/// boundaries. The codec carries scalars, <c>$i64</c>-tagged 64-bit integers,
+/// base64 <c>$bytes</c>, <c>$geometry</c>-tagged canonical binary geometry
+/// (ADR-0020, Phase 6), <c>$crs</c>-tagged CRS descriptions (ADR-0027,
+/// Phase 7) and opaque <c>$resource</c> handles; spatial values other than
+/// geometry (feature batches in particular) are rejected — they cross as
+/// bounded streams, never inline.
 /// </summary>
-public static class WorkerValueCodec
+public static class ValueCodec
 {
     /// <summary>
-    /// Encodes a value to its wire form. Throws <see cref="WorkerValueException"/>
+    /// Encodes a value to its wire form. Throws <see cref="ValueCodecException"/>
     /// for values the inline protocol does not carry (spatial values other than
     /// geometry in particular, with an ADR-0020 hint). Geometry travels as a
     /// <c>$geometry</c> tag carrying canonical binary interchange (SGEOM).
@@ -74,8 +75,8 @@ public static class WorkerValueCodec
 
         if (node is JsonArray)
         {
-            throw new WorkerValueException(
-                "arrays are not supported as inline worker values; a worker value is a scalar, $i64, $bytes, $geometry or $resource");
+            throw new ValueCodecException(
+                "arrays are not supported as inline values; an inline value is a scalar, $i64, $bytes, $geometry, $crs or $resource");
         }
 
         if (node is JsonValue value)
@@ -83,7 +84,7 @@ public static class WorkerValueCodec
             return DecodeValue(value);
         }
 
-        throw new WorkerValueException($"unsupported worker value node {node.GetType().Name}");
+        throw new ValueCodecException($"unsupported value node {node.GetType().Name}");
     }
 
     private static object DecodeObject(JsonObject obj)
@@ -113,8 +114,8 @@ public static class WorkerValueCodec
             return ReadResource(resourceNode);
         }
 
-        throw new WorkerValueException(
-            "object values are not supported as inline worker values; "
+        throw new ValueCodecException(
+            "object values are not supported as inline values; "
             + "remember to tag 64-bit integers ($i64), bytes ($bytes), geometry ($geometry), CRS descriptions ($crs) and resource handles ($resource)");
     }
 
@@ -171,8 +172,8 @@ public static class WorkerValueCodec
             return text;
         }
 
-        throw new WorkerValueException(
-            $"the JSON value '{value.ToJsonString()}' is not a supported inline worker value");
+        throw new ValueCodecException(
+            $"the JSON value '{value.ToJsonString()}' is not a supported inline value");
     }
 
     private static JsonObject Int64Node(long number) =>
@@ -200,7 +201,7 @@ public static class WorkerValueCodec
             return number;
         }
 
-        throw new WorkerValueException(
+        throw new ValueCodecException(
             $"the {tag} tag must carry a decimal string, for example {{\"{tag}\":\"80\"}}");
     }
 
@@ -212,7 +213,7 @@ public static class WorkerValueCodec
         }
         catch (FormatException exception)
         {
-            throw new WorkerValueException($"the {tag} tag must carry a base64 string: {exception.Message}", exception);
+            throw new ValueCodecException($"the {tag} tag must carry a base64 string: {exception.Message}", exception);
         }
     }
 
@@ -258,7 +259,7 @@ public static class WorkerValueCodec
         }
         catch (Exception exception) when (exception is FormatException or InvalidOperationException)
         {
-            throw new WorkerValueException($"the $geometry tag must carry a base64 canonical geometry: {exception.Message}", exception);
+            throw new ValueCodecException($"the $geometry tag must carry a base64 canonical geometry: {exception.Message}", exception);
         }
 
         try
@@ -267,7 +268,7 @@ public static class WorkerValueCodec
         }
         catch (CanonicalFormatException exception)
         {
-            throw new WorkerValueException(
+            throw new ValueCodecException(
                 $"the $geometry tag must carry canonical geometry bytes (SGEOM, ADR-0020): {exception.Message}", exception);
         }
     }
@@ -288,7 +289,7 @@ public static class WorkerValueCodec
         }
         catch (Exception exception) when (exception is FormatException or InvalidOperationException or ArgumentException)
         {
-            throw new WorkerValueException(
+            throw new ValueCodecException(
                 $"the $crs tag must carry a structured CRS description: {exception.Message}", exception);
         }
     }
@@ -354,7 +355,7 @@ public static class WorkerValueCodec
             var createdAt = resource["createdAt"]?.GetValue<string>();
             if (token is null || kind is null || owner is null || createdAt is null)
             {
-                throw new WorkerValueException("the $resource tag must carry token, kind, owner and createdAt");
+                throw new ValueCodecException("the $resource tag must carry token, kind, owner and createdAt");
             }
 
             var handle = new ResourceHandle(
@@ -364,20 +365,20 @@ public static class WorkerValueCodec
                 DateTimeOffset.Parse(createdAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
             return handle;
         }
-        catch (Exception exception) when (exception is FormatException or ArgumentException or WorkerValueException)
+        catch (Exception exception) when (exception is FormatException or ArgumentException or ValueCodecException)
         {
-            throw new WorkerValueException($"the $resource tag is malformed: {exception.Message}", exception);
+            throw new ValueCodecException($"the $resource tag is malformed: {exception.Message}", exception);
         }
     }
 
-    private static WorkerValueException Unsupported(object value)
+    private static ValueCodecException Unsupported(object value)
     {
         var type = value.GetType();
         var hint = type.FullName?.StartsWith("Spatial.Core.", StringComparison.Ordinal) == true
-            ? " Spatial values other than geometry cross the worker boundary as canonical binary interchange (ADR-0020): geometry uses the $geometry tag, feature batches use streams."
+            ? " Spatial values other than geometry cross the boundary as canonical binary interchange (ADR-0020): geometry uses the $geometry tag, feature batches use streams."
             : string.Empty;
-        return new WorkerValueException(
-            $"'{type.FullName}' is not supported by the inline worker protocol; supported values are "
+        return new ValueCodecException(
+            $"'{type.FullName}' is not supported by the inline value codec; supported values are "
             + "null, bool, int32, int64 ($i64), double, string, byte[] ($bytes), IGeometry ($geometry), CrsDescription ($crs), ResourceHandle ($resource) and ProviderId."
             + hint);
     }

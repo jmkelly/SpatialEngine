@@ -14,19 +14,8 @@ public class WorkerProtocolException : Exception
     }
 }
 
-/// <summary>A value that cannot cross the worker boundary in the inline protocol (ADR-0020/0025).</summary>
-public class WorkerValueException : Exception
-{
-    public WorkerValueException(string message)
-        : base(message)
-    {
-    }
-
-    public WorkerValueException(string message, Exception inner)
-        : base(message, inner)
-    {
-    }
-}
+/// <summary>A value that cannot cross the worker boundary in the inline protocol (ADR-0020/0025) —
+/// see <see cref="Spatial.PluginSdk.Codec.ValueCodecException"/> (the codec now lives in the SDK).</summary>
 
 /// <summary>The worker process (or channel) went away while a request was outstanding.</summary>
 public sealed class WorkerDisconnectedException : WorkerProtocolException
