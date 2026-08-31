@@ -15,17 +15,17 @@ namespace Spatial.Provider.PostGIS.Data;
 internal static class PostgisQueries
 {
     /// <summary>Full scan: every discovered field, in column order (geometry fields read as EWKB bytes).</summary>
-    public static string Select(PostgisDatasetName dataset, FeatureSchema schema) =>
+    public static string Select(PostgisDatasetName dataset, IFeatureSchema schema) =>
         $"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()}";
 
     /// <summary>Query: the scan plus an optional <c>WHERE</c> predicate.</summary>
-    public static string Query(PostgisDatasetName dataset, FeatureSchema schema, string? predicate) =>
+    public static string Query(PostgisDatasetName dataset, IFeatureSchema schema, string? predicate) =>
         predicate is null
             ? Select(dataset, schema)
             : $"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE {predicate}";
 
     /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry via EWKB + SRID).</summary>
-    public static string Insert(PostgisDatasetName dataset, FeatureSchema batchSchema, int srid)
+    public static string Insert(PostgisDatasetName dataset, IFeatureSchema batchSchema, int srid)
     {
         var columns = string.Join(", ", batchSchema.Fields.Select(field => $"\"{field.Name}\""));
         var values = string.Join(", ", batchSchema.Fields.Select((field, i) =>
@@ -34,7 +34,7 @@ internal static class PostgisQueries
     }
 
     /// <summary>Creates the result table from a defining batch's schema.</summary>
-    public static string CreateTable(PostgisDatasetName dataset, FeatureSchema schema, int srid)
+    public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid)
     {
         var builder = new StringBuilder($"CREATE TABLE {dataset.QuoteQualified()} (");
         for (var i = 0; i < schema.Count; i++)
@@ -106,7 +106,7 @@ internal static class PostgisQueries
         "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = @p0 AND table_name = @p1)";
 
     /// <summary>Scan/query columns: plain names, geometry fields wrapped so PostGIS returns canonical EWKB bytes.</summary>
-    private static string SelectColumns(FeatureSchema schema) =>
+    private static string SelectColumns(IFeatureSchema schema) =>
         string.Join(", ", schema.Fields.Select(field =>
             field.Kind == AttributeKind.Geometry ? $"ST_AsEWKB(\"{field.Name}\")" : $"\"{field.Name}\""));
 }

@@ -1,9 +1,10 @@
 using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 
-namespace Spatial.Core.Features;
+namespace Spatial.Core.Features.Codec;
 
 /// <summary>
 /// Canonical binary interchange for feature batches, version 1. The format is

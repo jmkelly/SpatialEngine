@@ -87,19 +87,29 @@ internal static class PostgisEwkb
         }
 
         var flags = Of(type);
-        IGeometry geometry = (GeometryType)(type & TypeMask) switch
+        if (!GeometryReaders.TryGetValue((GeometryType)(type & TypeMask), out var read))
         {
-            GeometryType.Point => ReadPoint(cursor, endian, flags, reference),
-            GeometryType.LineString => ReadLineString(cursor, endian, flags, reference),
-            GeometryType.Polygon => ReadPolygon(cursor, endian, flags, reference),
-            GeometryType.MultiPoint => ReadMultiPoint(cursor, endian, flags, reference),
-            GeometryType.MultiLineString => ReadMultiLineString(cursor, endian, flags, reference),
-            GeometryType.MultiPolygon => ReadMultiPolygon(cursor, endian, flags, reference),
-            GeometryType.GeometryCollection => ReadCollection(cursor, endian, flags, reference),
-            _ => throw Format(cursor, $"EWKB geometry type {(type & TypeMask)} is not supported"),
-        };
-        return geometry;
+            throw Format(cursor, $"EWKB geometry type {(type & TypeMask)} is not supported");
+        }
+
+        return read(cursor, endian, flags, reference);
     }
+
+    /// <summary>
+    /// Table-driven body dispatch: the concrete geometry type selects the
+    /// small typed reader, so the dispatcher carries no per-case branch and a
+    /// new core geometry type needs exactly one entry here.
+    /// </summary>
+    private static readonly Dictionary<GeometryType, Func<Reader, byte, LayoutFlags, CoordinateReference?, IGeometry>> GeometryReaders = new()
+    {
+        [GeometryType.Point] = (cursor, endian, flags, crs) => ReadPoint(cursor, endian, flags, crs),
+        [GeometryType.LineString] = (cursor, endian, flags, crs) => ReadLineString(cursor, endian, flags, crs),
+        [GeometryType.Polygon] = (cursor, endian, flags, crs) => ReadPolygon(cursor, endian, flags, crs),
+        [GeometryType.MultiPoint] = (cursor, endian, flags, crs) => ReadMultiPoint(cursor, endian, flags, crs),
+        [GeometryType.MultiLineString] = (cursor, endian, flags, crs) => ReadMultiLineString(cursor, endian, flags, crs),
+        [GeometryType.MultiPolygon] = (cursor, endian, flags, crs) => ReadMultiPolygon(cursor, endian, flags, crs),
+        [GeometryType.GeometryCollection] = (cursor, endian, flags, crs) => ReadCollection(cursor, endian, flags, crs),
+    };
 
     private static Point ReadPoint(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs)
     {
@@ -107,7 +117,7 @@ internal static class PostgisEwkb
         var y = cursor.ReadDouble(endian);
         if (double.IsNaN(x) && double.IsNaN(y))
         {
-            return GeometryFactory.CreateEmptyPoint(crs, flags.Layout);
+            return GeometryFactory.CreateEmptyPoint(crs, LayoutOf(flags));
         }
 
         if (!flags.HasZ && !flags.HasM)
@@ -135,8 +145,8 @@ internal static class PostgisEwkb
     {
         var count = cursor.ReadCount(endian, "line string coordinate count");
         return count == 0
-            ? GeometryFactory.CreateEmptyLineString(flags.Layout, crs)
-            : GeometryFactory.CreateLineString(ReadCoordinates(cursor, endian, flags, count), flags.Layout, crs);
+            ? GeometryFactory.CreateEmptyLineString(LayoutOf(flags), crs)
+            : GeometryFactory.CreateLineString(ReadCoordinates(cursor, endian, flags, count), LayoutOf(flags), crs);
     }
 
     private static Polygon ReadPolygon(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs)
@@ -144,14 +154,14 @@ internal static class PostgisEwkb
         var ringCount = cursor.ReadCount(endian, "polygon ring count");
         if (ringCount == 0)
         {
-            return new Polygon(GeometryFactory.CreateEmptyLineString(flags.Layout), null, crs);
+            return new Polygon(GeometryFactory.CreateEmptyLineString(LayoutOf(flags)), null, crs);
         }
 
         var rings = new LineString[ringCount];
         for (var i = 0; i < ringCount; i++)
         {
             var pointCount = cursor.ReadCount(endian, "polygon ring point count");
-            rings[i] = new LineString(PackedCoordinateSequence.FromCoordinates(ReadCoordinates(cursor, endian, flags, pointCount), flags.Layout));
+            rings[i] = new LineString(PackedCoordinateSequence.FromCoordinates(ReadCoordinates(cursor, endian, flags, pointCount), LayoutOf(flags)));
         }
 
         return GeometryFactory.CreatePolygon(rings[0], rings.Skip(1), crs);
@@ -244,6 +254,13 @@ internal static class PostgisEwkb
 
     private static void WriteGeometry(Writer writer, IGeometry geometry, int srid)
     {
+        WriteHeader(writer, geometry, srid);
+        WriteBody(writer, geometry);
+    }
+
+    /// <summary>Writes the NDR byte-order marker and the type word (layout flags plus the SRID flag/word when stamped).</summary>
+    private static void WriteHeader(Writer writer, IGeometry geometry, int srid)
+    {
         writer.WriteByte(Ndr);
         var type = (uint)geometry.Type;
         var layout = geometry.Layout;
@@ -267,33 +284,33 @@ internal static class PostgisEwkb
         {
             writer.WriteUInt32(type);
         }
+    }
 
-        switch (geometry)
+    /// <summary>
+    /// Table-driven body dispatch: the concrete geometry type selects the
+    /// small typed writer, so the dispatcher carries no per-case branch and a
+    /// new core geometry type needs exactly one entry here.
+    /// </summary>
+    private static readonly Dictionary<GeometryType, Action<Writer, IGeometry>> GeometryWriters = new()
+    {
+        [GeometryType.Point] = (writer, geometry) => WritePoint(writer, (Point)geometry),
+        [GeometryType.LineString] = (writer, geometry) => WriteLineString(writer, (LineString)geometry),
+        [GeometryType.Polygon] = (writer, geometry) => WritePolygon(writer, (Polygon)geometry),
+        [GeometryType.MultiPoint] = (writer, geometry) => WriteMulti(writer, ((MultiPoint)geometry).Points),
+        [GeometryType.MultiLineString] = (writer, geometry) => WriteMulti(writer, ((MultiLineString)geometry).LineStrings),
+        [GeometryType.MultiPolygon] = (writer, geometry) => WriteMulti(writer, ((MultiPolygon)geometry).Polygons),
+        [GeometryType.GeometryCollection] = (writer, geometry) => WriteMulti(writer, ((GeometryCollection)geometry).Geometries),
+    };
+
+    private static void WriteBody(Writer writer, IGeometry geometry)
+    {
+        if (GeometryWriters.TryGetValue(geometry.Type, out var write))
         {
-            case Point point:
-                WritePoint(writer, point);
-                break;
-            case LineString line:
-                WriteLineString(writer, line);
-                break;
-            case Polygon polygon:
-                WritePolygon(writer, polygon);
-                break;
-            case MultiPoint multi:
-                WriteMulti(writer, multi.Points);
-                break;
-            case MultiLineString multi:
-                WriteMulti(writer, multi.LineStrings);
-                break;
-            case MultiPolygon multi:
-                WriteMulti(writer, multi.Polygons);
-                break;
-            case GeometryCollection collection:
-                WriteMulti(writer, collection.Geometries);
-                break;
-            default:
-                throw new NotSupportedException($"cannot write EWKB for geometry type {geometry.Type}");
+            write(writer, geometry);
+            return;
         }
+
+        throw new NotSupportedException($"cannot write EWKB for geometry type {geometry.Type}");
     }
 
     private static void WritePoint(Writer writer, Point point)
@@ -396,14 +413,18 @@ internal static class PostgisEwkb
     private static PostgisEwkbFormatException Format(Reader cursor, string message) =>
         new($"{message} (at byte offset {cursor.Position})");
 
-    private readonly record struct LayoutFlags(CoordinateLayout Layout, bool HasZ, bool HasM);
+    private readonly record struct LayoutFlags(bool HasZ, bool HasM);
 
     private static LayoutFlags Of(uint type)
     {
         var hasZ = (type & ZFlag) != 0;
         var hasM = (type & MFlag) != 0;
-        return new LayoutFlags(LayoutOf(hasZ, hasM), hasZ, hasM);
+        return new LayoutFlags(hasZ, hasM);
     }
+
+    /// <summary>The coordinate layout the EWKB flags imply (never stored on the flags value itself so the
+    /// flags type does not reference the core geometry model — the plugin's fan-in budget).</summary>
+    private static CoordinateLayout LayoutOf(LayoutFlags flags) => LayoutOf(flags.HasZ, flags.HasM);
 
     private static CoordinateLayout LayoutOf(bool hasZ, bool hasM) => (hasZ, hasM) switch
     {

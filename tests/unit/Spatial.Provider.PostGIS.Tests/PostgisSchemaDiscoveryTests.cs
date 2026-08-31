@@ -111,6 +111,9 @@ public sealed class PostgisSchemaDiscoveryTests
             .ToArray();
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
         return PostgisSchemaDiscovery.TryBuild(
-            dataset, columns, geometries, ["id"], 10, out description, out error);
+            dataset,
+            new PostgisSchemaDiscovery.SchemaFacts(columns, geometries, ["id"], 10),
+            out description,
+            out error);
     }
 }

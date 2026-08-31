@@ -5,7 +5,7 @@ namespace Spatial.Core.Features;
 /// <see cref="AttributeKind.Null"/>), nullability and an optional description.
 /// Equality includes the description.
 /// </summary>
-public readonly record struct FieldDefinition
+public readonly record struct FieldDefinition : IFieldDefinition
 {
     public FieldDefinition(string name, AttributeKind kind, bool nullable = false, string? description = null)
     {
@@ -47,7 +47,7 @@ public readonly record struct FieldDefinition
     /// least the nulls a writer can produce (<c>reader.Nullable</c> implies
     /// <c>writer.Nullable</c> rows are decodable).
     /// </summary>
-    public bool IsDecodableFrom(FieldDefinition writer) =>
+    public bool IsDecodableFrom(IFieldDefinition writer) =>
         Name == writer.Name && Kind == writer.Kind && (!writer.Nullable || Nullable);
 
     public override string ToString() => Nullable ? $"{Name} ({Kind}, nullable)" : $"{Name} ({Kind})";

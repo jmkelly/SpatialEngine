@@ -1,4 +1,5 @@
 using Spatial.Core.Features;
+using Spatial.Core.Features.Codec;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Providers;
 using Spatial.Provider.PostGIS.Configuration;

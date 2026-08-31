@@ -109,6 +109,42 @@ public sealed class PostgisEwkbTests
     }
 
     [Fact]
+    public void Line_string_with_z_ordinates_round_trips_through_the_writer()
+    {
+        var line = GeometryFactory.CreateLineString(
+            [new Coordinate(1, 2, 5), new Coordinate(3, 4, 6)], CoordinateLayout.Xyz);
+
+        var decoded = Assert.IsType<LineString>(Read(Write(line, 0)));
+
+        Assert.Equal(CoordinateLayout.Xyz, decoded.Layout);
+        Assert.Equal(line, decoded);
+    }
+
+    [Fact]
+    public void Line_string_with_m_ordinates_round_trips_through_the_writer()
+    {
+        var line = GeometryFactory.CreateLineString(
+            [new Coordinate(1, 2, null, 7), new Coordinate(3, 4, null, 8)], CoordinateLayout.Xym);
+
+        var decoded = Assert.IsType<LineString>(Read(Write(line, 0)));
+
+        Assert.Equal(CoordinateLayout.Xym, decoded.Layout);
+        Assert.Equal(line, decoded);
+    }
+
+    [Fact]
+    public void Line_string_with_z_and_m_ordinates_round_trips_through_the_writer()
+    {
+        var line = GeometryFactory.CreateLineString(
+            [new Coordinate(1, 2, 5, 7), new Coordinate(3, 4, 6, 8)], CoordinateLayout.Xyzm);
+
+        var decoded = Assert.IsType<LineString>(Read(Write(line, 0)));
+
+        Assert.Equal(CoordinateLayout.Xyzm, decoded.Layout);
+        Assert.Equal(line, decoded);
+    }
+
+    [Fact]
     public void Multi_geometries_and_collections_decode()
     {
         var multiPoint = EwkbFixture.Multi(4, 4326, EwkbFixture.Point(4326), EwkbFixture.PointXyz(0, 5, 6, 7));

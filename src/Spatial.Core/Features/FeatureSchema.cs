@@ -9,7 +9,7 @@ namespace Spatial.Core.Features;
 /// columns — the append-only column evolution rule — with matching names,
 /// kinds and compatible nullability per field.
 /// </summary>
-public sealed class FeatureSchema : IEquatable<FeatureSchema>
+public sealed class FeatureSchema : IFeatureSchema, IEquatable<FeatureSchema>
 {
     private readonly FieldDefinition[] _fields;
 
@@ -58,13 +58,13 @@ public sealed class FeatureSchema : IEquatable<FeatureSchema>
     /// this schema's fields (same order, names and kinds), and writer
     /// nullability must not exceed reader nullability.
     /// </summary>
-    public bool IsDecodableFrom(FeatureSchema writer) => TryIsDecodableFrom(writer, out _);
+    public bool IsDecodableFrom(IFeatureSchema writer) => TryIsDecodableFrom(writer, out _);
 
     /// <summary>
     /// Like <see cref="IsDecodableFrom"/>, but reports the first incompatibility
     /// through <paramref name="reason"/> for actionable diagnostics.
     /// </summary>
-    public bool TryIsDecodableFrom(FeatureSchema writer, [NotNullWhen(false)] out string? reason)
+    public bool TryIsDecodableFrom(IFeatureSchema writer, [NotNullWhen(false)] out string? reason)
     {
         ArgumentNullException.ThrowIfNull(writer);
 
@@ -77,7 +77,7 @@ public sealed class FeatureSchema : IEquatable<FeatureSchema>
         for (var i = 0; i < Count; i++)
         {
             var readerField = _fields[i];
-            var writerField = writer._fields[i];
+            var writerField = writer[i];
             if (readerField.Name != writerField.Name)
             {
                 reason = $"field {i}: reader expects '{readerField.Name}' but the writer declares '{writerField.Name}'.";

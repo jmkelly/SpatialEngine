@@ -148,7 +148,7 @@ public sealed class PostgisFilterTests
     {
         var parameters = new List<object?>();
 
-        var sql = PostgisFilterSql.BoundingBox("geom", 4326, 13.0, 52.0, 14.0, 53.0, parameters);
+        var sql = PostgisFilterSql.BoundingBox(new BoundingBox(13.0, 52.0, 14.0, 53.0), "geom", 4326, parameters);
 
         Assert.Equal("\"geom\" && ST_MakeEnvelope(@p0, @p1, @p2, @p3, 4326)", sql);
         Assert.Equal(new object?[] { 13.0, 52.0, 14.0, 53.0 }, parameters);

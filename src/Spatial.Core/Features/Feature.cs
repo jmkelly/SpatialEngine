@@ -5,7 +5,7 @@ namespace Spatial.Core.Features;
 /// Immutable: the attribute list is defensively copied, and every value is
 /// validated against its field (count, kind and nullability) at construction.
 /// </summary>
-public sealed class Feature : IEquatable<Feature>
+public sealed class Feature : IFeature, IEquatable<Feature>
 {
     private readonly AttributeValue[] _attributes;
 
@@ -35,6 +35,8 @@ public sealed class Feature : IEquatable<Feature>
     public FeatureId Id { get; }
 
     public FeatureSchema Schema { get; }
+
+    IFeatureSchema IFeature.Schema => Schema;
 
     /// <summary>The attributes, in schema field order.</summary>
     public IReadOnlyList<AttributeValue> Attributes => _attributes;

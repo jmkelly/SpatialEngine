@@ -1128,6 +1128,7 @@ ADR-0025 Worker boundaries speak versioned line-delimited JSON with runtime-owne
 ADR-0026 Standard geometry operations are versioned capability contracts
 ADR-0027 Coordinate transformation contracts and the ProjNet adapter
 ADR-0028 PostGIS provider contracts and data interchange
+ADR-0029 Feature model contract faces and the codec namespace
 ```
 
 ## 25. Recommended Starting Sequence

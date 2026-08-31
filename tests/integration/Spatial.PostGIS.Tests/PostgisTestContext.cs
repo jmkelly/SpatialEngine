@@ -1,5 +1,6 @@
 using Npgsql;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Codec;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Resources;
 using Spatial.PluginSdk.Streams;

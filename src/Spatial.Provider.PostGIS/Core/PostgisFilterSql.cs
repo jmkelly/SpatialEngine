@@ -25,7 +25,7 @@ internal static class PostgisFilterSql
     /// </summary>
     public static bool TryBuild(
         FilterExpression expression,
-        FeatureSchema schema,
+        IFeatureSchema schema,
         List<object?> parameters,
         out string sql,
         out string error)
@@ -50,19 +50,16 @@ internal static class PostgisFilterSql
 
     /// <summary>Builds the bounded-box spatial predicate and appends its bound values.</summary>
     public static string BoundingBox(
+        BoundingBox bounds,
         string geometryColumn,
         int srid,
-        double minx,
-        double miny,
-        double maxx,
-        double maxy,
         List<object?> parameters)
     {
         var builder = new SqlBuilder(null!, parameters);
-        return builder.AppendBoundingBox(geometryColumn, srid, minx, miny, maxx, maxy);
+        return builder.AppendBoundingBox(geometryColumn, srid, bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
     }
 
-    private sealed class SqlBuilder(FeatureSchema? schema, List<object?> parameters)
+    private sealed class SqlBuilder(IFeatureSchema? schema, List<object?> parameters)
     {
         private readonly StringBuilder _sql = new();
         private int _parameterIndex;
@@ -195,13 +192,16 @@ internal static class PostgisFilterSql
             }
         }
 
-        private static string ValueName(FilterValueKind kind) => kind switch
+        /// <summary>The human kind name for a literal (used in invalid-literal errors).</summary>
+        private static readonly Dictionary<FilterValueKind, string> ValueNames = new()
         {
-            FilterValueKind.Integer => "integer",
-            FilterValueKind.Decimal => "number",
-            FilterValueKind.Boolean => "boolean",
-            _ => "string",
+            [FilterValueKind.Integer] = "integer",
+            [FilterValueKind.Decimal] = "number",
+            [FilterValueKind.Boolean] = "boolean",
         };
+
+        private static string ValueName(FilterValueKind kind) =>
+            ValueNames.TryGetValue(kind, out var name) ? name : "string";
 
         private bool TryResolveColumn(string column, out int index, out AttributeKind kind)
         {
@@ -246,3 +246,6 @@ internal static class PostgisFilterSql
         }
     }
 }
+
+/// <summary>The validated bounding-box bounds of a query invocation (min &lt;= max, finite).</summary>
+internal readonly record struct BoundingBox(double MinX, double MinY, double MaxX, double MaxY);

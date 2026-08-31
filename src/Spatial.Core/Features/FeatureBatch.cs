@@ -5,7 +5,7 @@ namespace Spatial.Core.Features;
 /// streaming and interchange. Every member feature must carry the batch
 /// schema (content-equal, not necessarily the same instance).
 /// </summary>
-public sealed class FeatureBatch : IEquatable<FeatureBatch>
+public sealed class FeatureBatch : IFeatureBatch, IEquatable<FeatureBatch>
 {
     private readonly Feature[] _features;
 
@@ -34,6 +34,8 @@ public sealed class FeatureBatch : IEquatable<FeatureBatch>
     }
 
     public FeatureSchema Schema { get; }
+
+    IFeatureSchema IFeatureBatch.Schema => Schema;
 
     /// <summary>The features, in batch order.</summary>
     public IReadOnlyList<Feature> Features => _features;

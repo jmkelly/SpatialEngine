@@ -18,7 +18,7 @@ namespace Spatial.Provider.PostGIS.Core;
 internal static class PostgisRowMapper
 {
     /// <summary>Maps one row to a feature under the dataset's scan schema.</summary>
-    public static Feature MapRow(FeatureSchema schema, IReadOnlyList<int> identityIndexes, IReadOnlyList<object?> values, long ordinal)
+    public static Feature MapRow(IFeatureSchema schema, IReadOnlyList<int> identityIndexes, IReadOnlyList<object?> values, long ordinal)
     {
         var attributes = new AttributeValue[schema.Count];
         for (var i = 0; i < schema.Count; i++)
@@ -27,8 +27,13 @@ internal static class PostgisRowMapper
         }
 
         var id = PostgisDiagnostics.FeatureIdentity(identityIndexes, values, ordinal);
-        return new Feature(new FeatureId(id), schema, attributes);
+        return new Feature(new FeatureId(id), Concrete(schema), attributes);
     }
+
+    /// <summary>Feature construction requires the concrete implementation; discovery builds it for every schema this mapper sees.</summary>
+    private static FeatureSchema Concrete(IFeatureSchema schema) =>
+        schema as FeatureSchema
+        ?? throw new InvalidOperationException("the row mapper only maps against FeatureSchema implementations.");
 
     /// <summary>The bound parameter values of one feature for an insert (geometry through the EWKB writer).</summary>
     public static object?[] Parameters(FeatureSchema schema, Feature feature, int srid)

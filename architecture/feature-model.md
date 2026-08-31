@@ -25,6 +25,9 @@ dependencies (enforced by tests/architecture).
 - `FeatureBatch` — features sharing **exactly** the batch schema (content
   equality; an equal-but-distinct `FeatureSchema` instance is accepted).
 - `FeatureBatchCodec` — canonical binary batch interchange, version 1
+  (namespace `Spatial.Core.Features.Codec`; the value model binds the
+  `IFeature`/`IFeatureSchema`/`IFeatureBatch`/`IFieldDefinition` contract
+  faces, ADR-0029)
   (spec below).
 
 ## Semantics

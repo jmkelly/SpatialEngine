@@ -21,25 +21,29 @@ internal static class PostgisSchemaDiscovery
     /// <summary>One <c>geometry_columns</c> row.</summary>
     internal readonly record struct GeometryRow(string Column, int Srid, string Type);
 
+    /// <summary>The raw catalogue facts one discovery run builds a description from.</summary>
+    internal readonly record struct SchemaFacts(
+        IReadOnlyList<ColumnRow> Columns,
+        IReadOnlyList<GeometryRow> GeometryColumns,
+        IReadOnlyList<string> PrimaryKeyColumns,
+        long RowEstimate);
+
     public static bool TryBuild(
         PostgisDatasetName dataset,
-        IReadOnlyList<ColumnRow> columns,
-        IReadOnlyList<GeometryRow> geometryColumns,
-        IReadOnlyList<string> primaryKeyColumns,
-        long rowEstimate,
+        SchemaFacts facts,
         out DatasetDescription description,
         out string error)
     {
         description = null!;
         error = string.Empty;
-        if (columns.Count == 0)
+        if (facts.Columns.Count == 0)
         {
             error = $"the dataset '{dataset}' has no columns (it does not exist or is not a plain table).";
             return false;
         }
 
-        var orderedColumns = columns.OrderBy(c => c.Ordinal).ToArray();
-        var orderedGeometries = OrderByColumns(geometryColumns, orderedColumns);
+        var orderedColumns = facts.Columns.OrderBy(c => c.Ordinal).ToArray();
+        var orderedGeometries = OrderByColumns(facts.GeometryColumns, orderedColumns);
         var geometryNames = new HashSet<string>(orderedGeometries.Select(g => g.Column), StringComparer.Ordinal);
         var geometryPrimary = orderedGeometries.Length > 0 ? orderedGeometries[0] : default;
         var fields = new FieldDefinition[orderedColumns.Length];
@@ -76,8 +80,8 @@ internal static class PostgisSchemaDiscovery
             geometryPrimary.Column,
             geometryPrimary.Srid,
             geometryPrimary.Type,
-            rowEstimate,
-            primaryKeyColumns,
+            facts.RowEstimate,
+            facts.PrimaryKeyColumns,
             new FeatureSchema(fields));
         return true;
     }

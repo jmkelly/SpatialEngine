@@ -54,29 +54,30 @@ internal static class PostgisFilterLexer
         private bool TrySymbol()
         {
             var start = _position;
-            var span = text.AsSpan(_position);
-            var kind = span switch
-            {
-                ['(', ..] => FilterTokenKind.LeftParen,
-                [')', ..] => FilterTokenKind.RightParen,
-                ['=', ..] => FilterTokenKind.Equals,
-                ['<', '>', ..] => FilterTokenKind.NotEquals,
-                ['!', '=', ..] => FilterTokenKind.NotEquals,
-                ['<', '=', ..] => FilterTokenKind.LessOrEqual,
-                ['>', '=', ..] => FilterTokenKind.GreaterOrEqual,
-                ['<', ..] => FilterTokenKind.LessThan,
-                ['>', ..] => FilterTokenKind.GreaterThan,
-                _ => (FilterTokenKind?)null,
-            };
+            var kind = SymbolKind(text.AsSpan(_position));
             if (kind is null)
             {
                 return false;
             }
 
-            _position += kind is FilterTokenKind.NotEquals or FilterTokenKind.LessOrEqual or FilterTokenKind.GreaterOrEqual ? 2 : 1;
+            _position += kind.Value is FilterTokenKind.NotEquals or FilterTokenKind.LessOrEqual or FilterTokenKind.GreaterOrEqual ? 2 : 1;
             _tokens.Add(new FilterToken(kind.Value, text[start.._position], start));
             return true;
         }
+
+        /// <summary>Reads the longest two-char symbol match at the front of the span, or null when none starts here.</summary>
+        private static FilterTokenKind? SymbolKind(ReadOnlySpan<char> span) => span switch
+        {
+            ['(', ..] => FilterTokenKind.LeftParen,
+            [')', ..] => FilterTokenKind.RightParen,
+            ['=', ..] => FilterTokenKind.Equals,
+            ['<', '>', ..] or ['!', '=', ..] => FilterTokenKind.NotEquals,
+            ['<', '=', ..] => FilterTokenKind.LessOrEqual,
+            ['>', '=', ..] => FilterTokenKind.GreaterOrEqual,
+            ['<', ..] => FilterTokenKind.LessThan,
+            ['>', ..] => FilterTokenKind.GreaterThan,
+            _ => null,
+        };
 
         private bool TryWord()
         {
@@ -93,21 +94,23 @@ internal static class PostgisFilterLexer
             }
 
             var word = text[start.._position];
-            var kind = word.ToUpperInvariant() switch
-            {
-                "AND" => FilterTokenKind.And,
-                "OR" => FilterTokenKind.Or,
-                "IS" => FilterTokenKind.Is,
-                "NOT" => FilterTokenKind.Not,
-                "NULL" => FilterTokenKind.Null,
-                "LIKE" => FilterTokenKind.Like,
-                "TRUE" => FilterTokenKind.True,
-                "FALSE" => FilterTokenKind.False,
-                _ => FilterTokenKind.Identifier,
-            };
-            _tokens.Add(new FilterToken(kind, word, start));
+            _tokens.Add(new FilterToken(KeywordKind(word), word, start));
             return true;
         }
+
+        /// <summary>Maps a keyword (case-insensitive) to its token kind; anything else is an identifier.</summary>
+        private static FilterTokenKind KeywordKind(string word) => word.ToUpperInvariant() switch
+        {
+            "AND" => FilterTokenKind.And,
+            "OR" => FilterTokenKind.Or,
+            "IS" => FilterTokenKind.Is,
+            "NOT" => FilterTokenKind.Not,
+            "NULL" => FilterTokenKind.Null,
+            "LIKE" => FilterTokenKind.Like,
+            "TRUE" => FilterTokenKind.True,
+            "FALSE" => FilterTokenKind.False,
+            _ => FilterTokenKind.Identifier,
+        };
 
         private bool TryString()
         {
@@ -147,62 +150,94 @@ internal static class PostgisFilterLexer
         private bool TryNumber()
         {
             var start = _position;
-            if (text[_position] is '+' or '-')
-            {
-                _position++;
-            }
-
-            var digitsConsumed = 0;
-            while (_position < text.Length && char.IsAsciiDigit(text[_position]))
-            {
-                _position++;
-                digitsConsumed++;
-            }
-
-            if (_position < text.Length && text[_position] == '.'
-                && _position + 1 < text.Length && char.IsAsciiDigit(text[_position + 1]))
-            {
-                _position++;
-                while (_position < text.Length && char.IsAsciiDigit(text[_position]))
-                {
-                    _position++;
-                }
-            }
-
-            if (digitsConsumed == 0)
+            if (!TryConsumeNumberBody(out _))
             {
                 // Nothing numeric here (a bare sign is not a number); reset and let Run report it.
                 _position = start;
                 return false;
             }
 
-            if (_position < text.Length && text[_position] is 'e' or 'E')
-            {
-                var exponentPosition = _position + 1;
-                if (exponentPosition < text.Length && text[exponentPosition] is '+' or '-')
-                {
-                    exponentPosition++;
-                }
+            ConsumeExponent();
+            var number = text[start.._position];
+            _tokens.Add(new FilterToken(KindOf(number), number, start));
+            return true;
+        }
 
-                if (exponentPosition < text.Length && char.IsAsciiDigit(text[exponentPosition]))
-                {
-                    _position = exponentPosition + 1;
-                    while (_position < text.Length && char.IsAsciiDigit(text[_position]))
-                    {
-                        _position++;
-                    }
-                }
+        /// <summary>Consumes an optional sign, the integer digits and a decimal fraction; reports whether any digit was seen.</summary>
+        private bool TryConsumeNumberBody(out int digitsConsumed)
+        {
+            ConsumeSign();
+            digitsConsumed = ConsumeDigits();
+            TryConsumeFraction();
+            return digitsConsumed > 0;
+        }
+
+        /// <summary>Consumes an optional leading <c>+</c>/<c>-</c> sign.</summary>
+        private void ConsumeSign()
+        {
+            if (text[_position] is '+' or '-')
+            {
+                _position++;
+            }
+        }
+
+        /// <summary>Consumes consecutive ASCII digits and returns how many were consumed.</summary>
+        private int ConsumeDigits()
+        {
+            var digits = 0;
+            while (_position < text.Length && char.IsAsciiDigit(text[_position]))
+            {
+                _position++;
+                digits++;
             }
 
-            var number = text[start.._position];
-            var kind = long.TryParse(number, NumberStyles.Integer, CultureInfo.InvariantCulture, out _)
+            return digits;
+        }
+
+        /// <summary>Consumes a decimal fraction when the next character is a digit-led <c>.</c>; consumes nothing otherwise.</summary>
+        private bool TryConsumeFraction()
+        {
+            if (_position + 1 < text.Length && text[_position] == '.' && char.IsAsciiDigit(text[_position + 1]))
+            {
+                _position++;
+                ConsumeDigits();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Consumes an optional <c>e</c>/<c>E</c> exponent with a sign and digits when present.</summary>
+        private void ConsumeExponent()
+        {
+            if (_position >= text.Length || text[_position] is not ('e' or 'E'))
+            {
+                return;
+            }
+
+            var exponentPosition = _position + 1;
+            if (exponentPosition < text.Length && text[exponentPosition] is '+' or '-')
+            {
+                exponentPosition++;
+            }
+
+            if (exponentPosition < text.Length && char.IsAsciiDigit(text[exponentPosition]))
+            {
+                _position = exponentPosition + 1;
+                while (_position < text.Length && char.IsAsciiDigit(text[_position]))
+                {
+                    _position++;
+                }
+            }
+        }
+
+        /// <summary>Classifies a consumed number literal as integer, decimal or invalid.</summary>
+        private static FilterTokenKind KindOf(string number) =>
+            long.TryParse(number, NumberStyles.Integer, CultureInfo.InvariantCulture, out _)
                 ? FilterTokenKind.Integer
                 : double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && double.IsFinite(parsed)
                     ? FilterTokenKind.Decimal
                     : FilterTokenKind.InvalidNumber;
-            _tokens.Add(new FilterToken(kind, number, start));
-            return true;
-        }
 
         private static bool IsIdentStart(char c) => char.IsAsciiLetter(c) || c == '_';
 

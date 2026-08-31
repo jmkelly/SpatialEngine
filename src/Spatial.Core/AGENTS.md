@@ -13,10 +13,13 @@ no project references, no algorithms (enforced by
 Owned here: `Coordinate`, `CoordinateLayout`, `ICoordinateSequence`,
 `Envelope`, `IGeometry` and simple-feature types, `CoordinateReference`,
 `AttributeKind`, `AttributeValue`, `FeatureId`, `FieldDefinition`,
-`FeatureSchema`, `Feature`, `FeatureBatch`, canonical binary encoding
-(Phase 1: `GeometryCodec` v1 — spec in `architecture/geometry-model.md`;
-Phase 2: `FeatureBatchCodec` v1 — spec in `architecture/feature-model.md`),
-`GeometryFactory`, `GeometryTraversal`.
+`IFieldDefinition`, `IFeature`, `IFeatureSchema`, `IFeatureBatch` (the
+feature model's contract faces, ADR-0029) and the concrete
+`FieldDefinition`, `FeatureId`, `FeatureSchema`, `Feature`, `FeatureBatch`;
+canonical binary encoding (Phase 1: `GeometryCodec` v1 — spec in
+`architecture/geometry-model.md`; Phase 2: `FeatureBatchCodec` v1 — spec in
+`architecture/feature-model.md`, living in `Spatial.Core.Features.Codec` per
+ADR-0029), `GeometryFactory`, `GeometryTraversal`.
 
 ## Never here
 

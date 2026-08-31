@@ -12,7 +12,9 @@ namespace Spatial.PluginSdk.Providers;
 /// <see cref="DatasetMetadataJson.WriteDescription"/> — the single item of the
 /// <c>spatial.dataset.describe@1</c> stream (ADR-0028). The schema fields use
 /// only core field vocabulary (<see cref="FieldDefinition"/>), so clients
-/// never see provider-specific types.
+/// never see provider-specific types. The schema binds <see cref="IFeatureSchema"/>
+/// (the model's contract face, ADR-0029) so contract code never depends on the
+/// concrete implementation.
 /// </summary>
 public sealed record DatasetDescription(
     string Id,
@@ -23,7 +25,7 @@ public sealed record DatasetDescription(
     string GeometryType,
     long EstimatedRowCount,
     IReadOnlyList<string> IdColumns,
-    FeatureSchema Schema)
+    IFeatureSchema Schema)
 {
     public override string ToString() => $"{Id}: {Schema}";
 }

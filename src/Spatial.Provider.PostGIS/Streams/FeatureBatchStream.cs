@@ -1,4 +1,5 @@
 using Spatial.Core.Features;
+using Spatial.Core.Features.Codec;
 
 namespace Spatial.Provider.PostGIS.Streams;
 
@@ -20,8 +21,12 @@ internal static class FeatureBatchStream
     public const int StreamCapacity = 8;
 
     /// <summary>Encodes a full batch of features to canonical bytes.</summary>
-    public static byte[] Encode(FeatureSchema schema, IReadOnlyList<Feature> features) =>
-        FeatureBatchCodec.Encode(new FeatureBatch(schema, features));
+    public static byte[] Encode(IFeatureSchema schema, IReadOnlyList<Feature> features) =>
+        FeatureBatchCodec.Encode(new FeatureBatch(Concrete(schema), features));
+
+    private static FeatureSchema Concrete(IFeatureSchema schema) =>
+        schema as FeatureSchema
+        ?? throw new InvalidOperationException("the batch stream only encodes FeatureSchema implementations.");
 
     /// <summary>Decodes a canonical batch argument; false with an actionable reason when malformed.</summary>
     public static bool TryDecode(byte[] bytes, out FeatureBatch batch, out string error)
