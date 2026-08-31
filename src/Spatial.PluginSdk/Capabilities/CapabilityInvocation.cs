@@ -30,8 +30,8 @@ public sealed record CapabilityInvocation(
 
     /// <summary>
     /// Reads a typed argument by name. Returns <c>true</c> when the argument
-    /// exists and is exactly the requested type; false when it is missing or
-    /// of another kind (providers then fail with
+    /// exists and can be delivered as the requested type; false when it is
+    /// missing or of another kind (providers then fail with
     /// <see cref="CapabilityErrorKind.InvalidArguments"/>).
     /// </summary>
     public bool TryGetArgument<T>(string name, [NotNullWhen(true)] out T? value)
@@ -45,6 +45,28 @@ public sealed record CapabilityInvocation(
         if (raw is T typed)
         {
             value = typed;
+            return true;
+        }
+
+        // The wire codec decodes JSON integral numbers as int32 while
+        // contract arguments declare int64 (the inline codec of ADR-0030
+        // carries scalars as JSON numbers — there is no JSON int32). Widen
+        // int -> long so int64 contracts read HTTP/worker numbers, and
+        // narrow long -> int when representable so int contracts still read
+        // $i64-coded values. Nothing leaks through these casts: int is
+        // always exactly representable as long, and the narrowing is
+        // range-checked.
+        if (raw is int intValue && typeof(T) == typeof(long))
+        {
+            value = (T)(object)(long)intValue;
+            return true;
+        }
+
+        if (raw is long longValue
+            && typeof(T) == typeof(int)
+            && longValue is >= int.MinValue and <= int.MaxValue)
+        {
+            value = (T)(object)(int)longValue;
             return true;
         }
 

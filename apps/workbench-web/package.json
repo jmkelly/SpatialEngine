@@ -1,0 +1,32 @@
+{
+  "name": "@spatial/workbench-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser workbench (Phase 10, Milestone 1): React + TypeScript + MapLibre against the independently executable spatial host. Talks only to the public host API through the generated TypeScript SDK; no Tauri dependencies.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run typecheck && node --test test/*.test.ts",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=22.6"
+  },
+  "dependencies": {
+    "@spatial/client": "file:../../clients/typescript",
+    "maplibre-gl": "^6.6.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^8.2.2",
+    "@types/geojson": "^7946.0.16"
+  }
+}

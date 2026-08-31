@@ -194,3 +194,25 @@ public sealed class SpatialClientTests
         Assert.All(stub.Handler.Exchanges, exchange => Assert.Equal(HttpMethod.Post, exchange.Request.Method));
     }
 }
+
+public sealed class HealthMethodTests
+{
+    [Fact]
+    public async Task Health_methods_decode_live_and_ready()
+    {
+        using var stub = new StubClient(new StubHttpHandler(request =>
+            StubHttpHandler.Json(request.RequestUri?.AbsolutePath switch
+            {
+                "/health/live" => """{"status":"live"}""",
+                "/health/ready" => """{"status":"ready","plugins":3}""",
+                _ => "{}",
+            })));
+
+        var live = await stub.Client.GetHealthLiveAsync();
+        var ready = await stub.Client.GetHealthReadyAsync();
+
+        Assert.Equal("live", live?["status"]?.GetValue<string>());
+        Assert.Equal("ready", ready?["status"]?.GetValue<string>());
+        Assert.Equal(3, ready?["plugins"]?.GetValue<int>());
+    }
+}

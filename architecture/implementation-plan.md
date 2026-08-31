@@ -844,10 +844,26 @@ proof; `Spatial.Host` activation reads `Spatial:PackagesRoot`,
 
 ### Phase 10: Browser Workbench
 
+**Status:** complete (Epic H).
+
 - Build the React and MapLibre workbench.
 - Add catalogue, map, selection, capability forms, progress, result preview and persistence.
 - Add runtime health and plugin-replacement views.
 - Add Playwright browser tests.
+
+Contract surface: the browser workbench (`apps/workbench-web`, ADR-0031)
+served by the host itself from `Spatial:WebRoot` — React 19 + Vite + MapLibre
+GL over the Phase 9 TypeScript SDK, same origin and no Tauri. The host gained
+a plugin-control surface (`POST /api/plugins/{id}/route-new-work`, `/drain`,
+`/rollback` — ADR-0031) and a second NTS provider version (`nts@2`, same
+contracts, new identity); the `demo@1` provider implements the read-only
+data-provider contracts over procedural point datasets plus a long-running
+progress job, so the catalogue/map/progress surfaces run without Docker.
+`eng/workbench-e2e.sh` builds the app and the packages, runs the real host
+and drives the workbench from Playwright (plan §18 web tests — six specs:
+catalogue, map/selection, capability forms, job progress, result
+preview/persistence, runtime health and the plugin-replacement
+demonstration).
 
 This phase completes **Milestone 1**.
 
@@ -1048,12 +1064,12 @@ Root agent instructions must include:
 
 - [x] ASP.NET Core API
 - [x] TypeScript SDK
-- [ ] React shell
-- [ ] Dataset browser
-- [ ] Map display
-- [ ] Capability forms
-- [ ] Result preview and save
-- [ ] Browser plugin-replacement demonstration
+- [x] React shell
+- [x] Dataset browser
+- [x] Map display
+- [x] Capability forms
+- [x] Result preview and save
+- [x] Browser plugin-replacement demonstration
 
 ### Epic I: Tauri desktop
 

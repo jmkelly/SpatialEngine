@@ -26,10 +26,13 @@ export class SpatialClient {
 
   constructor(
     baseUrl: string,
-    fetchFn: typeof fetch = fetch,
+    fetchFn: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> = (input, init) => fetch(input, init),
   ) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
-    this.fetchFn = fetchFn;
+    // Bind the caller's fetch: the global window.fetch throws "Illegal
+    // invocation" when called as an unbound method reference (browsers),
+    // so the default is a wrapper and injected fetches are trusted as-is.
+    this.fetchFn = fetchFn.bind(globalThis);
   }
 
   // ---- Capabilities ----
@@ -149,6 +152,16 @@ export class SpatialClient {
   /** One plugin worker package by provider id (404 -> SpatialApiError). */
   async getPlugin(providerId: string): Promise<PluginDto> {
     return this.json<PluginDto>(`/api/plugins/${encodeURIComponent(providerId)}`);
+  }
+
+  /** The host health: process up (<c>{{"status": "live"}}</c>). */
+  async getHealthLive(): Promise<{ status: string }> {
+    return this.json<{ status: string }>("/health/live");
+  }
+
+  /** The host readiness: status plus the supervised plugin count. */
+  async getHealthReady(): Promise<{ status: string; plugins: number }> {
+    return this.json<{ status: string; plugins: number }>("/health/ready");
   }
 
   /**

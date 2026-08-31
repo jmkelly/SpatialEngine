@@ -97,6 +97,14 @@ public sealed class SpatialClient
     public Task<PluginDto> GetPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
         GetAsync<PluginDto>($"/api/plugins/{Uri.EscapeDataString(providerId)}", cancellationToken);
 
+    /// <summary>The host health: process up (<c>{ "status": "live" }</c>).</summary>
+    public Task<System.Text.Json.Nodes.JsonObject?> GetHealthLiveAsync(CancellationToken cancellationToken = default) =>
+        GetAsync<System.Text.Json.Nodes.JsonObject?>("/health/live", cancellationToken);
+
+    /// <summary>The host readiness: status plus the supervised plugin count.</summary>
+    public Task<System.Text.Json.Nodes.JsonObject?> GetHealthReadyAsync(CancellationToken cancellationToken = default) =>
+        GetAsync<System.Text.Json.Nodes.JsonObject?>("/health/ready", cancellationToken);
+
     /// <summary>
     /// Routes new work to the provider for every capability it serves
     /// (active-preference routing, ADR-0031 — the browser replacement

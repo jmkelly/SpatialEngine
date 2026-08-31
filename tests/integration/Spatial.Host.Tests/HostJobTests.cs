@@ -65,7 +65,7 @@ public sealed class HostJobTests : IClassFixture<HostApiTestFactory>
     [Fact]
     public async Task Job_events_stream_as_server_sent_events_until_done()
     {
-        var jobId = await StartSleepAsync(milliseconds: 80);
+        var jobId = await StartSleepAsync(milliseconds: 1500);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/jobs/{jobId}/events");
         request.Headers.Accept.Add(new("text/event-stream"));
@@ -104,7 +104,7 @@ public sealed class HostJobTests : IClassFixture<HostApiTestFactory>
         while (DateTimeOffset.UtcNow < deadline)
         {
             var job = await GetJobAsync(jobId);
-            if (job.State is JobState.Completed or JobState.Failed or JobState.Cancelled or JobState.TimedOut)
+            if (job!.State is JobState.Completed or JobState.Failed or JobState.Cancelled or JobState.TimedOut)
             {
                 return job;
             }

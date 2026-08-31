@@ -16,6 +16,21 @@ implementations.
 
 ## Status
 
+Phase 10 — the browser workbench (Milestone 1 complete). `apps/workbench-web`
+serves the React 19 + TypeScript + MapLibre workbench from the host itself
+(`Spatial:WebRoot`, ADR-0031): a provider/capability catalogue, the demo
+dataset browser with map rendering and coordinate-based selection, generated
+capability forms (buffer, scan, sleep, transactions…), job progress, result
+preview with browser persistence, runtime health, and the plugin-replacement
+demonstration — start `nts@2` beside `nts@1`, route new buffer work to it
+(`POST /api/plugins/{id}/route-new-work`), drain `nts@1` and roll back over
+HTTP without restarting the host (ADR-0031, `architecture/frontend-boundary.md`).
+`eng/workbench-e2e.sh` builds the app and all plugin packages, runs the real
+host and drives the workbench with Playwright (plan §18 web tests — no
+Tauri); `demo@1` provides the Docker-free datasets and the long-running
+progress job, and the geometry adapter (`src/sgeom.ts`) decodes canonical
+SGEOM bytes straight from the host to the map.
+
 Phase 9 — ASP.NET Core host and SDKs. The independently executable host now
 serves the public HTTP API (`architecture/host-api.md`, ADR-0030):
 `/api/capabilities`, `POST /api/invocations` (inline completion, or 202 job

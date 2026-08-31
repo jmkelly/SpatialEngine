@@ -66,6 +66,21 @@ const completedJob = {
   job: { jobId: "job-1", state: "pending", location: "/api/jobs/job-1" },
 };
 
+test("health methods decode live and ready", async (t) => {
+  const host = await fakeHost({
+    "/health/live": () => ({ status: 200, body: JSON.stringify({ status: "live" }), contentType: "application/json" }),
+    "/health/ready": () => ({ status: 200, body: JSON.stringify({ status: "ready", plugins: 3 }), contentType: "application/json" }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  const live = await client.getHealthLive();
+  const ready = await client.getHealthReady();
+  assert.equal(live.status, "live");
+  assert.equal(ready.status, "ready");
+  assert.equal(ready.plugins, 3);
+});
+
 test("the client walks capabilities, invocation and job polling", async (t) => {
   let jobState = "running";
   const host = await fakeHost({

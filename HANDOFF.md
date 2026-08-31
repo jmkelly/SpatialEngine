@@ -1,177 +1,154 @@
 # Handoff — Spatial Engine
 
 > Written for the next agent taking over. Read `AGENTS.md`, then
-> `architecture/implementation-plan.md` (the source of truth). **Phase 9
-> (ASP.NET Core Host and SDKs) is complete**; Phase 10 (Browser Workbench) is
-> next.
+> `architecture/implementation-plan.md` (the source of truth). **Phase 10
+> (Browser Workbench) is complete** — Milestone 1 done; Phase 11 (Tauri 2
+> Desktop Packaging) is next.
 
 ## Repository state
 
-- **Branch:** `main`. Working tree clean at handoff. The four quality-gate
-  queue/report files (`crap-queue.md`, `coverage-queue.md`,
-  `metrics-queue.md`, `warnings-queue.md`, `*.report.json`,
-  `coverage-history.csv`, `stryker-queue.md`) are gitignored and currently on
-  disk reporting the ALL-GREEN state — do not commit them.
-- **Phase 9 commits** (new since the Phase 8 handoff):
-  - `6bfb111` — value codec graduates to `Spatial.PluginSdk.Codec.ValueCodec`
-    (ex `WorkerValueCodec`, ADR-0030), HTTP contract shapes in
-    `Spatial.PluginSdk.Http`, and the ASP.NET Core host runtime
-    (`SpatialHostRuntime`, supervisor-backed package activation).
-  - `bb57717` — host API integration tests (fixture provider, every endpoint,
-    the real isolated NTS worker buffering through HTTP).
-  - `83a089c` — .NET client SDK with stub-handler unit tests and full-stack
-    integration tests against the real host.
-  - `c99f216` — the TypeScript SDK (`clients/typescript`) generated from the
-    host's OpenAPI, plus `eng/e2e-web.sh` and `eng/tools/PluginPacker`.
-  - `3f983d5` — docs: ADR-0030, `architecture/host-api.md`, plan
-    §12/§16/§21(§24 ticks), boundary doc updates, README status.
-  - `2af82d1` — quality gates green: metrics fan-out splits, CRAP branch
-    tests, coverage unit tests (incl. the loop implementor sessions' units),
-    Stryker result recorded.
-  - (final, after the quality gates) — this handoff.
-- **Tests:** 936 total across 10 suites (Core 308, Runtime 201, PluginHost
-  85, Host 42 [was 3], Client 9, PostGIS unit 170, NTS 31, ProjNet 65,
-  Conformance 12, Architecture 8). `./eng/verify.sh` passes from a clean
-  checkout (PostGIS integration still skips honestly without Docker).
+- **Branch:** `main`. Working tree clean at handoff. The quality-gate queue
+  files (`crap-queue.md`, `coverage-queue.md`, `metrics-queue.md`,
+  `warnings-queue.md`, `*.report.json`, `coverage-history.csv`,
+  `stryker-queue.md`) are gitignored and report the ALL-GREEN state — do
+  not commit them.
+- **Phase 10 commits** (in order):
+  - `da26c8b` — host plugin-control API (`route-new-work`/`drain`/`rollback`
+    on `/api/plugins/{id}`), static workbench serving (`Spatial:WebRoot`),
+    `nts@2` provider variant, `demo@1` data provider, PluginPacker packages
+    all four, .NET + TS SDK control methods, integration tests
+    (`PluginReplacementTests`, `WorkbenchHostingTests`), ADR-0031,
+    host-api.md update, OpenAPI snapshot refresh.
+  - *(second commit, after the quality gates)* — the workbench itself
+    (`apps/workbench-web`), the Playwright suite + `eng/workbench-e2e.sh`,
+    and a real wire fix: JSON integral numbers now read as the declared
+    int64 contract arguments (`CapabilityInvocation` int↔long widening —
+    see gotchas below — with `ArgumentCastTests`), which also stabilized
+    the Phase 9 job tests under parallel load.
+- **Tests:** `eng/verify.sh` passes from a clean checkout, run six times in
+  a row all-green (the load flake it used to show is fixed — see gotchas).
+  Counts: Core 308, Runtime 207 (+6 arg-cast), Client 11, PluginHost 85,
+  Provider.Demo 25 (new), Provider.PostGIS 175 unit + 17 skipped
+  container, Conformance 13 (+nts v2 matrix), Host 52 (+10 from Phase 10:
+  7 replacement + 3 hosting), NTS 31, ProjNet 65, Architecture 8.
+- **Web:** `apps/workbench-web` unit tests 22/22 pass and the build is
+  clean; `clients/typescript` 14/14; `eng/workbench-e2e.sh` runs the real
+  host + built app + Playwright chromium — 6/6 specs, five consecutive
+  green runs.
 
-## Completed — Phase 9 (Epic H: ASP.NET Core API + TypeScript SDK)
+## Completed — Phase 10 (Epic H: browser workbench + replacement demo)
 
-- **The host API** (`architecture/host-api.md`, ADR-0030): capabilities list/
-  detail, `POST /api/invocations` (inline `completed` or `202 job` routing —
-  long-running never parks the request), jobs (get/cancel/events: JSON page
-  or SSE), resources (metadata/delete/stream → `application/x-ndjson` of
-  codec-encoded items, `$error` line on failure), plugins (supervised worker
-  packages + lifecycle), health, and OpenAPI at `/openapi/v1.json`.
-- **One contract set**: the inline value codec moved from the worker protocol
-  to `Spatial.PluginSdk.Codec.ValueCodec` (shared by worker wire + HTTP API);
-  request/response shapes live in `Spatial.PluginSdk.Http`; the host configures
-  its JSON options from `HostApiJson`; OpenAPI is generated from the same
-  DTOs; the TS wire types are generated from the OpenAPI snapshot.
-- **.NET SDK** (`clients/dotnet/Spatial.Client`, NOT in the solution — built/
-  gated through `tests/unit/Spatial.Client.Tests` + `tests/integration/
-  Spatial.Host.Tests`): typed methods over HttpClient, `ReadStreamAsync`,
-  `ReadFeatureBatchesAsync` (SFBAT decode), `WaitForJobAsync` extension.
-- **TypeScript SDK** (`clients/typescript/@spatial/client`, zero runtime deps):
-  fetch-based client, wire codec (`$i64`/`$bytes`/`$geometry`/`$crs`/
-  `$resource`, `encodeGeometry`), SFBAT v1 decoder pinned against a .NET
-  produced vector, `scripts/generate.mjs` + `scripts/check-generated.mjs`
-  (drift gate in `npm test`).
-- **Independent-host proof**: `eng/e2e-web.sh` packs the NTS worker
-  (`eng/tools/PluginPacker` → `artifacts/plugins`), runs the REAL host
-  process, refreshes the OpenAPI snapshot, and drives it from the TS SDK
-  over real HTTP — passes. `tests/integration/.../NtsWorkerHostTests.cs`
-  proves the same in-suite (buffer through the isolated worker over HTTP).
+- **The workbench** (`apps/workbench-web`, ADR-0031): React 19 + Vite +
+  MapLibre GL over the Phase 9 TypeScript SDK, four screens — provider/
+  capability catalogue, dataset map with coordinate-based selection and
+  attribute inspection, generated capability forms with job progress and
+  result preview/persistence (browser localStorage), runtime health with
+  plugin replacement controls. The host serves the built app from
+  `Spatial:WebRoot` (same origin, no CORS, no Tauri).
+- **Geometry adapter** (`src/sgeom.ts`): the SDK's raw canonical SGEOM
+  bytes are decoded to GeoJSON in-browser, byte-for-byte mirroring the
+  .NET `GeometryCodec` (header, nested nodes, CRS skip, little-endian
+  doubles) — pinned by hand-built vectors AND the real .NET buffered-circle
+  payload.
+- **Selection is coordinate-based** (`src/click-match.ts`): click lng/lat →
+  nearest feature by projection math; deliberately NOT pixel-query
+  (`queryRenderedFeatures`/readPixels is fragile in software-rendered
+  headless browsers — see gotchas).
+- **Plugin replacement over HTTP** (`PluginReplacementTests`): both NTS
+  versions activate side by side, `route-new-work` switches provenance to
+  `nts@2` (resolution step `ActivePreferred`), `drain` stops `nts@1`
+  without stopping the host, `rollback` reactivates it.
+- **`demo@1`** (`Spatial.Provider.Demo`): read-only data-provider
+  contracts over procedural datasets (110-point grid + 8 cities, EPSG:4326
+  SGEOM), bbox queries, plus a long-running `spatial.demo.sleep@1` with
+  progress — the Docker-free catalogue/map/progress vehicle. **The demo
+  provider is NOT in the conformance matrix** (only its unit suite + the
+  host e2e exercise it); adding it to `PostgisProviderConformance`-style
+  fixtures would be a reasonable Phase 12+ add.
+- **Playwright** (`tests/end-to-end-web` + `eng/workbench-e2e.sh`): six
+  specs against the real host serving the real app — no Tauri, no Docker.
 
 ## Hard-won gotchas (read before touching this code)
 
-- **The Ca-7 ceiling is the hardest constraint (Spatial.Core.Geometry).**
-  The codemetrics `architectural-rigidity` diagnosis fires at Ca ≥ 8 (D 0.91).
-  Phase 9's metrics episode: `eng/tools/PluginPacker/Program.cs` used
-  `typeof(Spatial.Core.Geometry.IGeometry)` to locate Spatial.Core.dll and
-  pushed Ca to 8 — **avoid naming Core.Geometry types anywhere outside the
-  core or the deliberate single referrers** (use a non-geometry Core type
-  like `FeatureId` to locate the assembly). The host API layer reads feature
-  data through `FeatureBatch`/`AttributeValue` (ADR-0029 faces) and never
-  names an `IGeometry` — keep it that way.
-- **Metrics coupling ceiling (in-repo coupling ≥ 20 → hub finding) and the
-  god-class rule (coupling ≥ 15 + LCOM4 ≥ 3 + WMC ≥ 20 + ≥ 8 methods).** The
-  quality audit gates on ZERO findings of any severity — moderate hubs count.
-  The host API layer is deliberately split into small mapper classes
-  (`CapabilityApiMappers`, `JobApiMappers`, `JobEventMappers`,
-  `ResourceApiMappers`, `PluginApiMappers`, `InvocationOutcomeMapper`,
-  `InvocationRequestBuilder`) and the client into `SpatialClient` +
-  `SpatialStreamReader` + `SpatialClientExtensions`. **New endpoint/handler
-  code must stay fan-out-small and delegate heavy loops to tiny helpers**
-  (and every branch needs a test — CRAP < 10 gates on branch coverage; see
-  the `TryBuildOptions` episode).
-- **Jobs must NOT receive the request's CancellationToken.** `POST
-  /api/invocations` builds the invocation with `CancellationToken.None` —
-  job-runner links the job's own token + deadline; passing RequestAborted
-  would cancel the job the moment the 202 response returns. Inline
-  invocations DO use RequestAborted (client disconnect cancels them).
-- **Consuming a stream to its end closes the resource** (the NDJSON reader
-  closes in its finally). After reading a stream, its metadata is 404 —
-  streams are one-shot. A failed stream ends with an `$error` line; the SDKs
-  throw `CapabilityStreamException`/`CapabilityStreamError`.
-- **The `$geometry` tag needs explicit encode on the TS side**: plain
-  `Uint8Array` encodes as `$bytes`. The SDK's `encodeGeometry(bytes)` /
-  `GeometryValue` emit `$geometry`. The hand-built SGEOM point in
-  `test/e2e.test.ts` (26 bytes: magic/version/layout/type/crs/present + two
-  zero doubles) matches `GeometryCodec` byte-for-byte — see
-  `feature-batch.test.ts` for the .NET-produced pin vector.
-- **Full GUIDs in SFBAT are .NET mixed-endian** (`Guid.TryWriteBytes`): the
-  TS decoder flips the first three groups. The vector test pins it.
-- **Node 26 runs TS tests directly** (type stripping): SDK and tests must be
-  erasable-syntax — no parameter properties, no enums — `tsconfig` sets
-  `erasableSyntaxOnly`. Import paths use `.ts` extensions +
-  `allowImportingTsExtensions`.
-- **`npm test` includes the generated-types drift check** — refresh with
-  `npm run generate` (the e2e script does it from the live host). The
-  generator header must NOT embed the output path (drift-check compares files
-  written to different names).
-- **`dotnet run` runs the app with CWD = the project directory**, so the
-  e2e script passes an ABSOLUTE `Spatial__PackagesRoot` (env var double
-  underscore maps to `Spatial:PackagesRoot`). launchSettings overrides
-  `ASPNETCORE_URLS` — use `dotnet run --no-launch-profile --urls`.
-- **Style traps from earlier phases still apply**: format before every
-  commit (trailing newlines — `dotnet format`), CA1859/CA1826/CA1068 (last
-  param CancellationToken), LoggerMessage delegates for ILogger
-  (CA1848/CA1873 — see `HostLog.cs`), `Results<...>` typed results so
-  OpenAPI gets schemas, `Produces<T>` annotations.
-- **Codemetrics exit-code quirk**: `codemetrics` exits 1 even with zero
-  findings; the audit gates on the reported finding count (0 = green). The
-  stryker audit picks ONE pinned test project (`configured[0]` — currently
-  `Spatial.Core.Tests`), so Stryker measures only Spatial.Core each full run.
+- **JSON number width is a wire bug factory.** `ValueCodec` decodes JSON
+  integral numbers as **int32** (int first), so contract args declared
+  int64 (`TryGetArgument<long>`) failed over HTTP/worker wire and providers
+  silently fell back to defaults — the fixture sleep tests raced a silent
+  300 ms default and produced random "job completed instead of cancelled"
+  flakes under parallel test load. Fixed in
+  `CapabilityInvocation.TryCast` (int→long widening, long→int range-checked
+  narrowing, `ArgumentCastTests`). **When a provider reads a JSON number
+  argument, remember int and long are distinct wire types; the TS SDK sends
+  `{$i64: "…"}` for int64.** Do not regress the cast widening.
+- **MapLibre must not be queried via readPixels in headless CI.** Under
+  `--disable-gpu` (or after a few WebGL contexts in one Chromium), feature
+  queries can stall/return empty for seconds and clicks "miss". The
+  workbench selects by click coordinates (deterministic); the Playwright
+  suite fires `map.fire("click", {point, lngLat, …})` at lng/lat `(0,0)`
+  instead of synthesizing mouse bytes. The `window.__spatialMap` test seam
+  is intentional (documented in `MapScreen.tsx`).
+- **MapLibre's worker file must be pinned**: the bundle computes
+  `maplibre-gl-worker.mjs` relative to itself, which a static SPA build
+  never emits — `public/maplibre-gl-worker.mjs` + `setWorkerUrl("/…")` in
+  `MapScreen.tsx`. Without it the map never finishes loading (`loaded()`
+  stays false forever, `queryRenderedFeatures` returns nothing).
+- **Polygon rings / multi-parts are nested geometry nodes** in SGEOM
+  (layout/type/CRS byte then body), not flat data — the first decoder draft
+  got this wrong and the real buffered polygon "truncated" at byte 561.
+- **`Spatial:WebRoot` static middleware must run BEFORE `app.UseRouting()`**
+  — ASP.NET's static-file middleware refuses a path routing already matched
+  (the `/` identity endpoint shadows `index.html` otherwise).
+- **`dotnet run` orphans its apphost**: killing the `dotnet run` wrapper
+  leaves `Spatial.Host --urls …` (the actual server) alive on the port —
+  stale hosts answer later runs with old plugin routing. `eng/workbench-e2e.sh`
+  kills both (`pkill -f 'Spatial.Host --urls'`) and refuses a busy port.
+- **React effects capture stale state**: the map's mount-once effect must
+  call the CURRENT `selectFeature` (via `actionsRef`), not the initial
+  closure — otherwise clicks look up the empty initial dataset forever.
+- **Zombie e2e knowledge**: `npm ci` in the workbench re-creates the SDK
+  `file:` dep — regenerate with `npm install` when the SDK changes and the
+  lock drifts. The workbench lockfiles and `public/` worker files are
+  committed.
+- **Style/quality traps still apply** (CA1859/CA1826/CA1068, LoggerMessage
+  delegates, `Results<…>` typed results, format before commit).
 
-## Quality gates (Phase 9 — all four green, verified twice)
+## Quality gates (Phase 10)
 
-- **CRAP**: 0 of 2411 methods ≥ 10.
-- **Coverage**: authored branch 81.8% ≥ 70% (line 92.5%).
-- **Metrics**: 0 findings (the Ca-8 and fan-out episodes above resolved).
+- **CRAP**: 0 of ≥2500 methods ≥ 10 (loop-verified).
+- **Coverage**: authored branch ≥ 70% (loop-verified).
+- **Metrics**: 0 findings (the new host endpoints stayed fan-out-small;
+  `DemoRunner` split validation/emitters; no new Core fan-in).
 - **Warnings**: 0.
-- **Stryker (my call — RUN)**: the phase changed Runtime behavior
-  (`ResourceRegistry.TryGetHandle`, `CapabilityJob.Resolved`) and moved the
-  codec, so I ran the full gate: **94.44%** score on Spatial.Core (the
-  project the audit pins; 974 killed, 17 surviving pre-existing mutants, 49
-  no-coverage), break-60 **green**. The survivors (Core Feature/Field
-  definitions, codec statements, envelope internals) predate Phase 9. The
-  final repo-wide pass should add mutation configs for the NEW behavioral
-  assemblies: `Spatial.PluginSdk` (codec + DTOs — needs a dedicated test
-  project reference), `Spatial.Host`, and `Spatial.Client` (a
-  `Spatial.Client.Tests` config would measure the client via its stub-handler
-  suite).
+- **Stryker (my call — SKIPPED)**: Phase 10 changed no `Spatial.Core`
+  behavior (the audited project — every mutation run pins
+  `configured[0]`), so the ~11-minute full run was skipped per the
+  heuristic for non-Core phases. The final repo-wide pass should still add
+  the Phase 9/10 assemblies (`Spatial.PluginSdk`, `Spatial.Host`,
+  `Spatial.Client`, `Spatial.Provider.Demo`) to the Stryker matrix.
 
-## Next up — Phase 10: Browser Workbench
+## Next up — Phase 11: Tauri 2 Desktop Packaging
 
-From the plan (§16 Epic H remainder, §17): React + TypeScript + MapLibre
-workbench served by the Phase 9 host; browse PostGIS, render features,
-select, invoke the buffer plugin, watch job progress, preview/persist results,
-and demonstrate side-by-side plugin replacement — Playwright e2e, no Tauri.
+From the plan (§16 Phase 11, Milestone 2): thin Tauri shell packaging the
+**unchanged** workbench `dist`, optional `Spatial.Host` sidecar supervision,
+remote-host mode, a narrow desktop file adapter, Windows-first tests.
 
-1. **The API and SDKs are ready**: `clients/typescript/@spatial/client`
-   (fetch-based, generated types, SFBAT decoder, stream reads, job
-   wait/cancel/events) is the workbench's only channel to the host. `apps/
-   workbench-web/` is the Phase 10 home (repo layout §15); the
-   `Web_clients_do_not_depend_on_tauri` architecture test already guards it.
-2. **Running a full stack for development**: `eng/e2e-web.sh` shows the
-   pattern — pack `nts` (PluginPacker) or `postgis` (+
-   `Spatial__PackagesRoot` + `SPATIAL_POSTGIS_CONNECTION` in
-   `Spatial:WorkerEnvironment`), run the host with `--no-launch-profile`,
-   point the client at it. For PostGIS browse the phase-8 conformance fixture
-   (`bigpoints`, 200k rows) is the performance vehicle (plan §18).
-3. **Stream decoding is in both SDKs**: the TS `readStream` +
-   `decodeFeatureBatch` handle scans; `$geometry` attributes stay raw SGEOM
-   bytes — the renderer needs a MapLibre geometry adapter (Phase 10's first
-   real piece of client code). Job progress arrives via the SSE events
-   endpoint or `waitForJob`.
-4. **Plugin replacement demo (plan §17.9-11)**: the host has
-   `CapabilityRuntime.SetActivePreference` (route new work to v2) and
-   drain/rollback via the supervisor; the `/api/plugins` surface shows both
-   versions. Phase 10 needs a second NTS package version to demonstrate
-   side-by-side routing.
-5. **Playwright**: not yet in the repo; the workbench tests live under
-   `tests/end-to-end-web/` (plan §15) — out of the solution (like the
-   clients), driven by an eng script + npm.
-6. **Conformance/OpenAPI drift**: if Phase 10 changes the API, regenerate the
-   TS types (`npm run generate`) and refresh
-   `clients/typescript/scripts/openapi.snapshot.json` via `eng/e2e-web.sh`.
+1. **The Phase 10 workbench is the exact asset Tauri will package**: build
+   with `npm run build` in `apps/workbench-web` and ship `dist/` as
+   `Spatial:WebRoot` static content (ADR-0031 already describes that
+   contract). The host's `GET /` serves the app when WebRoot is set — the
+   desktop window just points at it.
+2. **Host sidecar**: `Spatial.Host` is a framework-dependent app; ship the
+   runtime or use `dotnet publish` framework-dependent + `--urls
+   http://127.0.0.1:<port>`. Remote-host mode = point the workbench at a
+   `VITE_SPATIAL_HOST_URL`/runtime-config host URL (the SDK takes a base
+   URL; the workbench reads `import.meta.env.VITE_SPATIAL_HOST_URL`).
+3. **The plugin packages are immutable directories** under
+   `Spatial:PackagesRoot` — the sidecar needs `nts@1/nts@2/demo@1`
+   (`eng/tools/PluginPacker`) plus optionally `postgis@1` with
+   `SPATIAL_POSTGIS_CONNECTION` in `Spatial:WorkerEnvironment`.
+4. **PostGIS container tests still skip without Docker** — the workbench's
+   real dataset browser runs against `demo@1` in CI; the PostGIS-backed
+   flow is ready but needs a live database (see `PostgisIntegrationTests`).
+5. **ADR-0016/0017/0019 rules stand**: the shell contains no spatial logic,
+   no `@tauri-apps/*` deps may enter `apps/workbench-web` (architecture
+   test scans every `package.json` under apps/ and clients/).
