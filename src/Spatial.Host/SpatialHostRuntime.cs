@@ -36,6 +36,18 @@ public sealed class SpatialHostRuntime : IAsyncDisposable
     public IReadOnlyList<PluginPackage> Packages { get; private set; } = [];
 
     /// <summary>
+    /// Wraps an externally composed capability runtime (for example a test
+    /// fixture or an in-process plugin host) with no process supervisor. The
+    /// composition seam for hosts that wire providers themselves instead of
+    /// activating packages.
+    /// </summary>
+    public static SpatialHostRuntime For(CapabilityRuntime runtime)
+    {
+        ArgumentNullException.ThrowIfNull(runtime);
+        return new SpatialHostRuntime(runtime, null);
+    }
+
+    /// <summary>
     /// Builds the wired runtime: a fresh capability registry and runtime, a
     /// supervisor with the configured worker environment, and every package
     /// under <c>Spatial:PackagesRoot</c> (when set) discovered and activated.
