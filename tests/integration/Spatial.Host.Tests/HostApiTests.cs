@@ -194,6 +194,47 @@ public sealed class HostApiTests : IClassFixture<HostApiTestFactory>
         Assert.Equal("provider.unavailable", body?.Error?.Code);
     }
 
+    [Fact]
+    public async Task Malformed_provider_id_is_a_bad_request()
+    {
+        var response = await Client.PostAsJsonAsync(
+            "/api/invocations",
+            new InvocationRequest("fixture.echo@1", Provider: "not a provider id"),
+            HostApiJson.Options);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_live_resource_token_routes_the_invocation()
+    {
+        var mint = await Client.PostAsJsonAsync(
+            "/api/invocations", new InvocationRequest("fixture.mint@1"), HostApiJson.Options);
+        var token = (await mint.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options))!
+            .Result!["$resource"]!["token"]!.GetValue<string>();
+
+        var response = await Client.PostAsJsonAsync(
+            "/api/invocations",
+            new InvocationRequest("fixture.peek@1", Resource: token),
+            HostApiJson.Options);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
+        Assert.True(body?.Ok);
+        Assert.Equal("fixture@1", body?.Provenance?.Provider);
+    }
+
+    [Fact]
+    public async Task A_dead_resource_token_is_a_bad_request()
+    {
+        var response = await Client.PostAsJsonAsync(
+            "/api/invocations",
+            new InvocationRequest("fixture.peek@1", Resource: "00000000000000000000000000000000"),
+            HostApiJson.Options);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     // ---- Invocations: jobs and streams ----
 
     [Fact]

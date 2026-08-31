@@ -27,48 +27,57 @@ internal static class Program
 
     public static int Main(string[] args)
     {
-        var packagesRoot = ReadArgument(args, "--packages-root");
-        if (packagesRoot is null)
+        if (ReadArgument(args, "--packages-root") is not { } packagesRoot)
         {
             Console.Error.WriteLine("usage: PluginPacker --packages-root <dir> [--only nts|postgis]");
             return 2;
         }
 
         var only = ReadArgument(args, "--only");
-        var written = 0;
-        if (only is null or "nts")
-        {
-            var provider = new NtsOperationsProvider();
-            var ntsDirectory = Path.GetDirectoryName(typeof(NetTopologySuite.Geometries.Geometry).Assembly.Location)!;
-            WritePackage(
-                packagesRoot,
-                provider,
-                "Spatial.Operations.NetTopologySuite.dll",
-                "Spatial.Operations.NetTopologySuite.NtsOperationsProvider",
-                "NetTopologySuite operations",
-                [(Path.Combine(ntsDirectory, "NetTopologySuite.dll"), "NetTopologySuite.dll")]);
-            written++;
-        }
-
-        if (only is null or "postgis")
-        {
-            var provider = new PostgisProvider();
-            var directory = Path.GetDirectoryName(typeof(PostgisProvider).Assembly.Location)!;
-            WritePackage(
-                packagesRoot,
-                provider,
-                "Spatial.Provider.PostGIS.dll",
-                "Spatial.Provider.PostGIS.PostgisProvider",
-                "PostGIS provider",
-                [
-                    (Path.Combine(directory, "Npgsql.dll"), "Npgsql.dll"),
-                    (Path.Combine(directory, "Microsoft.Extensions.Logging.Abstractions.dll"), "Microsoft.Extensions.Logging.Abstractions.dll"),
-                ]);
-            written++;
-        }
-
+        var written = WriteNtsPackage(packagesRoot, only) + WritePostgisPackage(packagesRoot, only);
         Console.WriteLine($"packed {written} plugin package(s) into {packagesRoot}");
         return 0;
+    }
+
+    private static int WriteNtsPackage(string packagesRoot, string? only)
+    {
+        if (only is not null and not "nts")
+        {
+            return 0;
+        }
+
+        var provider = new NtsOperationsProvider();
+        var ntsDirectory = Path.GetDirectoryName(typeof(NetTopologySuite.Geometries.Geometry).Assembly.Location)!;
+        WritePackage(
+            packagesRoot,
+            provider,
+            "Spatial.Operations.NetTopologySuite.dll",
+            "Spatial.Operations.NetTopologySuite.NtsOperationsProvider",
+            "NetTopologySuite operations",
+            [(Path.Combine(ntsDirectory, "NetTopologySuite.dll"), "NetTopologySuite.dll")]);
+        return 1;
+    }
+
+    private static int WritePostgisPackage(string packagesRoot, string? only)
+    {
+        if (only is not null and not "postgis")
+        {
+            return 0;
+        }
+
+        var provider = new PostgisProvider();
+        var directory = Path.GetDirectoryName(typeof(PostgisProvider).Assembly.Location)!;
+        WritePackage(
+            packagesRoot,
+            provider,
+            "Spatial.Provider.PostGIS.dll",
+            "Spatial.Provider.PostGIS.PostgisProvider",
+            "PostGIS provider",
+            [
+                (Path.Combine(directory, "Npgsql.dll"), "Npgsql.dll"),
+                (Path.Combine(directory, "Microsoft.Extensions.Logging.Abstractions.dll"), "Microsoft.Extensions.Logging.Abstractions.dll"),
+            ]);
+        return 1;
     }
 
     private static void WritePackage(
@@ -87,7 +96,7 @@ internal static class Program
         foreach (var (source, name) in new List<(string, string)>
         {
             (provider.GetType().Assembly.Location, providerAssembly),
-            (typeof(Spatial.Core.Geometry.IGeometry).Assembly.Location, "Spatial.Core.dll"),
+            (typeof(Spatial.Core.Features.FeatureId).Assembly.Location, "Spatial.Core.dll"),
             (typeof(ICapabilityProvider).Assembly.Location, "Spatial.PluginSdk.dll"),
         }.Concat(dependencies.Select(dependency => (dependency.Source, dependency.Name))))
         {
@@ -149,6 +158,9 @@ internal static class Program
     private static string? ReadArgument(string[] args, string name)
     {
         var index = Array.IndexOf(args, name);
-        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+        return HasNext(args, index) ? args[index + 1] : null;
     }
+
+    private static bool HasNext(string[] args, int index) =>
+        index >= 0 && index + 1 < args.Length;
 }

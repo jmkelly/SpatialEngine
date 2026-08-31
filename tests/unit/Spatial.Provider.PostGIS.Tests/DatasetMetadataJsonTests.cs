@@ -46,4 +46,39 @@ public sealed class DatasetMetadataJsonTests
         Assert.Contains("'id'", exception.Message);
         Assert.Contains("'Banana'", exception.Message);
     }
+
+    [Fact]
+    public void Summary_survives_a_write_read_round_trip()
+    {
+        var summary = new DatasetSummary("public.places", "public", "places", "geom", 4326, 12_345);
+
+        var json = DatasetMetadataJson.WriteSummary(summary);
+        var decoded = DatasetMetadataJson.ReadSummary(json);
+
+        Assert.Equal(summary, decoded);
+        Assert.Contains("\"estimatedRowCount\":12345", json);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("null")]
+    public void ReadSummary_rejects_missing_documents(string? malformed)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => DatasetMetadataJson.ReadSummary(malformed!));
+    }
+
+    [Fact]
+    public void ReadSummary_rejects_an_empty_json_document()
+    {
+        Assert.Throws<System.Text.Json.JsonException>(() => DatasetMetadataJson.ReadSummary(""));
+    }
+
+    [Fact]
+    public void WriteSummary_and_WriteDescription_reject_null_inputs()
+    {
+        Assert.Throws<ArgumentNullException>(() => DatasetMetadataJson.WriteSummary(null!));
+        Assert.Throws<ArgumentNullException>(() => DatasetMetadataJson.WriteDescription(null!));
+        Assert.Throws<ArgumentNullException>(() => DatasetMetadataJson.ReadSummary(null!));
+        Assert.Throws<ArgumentNullException>(() => DatasetMetadataJson.ReadDescription(null!));
+    }
 }

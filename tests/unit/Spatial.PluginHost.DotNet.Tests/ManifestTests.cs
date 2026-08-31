@@ -233,6 +233,47 @@ public sealed class ManifestTests : IDisposable
         Assert.Contains(problems, problem => problem.Contains("serves spatial.fixture.extra@1, which the manifest does not declare", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Compatibility_with_no_provider_descriptors_reports_the_declared_gap()
+    {
+        var manifest = FixtureManifest.V1();
+
+        var problems = ManifestCompatibility.DescribeProblems(manifest, ProviderId.Parse("fixture@1"), []);
+
+        var problem = Assert.Single(problems);
+        Assert.Contains("declares no capabilities", problem);
+        Assert.Contains("6", problem);
+    }
+
+    [Fact]
+    public void Compatibility_skips_null_or_malformed_declared_capabilities()
+    {
+        var manifest = FixtureManifest.V1() with
+        {
+            // A JSON manifest may carry a null capability entry or one whose id
+            // does not parse; both are skipped, they must not crash the check.
+            Capabilities = [null!, FixtureManifest.Capability("no-such-version", "p", "none", "scalar")],
+        };
+        var served = FixtureManifest.ToDescriptor(FixtureManifest.V1Capabilities()[0]);
+
+        var problems = ManifestCompatibility.DescribeProblems(manifest, ProviderId.Parse("fixture@1"), [served]);
+
+        Assert.Contains(problems,
+            problem => problem.Contains("serves spatial.fixture.peek@1, which the manifest does not declare", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Compatibility_guards_its_null_inputs(bool nullManifest)
+    {
+        var manifest = FixtureManifest.V1();
+        Assert.Throws<ArgumentNullException>(() => ManifestCompatibility.DescribeProblems(
+            nullManifest ? null! : manifest,
+            ProviderId.Parse("fixture@1"),
+            nullManifest ? manifest.Capabilities.Select(FixtureManifest.ToDescriptor) : null!));
+    }
+
     private void WriteManifest(PluginManifest manifest) =>
         File.WriteAllText(Path.Combine(_directory, PluginManifest.FileName), FixtureManifest.ToJson(manifest));
 }

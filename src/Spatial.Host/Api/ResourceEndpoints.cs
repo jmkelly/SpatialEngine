@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -5,6 +6,7 @@ using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Codec;
 using Spatial.PluginSdk.Http;
 using Spatial.PluginSdk.Resources;
+using Spatial.PluginSdk.Streams;
 using Spatial.Runtime.Capabilities;
 using Spatial.Runtime.Resources;
 
@@ -48,7 +50,7 @@ internal static class ResourceEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(ApiMappers.ToResourceDto(handle, state));
+        return TypedResults.Ok(ResourceApiMappers.ToResourceDto(handle, state));
     }
 
     /// <summary>Disposes a resource: closed state, leases dropped and the payload (stream) disposed.</summary>
@@ -128,17 +130,8 @@ internal sealed class NdjsonStreamResult : IResult
     {
         var response = httpContext.Response;
         var cancellationToken = httpContext.RequestAborted;
-
-        if (!_resources.TryAcquireLease(_handle, ResourceEndpoints.ReadLeaseDuration, out var lease))
+        if (!TryBeginRead(_handle, response, out var lease, out var stream))
         {
-            response.StatusCode = StatusCodes.Status409Conflict;
-            return;
-        }
-
-        if (!_resources.TryOpenStream(_handle, lease, out var stream))
-        {
-            _resources.ReleaseLease(lease);
-            response.StatusCode = StatusCodes.Status409Conflict;
             return;
         }
 
@@ -147,32 +140,114 @@ internal sealed class NdjsonStreamResult : IResult
 
         try
         {
-            while (true)
-            {
-                var items = await stream.ReadBatchAsync(ResourceEndpoints.ReadBatchSize, cancellationToken);
-                if (items.Count > 0)
-                {
-                    foreach (var item in items)
-                    {
-                        await WriteItemAsync(response, item, cancellationToken);
-                    }
-
-                    continue;
-                }
-
-                var completion = await stream.WaitForCompletionAsync(cancellationToken);
-                if (completion.Error is { } failure)
-                {
-                    await WriteErrorLineAsync(response, failure, cancellationToken);
-                }
-
-                return;
-            }
+            await WriteRemainingAsync(stream, response, cancellationToken);
         }
         finally
         {
             _resources.ReleaseLease(lease);
             await _resources.CloseAsync(_handle);
+        }
+    }
+
+    /// <summary>Acquires a read lease and opens the stream, signalling 409 when either fails.</summary>
+    private bool TryBeginRead(
+        ResourceHandle handle,
+        HttpResponse response,
+        [NotNullWhen(true)] out ResourceLease? lease,
+        [NotNullWhen(true)] out ICapabilityStream? stream)
+    {
+        lease = null;
+        stream = null;
+        if (TryAcquireAndOpen(handle, out lease, out stream))
+        {
+            return true;
+        }
+
+        response.StatusCode = StatusCodes.Status409Conflict;
+        return false;
+    }
+
+    private bool TryAcquireAndOpen(
+        ResourceHandle handle,
+        [NotNullWhen(true)] out ResourceLease? lease,
+        [NotNullWhen(true)] out ICapabilityStream? stream)
+    {
+        if (!AcquireLease(handle, out lease))
+        {
+            stream = null;
+            return false;
+        }
+
+        return OpenStream(handle, lease, out stream);
+    }
+
+    private bool AcquireLease(ResourceHandle handle, [NotNullWhen(true)] out ResourceLease? lease)
+    {
+        if (_resources.TryAcquireLease(handle, ResourceEndpoints.ReadLeaseDuration, out var acquired))
+        {
+            lease = acquired;
+            return true;
+        }
+
+        lease = null;
+        return false;
+    }
+
+    private bool OpenStream(
+        ResourceHandle handle, ResourceLease lease, [NotNullWhen(true)] out ICapabilityStream? stream)
+    {
+        if (_resources.TryOpenStream(handle, lease, out var opened))
+        {
+            stream = opened;
+            return true;
+        }
+
+        stream = null;
+        _resources.ReleaseLease(lease);
+        return false;
+    }
+
+    /// <summary>Writes every queued batch, then the completion/error line — the lean end-of-stream.</summary>
+    private static async Task WriteRemainingAsync(
+        ICapabilityStream stream,
+        HttpResponse response,
+        CancellationToken cancellationToken)
+    {
+        while (await WriteNextBatchAsync(stream, response, cancellationToken))
+        {
+        }
+
+        await WriteCompletionAsync(stream, response, cancellationToken);
+    }
+
+    private static async Task<bool> WriteNextBatchAsync(
+        ICapabilityStream stream,
+        HttpResponse response,
+        CancellationToken cancellationToken)
+    {
+        var items = await stream.ReadBatchAsync(ResourceEndpoints.ReadBatchSize, cancellationToken);
+        if (items.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var item in items)
+        {
+            await WriteItemAsync(response, item, cancellationToken);
+        }
+
+        return true;
+    }
+
+    private static async Task WriteCompletionAsync(
+        ICapabilityStream stream,
+        HttpResponse response,
+        CancellationToken cancellationToken)
+    {
+        var completion = await stream.WaitForCompletionAsync(cancellationToken);
+        if (completion.Error is { } failure)
+        {
+            await WriteErrorLineAsync(response, failure, cancellationToken);
         }
     }
 

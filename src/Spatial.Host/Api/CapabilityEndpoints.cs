@@ -21,7 +21,7 @@ internal static class CapabilityEndpoints
     internal static Ok<CapabilitySummaryDto[]> List(SpatialHostRuntime host)
     {
         var summaries = host.Runtime.Registry.Capabilities
-            .Select(capability => ApiMappers.ToCapabilitySummary(host.Runtime.Registry, capability))
+            .Select(capability => CapabilityApiMappers.ToCapabilitySummary(host.Runtime.Registry, capability))
             .ToArray();
         return TypedResults.Ok(summaries);
     }
@@ -35,6 +35,6 @@ internal static class CapabilityEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(ApiMappers.ToCapabilityDetail(host.Runtime.Registry, capability));
+        return TypedResults.Ok(CapabilityApiMappers.ToCapabilityDetail(host.Runtime.Registry, capability));
     }
 }

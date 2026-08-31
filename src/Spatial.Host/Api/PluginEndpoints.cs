@@ -28,7 +28,7 @@ internal static class PluginEndpoints
     {
         var plugins = (host.Supervisor?.Workers ?? [])
             .OrderBy(worker => worker.ProviderId)
-            .Select(ApiMappers.ToPluginDto)
+            .Select(PluginApiMappers.ToPluginDto)
             .ToArray();
         return TypedResults.Ok(plugins);
     }
@@ -42,6 +42,6 @@ internal static class PluginEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(ApiMappers.ToPluginDto(worker));
+        return TypedResults.Ok(PluginApiMappers.ToPluginDto(worker));
     }
 }

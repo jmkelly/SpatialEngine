@@ -68,29 +68,50 @@ public sealed class SpatialHostRuntime : IAsyncDisposable
             return new SpatialHostRuntime(runtime, null);
         }
 
+        return await CreateWithSupervisorAsync(configuration, packagesRoot, runtime, loggerFactory);
+    }
+
+    private static async Task<SpatialHostRuntime> CreateWithSupervisorAsync(
+        IConfiguration configuration,
+        string packagesRoot,
+        CapabilityRuntime runtime,
+        ILoggerFactory loggerFactory)
+    {
         var options = new WorkerSupervisorOptions(
             workerEnvironment: ReadWorkerEnvironment(configuration));
         var supervisor = new WorkerSupervisor(runtime, options);
         var host = new SpatialHostRuntime(runtime, supervisor);
-        var logger = loggerFactory.CreateLogger<SpatialHostRuntime>();
-
-        foreach (var package in supervisor.Discover(packagesRoot))
-        {
-            try
-            {
-                await supervisor.ActivateAsync(package.Path);
-                HostLog.PackageActivated(logger, package.Manifest.Id, package.Path);
-            }
-            catch (Exception exception)
-            {
-                HostLog.PackageActivationFailed(logger, exception, package.Manifest.Id, package.Path, exception.Message);
-            }
-        }
+        await ActivatePackagesAsync(supervisor, packagesRoot, loggerFactory.CreateLogger<SpatialHostRuntime>());
 
         host.Packages = supervisor.Workers
             .Select(worker => worker.Package)
             .ToArray();
         return host;
+    }
+
+    /// <summary>Activates every discovered package; one failure never blocks the rest (plan §16).</summary>
+    private static async Task ActivatePackagesAsync(
+        WorkerSupervisor supervisor,
+        string packagesRoot,
+        ILogger logger)
+    {
+        foreach (var package in supervisor.Discover(packagesRoot))
+        {
+            await ActivatePackageAsync(supervisor, package, logger);
+        }
+    }
+
+    private static async Task ActivatePackageAsync(WorkerSupervisor supervisor, PluginPackage package, ILogger logger)
+    {
+        try
+        {
+            await supervisor.ActivateAsync(package.Path);
+            HostLog.PackageActivated(logger, package.Manifest.Id, package.Path);
+        }
+        catch (Exception exception)
+        {
+            HostLog.PackageActivationFailed(logger, exception, package.Manifest.Id, package.Path, exception.Message);
+        }
     }
 
     /// <summary>Cleans up supervised workers (drain then stop) — idempotent.</summary>
@@ -101,6 +122,11 @@ public sealed class SpatialHostRuntime : IAsyncDisposable
             return;
         }
 
+        await DisposeSupervisorAsync();
+    }
+
+    private async ValueTask DisposeSupervisorAsync()
+    {
         if (_supervisor is not null)
         {
             await _supervisor.DisposeAsync();
@@ -115,19 +141,42 @@ public sealed class SpatialHostRuntime : IAsyncDisposable
     /// </summary>
     private static CapabilityConfiguration ReadCapabilityConfiguration(IConfiguration configuration)
     {
-        var section = configuration.GetSection("Spatial:Preferences");
-        var preferences = new Dictionary<CapabilityId, ProviderId>();
-        foreach (var child in section.GetChildren())
+        var preferences = configuration.GetSection("Spatial:Preferences")
+            .GetChildren()
+            .Select(ParsePreference)
+            .Where(static preference => preference is not null)
+            .ToDictionary(
+                static preference => preference!.Value.Capability,
+                static preference => preference!.Value.Provider);
+        return CapabilityConfiguration.FromPreferences(preferences);
+    }
+
+    private static (CapabilityId Capability, ProviderId Provider)? ParsePreference(IConfigurationSection child)
+    {
+        if (child.Value is not { } providerText)
         {
-            if (CapabilityId.TryParse(child.Key, out var capability)
-                && child.Value is { } providerText
-                && ProviderId.TryParse(providerText, out var provider))
-            {
-                preferences[capability] = provider;
-            }
+            return null;
         }
 
-        return CapabilityConfiguration.FromPreferences(preferences);
+        return ParsePreference(child.Key, providerText);
+    }
+
+    private static (CapabilityId Capability, ProviderId Provider)? ParsePreference(string key, string providerText)
+    {
+        if (TryParsePreference(key, providerText, out var capability, out var provider))
+        {
+            return (capability, provider);
+        }
+
+        return null;
+    }
+
+    private static bool TryParsePreference(
+        string key, string providerText, out CapabilityId capability, out ProviderId provider)
+    {
+        capability = default;
+        provider = default;
+        return CapabilityId.TryParse(key, out capability) && ProviderId.TryParse(providerText, out provider);
     }
 
     /// <summary>

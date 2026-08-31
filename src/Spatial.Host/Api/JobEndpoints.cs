@@ -39,7 +39,7 @@ internal static class JobEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(ApiMappers.ToJobResponse(job));
+        return TypedResults.Ok(JobApiMappers.ToJobResponse(job));
     }
 
     /// <summary>Requests cancellation of a running job (jobs are always cancellable, ADR-0008).</summary>
@@ -52,7 +52,7 @@ internal static class JobEndpoints
         }
 
         await job.CancelAsync(cancellationToken);
-        return TypedResults.Ok(ApiMappers.ToJobResponse(job));
+        return TypedResults.Ok(JobApiMappers.ToJobResponse(job));
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ internal static class JobEndpoints
             return new SseJobEventsResult(job, host.Runtime.Resources);
         }
 
-        return TypedResults.Ok(ApiMappers.ToJobEventsResponse(job, host.Runtime.Resources));
+        return TypedResults.Ok(JobApiMappers.ToJobEventsResponse(job, host.Runtime.Resources));
     }
 
     private static bool TryGetJob(string id, CapabilityRuntime runtime, out CapabilityJob job)
@@ -119,25 +119,9 @@ internal sealed class SseJobEventsResult : IResult
         response.ContentType = "text/event-stream";
         response.Headers.CacheControl = "no-cache";
 
-        var seen = 0;
         try
         {
-            while (true)
-            {
-                var events = _job.Events;
-                for (; seen < events.Count; seen++)
-                {
-                    await WriteEventAsync(response, events[seen], cancellationToken);
-                }
-
-                if (IsTerminal(_job.State))
-                {
-                    await response.WriteAsync("event: done\ndata: {}\n\n", cancellationToken);
-                    return;
-                }
-
-                await Task.Delay(PollInterval, cancellationToken);
-            }
+            await PollUntilTerminalAsync(response, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -145,9 +129,47 @@ internal sealed class SseJobEventsResult : IResult
         }
     }
 
+    private async Task PollUntilTerminalAsync(HttpResponse response, CancellationToken cancellationToken)
+    {
+        var state = new PollState();
+        while (await WriteNextPollAsync(response, _job, state, cancellationToken))
+        {
+        }
+
+        await response.WriteAsync("event: done\ndata: {}\n\n", cancellationToken);
+    }
+
+    private async Task<bool> WriteNextPollAsync(
+        HttpResponse response, CapabilityJob job, PollState state, CancellationToken cancellationToken)
+    {
+        await WriteNewEventsAsync(response, job.Events, state, cancellationToken);
+        if (IsTerminal(job.State))
+        {
+            return false;
+        }
+
+        await Task.Delay(PollInterval, cancellationToken);
+        return true;
+    }
+
+    private async Task WriteNewEventsAsync(
+        HttpResponse response, IReadOnlyList<JobEvent> events, PollState state, CancellationToken cancellationToken)
+    {
+        for (; state.Seen < events.Count; state.Seen++)
+        {
+            await WriteEventAsync(response, events[state.Seen], cancellationToken);
+        }
+    }
+
+    /// <summary>Per-request write cursor (async methods cannot take ref parameters).</summary>
+    private sealed class PollState
+    {
+        public int Seen;
+    }
+
     private async Task WriteEventAsync(HttpResponse response, JobEvent jobEvent, CancellationToken cancellationToken)
     {
-        var line = JsonSerializer.Serialize(ApiMappers.ToEventDto(jobEvent, _resources), HostApiJson.Options);
+        var line = JsonSerializer.Serialize(JobEventMappers.ToEventDto(jobEvent, _resources), HostApiJson.Options);
         var kind = jobEvent.Kind.ToString().ToLowerInvariant();
         await response.WriteAsync($"event: {kind}\ndata: {line}\n\n", cancellationToken);
     }

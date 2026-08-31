@@ -171,7 +171,7 @@ public sealed class ResourceRegistry
     {
         lock (_gate)
         {
-            if (_records.TryGetValue(id, out var record) && record.State != ResourceState.Closed)
+            if (TryGetOpenRecord(id, out var record))
             {
                 handle = record.Handle;
                 return true;
@@ -181,6 +181,9 @@ public sealed class ResourceRegistry
             return false;
         }
     }
+
+    private bool TryGetOpenRecord(ResourceId id, [NotNullWhen(true)] out ResourceRecord? record) =>
+        _records.TryGetValue(id, out record) && record.State != ResourceState.Closed;
 
     /// <summary>The read-only view of a registered resource (identity, owner, state).</summary>
     public bool TryGetResource(ResourceHandle handle, [NotNullWhen(true)] out ICapabilityResource? resource)
