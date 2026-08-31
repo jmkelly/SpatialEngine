@@ -2,6 +2,7 @@ using System.Text.Json;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginSdk.Capabilities;
+using Spatial.Provider.Demo;
 using Spatial.Provider.PostGIS;
 
 namespace Spatial.PluginPacker;
@@ -15,7 +16,9 @@ namespace Spatial.PluginPacker;
 /// package surface can never drift from the contracts they implement (the
 /// worker host's activation compatibility check passes by construction).
 ///
-/// Usage: <c>PluginPacker --packages-root &lt;dir&gt; [--only nts|postgis]</c>
+/// Usage: <c>PluginPacker --packages-root &lt;dir&gt; [--only nts|postgis|demo]</c>
+/// The nts packer emits both released versions (<c>nts@1</c> and <c>nts@2</c>,
+/// the side-by-side replacement vehicle of Phase 10, ADR-0031).
 /// </summary>
 internal static class Program
 {
@@ -29,12 +32,14 @@ internal static class Program
     {
         if (ReadArgument(args, "--packages-root") is not { } packagesRoot)
         {
-            Console.Error.WriteLine("usage: PluginPacker --packages-root <dir> [--only nts|postgis]");
+            Console.Error.WriteLine("usage: PluginPacker --packages-root <dir> [--only nts|postgis|demo]");
             return 2;
         }
 
         var only = ReadArgument(args, "--only");
-        var written = WriteNtsPackage(packagesRoot, only) + WritePostgisPackage(packagesRoot, only);
+        var written = WriteNtsPackage(packagesRoot, only)
+            + WritePostgisPackage(packagesRoot, only)
+            + WriteDemoPackage(packagesRoot, only);
         Console.WriteLine($"packed {written} plugin package(s) into {packagesRoot}");
         return 0;
     }
@@ -46,15 +51,44 @@ internal static class Program
             return 0;
         }
 
-        var provider = new NtsOperationsProvider();
+        // Both released versions: v1 and the side-by-side v2 used by the
+        // browser replacement demonstration (plan §17.9-11).
         var ntsDirectory = Path.GetDirectoryName(typeof(NetTopologySuite.Geometries.Geometry).Assembly.Location)!;
         WritePackage(
             packagesRoot,
-            provider,
+            new NtsOperationsProvider(),
             "Spatial.Operations.NetTopologySuite.dll",
             "Spatial.Operations.NetTopologySuite.NtsOperationsProvider",
             "NetTopologySuite operations",
             [(Path.Combine(ntsDirectory, "NetTopologySuite.dll"), "NetTopologySuite.dll")]);
+        WritePackage(
+            packagesRoot,
+            new NtsOperationsProviderV2(),
+            "Spatial.Operations.NetTopologySuite.dll",
+            "Spatial.Operations.NetTopologySuite.NtsOperationsProviderV2",
+            "NetTopologySuite operations v2",
+            [(Path.Combine(ntsDirectory, "NetTopologySuite.dll"), "NetTopologySuite.dll")]);
+        return 2;
+    }
+
+    /// <summary>
+    /// Writes the demo data provider package (Phase 10, ADR-0031): the
+    /// Docker-free catalogue/scan/query vehicle for the browser workbench.
+    /// </summary>
+    private static int WriteDemoPackage(string packagesRoot, string? only)
+    {
+        if (only is not null and not "demo")
+        {
+            return 0;
+        }
+
+        WritePackage(
+            packagesRoot,
+            new DemoProvider(),
+            "Spatial.Provider.Demo.dll",
+            "Spatial.Provider.Demo.DemoProvider",
+            "Demo data provider",
+            []);
         return 1;
     }
 
@@ -126,7 +160,7 @@ internal static class Program
             descriptor.Errors.Select(error => new ManifestError(error.Code, error.Description)).ToArray(),
             descriptor.RequiredPermissions.Select(permission => permission.Name).ToArray(),
             ManifestTraitMap.ToNames(descriptor.Traits).ToArray(),
-            []);
+            descriptor.Examples.Select(example => new ManifestExample(example.Name, example.Description)).ToArray());
 
     private static string ToJson(PluginManifest manifest)
     {

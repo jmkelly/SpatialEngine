@@ -166,6 +166,42 @@ test("streams decode items and throw CapabilityStreamError on an error line", as
 // one feature) to prove readFeatureBatches decodes over the wire.
 const sfbat = buildSfbat();
 
+const plugin = {
+  id: "nts@2",
+  displayName: "NetTopologySuite operations v2",
+  runtime: "dotnet",
+  state: "Active",
+  restartCount: 0,
+  processId: 42,
+  startedAt: "2026-09-01T00:00:00Z",
+  lastHealthyAt: null,
+  lastError: null,
+  capabilities: [],
+};
+
+test("plugin control methods post to the control endpoints", async (t) => {
+  const host = await fakeHost({
+    "/api/plugins/nts%402/route-new-work": () => ({ status: 200, body: JSON.stringify(plugin), contentType: "application/json" }),
+    "/api/plugins/nts%401/drain": () => ({ status: 200, body: JSON.stringify({ ...plugin, id: "nts@1", state: "Stopped" }), contentType: "application/json" }),
+    "/api/plugins/nts%402/rollback": () => ({ status: 200, body: JSON.stringify(plugin), contentType: "application/json" }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  const routed = await client.routeNewWork("nts@2");
+  const drained = await client.drainPlugin("nts@1");
+  const rolledBack = await client.rollbackPlugin("nts@2");
+
+  assert.equal(routed.id, "nts@2");
+  assert.equal(drained.state, "Stopped");
+  assert.equal(rolledBack.id, "nts@2");
+  assert.deepEqual(host.requests, [
+    "POST /api/plugins/nts%402/route-new-work",
+    "POST /api/plugins/nts%401/drain",
+    "POST /api/plugins/nts%402/rollback",
+  ]);
+});
+
 test("readFeatureBatches decodes canonical batches from the wire", async (t) => {
   const line = JSON.stringify(encode(sfbat));
   const host = await fakeHost({

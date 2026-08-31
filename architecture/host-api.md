@@ -28,7 +28,7 @@ documented operationally here; the SDK contract shapes live in
 ## Endpoints
 
 ```
-GET    /                      # host identity + api/openapi locations
+GET    /                      # host identity + api/openapi locations (index.html when workbench served)
 GET    /health/live           # process up
 GET    /health/ready          # host wired, plugins counted
 GET    /api/capabilities      # every registered capability + serving providers
@@ -42,6 +42,9 @@ DELETE /api/resources/{id}    # dispose (closes a stream, releases leases)
 GET    /api/resources/{id}/stream  # NDJSON of codec-encoded items
 GET    /api/plugins           # activated worker packages and lifecycle
 GET    /api/plugins/{id}      # one plugin by provider id (404 when absent)
+POST   /api/plugins/{id}/route-new-work  # route new work to this provider (ADR-0031)
+POST   /api/plugins/{id}/drain           # drain the worker; the host keeps running
+POST   /api/plugins/{id}/rollback        # reactivate (if needed) and route back
 GET    /openapi/v1.json       # OpenAPI description of the public contracts
 ```
 
@@ -144,6 +147,26 @@ stopped/failed), restart count, pid, healthy-at, last error and the manifest
 capabilities. The workbench's runtime-status screen and the replacement
 demonstration (plan §17.9-11) read this surface.
 
+The three POST control endpoints (ADR-0031) expose the supervisor's own
+replacement primitives over HTTP, each returning the updated `PluginDto`:
+
+- `route-new-work` — active-preference routing: new work for every
+  capability the provider serves now resolves to it (resolution step
+  `ActivePreferred`, plugin-lifecycle.md §“Side-by-side activation”).
+  409 when the worker is draining/stopped/failed (routing to it would
+  route nothing).
+- `drain` — stops routing new work, waits for in-flight invocations,
+  reclaims the worker's resources and stops its process; the host keeps
+  running. Idempotent for terminal workers.
+- `rollback` — reactivates the provider's package when it was drained or
+  failed and routes new work back to it (the reverse demonstration). 409
+  when reactivation fails.
+
+All three return 404 when no supervisor is configured or the provider id
+is unknown. The `.NET` SDK (`RouteNewWorkAsync`, `DrainPluginAsync`,
+`RollbackPluginAsync`) and the TypeScript SDK (`routeNewWork`,
+`drainPlugin`, `rollbackPlugin`) carry them.
+
 ## Configuration
 
 | Key | Meaning |
@@ -151,6 +174,7 @@ demonstration (plan §17.9-11) read this surface.
 | `Spatial:PackagesRoot` (env `Spatial__PackagesRoot`) | directory of immutable plugin packages to activate at startup (empty = no plugins) |
 | `Spatial:Preferences` | configured provider preferences: `{"spatial.geometry.buffer@1": "nts@1"}` (resolution step 3) |
 | `Spatial:WorkerEnvironment` | host-managed variables handed to every spawned worker (provider secrets, ADR-0028 — never through invocations) |
+| `Spatial:WebRoot` (env `Spatial__WebRoot`) | directory of the built browser workbench to serve as static content (ADR-0031); when set, `GET /` serves the workbench instead of the identity document |
 
 The host waits for its workers at startup (readiness); a package that fails
 to activate is reported on `/api/plugins` (its worker state shows the error)

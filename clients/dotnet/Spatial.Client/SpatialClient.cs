@@ -97,6 +97,38 @@ public sealed class SpatialClient
     public Task<PluginDto> GetPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
         GetAsync<PluginDto>($"/api/plugins/{Uri.EscapeDataString(providerId)}", cancellationToken);
 
+    /// <summary>
+    /// Routes new work to the provider for every capability it serves
+    /// (active-preference routing, ADR-0031 — the browser replacement
+    /// demonstration) and returns its updated state.
+    /// </summary>
+    public Task<PluginDto> RouteNewWorkAsync(string providerId, CancellationToken cancellationToken = default) =>
+        PostAsync<PluginDto>(
+            $"/api/plugins/{Uri.EscapeDataString(providerId)}/route-new-work",
+            content: null,
+            cancellationToken);
+
+    /// <summary>
+    /// Drains the plugin worker: stops routing new work, waits for in-flight
+    /// invocations, reclaims its resources and stops the process. The host
+    /// keeps running (ADR-0031). Returns the worker's terminal state.
+    /// </summary>
+    public Task<PluginDto> DrainPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
+        PostAsync<PluginDto>(
+            $"/api/plugins/{Uri.EscapeDataString(providerId)}/drain",
+            content: null,
+            cancellationToken);
+
+    /// <summary>
+    /// Rolls new work back to the provider: reactivates its package when it
+    /// was drained or failed, then routes new work to it again (ADR-0031).
+    /// </summary>
+    public Task<PluginDto> RollbackPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
+        PostAsync<PluginDto>(
+            $"/api/plugins/{Uri.EscapeDataString(providerId)}/rollback",
+            content: null,
+            cancellationToken);
+
     private async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
     {
         using var response = await _http.GetAsync(path, cancellationToken);

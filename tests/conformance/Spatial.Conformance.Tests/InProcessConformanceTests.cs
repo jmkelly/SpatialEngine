@@ -50,4 +50,26 @@ public sealed class InProcessConformanceTests
                 CancellationToken = cancellationToken,
             });
     }
+
+    [Fact]
+    public async Task The_nts_v2_provider_passes_the_same_operation_matrix()
+    {
+        // Plan §18: every provider of a standard capability runs the same
+        // fixtures — the second released version (Phase 10, ADR-0031) must
+        // serve every buffer/intersection/validate/simplify example exactly
+        // like v1, so the two versions can never disagree on a result.
+        var runtime = new CapabilityRuntime(new CapabilityRegistry());
+        runtime.Registry.Register(new NtsOperationsProviderV2());
+
+        await GeometryOperationConformance.RunOperationMatrixAsync(InvokeAsync, NtsOperationsProviderV2.ProviderIdentifier);
+
+        async Task<Spatial.Runtime.Capabilities.CapabilityOutcome> InvokeAsync(
+            CapabilityId capability,
+            IReadOnlyDictionary<string, object?> arguments,
+            CancellationToken cancellationToken = default) =>
+            await runtime.InvokeAsync(CapabilityInvocation.Create(capability, arguments) with
+            {
+                CancellationToken = cancellationToken,
+            });
+    }
 }

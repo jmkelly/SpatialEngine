@@ -1,12 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Unit tests for the demo data provider (Phase 10, ADR-0031): catalogue,
+    describe, scan/query streams and the long-running demo sleep — all
+    in-process through the capability runtime, no database required.
+  -->
+
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -17,13 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Spatial.Host\Spatial.Host.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Provider.Demo\Spatial.Provider.Demo.csproj" />
-    <ProjectReference Include="..\..\..\clients\dotnet\Spatial.Client\Spatial.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
   </ItemGroup>
 
 </Project>

@@ -151,6 +151,31 @@ export class SpatialClient {
     return this.json<PluginDto>(`/api/plugins/${encodeURIComponent(providerId)}`);
   }
 
+  /**
+   * Routes new work to the provider for every capability it serves
+   * (active-preference routing, ADR-0031 — the browser replacement
+   * demonstration) and returns its updated state.
+   */
+  async routeNewWork(providerId: string): Promise<PluginDto> {
+    return this.json<PluginDto>(`/api/plugins/${encodeURIComponent(providerId)}/route-new-work`, { method: "POST" });
+  }
+
+  /**
+   * Drains the plugin worker: stops routing new work, waits for in-flight
+   * invocations, reclaims its resources and stops the process (ADR-0031).
+   */
+  async drainPlugin(providerId: string): Promise<PluginDto> {
+    return this.json<PluginDto>(`/api/plugins/${encodeURIComponent(providerId)}/drain`, { method: "POST" });
+  }
+
+  /**
+   * Rolls new work back to the provider: reactivates its package when it
+   * was drained or failed, then routes new work to it again (ADR-0031).
+   */
+  async rollbackPlugin(providerId: string): Promise<PluginDto> {
+    return this.json<PluginDto>(`/api/plugins/${encodeURIComponent(providerId)}/rollback`, { method: "POST" });
+  }
+
   // ---- internals ----
 
   private async json<T>(path: string, init?: RequestInit): Promise<T> {

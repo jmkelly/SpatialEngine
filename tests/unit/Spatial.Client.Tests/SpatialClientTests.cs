@@ -173,4 +173,24 @@ public sealed class SpatialClientTests
         Assert.Equal("nts@1", plugin.Id);
         Assert.Equal(42, plugin.ProcessId);
     }
+
+    [Fact]
+    public async Task Plugin_control_methods_post_to_the_control_endpoints()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"id":"nts@2","displayName":"NetTopologySuite operations v2","runtime":"dotnet","state":"Active","restartCount":0,"processId":43,"startedAt":"2026-09-01T00:00:00Z","lastHealthyAt":null,"lastError":null,"capabilities":[]}""")));
+
+        var routed = await stub.Client.RouteNewWorkAsync("nts@2");
+        var drained = await stub.Client.DrainPluginAsync("nts@1");
+        var rolledBack = await stub.Client.RollbackPluginAsync("nts@2");
+
+        Assert.Equal("nts@2", routed.Id);
+        Assert.NotNull(drained);
+        Assert.NotNull(rolledBack);
+        Assert.Equal(3, stub.Handler.Exchanges.Count);
+        Assert.Equal(
+            "/api/plugins/nts%402/route-new-work|/api/plugins/nts%401/drain|/api/plugins/nts%402/rollback",
+            string.Join("|", stub.Handler.Exchanges.Select(exchange => exchange.Request.RequestUri?.AbsolutePath ?? string.Empty)));
+        Assert.All(stub.Handler.Exchanges, exchange => Assert.Equal(HttpMethod.Post, exchange.Request.Method));
+    }
 }

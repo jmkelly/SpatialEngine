@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The demo data provider (Phase 10, ADR-0031): a Docker-free, read-only
+    implementation of the standard data-provider contracts
+    (Spatial.PluginSdk.Providers, ADR-0028) over procedurally generated
+    point datasets — the browser workbench's dataset-browser/map/selection
+    vehicle in Playwright and local demos, where PostGIS is unavailable.
+    Plugin implementation: launched as an isolated worker, never referenced
+    by the runtime or host (ADR-0006/0002).
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Provider.Demo</AssemblyName>
+    <RootNamespace>Spatial.Provider.Demo</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Provider.Demo.Tests" />
+    <InternalsVisibleTo Include="Spatial.Conformance.Tests" />
+  </ItemGroup>
+
+</Project>
