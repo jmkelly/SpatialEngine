@@ -1,7 +1,7 @@
 namespace Spatial.Core.Geometry;
 
 /// <summary>A collection of points.</summary>
-public sealed class MultiPoint : GeometryCollectionBase<Point>, IEquatable<MultiPoint>
+public sealed class MultiPoint : GeometryCollectionBase<Point>, IMultiPoint, IEquatable<MultiPoint>
 {
     public MultiPoint(IEnumerable<Point> points, CoordinateReference? coordinateReference = null)
         : base(points, coordinateReference)

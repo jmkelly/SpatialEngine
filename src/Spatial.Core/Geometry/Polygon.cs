@@ -1,3 +1,4 @@
+
 namespace Spatial.Core.Geometry;
 
 /// <summary>
@@ -6,7 +7,7 @@ namespace Spatial.Core.Geometry;
 /// orientation and self-intersection are not validated here — validation is a
 /// plugin capability.
 /// </summary>
-public sealed class Polygon : IGeometry, IEquatable<Polygon>
+public sealed class Polygon : IPolygon, IEquatable<Polygon>
 {
     private readonly LineString _exteriorRing;
     private readonly LineString[] _interiorRings;

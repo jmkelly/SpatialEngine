@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
+using Spatial.Core.Geometry.Codec;
 
 namespace Spatial.Core.Features.Codec;
 

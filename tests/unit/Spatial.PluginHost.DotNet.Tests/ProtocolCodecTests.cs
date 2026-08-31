@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
+using Spatial.Core.Geometry.Codec;
 using Spatial.PluginHost.DotNet.Manifest;
 using Spatial.PluginHost.DotNet.Protocol;
 using Spatial.PluginSdk.Capabilities;

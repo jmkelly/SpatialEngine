@@ -1,3 +1,4 @@
+
 namespace Spatial.Core.Geometry;
 
 /// <summary>
@@ -7,7 +8,7 @@ namespace Spatial.Core.Geometry;
 /// <see cref="GeometryFactory.CreateEmptyPoint"/> (which honours an explicit
 /// layout).
 /// </summary>
-public sealed class Point : IGeometry, IEquatable<Point>
+public sealed class Point : IPoint, IEquatable<Point>
 {
     private readonly Coordinate? _coordinate;
     private readonly CoordinateReference? _coordinateReference;

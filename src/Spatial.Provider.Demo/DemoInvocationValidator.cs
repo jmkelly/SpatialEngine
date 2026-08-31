@@ -75,21 +75,54 @@ internal static class DemoInvocationValidator
         out double maxX,
         out double maxY)
     {
-        minX = minY = maxX = maxY = 0;
-        var hasMinX = invocation.TryGetArgument<double>("minx", out minX);
-        var hasMinY = invocation.TryGetArgument<double>("miny", out minY);
-        var hasMaxX = invocation.TryGetArgument<double>("maxx", out maxX);
-        var hasMaxY = invocation.TryGetArgument<double>("maxy", out maxY);
-        var any = hasMinX || hasMinY || hasMaxX || hasMaxY;
-        if (!any)
+        var box = BoxArgs.Read(invocation);
+        minX = box.MinX;
+        minY = box.MinY;
+        maxX = box.MaxX;
+        maxY = box.MaxY;
+
+        return BoxViolation(box);
+    }
+
+    /// <summary>The first rule a bounding box breaks: absent, partial, or inverted bounds.</summary>
+    private static CapabilityError? BoxViolation(BoxArgs box)
+    {
+        if (!box.Any)
         {
             return null;
         }
 
-        return hasMinX && hasMinY && hasMaxX && hasMaxY && minX <= maxX && minY <= maxY
+        return box.Valid
             ? null
             : CapabilityError.InvalidArguments(
                 "feature.query accepts an all-or-none bounding box: 'minx','miny','maxx','maxy' numeric bounds with minx<=maxx and miny<=maxy.");
+    }
+
+    /// <summary>The four query-box arguments as one immutable snapshot.</summary>
+    private readonly record struct BoxArgs(
+        bool HasMinX,
+        bool HasMinY,
+        bool HasMaxX,
+        bool HasMaxY,
+        double MinX,
+        double MinY,
+        double MaxX,
+        double MaxY)
+    {
+        public bool Any => HasMinX || HasMinY || HasMaxX || HasMaxY;
+
+        public bool Valid => HasMinX && HasMinY && HasMaxX && HasMaxY && MinX <= MaxX && MinY <= MaxY;
+
+        public static BoxArgs Read(CapabilityInvocation invocation) =>
+            new(
+                invocation.TryGetArgument<double>("minx", out var minX),
+                invocation.TryGetArgument<double>("miny", out var minY),
+                invocation.TryGetArgument<double>("maxx", out var maxX),
+                invocation.TryGetArgument<double>("maxy", out var maxY),
+                minX,
+                minY,
+                maxX,
+                maxY);
     }
 
     /// <summary>Rejects attribute filters: the demo query supports bounding boxes only.</summary>
@@ -99,5 +132,16 @@ internal static class DemoInvocationValidator
             ? CapabilityError.InvalidArguments(
                 "demo@1's feature.query supports bounding-box filtering only; the 'filter' expression is not supported by the demo provider.")
             : null;
+    }
+
+    /// <summary>
+    /// The shared "no such dataset" error, listing the catalogue's ids so the
+    /// message stays actionable for describe, scan and query alike.
+    /// </summary>
+    internal static CapabilityError UnknownDataset(CapabilityInvocation invocation, string dataset)
+    {
+        var available = string.Join(", ", DemoDatasetCatalog.Datasets.Select(item => $"'{item.Id}'"));
+        return CapabilityError.InvalidArguments(
+            $"{invocation.Capability}: no dataset '{dataset}' exists in the demo catalog. Available: {available}.");
     }
 }

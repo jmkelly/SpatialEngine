@@ -73,7 +73,8 @@ internal static class DemoDatasetCatalog
             4326,
             "Point",
             features,
-            new FeatureSchema(fields));
+            new FeatureSchema(fields),
+            BoxesFor(features));
     }
 
     private static DemoDataset BuildCities()
@@ -115,9 +116,41 @@ internal static class DemoDatasetCatalog
             4326,
             "Point",
             features,
-            new FeatureSchema(fields));
+            new FeatureSchema(fields),
+            BoxesFor(features));
+    }
+
+    /// <summary>Precomputes each feature's envelope as plain doubles (the only geometry touch in this file).</summary>
+    private static Dictionary<string, DemoBox> BoxesFor(List<Feature> features)
+    {
+        var boxes = new Dictionary<string, DemoBox>(features.Count);
+        foreach (var feature in features)
+        {
+            for (var i = 0; i < feature.Schema.Count; i++)
+            {
+                var value = feature[i];
+                if (value.Kind != AttributeKind.Geometry || value.GeometryValue.IsEmpty)
+                {
+                    continue;
+                }
+
+                // Mirror DemoFeatureHandler.Intersects: a non-empty geometry always has an envelope.
+                if (value.GeometryValue.Envelope is not { } envelope)
+                {
+                    continue;
+                }
+
+                boxes[feature.Id.Value] = new DemoBox(envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+                break;
+            }
+        }
+
+        return boxes;
     }
 }
+
+/// <summary>The axis-aligned envelope of one feature, as plain doubles.</summary>
+internal readonly record struct DemoBox(double MinX, double MinY, double MaxX, double MaxY);
 
 /// <summary>One immutable demo dataset: identity plus its generated features.</summary>
 internal sealed record DemoDataset(
@@ -128,8 +161,13 @@ internal sealed record DemoDataset(
     int Srid,
     string GeometryType,
     IReadOnlyList<Feature> Features,
-    FeatureSchema SchemaFields)
+    FeatureSchema SchemaFields,
+    IReadOnlyDictionary<string, DemoBox> Boxes)
 {
+    /// <summary>The feature's envelope from its geometry attribute, or null when it carries none.</summary>
+    public DemoBox? BoxFor(FeatureId id) =>
+        Boxes.TryGetValue(id.Value, out var box) ? box : null;
+
     public DatasetSummary ToSummary() =>
         new(Id, Schema, Table, GeometryColumn, Srid, Features.Count);
 

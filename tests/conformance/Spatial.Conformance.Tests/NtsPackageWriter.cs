@@ -24,7 +24,7 @@ internal static class NtsPackageWriter
         {
             (typeof(NtsOperationsProvider).Assembly.Location, "Spatial.Operations.NetTopologySuite.dll"),
             (Path.Combine(ntsDirectory, "NetTopologySuite.dll"), "NetTopologySuite.dll"),
-            (typeof(Spatial.Core.Geometry.IGeometry).Assembly.Location, "Spatial.Core.dll"),
+            (typeof(Spatial.Core.Features.FeatureId).Assembly.Location, "Spatial.Core.dll"),
             (typeof(Spatial.PluginSdk.Capabilities.ICapabilityProvider).Assembly.Location, "Spatial.PluginSdk.dll"),
         })
         {

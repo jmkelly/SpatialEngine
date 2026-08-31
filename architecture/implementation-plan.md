@@ -1178,6 +1178,8 @@ ADR-0027 Coordinate transformation contracts and the ProjNet adapter
 ADR-0028 PostGIS provider contracts and data interchange
 ADR-0029 Feature model contract faces and the codec namespace
 ADR-0030 Host API contract shapes and value codec live in the SDK
+ADR-0031 Browser workbench hosting and plugin control
+ADR-0032 Geometry contract faces and the geometry codec namespace
 ```
 
 ## 25. Recommended Starting Sequence

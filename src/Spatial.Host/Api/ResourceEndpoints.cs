@@ -81,32 +81,37 @@ internal static class ResourceEndpoints
             return TypedResults.NotFound();
         }
 
-        if (!host.Runtime.Resources.IsStream(handle))
-        {
-            return TypedResults.BadRequest("the resource exists but does not carry a readable stream.");
-        }
-
-        return new NdjsonStreamResult(host.Runtime.Resources, handle);
+        return StreamFor(host.Runtime, handle);
     }
+
+    private static IResult StreamFor(CapabilityRuntime runtime, ResourceHandle handle) =>
+        runtime.Resources.IsStream(handle)
+            ? new NdjsonStreamResult(runtime.Resources, handle)
+            : TypedResults.BadRequest("the resource exists but does not carry a readable stream.");
 
     private static bool TryGetResource(
         string id, CapabilityRuntime runtime, out ResourceHandle handle, out ResourceState state)
     {
-        if (Guid.TryParse(id, out var token))
+        var found = ResolveHandle(id, runtime);
+        if (found is null)
         {
-            var resourceId = new ResourceId(token);
-            if (runtime.Resources.TryGetHandle(resourceId, out var found))
-            {
-                handle = found;
-                state = runtime.Resources.GetState(handle);
-                return true;
-            }
+            handle = null!;
+            state = ResourceState.Closed;
+            return false;
         }
 
-        handle = null!;
-        state = ResourceState.Closed;
-        return false;
+        handle = found;
+        state = runtime.Resources.GetState(handle);
+        return true;
     }
+
+    private static ResourceHandle? ResolveHandle(string id, CapabilityRuntime runtime) =>
+        Guid.TryParse(id, out var token)
+            ? TryGetHandle(runtime, new ResourceId(token))
+            : null;
+
+    private static ResourceHandle? TryGetHandle(CapabilityRuntime runtime, ResourceId id) =>
+        runtime.Resources.TryGetHandle(id, out var handle) ? handle : null;
 }
 
 /// <summary>
@@ -231,12 +236,16 @@ internal sealed class NdjsonStreamResult : IResult
             return false;
         }
 
+        await WriteItemsAsync(response, items, cancellationToken);
+        return true;
+    }
+
+    private static async Task WriteItemsAsync(HttpResponse response, IReadOnlyList<object?> items, CancellationToken cancellationToken)
+    {
         foreach (var item in items)
         {
             await WriteItemAsync(response, item, cancellationToken);
         }
-
-        return true;
     }
 
     private static async Task WriteCompletionAsync(

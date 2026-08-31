@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Spatial.Core.Geometry;
+using Spatial.Core.Geometry.Codec;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Resources;
 using Spatial.PluginSdk.Transformations;

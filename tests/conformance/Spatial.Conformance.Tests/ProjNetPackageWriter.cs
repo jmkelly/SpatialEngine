@@ -24,7 +24,7 @@ internal static class ProjNetPackageWriter
         {
             (typeof(ProjNetTransformationsProvider).Assembly.Location, "Spatial.Transformations.ProjNet.dll"),
             (Path.Combine(projNetDirectory, "ProjNET.dll"), "ProjNET.dll"),
-            (typeof(Spatial.Core.Geometry.IGeometry).Assembly.Location, "Spatial.Core.dll"),
+            (typeof(Spatial.Core.Features.FeatureId).Assembly.Location, "Spatial.Core.dll"),
             (typeof(Spatial.PluginSdk.Capabilities.ICapabilityProvider).Assembly.Location, "Spatial.PluginSdk.dll"),
         })
         {

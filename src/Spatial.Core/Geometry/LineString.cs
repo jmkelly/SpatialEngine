@@ -1,3 +1,4 @@
+
 namespace Spatial.Core.Geometry;
 
 /// <summary>
@@ -5,7 +6,7 @@ namespace Spatial.Core.Geometry;
 /// enforced — ring validation is a plugin verb, not structural core
 /// behaviour.
 /// </summary>
-public sealed class LineString : IGeometry, IEquatable<LineString>
+public sealed class LineString : ILineString, IEquatable<LineString>
 {
     private readonly ICoordinateSequence _sequence;
     private readonly CoordinateReference? _coordinateReference;

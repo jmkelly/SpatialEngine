@@ -22,7 +22,7 @@ internal static class PostgisPackageWriter
         foreach (var (source, name) in new[]
         {
             (typeof(PostgisProvider).Assembly.Location, "Spatial.Provider.PostGIS.dll"),
-            (typeof(Spatial.Core.Geometry.IGeometry).Assembly.Location, "Spatial.Core.dll"),
+            (typeof(Spatial.Core.Features.FeatureId).Assembly.Location, "Spatial.Core.dll"),
             (typeof(Spatial.PluginSdk.Capabilities.ICapabilityProvider).Assembly.Location, "Spatial.PluginSdk.dll"),
             (Path.Combine(pluginDirectory, "Npgsql.dll"), "Npgsql.dll"),
             (Path.Combine(pluginDirectory, "Microsoft.Extensions.Logging.Abstractions.dll"), "Microsoft.Extensions.Logging.Abstractions.dll"),

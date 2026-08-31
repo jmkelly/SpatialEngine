@@ -47,13 +47,22 @@ internal static class InvocationEndpoints
             return TypedResults.BadRequest(error);
         }
 
-        if (ShouldRunInline(invocation.Capability, options, request.Wait, host.Runtime))
+        return await InvokeBuiltAsync(invocation, options, request.Wait, host.Runtime);
+    }
+
+    private static async Task<Results<Ok<InvocationResponse>, Accepted<InvocationResponse>, BadRequest<string>>> InvokeBuiltAsync(
+        CapabilityInvocation invocation,
+        InvocationOptions options,
+        bool? wait,
+        CapabilityRuntime runtime)
+    {
+        if (ShouldRunInline(invocation.Capability, options, wait, runtime))
         {
-            var outcome = await host.Runtime.InvokeAsync(invocation, options);
+            var outcome = await runtime.InvokeAsync(invocation, options);
             return TypedResults.Ok(CompletedResponse(outcome));
         }
 
-        var job = host.Runtime.StartJob(invocation, options);
+        var job = runtime.StartJob(invocation, options);
         var started = new JobStartedDto(job.Id.ToString(), job.State, JobStartedDto.LocationFor(job.Id));
         return TypedResults.Accepted<InvocationResponse>(started.Location, InvocationResponse.JobStarted(invocation.Capability.ToString(), started));
     }
@@ -72,9 +81,12 @@ internal static class InvocationEndpoints
             return false;
         }
 
-        var resolved = runtime.Resolve(capability, options);
-        return resolved is null || !resolved.Descriptor.Traits.HasFlag(CapabilityTraits.LongRunning);
+        return RunsInline(runtime.Resolve(capability, options));
     }
+
+    /// <summary>A capability runs inline unless its descriptor declares long-running work.</summary>
+    private static bool RunsInline(ResolvedProvider? resolved) =>
+        !(resolved?.Descriptor.Traits.HasFlag(CapabilityTraits.LongRunning) ?? false);
 
     private static InvocationResponse CompletedResponse(CapabilityOutcome outcome) =>
         InvocationOutcomeMapper.ToCompletedResponse(outcome);

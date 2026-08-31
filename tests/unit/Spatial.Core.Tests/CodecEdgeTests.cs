@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using Spatial.Core.Geometry;
+using Spatial.Core.Geometry.Codec;
 
 namespace Spatial.Core.Tests;
 

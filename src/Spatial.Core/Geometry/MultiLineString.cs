@@ -1,7 +1,7 @@
 namespace Spatial.Core.Geometry;
 
 /// <summary>A collection of line strings.</summary>
-public sealed class MultiLineString : GeometryCollectionBase<LineString>, IEquatable<MultiLineString>
+public sealed class MultiLineString : GeometryCollectionBase<LineString>, IMultiLineString, IEquatable<MultiLineString>
 {
     public MultiLineString(IEnumerable<LineString> lineStrings, CoordinateReference? coordinateReference = null)
         : base(lineStrings, coordinateReference)

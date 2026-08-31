@@ -293,13 +293,13 @@ internal static class PostgisEwkb
     /// </summary>
     private static readonly Dictionary<GeometryType, Action<Writer, IGeometry>> GeometryWriters = new()
     {
-        [GeometryType.Point] = (writer, geometry) => WritePoint(writer, (Point)geometry),
-        [GeometryType.LineString] = (writer, geometry) => WriteLineString(writer, (LineString)geometry),
-        [GeometryType.Polygon] = (writer, geometry) => WritePolygon(writer, (Polygon)geometry),
-        [GeometryType.MultiPoint] = (writer, geometry) => WriteMulti(writer, ((MultiPoint)geometry).Points),
-        [GeometryType.MultiLineString] = (writer, geometry) => WriteMulti(writer, ((MultiLineString)geometry).LineStrings),
-        [GeometryType.MultiPolygon] = (writer, geometry) => WriteMulti(writer, ((MultiPolygon)geometry).Polygons),
-        [GeometryType.GeometryCollection] = (writer, geometry) => WriteMulti(writer, ((GeometryCollection)geometry).Geometries),
+        [GeometryType.Point] = (writer, geometry) => WritePoint(writer, (IPoint)geometry),
+        [GeometryType.LineString] = (writer, geometry) => WriteLineString(writer, (ILineString)geometry),
+        [GeometryType.Polygon] = (writer, geometry) => WritePolygon(writer, (IPolygon)geometry),
+        [GeometryType.MultiPoint] = (writer, geometry) => WriteMulti(writer, ((IMultiPoint)geometry).Points),
+        [GeometryType.MultiLineString] = (writer, geometry) => WriteMulti(writer, ((IMultiLineString)geometry).LineStrings),
+        [GeometryType.MultiPolygon] = (writer, geometry) => WriteMulti(writer, ((IMultiPolygon)geometry).Polygons),
+        [GeometryType.GeometryCollection] = (writer, geometry) => WriteMulti(writer, ((IGeometryParts)geometry).Geometries),
     };
 
     private static void WriteBody(Writer writer, IGeometry geometry)
@@ -313,7 +313,7 @@ internal static class PostgisEwkb
         throw new NotSupportedException($"cannot write EWKB for geometry type {geometry.Type}");
     }
 
-    private static void WritePoint(Writer writer, Point point)
+    private static void WritePoint(Writer writer, IPoint point)
     {
         var layout = point.Layout;
         if (point.Coordinate is not { } coordinate)
@@ -340,9 +340,9 @@ internal static class PostgisEwkb
         }
     }
 
-    private static void WriteLineString(Writer writer, LineString line) => WriteSequence(writer, line.Sequence);
+    private static void WriteLineString(Writer writer, ILineString line) => WriteSequence(writer, line.Sequence);
 
-    private static void WritePolygon(Writer writer, Polygon polygon)
+    private static void WritePolygon(Writer writer, IPolygon polygon)
     {
         if (polygon.IsEmpty)
         {

@@ -1,3 +1,4 @@
+using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Codec;
 using Spatial.PluginSdk.Http;
 using Spatial.Runtime.Capabilities;
@@ -16,9 +17,12 @@ internal static class InvocationOutcomeMapper
             return InvocationResponse.Completed(capability, ValueCodec.Encode(value), provenance);
         }
 
-        var error = outcome.Error is { } structured
+        return InvocationResponse.Failed(capability, FailureError(outcome.Error), provenance);
+    }
+
+    /// <summary>The structured error DTO, or the stable provider-failure shape when none was recorded.</summary>
+    private static CapabilityErrorDto FailureError(CapabilityError? error) =>
+        error is { } structured
             ? CapabilityApiMappers.ToErrorDto(structured)
             : new CapabilityErrorDto("ProviderFailure", "provider.failure", "The invocation failed without a structured error.");
-        return InvocationResponse.Failed(capability, error, provenance);
-    }
 }

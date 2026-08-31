@@ -28,30 +28,20 @@ internal static class InvocationRequestBuilder
         options = InvocationOptions.None;
         error = null;
 
-        if (!CapabilityId.TryParse(request.Capability, out var capability))
+        var capability = ParseCapability(request.Capability, out var capabilityError);
+        var arguments = ParseArguments(request.Arguments, out var argumentsError);
+        var permissions = ParsePermissions(request.Permissions, out var permissionsError);
+        options = ParseRouting(request, runtime, out var routingError);
+
+        if (FirstFailure(capabilityError, argumentsError, permissionsError, routingError) is { } failure)
         {
-            error = $"'{request.Capability}' is not a valid capability id; expected 'name@version' such as 'spatial.geometry.buffer@1'.";
+            error = failure;
             return false;
         }
 
-        if (!TryDecodeArguments(request.Arguments, out var arguments, out error))
+        invocation = CapabilityInvocation.Create(capability!.Value, arguments!) with
         {
-            return false;
-        }
-
-        if (!TryParsePermissions(request.Permissions, out var permissions, out error))
-        {
-            return false;
-        }
-
-        if (!TryBuildOptions(request, runtime, out options, out error))
-        {
-            return false;
-        }
-
-        invocation = CapabilityInvocation.Create(capability, arguments) with
-        {
-            GrantedPermissions = permissions,
+            GrantedPermissions = permissions!,
             Deadline = request.Deadline,
             // Jobs live beyond the request: their own cancellation and the
             // deadline bound them (JobRunner), never the request token.
@@ -60,133 +50,185 @@ internal static class InvocationRequestBuilder
         return true;
     }
 
-    private static bool TryDecodeArguments(
+    /// <summary>The first failing message in declaration order, or null when every step parsed.</summary>
+    private static string? FirstFailure(params string?[] errors) =>
+        errors.FirstOrDefault(message => message is not null);
+
+    private static CapabilityId? ParseCapability(string? capabilityText, [NotNullWhen(false)] out string? error)
+    {
+        if (!CapabilityId.TryParse(capabilityText, out var capability))
+        {
+            error = $"'{capabilityText}' is not a valid capability id; expected 'name@version' such as 'spatial.geometry.buffer@1'.";
+            return null;
+        }
+
+        error = null;
+        return capability;
+    }
+
+    private static Dictionary<string, object?>? ParseArguments(
         IReadOnlyDictionary<string, JsonNode?>? arguments,
-        [NotNullWhen(true)] out IReadOnlyDictionary<string, object?>? decoded,
         [NotNullWhen(false)] out string? error)
     {
-        decoded = null;
-        error = null;
-        if (arguments is null || arguments.Count == 0)
+        if (arguments is null or { Count: 0 })
         {
-            decoded = new Dictionary<string, object?>();
-            return true;
+            error = null;
+            return new Dictionary<string, object?>();
         }
 
-        var map = new Dictionary<string, object?>(arguments.Count);
-        foreach (var (name, node) in arguments)
-        {
-            try
-            {
-                map[name] = ValueCodec.Decode(node);
-            }
-            catch (ValueCodecException exception)
-            {
-                error = $"the argument '{name}' cannot be decoded: {exception.Message}";
-                return false;
-            }
-        }
-
-        decoded = map;
-        return true;
+        return DecodeAll(arguments, out error);
     }
 
-    private static bool TryParsePermissions(
+    /// <summary>A decoded argument node: its value, or the codec's reason when it refused.</summary>
+    private sealed record DecodedArgument(string Name, object? Value, string? Reason);
+
+    /// <summary>Decodes every argument node; the first codec refusal names the failing argument.</summary>
+    private static Dictionary<string, object?>? DecodeAll(
+        IReadOnlyDictionary<string, JsonNode?> arguments,
+        [NotNullWhen(false)] out string? error)
+    {
+        var decoded = arguments.Select(pair => DecodeOne(pair.Key, pair.Value)).ToList();
+        var failure = decoded.FirstOrDefault(item => item is { Reason: not null });
+        if (failure is not null)
+        {
+            error = $"the argument '{failure.Name}' cannot be decoded: {failure.Reason}";
+            return null;
+        }
+
+        error = null;
+        return decoded.ToDictionary(item => item.Name, item => item.Value);
+    }
+
+    /// <summary>Decodes a single wire node, translating a codec refusal into a readable reason.</summary>
+    private static DecodedArgument DecodeOne(string name, JsonNode? node)
+    {
+        try
+        {
+            return new DecodedArgument(name, ValueCodec.Decode(node), null);
+        }
+        catch (ValueCodecException exception)
+        {
+            return new DecodedArgument(name, null, exception.Message);
+        }
+    }
+
+    private static HashSet<Permission>? ParsePermissions(
         IReadOnlyList<string>? permissions,
-        [NotNullWhen(true)] out IReadOnlySet<Permission>? parsed,
         [NotNullWhen(false)] out string? error)
     {
-        parsed = null;
-        error = null;
         var set = new HashSet<Permission>();
-        foreach (var name in permissions ?? [])
+        var invalid = (permissions ?? []).FirstOrDefault(name => !ParsePermission(name, set));
+        if (invalid is not null)
         {
-            if (!Permission.TryParse(name, out var permission))
-            {
-                error = $"'{name}' is not a valid permission; expected a dotted lowercase name such as 'spatial.feature.read'.";
-                return false;
-            }
-
-            set.Add(permission);
+            error = $"'{invalid}' is not a valid permission; expected a dotted lowercase name such as 'spatial.feature.read'.";
+            return null;
         }
 
-        parsed = set;
+        error = null;
+        return set;
+    }
+
+    private static bool ParsePermission(string name, HashSet<Permission> into)
+    {
+        if (!Permission.TryParse(name, out var permission))
+        {
+            return false;
+        }
+
+        into.Add(permission);
         return true;
     }
 
-    private static bool TryBuildOptions(
+    /// <summary>
+    /// Builds the routing options: an explicit provider pin, a resource-local
+    /// handle, or none. Options are carried only when the caller supplied one.
+    /// </summary>
+    private static InvocationOptions ParseRouting(
         InvocationRequest request,
         CapabilityRuntime runtime,
-        out InvocationOptions options,
         [NotNullWhen(false)] out string? error)
     {
-        options = InvocationOptions.None;
+        var provider = ParseProvider(request.Provider, out var providerError);
+        var resource = ResolveResource(request.Resource, runtime, out var resourceError);
+
+        if (FirstFailure(providerError, resourceError) is { } failure)
+        {
+            error = failure;
+            return InvocationOptions.None;
+        }
+
         error = null;
-
-        if (!TryParseProvider(request.Provider, out var provider, out error))
-        {
-            return false;
-        }
-
-        if (!TryResolveResource(request.Resource, runtime, out var resource, out error))
-        {
-            return false;
-        }
-
-        options = BuildOptions(provider, resource);
-        return true;
+        return BuildOptions(provider, resource);
     }
 
     /// <summary>Parses an explicit provider pin; null is "no pin" and always succeeds.</summary>
-    private static bool TryParseProvider(
-        string? providerText,
-        out ProviderId? provider,
-        [NotNullWhen(false)] out string? error)
+    private static ProviderId? ParseProvider(string? providerText, [NotNullWhen(false)] out string? error)
     {
-        provider = null;
-        error = null;
         if (providerText is null)
         {
-            return true;
+            error = null;
+            return null;
         }
 
+        return ParseProviderText(providerText, out error);
+    }
+
+    private static ProviderId? ParseProviderText(string providerText, [NotNullWhen(false)] out string? error)
+    {
         if (!ProviderId.TryParse(providerText, out var parsedProvider))
         {
             error = $"'{providerText}' is not a valid provider id; expected 'name@version' such as 'nts@1'.";
-            return false;
+            return null;
         }
 
-        provider = parsedProvider;
-        return true;
+        error = null;
+        return parsedProvider;
     }
 
     /// <summary>Resolves a resource token to its live handle; null is "no resource" and always succeeds.</summary>
-    private static bool TryResolveResource(
+    private static ResourceHandle? ResolveResource(
         string? tokenText,
         CapabilityRuntime runtime,
-        out ResourceHandle? resource,
         [NotNullWhen(false)] out string? error)
     {
-        resource = null;
-        error = null;
         if (tokenText is null)
         {
-            return true;
+            error = null;
+            return null;
         }
 
-        if (!Guid.TryParse(tokenText, out var token) || !runtime.Resources.TryGetHandle(new ResourceId(token), out var handle))
+        return ResolveResourceToken(tokenText, runtime, out error);
+    }
+
+    private static ResourceHandle? ResolveResourceToken(
+        string tokenText,
+        CapabilityRuntime runtime,
+        [NotNullWhen(false)] out string? error)
+    {
+        var handle = TokenHandle(tokenText, runtime);
+        if (handle is null)
         {
             error = $"'{tokenText}' is not a live resource token.";
-            return false;
+            return null;
         }
 
-        resource = handle;
-        return true;
+        error = null;
+        return handle;
     }
+
+    private static ResourceHandle? TokenHandle(string tokenText, CapabilityRuntime runtime) =>
+        Guid.TryParse(tokenText, out var token)
+            ? TryGetHandle(runtime, new ResourceId(token))
+            : null;
+
+    private static ResourceHandle? TryGetHandle(CapabilityRuntime runtime, ResourceId id) =>
+        runtime.Resources.TryGetHandle(id, out var handle) ? handle : null;
 
     /// <summary>An invocation carries routing options only when the caller supplied a pin or resource.</summary>
     private static InvocationOptions BuildOptions(ProviderId? provider, ResourceHandle? resource) =>
-        provider is not null || resource is not null
-            ? new InvocationOptions(ExplicitProvider: provider, Resource: resource)
-            : InvocationOptions.None;
+        (provider, resource) switch
+        {
+            (null, null) => InvocationOptions.None,
+            _ => new InvocationOptions(ExplicitProvider: provider, Resource: resource),
+        };
 }

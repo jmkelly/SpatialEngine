@@ -14,9 +14,13 @@ A component belongs in the core only when ALL of the following hold:
 ## The core owns
 
 - Spatial values: `Coordinate`, `CoordinateLayout`, `ICoordinateSequence`,
-  `Envelope`, `IGeometry` and the simple-feature types, `CoordinateReference`,
+  `Envelope`, `IGeometry` and the simple-feature types (with the shape
+  contract faces `IPoint`…`IGeometryParts`/`IGeometryFactory`, ADR-0032),
+  `CoordinateReference`,
   `Feature`, `FeatureId`, `AttributeValue`, `FieldDefinition`, `FeatureSchema`.
-- Canonical encoding/decoding (ADR-0020).
+- Canonical encoding/decoding (ADR-0020); `GeometryCodec` lives in
+  `Spatial.Core.Geometry.Codec` and `FeatureBatchCodec` in
+  `Spatial.Core.Features.Codec` (ADR-0029/0032).
 - Structural runtime identity in the Runtime project: capability identity,
   plugin manifests, registry, routing, resource handles, streams, jobs,
   permissions, health, diagnostics, contract compatibility.

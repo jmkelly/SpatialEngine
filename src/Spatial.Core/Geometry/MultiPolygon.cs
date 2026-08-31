@@ -1,7 +1,7 @@
 namespace Spatial.Core.Geometry;
 
 /// <summary>A collection of polygons.</summary>
-public sealed class MultiPolygon : GeometryCollectionBase<Polygon>, IEquatable<MultiPolygon>
+public sealed class MultiPolygon : GeometryCollectionBase<Polygon>, IMultiPolygon, IEquatable<MultiPolygon>
 {
     public MultiPolygon(IEnumerable<Polygon> polygons, CoordinateReference? coordinateReference = null)
         : base(polygons, coordinateReference)

@@ -35,6 +35,13 @@ public sealed class DemoCatalogueTests
     [InlineData("demo.%", new[] { "demo.points", "demo.cities" })]
     [InlineData("demo.citie_", new[] { "demo.cities" })]
     [InlineData("missing.%", new string[0])]
+    [InlineData("%", new[] { "demo.points", "demo.cities" })]
+    [InlineData("demo.%e%", new[] { "demo.cities" })]
+    [InlineData("demo.%z%", new string[0])]
+    [InlineData("demo.%%i%", new[] { "demo.points", "demo.cities" })]
+    [InlineData("d%ts", new[] { "demo.points" })]
+    [InlineData("d%es", new[] { "demo.cities" })]
+    [InlineData("d%xx", new string[0])]
     public async Task The_catalogue_pattern_filters_datasets(string pattern, string[] expectedIds)
     {
         var host = DemoTestHost.Create();

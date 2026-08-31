@@ -1,3 +1,4 @@
+
 namespace Spatial.Core.Geometry;
 
 /// <summary>

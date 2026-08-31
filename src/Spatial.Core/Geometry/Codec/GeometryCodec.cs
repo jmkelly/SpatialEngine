@@ -2,7 +2,8 @@ using System.Buffers.Binary;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace Spatial.Core.Geometry;
+
+namespace Spatial.Core.Geometry.Codec;
 
 /// <summary>
 /// Canonical binary interchange for geometry values (ADR-0020). The format is

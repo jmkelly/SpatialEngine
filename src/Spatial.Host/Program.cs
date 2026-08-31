@@ -91,14 +91,18 @@ internal static class WorkbenchServing
             return;
         }
 
+        Mount(app, webRoot);
+    }
+
+    private static void Mount(WebApplication app, string webRoot)
+    {
         if (!Directory.Exists(webRoot))
         {
             throw new InvalidOperationException(
                 $"Spatial:WebRoot is set to '{webRoot}', but that directory does not exist.");
         }
 
-        var fileProvider = new PhysicalFileProvider(webRoot);
-        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
-        app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider });
+        app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = new PhysicalFileProvider(webRoot) });
+        app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(webRoot) });
     }
 }

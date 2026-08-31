@@ -67,28 +67,32 @@ internal static class JobEndpoints
             return TypedResults.NotFound();
         }
 
-        if (string.Equals(
-                context.Request.Headers.Accept,
-                "text/event-stream",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return new SseJobEventsResult(job, host.Runtime.Resources);
-        }
-
-        return TypedResults.Ok(JobApiMappers.ToJobEventsResponse(job, host.Runtime.Resources));
+        return EventResult(job, host.Runtime, context);
     }
+
+    private static IResult EventResult(CapabilityJob job, CapabilityRuntime runtime, HttpContext context) =>
+        string.Equals(context.Request.Headers.Accept, "text/event-stream", StringComparison.OrdinalIgnoreCase)
+            ? new SseJobEventsResult(job, runtime.Resources)
+            : TypedResults.Ok(JobApiMappers.ToJobEventsResponse(job, runtime.Resources));
 
     private static bool TryGetJob(string id, CapabilityRuntime runtime, out CapabilityJob job)
     {
-        if (Guid.TryParse(id, out var token) && runtime.Jobs.TryGet(new JobId(token), out var found))
+        var found = FindJob(id, runtime);
+        if (found is null)
         {
-            job = found;
-            return true;
+            job = null!;
+            return false;
         }
 
-        job = null!;
-        return false;
+        job = found;
+        return true;
     }
+
+    private static CapabilityJob? FindJob(string id, CapabilityRuntime runtime) =>
+        Guid.TryParse(id, out var token) ? TryGetJobBy(runtime, new JobId(token)) : null;
+
+    private static CapabilityJob? TryGetJobBy(CapabilityRuntime runtime, JobId id) =>
+        runtime.Jobs.TryGet(id, out var found) ? found : null;
 }
 
 /// <summary>

@@ -5,6 +5,13 @@ interchange. See implementation-plan.md §7-8 and ADR-0001/0004/0020.
 
 ## Values
 
+Contract faces (ADR-0029/0032): `IGeometry`, `ICoordinateSequence`, and
+the per-shape faces `IPoint`, `ILineString`, `IPolygon`, `IMultiPoint`,
+`IMultiLineString`, `IMultiPolygon`, `IGeometryParts` plus the
+`IGeometryFactory` creation contract, all in `Spatial.Core.Geometry`. Bind
+the faces where you only inspect/transport geometry; construct with the
+concrete types.
+
 - `Coordinate` — readonly record struct: `X`, `Y`, optional `Z`, optional `M`.
   `null` means the ordinate is *absent*; `double.NaN` means *present but
   unknown*. A coordinate's layout is inferred from which ordinates are
@@ -31,7 +38,10 @@ interchange. See implementation-plan.md §7-8 and ADR-0001/0004/0020.
 - `GeometryFactory` — builders. Constructors are structural (they store what
   they are given); the factory normalises CRS across parts (see below).
 - `GeometryTraversal` — `Parts()`, `DepthFirst()`, `Coordinates()`.
-- `GeometryCodec` — canonical binary interchange, version 1 (spec below).
+- `GeometryCodec` — canonical binary interchange, version 1 (spec below),
+  living with `CanonicalFormatException` in `Spatial.Core.Geometry.Codec`
+  (ADR-0032 leaf namespace, mirroring `FeatureBatchCodec` in
+  `Spatial.Core.Features.Codec` per ADR-0029).
   `GeometryComparer` — structural equality and hashing.
 
 ## Semantics

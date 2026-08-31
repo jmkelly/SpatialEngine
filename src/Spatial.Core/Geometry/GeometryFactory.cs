@@ -1,4 +1,60 @@
+
 namespace Spatial.Core.Geometry;
+
+/// <summary>
+/// The static creation contract every geometry builder implements. The core
+/// ships one implementor (<see cref="GeometryFactory"/>); providers and
+/// adapters that need an injectable builder bind this face instead of the
+/// concrete class (ADR-0029 contract faces). The class members below are the
+/// implementation of this contract.
+/// </summary>
+public interface IGeometryFactory
+{
+    static abstract Point CreatePoint(Coordinate coordinate, CoordinateReference? coordinateReference = null);
+
+    static abstract Point CreatePoint(double x, double y, CoordinateReference? coordinateReference = null);
+
+    static abstract Point CreatePoint(double x, double y, double z, CoordinateReference? coordinateReference = null);
+
+    static abstract Point CreatePoint(double x, double y, double z, double m, CoordinateReference? coordinateReference = null);
+
+    /// <summary>An empty point. <paramref name="layout"/> only matters for round-trip fidelity.</summary>
+    static abstract Point CreateEmptyPoint(CoordinateReference? coordinateReference = null, CoordinateLayout layout = CoordinateLayout.Xy);
+
+    /// <summary>Line string from coordinates; the layout is inferred from the ordinates present.</summary>
+    static abstract LineString CreateLineString(ReadOnlySpan<Coordinate> coordinates, CoordinateReference? coordinateReference = null);
+
+    /// <summary>Line string from coordinates packed into an explicit layout (empty spans may carry a layout).</summary>
+    static abstract LineString CreateLineString(ReadOnlySpan<Coordinate> coordinates, CoordinateLayout layout, CoordinateReference? coordinateReference = null);
+
+    static abstract LineString CreateLineString(ICoordinateSequence sequence, CoordinateReference? coordinateReference = null);
+
+    static abstract LineString CreateEmptyLineString(CoordinateLayout layout = CoordinateLayout.Xy, CoordinateReference? coordinateReference = null);
+
+    static abstract Polygon CreatePolygon(LineString exteriorRing, IEnumerable<LineString>? interiorRings = null, CoordinateReference? coordinateReference = null);
+
+    /// <summary>Polygon from a single exterior ring.</summary>
+    static abstract Polygon CreatePolygon(ReadOnlySpan<Coordinate> exteriorRing, CoordinateReference? coordinateReference = null);
+
+    /// <summary>Polygon whose rings are built from coordinate sequences.</summary>
+    static abstract Polygon CreatePolygon(ICoordinateSequence exteriorRing, IEnumerable<ICoordinateSequence>? interiorRings = null, CoordinateReference? coordinateReference = null);
+
+    static abstract MultiPoint CreateMultiPoint(params Point[] points);
+
+    static abstract MultiPoint CreateMultiPoint(IEnumerable<Point> points, CoordinateReference? coordinateReference);
+
+    static abstract MultiLineString CreateMultiLineString(params LineString[] lineStrings);
+
+    static abstract MultiLineString CreateMultiLineString(IEnumerable<LineString> lineStrings, CoordinateReference? coordinateReference);
+
+    static abstract MultiPolygon CreateMultiPolygon(params Polygon[] polygons);
+
+    static abstract MultiPolygon CreateMultiPolygon(IEnumerable<Polygon> polygons, CoordinateReference? coordinateReference);
+
+    static abstract GeometryCollection CreateGeometryCollection(params IGeometry[] geometries);
+
+    static abstract GeometryCollection CreateGeometryCollection(IEnumerable<IGeometry> geometries, CoordinateReference? coordinateReference);
+}
 
 /// <summary>
 /// Builders for immutable geometry values. Constructors are structural (they
@@ -6,8 +62,12 @@ namespace Spatial.Core.Geometry;
 /// composite carries at most one distinct non-null CRS, parts without a CRS
 /// are treated as unspecified, and conflicting part CRSs are rejected.
 /// </summary>
-public static class GeometryFactory
+public sealed class GeometryFactory : IGeometryFactory
 {
+    private GeometryFactory()
+    {
+    }
+
     public static Point CreatePoint(Coordinate coordinate, CoordinateReference? coordinateReference = null) =>
         new(coordinate, coordinateReference);
 

@@ -163,6 +163,34 @@ public sealed class DemoFeatureTests
         Assert.Equal(CapabilityErrorKind.Cancelled, outcome.Error?.Kind);
     }
 
+    [Fact]
+    public async Task The_scan_for_an_unknown_dataset_invalidates_the_invocation()
+    {
+        var host = DemoTestHost.Create();
+
+        var outcome = await host.InvokeAsync(
+            DemoCapabilities.FeatureScan,
+            new Dictionary<string, object?> { ["dataset"] = "demo.nope" });
+
+        Assert.False(outcome.IsSuccess);
+        Assert.Equal(CapabilityErrorKind.InvalidArguments, outcome.Error?.Kind);
+        Assert.Contains("no dataset 'demo.nope' exists", outcome.Error?.Message);
+    }
+
+    [Fact]
+    public async Task The_query_for_an_unknown_dataset_invalidates_the_invocation()
+    {
+        var host = DemoTestHost.Create();
+
+        var outcome = await host.InvokeAsync(
+            DemoCapabilities.FeatureQuery,
+            new Dictionary<string, object?> { ["dataset"] = "demo.nope" });
+
+        Assert.False(outcome.IsSuccess);
+        Assert.Equal(CapabilityErrorKind.InvalidArguments, outcome.Error?.Kind);
+        Assert.Contains("no dataset 'demo.nope' exists", outcome.Error?.Message);
+    }
+
     /// <summary>Returns the feature's geometry attribute, decoded by the batch codec.</summary>
     private static IGeometry AssertGeometry(Feature feature)
     {

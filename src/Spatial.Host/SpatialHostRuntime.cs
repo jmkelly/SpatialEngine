@@ -187,16 +187,20 @@ public sealed class SpatialHostRuntime : IAsyncDisposable
     /// </summary>
     private static Dictionary<string, string> ReadWorkerEnvironment(IConfiguration configuration)
     {
-        var section = configuration.GetSection("Spatial:WorkerEnvironment");
         var environment = new Dictionary<string, string>();
-        foreach (var child in section.GetChildren())
+        foreach (var child in configuration.GetSection("Spatial:WorkerEnvironment").GetChildren())
         {
-            if (child.Value is { } value)
-            {
-                environment[child.Key] = value;
-            }
+            AddIfSet(environment, child);
         }
 
         return environment;
+    }
+
+    private static void AddIfSet(Dictionary<string, string> environment, IConfigurationSection child)
+    {
+        if (child.Value is { } value)
+        {
+            environment[child.Key] = value;
+        }
     }
 }

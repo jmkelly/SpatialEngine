@@ -254,7 +254,7 @@ internal static class NtsOperationRunner
     {
         foreach (var part in geometry.DepthFirst())
         {
-            if (part is Polygon polygon && !PolygonRingsAreValid(polygon))
+            if (part is IPolygon polygon && !PolygonRingsAreValid(polygon))
             {
                 return false;
             }
@@ -263,7 +263,7 @@ internal static class NtsOperationRunner
         return true;
     }
 
-    private static bool PolygonRingsAreValid(Polygon polygon)
+    private static bool PolygonRingsAreValid(IPolygon polygon)
     {
         if (!RingIsValid(polygon.ExteriorRing))
         {

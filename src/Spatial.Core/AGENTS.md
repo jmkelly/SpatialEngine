@@ -11,13 +11,17 @@ no project references, no algorithms (enforced by
 3. it can be represented without choosing a spatial algorithm.
 
 Owned here: `Coordinate`, `CoordinateLayout`, `ICoordinateSequence`,
-`Envelope`, `IGeometry` and simple-feature types, `CoordinateReference`,
+`Envelope`, `IGeometry` and simple-feature types, `CoordinateReference`, the
+geometry contract faces `IPoint`, `ILineString`, `IPolygon`, `IMultiPoint`,
+`IMultiLineString`, `IMultiPolygon`, `IGeometryParts` and `IGeometryFactory`
+(ADR-0032; bind these where you only inspect or transport geometry),
 `AttributeKind`, `AttributeValue`, `FeatureId`, `FieldDefinition`,
 `IFieldDefinition`, `IFeature`, `IFeatureSchema`, `IFeatureBatch` (the
 feature model's contract faces, ADR-0029) and the concrete
 `FieldDefinition`, `FeatureId`, `FeatureSchema`, `Feature`, `FeatureBatch`;
 canonical binary encoding (Phase 1: `GeometryCodec` v1 — spec in
-`architecture/geometry-model.md`; Phase 2: `FeatureBatchCodec` v1 — spec in
+`architecture/geometry-model.md`, living in `Spatial.Core.Geometry.Codec`
+per ADR-0032; Phase 2: `FeatureBatchCodec` v1 — spec in
 `architecture/feature-model.md`, living in `Spatial.Core.Features.Codec` per
 ADR-0029), `GeometryFactory`, `GeometryTraversal`.
 

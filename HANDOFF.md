@@ -25,10 +25,25 @@
     int64 contract arguments (`CapabilityInvocation` int↔long widening —
     see gotchas below — with `ArgumentCastTests`), which also stabilized
     the Phase 9 job tests under parallel load.
+  - *(third commit, the metrics-gate follow-up pass)* — ADR-0032: the
+    geometry value model gains its contract faces (`IPoint`, `ILineString`,
+    `IPolygon`, `IMultiPoint`, `IMultiLineString`, `IMultiPolygon`,
+    `IGeometryParts`, `IGeometryFactory`) and `GeometryCodec` +
+    `CanonicalFormatException` move to `Spatial.Core.Geometry.Codec` — the
+    demo provider had pushed `Spatial.Core.Geometry` to Ca 9 / abstractness
+    0.09 and re-triggered `architectural-rigidity`; the faces carry the hub
+    (abstractness 0.31), the codec namespace is a leaf. Also the CRAP pass
+    on `CapabilityInvocation.TryCast` (behavior-preserving extraction into
+    `TryNumericCast`/`NumericConvert`, `ArgumentCastTests` still pin both
+    directions) and the demo `DemoRunner` split into `DemoCatalogueHandler`/
+    `DemoFeatureHandler` (+ `LikePattern`, catalogue pattern filtering
+    tests). Docs updated together: `geometry-model.md`, `core-boundary.md`,
+    `src/Spatial.Core/AGENTS.md`, plan ADR index.
 - **Tests:** `eng/verify.sh` passes from a clean checkout, run six times in
   a row all-green (the load flake it used to show is fixed — see gotchas).
   Counts: Core 308, Runtime 207 (+6 arg-cast), Client 11, PluginHost 85,
-  Provider.Demo 25 (new), Provider.PostGIS 175 unit + 17 skipped
+  Provider.Demo 34 (new, +9 catalogue-pattern/feature-batch tests in the
+  ADR-0032 pass), Provider.PostGIS 175 unit + 17 skipped
   container, Conformance 13 (+nts v2 matrix), Host 52 (+10 from Phase 10:
   7 replacement + 3 hosting), NTS 31, ProjNet 65, Architecture 8.
 - **Web:** `apps/workbench-web` unit tests 22/22 pass and the build is
@@ -114,17 +129,29 @@
 
 ## Quality gates (Phase 10)
 
+Re-verified after the ADR-0032 follow-up pass: all four gates green
+(CRAP 0/2568, branches 82.3%, metrics 0 findings, warnings 0),
+`eng/verify.sh` exit 0, workbench unit tests 22/22, `eng/workbench-e2e.sh`
+6/6.
+
 - **CRAP**: 0 of ≥2500 methods ≥ 10 (loop-verified).
 - **Coverage**: authored branch ≥ 70% (loop-verified).
 - **Metrics**: 0 findings (the new host endpoints stayed fan-out-small;
-  `DemoRunner` split validation/emitters; no new Core fan-in).
+  `DemoRunner` split validation/emitters and then dispatch/handlers; Core
+  fan-in carried by the ADR-0032 faces — abstractness 0.31).
 - **Warnings**: 0.
 - **Stryker (my call — SKIPPED)**: Phase 10 changed no `Spatial.Core`
   behavior (the audited project — every mutation run pins
   `configured[0]`), so the ~11-minute full run was skipped per the
-  heuristic for non-Core phases. The final repo-wide pass should still add
-  the Phase 9/10 assemblies (`Spatial.PluginSdk`, `Spatial.Host`,
-  `Spatial.Client`, `Spatial.Provider.Demo`) to the Stryker matrix.
+  heuristic for non-Core phases. The ADR-0032 follow-up pass was reviewed
+  with the same lens and also skipped: its `Spatial.Core` changes are
+  structural only (additive interfaces with no bodies, a namespace move of
+  unchanged codec code), and the `CapabilityInvocation`/demo changes are
+  behavior-preserving refactors pinned by existing tests — no new mutation
+  surface. The final repo-wide pass should still add the Phase 9/10
+  assemblies (`Spatial.PluginSdk`, `Spatial.Host`, `Spatial.Client`,
+  `Spatial.Provider.Demo`) to the Stryker matrix. Last full run on record:
+  **94.44%** (stryker-queue.md of 30 Aug).
 
 ## Next up — Phase 11: Tauri 2 Desktop Packaging
 

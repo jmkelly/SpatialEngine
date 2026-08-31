@@ -71,19 +71,23 @@ internal static class PluginEndpoints
     /// </summary>
     internal static Results<Ok<PluginDto>, NotFound, Conflict> RouteNewWork(string id, SpatialHostRuntime host)
     {
-        var supervisor = host.Supervisor;
-        if (supervisor is null || TryFind(host, id) is not { } worker)
+        if (TryFind(host, id) is not { } worker)
         {
             return TypedResults.NotFound();
         }
 
-        if (!WorkerStateSupport.CanServe(worker.State))
+        return RouteTo(host, worker);
+    }
+
+    private static Results<Ok<PluginDto>, NotFound, Conflict> RouteTo(SpatialHostRuntime host, WorkerInstance worker)
+    {
+        if (WorkerStateSupport.CanServe(worker.State))
         {
-            return TypedResults.Conflict();
+            host.Supervisor!.RouteNewWorkTo(worker.ProviderId);
+            return TypedResults.Ok(PluginApiMappers.ToPluginDto(worker));
         }
 
-        supervisor.RouteNewWorkTo(worker.ProviderId);
-        return TypedResults.Ok(PluginApiMappers.ToPluginDto(worker));
+        return TypedResults.Conflict();
     }
 
     /// <summary>
@@ -94,13 +98,12 @@ internal static class PluginEndpoints
     /// </summary>
     internal static async Task<Results<Ok<PluginDto>, NotFound>> Drain(string id, SpatialHostRuntime host)
     {
-        var supervisor = host.Supervisor;
-        if (supervisor is null || TryFind(host, id) is not { } worker)
+        if (TryFind(host, id) is not { } worker)
         {
             return TypedResults.NotFound();
         }
 
-        await supervisor.DrainAsync(worker.Id);
+        await host.Supervisor!.DrainAsync(worker.Id);
         return TypedResults.Ok(PluginApiMappers.ToPluginDto(worker));
     }
 
@@ -111,15 +114,19 @@ internal static class PluginEndpoints
     /// </summary>
     internal static async Task<Results<Ok<PluginDto>, NotFound, Conflict<string>>> Rollback(string id, SpatialHostRuntime host)
     {
-        var supervisor = host.Supervisor;
-        if (supervisor is null || TryFind(host, id) is not { } worker)
+        if (TryFind(host, id) is not { } worker)
         {
             return TypedResults.NotFound();
         }
 
+        return await RollBackTo(worker, host);
+    }
+
+    private static async Task<Results<Ok<PluginDto>, NotFound, Conflict<string>>> RollBackTo(WorkerInstance worker, SpatialHostRuntime host)
+    {
         try
         {
-            var rolledBack = await supervisor.RollbackAsync(worker.Package.Path);
+            var rolledBack = await host.Supervisor!.RollbackAsync(worker.Package.Path);
             return TypedResults.Ok(PluginApiMappers.ToPluginDto(rolledBack));
         }
         catch (WorkerActivationException exception)

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Http;
+using Spatial.Runtime.Capabilities;
 
 namespace Spatial.Host.Api;
 
@@ -29,12 +30,19 @@ internal static class CapabilityEndpoints
     /// <summary>The full declaration of one capability, or 404 when nothing serves it.</summary>
     internal static Results<Ok<CapabilityDetailDto>, NotFound> Detail(string id, SpatialHostRuntime host)
     {
-        if (!CapabilityId.TryParse(id, out var capability)
-            || host.Runtime.Registry.GetProviders(capability).Count == 0)
+        if (FindServed(id, host.Runtime.Registry) is not { } capability)
         {
             return TypedResults.NotFound();
         }
 
         return TypedResults.Ok(CapabilityApiMappers.ToCapabilityDetail(host.Runtime.Registry, capability));
     }
+
+    /// <summary>The capability id when it parses and at least one provider serves it.</summary>
+    private static CapabilityId? FindServed(string id, CapabilityRegistry registry) =>
+        (CapabilityId.TryParse(id, out var capability), registry.GetProviders(capability).Count == 0) switch
+        {
+            (true, false) => capability,
+            _ => null,
+        };
 }
