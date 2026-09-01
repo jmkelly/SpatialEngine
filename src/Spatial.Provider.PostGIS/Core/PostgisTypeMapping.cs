@@ -4,7 +4,7 @@ namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
 /// Maps PostgreSQL column types to the core attribute kinds (ADR-0028,
-/// data-provider-contracts.md). The keys are the <c>udt_name</c> values
+/// architecture/distilled/contracts.md). The keys are the <c>udt_name</c> values
 /// <c>information_schema.columns</c> reports; the mapping is the contract's
 /// stable vocabulary — supported types become the kind the adapter reads and
 /// writes, anything else fails schema discovery with an actionable diagnostic

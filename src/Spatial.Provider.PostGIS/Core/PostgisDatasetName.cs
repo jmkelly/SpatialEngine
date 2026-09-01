@@ -1,7 +1,7 @@
 namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
-/// A validated dataset identifier (ADR-0028, data-provider-contracts.md): a
+/// A validated dataset identifier (ADR-0028, architecture/distilled/contracts.md): a
 /// strict <c>schema.table</c> — or bare <c>table</c> (implicit
 /// <c>public</c>) — where every part is a lowercase PostgreSQL identifier
 /// (<c>[a-z_][a-z0-9_]*</c>). The grammar is the injection barrier for the

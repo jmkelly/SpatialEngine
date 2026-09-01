@@ -5,7 +5,7 @@ namespace Spatial.PluginHost.DotNet.Protocol;
 /// and the message type names of the language-neutral protocol the process
 /// supervisor and worker host speak over stdin/stdout. Messages are
 /// line-delimited JSON envelopes (see <see cref="WorkerWireCodec"/> and
-/// <c>architecture/worker-protocol.md</c>); the type names here are part of
+/// <c>architecture/distilled/plugins.md</c>); the type names here are part of
 /// the v1 wire contract and must not change without a schema version bump.
 /// </summary>
 public static class WorkerProtocol

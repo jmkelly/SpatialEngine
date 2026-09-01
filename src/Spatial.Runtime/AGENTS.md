@@ -10,7 +10,7 @@ wires registries and configurations; the runtime serves.
 
 ## Owned here
 
-### Capabilities (Phase 3 — see architecture/capability-model.md)
+### Capabilities (Phase 3 — see architecture/distilled/runtime.md)
 
 `CapabilityRegistry`, `CapabilityConfiguration`, `CapabilityRuntime` (the
 thin routing facade), `CapabilityResolver`, `CapabilityInvoker`,

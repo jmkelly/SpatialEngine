@@ -7,7 +7,7 @@ surfaces of the independently executable `Spatial.Host` (plan §12, Epic H).
   web clients (Milestone 1 workbench). Fetch-based (browser and Node
   compatible), zero runtime dependencies, wire types generated from the
   host's OpenAPI description. The workbench depends on this — never on Tauri
-  (frontend-boundary.md).
+  (architecture/distilled/host-and-clients.md).
 - `dotnet/Spatial.Client/` — the .NET SDK for automation and service clients:
   typed methods over `HttpClient` with the same versioned contracts and the
   shared value codec.

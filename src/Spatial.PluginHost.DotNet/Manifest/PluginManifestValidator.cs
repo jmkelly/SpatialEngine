@@ -4,7 +4,7 @@ namespace Spatial.PluginHost.DotNet.Manifest;
 
 /// <summary>
 /// Validates a <see cref="PluginManifest"/> against the manifest schema
-/// (<c>architecture/plugin-manifest.md</c>): identity, runtime hint, loadable
+/// (<c>architecture/distilled/plugins.md</c>): identity, runtime hint, loadable
 /// payload and every capability contract rule. Mirrors the capability
 /// registration rules (<see cref="Spatial.Runtime.Capabilities.CapabilityRegistry"/>)
 /// plus the packaging rules unique to manifests — one package, one provider

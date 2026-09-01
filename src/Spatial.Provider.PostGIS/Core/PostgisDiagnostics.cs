@@ -13,7 +13,7 @@ namespace Spatial.Provider.PostGIS.Core;
 /// Every message passes through the configuration's redaction first, so a
 /// connection string or password can never appear in a diagnostic. The
 /// no-configuration state is a separate actionable
-/// <c>provider.unavailable</c> (security-model.md).
+/// <c>provider.unavailable</c> (architecture/distilled/host-and-clients.md).
 /// </summary>
 internal static class PostgisDiagnostics
 {

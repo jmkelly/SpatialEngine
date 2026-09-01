@@ -6,7 +6,7 @@ using Spatial.Provider.PostGIS.Core;
 namespace Spatial.Provider.PostGIS.Tests;
 
 /// <summary>
-/// Redaction and structured diagnostics (plan §19, security-model.md): a
+/// Redaction and structured diagnostics (plan §19, architecture/distilled/host-and-clients.md): a
 /// connection string or password must never appear in any error, the
 /// unconfigured message is actionable, stream failures distinguish
 /// cancellation, and feature identity rendering is stable.

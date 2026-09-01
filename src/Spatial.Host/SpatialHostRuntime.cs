@@ -182,7 +182,7 @@ public sealed class SpatialHostRuntime : IAsyncDisposable
     /// <summary>
     /// Reads the worker launch environment (<c>Spatial:WorkerEnvironment</c>):
     /// host-managed provider secrets reach workers through their process
-    /// environment (ADR-0028, security-model.md) — never through invocations
+    /// environment (ADR-0028, architecture/distilled/host-and-clients.md) — never through invocations
     /// or the web client.
     /// </summary>
     private static Dictionary<string, string> ReadWorkerEnvironment(IConfiguration configuration)

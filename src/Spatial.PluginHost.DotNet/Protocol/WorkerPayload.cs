@@ -10,7 +10,7 @@ namespace Spatial.PluginHost.DotNet.Protocol;
 /// <summary>
 /// The payload builders and readers of the v1 worker protocol — the shared,
 /// language-neutral message shapes both ends of the boundary use (ADR-0025,
-/// <c>architecture/worker-protocol.md</c>). Senders build with the factories,
+/// <c>architecture/distilled/plugins.md</c>). Senders build with the factories,
 /// receivers parse with the readers, so a shape lives in exactly one place on
 /// the .NET side.
 /// </summary>

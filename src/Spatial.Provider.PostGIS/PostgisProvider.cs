@@ -12,7 +12,7 @@ namespace Spatial.Provider.PostGIS;
 /// the plugin host — the runtime or host never reference it (ADR-0006/0002).
 /// Connection secrets are host-managed: the parameterless constructor reads
 /// <c>SPATIAL_POSTGIS_CONNECTION</c> from the worker's launch environment
-/// (security-model.md); tests inject a configuration directly. Its entire
+/// (architecture/distilled/host-and-clients.md); tests inject a configuration directly. Its entire
 /// public surface is contracts plus SDK types; every Npgsql and SQL detail
 /// lives inside the private adapters (ADR-0005).
 /// </summary>

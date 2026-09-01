@@ -4,7 +4,7 @@ namespace Spatial.Provider.PostGIS.Configuration;
 
 /// <summary>
 /// The provider's connection configuration (plan §19, ADR-0028,
-/// security-model.md): a host-managed connection string that reaches the
+/// architecture/distilled/host-and-clients.md): a host-managed connection string that reaches the
 /// worker through its launch environment (<c>SPATIAL_POSTGIS_CONNECTION</c>),
 /// never through invocations or the web client. The configuration is the
 /// only place the secret exists; everything else talks about it through

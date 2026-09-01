@@ -37,7 +37,7 @@ public sealed class WorkerSupervisorOptions
 
     /// <summary>
     /// The launch environment handed to every spawned worker process
-    /// (host-managed provider secrets, ADR-0028/security-model.md): providers
+    /// (host-managed provider secrets, ADR-0028/architecture/distilled/host-and-clients.md): providers
     /// read connection configuration from these variables at startup — never
     /// from invocations or the web client. Empty by default.
     /// </summary>

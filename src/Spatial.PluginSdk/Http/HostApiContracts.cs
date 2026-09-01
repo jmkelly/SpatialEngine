@@ -8,7 +8,7 @@ namespace Spatial.PluginSdk.Http;
 
 /// <summary>
 /// The JSON shapes of the public HTTP host API (plan §12, ADR-0030,
-/// <c>architecture/host-api.md</c>): every request and response the
+/// <c>architecture/distilled/host-and-clients.md</c>): every request and response the
 /// independently executable <c>Spatial.Host</c> serves and the .NET client
 /// SDK consumes. The shapes live in the SDK — the public contract assembly —
 /// so host, OpenAPI, TypeScript client and .NET client stay in lockstep

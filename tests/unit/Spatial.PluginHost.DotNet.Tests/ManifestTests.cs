@@ -5,7 +5,7 @@ namespace Spatial.PluginHost.DotNet.Tests;
 
 /// <summary>
 /// Phase 5 manifest schema (plan §16 "finalise manifest schema",
-/// <c>architecture/plugin-manifest.md</c>): the schema version, provider
+/// <c>architecture/distilled/plugins.md</c>): the schema version, provider
 /// identity, runtime hint and payload rules, the capability contract rules
 /// that mirror the registry's, and the manifest↔provider compatibility check
 /// the supervisor runs before activation.

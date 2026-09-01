@@ -5,7 +5,7 @@ using Spatial.Provider.PostGIS.Core;
 namespace Spatial.Provider.PostGIS.Data;
 
 /// <summary>
-/// Pure schema discovery (ADR-0028, data-provider-contracts.md): turns the
+/// Pure schema discovery (ADR-0028, architecture/distilled/contracts.md): turns the
 /// raw catalogue rows (column metadata, geometry columns, primary keys, row
 /// estimate) into a <see cref="DatasetDescription"/>. Every column must map
 /// to a supported attribute kind (PostgisTypeMapping); a table without a

@@ -6,7 +6,7 @@ namespace Spatial.PluginHost.DotNet.Manifest;
 /// provider identity, runtime hint, loadable payload and the capability
 /// contracts it serves (plan §9). The schema is language-neutral
 /// (ADR-0013/0025); this record is the .NET view of the JSON document
-/// described in <c>architecture/plugin-manifest.md</c>. Every field is
+/// described in <c>architecture/distilled/plugins.md</c>. Every field is
 /// validated by <see cref="PluginManifestValidator"/> before a package may be
 /// launched.
 /// </summary>

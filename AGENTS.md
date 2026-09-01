@@ -27,12 +27,12 @@ workbench ships first; Tauri packages it later. Source of truth:
 
 ## Where to look
 
-- Core/geometry changes → `architecture/core-boundary.md`, `geometry-model.md`, `src/Spatial.Core/AGENTS.md`
-- Capabilities → `architecture/capability-model.md`
-- Plugins/workers → `architecture/plugin-lifecycle.md`, `interchange.md`
-- Providers, secrets → `architecture/security-model.md`
-- Web workbench → `architecture/frontend-boundary.md`
-- Packaging → `architecture/deployment-profiles.md`
+- Start here → `architecture/distilled/` (condensed docs; `README.md` routes by task)
+- Core/geometry changes → `architecture/distilled/core.md`, `src/Spatial.Core/AGENTS.md`
+- Capabilities/runtime → `architecture/distilled/runtime.md`
+- Plugins/workers → `architecture/distilled/plugins.md`
+- Capability contracts → `architecture/distilled/contracts.md`
+- Host API, workbench, deployment, secrets → `architecture/distilled/host-and-clients.md`
 
 ## Commands
 

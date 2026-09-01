@@ -2,7 +2,7 @@ namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
 /// The attribute filter model of <c>spatial.feature.query@1</c> (ADR-0028,
-/// data-provider-contracts.md): a small, fully-parameterised expression
+/// architecture/distilled/contracts.md): a small, fully-parameterised expression
 /// language over a dataset's fields. Consumers of the AST never see SQL or
 /// literals inlined anywhere — <see cref="PostgisFilterSql"/> turns the tree
 /// into a WHERE fragment with bound parameters, and column identifiers are

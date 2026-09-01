@@ -515,7 +515,7 @@ The initial PostGIS provider supports:
 
 ## 12. Host API and SDKs
 
-The .NET host is independently executable and must not assume it is running under Tauri. The API is an ASP.NET Core minimal API documented in `architecture/host-api.md` (ADR-0030); its request/response shapes live in `Spatial.PluginSdk.Http`, inline values use the SDK's value codec (`Spatial.PluginSdk.Codec`, shared with the worker wire), and the OpenAPI description is served at `/openapi/v1.json`.
+The .NET host is independently executable and must not assume it is running under Tauri. The API is an ASP.NET Core minimal API documented in `architecture/distilled/host-and-clients.md` (ADR-0030); its request/response shapes live in `Spatial.PluginSdk.Http`, inline values use the SDK's value codec (`Spatial.PluginSdk.Codec`, shared with the worker wire), and the OpenAPI description is served at `/openapi/v1.json`.
 
 Endpoints:
 
@@ -695,16 +695,10 @@ Tauri loads the same React application configured to connect to a remote spatial
     /end-to-end-desktop
 
   /architecture
-    /decisions
+    /decisions       # the 32 ADRs
+    /distilled       # condensed docs: README, core, runtime, plugins, contracts, host-and-clients
     principles.md
-    core-boundary.md
-    geometry-model.md
-    capability-model.md
-    plugin-lifecycle.md
-    security-model.md
-    interchange.md
-    deployment-profiles.md
-    frontend-boundary.md
+    implementation-plan.md
 
   /eng
   AGENTS.md
@@ -777,18 +771,18 @@ Tauri loads the same React application configured to connect to a remote spatial
 
 **Status:** complete (Epic F).
 
-- Finalise the plugin manifest schema (ADR-0025, `architecture/plugin-manifest.md`).
+- Finalise the plugin manifest schema (ADR-0025, `architecture/distilled/plugins.md`).
 - Implement separate-process .NET workers over language-neutral contracts
-  (`Spatial.PluginHost.DotNet` worker host, `architecture/worker-protocol.md`).
+  (`Spatial.PluginHost.DotNet` worker host, `architecture/distilled/plugins.md`).
 - Add supervision, health checks, restart, side-by-side activation, draining
-  and rollback (`architecture/plugin-lifecycle.md`).
+  and rollback (`architecture/distilled/plugins.md`).
 - Add crash, timeout and cancellation fault fixtures.
 
 ### Phase 6: NetTopologySuite Operations Plugin
 
 **Status:** complete (Epic G).
 
-- Define buffer, intersection, validation and simplify contracts (`Spatial.PluginSdk.Operations`, ADR-0026, `architecture/operation-contracts.md`).
+- Define buffer, intersection, validation and simplify contracts (`Spatial.PluginSdk.Operations`, ADR-0026, `architecture/distilled/contracts.md`).
 - Implement adapters without public NTS types (`Spatial.Operations.NetTopologySuite`, ADR-0005; `$geometry` canonical-binary wire tag, ADR-0020).
 - Add shared conformance fixtures and provenance (`tests/conformance`, plan §18).
 
@@ -809,7 +803,7 @@ Tauri loads the same React application configured to connect to a remote spatial
 - Add containerised integration tests.
 
 Contract surface: `Spatial.PluginSdk.Providers` (ADR-0028,
-`architecture/data-provider-contracts.md`) — `spatial.catalogue.list@1`,
+`architecture/distilled/contracts.md`) — `spatial.catalogue.list@1`,
 `spatial.dataset.describe@1`, `spatial.dataset.create@1`,
 `spatial.feature.scan@1`, `spatial.feature.query@1`,
 `spatial.feature.write@1`, `spatial.transaction.begin/commit/rollback@1` —
@@ -828,7 +822,7 @@ workbench bullets of Epic H remain for Phase 10).
 - Generate and test TypeScript and .NET SDKs.
 - Confirm the host runs independently through browser and automated clients.
 
-Contract surface: the HTTP API (`architecture/host-api.md`, ADR-0030) —
+Contract surface: the HTTP API (`architecture/distilled/host-and-clients.md`, ADR-0030) —
 capabilities, invocations (inline completion or 202 job routing), jobs with
 JSON/SSE events, resources with the NDJSON stream read, plugins, health and
 OpenAPI. Inline values share the SDK's value codec
@@ -1046,7 +1040,7 @@ Root agent instructions must include:
 
 ### Epic F: Plugin workers
 
-- [x] Language-neutral worker protocol (ADR-0025, `architecture/worker-protocol.md`)
+- [x] Language-neutral worker protocol (ADR-0025, `architecture/distilled/plugins.md`)
 - [x] .NET worker SDK (manifest schema + worker host executable)
 - [x] Process supervisor (discovery, validation, activation, health, restart)
 - [x] Health and restart

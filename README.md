@@ -24,7 +24,7 @@ capability forms (buffer, scan, sleep, transactions…), job progress, result
 preview with browser persistence, runtime health, and the plugin-replacement
 demonstration — start `nts@2` beside `nts@1`, route new buffer work to it
 (`POST /api/plugins/{id}/route-new-work`), drain `nts@1` and roll back over
-HTTP without restarting the host (ADR-0031, `architecture/frontend-boundary.md`).
+HTTP without restarting the host (ADR-0031, `architecture/distilled/host-and-clients.md`).
 `eng/workbench-e2e.sh` builds the app and all plugin packages, runs the real
 host and drives the workbench with Playwright (plan §18 web tests — no
 Tauri); `demo@1` provides the Docker-free datasets and the long-running
@@ -32,7 +32,7 @@ progress job, and the geometry adapter (`src/sgeom.ts`) decodes canonical
 SGEOM bytes straight from the host to the map.
 
 Phase 9 — ASP.NET Core host and SDKs. The independently executable host now
-serves the public HTTP API (`architecture/host-api.md`, ADR-0030):
+serves the public HTTP API (`architecture/distilled/host-and-clients.md`, ADR-0030):
 `/api/capabilities`, `POST /api/invocations` (inline completion, or 202 job
 routing for long-running work), `/api/jobs/{id}` with cancel and JSON/SSE
 events, `/api/resources/{id}` metadata/delete and the NDJSON stream read
@@ -55,7 +55,7 @@ Phase 8 — PostGIS data provider. The data-provider contracts ship in
 `spatial.dataset.describe@1`, `spatial.dataset.create@1`,
 `spatial.feature.scan@1`, `spatial.feature.query@1`,
 `spatial.feature.write@1`, `spatial.transaction.begin@1` / `commit@1` /
-`rollback@1` — ADR-0028, `architecture/data-provider-contracts.md`), and
+`rollback@1` — ADR-0028, `architecture/distilled/contracts.md`), and
 `Spatial.Provider.PostGIS` (`postgis@1`) implements them on Npgsql 10.
 Schema discovery (information_schema/geometry_columns/pg_class), streaming
 feature scans with canonical binary batches both directions
@@ -74,7 +74,7 @@ Phase 7 — coordinate transformation plugin. The CRS description and
 coordinate transformation contracts ship in
 `Spatial.PluginSdk.Transformations` (`spatial.crs.describe@1` /
 `spatial.coordinate.transform@1`, ADR-0027,
-`architecture/transformation-contracts.md`), and
+`architecture/distilled/contracts.md`), and
 `Spatial.Transformations.ProjNet` (`projnet@1`) implements them on ProjNet
 2.1 with a private adapter over a curated embedded EPSG catalogue (WGS 84,
 ETRS89, NAD83, OSGB36, RGF93; Web Mercator, UTM zones, British National
@@ -92,7 +92,7 @@ and as an isolated worker package.
 Phase 6 — NetTopologySuite operations plugin. The standard geometry
 operation contracts ship in `Spatial.PluginSdk.Operations`
 (`spatial.geometry.buffer@1` / `intersection@1` / `validate@1` /
-`simplify@1`, ADR-0026, `architecture/operation-contracts.md`), and
+`simplify@1`, ADR-0026, `architecture/distilled/contracts.md`), and
 `Spatial.Operations.NetTopologySuite` (`nts@1`) implements them with a
 private adapter that never exposes NetTopologySuite types (ADR-0005):
 buffer, intersection, OGC validity (an invalid geometry is a successful
@@ -107,9 +107,9 @@ provenance naming the serving provider.
 
 Phase 5 — native plugin packaging and isolation. Immutable plugin packages
 (manifest schema v1: id, version, capabilities, runtime hints — see
-`architecture/plugin-manifest.md`) are discovered, validated and launched as
+`architecture/distilled/plugins.md`) are discovered, validated and launched as
 separate .NET worker processes over the versioned, language-neutral wire
-protocol (`architecture/worker-protocol.md`, ADR-0025). The process
+protocol (`architecture/distilled/plugins.md`, ADR-0025). The process
 supervisor (`Spatial.PluginHost.DotNet`) health-checks with ping, restarts
 crashed workers with backoff, activates versions side by side (routing new
 work through the runtime's active-preference table, consulted between

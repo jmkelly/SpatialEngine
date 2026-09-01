@@ -8,7 +8,7 @@ Spatial.Runtime only — implementations are never linked in
 
 ## Owned here
 
-### Capabilities (Phase 3 — see architecture/capability-model.md)
+### Capabilities (Phase 3 — see architecture/distilled/runtime.md)
 
 `CapabilityId`, `ProviderId`, `Permission`, `CapabilityTraits`,
 `SchemaDescriptor`, `ErrorVariant`, `ConformanceExample`,
