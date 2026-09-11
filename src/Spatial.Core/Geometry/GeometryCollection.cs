@@ -15,12 +15,13 @@ public sealed class GeometryCollection : GeometryCollectionBase<IGeometry>, IGeo
 
     public override GeometryType Type => GeometryType.GeometryCollection;
 
-    public bool Equals(GeometryCollection? other) =>
-        other is not null
-        && Nullable.Equals(CoordinateReference, other.CoordinateReference)
-        && Geometries.SequenceEqual(other.Geometries, GeometryComparer.Instance);
+    public bool Equals(GeometryCollection? other) => other is not null && ContentEquals(other);
 
-    public override bool Equals(object? obj) => obj is GeometryCollection other && Equals(other);
+    public override bool Equals(object? obj) => obj is GeometryCollection other && ContentEquals(other);
+
+    private bool ContentEquals(GeometryCollection other) =>
+        Nullable.Equals(CoordinateReference, other.CoordinateReference)
+        && Geometries.SequenceEqual(other.Geometries, GeometryComparer.Instance);
 
     public override int GetHashCode()
     {
