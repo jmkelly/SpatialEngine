@@ -49,7 +49,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
 
         var items = await context.ReadItemsAsync(
             CatalogueListContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Pattern] = "places" });
+            new Dictionary<string, object?> { [ProviderArguments.Pattern] = "%places%" });
 
         var ids = items.Cast<string>().Select(DatasetMetadataJson.ReadSummary).Select(summary => summary.Id).ToArray();
         Assert.Equal(["public.places"], ids);
@@ -460,7 +460,10 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
 
         var outcome = await runtime.InvokeAsync(CapabilityInvocation.Create(
             FeatureScanContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" }));
+            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" }) with
+        {
+            GrantedPermissions = new HashSet<Permission> { Permission.Parse("spatial.feature.read") },
+        });
 
         Assert.Equal(CapabilityErrorKind.ProviderFailure, outcome.Error!.Kind);
         Assert.DoesNotContain(secret, outcome.Error.Message);

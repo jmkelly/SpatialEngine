@@ -38,7 +38,19 @@ internal sealed class PostgisTestContext : IAsyncDisposable
         return new PostgisTestContext(new CapabilityRuntime(registry), provider, connectionString);
     }
 
-    /// <summary>Invokes one capability through the runtime (facilities granted).</summary>
+    /// <summary>
+    /// The permission set the data contracts require; the runtime permission
+    /// gate rejects every data invocation without it, so the container tests
+    /// grant the same set the conformance harness does.
+    /// </summary>
+    private static readonly HashSet<Permission> DataProviderPermissions =
+    [
+        Permission.Parse("spatial.feature.read"),
+        Permission.Parse("spatial.feature.write"),
+        Permission.Parse("spatial.dataset.create"),
+    ];
+
+    /// <summary>Invokes one capability through the runtime (data permissions granted).</summary>
     public Task<CapabilityOutcome> InvokeAsync(
         CapabilityId capability,
         IReadOnlyDictionary<string, object?> arguments,
@@ -46,6 +58,7 @@ internal sealed class PostgisTestContext : IAsyncDisposable
     {
         var invocation = CapabilityInvocation.Create(capability, arguments) with
         {
+            GrantedPermissions = DataProviderPermissions,
             CancellationToken = cancellationToken,
         };
         return _runtime.InvokeAsync(invocation);
