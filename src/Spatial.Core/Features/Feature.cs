@@ -59,9 +59,13 @@ public sealed class Feature : IFeature, IEquatable<Feature>
         }
     }
 
-    public bool Equals(Feature? other)
+    public bool Equals(Feature? other) => other is not null && ContentEquals(other);
+
+    public override bool Equals(object? obj) => obj is Feature other && ContentEquals(other);
+
+    private bool ContentEquals(Feature other)
     {
-        if (other is null || !Id.Equals(other.Id) || !Schema.Equals(other.Schema) || _attributes.Length != other._attributes.Length)
+        if (!Id.Equals(other.Id) || !Schema.Equals(other.Schema) || _attributes.Length != other._attributes.Length)
         {
             return false;
         }
@@ -76,8 +80,6 @@ public sealed class Feature : IFeature, IEquatable<Feature>
 
         return true;
     }
-
-    public override bool Equals(object? obj) => obj is Feature other && Equals(other);
 
     public override int GetHashCode()
     {

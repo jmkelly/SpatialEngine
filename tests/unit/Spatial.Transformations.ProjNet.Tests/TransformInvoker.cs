@@ -1,40 +1,50 @@
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk;
 using Spatial.PluginSdk.Transformations;
-using Spatial.Transformations.ProjNet;
 
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// Shared invocation helpers for the ProjNet transformation provider tests:
-/// thin wrappers that build contract invocations and unwrap outcomes, so the
-/// test classes read as capability-level assertions.
+/// Shared test helpers for the ProjNet transform tests: thin wrappers over
+/// <see cref="ProjNetTransforms"/> that accept contract-style name/value
+/// pairs (including absent or mistyped values) and surface failures as
+/// <see cref="SpatialException"/>, so the tests read as service-level
+/// assertions.
 /// </summary>
 internal static class TransformInvoker
 {
-    private static readonly ProjNetTransformationsProvider Provider = new();
+    private static readonly ProjNetTransforms Service = new();
 
-    /// <summary>Invokes <c>spatial.coordinate.transform@1</c> with the given argument pairs.</summary>
-    public static ValueTask<CapabilityResult> TransformAsync(params object?[] pairs) =>
-        Provider.InvokeAsync(CapabilityInvocation.Create(TransformContract.Id, Arguments(pairs)));
+    public static Task<CrsDescription> DescribeAsync(params object?[] pairs) =>
+        Task.FromResult(Service.Describe(RequireString(pairs, "crs")));
 
-    /// <summary>Invokes <c>spatial.crs.describe@1</c> with the given argument pairs.</summary>
-    public static ValueTask<CapabilityResult> DescribeAsync(params object?[] pairs) =>
-        Provider.InvokeAsync(CapabilityInvocation.Create(CrsDescribeContract.Id, Arguments(pairs)));
+    public static Task<CrsDescription> DescribeAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Service.Describe(RequireString(arguments, "crs"), cancellationToken));
 
-    public static ValueTask<CapabilityResult> InvokeAsync(CapabilityId capability, IReadOnlyDictionary<string, object?> arguments) =>
-        Provider.InvokeAsync(CapabilityInvocation.Create(capability, arguments));
+    public static Task<IGeometry> TransformAsync(params object?[] pairs) =>
+        TransformAsync(Arguments(pairs), CancellationToken.None);
 
-    public static ValueTask<CapabilityResult> InvokeAsync(
-        CapabilityId capability,
-        IReadOnlyDictionary<string, object?> arguments,
-        CancellationToken cancellationToken) =>
-        Provider.InvokeAsync(CapabilityInvocation.Create(capability, arguments) with
+    public static Task<IGeometry> TransformAsync(IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken = default)
+    {
+        if (!arguments.TryGetValue("geometry", out var raw) || raw is not IGeometry geometry)
         {
-            CancellationToken = cancellationToken,
-        });
+            throw SpatialException.BadArguments("The transform requires 'geometry' to carry a spatial geometry.");
+        }
 
-    /// <summary>Builds the argument dictionary from name/value pairs.</summary>
+        string? source = null;
+        if (arguments.TryGetValue("source", out var sourceRaw) && sourceRaw is not null)
+        {
+            source = sourceRaw as string
+                ?? throw SpatialException.BadArguments("'source' must be a CRS identity (authority:code).");
+        }
+
+        var target = RequireString(arguments, "target");
+        return Task.FromResult(Service.Transform(geometry, source, target, cancellationToken));
+    }
+
+    public static Task<IGeometry> InvokeAsync(object? capability, IReadOnlyDictionary<string, object?> arguments, CancellationToken cancellationToken = default) =>
+        TransformAsync(arguments, cancellationToken);
+
     public static IReadOnlyDictionary<string, object?> Arguments(params object?[] pairs)
     {
         var arguments = new Dictionary<string, object?>(pairs.Length / 2);
@@ -45,6 +55,19 @@ internal static class TransformInvoker
 
         return arguments;
     }
+
+    private static string RequireString(IReadOnlyDictionary<string, object?> arguments, string name)
+    {
+        if (!arguments.TryGetValue(name, out var raw) || raw is not string text)
+        {
+            throw SpatialException.BadArguments($"The transform requires '{name}' to carry a CRS identity string such as 'EPSG:4326'.");
+        }
+
+        return text;
+    }
+
+    private static string RequireString(object?[] pairs, string name) =>
+        RequireString(Arguments(pairs), name);
 
     /// <summary>The authoritative control-point values, generated with PROJ 9 (pyproj), always_xy=true.</summary>
     public static class ControlPoints

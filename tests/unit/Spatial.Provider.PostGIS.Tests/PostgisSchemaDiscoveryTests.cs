@@ -82,6 +82,16 @@ public sealed class PostgisSchemaDiscoveryTests
     }
 
     [Fact]
+    public void A_geometry_view_column_typed_as_text_is_trusted_as_geometry()
+    {
+        // geometry_columns names the column while information_schema types it
+        // differently (a view): the geometry view wins.
+        var description = Build([Column("geom", "text")], ["geom"]);
+
+        Assert.Equal(AttributeKind.Geometry, description.Schema.Fields.Single(field => field.Name == "geom").Kind);
+    }
+
+    [Fact]
     public void Summary_from_a_catalogue_row()
     {
         var summary = PostgisSchemaDiscovery.SummaryFromRow(new object?[] { "public", "places", "geom", 4326, "POINT", 12.0 });

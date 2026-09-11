@@ -1,99 +1,89 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fieldsFor } from "../src/forms.ts";
-import { buildWireArguments } from "../src/wire-args.ts";
-import { attachGeometryWire, outcomeFromResponse, resourceTokenFrom } from "../src/state-helpers.ts";
+import { fieldsFor, operationById, operations } from "../src/forms.ts";
+import { attachGeometryBytes, failure, fromBase64, geometryFromBase64, toBase64, withoutOperationResults } from "../src/state-helpers.ts";
 
 /**
- * Form generation and wire argument building (Phase 10): known capability
- * shapes get declarative fields, and form values become the wire-encoded
- * invocation arguments ($geometry tags, $i64 int64s) the host codec reads.
+ * Operation forms and state helpers (ADR-0033): static per-route field
+ * descriptors plus base64 SGEOM plumbing for the map selection.
  */
 
-const capability = (id: string, inputSchema = "scalar") => ({
-  id,
-  purpose: "test",
-  inputSchema,
-  outputSchema: "scalar",
-  errors: [],
-  requiredPermissions: [],
-  traits: ["Cancellable"],
-  providers: [{ id: "demo@1", health: "healthy" }],
+test("the catalogue lists the nine typed operations", () => {
+  assert.deepEqual(
+    operations().map((operation) => operation.id),
+    ["buffer", "intersection", "validate", "simplify", "transform", "describe", "scan", "query", "sleep"],
+  );
 });
 
 test("buffer gets a geometry and a numeric distance field", () => {
-  const fields = fieldsFor(capability("spatial.geometry.buffer@1"), { catalogDatasets: [], selectedGeometryLabel: "point-001" });
+  const fields = fieldsFor("buffer", { catalogDatasets: [], selectedGeometryLabel: "point-001" });
   const names = fields.map((field) => `${field.name}:${field.kind}`);
   assert.deepEqual(names, ["geometry:geometry", "distance:number", "quadrantSegments:int"]);
 });
 
-test("the sleep gets an int64 milliseconds field", () => {
-  const fields = fieldsFor(capability("spatial.demo.sleep@1"), { catalogDatasets: [] });
+test("sleep gets an int milliseconds field", () => {
+  const fields = fieldsFor("sleep", { catalogDatasets: [] });
   assert.deepEqual(fields.map((field) => field.kind), ["int"]);
 });
 
-test("scan gets a dataset select plus an all-or-none bbox", () => {
-  const fields = fieldsFor(capability("spatial.feature.scan@1", "dataset.identity"), { catalogDatasets: ["demo.points", "demo.cities"] });
-  assert.equal(fields[0]!.kind, "select");
-  assert.deepEqual(fields[0]!.options, ["demo.points", "demo.cities"]);
+test("scan gets a dataset select with catalogue options", () => {
+  const fields = fieldsFor("scan", { catalogDatasets: ["demo.points", "demo.cities"] });
+  assert.equal(fields[0]?.kind, "select");
+  assert.deepEqual(fields[0]?.options, ["demo.points", "demo.cities"]);
 });
 
-test("unknown shapes fall back to a JSON editor", () => {
-  const fields = fieldsFor(capability("spatial.mystery@1", "widget"), { catalogDatasets: [] });
-  assert.deepEqual(fields.map((field) => field.kind), ["json"]);
-});
-
-test("wire arguments encode geometry tags, int64s and numbers", () => {
-  const args = buildWireArguments(
-    [
-      { name: "geometry", label: "Geometry", kind: "geometry", required: true },
-      { name: "distance", label: "Distance", kind: "number", required: true },
-      { name: "quadrantSegments", label: "Segments", kind: "int", required: false },
-    ],
-    { geometry: undefined, distance: "1.5", quadrantSegments: "8" },
-    { $geometry: "QUJD" },
+test("query gets a dataset select plus bbox and filter fields", () => {
+  const fields = fieldsFor("query", { catalogDatasets: [] });
+  assert.deepEqual(
+    fields.map((field) => field.name),
+    ["dataset", "minx", "miny", "maxx", "maxy", "filter"],
   );
-  assert.deepEqual(args, { geometry: { $geometry: "QUJD" }, distance: 1.5, quadrantSegments: { $i64: "8" } });
 });
 
-test("wire arguments skip empty optional values", () => {
-  const args = buildWireArguments(
-    [{ name: "pattern", label: "Pattern", kind: "text", required: false }],
-    { pattern: "" },
-    null,
-  );
-  assert.deepEqual(args, {});
+test("unknown operations have no fields", () => {
+  assert.deepEqual(fieldsFor("mystery", { catalogDatasets: [] }), []);
+  assert.equal(operationById("mystery"), undefined);
 });
 
-test("a completed response becomes an outcome with provenance", () => {
-  const response = {
-    kind: "completed",
-    capability: "spatial.geometry.buffer@1",
-    ok: true,
-    result: { $geometry: "QUJD" },
-    error: null,
-    provenance: { capability: "spatial.geometry.buffer@1", provider: "nts@1", step: "FirstHealthy", startedAt: "2026-09-01T00:00:00Z", durationMs: 2, deadline: null, jobId: null },
-    job: null,
-  };
-  const outcome = outcomeFromResponse(response as never);
-  assert.equal(outcome.provider, "nts@1");
-  assert.equal(outcome.ok, true);
-  assert.deepEqual(outcome.result, { $geometry: "QUJD" });
-});
-
-test("resource tokens come from tagged results", () => {
-  const response = {
-    result: { $resource: { token: "abc-123", kind: "stream", owner: "demo@1", createdAt: "2026-09-01T00:00:00Z" } },
-  };
-  assert.equal(resourceTokenFrom(response as never), "abc-123");
-  assert.equal(resourceTokenFrom({ result: null } as never), null);
-  assert.equal(resourceTokenFrom({ result: 42 } as never), null);
-});
-
-test("geometry wires attach from the first Geometry attribute", () => {
+test("geometry bytes attach from the first Geometry attribute and round trip", () => {
   const bytes = new TextEncoder().encode("sgeom-bytes");
-  const feature = { attributes: [{ kind: "Geometry", value: bytes }, { kind: "String", value: "x" }] } as never;
-  const target: Record<string, unknown> = {};
-  attachGeometryWire(target, "f1", feature);
-  assert.deepEqual(target.f1, { $geometry: "c2dlb20tYnl0ZXM=" });
+  const feature = { attributes: [{ kind: "Geometry", value: bytes }, { kind: "String", value: "x" }] };
+  const target: Record<string, string> = {};
+  attachGeometryBytes(target, "f1", feature);
+  assert.equal(target.f1, "c2dlb20tYnl0ZXM=");
+  assert.deepEqual(fromBase64(target.f1!), bytes);
+  assert.equal(toBase64(bytes), "c2dlb20tYnl0ZXM=");
+});
+
+test("geometry decode of garbage is null", () => {
+  assert.equal(geometryFromBase64(null), null);
+  assert.equal(geometryFromBase64("!!!"), null);
+});
+
+test("failures carry the operation and message", () => {
+  const outcome = failure("buffer", "no geometry selected");
+  assert.equal(outcome.op, "buffer");
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.error, "no geometry selected");
+});
+
+function resultFeature(kind: unknown): GeoJSON.Feature {
+  return { type: "Feature", properties: kind === undefined ? null : { kind }, geometry: { type: "Point", coordinates: [0, 0] } };
+}
+
+test("clearing results drops operation previews but keeps saved results", () => {
+  const collection: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: [resultFeature("operation"), resultFeature("saved"), resultFeature(undefined)],
+  };
+  const cleared = withoutOperationResults(collection);
+  assert.deepEqual(cleared.features.map((feature) => feature.properties), [{ kind: "saved" }, null]);
+  // Pure: the input collection is untouched.
+  assert.equal(collection.features.length, 3);
+});
+
+test("clearing an empty or all-saved result layer is a no-op", () => {
+  assert.deepEqual(withoutOperationResults({ type: "FeatureCollection", features: [] }), { type: "FeatureCollection", features: [] });
+  const saved: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [resultFeature("saved")] };
+  assert.equal(withoutOperationResults(saved).features.length, 1);
 });

@@ -69,7 +69,7 @@ internal sealed class PostgisDataStore : IAsyncDisposable
         return await command.ExecuteReaderAsync(cancellationToken);
     }
 
-    private static NpgsqlCommand BuildCommand(NpgsqlConnection connection, string sql, IReadOnlyList<object?> parameters)
+    internal static NpgsqlCommand BuildCommand(NpgsqlConnection connection, string sql, IReadOnlyList<object?> parameters)
     {
         var command = connection.CreateCommand();
         command.CommandText = sql;

@@ -1,11 +1,12 @@
-/** One finished invocation the Run screen shows (inline or job terminal). */
+/** One finished operation the Run screen shows. */
 export interface RunOutcome {
-  capability: string;
-  provider: string | null;
+  /** The operation id (buffer, scan, …). */
+  op: string;
   ok: boolean;
   error: string | null;
-  result: unknown;
-  jobId: string | null;
-  step: string | null;
+  /** Canonical SGEOM bytes of a geometry result (base64), for the map and persistence. */
+  geometryBase64: string | null;
+  /** A short human summary (counts, flags, descriptions). */
+  summary: string | null;
   finishedAt: string;
 }

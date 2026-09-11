@@ -105,7 +105,10 @@ public static class FeatureBatchCodec
     /// Decodes a batch. On failure, <paramref name="error"/> describes the
     /// problem with the offending byte offset; no exception is thrown.
     /// </summary>
-    public static bool TryDecode(ReadOnlySpan<byte> data, [NotNullWhen(true)] out FeatureBatch? batch, [NotNullWhen(false)] out string? error)
+    public static bool TryDecode(ReadOnlySpan<byte> data, [NotNullWhen(true)] out FeatureBatch? batch, [NotNullWhen(false)] out string? error) =>
+        TryDecodeDefault(data, out batch, out error);
+
+    private static bool TryDecodeDefault(ReadOnlySpan<byte> data, [NotNullWhen(true)] out FeatureBatch? batch, [NotNullWhen(false)] out string? error)
     {
         if (!TryParseHeader(data, out var reader, out error))
         {
@@ -141,7 +144,10 @@ public static class FeatureBatchCodec
     /// <summary>
     /// Projecting variant of <see cref="TryDecode(ReadOnlySpan{byte}, out FeatureBatch?, out string?)"/>.
     /// </summary>
-    public static bool TryDecode(ReadOnlySpan<byte> data, FeatureSchema targetSchema, [NotNullWhen(true)] out FeatureBatch? batch, [NotNullWhen(false)] out string? error)
+    public static bool TryDecode(ReadOnlySpan<byte> data, FeatureSchema targetSchema, [NotNullWhen(true)] out FeatureBatch? batch, [NotNullWhen(false)] out string? error) =>
+        TryDecodeProjected(data, targetSchema, out batch, out error);
+
+    private static bool TryDecodeProjected(ReadOnlySpan<byte> data, FeatureSchema targetSchema, [NotNullWhen(true)] out FeatureBatch? batch, [NotNullWhen(false)] out string? error)
     {
         ArgumentNullException.ThrowIfNull(targetSchema);
 

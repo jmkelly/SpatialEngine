@@ -1,6 +1,4 @@
 import { useEffect, useState } from "react";
-import type { PluginDto } from "@spatial/client";
-import { providerStateLabel } from "../forms.ts";
 import { useWorkbench, type RunOutcome } from "../state.tsx";
 import { OutcomeView } from "./OverviewScreen.tsx";
 
@@ -8,21 +6,17 @@ interface Health {
   live: string | null;
   ready: {
     status: string | null;
-    plugins: number;
+    stores: string[];
   };
 }
 
 /**
- * Runtime health and plugin-replacement views (Phase 10, ADR-0031): the host
- * health endpoints, the supervised plugin workers with their lifecycle, and
- * the replacement demonstration controls — route new work to a version, drain
- * it, roll back — without stopping the host or this UI.
+ * Runtime health and recent runs: the host health endpoints plus the
+ * operations this browser has run (persisted across reloads).
  */
 export function RuntimeScreen() {
-  const { client, plugins, actions, savedJobs } = useWorkbench();
-  const [health, setHealth] = useState<Health>({ live: null, ready: { status: null, plugins: 0 } });
-  const [busyPlugin, setBusyPlugin] = useState<string | null>(null);
-  const [recent, setRecent] = useState<RunOutcome | null>(null);
+  const { client, savedRuns, recentOutcome } = useWorkbench();
+  const [health, setHealth] = useState<Health>({ live: null, ready: { status: null, stores: [] } });
 
   useEffect(() => {
     void refreshHealth();
@@ -36,45 +30,11 @@ export function RuntimeScreen() {
         live: live.status ?? "?",
         ready: {
           status: ready.status ?? "?",
-          plugins: ready.plugins ?? 0,
+          stores: ready.stores ?? [],
         },
       });
     } catch (error) {
-      setHealth({ live: `unreachable (${describe(error)})`, ready: { status: "unreachable", plugins: 0 } });
-    }
-  }
-
-  async function control(plugin: PluginDto, action: "route-new-work" | "drain" | "rollback") {
-    setBusyPlugin(plugin.id);
-    try {
-      switch (action) {
-        case "route-new-work":
-          await client.routeNewWork(plugin.id);
-          break;
-        case "drain":
-          await client.drainPlugin(plugin.id);
-          break;
-        case "rollback":
-          await client.rollbackPlugin(plugin.id);
-          break;
-      }
-      await actions.refreshPlugins();
-      if (action === "route-new-work") {
-        setRecent({
-          capability: "(routing)",
-          provider: plugin.id,
-          ok: true,
-          error: null,
-          result: null,
-          jobId: null,
-          step: "active preference",
-          finishedAt: new Date().toISOString(),
-        });
-      }
-    } catch (error) {
-      setRecent({ capability: "(control)", provider: plugin.id, ok: false, error: describe(error), result: null, jobId: null, step: null, finishedAt: new Date().toISOString() });
-    } finally {
-      setBusyPlugin(null);
+      setHealth({ live: `unreachable (${describe(error)})`, ready: { status: "unreachable", stores: [] } });
     }
   }
 
@@ -89,86 +49,31 @@ export function RuntimeScreen() {
         <div className={`health-card ${health.ready.status === "ready" ? "ok" : "bad"}`}>
           <span className="label">READY</span>
           <span className="value">{health.ready.status ?? "…"}</span>
-          <small>plugins: {health.ready.plugins}</small>
+          <small>stores: {health.ready.stores.join(", ") || "…"}</small>
         </div>
         <button className="ghost" onClick={() => void refreshHealth()}>re-check</button>
       </div>
 
-      <h2>Plugin workers</h2>
-      {plugins.length === 0 ? (
-        <p className="empty">No supervised plugin workers (Spatial:PackagesRoot empty).</p>
-      ) : (
-        <div className="plugin-list">
-          {plugins.map((plugin) => (
-            <div className={`plugin-card state-${plugin.state.toLowerCase()}`} key={plugin.id} data-testid={`plugin-${plugin.id}`}>
-              <div className="plugin-head">
-                <code>{plugin.id}</code>
-                <span className={`state ${plugin.state.toLowerCase()}`}>{providerStateLabel(plugin.state)}</span>
-                {plugin.processId !== null && <span className="muted">pid {plugin.processId}</span>}
-                {plugin.lastError !== null && <span className="plugin-error" title={plugin.lastError}>⚠ {plugin.lastError.slice(0, 120)}</span>}
-              </div>
-              <div className="plugin-meta muted small">
-                restarts {String(plugin.restartCount)} · healthy-at {plugin.lastHealthyAt ?? "—"}
-              </div>
-              <details className="plugin-capabilities">
-                <summary>capabilities ({plugin.capabilities.length})</summary>
-                <ul>
-                  {plugin.capabilities.map((capability) => (
-                    <li key={capability.id}><code>{capability.id}</code> <span className="muted">{capability.traits.join(", ")}</span></li>
-                  ))}
-                </ul>
-              </details>
-              <div className="plugin-actions">
-                <button
-                  className="primary"
-                  disabled={busyPlugin === plugin.id || plugin.state !== "Active"}
-                  onClick={() => void control(plugin, "route-new-work")}
-                  data-testid={`route-${plugin.id}`}
-                >
-                  route new work here
-                </button>
-                <button
-                  className="danger"
-                  disabled={busyPlugin === plugin.id || plugin.state !== "Active"}
-                  onClick={() => void control(plugin, "drain")}
-                  data-testid={`drain-${plugin.id}`}
-                >
-                  drain
-                </button>
-                <button
-                  className="ghost"
-                  disabled={busyPlugin === plugin.id || plugin.state !== "Stopped"}
-                  onClick={() => void control(plugin, "rollback")}
-                  data-testid={`rollback-${plugin.id}`}
-                >
-                  rollback
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {recent !== null && (
+      {recentOutcome !== null && (
         <div className="recent-control">
-          <h3>Last control action</h3>
-          <OutcomeView outcome={recent} />
+          <h3>Last operation</h3>
+          <OutcomeView outcome={recentOutcome} />
         </div>
       )}
 
-      <h2>Recent jobs</h2>
-      {savedJobs.length === 0 ? (
-        <p className="empty">No jobs observed in this browser yet.</p>
+      <h2>Recent runs</h2>
+      {savedRuns.length === 0 ? (
+        <p className="empty">No operations run in this browser yet.</p>
       ) : (
         <table className="grid">
-          <thead><tr><th>Job</th><th>Capability</th><th>State</th><th>Provider</th><th>Started</th></tr></thead>
+          <thead><tr><th>Operation</th><th>Result</th><th>Detail</th><th>Started</th></tr></thead>
           <tbody>
-            {savedJobs.slice(0, 15).map((job) => (
-              <tr key={job.id}>
-                <td><code>{job.id}</code></td>
-                <td>{job.capability}</td>
-                <td><span className={`state ${job.state.toLowerCase()}`}>{job.state}</span></td>
-                <td>{job.provider ?? "—"}</td>
-                <td>{new Date(job.startedAt).toLocaleString()}</td>
+            {savedRuns.slice(0, 15).map((run) => (
+              <tr key={run.id}>
+                <td><code>{run.op}</code></td>
+                <td><span className={`state ${run.ok ? "completed" : "failed"}`}>{run.ok ? "ok" : "failed"}</span></td>
+                <td>{run.detail ?? "—"}</td>
+                <td>{new Date(run.startedAt).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -177,6 +82,8 @@ export function RuntimeScreen() {
     </section>
   );
 }
+
+export type { RunOutcome };
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

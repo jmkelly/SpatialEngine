@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Aspire AppHost (ADR-0034): the local development composition root. It
+    orchestrates the PostGIS container, Spatial.Host and the Vite workbench
+    dev server, and owns no spatial logic. The engine never references it.
+    The Aspire.AppHost.Sdk version is pinned in global.json (msbuild-sdks).
+  -->
+
+  <Sdk Name="Aspire.AppHost.Sdk" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Spatial.AppHost</AssemblyName>
+    <RootNamespace>Spatial.AppHost</RootNamespace>
+    <IsAspireHost>true</IsAspireHost>
+    <!--
+      Keep the Aspire CLI bundle enabled so the AppHost builds with zero
+      warnings (ASPIRE010). The app is still launched with `dotnet run`.
+    -->
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Host\Spatial.Host.csproj" />
+  </ItemGroup>
+
+</Project>

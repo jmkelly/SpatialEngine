@@ -66,10 +66,10 @@ internal static class PostgisEwkb
     private static IGeometry Decode(byte[] bytes, Func<int, CoordinateReference?> crs)
     {
         var cursor = new Reader(bytes);
-        return ReadGeometry(cursor, crs);
+        return ReadGeometryValue(cursor, crs);
     }
 
-    private static IGeometry ReadGeometry(Reader cursor, Func<int, CoordinateReference?> crs)
+    private static IGeometry ReadGeometryValue(Reader cursor, Func<int, CoordinateReference?> crs)
     {
         var endian = cursor.ReadByte();
         var type = cursor.ReadUInt32(endian);
@@ -208,7 +208,7 @@ internal static class PostgisEwkb
         var parts = new IGeometry[count];
         for (var i = 0; i < count; i++)
         {
-            parts[i] = ReadGeometry(cursor, srid => null);
+            parts[i] = ReadGeometryValue(cursor, srid => null);
         }
 
         return GeometryFactory.CreateGeometryCollection(parts, crs);
@@ -218,7 +218,7 @@ internal static class PostgisEwkb
     private static T ReadAsType<T>(Reader cursor, GeometryType expected, CoordinateReference? crs)
         where T : IGeometry
     {
-        var part = ReadGeometry(cursor, srid => null);
+        var part = ReadGeometryValue(cursor, srid => null);
         if (part.Type != expected)
         {
             throw Format(cursor, $"expected a {expected} child, found {part.Type}");

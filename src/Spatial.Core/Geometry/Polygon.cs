@@ -51,13 +51,14 @@ public sealed class Polygon : IPolygon, IEquatable<Polygon>
         }
     }
 
-    public bool Equals(Polygon? other) =>
-        other is not null
-        && Nullable.Equals(_coordinateReference, other._coordinateReference)
+    public bool Equals(Polygon? other) => other is not null && ContentEquals(other);
+
+    public override bool Equals(object? obj) => obj is Polygon other && ContentEquals(other);
+
+    private bool ContentEquals(Polygon other) =>
+        Nullable.Equals(_coordinateReference, other._coordinateReference)
         && _exteriorRing.Equals(other._exteriorRing)
         && _interiorRings.SequenceEqual(other._interiorRings);
-
-    public override bool Equals(object? obj) => obj is Polygon other && Equals(other);
 
     public override int GetHashCode()
     {

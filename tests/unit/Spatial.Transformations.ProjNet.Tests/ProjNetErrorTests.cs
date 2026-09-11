@@ -1,47 +1,42 @@
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
-using Spatial.PluginSdk.Transformations;
+using Spatial.PluginSdk;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// Error-behaviour tests (plan §16 Phase 7): unknown, unsupported or
-/// malformed CRS identities, missing or conflicting arguments and
-/// out-of-area coordinates are <c>invalid.arguments</c> with actionable
-/// messages; a pre-cancelled invocation is a <c>cancelled</c> failure.
+/// Error-behaviour tests: unknown, unsupported or malformed CRS identities,
+/// missing or conflicting arguments and out-of-area coordinates are
+/// <c>invalid.arguments</c> with actionable messages; a pre-cancelled call
+/// throws <see cref="OperationCanceledException"/>.
 /// </summary>
 public sealed class ProjNetErrorTests
 {
     [Fact]
     public async Task Describing_an_unknown_EPSG_code_is_an_invalid_argument()
     {
-        var result = await DescribeAsync(TransformationArguments.Crs, "EPSG:999999");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => DescribeAsync("crs", "EPSG:999999"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Equal("invalid.arguments", failure.Error.Code);
-        Assert.Contains("999999", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("999999", exception.Message);
     }
 
     [Fact]
     public async Task Describing_a_malformed_identity_is_an_invalid_argument()
     {
-        var result = await DescribeAsync(TransformationArguments.Crs, "not-an-identity");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => DescribeAsync("crs", "not-an-identity"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("CRS identity", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("CRS identity", exception.Message);
     }
 
     [Fact]
     public async Task Describing_without_a_crs_argument_is_an_invalid_argument()
     {
-        var result = await DescribeAsync();
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => DescribeAsync());
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("'crs'", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("'crs'", exception.Message);
     }
 
     [Fact]
@@ -49,14 +44,13 @@ public sealed class ProjNetErrorTests
     {
         var geometry = GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326));
 
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Source, "ESRI:102100",
-            TransformationArguments.Target, "EPSG:4326");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "geometry", geometry,
+            "source", "ESRI:102100",
+            "target", "EPSG:4326"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("not served", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("not served", exception.Message);
     }
 
     [Fact]
@@ -64,11 +58,10 @@ public sealed class ProjNetErrorTests
     {
         var geometry = GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326));
 
-        var result = await TransformAsync(TransformationArguments.Geometry, geometry);
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync("geometry", geometry));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("'target'", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("'target'", exception.Message);
     }
 
     [Fact]
@@ -76,13 +69,12 @@ public sealed class ProjNetErrorTests
     {
         var geometry = GeometryFactory.CreatePoint(1, 2);
 
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Target, "EPSG:4326");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "geometry", geometry,
+            "target", "EPSG:4326"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("'source'", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("'source'", exception.Message);
     }
 
     [Fact]
@@ -90,14 +82,13 @@ public sealed class ProjNetErrorTests
     {
         var geometry = GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(32632));
 
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:3857");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "geometry", geometry,
+            "source", "EPSG:4326",
+            "target", "EPSG:3857"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("agree", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("agree", exception.Message);
     }
 
     [Fact]
@@ -105,62 +96,69 @@ public sealed class ProjNetErrorTests
     {
         var geometry = GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326));
 
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Target, 4326);
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "geometry", geometry,
+            "target", 4326));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("'target'", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("'target'", exception.Message);
     }
 
     [Fact]
     public async Task Coordinates_outside_the_valid_area_are_an_actionable_error()
     {
         // Latitude 95 lies beyond the poles; the Web Mercator formula maps it
-        // to a non-finite northing, which the adapter reports as an invalid
+        // to a non-finite northing, which the service reports as an invalid
         // argument rather than returning poisoned geometry.
         var geometry = GeometryFactory.CreatePoint(0, 95, CoordinateReference.Epsg(4326));
 
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:3857");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "geometry", geometry,
+            "source", "EPSG:4326",
+            "target", "EPSG:3857"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("valid area", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("valid area", exception.Message);
+    }
+
+    [Fact]
+    public async Task Transforming_to_a_malformed_target_is_an_invalid_argument()
+    {
+        var geometry = GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326));
+
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "geometry", geometry,
+            "source", "EPSG:4326",
+            "target", "not-an-identity"));
+
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("'target' must be a CRS identity", exception.Message);
     }
 
     [Fact]
     public async Task Transforming_without_a_geometry_is_an_invalid_argument()
     {
-        var result = await TransformAsync(
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:3857");
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => TransformAsync(
+            "source", "EPSG:4326",
+            "target", "EPSG:3857"));
 
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, failure.Error.Kind);
-        Assert.Contains("'geometry'", failure.Error.Message);
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("'geometry'", exception.Message);
     }
 
     [Fact]
-    public async Task A_pre_cancelled_invocation_is_a_cancelled_failure()
+    public async Task A_pre_cancelled_call_throws_operation_cancelled()
     {
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         var geometry = GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326));
 
-        var result = await InvokeAsync(
-            TransformContract.Id,
+        await Assert.ThrowsAsync<OperationCanceledException>(() => InvokeAsync(
+            null,
             Arguments(
-                TransformationArguments.Geometry, geometry,
-                TransformationArguments.Source, "EPSG:4326",
-                TransformationArguments.Target, "EPSG:3857"),
-            cancellation.Token);
-
-        var failure = Assert.IsType<CapabilityFailure>(result);
-        Assert.Equal(CapabilityErrorKind.Cancelled, failure.Error.Kind);
-        Assert.Equal("operation.cancelled", failure.Error.Code);
+                "geometry", geometry,
+                "source", "EPSG:4326",
+                "target", "EPSG:3857"),
+            cancellation.Token));
     }
 }

@@ -1,36 +1,32 @@
-import { fromBase64 } from "@spatial/client";
-
 /**
- * Workbench persistence (Phase 10): results and recent jobs are saved to
- * browser localStorage so the workbench survives reloads — the browser-side
- * "persist the result" of plan §17.8. Spatial values are stored as canonical
- * base64 bytes (the same SGEOM wire bytes the host produced), so nothing
- * spatial is re-encoded by the client.
+ * Workbench persistence: results and recent runs are saved to browser
+ * localStorage so the workbench survives reloads. Spatial values are stored
+ * as canonical base64 SGEOM bytes (the same bytes the host produced), so
+ * nothing spatial is re-encoded by the client.
  */
 
 export interface SavedResult {
   id: string;
   name: string;
-  capability: string;
-  provider: string | null;
+  op: string;
   savedAt: string;
-  /** Canonical SGEOM bytes of the result geometry (base64 on the wire). */
+  /** Canonical SGEOM bytes of the result geometry (base64). */
   geometryBase64: string | null;
-  /** The JSON-encodable result value (scalar results cross inline). */
-  valueJson: string | null;
+  /** A short human summary of the result. */
+  summary: string | null;
   note: string;
 }
 
-export interface SavedJob {
+export interface SavedRun {
   id: string;
-  capability: string;
-  state: string;
+  op: string;
+  ok: boolean;
   startedAt: string;
-  provider: string | null;
+  detail: string | null;
 }
 
-const ResultsKey = "spatial.workbench.results";
-const JobsKey = "spatial.workbench.jobs";
+const ResultsKey = "spatial.workbench.v2.results";
+const RunsKey = "spatial.workbench.v2.runs";
 
 function read<T>(key: string): T[] {
   try {
@@ -51,8 +47,8 @@ export function loadResults(): SavedResult[] {
   return read<SavedResult>(ResultsKey);
 }
 
-export function loadJobs(): SavedJob[] {
-  return read<SavedJob>(JobsKey);
+export function loadRuns(): SavedRun[] {
+  return read<SavedRun>(RunsKey);
 }
 
 export function saveResult(result: SavedResult): SavedResult[] {
@@ -67,28 +63,10 @@ export function deleteResult(id: string): SavedResult[] {
   return results;
 }
 
-export function recordJob(job: SavedJob): SavedJob[] {
-  const jobs = [job, ...loadJobs()]
+export function recordRun(run: SavedRun): SavedRun[] {
+  const runs = [run, ...loadRuns()]
     .filter((entry, index, all) => all.findIndex((candidate) => candidate.id === entry.id) === index)
     .slice(0, 50);
-  write(JobsKey, jobs);
-  return jobs;
-}
-
-/** Turns a wire-decoded geometry value into a saved-result geometry payload. */
-export function geometryToBase64(geometry: unknown): string | null {
-  if (typeof geometry !== "object" || geometry === null) return null;
-  const tagged = geometry as Record<string, unknown>;
-  if (typeof tagged.$geometry === "string") return tagged.$geometry;
-  return null;
-}
-
-/** Reads a saved result's geometry back to canonical bytes for the map layer. */
-export function resultGeometryBytes(result: SavedResult): Uint8Array | null {
-  if (result.geometryBase64 === null) return null;
-  try {
-    return fromBase64(result.geometryBase64);
-  } catch {
-    return null;
-  }
+  write(RunsKey, runs);
+  return runs;
 }

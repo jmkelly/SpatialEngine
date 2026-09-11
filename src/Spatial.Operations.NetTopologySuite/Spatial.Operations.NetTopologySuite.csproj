@@ -1,13 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The NetTopologySuite operations plugin (plan §16 Phase 6, Epic G): a
-    capability provider implementing the standard geometry operation
-    contracts (buffer, intersection, validation, simplify — ADR-0026) on top
-    of NetTopologySuite. It is a plugin implementation, never linked into
-    the runtime or host (ADR-0006/0002): it implements Spatial.PluginSdk
-    only and is launched as a worker by the PluginHost. NTS types live
-    inside this package's private adapters (ADR-0005) and never cross a
+    The NetTopologySuite geometry service (ADR-0033): the in-process
+    implementation of IGeometryOperations (buffer, intersection, validation,
+    simplify) on top of NetTopologySuite, linked by Spatial.Host. NTS types
+    live inside this package's private adapters (ADR-0005) and never cross a
     public boundary.
   -->
 

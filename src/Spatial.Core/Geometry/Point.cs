@@ -63,13 +63,14 @@ public sealed class Point : IPoint, IEquatable<Point>
         }
     }
 
-    public bool Equals(Point? other) =>
-        other is not null
-        && _layout == other._layout
+    public bool Equals(Point? other) => other is not null && ContentEquals(other);
+
+    public override bool Equals(object? obj) => obj is Point other && ContentEquals(other);
+
+    private bool ContentEquals(Point other) =>
+        _layout == other._layout
         && Nullable.Equals(_coordinate, other._coordinate)
         && Nullable.Equals(_coordinateReference, other._coordinateReference);
-
-    public override bool Equals(object? obj) => obj is Point other && Equals(other);
 
     public override int GetHashCode() => HashCode.Combine(_coordinate, _coordinateReference, _layout);
 

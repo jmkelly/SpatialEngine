@@ -1,11 +1,12 @@
 namespace Spatial.Architecture.Tests;
 
 /// <summary>
-/// Dependency and structure guardrails for the spatial engine.
+/// Dependency and structure guardrails for the spatial engine (ADR-0033).
 ///
-/// Each rule is a deliberate boundary from the architecture plan
-/// (see /architecture/implementation-plan.md and /architecture/decisions).
-/// Changing a rule requires changing the plan and the affected ADRs first.
+/// The engine is composed by DI: <c>Spatial.Core</c> holds values,
+/// <c>Spatial.PluginSdk</c> holds service interfaces, implementation
+/// projects own the verbs, and <c>Spatial.Host</c> wires them. Changing a
+/// rule requires updating ADR-0033 first.
 /// </summary>
 public sealed class ArchitectureGuardTests
 {
@@ -13,9 +14,7 @@ public sealed class ArchitectureGuardTests
         RepositoryScanner.Load(RepositoryScanner.FindRepositoryRoot()));
 
     /// <summary>
-    /// Core is a platform project. ADR-0001: geometry belongs in the core;
-    /// ADR-0002/0003: algorithms and stores are plugins. The core must not
-    /// reference databases, renderers, spatial algorithm packages or any project.
+    /// Core is values only: no packages, no project references (ADR-0001/0032).
     /// </summary>
     [Fact]
     public void Core_has_no_dependencies()
@@ -33,82 +32,79 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// ADR-0006/ADR-0013: plugins are isolated workers. The runtime routes to
-    /// capabilities through contracts; it never references a concrete plugin
-    /// implementation (provider, operations or transformations).
+    /// ADR-0033: the SDK holds interfaces over Core only; it takes no
+    /// third-party packages and references nothing but Core.
     /// </summary>
     [Fact]
-    public void Runtime_references_no_concrete_plugin()
+    public void PluginSdk_references_only_core()
     {
-        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk" };
-        var violations = PlatformProject("Spatial.Runtime").ProjectReferences
-            .Where(r => !allowed.Contains(r))
-            .Select(r => $"{PlatformProject("Spatial.Runtime").RelativePath} must reference only {string.Join(", ", allowed)}, but references {r}.")
-            .ToList();
+        var sdk = PlatformProject("Spatial.PluginSdk");
+        var violations = new List<string>();
+        violations.AddRange(sdk.ProjectReferences
+            .Where(r => r != "Spatial.Core")
+            .Select(r => $"{sdk.RelativePath} must reference only Spatial.Core, but references {r}."));
+        violations.AddRange(sdk.Packages
+            .Select(p => $"{sdk.RelativePath} must take no packages, but references {p.Id}."));
 
         Assert.Empty(violations);
     }
 
     /// <summary>
-    /// Plugin implementation projects exist to be launched as workers, not to
-    /// be linked into the host, runtime or contracts. No platform project may
-    /// reference a plugin implementation project.
+    /// ADR-0033/ADR-0005: implementations link Core + SDK only; third-party
+    /// spatial packages stay inside the owning implementation. ADR-0035 adds
+    /// the shared Esri codec as a permitted reference for the two boundary
+    /// projects (they share only <c>Spatial.Interop.Esri</c>, never each
+    /// other).
     /// </summary>
     [Fact]
-    public void Platform_projects_do_not_reference_plugin_implementations()
+    public void Implementation_projects_reference_only_core_and_sdk()
     {
-        var violations = PlatformProjects()
+        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk", "Spatial.Interop.Esri" };
+        var violations = ImplementationProjects()
             .SelectMany(project => project.ProjectReferences
-                .Where(IsPluginImplementation)
-                .Select(r => $"{project.RelativePath} references plugin implementation {r}; plugins run out of process."))
+                .Where(r => !allowed.Contains(r) && !AllowedBoundaryReferences(project.Name).Contains(r))
+                .Select(r => $"{project.RelativePath} must reference only {string.Join(", ", allowed)}, but references {r}."))
             .ToList();
 
         Assert.Empty(violations);
     }
 
     /// <summary>
-    /// Principle 7 / ADR-0005: plugins depend on contracts, never on another
-    /// plugin implementation. A plugin that links a sibling plugin would drag
-    /// its third-party types across the boundary the worker model exists to
-    /// keep clean.
+    /// ADR-0035: the shared Esri wire codec references Core only — no NTS,
+    /// no ASP.NET, no HttpClient.
     /// </summary>
     [Fact]
-    public void Plugin_implementations_do_not_reference_each_other()
+    public void Interop_projects_reference_only_core()
     {
-        var violations = PluginImplementationProjects()
+        var violations = Repository.Value.Projects
+            .Where(project => project.Name.StartsWith("Spatial.Interop.", StringComparison.Ordinal)
+                && project.RelativePath.Replace('\\', '/').StartsWith("src/", StringComparison.Ordinal))
             .SelectMany(project => project.ProjectReferences
-                .Where(IsPluginImplementation)
-                .Select(r => $"{project.RelativePath} references plugin implementation {r}; plugins depend on contracts, never on each other (principle 7)."))
+                .Where(reference => reference != "Spatial.Core")
+                .Select(reference => $"{project.RelativePath} must reference only Spatial.Core, but references {reference}."))
             .ToList();
 
         Assert.Empty(violations);
     }
 
     /// <summary>
-    /// ADR-0005: third-party spatial/data types stay inside their owning
-    /// plugin. The generic package rule allows <c>Microsoft.*</c>/<c>System.*</c>,
-    /// so the concrete ADR-0005 families are checked explicitly here.
+    /// ADR-0033: the host composes everything by DI — Core, SDK and the
+    /// implementation projects — and nothing else.
     /// </summary>
     [Fact]
-    public void Platform_projects_do_not_reference_third_party_spatial_packages()
+    public void Host_references_only_expected_projects()
     {
-        var violations = PlatformProjects()
-            .SelectMany(project => project.Packages
-                .Where(p => IsForbiddenSpatialPackage(p.Id))
-                .Select(p => $"{project.RelativePath} references {p.Id}; third-party spatial/data types stay inside their owning plugin (ADR-0005)."))
-            .ToList();
-
-        Assert.Empty(violations);
-    }
-
-    /// <summary>
-    /// ADR-0018/ADR-0019: the host is independently executable and wires only
-    /// platform projects; desktop shells and workers remain external.
-    /// </summary>
-    [Fact]
-    public void Host_references_only_platform_projects()
-    {
-        var allowed = new[] { "Spatial.Core", "Spatial.Runtime", "Spatial.PluginSdk", "Spatial.PluginHost.DotNet" };
+        var allowed = new[]
+        {
+            "Spatial.Core",
+            "Spatial.PluginSdk",
+            "Spatial.Operations.NetTopologySuite",
+            "Spatial.Transformations.ProjNet",
+            "Spatial.Provider.Demo",
+            "Spatial.Provider.PostGIS",
+            "Spatial.Adapter.GeoServices",
+            "Spatial.Provider.ArcGisRest",
+        };
         var host = PlatformProject("Spatial.Host");
         var violations = host.ProjectReferences
             .Where(r => !allowed.Contains(r))
@@ -119,9 +115,27 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// Third-party spatial types must never cross public boundaries (ADR-0005).
-    /// Platform projects may only use framework packages plus an explicit
-    /// per-project allowlist that is extended deliberately, with an ADR.
+    /// ADR-0034: the Aspire AppHost is a development composition root — it
+    /// orchestrates the host and infrastructure and links no engine project
+    /// directly (no spatial logic, no contracts).
+    /// </summary>
+    [Fact]
+    public void AppHost_references_only_the_host()
+    {
+        var allowed = new[] { "Spatial.Host" };
+        var appHost = PlatformProject("Spatial.AppHost");
+        var violations = appHost.ProjectReferences
+            .Where(r => !allowed.Contains(r))
+            .Select(r => $"{appHost.RelativePath} must reference only {string.Join(", ", allowed)}, but references {r}.")
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
+    /// Third-party spatial types must never leak into shared contracts
+    /// (ADR-0005). Platform projects may only use framework packages plus an
+    /// explicit per-project allowlist that is extended deliberately, with an ADR.
     /// </summary>
     [Fact]
     public void Platform_projects_use_only_allowlisted_packages()
@@ -155,8 +169,8 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// ADR-0016/ADR-0017: Tauri is a desktop shell, not part of the web client.
-    /// The browser workbench and generated SDK run without Tauri APIs.
+    /// Tauri is a desktop shell, not part of the web client. The browser
+    /// workbench and generated SDK run without Tauri APIs.
     /// </summary>
     [Fact]
     public void Web_clients_do_not_depend_on_tauri()
@@ -172,8 +186,7 @@ public sealed class ArchitectureGuardTests
 
     /// <summary>
     /// Every project under /src and /tests is in the solution, and every
-    /// solution project lives under /src or /tests. Orphan and stray projects
-    /// escape review otherwise.
+    /// solution project lives under /src or /tests.
     /// </summary>
     [Fact]
     public void Solution_membership_is_exact()
@@ -199,49 +212,64 @@ public sealed class ArchitectureGuardTests
     private static IEnumerable<ProjectInfo> PlatformProjects() =>
         PlatformProjectNames.Select(name => Repository.Value.Projects.Single(p => p.Name == name));
 
-    /// <summary>Plugin implementation projects only; the matching `*.Tests` projects are excluded.</summary>
-    private static IEnumerable<ProjectInfo> PluginImplementationProjects() =>
-        Repository.Value.Projects.Where(p => IsPluginImplementation(p.Name)
-            && !p.Name.EndsWith(".Tests", StringComparison.Ordinal));
+    private static IEnumerable<ProjectInfo> ImplementationProjects() =>
+        ImplementationProjectNames.Select(name => Repository.Value.Projects.Single(p => p.Name == name));
 
     private static ProjectInfo PlatformProject(string name) =>
         Repository.Value.Projects.Single(p => p.Name == name);
 
     private static readonly string[] PlatformProjectNames =
     [
+        "Spatial.AppHost",
         "Spatial.Core",
-        "Spatial.Runtime",
         "Spatial.PluginSdk",
-        "Spatial.PluginHost.DotNet",
+        "Spatial.Interop.Esri",
+        "Spatial.Operations.NetTopologySuite",
+        "Spatial.Transformations.ProjNet",
+        "Spatial.Provider.Demo",
+        "Spatial.Provider.PostGIS",
+        "Spatial.Adapter.GeoServices",
+        "Spatial.Provider.ArcGisRest",
         "Spatial.Host",
     ];
 
+    private static readonly string[] ImplementationProjectNames =
+    [
+        "Spatial.Operations.NetTopologySuite",
+        "Spatial.Transformations.ProjNet",
+        "Spatial.Provider.Demo",
+        "Spatial.Provider.PostGIS",
+        "Spatial.Adapter.GeoServices",
+        "Spatial.Provider.ArcGisRest",
+    ];
+
+    /// <summary>ADR-0035 boundary projects may also reference the shared Esri codec.</summary>
+    private static string[] AllowedBoundaryReferences(string projectName) => projectName switch
+    {
+        "Spatial.Adapter.GeoServices" or "Spatial.Provider.ArcGisRest" => ["Spatial.Interop.Esri"],
+        _ => [],
+    };
+
     /// <summary>Explicit, ADR-backed exceptions to the framework-only rule.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> AllowedPackages =
-        new Dictionary<string, string[]>(StringComparer.Ordinal);
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["Spatial.AppHost"] =
+            [
+                "Aspire.Hosting.AppHost",
+                "Aspire.Hosting.JavaScript",
+                "Aspire.Hosting.PostgreSQL",
+            ],
+            ["Spatial.Host"] = ["Microsoft.AspNetCore.OpenApi"],
+            ["Spatial.Operations.NetTopologySuite"] = ["NetTopologySuite"],
+            ["Spatial.Transformations.ProjNet"] = ["ProjNET"],
+            ["Spatial.Provider.PostGIS"] = ["Npgsql"],
+        };
 
     private static bool IsAllowedPackage(string projectName, string id) =>
         id.StartsWith("Microsoft.", StringComparison.Ordinal)
         || id.StartsWith("System.", StringComparison.Ordinal)
         || AllowedPackages.GetValueOrDefault(projectName)?.Contains(id) == true;
-
-    private static bool IsPluginImplementation(string projectName) =>
-        projectName.StartsWith("Spatial.Provider.", StringComparison.Ordinal)
-        || projectName.StartsWith("Spatial.Operations.", StringComparison.Ordinal)
-        || projectName.StartsWith("Spatial.Transformations.", StringComparison.Ordinal);
-
-    /// <summary>The third-party families ADR-0005 keeps out of platform projects.</summary>
-    private static readonly string[] ForbiddenSpatialPackagePrefixes =
-    [
-        "NetTopologySuite",
-        "Npgsql",
-        "Microsoft.EntityFrameworkCore",
-        "ProjNET",
-        "@tauri-apps/",
-    ];
-
-    private static bool IsForbiddenSpatialPackage(string id) =>
-        ForbiddenSpatialPackagePrefixes.Any(prefix => id.StartsWith(prefix, StringComparison.Ordinal));
 
     private static string Normalise(string relativePath) =>
         relativePath.Replace('/', Path.DirectorySeparatorChar);

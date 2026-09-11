@@ -1,218 +1,156 @@
 using System.Net;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
-using Spatial.PluginSdk.Http;
+using Spatial.Core.Geometry;
+using Spatial.Core.Geometry.Codec;
 
 namespace Spatial.Client.Tests;
 
 /// <summary>
 /// The client SDK's contract handling: URL building, the shared camelCase
-/// JSON wire, value codec round trips, job polling, stream decoding
-/// (including canonical feature batches) and structured error mapping — all
-/// against a scriptable stub host.
+/// JSON wire, canonical geometry/batch Base64 round trips and structured
+/// error mapping — all against a scriptable stub host.
 /// </summary>
 public sealed class SpatialClientTests
 {
     [Fact]
-    public async Task Get_capabilities_builds_the_url_and_decodes_the_shared_contract()
+    public async Task Buffer_posts_sgeom_and_decodes_the_result()
     {
+        var buffered = GeometryFactory.CreatePolygon(
+            [new Coordinate(-1, -1), new Coordinate(1, -1), new Coordinate(1, 1), new Coordinate(-1, 1), new Coordinate(-1, -1)]);
         using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
-            """[{"id":"spatial.geometry.buffer@1","purpose":"Expands a geometry","inputSchema":"geometry.operation","outputSchema":"geometry","traits":["Cancellable"],"requiredPermissions":[],"providers":["nts@1"]}]""")));
+            $$$"""{"geometry":"{{{Convert.ToBase64String(GeometryCodec.Encode(buffered))}}}"}""")));
 
-        var capabilities = await stub.Client.GetCapabilitiesAsync();
+        var result = await stub.Client.BufferAsync(GeometryFactory.CreatePoint(0, 0), 1.0);
 
+        Assert.Equal(buffered, result);
         var exchange = Assert.Single(stub.Handler.Exchanges);
-        Assert.Equal(HttpMethod.Get, exchange.Request.Method);
-        Assert.Equal("/api/capabilities", exchange.Request.RequestUri?.AbsolutePath);
-        var capability = Assert.Single(capabilities);
-        Assert.Equal("spatial.geometry.buffer@1", capability.Id);
-        Assert.Equal("nts@1", Assert.Single(capability.Providers));
+        Assert.Equal(HttpMethod.Post, exchange.Request.Method);
+        Assert.Equal("/api/geometry/buffer", exchange.Request.RequestUri?.AbsolutePath);
+        var body = JsonDocument.Parse(await exchange.Request.Content!.ReadAsStringAsync());
+        Assert.Equal(1.0, body.RootElement.GetProperty("distance").GetDouble());
+        Assert.Equal(8, body.RootElement.GetProperty("quadrantSegments").GetInt32());
     }
 
     [Fact]
-    public async Task Invoke_encodes_arguments_with_the_value_codec()
+    public async Task Validate_decodes_the_flag()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"valid":true}""")));
+
+        Assert.True(await stub.Client.ValidateAsync(GeometryFactory.CreatePoint(0, 0)));
+    }
+
+    [Fact]
+    public async Task Describe_decodes_the_crs_description()
     {
         using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
-            """{"kind":"completed","capability":"fixture.echo@1","ok":true,"result":"hello","error":null,"provenance":{"capability":"fixture.echo@1","provider":"fixture@1","step":"FirstHealthy","startedAt":"2026-09-01T00:00:00Z","durationMs":1.2,"deadline":null,"jobId":null},"job":null}""")));
+            """{"authority":"EPSG","code":"4326","name":"WGS 84","kind":"geographic","dimension":2,"axes":[],"datum":null,"ellipsoid":null}""")));
 
-        var response = await stub.Client.InvokeAsync(
-            "fixture.echo@1",
-            new Dictionary<string, object?> { ["text"] = "hello" });
+        var description = await stub.Client.DescribeAsync("EPSG:4326");
 
-        Assert.True(response.Ok);
-        Assert.Equal("hello", response.Result?.GetValue<string>());
-        Assert.Equal("fixture@1", response.Provenance!.Provider);
-
+        Assert.Equal("4326", description.Code);
         var exchange = Assert.Single(stub.Handler.Exchanges);
-        Assert.Equal("/api/invocations", exchange.Request.RequestUri?.AbsolutePath);
-        var body = JsonNode.Parse(await exchange.Request.Content!.ReadAsStringAsync())!;
-        Assert.Equal("fixture.echo@1", body["capability"]?.GetValue<string>());
-        Assert.Equal("hello", body["arguments"]?["text"]?.GetValue<string>());
+        Assert.Equal("/api/crs/describe", exchange.Request.RequestUri?.AbsolutePath);
     }
 
     [Fact]
-    public async Task Invoke_round_trips_i64_geometry_and_resource_values()
+    public async Task Scan_decodes_canonical_batches()
     {
-        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
-            """{"kind":"completed","capability":"fixture.mix@1","ok":true,"result":{"$i64":"9223372036854775807"},"error":null,"provenance":{"capability":"fixture.mix@1","provider":"fixture@1","step":"FirstHealthy","startedAt":"2026-09-01T00:00:00Z","durationMs":0.5,"deadline":null,"jobId":null},"job":null}""")));
-
-        var response = await stub.Client.InvokeAsync(
-            "fixture.mix@1",
-            new Dictionary<string, object?> { ["big"] = long.MaxValue });
-
-        Assert.True(response.Ok);
-        var decoded = Spatial.PluginSdk.Codec.ValueCodec.Decode(response.Result);
-        Assert.Equal(long.MaxValue, Assert.IsType<long>(decoded));
-    }
-
-    [Fact]
-    public async Task Non_2xx_responses_become_spatial_api_exceptions()
-    {
-        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
-            "{}\"not found\"", HttpStatusCode.NotFound)));
-
-        var exception = await Assert.ThrowsAsync<SpatialApiException>(
-            () => stub.Client.GetCapabilityAsync("spatial.missing@9"));
-        Assert.Equal(404, exception.StatusCode);
-    }
-
-    [Fact]
-    public async Task Wait_for_job_polls_until_the_terminal_state()
-    {
-        var polls = 0;
-        using var stub = new StubClient(new StubHttpHandler(_ =>
-        {
-            polls++;
-            return StubHttpHandler.Json(polls < 3
-                ? """{"id":"job1","capability":"fixture.sleep@1","state":"Running","createdAt":"2026-09-01T00:00:00Z","startedAt":"2026-09-01T00:00:00Z","completedAt":null,"deadline":null,"provider":"fixture@1","step":"FirstHealthy","errorCode":null}"""
-                : """{"id":"job1","capability":"fixture.sleep@1","state":"Completed","createdAt":"2026-09-01T00:00:00Z","startedAt":"2026-09-01T00:00:00Z","completedAt":"2026-09-01T00:00:02Z","deadline":null,"provider":"fixture@1","step":"FirstHealthy","errorCode":null}""");
-        }));
-
-        var job = await stub.Client.WaitForJobAsync("job1");
-
-        Assert.Equal(Spatial.PluginSdk.Jobs.JobState.Completed, job.State);
-        Assert.True(polls >= 3);
-        Assert.Equal("/api/jobs/job1", stub.Handler.Exchanges[^1].Request.RequestUri?.AbsolutePath);
-    }
-
-    [Fact]
-    public async Task Read_stream_decodes_items_and_throws_on_error_line()
-    {
-        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Ndjson(
-            "\"chunk 1\"\n{\"$bytes\":\"aGVsbG8=\"}\n")));
-
-        var items = new List<object?>();
-        await foreach (var item in stub.Client.ReadStreamAsync("resource1"))
-        {
-            items.Add(item);
-        }
-
-        Assert.Equal(2, items.Count);
-        Assert.Equal("chunk 1", items[0]);
-        Assert.Equal([104, 101, 108, 108, 111], Assert.IsType<byte[]>((byte[])items[1]!));
-
-        using var failing = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Ndjson(
-            "\"ok\"\n{\"$error\":{\"kind\":\"ProviderFailure\",\"code\":\"provider.failure\",\"message\":\"boom\"}}\n")));
-        var received = new List<object?>();
-        var exception = await Assert.ThrowsAsync<CapabilityStreamException>(async () =>
-        {
-            await foreach (var item in failing.Client.ReadStreamAsync("resource1"))
-            {
-                received.Add(item);
-            }
-        });
-        Assert.Equal("provider.failure", exception.Error.Code);
-        Assert.Single(received);
-    }
-
-    [Fact]
-    public async Task Read_feature_batches_decodes_canonical_binary_items()
-    {
-        var schema = new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]);
         var batch = new FeatureBatch(
-            schema,
-            [new Feature(new FeatureId("f1"), schema, [AttributeValue.FromString("alice")])]);
-        var bytes = FeatureBatchCodec.Encode(batch);
-        var line = JsonSerializer.Serialize(new JsonObject { ["$bytes"] = Convert.ToBase64String(bytes) });
+            new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]),
+            [new Feature(new FeatureId("a"), new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]), [AttributeValue.FromString("a")])]);
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            $$$"""{"batches":["{{{Convert.ToBase64String(FeatureBatchCodec.Encode(batch))}}}"]}""")));
 
-        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Ndjson($"{line}\n")));
+        var batches = await stub.Client.ScanAsync("demo.points");
 
-        var batches = new List<FeatureBatch>();
-        await foreach (var decoded in stub.Client.ReadFeatureBatchesAsync("scan1"))
-        {
-            batches.Add(decoded);
-        }
-
-        var decodedBatch = Assert.Single(batches);
-        Assert.Equal("f1", decodedBatch.Features[0].Id.Value);
-        Assert.Equal("alice", decodedBatch.Features[0].Attributes[0].StringValue);
+        var features = Assert.Single(batches).Features;
+        Assert.Equal("a", Assert.Single(features).Id.Value);
     }
 
     [Fact]
-    public async Task Delete_resource_accepts_no_content()
+    public async Task Catalogue_lists_datasets()
     {
-        using var stub = new StubClient(new StubHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.NoContent)));
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"datasets":[{"id":"demo.points","schema":"demo","table":"points","geometryColumn":"geometry","srid":4326,"estimatedRowCount":110}]}""")));
 
-        await stub.Client.DeleteResourceAsync("resource1");
+        var datasets = await stub.Client.ListCatalogueAsync();
 
+        var summary = Assert.Single(datasets);
+        Assert.Equal("demo.points", summary.Id);
         var exchange = Assert.Single(stub.Handler.Exchanges);
-        Assert.Equal(HttpMethod.Delete, exchange.Request.Method);
-        Assert.Equal("/api/resources/resource1", exchange.Request.RequestUri?.AbsolutePath);
+        Assert.StartsWith("/api/catalogue", exchange.Request.RequestUri?.AbsolutePath);
+        Assert.Contains("store=demo", exchange.Request.RequestUri?.Query);
     }
 
     [Fact]
-    public async Task Plugins_decode_and_unknown_plugin_is_an_api_exception()
+    public async Task Write_returns_the_appended_count()
     {
-        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
-            """[{"id":"nts@1","displayName":"NetTopologySuite operations","runtime":"dotnet","state":"Active","restartCount":0,"processId":42,"startedAt":"2026-09-01T00:00:00Z","lastHealthyAt":"2026-09-01T00:00:00Z","lastError":null,"capabilities":[]}]""")));
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"appended":3}""")));
 
-        var plugins = await stub.Client.GetPluginsAsync();
-        var plugin = Assert.Single(plugins);
-        Assert.Equal("nts@1", plugin.Id);
-        Assert.Equal(42, plugin.ProcessId);
+        var batch = new FeatureBatch(
+            new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]), []);
+        Assert.Equal(3, await stub.Client.WriteAsync("public.t", batch, store: "postgis"));
     }
 
     [Fact]
-    public async Task Plugin_control_methods_post_to_the_control_endpoints()
+    public async Task Transactions_round_trip_handles()
     {
-        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
-            """{"id":"nts@2","displayName":"NetTopologySuite operations v2","runtime":"dotnet","state":"Active","restartCount":0,"processId":43,"startedAt":"2026-09-01T00:00:00Z","lastHealthyAt":null,"lastError":null,"capabilities":[]}""")));
-
-        var routed = await stub.Client.RouteNewWorkAsync("nts@2");
-        var drained = await stub.Client.DrainPluginAsync("nts@1");
-        var rolledBack = await stub.Client.RollbackPluginAsync("nts@2");
-
-        Assert.Equal("nts@2", routed.Id);
-        Assert.NotNull(drained);
-        Assert.NotNull(rolledBack);
-        Assert.Equal(3, stub.Handler.Exchanges.Count);
-        Assert.Equal(
-            "/api/plugins/nts%402/route-new-work|/api/plugins/nts%401/drain|/api/plugins/nts%402/rollback",
-            string.Join("|", stub.Handler.Exchanges.Select(exchange => exchange.Request.RequestUri?.AbsolutePath ?? string.Empty)));
-        Assert.All(stub.Handler.Exchanges, exchange => Assert.Equal(HttpMethod.Post, exchange.Request.Method));
-    }
-}
-
-public sealed class HealthMethodTests
-{
-    [Fact]
-    public async Task Health_methods_decode_live_and_ready()
-    {
-        using var stub = new StubClient(new StubHttpHandler(request =>
-            StubHttpHandler.Json(request.RequestUri?.AbsolutePath switch
+        using var stub = new StubClient(new StubHttpHandler(request => StubHttpHandler.Json(
+            request.RequestUri?.AbsolutePath switch
             {
-                "/health/live" => """{"status":"live"}""",
-                "/health/ready" => """{"status":"ready","plugins":3}""",
-                _ => "{}",
+                "/api/transactions/begin" => """{"transaction":"abc"}""",
+                "/api/transactions/commit" => """{"ok":true}""",
+                _ => """{"ok":true}""",
             })));
 
-        var live = await stub.Client.GetHealthLiveAsync();
-        var ready = await stub.Client.GetHealthReadyAsync();
+        var handle = await stub.Client.BeginTransactionAsync();
+        Assert.Equal("abc", handle);
+        Assert.True(await stub.Client.CommitTransactionAsync(handle));
+    }
 
-        Assert.Equal("live", live?["status"]?.GetValue<string>());
-        Assert.Equal("ready", ready?["status"]?.GetValue<string>());
-        Assert.Equal(3, ready?["plugins"]?.GetValue<int>());
+    [Fact]
+    public async Task Host_errors_throw_structured_exceptions()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"code":"invalid.arguments","message":"bad distance"}""", HttpStatusCode.BadRequest)));
+
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
+            stub.Client.BufferAsync(GeometryFactory.CreatePoint(0, 0), double.NaN));
+
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
+    }
+
+    [Fact]
+    public async Task Non_json_errors_throw_status_only_exceptions()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent("not json"),
+        }));
+
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
+            stub.Client.BufferAsync(GeometryFactory.CreatePoint(0, 0), 1.0));
+
+        Assert.Equal(500, exception.StatusCode);
+        Assert.Equal("http.error", exception.Code);
+    }
+
+    [Fact]
+    public void The_base_address_overload_constructs_without_a_host()
+    {
+        var client = new SpatialClient("http://localhost:9/");
+
+        Assert.NotNull(client);
+    }
+
+    [Fact]
+    public async Task Sleep_returns_the_duration()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"slept":50}""")));
+
+        Assert.Equal(50, await stub.Client.SleepAsync(50));
     }
 }
