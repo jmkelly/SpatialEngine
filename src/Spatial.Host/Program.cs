@@ -1,9 +1,11 @@
 using System.Reflection;
 using Microsoft.Extensions.FileProviders;
+using Spatial.Adapter.GeoServices;
 using Spatial.Host.Api;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
+using Spatial.Provider.ArcGisRest;
 using Spatial.Provider.Demo;
 using Spatial.Provider.PostGIS;
 using Spatial.Transformations.ProjNet;
@@ -35,6 +37,12 @@ if (string.IsNullOrWhiteSpace(postgisOptions.ConnectionString))
 
 builder.Services.AddSingleton(postgisOptions);
 builder.Services.AddSingleton<IGeometryOperations, NtsGeometryOperations>();
+builder.Services.AddSingleton<NtsGeometryMeasures>();
+builder.Services.AddSingleton<IGeometryMeasures>(services => services.GetRequiredService<NtsGeometryMeasures>());
+builder.Services.AddSingleton<NtsGeometryProcessing>();
+builder.Services.AddSingleton<IGeometryProcessing>(services => services.GetRequiredService<NtsGeometryProcessing>());
+builder.Services.AddSingleton<NtsGeometryRelations>();
+builder.Services.AddSingleton<IGeometryRelations>(services => services.GetRequiredService<NtsGeometryRelations>());
 builder.Services.AddSingleton<ProjNetTransforms>();
 builder.Services.AddSingleton<ICrsDirectory>(services => services.GetRequiredService<ProjNetTransforms>());
 builder.Services.AddSingleton<ICoordinateTransforms>(services => services.GetRequiredService<ProjNetTransforms>());
@@ -46,6 +54,22 @@ builder.Services.AddSingleton<PostgisStore>();
 builder.Services.AddKeyedSingleton<IDataCatalogue, PostgisStore>("postgis");
 builder.Services.AddKeyedSingleton<IFeatureStore, PostgisStore>("postgis");
 builder.Services.AddKeyedSingleton<ITransactionStore, PostgisStore>("postgis");
+
+// The ArcGIS REST consuming provider (ADR-0035): every configured remote
+// service becomes a keyed store; the token is host configuration only.
+var arcGisOptions = builder.Configuration.GetSection("Spatial:ArcGisRest").Get<ArcGisRestOptions>()
+    ?? new ArcGisRestOptions();
+if (arcGisOptions.Services.Count > 0)
+{
+    builder.Services.AddSingleton(new HttpClient());
+    foreach (var remote in arcGisOptions.Services)
+    {
+        builder.Services.AddKeyedSingleton<IDataCatalogue>(remote.Name, (services, _) =>
+            new ArcGisRestStore(services.GetRequiredService<HttpClient>(), remote, arcGisOptions.Token));
+        builder.Services.AddKeyedSingleton<IFeatureStore>(remote.Name, (services, _) =>
+            new ArcGisRestStore(services.GetRequiredService<HttpClient>(), remote, arcGisOptions.Token));
+    }
+}
 
 var app = builder.Build();
 
@@ -71,6 +95,12 @@ app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
 app.MapGet("/health/ready", () => Results.Ok(new ReadyResponse("ready", ["demo", "postgis"])));
 
 app.MapSpatialApi();
+
+// The Esri GeoServices boundary adapter (ADR-0035): mounted at
+// Spatial:GeoServices:Root, independent of the engine's own typed API.
+var geoServicesOptions = builder.Configuration.GetSection("Spatial:GeoServices").Get<GeoServicesOptions>()
+    ?? new GeoServicesOptions();
+GeoServicesEndpoints.Map(app, geoServicesOptions);
 
 app.Run();
 

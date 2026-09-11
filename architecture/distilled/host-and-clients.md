@@ -35,7 +35,20 @@ POST   /api/transactions/commit?store=  # {transaction} -> {ok}
 POST   /api/transactions/rollback?store=# {transaction} -> {ok}
 POST   /api/demo/sleep                  # {milliseconds} -> {slept}
 GET    /openapi/v1.json
+GET    /arcgis/rest/services                                  # GeoServices catalog (ADR-0035)
+GET    /arcgis/rest/services/Geometry/GeometryServer          # Geometry Service
+GET    /arcgis/rest/services/Geometry/GeometryServer/{op}     # project/generalize/buffer/intersect/simplify/…
+GET    /arcgis/rest/services/{service}/FeatureServer          # FeatureServer root (layers)
+GET    /arcgis/rest/services/{service}/FeatureServer/{layerId}
+GET    /arcgis/rest/services/{service}/FeatureServer/{layerId}/query
 ```
+
+The GeoServices routes are the Esri boundary adapter (ADR-0035): `f=json`
+only, Esri JSON over HTTP, no core changes. The facade serves read-only
+Geometry Service operations and read-only FeatureServer queries over the
+same keyed stores; the engine API above is unchanged. Track C consumes a
+remote ArcGIS REST service as a keyed `IDataCatalogue`/`IFeatureStore`
+(`Spatial.Provider.ArcGisRest`).
 
 The `store` query selects `demo` (default, always available) or `postgis`
 (needs configuration).
@@ -47,6 +60,10 @@ The `store` query selects `demo` (default, always available) or `postgis`
 | `Spatial:Postgis:ConnectionString` | PostGIS connection string (empty = unconfigured; every PostGIS call throws `store.unavailable`) |
 | `SPATIAL_POSTGIS_CONNECTION` | Env fallback for the connection string — the **only** secret channel |
 | `Spatial:WebRoot` | Built workbench directory; when set, `GET /` serves it |
+| `Spatial:GeoServices:Root` | GeoServices URL prefix (default `/arcgis/rest/services`) |
+| `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only) |
+| `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
+| `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |
 
 ## Clients
 

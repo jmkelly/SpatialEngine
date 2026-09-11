@@ -20,6 +20,22 @@ require closure); algorithms are planar (computed results are XY; simplify
 preserves Z); result carries input CRS (intersection: left's); validation
 pre-checks OGC ring rules, then NTS `IsValidOp`.
 
+## Geometry measures, processing and relations (`IGeometryMeasures`, `IGeometryProcessing`, `IGeometryRelations`, NTS)
+
+Added by ADR-0036 so the GeoServices adapter maps protocol verbs without
+holding algorithms. All verbs are pure, planar and cancellable.
+
+| Interface | Method | Behaviour |
+| --- | --- | --- |
+| `IGeometryMeasures` | `Area`, `Length` | planar; 0 for shapes of the wrong dimension |
+| `IGeometryMeasures` | `Distance` | planar minimum distance |
+| `IGeometryMeasures` | `LabelPoint` | an interior point |
+| `IGeometryProcessing` | `Union`, `Difference` | set operations |
+| `IGeometryProcessing` | `ConvexHull` | hull of all inputs |
+| `IGeometryProcessing` | `Repair` | topological MakeValid (NTS `GeometryFixer`); **not** Douglas-Peucker |
+| `IGeometryProcessing` | `Densify` | segment length cap |
+| `IGeometryRelations` | `Relate` | DE-9IM intersection pattern |
+
 ## Transformations (`ICrsDirectory`, `ICoordinateTransforms`, ProjNet)
 
 | Method | Input | Output | Behaviour |

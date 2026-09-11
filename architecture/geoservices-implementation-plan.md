@@ -1,12 +1,23 @@
 # GeoServices REST Implementation Plan
 
-> **Status:** proposed. Companion to
+> **Status:** implemented (first release). Companion to
 > `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`.
 > This is a focused plan for two tracks — **serving** the Esri GeoServices
 > REST Specification from the engine and **consuming** ArcGIS REST as a data
 > provider. Where it disagrees with `architecture/implementation-plan.md`,
 > the ADRs and this plan govern the GeoServices work; everything else in the
 > main plan still applies.
+>
+> **Delivered:** `Spatial.Interop.Esri` (geometry/feature codec, WKID ↔
+> EPSG map, error model, shared `where`/filter grammar);
+> `Spatial.Adapter.GeoServices` (catalog, Geometry Service with the S1a/S1b
+> verbs, read-only FeatureServer/layer/query); `Spatial.Provider.ArcGisRest`
+> (catalogue/describe/scan/query with pagination and `where` pushdown);
+> the new verbs of ADR-0036 in `Spatial.Operations.NetTopologySuite`; host
+> mounting and `Spatial:GeoServices` / `Spatial:ArcGisRest` configuration;
+> unit, HTTP and provider tests; architecture guards. **Not delivered:**
+> Feature editing (S3) — gated on a follow-up ADR extending the store
+> contracts — and MapServer/ImageServer/GeocodeServer/GPServer (non-goals).
 >
 > **Specification baseline:** Esri GeoServices REST Specification v1.0
 > (`architecture/references/geoservices-rest-spec.pdf`).

@@ -83,6 +83,7 @@ shape is noted in brackets.
 | 0033 | In-process service interfaces + DI replace worker plugins. |
 | 0034 | Aspire AppHost composes the local development profile. |
 | 0035 | GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider. |
+| 0036 | Geometry measurement, processing and relation verbs are separate SDK interfaces. |
 
 ## How to change the architecture
 

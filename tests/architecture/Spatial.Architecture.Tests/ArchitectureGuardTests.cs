@@ -51,16 +51,37 @@ public sealed class ArchitectureGuardTests
 
     /// <summary>
     /// ADR-0033/ADR-0005: implementations link Core + SDK only; third-party
-    /// spatial packages stay inside the owning implementation.
+    /// spatial packages stay inside the owning implementation. ADR-0035 adds
+    /// the shared Esri codec as a permitted reference for the two boundary
+    /// projects (they share only <c>Spatial.Interop.Esri</c>, never each
+    /// other).
     /// </summary>
     [Fact]
     public void Implementation_projects_reference_only_core_and_sdk()
     {
-        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk" };
+        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk", "Spatial.Interop.Esri" };
         var violations = ImplementationProjects()
             .SelectMany(project => project.ProjectReferences
-                .Where(r => !allowed.Contains(r))
+                .Where(r => !allowed.Contains(r) && !AllowedBoundaryReferences(project.Name).Contains(r))
                 .Select(r => $"{project.RelativePath} must reference only {string.Join(", ", allowed)}, but references {r}."))
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
+    /// ADR-0035: the shared Esri wire codec references Core only — no NTS,
+    /// no ASP.NET, no HttpClient.
+    /// </summary>
+    [Fact]
+    public void Interop_projects_reference_only_core()
+    {
+        var violations = Repository.Value.Projects
+            .Where(project => project.Name.StartsWith("Spatial.Interop.", StringComparison.Ordinal)
+                && project.RelativePath.Replace('\\', '/').StartsWith("src/", StringComparison.Ordinal))
+            .SelectMany(project => project.ProjectReferences
+                .Where(reference => reference != "Spatial.Core")
+                .Select(reference => $"{project.RelativePath} must reference only Spatial.Core, but references {reference}."))
             .ToList();
 
         Assert.Empty(violations);
@@ -81,6 +102,8 @@ public sealed class ArchitectureGuardTests
             "Spatial.Transformations.ProjNet",
             "Spatial.Provider.Demo",
             "Spatial.Provider.PostGIS",
+            "Spatial.Adapter.GeoServices",
+            "Spatial.Provider.ArcGisRest",
         };
         var host = PlatformProject("Spatial.Host");
         var violations = host.ProjectReferences
@@ -200,10 +223,13 @@ public sealed class ArchitectureGuardTests
         "Spatial.AppHost",
         "Spatial.Core",
         "Spatial.PluginSdk",
+        "Spatial.Interop.Esri",
         "Spatial.Operations.NetTopologySuite",
         "Spatial.Transformations.ProjNet",
         "Spatial.Provider.Demo",
         "Spatial.Provider.PostGIS",
+        "Spatial.Adapter.GeoServices",
+        "Spatial.Provider.ArcGisRest",
         "Spatial.Host",
     ];
 
@@ -213,7 +239,16 @@ public sealed class ArchitectureGuardTests
         "Spatial.Transformations.ProjNet",
         "Spatial.Provider.Demo",
         "Spatial.Provider.PostGIS",
+        "Spatial.Adapter.GeoServices",
+        "Spatial.Provider.ArcGisRest",
     ];
+
+    /// <summary>ADR-0035 boundary projects may also reference the shared Esri codec.</summary>
+    private static string[] AllowedBoundaryReferences(string projectName) => projectName switch
+    {
+        "Spatial.Adapter.GeoServices" or "Spatial.Provider.ArcGisRest" => ["Spatial.Interop.Esri"],
+        _ => [],
+    };
 
     /// <summary>Explicit, ADR-backed exceptions to the framework-only rule.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> AllowedPackages =

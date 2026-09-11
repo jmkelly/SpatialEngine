@@ -14,9 +14,12 @@ infrastructure.
 | Interface | Implementations | Behaviour |
 | --- | --- | --- |
 | `IGeometryOperations` | `NtsGeometryOperations` | Buffer, intersection, validate, simplify; pure, planar; invalid geometry = successful `false` |
+| `IGeometryMeasures` | `NtsGeometryMeasures` | Area, length, distance, label point (ADR-0036) |
+| `IGeometryProcessing` | `NtsGeometryProcessing` | Union, difference, convex hull, densify, topological repair (ADR-0036) |
+| `IGeometryRelations` | `NtsGeometryRelations` | DE-9IM relate pattern (ADR-0036) |
 | `ICrsDirectory` + `ICoordinateTransforms` | `ProjNetTransforms` | CRS describe + transform; x-first convention; curated EPSG catalogue |
-| `IDataCatalogue` | `DemoStore`, `PostgisStore` | List (LIKE `pattern`), describe, create-from-batch |
-| `IFeatureStore` | `DemoStore`, `PostgisStore` | Scan, bbox + attribute query, single-transaction write; reads return `FeatureBatch` pages |
+| `IDataCatalogue` | `DemoStore`, `PostgisStore`, `ArcGisRestStore` | List (LIKE `pattern`), describe, create-from-batch |
+| `IFeatureStore` | `DemoStore`, `PostgisStore`, `ArcGisRestStore` | Scan, bbox + attribute query, single-transaction write; reads return `FeatureBatch` pages |
 | `ITransactionStore` | `PostgisStore` | String handles over open connections (`Begin/Commit/Rollback`) |
 | `IDemoJobs` | `DemoStore` | Cancellable `SleepAsync` delay with `IProgress<double>` |
 

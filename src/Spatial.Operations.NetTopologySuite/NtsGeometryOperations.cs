@@ -5,7 +5,6 @@ using NetTopologySuite.Simplify;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite.Adapters;
 using Spatial.PluginSdk;
-using NtsTopologyException = NetTopologySuite.Geometries.TopologyException;
 
 namespace Spatial.Operations.NetTopologySuite;
 
@@ -41,7 +40,7 @@ public sealed class NtsGeometryOperations : IGeometryOperations
         }
         catch (Exception exception)
         {
-            throw Map(exception, "buffer");
+            throw NtsOperationErrors.Map(exception, "buffer");
         }
     }
 
@@ -60,7 +59,7 @@ public sealed class NtsGeometryOperations : IGeometryOperations
         }
         catch (Exception exception)
         {
-            throw Map(exception, "intersection");
+            throw NtsOperationErrors.Map(exception, "intersection");
         }
     }
 
@@ -79,7 +78,7 @@ public sealed class NtsGeometryOperations : IGeometryOperations
         }
         catch (Exception exception)
         {
-            throw Map(exception, "validate");
+            throw NtsOperationErrors.Map(exception, "validate");
         }
     }
 
@@ -104,7 +103,7 @@ public sealed class NtsGeometryOperations : IGeometryOperations
         }
         catch (Exception exception)
         {
-            throw Map(exception, "simplify");
+            throw NtsOperationErrors.Map(exception, "simplify");
         }
     }
 
@@ -154,10 +153,4 @@ public sealed class NtsGeometryOperations : IGeometryOperations
 
         return sequence.GetCoordinate(0) == sequence.GetCoordinate(sequence.Count - 1);
     }
-
-    private static SpatialException Map(Exception exception, string operation) =>
-        exception is SpatialException spatial ? spatial
-        : exception is NtsTopologyException or ArgumentException or FormatException
-            ? SpatialException.BadArguments($"The operation '{operation}' could not process the input geometry: {exception.Message}")
-            : new SpatialException("provider.failure", $"The operation '{operation}' failed: {exception.Message}", exception);
 }

@@ -1185,6 +1185,9 @@ ADR-0030 Host API contract shapes and value codec live in the SDK
 ADR-0031 Browser workbench hosting and plugin control
 ADR-0032 Geometry contract faces and the geometry codec namespace
 ADR-0033 In-process service interfaces and DI replace worker plugins
+ADR-0034 Aspire AppHost composes the local development profile
+ADR-0035 GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider
+ADR-0036 Geometry measurement, processing and relation verbs are separate SDK interfaces
 ```
 
 ## 25. Recommended Starting Sequence

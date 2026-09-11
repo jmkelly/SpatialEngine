@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -17,11 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Spatial.Host\Spatial.Host.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Provider.ArcGisRest\Spatial.Provider.ArcGisRest.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
-    <ProjectReference Include="..\..\..\clients\dotnet\Spatial.Client\Spatial.Client.csproj" />
   </ItemGroup>
 
 </Project>

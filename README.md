@@ -63,8 +63,22 @@ stamped with the target CRS.
 The geometry service (`Spatial.Operations.NetTopologySuite`) implements
 buffer, intersection, OGC validity (an invalid geometry is a successful
 `false`) and Douglas-Peucker simplification, with the input CRS identity
-carried onto results. Adapters never expose NetTopologySuite types
-(ADR-0005).
+carried onto results. It also implements the measurement, set/construction
+and DE-9IM relation verbs (ADR-0036). Adapters never expose
+NetTopologySuite types (ADR-0005).
+
+The Esri GeoServices REST boundary (ADR-0035) is served by
+`Spatial.Adapter.GeoServices` at `Spatial:GeoServices:Root`
+(`/arcgis/rest/services` by default): a catalog, a Geometry Service
+(`project`, `generalize`, `buffer`, `intersect`, `simplify`-as-repair,
+`union`, `difference`, `convexHull`, `densify`, `relation`, measures) and a
+read-only FeatureServer over the keyed stores, all `f=json`. The shared
+`Spatial.Interop.Esri` project owns the Esri wire codec, the curated
+WKID ↔ EPSG map, the Esri error model and the closed `where` filter
+grammar. `Spatial.Provider.ArcGisRest` consumes a configured remote ArcGIS
+REST service through `IDataCatalogue`/`IFeatureStore` with pagination and
+`where` pushdown. Editing is deliberately out of scope until a follow-up
+ADR extends the store contracts.
 
 ## Repository layout
 
@@ -72,8 +86,11 @@ carried onto results. Adapters never expose NetTopologySuite types
 | --- | --- |
 | `src/Spatial.Core` | Spatial value model (no dependencies, no algorithms) |
 | `src/Spatial.PluginSdk` | Service interfaces, DTOs, error codes, HTTP shapes |
-| `src/Spatial.Operations.NetTopologySuite` | Geometry operations (buffer, intersection, validate, simplify) |
+| `src/Spatial.Operations.NetTopologySuite` | Geometry operations (buffer, intersection, validate, simplify) plus measures/processing/relations (ADR-0036) |
 | `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
+| `src/Spatial.Interop.Esri` | Shared Esri JSON codec, WKID map, error model and filter grammar (ADR-0035) |
+| `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade (catalog, Geometry Service, read-only FeatureServer) |
+| `src/Spatial.Provider.ArcGisRest` | ArcGIS REST consuming provider (ADR-0035) |
 | `src/Spatial.Provider.PostGIS` | Data store: catalogue, dataset, feature scan/query/write and transactions |
 | `src/Spatial.Provider.Demo` | Docker-free demo store + cancellable sleep |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host (typed routes, DI composition) |
