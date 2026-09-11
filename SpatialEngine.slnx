@@ -14,6 +14,7 @@
   </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/unit/">
+    <Project Path="tests/unit/Spatial.Adapter.GeoServices.Tests/Spatial.Adapter.GeoServices.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Esri.Tests/Spatial.Interop.Esri.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Client.Tests/Spatial.Client.Tests.csproj" />
