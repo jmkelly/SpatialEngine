@@ -1,29 +1,30 @@
 using System.Net;
 using System.Net.Http.Json;
 using Spatial.Core.Features;
-using Spatial.PluginSdk.Codec;
+using Spatial.Core.Features.Codec;
+using Spatial.Core.Geometry;
+using Spatial.Core.Geometry.Codec;
 using Spatial.PluginSdk.Http;
+using Spatial.PluginSdk.Providers;
+using Spatial.PluginSdk.Transformations;
 
 namespace Spatial.Client;
 
 /// <summary>
-/// The .NET client SDK for the public spatial host API (plan §12): every
-/// endpoint of the versioned HTTP contract, the shared value codec for
-/// inline arguments and results, and typed helpers for the streaming
-/// surfaces (canonical feature batches, text metadata items). One
-/// <see cref="System.Net.Http.HttpClient"/> per client, configured with the
+/// The .NET client SDK for the typed spatial host API (ADR-0033): one
+/// method per route, core geometry values in and out (canonical SGEOM/SFBAT
+/// Base64 on the wire), structured <see cref="SpatialClientException"/>
+/// failures. One <see cref="HttpClient"/> per client, configured with the
 /// host's base address.
 /// </summary>
 public sealed class SpatialClient
 {
     private readonly HttpClient _http;
-    private readonly SpatialStreamReader _streams;
 
     /// <summary>Creates a client over an existing <see cref="HttpClient"/> whose base address is the host.</summary>
     public SpatialClient(HttpClient http)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
-        _streams = new SpatialStreamReader(_http);
     }
 
     /// <summary>Creates a client talking to the host at <paramref name="baseAddress"/>.</summary>
@@ -32,137 +33,201 @@ public sealed class SpatialClient
     {
     }
 
-    // ---- Capabilities ----
+    // ---- geometry ----
 
-    /// <summary>Every registered capability with its serving providers (ordered by id).</summary>
-    public Task<IReadOnlyList<CapabilitySummaryDto>> GetCapabilitiesAsync(CancellationToken cancellationToken = default) =>
-        GetAsync<IReadOnlyList<CapabilitySummaryDto>>("/api/capabilities", cancellationToken);
-
-    /// <summary>The full declaration of one capability; not found when no provider serves it.</summary>
-    public Task<CapabilityDetailDto> GetCapabilityAsync(string capabilityId, CancellationToken cancellationToken = default) =>
-        GetAsync<CapabilityDetailDto>($"/api/capabilities/{Uri.EscapeDataString(capabilityId)}", cancellationToken);
-
-    // ---- Invocations ----
-
-    /// <summary>
-    /// Invokes a capability exactly as the request describes: inline
-    /// capabilities complete in the response; long-running (or
-    /// <c>wait: false</c>) invocations come back as a started job to poll via
-    /// <see cref="GetJobAsync"/>.
-    /// </summary>
-    public Task<InvocationResponse> InvokeAsync(InvocationRequest request, CancellationToken cancellationToken = default) =>
-        PostAsync<InvocationResponse>("/api/invocations", request, cancellationToken);
-
-    // ---- Jobs ----
-
-    /// <summary>One job's public snapshot (state, serving provider, terminal error).</summary>
-    public Task<JobResponse> GetJobAsync(string jobId, CancellationToken cancellationToken = default) =>
-        GetAsync<JobResponse>($"/api/jobs/{Uri.EscapeDataString(jobId)}", cancellationToken);
-
-    /// <summary>Requests cancellation of a running job and returns its updated snapshot.</summary>
-    public Task<JobResponse> CancelJobAsync(string jobId, CancellationToken cancellationToken = default) =>
-        PostAsync<JobResponse>($"/api/jobs/{Uri.EscapeDataString(jobId)}/cancel", content: null, cancellationToken);
-
-    /// <summary>The append-only event log of one job (progress, published resources, diagnostics).</summary>
-    public Task<JobEventsResponse> GetJobEventsAsync(string jobId, CancellationToken cancellationToken = default) =>
-        GetAsync<JobEventsResponse>($"/api/jobs/{Uri.EscapeDataString(jobId)}/events", cancellationToken);
-
-    // ---- Resources ----
-
-    /// <summary>One resource's metadata (token, kind, owner, state).</summary>
-    public Task<ResourceDto> GetResourceAsync(string resourceToken, CancellationToken cancellationToken = default) =>
-        GetAsync<ResourceDto>($"/api/resources/{Uri.EscapeDataString(resourceToken)}/metadata", cancellationToken);
-
-    /// <summary>Disposes a resource (closes a stream, releases its leases).</summary>
-    public Task DeleteResourceAsync(string resourceToken, CancellationToken cancellationToken = default) =>
-        DeleteAsync($"/api/resources/{Uri.EscapeDataString(resourceToken)}", cancellationToken);
-
-    /// <summary>Reads a bounded stream resource as decoded items (see <see cref="SpatialStreamReader"/>).</summary>
-    public IAsyncEnumerable<object?> ReadStreamAsync(
-        string resourceToken, CancellationToken cancellationToken = default) =>
-        _streams.ReadStreamAsync(resourceToken, cancellationToken);
-
-    /// <summary>Reads a feature stream (scan/query) as typed canonical feature batches.</summary>
-    public IAsyncEnumerable<FeatureBatch> ReadFeatureBatchesAsync(
-        string resourceToken, CancellationToken cancellationToken = default) =>
-        _streams.ReadFeatureBatchesAsync(resourceToken, cancellationToken);
-
-    // ---- Plugins ----
-
-    /// <summary>The activated plugin worker packages (empty when none are configured).</summary>
-    public Task<IReadOnlyList<PluginDto>> GetPluginsAsync(CancellationToken cancellationToken = default) =>
-        GetAsync<IReadOnlyList<PluginDto>>("/api/plugins", cancellationToken);
-
-    /// <summary>One plugin worker package by provider id (for example <c>nts@1</c>).</summary>
-    public Task<PluginDto> GetPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
-        GetAsync<PluginDto>($"/api/plugins/{Uri.EscapeDataString(providerId)}", cancellationToken);
-
-    /// <summary>The host health: process up (<c>{ "status": "live" }</c>).</summary>
-    public Task<System.Text.Json.Nodes.JsonObject?> GetHealthLiveAsync(CancellationToken cancellationToken = default) =>
-        GetAsync<System.Text.Json.Nodes.JsonObject?>("/health/live", cancellationToken);
-
-    /// <summary>The host readiness: status plus the supervised plugin count.</summary>
-    public Task<System.Text.Json.Nodes.JsonObject?> GetHealthReadyAsync(CancellationToken cancellationToken = default) =>
-        GetAsync<System.Text.Json.Nodes.JsonObject?>("/health/ready", cancellationToken);
-
-    /// <summary>
-    /// Routes new work to the provider for every capability it serves
-    /// (active-preference routing, ADR-0031 — the browser replacement
-    /// demonstration) and returns its updated state.
-    /// </summary>
-    public Task<PluginDto> RouteNewWorkAsync(string providerId, CancellationToken cancellationToken = default) =>
-        PostAsync<PluginDto>(
-            $"/api/plugins/{Uri.EscapeDataString(providerId)}/route-new-work",
-            content: null,
-            cancellationToken);
-
-    /// <summary>
-    /// Drains the plugin worker: stops routing new work, waits for in-flight
-    /// invocations, reclaims its resources and stops the process. The host
-    /// keeps running (ADR-0031). Returns the worker's terminal state.
-    /// </summary>
-    public Task<PluginDto> DrainPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
-        PostAsync<PluginDto>(
-            $"/api/plugins/{Uri.EscapeDataString(providerId)}/drain",
-            content: null,
-            cancellationToken);
-
-    /// <summary>
-    /// Rolls new work back to the provider: reactivates its package when it
-    /// was drained or failed, then routes new work to it again (ADR-0031).
-    /// </summary>
-    public Task<PluginDto> RollbackPluginAsync(string providerId, CancellationToken cancellationToken = default) =>
-        PostAsync<PluginDto>(
-            $"/api/plugins/{Uri.EscapeDataString(providerId)}/rollback",
-            content: null,
-            cancellationToken);
-
-    private async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
+    public async Task<IGeometry> BufferAsync(IGeometry geometry, double distance, int quadrantSegments = 8, CancellationToken cancellationToken = default)
     {
-        using var response = await _http.GetAsync(path, cancellationToken);
+        ArgumentNullException.ThrowIfNull(geometry);
+        var response = await PostAsync<GeometryResponse>(
+            "/api/geometry/buffer",
+            new BufferRequest(Encode(geometry), distance, quadrantSegments),
+            cancellationToken);
+        return Decode(response.Geometry);
+    }
+
+    public async Task<IGeometry> IntersectionAsync(IGeometry left, IGeometry right, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+        var response = await PostAsync<GeometryResponse>(
+            "/api/geometry/intersection",
+            new IntersectionRequest(Encode(left), Encode(right)),
+            cancellationToken);
+        return Decode(response.Geometry);
+    }
+
+    public async Task<bool> ValidateAsync(IGeometry geometry, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        var response = await PostAsync<ValidateResponse>(
+            "/api/geometry/validate", new ValidateRequest(Encode(geometry)), cancellationToken);
+        return response.Valid;
+    }
+
+    public async Task<IGeometry> SimplifyAsync(IGeometry geometry, double tolerance, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        var response = await PostAsync<GeometryResponse>(
+            "/api/geometry/simplify", new SimplifyRequest(Encode(geometry), tolerance), cancellationToken);
+        return Decode(response.Geometry);
+    }
+
+    // ---- transforms ----
+
+    public Task<CrsDescription> DescribeAsync(string crs, CancellationToken cancellationToken = default) =>
+        PostAsync<CrsDescription>("/api/crs/describe", new DescribeRequest(crs), cancellationToken);
+
+    public async Task<IGeometry> TransformAsync(IGeometry geometry, string? source, string target, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        var response = await PostAsync<GeometryResponse>(
+            "/api/coordinates/transform", new TransformRequest(Encode(geometry), source, target), cancellationToken);
+        return Decode(response.Geometry);
+    }
+
+    // ---- catalogue / datasets ----
+
+    public async Task<IReadOnlyList<DatasetSummary>> ListCatalogueAsync(
+        string store = "demo", string? pattern = null, CancellationToken cancellationToken = default)
+    {
+        var url = $"/api/catalogue?store={Uri.EscapeDataString(store)}"
+            + (pattern is null ? string.Empty : $"&pattern={Uri.EscapeDataString(pattern)}");
+        var response = await GetAsync<CatalogueResponse>(url, cancellationToken);
+        return response.Datasets;
+    }
+
+    public Task<DatasetDescription> DescribeDatasetAsync(
+        string dataset, string store = "demo", CancellationToken cancellationToken = default) =>
+        GetAsync<DatasetDescription>(
+            $"/api/datasets/{Uri.EscapeDataString(dataset)}?store={Uri.EscapeDataString(store)}", cancellationToken);
+
+    public async Task<string> CreateDatasetAsync(
+        string dataset, FeatureBatch sample, int srid, string store = "postgis", CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sample);
+        var response = await PostAsync<CreateDatasetResponse>(
+            $"/api/datasets?store={Uri.EscapeDataString(store)}",
+            new CreateDatasetRequest(dataset, Convert.ToBase64String(FeatureBatchCodec.Encode(sample)), srid),
+            cancellationToken);
+        return response.Dataset;
+    }
+
+    // ---- features ----
+
+    public async Task<IReadOnlyList<FeatureBatch>> ScanAsync(
+        string dataset, string store = "demo", CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsync<FeatureBatchesResponse>(
+            $"/api/features/scan?store={Uri.EscapeDataString(store)}",
+            new ScanRequest(dataset), cancellationToken);
+        return response.Batches.Select(DecodeBatch).ToArray();
+    }
+
+    public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+        string dataset, PluginSdk.BoundingBox? bbox = null, string? filter = null,
+        string store = "demo", CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsync<FeatureBatchesResponse>(
+            $"/api/features/query?store={Uri.EscapeDataString(store)}",
+            new FeatureQueryRequest(dataset, bbox is null ? null : new BboxDto(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY), filter),
+            cancellationToken);
+        return response.Batches.Select(DecodeBatch).ToArray();
+    }
+
+    public async Task<int> WriteAsync(
+        string dataset, FeatureBatch batch, string? transaction = null,
+        string store = "postgis", CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+        var response = await PostAsync<FeatureWriteResponse>(
+            $"/api/features/write?store={Uri.EscapeDataString(store)}",
+            new FeatureWriteRequest(dataset, Convert.ToBase64String(FeatureBatchCodec.Encode(batch)), transaction),
+            cancellationToken);
+        return response.Appended;
+    }
+
+    // ---- transactions ----
+
+    public async Task<string> BeginTransactionAsync(string store = "postgis", CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsync<BeginTransactionResponse>(
+            $"/api/transactions/begin?store={Uri.EscapeDataString(store)}", new object(), cancellationToken);
+        return response.Transaction;
+    }
+
+    public async Task<bool> CommitTransactionAsync(string transaction, string store = "postgis", CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsync<TransactionResponse>(
+            $"/api/transactions/commit?store={Uri.EscapeDataString(store)}",
+            new TransactionRequest(transaction), cancellationToken);
+        return response.Ok;
+    }
+
+    public async Task<bool> RollbackTransactionAsync(string transaction, string store = "postgis", CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsync<TransactionResponse>(
+            $"/api/transactions/rollback?store={Uri.EscapeDataString(store)}",
+            new TransactionRequest(transaction), cancellationToken);
+        return response.Ok;
+    }
+
+    // ---- demo ----
+
+    public async Task<long> SleepAsync(long milliseconds, CancellationToken cancellationToken = default)
+    {
+        var response = await PostAsync<SleepResponse>("/api/demo/sleep", new SleepRequest(milliseconds), cancellationToken);
+        return response.Slept;
+    }
+
+    // ---- transport ----
+
+    private async Task<T> GetAsync<T>(string url, CancellationToken cancellationToken)
+    {
+        using var response = await _http.GetAsync(url, cancellationToken);
         return await ReadAsync<T>(response, cancellationToken);
     }
 
-    private async Task<T> PostAsync<T>(string path, object? content, CancellationToken cancellationToken)
+    private async Task<T> PostAsync<T>(string url, object body, CancellationToken cancellationToken)
     {
-        using var response = await _http.PostAsJsonAsync(path, content, HostApiJson.Options, cancellationToken);
+        using var response = await _http.PostAsJsonAsync(url, body, HostApiJson.Options, cancellationToken);
         return await ReadAsync<T>(response, cancellationToken);
-    }
-
-    private async Task DeleteAsync(string path, CancellationToken cancellationToken)
-    {
-        using var response = await _http.DeleteAsync(path, cancellationToken);
-        SpatialClientHelpers.EnsureSuccess(response);
     }
 
     private static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        if (!response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)
         {
-            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new SpatialApiException((int)response.StatusCode, detail);
+            var value = await response.Content.ReadFromJsonAsync<T>(HostApiJson.Options, cancellationToken);
+            return value ?? throw new SpatialClientException(500, "empty", "The host returned an empty body.");
         }
 
-        return (await response.Content.ReadFromJsonAsync<T>(HostApiJson.Options, cancellationToken))!;
+        throw await FailAsync(response, cancellationToken);
     }
+
+    private static async Task<SpatialClientException> FailAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(HostApiJson.Options, cancellationToken);
+            if (error is not null)
+            {
+                return new SpatialClientException((int)response.StatusCode, error.Code, error.Message);
+            }
+        }
+        catch (Exception)
+        {
+            // Fall through to the status-only failure below.
+        }
+
+        return new SpatialClientException((int)response.StatusCode, "http.error", $"The host failed with {(HttpStatusCode)response.StatusCode}.");
+    }
+
+    private static string Encode(IGeometry geometry) =>
+        Convert.ToBase64String(GeometryCodec.Encode(geometry));
+
+    private static IGeometry Decode(string base64) =>
+        GeometryCodec.Decode(Convert.FromBase64String(base64));
+
+    private static FeatureBatch DecodeBatch(string base64) =>
+        FeatureBatchCodec.Decode(Convert.FromBase64String(base64));
 }

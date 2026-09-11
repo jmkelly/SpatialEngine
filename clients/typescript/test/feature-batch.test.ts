@@ -1,7 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decodeFeatureBatch, FeatureBatchFormatError } from "../src/feature-batch.ts";
-import { fromBase64 } from "../src/wire.ts";
+function fromBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 // A real SFBAT v1 vector produced by the .NET FeatureBatchCodec (ADR-0020) —
 // the cross-language pin: if the TS decoder and the .NET codec disagree, this

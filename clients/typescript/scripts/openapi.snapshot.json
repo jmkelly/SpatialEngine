@@ -46,77 +46,16 @@
         }
       }
     },
-    "/api/capabilities": {
-      "get": {
-        "tags": [
-          "CapabilityEndpoints"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CapabilitySummaryDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/capabilities/{id}": {
-      "get": {
-        "tags": [
-          "CapabilityEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CapabilityDetailDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/invocations": {
+    "/api/geometry/buffer": {
       "post": {
         "tags": [
-          "InvocationEndpoints"
+          "GeometryEndpoints"
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InvocationRequest"
+                "$ref": "#/components/schemas/BufferRequest"
               }
             }
           },
@@ -128,17 +67,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InvocationResponse"
-                }
-              }
-            }
-          },
-          "202": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InvocationResponse"
+                  "$ref": "#/components/schemas/GeometryResponse"
                 }
               }
             }
@@ -148,7 +77,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -156,106 +85,38 @@
         }
       }
     },
-    "/api/jobs/{id}": {
-      "get": {
-        "tags": [
-          "JobEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/jobs/{id}/cancel": {
+    "/api/geometry/intersection": {
       "post": {
         "tags": [
-          "JobEndpoints"
+          "GeometryEndpoints"
         ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntersectionRequest"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobResponse"
+                  "$ref": "#/components/schemas/GeometryResponse"
                 }
               }
             }
           },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/jobs/{id}/events": {
-      "get": {
-        "tags": [
-          "JobEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobEventsResponse"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -263,212 +124,28 @@
         }
       }
     },
-    "/api/resources/{id}/metadata": {
-      "get": {
-        "tags": [
-          "ResourceEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResourceDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/resources/{id}": {
-      "delete": {
-        "tags": [
-          "ResourceEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/resources/{id}/stream": {
-      "get": {
-        "tags": [
-          "ResourceEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plugins": {
-      "get": {
-        "tags": [
-          "PluginEndpoints"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PluginDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plugins/{id}": {
-      "get": {
-        "tags": [
-          "PluginEndpoints"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PluginDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/plugins/{id}/route-new-work": {
+    "/api/geometry/validate": {
       "post": {
         "tags": [
-          "PluginEndpoints"
+          "GeometryEndpoints"
         ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateRequest"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PluginDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidateResponse"
                 }
               }
             }
@@ -476,38 +153,38 @@
         }
       }
     },
-    "/api/plugins/{id}/drain": {
+    "/api/geometry/simplify": {
       "post": {
         "tags": [
-          "PluginEndpoints"
+          "GeometryEndpoints"
         ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimplifyRequest"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PluginDto"
+                  "$ref": "#/components/schemas/GeometryResponse"
                 }
               }
             }
           },
-          "404": {
-            "description": "Not Found",
+          "400": {
+            "description": "Bad Request",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -515,16 +192,100 @@
         }
       }
     },
-    "/api/plugins/{id}/rollback": {
+    "/api/crs/describe": {
       "post": {
         "tags": [
-          "PluginEndpoints"
+          "TransformEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DescribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrsDescription"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/coordinates/transform": {
+      "post": {
+        "tags": [
+          "TransformEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeometryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalogue": {
+      "get": {
+        "tags": [
+          "StoreEndpoints"
         ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pattern",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -536,7 +297,43 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PluginDto"
+                  "$ref": "#/components/schemas/CatalogueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/datasets/{id}": {
+      "get": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetDescription"
                 }
               }
             }
@@ -544,19 +341,314 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/datasets": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDatasetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDatasetResponse"
                 }
               }
             }
           },
-          "409": {
-            "description": "Conflict",
+          "400": {
+            "description": "Bad Request",
             "content": {
-              "application/problem+json": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/features/scan": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureBatchesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/features/query": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureBatchesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/features/write": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeatureWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureWriteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/begin": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeginTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/commit": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/rollback": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "store",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/sleep": {
+      "post": {
+        "tags": [
+          "StoreEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SleepRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SleepResponse"
                 }
               }
             }
@@ -567,68 +659,384 @@
   },
   "components": {
     "schemas": {
-      "CapabilityDetailDto": {
+      "AxisOrientation": {
+        "enum": [
+          "east",
+          "north",
+          "west",
+          "south",
+          "up",
+          "down",
+          "other"
+        ]
+      },
+      "BboxDto": {
+        "required": [
+          "minX",
+          "minY",
+          "maxX",
+          "maxY"
+        ],
+        "type": "object",
+        "properties": {
+          "minX": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minY": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxX": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxY": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "BeginTransactionResponse": {
+        "required": [
+          "transaction"
+        ],
+        "type": "object",
+        "properties": {
+          "transaction": {
+            "type": "string"
+          }
+        }
+      },
+      "BufferRequest": {
+        "required": [
+          "geometry",
+          "distance"
+        ],
+        "type": "object",
+        "properties": {
+          "geometry": {
+            "type": "string"
+          },
+          "distance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "quadrantSegments": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32",
+            "default": 8
+          }
+        }
+      },
+      "CatalogueResponse": {
+        "required": [
+          "datasets"
+        ],
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DatasetSummary"
+            }
+          }
+        }
+      },
+      "CreateDatasetRequest": {
+        "required": [
+          "dataset",
+          "batch",
+          "srid"
+        ],
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string"
+          },
+          "batch": {
+            "type": "string"
+          },
+          "srid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CreateDatasetResponse": {
+        "required": [
+          "dataset"
+        ],
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string"
+          }
+        }
+      },
+      "CrsAxis": {
+        "required": [
+          "name",
+          "orientation",
+          "unitName"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "orientation": {
+            "$ref": "#/components/schemas/AxisOrientation"
+          },
+          "unitName": {
+            "type": "string"
+          }
+        }
+      },
+      "CrsDescription": {
+        "required": [
+          "authority",
+          "code",
+          "name",
+          "kind",
+          "dimension",
+          "axes",
+          "datum",
+          "ellipsoid"
+        ],
+        "type": "object",
+        "properties": {
+          "authority": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CrsKind"
+          },
+          "dimension": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "axes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CrsAxis"
+            }
+          },
+          "datum": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ellipsoid": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CrsEllipsoid"
+              }
+            ]
+          }
+        }
+      },
+      "CrsEllipsoid": {
+        "required": [
+          "name",
+          "semiMajorAxis",
+          "semiMinorAxis",
+          "unitName"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "semiMajorAxis": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "semiMinorAxis": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unitName": {
+            "type": "string"
+          }
+        }
+      },
+      "CrsKind": {
+        "enum": [
+          "geographic",
+          "projected",
+          "geocentric",
+          "vertical",
+          "compound",
+          "other"
+        ]
+      },
+      "DatasetDescription": {
         "required": [
           "id",
-          "purpose",
-          "inputSchema",
-          "outputSchema",
-          "errors",
-          "requiredPermissions",
-          "traits",
-          "providers"
+          "schemaName",
+          "table",
+          "geometryColumn",
+          "srid",
+          "geometryType",
+          "estimatedRowCount",
+          "idColumns",
+          "schema"
         ],
         "type": "object",
         "properties": {
           "id": {
             "type": "string"
           },
-          "purpose": {
+          "schemaName": {
             "type": "string"
           },
-          "inputSchema": {
+          "table": {
             "type": "string"
           },
-          "outputSchema": {
+          "geometryColumn": {
             "type": "string"
           },
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ErrorVariantDto"
-            }
+          "srid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
-          "requiredPermissions": {
+          "geometryType": {
+            "type": "string"
+          },
+          "estimatedRowCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "idColumns": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "traits": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "providers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProviderOverviewDto"
-            }
+          "schema": {
+            "$ref": "#/components/schemas/FeatureSchema"
           }
         }
       },
-      "CapabilityErrorDto": {
+      "DatasetSummary": {
         "required": [
-          "kind",
+          "id",
+          "schema",
+          "table",
+          "geometryColumn",
+          "srid",
+          "estimatedRowCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "table": {
+            "type": "string"
+          },
+          "geometryColumn": {
+            "type": "string"
+          },
+          "srid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "estimatedRowCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "DescribeRequest": {
+        "required": [
+          "crs"
+        ],
+        "type": "object",
+        "properties": {
+          "crs": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "required": [
           "code",
           "message"
         ],
         "type": "object",
         "properties": {
-          "kind": {
-            "type": "string"
-          },
           "code": {
             "type": "string"
           },
@@ -637,43 +1045,13 @@
           }
         }
       },
-      "CapabilitySummaryDto": {
+      "FeatureBatchesResponse": {
         "required": [
-          "id",
-          "purpose",
-          "inputSchema",
-          "outputSchema",
-          "traits",
-          "requiredPermissions",
-          "providers"
+          "batches"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "purpose": {
-            "type": "string"
-          },
-          "inputSchema": {
-            "type": "string"
-          },
-          "outputSchema": {
-            "type": "string"
-          },
-          "traits": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "requiredPermissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "providers": {
+          "batches": {
             "type": "array",
             "items": {
               "type": "string"
@@ -681,588 +1059,225 @@
           }
         }
       },
-      "ErrorVariantDto": {
+      "FeatureQueryRequest": {
         "required": [
-          "code",
-          "description"
+          "dataset"
         ],
         "type": "object",
         "properties": {
-          "code": {
+          "dataset": {
             "type": "string"
           },
-          "description": {
-            "type": "string"
+          "bbox": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BboxDto"
+              }
+            ]
+          },
+          "filter": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
-      "InvocationRequest": {
+      "FeatureSchema": { },
+      "FeatureWriteRequest": {
         "required": [
-          "capability"
+          "dataset",
+          "batch"
         ],
         "type": "object",
         "properties": {
-          "capability": {
+          "dataset": {
             "type": "string"
           },
-          "permissions": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
+          "batch": {
+            "type": "string"
           },
-          "deadline": {
+          "transaction": {
             "type": [
               "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "FeatureWriteResponse": {
+        "required": [
+          "appended"
+        ],
+        "type": "object",
+        "properties": {
+          "appended": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
               "string"
             ],
-            "format": "date-time"
-          },
-          "provider": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "resource": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "wait": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "arguments": {
-            "type": [
-              "null",
-              "object"
-            ]
+            "format": "int32"
           }
         }
       },
-      "InvocationResponse": {
+      "GeometryResponse": {
         "required": [
-          "kind",
-          "capability",
-          "ok",
-          "result",
-          "error",
-          "provenance",
-          "job"
+          "geometry"
         ],
         "type": "object",
         "properties": {
-          "kind": {
+          "geometry": {
+            "type": "string"
+          }
+        }
+      },
+      "IntersectionRequest": {
+        "required": [
+          "left",
+          "right"
+        ],
+        "type": "object",
+        "properties": {
+          "left": {
             "type": "string"
           },
-          "capability": {
+          "right": {
+            "type": "string"
+          }
+        }
+      },
+      "ScanRequest": {
+        "required": [
+          "dataset"
+        ],
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string"
+          }
+        }
+      },
+      "SimplifyRequest": {
+        "required": [
+          "geometry",
+          "tolerance"
+        ],
+        "type": "object",
+        "properties": {
+          "geometry": {
             "type": "string"
           },
+          "tolerance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "SleepRequest": {
+        "required": [
+          "milliseconds"
+        ],
+        "type": "object",
+        "properties": {
+          "milliseconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "SleepResponse": {
+        "required": [
+          "slept"
+        ],
+        "type": "object",
+        "properties": {
+          "slept": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "TransactionRequest": {
+        "required": [
+          "transaction"
+        ],
+        "type": "object",
+        "properties": {
+          "transaction": {
+            "type": "string"
+          }
+        }
+      },
+      "TransactionResponse": {
+        "required": [
+          "ok"
+        ],
+        "type": "object",
+        "properties": {
           "ok": {
             "type": "boolean"
-          },
-          "result": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/JsonNode"
-              }
-            ]
-          },
-          "error": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/CapabilityErrorDto"
-              }
-            ]
-          },
-          "provenance": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ProvenanceDto"
-              }
-            ]
-          },
-          "job": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/JobStartedDto"
-              }
-            ]
           }
         }
       },
-      "JobEventDto": {
+      "TransformRequest": {
         "required": [
-          "kind",
-          "timestamp",
-          "progress",
-          "message",
-          "resource",
-          "note",
-          "error"
+          "geometry",
+          "source",
+          "target"
         ],
         "type": "object",
         "properties": {
-          "kind": {
-            "$ref": "#/components/schemas/JobEventKind"
+          "geometry": {
+            "type": "string"
           },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "progress": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "message": {
+          "source": {
             "type": [
               "null",
               "string"
             ]
           },
-          "resource": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ResourceDto"
-              }
-            ]
-          },
-          "note": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "error": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/CapabilityErrorDto"
-              }
-            ]
+          "target": {
+            "type": "string"
           }
         }
       },
-      "JobEventKind": {
-        "enum": [
-          "created",
-          "started",
-          "progress",
-          "note",
-          "resource",
-          "completed",
-          "failed",
-          "cancelled",
-          "timedOut"
-        ]
-      },
-      "JobEventsResponse": {
+      "ValidateRequest": {
         "required": [
-          "id",
-          "state",
-          "events"
+          "geometry"
         ],
         "type": "object",
         "properties": {
-          "id": {
+          "geometry": {
             "type": "string"
-          },
-          "state": {
-            "$ref": "#/components/schemas/JobState"
-          },
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/JobEventDto"
-            }
           }
         }
       },
-      "JobResponse": {
+      "ValidateResponse": {
         "required": [
-          "id",
-          "capability",
-          "state",
-          "createdAt",
-          "startedAt",
-          "completedAt",
-          "deadline",
-          "provider",
-          "step",
-          "errorCode"
+          "valid"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string"
-          },
-          "capability": {
-            "type": "string"
-          },
-          "state": {
-            "$ref": "#/components/schemas/JobState"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "deadline": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "provider": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "step": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "errorCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+          "valid": {
+            "type": "boolean"
           }
         }
-      },
-      "JobStartedDto": {
-        "required": [
-          "jobId",
-          "state",
-          "location"
-        ],
-        "type": "object",
-        "properties": {
-          "jobId": {
-            "type": "string"
-          },
-          "state": {
-            "$ref": "#/components/schemas/JobState"
-          },
-          "location": {
-            "type": "string"
-          }
-        }
-      },
-      "JobState": {
-        "enum": [
-          "pending",
-          "running",
-          "completed",
-          "failed",
-          "cancelled",
-          "timedOut"
-        ]
-      },
-      "JsonNode": { },
-      "PluginCapabilityDto": {
-        "required": [
-          "id",
-          "purpose",
-          "inputSchema",
-          "outputSchema",
-          "traits",
-          "permissions",
-          "errors"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "purpose": {
-            "type": "string"
-          },
-          "inputSchema": {
-            "type": "string"
-          },
-          "outputSchema": {
-            "type": "string"
-          },
-          "traits": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ErrorVariantDto"
-            }
-          }
-        }
-      },
-      "PluginDto": {
-        "required": [
-          "id",
-          "displayName",
-          "runtime",
-          "state",
-          "restartCount",
-          "processId",
-          "startedAt",
-          "lastHealthyAt",
-          "lastError",
-          "capabilities"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "runtime": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string"
-          },
-          "restartCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "processId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastHealthyAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastError": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PluginCapabilityDto"
-            }
-          }
-        }
-      },
-      "ProblemDetails": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "title": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "ProvenanceDto": {
-        "required": [
-          "capability",
-          "provider",
-          "step",
-          "startedAt",
-          "durationMs",
-          "deadline",
-          "jobId"
-        ],
-        "type": "object",
-        "properties": {
-          "capability": {
-            "type": "string"
-          },
-          "provider": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "step": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "startedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "durationMs": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "deadline": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "jobId": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "ProviderOverviewDto": {
-        "required": [
-          "id",
-          "health"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "health": {
-            "type": "string"
-          }
-        }
-      },
-      "ResourceDto": {
-        "required": [
-          "id",
-          "kind",
-          "owner",
-          "createdAt",
-          "state"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "owner": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "state": {
-            "$ref": "#/components/schemas/ResourceState"
-          }
-        }
-      },
-      "ResourceState": {
-        "enum": [
-          "open",
-          "leased",
-          "closed"
-        ]
       }
     }
   },
@@ -1271,19 +1286,13 @@
       "name": "Spatial.Host"
     },
     {
-      "name": "CapabilityEndpoints"
+      "name": "GeometryEndpoints"
     },
     {
-      "name": "InvocationEndpoints"
+      "name": "TransformEndpoints"
     },
     {
-      "name": "JobEndpoints"
-    },
-    {
-      "name": "ResourceEndpoints"
-    },
-    {
-      "name": "PluginEndpoints"
+      "name": "StoreEndpoints"
     }
   ]
 }
