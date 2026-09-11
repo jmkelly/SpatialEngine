@@ -19,10 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Host\Spatial.Host.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Provider.Demo\Spatial.Provider.Demo.csproj" />
     <ProjectReference Include="..\..\..\clients\dotnet\Spatial.Client\Spatial.Client.csproj" />
   </ItemGroup>
 
