@@ -83,6 +83,18 @@ future-proof:
 | Geometry | point/polyline/polygon/multipoint/envelope | `hasZ`/`hasM` flags on geometry objects |
 | Edits | `addFeatures`/`updateFeatures`/`deleteFeatures`/`applyEdits` | `rollbackOnFailure`, `useGlobalIds`, `returnEditResults` variants |
 
+**Implemented 10.x additions** (beyond the v1.0 baseline): `resultOffset`/
+`resultRecordCount` (stable paging), `returnCountOnly` (matched count),
+`returnExtentOnly` (the envelope of the full matched set, computed before
+paging, expressed in `outSR` when supplied else the layer SR, and `null`
+when nothing matches) and `returnDistinctValues` (the deduplicated
+projection of `outFields`, or all non-geometry fields when absent, with no
+geometry, paged after dedupe). The four result-shape parameters
+(`returnIdsOnly`, `returnCountOnly`, `returnExtentOnly`,
+`returnDistinctValues`) are mutually exclusive; any combination is a typed
+`invalid.arguments` failure. `orderByFields`, the statistics parameters and
+`returnZ`/`returnM` remain rejected.
+
 The facade must reject unknown parameters explicitly (or ignore them with a
 documented note) rather than silently mis-handling them.
 
@@ -214,6 +226,10 @@ maps and the operations project computes.
     unsupported constructs → `invalid.arguments`.
   - `outSR` → `ICoordinateTransforms.Transform`.
   - `returnIdsOnly` → feature id list.
+  - `returnExtentOnly` → the matched set's envelope (before paging), in
+    `outSR` or the layer SR; `"extent": null` when nothing matches.
+  - `returnDistinctValues` → the deduplicated `outFields` projection, no
+    geometry; unknown `outFields` is `invalid.arguments`.
   - Response shape: `{objectIdFieldName, geometryType, spatialReference,
     fields[], features[]}` per spec §9.1.4.3.
 - Reject `queryRelatedRecords` (no relationship model) with a typed

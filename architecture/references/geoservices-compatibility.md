@@ -107,13 +107,23 @@ projection/units.
 | Catalog (§3): folders + `services[{name,type}]` | `GET /api/catalogue`: spatial `DatasetSummary[]` | Different concept |
 | `FeatureServer` root: `layers[]`, `tables[]` (§9.0) | — | Missing |
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
-| `query` (§9.1.4): `objectIds`, `where` (arbitrary SQL), `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; no `where`, field projection, outSR, ids-only, time, or the other 8 spatial relations |
+| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar), field projection, `outSR`, paging, ids/count/extent-only and distinct values; `time` and the other 8 spatial relations remain absent |
 | `queryRelatedRecords` (§9.1.5) | — | Missing (no relationship model) |
 | `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only through the API; the GeoServices facade now maps `addFeatures` onto `IFeatureEditStore.AddAsync` (ADR-0037) |
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
 | `deleteFeatures` (§9.1.8) | — | Implemented via `IFeatureEditStore.DeleteAsync` (ADR-0037) |
 | `applyEdits` (§9.1.9) | transactions (`begin`/`commit`/`rollback`) + write | Implemented at layer level; `rollbackOnFailure` maps to `ITransactionStore`; service-level `applyEdits` out of scope |
 | attachments, `htmlPopup`, `image` (§9.2–9.6) | — | Missing |
+
+Result-shape additions: `returnExtentOnly` returns the envelope of the full
+matched set (computed before paging) in `outSR` or the layer SR, or
+`"extent": null` when nothing matches; `returnDistinctValues` returns the
+deduplicated projection of `outFields` (all non-geometry fields when
+absent) with no geometry, paged after dedupe. `returnIdsOnly`,
+`returnCountOnly`, `returnExtentOnly` and `returnDistinctValues` are
+mutually exclusive — combining any two is a typed `invalid.arguments`
+failure — and unknown distinct `outFields` are rejected rather than silently
+widened.
 
 Field types: GeoServices `esriFieldType*` (OID, string, integer, double,
 date-as-epoch-ms, geometry) vs engine `AttributeKind`
