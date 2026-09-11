@@ -19,6 +19,8 @@ internal sealed record EsriFeatureQuery(
     CoordinateReference? OutSr,
     bool ReturnIdsOnly,
     bool ReturnCountOnly,
+    bool ReturnExtentOnly,
+    bool ReturnDistinctValues,
     int? ResultOffset,
     int? ResultRecordCount)
 {
@@ -32,6 +34,11 @@ internal sealed record EsriFeatureQuery(
     public static EsriFeatureQuery Parse(EsriRequestParameters parameters, CoordinateReference? fallback)
     {
         RejectUnsupported(parameters);
+        var returnIdsOnly = parameters.GetBool("returnIdsOnly", false);
+        var returnCountOnly = parameters.GetBool("returnCountOnly", false);
+        var returnExtentOnly = parameters.GetBool("returnExtentOnly", false);
+        var returnDistinctValues = parameters.GetBool("returnDistinctValues", false);
+        ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues);
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
@@ -41,8 +48,10 @@ internal sealed record EsriFeatureQuery(
             ParseOrderByFields(parameters.Get("orderByFields")),
             parameters.GetBool("returnGeometry", true),
             EsriValueParser.ParseSpatialReference(parameters.Get("outSR")),
-            parameters.GetBool("returnIdsOnly", false),
-            parameters.GetBool("returnCountOnly", false),
+            returnIdsOnly,
+            returnCountOnly,
+            returnExtentOnly,
+            returnDistinctValues,
             ParseNonNegativeInt(parameters.Get("resultOffset"), "resultOffset"),
             ParseNonNegativeInt(parameters.Get("resultRecordCount"), "resultRecordCount"));
     }
@@ -158,12 +167,45 @@ internal sealed record EsriFeatureQuery(
         return number;
     }
 
+    /// <summary>
+    /// The four result-shape selectors are mutually exclusive. Choosing one
+    /// explicitly avoids silently dropping a client's request; an ambiguous
+    /// combination is a typed <c>invalid.arguments</c> failure.
+    /// </summary>
+    private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues)
+    {
+        var requested = new List<string>(4);
+        if (idsOnly)
+        {
+            requested.Add("returnIdsOnly");
+        }
+
+        if (countOnly)
+        {
+            requested.Add("returnCountOnly");
+        }
+
+        if (extentOnly)
+        {
+            requested.Add("returnExtentOnly");
+        }
+
+        if (distinctValues)
+        {
+            requested.Add("returnDistinctValues");
+        }
+
+        if (requested.Count > 1)
+        {
+            throw EsriInteropException.Invalid(
+                $"The parameters {string.Join(", ", requested)} are mutually exclusive; request at most one result shape.");
+        }
+    }
+
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
         Reject(parameters, "outStatistics", "attribute statistics are not supported.");
         Reject(parameters, "groupByFieldsForStatistics", "statistics grouping is not supported.");
-        Reject(parameters, "returnExtentOnly", "returnExtentOnly is not supported.");
-        Reject(parameters, "returnDistinctValues", "returnDistinctValues is not supported.");
         Reject(parameters, "returnZ", "Z output is not supported.");
         Reject(parameters, "returnM", "M output is not supported.");
     }

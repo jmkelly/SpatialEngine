@@ -66,6 +66,16 @@ internal static class FeatureService
             return EsriJson.Value(new EsriCountResponse(matches.Count));
         }
 
+        if (query.ReturnExtentOnly)
+        {
+            return ExtentOnly(matches, layerCrs, query.OutSr, transforms, cancellationToken);
+        }
+
+        if (query.ReturnDistinctValues)
+        {
+            return DistinctValues(dataset, matches, query, layerCrs);
+        }
+
         var page = Page(matches, query);
         var features = page.Items
             .Select(item => TransformFeature(item, query, layerCrs, transforms, cancellationToken))
@@ -629,6 +639,165 @@ internal static class FeatureService
     private static IResult IdsOnly(List<MatchedFeature> matches) =>
         EsriJson.Value(new EsriObjectIdsResponse(EsriLayerModel.ObjectIdField, matches.Select(match => match.ObjectId).ToArray()));
 
+    /// <summary>
+    /// The <c>returnExtentOnly</c> response: the envelope of the full matched
+    /// set (before paging), in <c>outSR</c> when supplied, else the layer SR.
+    /// A matchless query yields <c>"extent": null</c>.
+    /// </summary>
+    private static IResult ExtentOnly(
+        IReadOnlyList<MatchedFeature> matches,
+        CoordinateReference? layerCrs,
+        CoordinateReference? outSr,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var extent = Envelope.Empty;
+        foreach (var match in matches)
+        {
+            if (FindGeometry(match.Feature) is not { } geometry)
+            {
+                continue;
+            }
+
+            var projected = TransformGeometry(geometry, layerCrs, outSr, transforms, cancellationToken);
+            if (projected.Envelope is { } envelope)
+            {
+                extent = extent.Union(envelope);
+            }
+        }
+
+        return WriteExtent(extent, outSr ?? layerCrs);
+    }
+
+    private static IResult WriteExtent(Envelope extent, CoordinateReference? coordinateReference) =>
+        EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            if (extent.IsEmpty)
+            {
+                writer.WriteNull("extent");
+            }
+            else
+            {
+                writer.WritePropertyName("extent");
+                writer.WriteStartObject();
+                writer.WriteNumber("xmin", extent.MinX);
+                writer.WriteNumber("ymin", extent.MinY);
+                writer.WriteNumber("xmax", extent.MaxX);
+                writer.WriteNumber("ymax", extent.MaxY);
+                WriteSpatialReference(writer, coordinateReference);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndObject();
+        });
+
+    /// <summary>
+    /// The <c>returnDistinctValues</c> response: the deduplicated combinations
+    /// of the projected fields, no geometry. Paging is applied after dedupe.
+    /// </summary>
+    private static IResult DistinctValues(
+        DatasetDescription dataset,
+        IReadOnlyList<MatchedFeature> matches,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs)
+    {
+        var fields = ResolveDistinctFields(dataset, query.OutFields);
+        var rows = new List<AttributeValue[]>();
+        var seen = new HashSet<AttributeValue[]>(AttributeRowComparer.Instance);
+        foreach (var match in matches)
+        {
+            var row = new AttributeValue[fields.Count];
+            for (var i = 0; i < fields.Count; i++)
+            {
+                row[i] = match.Feature[fields[i].Index];
+            }
+
+            if (seen.Add(row))
+            {
+                rows.Add(row);
+            }
+        }
+
+        var offset = Math.Min(query.ResultOffset ?? 0, rows.Count);
+        var count = query.ResultRecordCount ?? EsriLayerModel.MaxRecordCount;
+        var page = rows.Skip(offset).Take(count).ToArray();
+        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, offset + page.Length < rows.Count);
+    }
+
+    private static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
+    {
+        var schema = dataset.Schema;
+        var names = outFields is { Count: > 0 }
+            ? outFields
+            : schema.Fields.Where(field => field.Kind != AttributeKind.Geometry).Select(field => field.Name).ToArray();
+        var fields = new List<DistinctField>(names.Count);
+        foreach (var name in names)
+        {
+            var index = schema.IndexOf(name);
+            if (index < 0 || schema[index].Kind == AttributeKind.Geometry)
+            {
+                throw EsriInteropException.Invalid(
+                    $"The 'outFields' value '{name}' is not a distinctable attribute of layer '{dataset.Id}'.");
+            }
+
+            fields.Add(new DistinctField(name, index));
+        }
+
+        return fields;
+    }
+
+    private static IResult WriteDistinctValues(
+        DatasetDescription dataset,
+        CoordinateReference? coordinateReference,
+        IReadOnlyList<DistinctField> fields,
+        IReadOnlyList<AttributeValue[]> rows,
+        bool exceeded)
+    {
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
+            writer.WriteString("geometryType", EsriLayerModel.GeometryType(dataset.GeometryType));
+            WriteSpatialReference(writer, coordinateReference);
+            WriteFields(writer, dataset);
+            writer.WritePropertyName("features");
+            writer.WriteStartArray();
+            foreach (var row in rows)
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("attributes");
+                writer.WriteStartObject();
+                for (var i = 0; i < fields.Count; i++)
+                {
+                    EsriAttributeCodec.Write(writer, fields[i].Name, row[i]);
+                }
+
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+            writer.WriteBoolean("exceededTransferLimit", exceeded);
+            writer.WriteEndObject();
+        });
+    }
+
+    private static IGeometry TransformGeometry(
+        IGeometry geometry,
+        CoordinateReference? source,
+        CoordinateReference? target,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        if (target is not { } to || source is not { } from || from == to)
+        {
+            return geometry;
+        }
+
+        return transforms.Transform(geometry, from.ToString(), to.ToString(), cancellationToken);
+    }
+
     private static IResult WriteFeatures(
         DatasetDescription dataset,
         CoordinateReference? layerCrs,
@@ -758,6 +927,49 @@ internal static class FeatureService
     }
 
     private sealed record PageResult(IReadOnlyList<MatchedFeature> Items, bool Exceeded);
+
+    /// <summary>One projected field of a distinct-values request.</summary>
+    private readonly record struct DistinctField(string Name, int Index);
+
+    /// <summary>Structural equality for projected distinct-value rows.</summary>
+    private sealed class AttributeRowComparer : IEqualityComparer<AttributeValue[]>
+    {
+        public static AttributeRowComparer Instance { get; } = new();
+
+        public bool Equals(AttributeValue[]? left, AttributeValue[]? right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left is null || right is null || left.Length != right.Length)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < left.Length; i++)
+            {
+                if (left[i] != right[i])
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public int GetHashCode(AttributeValue[] row)
+        {
+            var hash = new HashCode();
+            foreach (var value in row)
+            {
+                hash.Add(value);
+            }
+
+            return hash.ToHashCode();
+        }
+    }
 
     private sealed class EditResults
     {
