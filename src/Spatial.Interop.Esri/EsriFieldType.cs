@@ -23,10 +23,13 @@ public static class EsriFieldType
 
     /// <summary>Maps an Esri field type name to a core attribute kind, or false when unsupported.</summary>
     public static bool TryToAttributeKind(string? esriType, out AttributeKind kind) =>
-        TryToAttributeKind(esriType, out kind, out _);
+        TryToAttributeKindCore(esriType, out kind, out _);
 
     /// <summary>Maps an Esri field type name to a core attribute kind, reporting why an unsupported name failed.</summary>
-    public static bool TryToAttributeKind(string? esriType, out AttributeKind kind, out string? error)
+    public static bool TryToAttributeKind(string? esriType, out AttributeKind kind, out string? error) =>
+        TryToAttributeKindCore(esriType, out kind, out error);
+
+    private static bool TryToAttributeKindCore(string? esriType, out AttributeKind kind, out string? error)
     {
         if (esriType is not null && Kinds.TryGetValue(esriType, out kind))
         {

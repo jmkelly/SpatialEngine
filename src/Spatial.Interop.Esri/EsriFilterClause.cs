@@ -359,17 +359,17 @@ public sealed class EsriFilterClause
         {
             var start = index;
             var character = text[index];
-            if (character == '\'' || character == '"')
+            if (IsQuote(character))
             {
                 return TryQuoted(text, ref index, tokens, out error);
             }
 
-            if (char.IsDigit(character) || (character == '-' && index + 1 < text.Length && char.IsDigit(text[index + 1])))
+            if (StartsNumber(text, index))
             {
                 return TryNumber(text, ref index, tokens, out error);
             }
 
-            if (char.IsLetter(character) || character == '_')
+            if (StartsWord(character))
             {
                 return TryWord(text, ref index, tokens, out error);
             }
@@ -385,6 +385,13 @@ public sealed class EsriFilterClause
             error = string.Empty;
             return true;
         }
+
+        private static bool IsQuote(char character) => character is '\'' or '"';
+
+        private static bool StartsWord(char character) => char.IsLetter(character) || character == '_';
+
+        private static bool StartsNumber(string text, int index) =>
+            char.IsDigit(text[index]) || (text[index] == '-' && index + 1 < text.Length && char.IsDigit(text[index + 1]));
 
         private static bool TryOperator(string text, int index, out TokenKind kind, out int length)
         {
