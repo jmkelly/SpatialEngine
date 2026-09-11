@@ -5,83 +5,9 @@
 > (Browser Workbench) is complete** — Milestone 1 done; Phase 11 (Tauri 2
 > Desktop Packaging) is next.
 
-## Repository state
-
-- **Branch:** `main`. Working tree clean at handoff. The quality-gate queue
-  files (`crap-queue.md`, `coverage-queue.md`, `metrics-queue.md`,
-  `warnings-queue.md`, `*.report.json`, `coverage-history.csv`,
-  `stryker-queue.md`) are gitignored and report the ALL-GREEN state — do
-  not commit them.
-- **Phase 10 commits** (in order):
-  - `da26c8b` — host plugin-control API (`route-new-work`/`drain`/`rollback`
-    on `/api/plugins/{id}`), static workbench serving (`Spatial:WebRoot`),
-    `nts@2` provider variant, `demo@1` data provider, PluginPacker packages
-    all four, .NET + TS SDK control methods, integration tests
-    (`PluginReplacementTests`, `WorkbenchHostingTests`), ADR-0031,
-    host-api.md update, OpenAPI snapshot refresh.
-  - *(second commit, after the quality gates)* — the workbench itself
-    (`apps/workbench-web`), the Playwright suite + `eng/workbench-e2e.sh`,
-    and a real wire fix: JSON integral numbers now read as the declared
-    int64 contract arguments (`CapabilityInvocation` int↔long widening —
-    see gotchas below — with `ArgumentCastTests`), which also stabilized
-    the Phase 9 job tests under parallel load.
-  - *(third commit, the metrics-gate follow-up pass)* — ADR-0032: the
-    geometry value model gains its contract faces (`IPoint`, `ILineString`,
-    `IPolygon`, `IMultiPoint`, `IMultiLineString`, `IMultiPolygon`,
-    `IGeometryParts`, `IGeometryFactory`) and `GeometryCodec` +
-    `CanonicalFormatException` move to `Spatial.Core.Geometry.Codec` — the
-    demo provider had pushed `Spatial.Core.Geometry` to Ca 9 / abstractness
-    0.09 and re-triggered `architectural-rigidity`; the faces carry the hub
-    (abstractness 0.31), the codec namespace is a leaf. Also the CRAP pass
-    on `CapabilityInvocation.TryCast` (behavior-preserving extraction into
-    `TryNumericCast`/`NumericConvert`, `ArgumentCastTests` still pin both
-    directions) and the demo `DemoRunner` split into `DemoCatalogueHandler`/
-    `DemoFeatureHandler` (+ `LikePattern`, catalogue pattern filtering
-    tests). Docs updated together: `geometry-model.md`, `core-boundary.md`,
-    `src/Spatial.Core/AGENTS.md`, plan ADR index.
-- **Tests:** `eng/verify.sh` passes from a clean checkout, run six times in
-  a row all-green (the load flake it used to show is fixed — see gotchas).
-  Counts: Core 308, Runtime 207 (+6 arg-cast), Client 11, PluginHost 85,
-  Provider.Demo 34 (new, +9 catalogue-pattern/feature-batch tests in the
-  ADR-0032 pass), Provider.PostGIS 175 unit + 17 skipped
-  container, Conformance 13 (+nts v2 matrix), Host 52 (+10 from Phase 10:
-  7 replacement + 3 hosting), NTS 31, ProjNet 65, Architecture 8.
-- **Web:** `apps/workbench-web` unit tests 22/22 pass and the build is
-  clean; `clients/typescript` 14/14; `eng/workbench-e2e.sh` runs the real
-  host + built app + Playwright chromium — 6/6 specs, five consecutive
-  green runs.
-
-## Completed — Phase 10 (Epic H: browser workbench + replacement demo)
-
-- **The workbench** (`apps/workbench-web`, ADR-0031): React 19 + Vite +
-  MapLibre GL over the Phase 9 TypeScript SDK, four screens — provider/
-  capability catalogue, dataset map with coordinate-based selection and
-  attribute inspection, generated capability forms with job progress and
-  result preview/persistence (browser localStorage), runtime health with
-  plugin replacement controls. The host serves the built app from
-  `Spatial:WebRoot` (same origin, no CORS, no Tauri).
-- **Geometry adapter** (`src/sgeom.ts`): the SDK's raw canonical SGEOM
-  bytes are decoded to GeoJSON in-browser, byte-for-byte mirroring the
-  .NET `GeometryCodec` (header, nested nodes, CRS skip, little-endian
-  doubles) — pinned by hand-built vectors AND the real .NET buffered-circle
-  payload.
-- **Selection is coordinate-based** (`src/click-match.ts`): click lng/lat →
-  nearest feature by projection math; deliberately NOT pixel-query
-  (`queryRenderedFeatures`/readPixels is fragile in software-rendered
-  headless browsers — see gotchas).
-- **Plugin replacement over HTTP** (`PluginReplacementTests`): both NTS
-  versions activate side by side, `route-new-work` switches provenance to
-  `nts@2` (resolution step `ActivePreferred`), `drain` stops `nts@1`
-  without stopping the host, `rollback` reactivates it.
-- **`demo@1`** (`Spatial.Provider.Demo`): read-only data-provider
-  contracts over procedural datasets (110-point grid + 8 cities, EPSG:4326
-  SGEOM), bbox queries, plus a long-running `spatial.demo.sleep@1` with
-  progress — the Docker-free catalogue/map/progress vehicle. **The demo
-  provider is NOT in the conformance matrix** (only its unit suite + the
-  host e2e exercise it); adding it to `PostgisProviderConformance`-style
-  fixtures would be a reasonable Phase 12+ add.
-- **Playwright** (`tests/end-to-end-web` + `eng/workbench-e2e.sh`): six
-  specs against the real host serving the real app — no Tauri, no Docker.
+Current state, repository layout and contracts live in `README.md` and
+`architecture/distilled/`; phase-by-phase history lives in git. This file
+keeps only the hard-won gotchas and the next steps.
 
 ## Hard-won gotchas (read before touching this code)
 
@@ -126,32 +52,6 @@
   committed.
 - **Style/quality traps still apply** (CA1859/CA1826/CA1068, LoggerMessage
   delegates, `Results<…>` typed results, format before commit).
-
-## Quality gates (Phase 10)
-
-Re-verified after the ADR-0032 follow-up pass: all four gates green
-(CRAP 0/2568, branches 82.3%, metrics 0 findings, warnings 0),
-`eng/verify.sh` exit 0, workbench unit tests 22/22, `eng/workbench-e2e.sh`
-6/6.
-
-- **CRAP**: 0 of ≥2500 methods ≥ 10 (loop-verified).
-- **Coverage**: authored branch ≥ 70% (loop-verified).
-- **Metrics**: 0 findings (the new host endpoints stayed fan-out-small;
-  `DemoRunner` split validation/emitters and then dispatch/handlers; Core
-  fan-in carried by the ADR-0032 faces — abstractness 0.31).
-- **Warnings**: 0.
-- **Stryker (my call — SKIPPED)**: Phase 10 changed no `Spatial.Core`
-  behavior (the audited project — every mutation run pins
-  `configured[0]`), so the ~11-minute full run was skipped per the
-  heuristic for non-Core phases. The ADR-0032 follow-up pass was reviewed
-  with the same lens and also skipped: its `Spatial.Core` changes are
-  structural only (additive interfaces with no bodies, a namespace move of
-  unchanged codec code), and the `CapabilityInvocation`/demo changes are
-  behavior-preserving refactors pinned by existing tests — no new mutation
-  surface. The final repo-wide pass should still add the Phase 9/10
-  assemblies (`Spatial.PluginSdk`, `Spatial.Host`, `Spatial.Client`,
-  `Spatial.Provider.Demo`) to the Stryker matrix. Last full run on record:
-  **94.44%** (stryker-queue.md of 30 Aug).
 
 ## Next up — Phase 11: Tauri 2 Desktop Packaging
 

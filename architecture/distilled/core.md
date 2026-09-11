@@ -8,10 +8,10 @@ Covers `Spatial.Core` only. Implements ADR-0001/0004/0009/0020/0029/0032.
 2. Independently developed plugins must agree on its meaning.
 3. Representable without choosing a spatial algorithm.
 
-**Core owns:** spatial values (geometry, features, schemas, CRS identity),
-canonical encoding/decoding, structural runtime identity (in `Spatial.Runtime`:
-capability identity, manifests, registry, routing, resource handles, streams,
-jobs, permissions, health, diagnostics).
+**Core owns:** spatial values (geometry, features, schemas, CRS identity) and
+canonical encoding/decoding. Runtime identity — capability identity, manifests,
+registry, routing, resource handles, streams, jobs, permissions, health and
+diagnostics — lives in `Spatial.Runtime` (see `runtime.md`).
 
 **Core never implements:** buffer, intersection, union, difference,
 predicates, distance, area, length, centroid, simplification, validation,

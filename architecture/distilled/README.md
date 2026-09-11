@@ -15,30 +15,8 @@ are dated decision records — their prose reflects the state at decision time.
 | Plugin packages, manifests, worker wire protocol, lifecycle | `plugins.md` | 0002, 0006, 0013, 0025 |
 | Which capabilities exist + their contracts | `contracts.md` | 0026, 0027, 0028 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0030, 0031 |
+| The twenty principles | `../principles.md` | — |
 | Any architectural change | this file + `../principles.md` | — |
-
-## The twenty principles (see ../principles.md)
-
-1. Geometry is core; spatial algorithms are not.
-2. Headless engine — every UI is a client.
-3. Browser workbench is the first frontend.
-4. Tauri is packaging, not architecture.
-5. The .NET host runs independently of Tauri.
-6. Contracts outlive implementations.
-7. Plugins depend on contracts, never on other plugin implementations.
-8. No plugin-specific geometry object crosses a capability boundary.
-9. Core geometry values are immutable.
-10. Data stores are providers, not the domain model.
-11. Long-running operations are jobs, always cancellable.
-12. Plugin code is disposable; persistent state is external.
-13. Open formats and language-neutral protocols at boundaries.
-14. Agents and human clients use the same public capabilities.
-15. Provider pushdown is optional and must preserve contract semantics.
-16. Every derived result records provenance.
-17. Kernel stays small, stable, independently testable.
-18. Rust only where profiling or platform integration justifies it.
-19. No Native AOT until compatibility is demonstrated.
-20. Desktop and browser behaviour share the same conformance tests.
 
 ## ADR register (one line each; full records in `../decisions/`)
 
@@ -85,7 +63,7 @@ are dated decision records — their prose reflects the state at decision time.
 4. Enforcement lives in `tests/architecture/Spatial.Architecture.Tests`; every rule names the principle/ADR it implements.
 5. Public changes update contracts, SDKs, tests, ADRs **and the relevant distilled doc** together (plan §20/§22).
 
-## Documentation health notes (audit 2026-02)
+## Documentation health notes
 
 - The former per-topic docs (`core-boundary.md`, `geometry-model.md`,
   `capability-model.md`, `host-api.md`, …) were consolidated into these

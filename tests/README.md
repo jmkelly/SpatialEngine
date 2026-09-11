@@ -1,10 +1,10 @@
 # Tests
 
-- `unit/` — core geometry and runtime unit tests (Phase 1+)
-- `architecture/` — dependency and structure guardrails (active)
-- `contracts/` — contract and schema compatibility tests (Phase 2+)
-- `conformance/` — shared fixtures every capability provider must pass (Phase 6+)
-- `integration/` — host, PostGIS container and worker-process tests (active)
-- `performance/` — throughput and allocation baselines (Phase 1+)
-- `end-to-end-web/` — Playwright tests for the browser workbench (Phase 10)
-- `end-to-end-desktop/` — Tauri packaging and lifecycle tests (Phase 11)
+- `unit/` — per-project unit tests (core, operations, runtime, plugin host,
+  providers, transformations and the .NET client SDK)
+- `architecture/` — dependency and structure guardrails
+- `conformance/` — shared fixtures every provider of a capability contract
+  must pass
+- `integration/` — host API, PostGIS container and worker-process tests
+- `end-to-end-web/` — Playwright tests for the browser workbench
+- `fixtures/` — the fault-fixture plugin the worker protocol tests package
