@@ -33,6 +33,11 @@ internal static class PostgisFailureMapper
             return PostgisDiagnostics.InvalidArgument(invocation.Capability, inactive.Message);
         }
 
+        if (exception is PostgisDatasetExistsException exists)
+        {
+            return PostgisDiagnostics.InvalidArgument(invocation.Capability, exists.Message);
+        }
+
         return PostgisDiagnostics.ProviderFailure(configuration, invocation.Capability, exception);
     }
 }

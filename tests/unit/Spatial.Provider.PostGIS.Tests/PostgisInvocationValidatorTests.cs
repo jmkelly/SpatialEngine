@@ -304,6 +304,12 @@ public sealed class PostgisInvocationValidatorTests
         Assert.False(string.IsNullOrEmpty(build.Sql));
         Assert.Contains(" AND ", build.Sql);
         Assert.NotEmpty(build.Parameters);
+
+        // The bounding box contributes @p0..@p3; the filter must continue at
+        // @p4, not restart at @p0 (which would bind it to the box's minx).
+        Assert.Contains("@p4", build.Sql);
+        var filterFragment = build.Sql![build.Sql.IndexOf(" AND ", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("@p0", filterFragment);
     }
 
     [Fact]

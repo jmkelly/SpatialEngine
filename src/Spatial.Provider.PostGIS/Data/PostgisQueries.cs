@@ -24,12 +24,17 @@ internal static class PostgisQueries
             ? Select(dataset, schema)
             : $"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE {predicate}";
 
-    /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry via EWKB + SRID).</summary>
-    public static string Insert(PostgisDatasetName dataset, IFeatureSchema batchSchema, int srid)
+    /// <summary>
+    /// Insert for one feature of a writing batch (one bound parameter per
+    /// field; geometry via EWKB, which already carries the SRID in its header —
+    /// <c>ST_GeomFromEWKB</c> has no two-argument form, unlike
+    /// <c>ST_GeomFromWKB</c>).
+    /// </summary>
+    public static string Insert(PostgisDatasetName dataset, IFeatureSchema batchSchema)
     {
         var columns = string.Join(", ", batchSchema.Fields.Select(field => $"\"{field.Name}\""));
         var values = string.Join(", ", batchSchema.Fields.Select((field, i) =>
-            field.Kind == AttributeKind.Geometry ? $"ST_GeomFromEWKB(@p{i}, {srid})" : $"@p{i}"));
+            field.Kind == AttributeKind.Geometry ? $"ST_GeomFromEWKB(@p{i})" : $"@p{i}"));
         return $"INSERT INTO {dataset.QuoteQualified()} ({columns}) VALUES ({values})";
     }
 

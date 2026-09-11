@@ -98,7 +98,7 @@ internal sealed class PostgisBatchWriter
         FeatureBatch batch,
         CancellationToken token)
     {
-        var sql = PostgisQueries.Insert(dataset, batch.Schema, srid);
+        var sql = PostgisQueries.Insert(dataset, batch.Schema);
         long appended = 0;
         foreach (var feature in batch.Features)
         {

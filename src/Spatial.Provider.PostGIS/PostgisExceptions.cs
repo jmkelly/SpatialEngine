@@ -9,3 +9,8 @@ internal sealed class PostgisUnknownDatasetException(string message) : Exception
 internal sealed class PostgisInactiveTransactionException(string message) : Exception(message)
 {
 }
+
+/// <summary>A create target already exists (mapped to invalid.arguments).</summary>
+internal sealed class PostgisDatasetExistsException(string message) : Exception(message)
+{
+}

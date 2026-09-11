@@ -348,7 +348,11 @@ internal static class PostgisInvocationValidator
 
         if (filter is not null)
         {
-            if (!PostgisFilterSql.TryBuild(filter, description.Schema, values, out var filterSql, out var filterError))
+            // Continue the positional-parameter numbering after the bounding
+            // box's four values; a second builder restarting at @p0 would bind
+            // the filter literal to the box's first coordinate.
+            if (!PostgisFilterSql.TryBuild(
+                filter, description.Schema, values, out var filterSql, out var filterError, startIndex: values.Count))
             {
                 return new PredicateBuild(
                     IsValid: false,

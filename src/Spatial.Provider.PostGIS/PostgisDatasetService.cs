@@ -50,8 +50,19 @@ internal sealed class PostgisDatasetService
         int srid)
     {
         await using var connection = await _store.Value.OpenConnectionAsync(invocation.CancellationToken);
-        await PostgisDataStore.ExecuteNonQueryAsync(
-            connection, PostgisQueries.CreateTable(dataset, batch.Schema, srid), [], invocation.CancellationToken);
+        try
+        {
+            await PostgisDataStore.ExecuteNonQueryAsync(
+                connection, PostgisQueries.CreateTable(dataset, batch.Schema, srid), [], invocation.CancellationToken);
+        }
+        catch (Npgsql.PostgresException exception) when (exception.SqlState == Npgsql.PostgresErrorCodes.DuplicateTable)
+        {
+            // The contract maps "the dataset already exists" to invalid.arguments
+            // (ADR-0028), not a provider failure.
+            throw new PostgisDatasetExistsException(
+                $"the dataset '{dataset.Qualified}' already exists; choose another name or drop it first.");
+        }
+
         return CapabilityResult.Success(dataset.Qualified);
     }
 }

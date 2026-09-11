@@ -28,13 +28,14 @@ internal static class PostgisFilterSql
         IFeatureSchema schema,
         List<object?> parameters,
         out string sql,
-        out string error)
+        out string error,
+        int startIndex = 0)
     {
         ArgumentNullException.ThrowIfNull(expression);
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(parameters);
 
-        var builder = new SqlBuilder(schema, parameters);
+        var builder = new SqlBuilder(schema, parameters, startIndex);
         builder.Visit(expression);
         if (builder.Error is not null)
         {
@@ -48,21 +49,27 @@ internal static class PostgisFilterSql
         return true;
     }
 
-    /// <summary>Builds the bounded-box spatial predicate and appends its bound values.</summary>
+    /// <summary>
+    /// Builds the bounded-box spatial predicate and appends its bound values.
+    /// <paramref name="startIndex"/> is the first positional parameter index to
+    /// use, so a fragment can follow another in one statement without the two
+    /// colliding on <c>@p0</c>.
+    /// </summary>
     public static string BoundingBox(
         BoundingBox bounds,
         string geometryColumn,
         int srid,
-        List<object?> parameters)
+        List<object?> parameters,
+        int startIndex = 0)
     {
-        var builder = new SqlBuilder(null!, parameters);
+        var builder = new SqlBuilder(null!, parameters, startIndex);
         return builder.AppendBoundingBox(geometryColumn, srid, bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
     }
 
-    private sealed class SqlBuilder(IFeatureSchema? schema, List<object?> parameters)
+    private sealed class SqlBuilder(IFeatureSchema? schema, List<object?> parameters, int parameterIndex)
     {
         private readonly StringBuilder _sql = new();
-        private int _parameterIndex;
+        private int _parameterIndex = parameterIndex;
 
         public string? Error { get; private set; }
 
