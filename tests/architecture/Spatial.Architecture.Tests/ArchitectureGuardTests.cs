@@ -67,6 +67,41 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
+    /// Principle 7 / ADR-0005: plugins depend on contracts, never on another
+    /// plugin implementation. A plugin that links a sibling plugin would drag
+    /// its third-party types across the boundary the worker model exists to
+    /// keep clean.
+    /// </summary>
+    [Fact]
+    public void Plugin_implementations_do_not_reference_each_other()
+    {
+        var violations = PluginImplementationProjects()
+            .SelectMany(project => project.ProjectReferences
+                .Where(IsPluginImplementation)
+                .Select(r => $"{project.RelativePath} references plugin implementation {r}; plugins depend on contracts, never on each other (principle 7)."))
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
+    /// ADR-0005: third-party spatial/data types stay inside their owning
+    /// plugin. The generic package rule allows <c>Microsoft.*</c>/<c>System.*</c>,
+    /// so the concrete ADR-0005 families are checked explicitly here.
+    /// </summary>
+    [Fact]
+    public void Platform_projects_do_not_reference_third_party_spatial_packages()
+    {
+        var violations = PlatformProjects()
+            .SelectMany(project => project.Packages
+                .Where(p => IsForbiddenSpatialPackage(p.Id))
+                .Select(p => $"{project.RelativePath} references {p.Id}; third-party spatial/data types stay inside their owning plugin (ADR-0005)."))
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
     /// ADR-0018/ADR-0019: the host is independently executable and wires only
     /// platform projects; desktop shells and workers remain external.
     /// </summary>
@@ -164,6 +199,11 @@ public sealed class ArchitectureGuardTests
     private static IEnumerable<ProjectInfo> PlatformProjects() =>
         PlatformProjectNames.Select(name => Repository.Value.Projects.Single(p => p.Name == name));
 
+    /// <summary>Plugin implementation projects only; the matching `*.Tests` projects are excluded.</summary>
+    private static IEnumerable<ProjectInfo> PluginImplementationProjects() =>
+        Repository.Value.Projects.Where(p => IsPluginImplementation(p.Name)
+            && !p.Name.EndsWith(".Tests", StringComparison.Ordinal));
+
     private static ProjectInfo PlatformProject(string name) =>
         Repository.Value.Projects.Single(p => p.Name == name);
 
@@ -189,6 +229,19 @@ public sealed class ArchitectureGuardTests
         projectName.StartsWith("Spatial.Provider.", StringComparison.Ordinal)
         || projectName.StartsWith("Spatial.Operations.", StringComparison.Ordinal)
         || projectName.StartsWith("Spatial.Transformations.", StringComparison.Ordinal);
+
+    /// <summary>The third-party families ADR-0005 keeps out of platform projects.</summary>
+    private static readonly string[] ForbiddenSpatialPackagePrefixes =
+    [
+        "NetTopologySuite",
+        "Npgsql",
+        "Microsoft.EntityFrameworkCore",
+        "ProjNET",
+        "@tauri-apps/",
+    ];
+
+    private static bool IsForbiddenSpatialPackage(string id) =>
+        ForbiddenSpatialPackagePrefixes.Any(prefix => id.StartsWith(prefix, StringComparison.Ordinal));
 
     private static string Normalise(string relativePath) =>
         relativePath.Replace('/', Path.DirectorySeparatorChar);
