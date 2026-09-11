@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "project": "/home/james/Work/SpatialEngine/src/Spatial.Core/Spatial.Core.csproj",
+    "project": "src/Spatial.Core/Spatial.Core.csproj",
     "mutation-level": "Standard",
     "coverage-analysis": "perTest",
     "additional-timeout": 2,

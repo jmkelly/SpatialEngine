@@ -79,11 +79,8 @@ public sealed class Point : IPoint, IEquatable<Point>
             ? FormattableString.Invariant($"Point ({coordinate.X}, {coordinate.Y})")
             : "Point (empty)";
 
-    private static CoordinateLayout DeriveLayout(Coordinate coordinate) => (coordinate.Z is not null, coordinate.M is not null) switch
-    {
-        (true, true) => CoordinateLayout.Xyzm,
-        (true, false) => CoordinateLayout.Xyz,
-        (false, true) => CoordinateLayout.Xym,
-        (false, false) => CoordinateLayout.Xy,
-    };
+    private static CoordinateLayout DeriveLayout(Coordinate coordinate) =>
+        coordinate.Z is not null
+            ? coordinate.M is not null ? CoordinateLayout.Xyzm : CoordinateLayout.Xyz
+            : coordinate.M is not null ? CoordinateLayout.Xym : CoordinateLayout.Xy;
 }

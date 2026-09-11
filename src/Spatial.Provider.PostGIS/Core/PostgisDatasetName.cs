@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
@@ -11,6 +13,8 @@ namespace Spatial.Provider.PostGIS.Core;
 /// </summary>
 internal readonly record struct PostgisDatasetName
 {
+    private static readonly Regex QualifiedPattern = new(@"^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", RegexOptions.Compiled);
+
     private PostgisDatasetName(string schema, string table)
     {
         Schema = schema;
@@ -43,27 +47,21 @@ internal readonly record struct PostgisDatasetName
             return ParsePart(text, isSchema: false, out name, out reason);
         }
 
-        if (dot == 0 || dot == text.Length - 1 || text.IndexOf('.', dot + 1) >= 0)
+        return TryParseQualified(text, dot, out name, out reason);
+    }
+
+    private static bool TryParseQualified(string text, int dot, out PostgisDatasetName name, out string reason)
+    {
+        name = default;
+        if (!QualifiedPattern.IsMatch(text))
         {
             reason = $"'{text}' is not a dataset identifier: expected schema.table with no other dots.";
             return false;
         }
 
-        var schema = text[..dot];
-        var table = text[(dot + 1)..];
-        if (!IsIdentifierPart(schema, out var schemaProblem))
-        {
-            reason = $"'{text}' is not a valid dataset identifier: {schemaProblem}";
-            return false;
-        }
-
-        if (!IsIdentifierPart(table, out var tableProblem))
-        {
-            reason = $"'{text}' is not a valid dataset identifier: {tableProblem}";
-            return false;
-        }
-
-        name = new PostgisDatasetName(schema, table);
+        var parts = text.Split('.');
+        name = new PostgisDatasetName(parts[0], parts[1]);
+        reason = string.Empty;
         return true;
     }
 

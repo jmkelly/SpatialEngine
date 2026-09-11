@@ -8,6 +8,7 @@ using NtsLineString = NetTopologySuite.Geometries.LineString;
 using NtsMultiLineString = NetTopologySuite.Geometries.MultiLineString;
 using NtsMultiPoint = NetTopologySuite.Geometries.MultiPoint;
 using NtsMultiPolygon = NetTopologySuite.Geometries.MultiPolygon;
+using NtsOgcType = NetTopologySuite.Geometries.OgcGeometryType;
 using NtsOrdinate = NetTopologySuite.Geometries.Ordinate;
 using NtsPoint = NetTopologySuite.Geometries.Point;
 using NtsPolygon = NetTopologySuite.Geometries.Polygon;
@@ -32,32 +33,49 @@ internal static class GeometryAdapter
 {
     private static readonly NtsFactory Factory = new();
 
-    /// <summary>Converts a core geometry to the NTS geometry its operations run on.</summary>
-    public static NtsGeometry ToNts(IGeometry geometry) => geometry switch
+    private static readonly Dictionary<GeometryType, Func<IGeometry, NtsGeometry>> NtsConverters = new()
     {
-        Point point => PointToNts(point),
-        LineString lineString => Factory.CreateLineString(SequenceFor(lineString.Sequence, lineString.Layout)),
-        Polygon polygon => PolygonToNts(polygon),
-        MultiPoint multiPoint => Factory.CreateMultiPoint(multiPoint.Points.Select(PointToNts).ToArray()),
-        MultiLineString multiLineString => Factory.CreateMultiLineString(
-            multiLineString.LineStrings.Select(line => Factory.CreateLineString(SequenceFor(line.Sequence, line.Layout))).ToArray()),
-        MultiPolygon multiPolygon => Factory.CreateMultiPolygon(multiPolygon.Polygons.Select(PolygonToNts).ToArray()),
-        GeometryCollection collection => Factory.CreateGeometryCollection(collection.Geometries.Select(ToNts).ToArray()),
-        _ => throw new ArgumentException($"Cannot convert core geometry type '{geometry.Type}' to NetTopologySuite.", nameof(geometry)),
+        [GeometryType.Point] = g => PointToNts((Point)g),
+        [GeometryType.LineString] = g => LineStringToNts((LineString)g),
+        [GeometryType.Polygon] = g => PolygonToNts((Polygon)g),
+        [GeometryType.MultiPoint] = g => MultiPointToNts((MultiPoint)g),
+        [GeometryType.MultiLineString] = g => MultiLineStringToNts((MultiLineString)g),
+        [GeometryType.MultiPolygon] = g => MultiPolygonToNts((MultiPolygon)g),
+        [GeometryType.GeometryCollection] = g => GeometryCollectionToNts((GeometryCollection)g),
+    };
+
+    /// <summary>Converts a core geometry to the NTS geometry its operations run on.</summary>
+    public static NtsGeometry ToNts(IGeometry geometry)
+    {
+        if (NtsConverters.TryGetValue(geometry.Type, out var convert))
+        {
+            return convert(geometry);
+        }
+
+        throw new ArgumentException($"Cannot convert core geometry type '{geometry.Type}' to NetTopologySuite.", nameof(geometry));
+    }
+
+    private static readonly Dictionary<NtsOgcType, Func<NtsGeometry, CoordinateReference?, IGeometry>> CoreConverters = new()
+    {
+        [NtsOgcType.Point] = (g, crs) => PointToCore((NtsPoint)g, crs),
+        [NtsOgcType.LineString] = (g, crs) => LineStringToCore((NtsLineString)g, crs),
+        [NtsOgcType.Polygon] = (g, crs) => PolygonToCore((NtsPolygon)g, crs),
+        [NtsOgcType.MultiPoint] = (g, crs) => MultiPointToCore((NtsMultiPoint)g, crs),
+        [NtsOgcType.MultiLineString] = (g, crs) => MultiLineStringToCore((NtsMultiLineString)g, crs),
+        [NtsOgcType.MultiPolygon] = (g, crs) => MultiPolygonToCore((NtsMultiPolygon)g, crs),
+        [NtsOgcType.GeometryCollection] = (g, crs) => GeometryCollectionToCore((NtsGeometryCollection)g, crs),
     };
 
     /// <summary>Converts an NTS result back to an immutable core geometry carrying <paramref name="crs"/>.</summary>
-    public static IGeometry ToCore(NtsGeometry geometry, CoordinateReference? crs) => geometry switch
+    public static IGeometry ToCore(NtsGeometry geometry, CoordinateReference? crs)
     {
-        NtsPoint point => PointToCore(point, crs),
-        NtsLineString lineString => LineStringToCore(lineString, crs),
-        NtsPolygon polygon => PolygonToCore(polygon, crs),
-        NtsMultiPoint multiPoint => MultiPointToCore(multiPoint, crs),
-        NtsMultiLineString multiLineString => MultiLineStringToCore(multiLineString, crs),
-        NtsMultiPolygon multiPolygon => MultiPolygonToCore(multiPolygon, crs),
-        NtsGeometryCollection collection => GeometryCollectionToCore(collection, crs),
-        _ => throw new ArgumentException($"Cannot convert NetTopologySuite result type '{geometry.GetType().Name}' back to core geometry.", nameof(geometry)),
-    };
+        if (CoreConverters.TryGetValue(geometry.OgcGeometryType, out var convert))
+        {
+            return convert(geometry, crs);
+        }
+
+        throw new ArgumentException($"Cannot convert NetTopologySuite result type '{geometry.GetType().Name}' back to core geometry.", nameof(geometry));
+    }
 
     private static NtsPoint PointToNts(Point point)
     {
@@ -89,12 +107,28 @@ internal static class GeometryAdapter
         return sequence;
     }
 
+    private static NtsLineString LineStringToNts(LineString lineString) =>
+        Factory.CreateLineString(SequenceFor(lineString.Sequence, lineString.Layout));
+
     private static NtsPolygon PolygonToNts(Polygon polygon)
     {
         var shell = RingToNts(polygon.ExteriorRing);
         var holes = polygon.InteriorRings.Select(RingToNts).ToArray();
         return Factory.CreatePolygon(shell, holes);
     }
+
+    private static NtsMultiPoint MultiPointToNts(MultiPoint multiPoint) =>
+        Factory.CreateMultiPoint(multiPoint.Points.Select(PointToNts).ToArray());
+
+    private static NtsMultiLineString MultiLineStringToNts(MultiLineString multiLineString) =>
+        Factory.CreateMultiLineString(
+            multiLineString.LineStrings.Select(line => Factory.CreateLineString(SequenceFor(line.Sequence, line.Layout))).ToArray());
+
+    private static NtsMultiPolygon MultiPolygonToNts(MultiPolygon multiPolygon) =>
+        Factory.CreateMultiPolygon(multiPolygon.Polygons.Select(PolygonToNts).ToArray());
+
+    private static NtsGeometryCollection GeometryCollectionToNts(GeometryCollection collection) =>
+        Factory.CreateGeometryCollection(collection.Geometries.Select(ToNts).ToArray());
 
     private static NtsLinearRing RingToNts(LineString ring)
     {
@@ -128,8 +162,11 @@ internal static class GeometryAdapter
         return sequence;
     }
 
-    private static NtsSequence CoordinateArraySequence(bool hasZ, bool hasM, int size) =>
-        NtsSequenceFactory.Instance.Create(size, hasZ ? 3 : 2, hasM ? 1 : 0);
+    private static NtsSequence CoordinateArraySequence(bool hasZ, bool hasM, int size)
+    {
+        var dimension = 2 + (hasZ ? 1 : 0) + (hasM ? 1 : 0);
+        return NtsSequenceFactory.Instance.Create(size, dimension, hasM ? 1 : 0);
+    }
 
     private static void WriteCoordinate(NtsSequence sequence, Coordinate coordinate, int index, bool hasZ, bool hasM)
     {
