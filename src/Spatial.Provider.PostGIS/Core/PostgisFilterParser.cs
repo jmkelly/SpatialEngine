@@ -3,7 +3,7 @@ namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
 /// Recursive-descent parser of the attribute filter language
-/// (<c>spatial.feature.query@1</c>, ADR-0028):
+/// (feature queries, ADR-0028):
 ///
 /// <code>
 /// filter      := orExpr  EOF

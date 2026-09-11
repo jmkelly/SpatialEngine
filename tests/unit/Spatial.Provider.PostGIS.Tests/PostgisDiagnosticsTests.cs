@@ -1,35 +1,28 @@
-using Spatial.PluginSdk.Capabilities;
-using Spatial.PluginSdk.Providers;
 using Spatial.Provider.PostGIS.Configuration;
 using Spatial.Provider.PostGIS.Core;
 
 namespace Spatial.Provider.PostGIS.Tests;
 
 /// <summary>
-/// Redaction and structured diagnostics (plan §19, architecture/distilled/host-and-clients.md): a
-/// connection string or password must never appear in any error, the
-/// unconfigured message is actionable, stream failures distinguish
-/// cancellation, and feature identity rendering is stable.
+/// Redaction and identity helpers (ADR-0033): a connection string or
+/// password must never appear in any diagnostic, and feature identity
+/// rendering is stable.
 /// </summary>
 public sealed class PostgisDiagnosticsTests
 {
-    private static readonly CapabilityId Scan = FeatureScanContract.Id;
-
     [Fact]
-    public void Provider_failure_redacts_the_connection_string_and_password()
+    public void Redaction_scrubs_the_connection_string_and_password()
     {
         var configuration = PostgisConnectionConfiguration.FromConnectionString(
             "Host=db.internal;Port=5432;Database=spatial;Username=admin;Password=hunter2-secret");
 
-        var error = PostgisDiagnostics.ProviderFailure(configuration, Scan, new InvalidOperationException(
-            $"cannot reach Host=db.internal;Port=5432;Database=spatial;Username=admin;Password=hunter2-secret - timeout"));
+        var scrubbed = configuration.Redact(
+            "cannot reach Host=db.internal;Port=5432;Database=spatial;Username=admin;Password=hunter2-secret - timeout");
 
-        Assert.Equal(CapabilityErrorKind.ProviderFailure, error.Kind);
-        Assert.DoesNotContain("hunter2-secret", error.Message);
-        Assert.DoesNotContain("db.internal", error.Message);
-        Assert.DoesNotContain("admin", error.Message);
-        Assert.Contains("[redacted]", error.Message);
-        Assert.Contains("'spatial'", error.Message);
+        Assert.DoesNotContain("hunter2-secret", scrubbed);
+        Assert.DoesNotContain("db.internal", scrubbed);
+        Assert.Contains("[redacted]", scrubbed);
+        Assert.Contains("'spatial'", configuration.RedactedKey);
     }
 
     [Fact]
@@ -42,35 +35,6 @@ public sealed class PostgisDiagnosticsTests
 
         Assert.DoesNotContain("s3cret", scrubbed);
         Assert.Contains("[redacted]", scrubbed);
-    }
-
-    [Fact]
-    public void Unavailable_error_names_the_environment_variable_and_no_secret()
-    {
-        var error = PostgisDiagnostics.Unavailable(Scan);
-
-        Assert.Equal(CapabilityErrorKind.ProviderUnavailable, error.Kind);
-        Assert.Equal("provider.unavailable", error.Code);
-        Assert.Contains(PostgisConnectionConfiguration.EnvironmentVariable, error.Message);
-    }
-
-    [Fact]
-    public void Stream_failure_maps_cancellation_and_redacts_other_failures()
-    {
-        var configuration = PostgisConnectionConfiguration.FromConnectionString(
-            "Host=localhost;Password=secret;Database=spatial;Username=admin");
-
-        var cancelled = PostgisDiagnostics.StreamFailure(
-            Scan, new OperationCanceledException(), configuration);
-
-        Assert.Equal(CapabilityErrorKind.Cancelled, cancelled.Kind);
-        Assert.Equal("operation.cancelled", cancelled.Code);
-
-        var failed = PostgisDiagnostics.StreamFailure(
-            Scan, new Npgsql.NpgsqlException("connection to Host=localhost;Password=secret;Database=spatial;Username=admin failed"), configuration);
-
-        Assert.Equal(CapabilityErrorKind.ProviderFailure, failed.Kind);
-        Assert.DoesNotContain("secret", failed.Message);
     }
 
     [Fact]
@@ -98,5 +62,13 @@ public sealed class PostgisDiagnosticsTests
 
         Assert.DoesNotContain("pw123", configuration.RedactedKey);
         Assert.Contains("'spatial'", configuration.RedactedKey);
+    }
+
+    [Fact]
+    public void Unconfigured_store_reports_its_setting()
+    {
+        Assert.Contains(
+            PostgisOptions.EnvironmentVariable,
+            PostgisConnectionConfiguration.FromEnvironmentValue(null).RedactedKey);
     }
 }

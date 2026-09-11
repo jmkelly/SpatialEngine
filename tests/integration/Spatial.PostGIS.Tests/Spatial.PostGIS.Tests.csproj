@@ -30,10 +30,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.PluginHost.DotNet\Spatial.PluginHost.DotNet.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Provider.PostGIS\Spatial.Provider.PostGIS.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
   </ItemGroup>
 
 </Project>
