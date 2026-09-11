@@ -99,9 +99,11 @@ browser tests never require Tauri.
   config in redacted form (db/schema only) — asserted by a redaction test.
 - Client-supplied text never becomes SQL structure: strict identifier
   grammar + bound parameters (see `contracts.md`).
-- HTTP is the enforcement point for scoping: caller declares `permissions`;
-  host grants per its policy; runtime permission gate enforces against
-  declared capability requirements. Host binds loopback by default locally;
-  remote deployment is a deliberate config choice.
+- Permissions are caller-asserted scoping, not authorization: the caller
+  declares `permissions`, the host forwards them unchanged, and the runtime
+  permission gate enforces them against the capability's declared
+  requirements. A host-side grant policy is not implemented yet; the loopback
+  bind (`Host` listens on loopback locally) is the trust boundary, so remote
+  deployment must add its own authentication/policy in front.
 - Payload, stream, memory and time limits enforced where supported; audit
   events and provenance are structured.
