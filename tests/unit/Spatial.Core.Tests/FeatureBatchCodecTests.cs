@@ -249,6 +249,60 @@ public class FeatureBatchCodecTests
     }
 
     [Fact]
+    public void Projecting_decode_rejects_garbage_before_schema_checks()
+    {
+        var target = new FeatureSchema([new FieldDefinition("f", AttributeKind.Int64)]);
+
+        Assert.False(FeatureBatchCodec.TryDecode([0x00, 0x00, 0x00, 0x00, 0x00, 0x00], target, out _, out var headerError));
+        Assert.Contains("expected magic", headerError);
+
+        Assert.False(FeatureBatchCodec.TryDecode(Concat(Header(), [0xFF]), target, out _, out var schemaError));
+        Assert.False(string.IsNullOrWhiteSpace(schemaError));
+    }
+
+    [Fact]
+    public void Decode_rejects_truncated_kind_and_flag_bytes()
+    {
+        // Seven field bytes pass the schema pre-check, then the kind byte is missing.
+        AssertFailed(Payload(Int32(1), String("abc")), "expected a kind byte; input is truncated");
+
+        // Nullable flag present but the description-presence flag missing.
+        var field = FieldChunks("f", AttributeKind.Int64);
+        AssertFailed(Payload(Int32(1), field[0], field[1], [0x00]), "expected a description presence byte; input is truncated");
+    }
+
+    [Fact]
+    public void Decode_rejects_truncated_and_blank_descriptions()
+    {
+        var field = FieldChunks("f", AttributeKind.String);
+
+        // Description presence set but no description bytes follow.
+        AssertFailed(Payload(Int32(1), field[0], field[1], [0x00], [0x01]), "description is truncated");
+
+        // A whitespace-only description is rejected, not stored.
+        AssertFailed(Payload(Int32(1), field[0], field[1], [0x00], [0x01], String("   ")), "description must be a non-empty string");
+    }
+
+    [Fact]
+    public void Decode_rejects_truncated_null_marker()
+    {
+        var field = FieldChunks("f", AttributeKind.Int64);
+
+        // Feature id present but the attribute stream ends before its null marker.
+        AssertFailed(Payload(Int32(1), field[0], field[1], [0x00], [0x00], Int32(1), String("f")), "expected a null marker");
+    }
+
+    [Fact]
+    public void Decode_rejects_mid_value_truncations()
+    {
+        // Ticks present but the Int16 offset-minutes read fails mid-value.
+        AssertFailed(FeaturePayload(AttributeKind.DateTimeOffset, Int64(0), [0x01]), "truncated or out of range");
+
+        // Valid UTC ticks whose local representation overflows: the range guard fires.
+        AssertFailed(FeaturePayload(AttributeKind.DateTimeOffset, Int64(0), Int16(-840)), "truncated or out of range");
+    }
+
+    [Fact]
     public void Decode_rejects_invalid_feature_counts()
     {
         var intField = new FeatureSchema([new FieldDefinition("f", AttributeKind.Int64)]);

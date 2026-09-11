@@ -203,6 +203,7 @@ public class AttributeValueTests
         Assert.Contains("String(hello)", AttributeValue.FromString("hello").ToString());
         Assert.Contains("Geometry(Point (1, 2))", AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2)).ToString());
         Assert.Contains("Guid(00000000-0000-0000-0000-000000000000)", AttributeValue.FromGuid(Guid.Empty).ToString());
+        Assert.Contains("DateTimeOffset(", AttributeValue.FromDateTimeOffset(new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero)).ToString());
     }
 
     [Fact]
