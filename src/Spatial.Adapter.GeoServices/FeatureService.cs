@@ -963,7 +963,7 @@ internal static class FeatureService
     /// key always share one kind because the dataset schema fixes the column
     /// kind; a defensive fallback compares the kinds when they do not.
     /// </summary>
-    private sealed class AttributeValueComparer : IComparer<AttributeValue>
+    internal sealed class AttributeValueComparer : IComparer<AttributeValue>
     {
         public static readonly AttributeValueComparer Instance = new();
 
@@ -971,9 +971,17 @@ internal static class FeatureService
         {
             if (left.IsNull || right.IsNull)
             {
-                return left.IsNull ? (right.IsNull ? 0 : 1) : -1;
+                return CompareNulls(left, right);
             }
 
+            return CompareValues(left, right);
+        }
+
+        private static int CompareNulls(AttributeValue left, AttributeValue right) =>
+            left.IsNull ? (right.IsNull ? 0 : 1) : -1;
+
+        private static int CompareValues(AttributeValue left, AttributeValue right)
+        {
             if (left.Kind != right.Kind)
             {
                 return left.Kind.CompareTo(right.Kind);
