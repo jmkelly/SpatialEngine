@@ -195,6 +195,13 @@ Ordered by dependency:
   `returnCountOnly`, `hasZ/hasM`, time zones). Record the decision and the
   ADR-0020/query-security exceptions in an ADR before implementing, and
   budget the verb expansion (items 3–6 above) as the dominant cost.
+- Serving status update: the 10.x `orderByFields` delta is implemented for
+  the Feature Service `query`. It accepts a comma-separated list of
+  `fieldName [ASC|DESC]` entries, validated against the layer schema in the
+  adapter, and orders the matched features in memory before
+  `resultOffset`/`resultRecordCount` — it is never rendered as SQL. Unknown
+  fields, geometry fields and malformed entries fail `invalid.arguments`
+  (HTTP 400).
 
 ## 8. Note on repo doc drift (unrelated but relevant)
 

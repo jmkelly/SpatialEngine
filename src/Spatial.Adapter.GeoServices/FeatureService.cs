@@ -55,6 +55,7 @@ internal static class FeatureService
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
         var matches = await MatchAsync(dataset, store, query, queryGeometry, operations, scheme, cancellationToken);
+        matches = ApplyOrderBy(matches, CompileOrderBy(dataset, query));
         if (query.ReturnIdsOnly)
         {
             return IdsOnly(matches);
@@ -522,6 +523,76 @@ internal static class FeatureService
         return transforms.Transform(geometry, source.ToString(), layerCrs.Value.ToString(), cancellationToken);
     }
 
+    /// <summary>
+    /// Validates <c>orderByFields</c> against the dataset schema and compiles
+    /// each entry to a schema index plus direction. Unknown fields and geometry
+    /// fields are typed invalid-argument failures (HTTP 400).
+    /// </summary>
+    private static OrderKey[]? CompileOrderBy(DatasetDescription dataset, EsriFeatureQuery query)
+    {
+        if (query.OrderByFields is not { Count: > 0 } fields)
+        {
+            return null;
+        }
+
+        var keys = new OrderKey[fields.Count];
+        for (var i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            var index = dataset.Schema.IndexOf(field.Name);
+            if (index < 0)
+            {
+                throw EsriInteropException.Invalid(
+                    $"'orderByFields' names unknown field '{field.Name}' in layer '{dataset.Id}'.");
+            }
+
+            if (dataset.Schema[index].Kind == AttributeKind.Geometry)
+            {
+                throw EsriInteropException.Invalid(
+                    $"'orderByFields' cannot order by geometry field '{field.Name}' in layer '{dataset.Id}'.");
+            }
+
+            keys[i] = new OrderKey(index, field.Descending);
+        }
+
+        return keys;
+    }
+
+    /// <summary>
+    /// Applies the compiled ordering to the matched features before paging.
+    /// LINQ's ordering is a stable sort, so equal keys keep their scan order.
+    /// </summary>
+    private static List<MatchedFeature> ApplyOrderBy(List<MatchedFeature> matches, OrderKey[]? keys)
+    {
+        if (keys is null)
+        {
+            return matches;
+        }
+
+        IOrderedEnumerable<MatchedFeature>? ordered = null;
+        foreach (var key in keys)
+        {
+            Func<MatchedFeature, AttributeValue> selector = match => match.Feature[key.Index];
+            ordered = ordered is null
+                ? Order(matches, selector, key.Descending)
+                : ThenOrder(ordered, selector, key.Descending);
+        }
+
+        return ordered!.ToList();
+    }
+
+    private static IOrderedEnumerable<MatchedFeature> Order(
+        IEnumerable<MatchedFeature> matches, Func<MatchedFeature, AttributeValue> selector, bool descending) =>
+        descending
+            ? matches.OrderByDescending(selector, AttributeValueComparer.Instance)
+            : matches.OrderBy(selector, AttributeValueComparer.Instance);
+
+    private static IOrderedEnumerable<MatchedFeature> ThenOrder(
+        IOrderedEnumerable<MatchedFeature> ordered, Func<MatchedFeature, AttributeValue> selector, bool descending) =>
+        descending
+            ? ordered.ThenByDescending(selector, AttributeValueComparer.Instance)
+            : ordered.ThenBy(selector, AttributeValueComparer.Instance);
+
     private static PageResult Page(List<MatchedFeature> matches, EsriFeatureQuery query)
     {
         var offset = Math.Min(query.ResultOffset ?? 0, matches.Count);
@@ -646,6 +717,45 @@ internal static class FeatureService
     }
 
     private sealed record MatchedFeature(long ObjectId, Feature Feature);
+
+    /// <summary>One compiled <c>orderByFields</c> key: a schema index and direction.</summary>
+    private sealed record OrderKey(int Index, bool Descending);
+
+    /// <summary>
+    /// Orders attribute values of the kinds a schema can declare. Nulls sort
+    /// last in ascending order (and therefore first when the key is reversed
+    /// for DESC), matching the conventional SQL default. Non-null values of a
+    /// key always share one kind because the dataset schema fixes the column
+    /// kind; a defensive fallback compares the kinds when they do not.
+    /// </summary>
+    private sealed class AttributeValueComparer : IComparer<AttributeValue>
+    {
+        public static readonly AttributeValueComparer Instance = new();
+
+        public int Compare(AttributeValue left, AttributeValue right)
+        {
+            if (left.IsNull || right.IsNull)
+            {
+                return left.IsNull ? (right.IsNull ? 0 : 1) : -1;
+            }
+
+            if (left.Kind != right.Kind)
+            {
+                return left.Kind.CompareTo(right.Kind);
+            }
+
+            return left.Kind switch
+            {
+                AttributeKind.Boolean => left.BooleanValue.CompareTo(right.BooleanValue),
+                AttributeKind.Int64 => left.Int64Value.CompareTo(right.Int64Value),
+                AttributeKind.Double => left.DoubleValue.CompareTo(right.DoubleValue),
+                AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
+                AttributeKind.DateTimeOffset => left.DateTimeOffsetValue.UtcTicks.CompareTo(right.DateTimeOffsetValue.UtcTicks),
+                AttributeKind.Guid => left.GuidValue.CompareTo(right.GuidValue),
+                _ => 0,
+            };
+        }
+    }
 
     private sealed record PageResult(IReadOnlyList<MatchedFeature> Items, bool Exceeded);
 
