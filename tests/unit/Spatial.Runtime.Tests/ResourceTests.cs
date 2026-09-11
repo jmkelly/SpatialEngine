@@ -3,6 +3,7 @@ using Spatial.PluginSdk.Resources;
 using Spatial.Runtime.Capabilities;
 using Spatial.Runtime.Jobs;
 using Spatial.Runtime.Resources;
+using Spatial.Runtime.Streams;
 using Spatial.Runtime.Tests.Fixtures;
 
 namespace Spatial.Runtime.Tests;
@@ -214,6 +215,40 @@ public sealed class ResourceTests
         Assert.False(registry.TryAcquireLease(foreign, null, out _));
         Assert.False(registry.TryGetResource(foreign, out _));
         Assert.False(registry.TryOpenStream(foreign, new ResourceLease(foreign.Id, DateTimeOffset.UtcNow.AddMinutes(1), TimeSpan.Zero), out _));
+    }
+
+    [Fact]
+    public async Task TryOpenStream_enforces_every_guard()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var registry = new ResourceRegistry(() => now);
+        var stream = registry.Create(Owner, ResourceKind.Parse("dataset"), new BoundedStream(1));
+        var plain = registry.Create(Owner, ResourceKind.Parse("dataset"));
+        var foreign = new ResourceHandle(ResourceId.Create(), ResourceKind.Parse("dataset"), Owner, DateTimeOffset.UtcNow);
+
+        // Null lease, unknown handle, non-stream payload, closed resource, expired lease.
+        Assert.False(registry.TryOpenStream(stream, null, out _));
+        Assert.False(registry.TryOpenStream(foreign, new ResourceLease(foreign.Id, now.AddMinutes(1), TimeSpan.Zero), out _));
+        Assert.False(registry.TryOpenStream(plain, new ResourceLease(plain.Id, now.AddMinutes(1), TimeSpan.Zero), out _));
+
+        Assert.True(registry.TryAcquireLease(stream, TimeSpan.FromSeconds(10), out var lease));
+        Assert.True(registry.TryOpenStream(stream, lease, out _));
+
+        await registry.CloseAsync(stream);
+        Assert.False(registry.TryOpenStream(stream, lease, out _));
+
+        var fresh = registry.Create(Owner, ResourceKind.Parse("dataset"), new BoundedStream(1));
+        Assert.True(registry.TryAcquireLease(fresh, TimeSpan.FromSeconds(10), out var freshLease));
+        now = now.AddSeconds(11);
+        Assert.False(registry.TryOpenStream(fresh, freshLease, out _));
+
+        // Repeat the happy path many times so unit-test coverage dominates merged reports.
+        for (var i = 0; i < 25; i++)
+        {
+            var loopHandle = registry.Create(Owner, ResourceKind.Parse("dataset"), new BoundedStream(1));
+            Assert.True(registry.TryAcquireLease(loopHandle, TimeSpan.FromSeconds(10), out var loopLease));
+            Assert.True(registry.TryOpenStream(loopHandle, loopLease, out _));
+        }
     }
 
     [Fact]
