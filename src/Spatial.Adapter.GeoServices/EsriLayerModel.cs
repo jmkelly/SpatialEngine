@@ -16,6 +16,12 @@ internal static class EsriLayerModel
     /// <summary>The synthetic integer object-id field every served layer advertises.</summary>
     public const string ObjectIdField = "OBJECTID";
 
+    /// <summary>The capability string of a layer that only supports querying.</summary>
+    public const string ReadOnlyCapabilities = "Query";
+
+    /// <summary>The capability string of a layer whose store supports editing (ADR-0037).</summary>
+    public const string EditableCapabilities = "Query,Create,Update,Delete";
+
     /// <summary>The configured maximum page size in features.</summary>
     public const int MaxRecordCount = 1000;
 
@@ -34,7 +40,7 @@ internal static class EsriLayerModel
         new(id, dataset.Table, "Feature Layer");
 
     /// <summary>Builds the full layer metadata (spec §9.1).</summary>
-    public static EsriLayer Describe(int id, DatasetDescription dataset) =>
+    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable) =>
         new(
             10.0,
             id,
@@ -42,8 +48,8 @@ internal static class EsriLayerModel
             "Feature Layer",
             GeometryType(dataset.GeometryType),
             ObjectIdField,
-            Fields(dataset),
-            "Query",
+            Fields(dataset, editable),
+            editable ? EditableCapabilities : ReadOnlyCapabilities,
             MaxRecordCount,
             SpatialReference(dataset.Srid));
 
@@ -55,7 +61,7 @@ internal static class EsriLayerModel
     public static Spatial.Core.Geometry.CoordinateReference? LayerCoordinateReference(int srid) =>
         srid > 0 ? Spatial.Core.Geometry.CoordinateReference.Epsg(srid) : null;
 
-    private static List<EsriField> Fields(DatasetDescription dataset)
+    private static List<EsriField> Fields(DatasetDescription dataset, bool editable)
     {
         var fields = new List<EsriField>
         {
@@ -68,7 +74,7 @@ internal static class EsriLayerModel
                 EsriFieldType.FromAttributeKind(field.Kind),
                 field.Name,
                 field.Nullable,
-                false));
+                editable && field.Kind != AttributeKind.Geometry));
         }
 
         return fields;

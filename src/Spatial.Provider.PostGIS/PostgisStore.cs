@@ -290,7 +290,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
         }
     }
 
-    private async Task<DatasetDescription> DescribeInternalAsync(PostgisDatasetName name, CancellationToken token)
+    internal async Task<DatasetDescription> DescribeInternalAsync(PostgisDatasetName name, CancellationToken token)
     {
         await using var connection = await _store.Value.OpenConnectionAsync(token);
         var parameters = new List<object?> { name.Schema, name.Table };
@@ -340,7 +340,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
         return batches;
     }
 
-    private static void CheckWritable(DatasetDescription description, FeatureBatch batch)
+    internal static void CheckWritable(DatasetDescription description, FeatureBatch batch)
     {
         foreach (var field in batch.Schema.Fields)
         {
@@ -383,6 +383,23 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
         return count;
     }
 
+    /// <summary>Opens the connection a store-side edit runs on: the transaction handle's connection, or a fresh autocommit one (ADR-0037).</summary>
+    internal async Task<PostgisEditSession> OpenEditSessionAsync(string? transaction, CancellationToken cancellationToken)
+    {
+        if (_transactions.TryGetValue(transaction ?? string.Empty, out var entry))
+        {
+            return new PostgisEditSession(entry.Connection, entry.Transaction, ownsConnection: false);
+        }
+
+        if (transaction is not null)
+        {
+            throw SpatialException.BadArguments($"Unknown transaction '{transaction}'.");
+        }
+
+        var connection = await _store.Value.OpenConnectionAsync(cancellationToken);
+        return new PostgisEditSession(connection, transaction: null, ownsConnection: true);
+    }
+
     private static string? BuildPredicate(
         DatasetDescription description, CoreBoundingBox? bbox, string? filter, List<object?> parameters)
     {
@@ -411,7 +428,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
         return predicate;
     }
 
-    private static PostgisDatasetName ParseDataset(string dataset)
+    internal static PostgisDatasetName ParseDataset(string dataset)
     {
         if (!PostgisDatasetName.TryParse(dataset, out var name, out var reason))
         {
@@ -426,7 +443,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
             .Where(index => index >= 0)
             .ToArray();
 
-    private void RequireConfigured()
+    internal void RequireConfigured()
     {
         if (!_configuration.IsConfigured)
         {
@@ -435,7 +452,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
         }
     }
 
-    private SpatialException StoreFailure(Exception exception) =>
+    internal SpatialException StoreFailure(Exception exception) =>
         exception is SpatialException spatial ? spatial
         : new SpatialException(
             SpatialException.StoreUnavailable,

@@ -1,3 +1,4 @@
+using Spatial.Core.Features;
 using Spatial.Provider.PostGIS.Configuration;
 using Spatial.Provider.PostGIS.Core;
 
@@ -43,6 +44,27 @@ public sealed class PostgisDiagnosticsTests
         Assert.Equal("7|berlin", PostgisDiagnostics.FeatureIdentity([0, 1], [7L, "berlin"], 9));
         Assert.Equal("9", PostgisDiagnostics.FeatureIdentity([], [7L], 9));
         Assert.Equal("7|", PostgisDiagnostics.FeatureIdentity([0, 1], [7L, null], 9));
+    }
+
+    [Fact]
+    public void Parse_feature_identity_reverses_composite_ids_by_kind()
+    {
+        var values = PostgisDiagnostics.ParseFeatureIdentity(
+            [AttributeKind.Int64, AttributeKind.String, AttributeKind.Guid],
+            new FeatureId("7|berlin|6F9619FF-8B86-D011-B42D-00C04FC964FF"));
+
+        Assert.Equal(7L, values[0]);
+        Assert.Equal("berlin", values[1]);
+        Assert.Equal(Guid.Parse("6F9619FF-8B86-D011-B42D-00C04FC964FF"), values[2]);
+    }
+
+    [Fact]
+    public void Parse_feature_identity_rejects_a_column_count_mismatch()
+    {
+        var exception = Assert.Throws<Spatial.PluginSdk.SpatialException>(() =>
+            PostgisDiagnostics.ParseFeatureIdentity([AttributeKind.Int64, AttributeKind.Int64], new FeatureId("7")));
+
+        Assert.Equal(Spatial.PluginSdk.SpatialException.InvalidArguments, exception.Code);
     }
 
     [Fact]

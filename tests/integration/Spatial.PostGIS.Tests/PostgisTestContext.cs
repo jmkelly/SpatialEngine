@@ -14,10 +14,13 @@ internal sealed class PostgisTestContext : IAsyncDisposable
     private PostgisTestContext(PostgisStore store, string connectionString)
     {
         Store = store;
+        Editor = new PostgisEditStore(store);
         ConnectionString = connectionString;
     }
 
     public PostgisStore Store { get; }
+
+    public PostgisEditStore Editor { get; }
 
     public string ConnectionString { get; }
 

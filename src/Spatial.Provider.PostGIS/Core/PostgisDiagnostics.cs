@@ -1,4 +1,6 @@
 using System.Globalization;
+using Spatial.Core.Features;
+using Spatial.PluginSdk;
 
 namespace Spatial.Provider.PostGIS.Core;
 
@@ -27,6 +29,41 @@ internal static class PostgisDiagnostics
 
         return string.Join('|', parts);
     }
+
+    /// <summary>
+    /// Reverses <see cref="FeatureIdentity"/> for an edit: splits a composite
+    /// id on '|' and converts each part to its identity column's type
+    /// (ADR-0037). A malformed id yields a typed invalid-argument failure.
+    /// </summary>
+    public static object?[] ParseFeatureIdentity(
+        IReadOnlyList<AttributeKind> identityKinds,
+        FeatureId id)
+    {
+        var parts = id.Value.Split('|');
+        if (parts.Length != identityKinds.Count)
+        {
+            throw SpatialException.BadArguments(
+                $"Feature id '{id.Value}' does not match the dataset's {identityKinds.Count} identity column(s).");
+        }
+
+        var values = new object?[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            values[i] = ParseIdentityPart(identityKinds[i], parts[i]);
+        }
+
+        return values;
+    }
+
+    private static object? ParseIdentityPart(AttributeKind kind, string value) => kind switch
+    {
+        AttributeKind.Int64 => long.Parse(value, CultureInfo.InvariantCulture),
+        AttributeKind.Double => double.Parse(value, CultureInfo.InvariantCulture),
+        AttributeKind.Boolean => bool.Parse(value),
+        AttributeKind.Guid => Guid.Parse(value),
+        AttributeKind.DateTimeOffset => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture),
+        _ => value,
+    };
 
     /// <summary>Reads a date-only or timestamp value into a <see cref="DateTimeOffset"/> (UTC unless the value says otherwise).</summary>
     public static DateTimeOffset ToDateTimeOffset(DateTime value) =>

@@ -20,6 +20,7 @@ infrastructure.
 | `ICrsDirectory` + `ICoordinateTransforms` | `ProjNetTransforms` | CRS describe + transform; x-first convention; curated EPSG catalogue |
 | `IDataCatalogue` | `DemoStore`, `PostgisStore`, `ArcGisRestStore` | List (LIKE `pattern`), describe, create-from-batch |
 | `IFeatureStore` | `DemoStore`, `PostgisStore`, `ArcGisRestStore` | Scan, bbox + attribute query, single-transaction write; reads return `FeatureBatch` pages |
+| `IFeatureEditStore` | `PostgisEditStore` | Per-feature add/update/delete with `FeatureEditOutcome`; split from `PostgisStore` so each type keeps one responsibility (ADR-0037) |
 | `ITransactionStore` | `PostgisStore` | String handles over open connections (`Begin/Commit/Rollback`) |
 | `IDemoJobs` | `DemoStore` | Cancellable `SleepAsync` delay with `IProgress<double>` |
 

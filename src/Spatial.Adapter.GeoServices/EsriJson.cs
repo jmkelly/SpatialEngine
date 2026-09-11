@@ -73,6 +73,23 @@ internal static class EsriErrorMapper
         return Envelope(code, spatial.Message, HttpFor(code));
     }
 
+    /// <summary>Maps a per-feature edit failure to the Esri result error code (ADR-0037).</summary>
+    public static int EditCodeFor(Exception exception) => exception switch
+    {
+        EsriInteropException interop => interop.Code,
+        SpatialException spatial => CodeFor(spatial.Code),
+        ArgumentException => EsriErrorCodes.InvalidParameters,
+        OperationCanceledException => EsriErrorCodes.RequestCancelled,
+        _ => EsriErrorCodes.ServerError,
+    };
+
+    /// <summary>Maps a stored engine error code to the Esri result error code.</summary>
+    public static int EditCodeFor(string? spatialCode) => spatialCode switch
+    {
+        null or "" => EsriErrorCodes.InvalidParameters,
+        _ => CodeFor(spatialCode),
+    };
+
     private static IResult Envelope(int code, string message, int statusCode) =>
         EsriJson.Value(new EsriErrorResponse(new EsriError(code, message)), statusCode);
 

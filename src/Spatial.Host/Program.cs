@@ -5,6 +5,7 @@ using Spatial.Host.Api;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
+using Spatial.PluginSdk.Providers;
 using Spatial.Provider.ArcGisRest;
 using Spatial.Provider.Demo;
 using Spatial.Provider.PostGIS;
@@ -51,8 +52,10 @@ builder.Services.AddKeyedSingleton<IDataCatalogue, DemoStore>("demo");
 builder.Services.AddKeyedSingleton<IFeatureStore, DemoStore>("demo");
 builder.Services.AddSingleton<IDemoJobs>(services => services.GetRequiredService<DemoStore>());
 builder.Services.AddSingleton<PostgisStore>();
+builder.Services.AddSingleton<PostgisEditStore>();
 builder.Services.AddKeyedSingleton<IDataCatalogue, PostgisStore>("postgis");
 builder.Services.AddKeyedSingleton<IFeatureStore, PostgisStore>("postgis");
+builder.Services.AddKeyedSingleton<IFeatureEditStore>("postgis", (services, _) => services.GetRequiredService<PostgisEditStore>());
 builder.Services.AddKeyedSingleton<ITransactionStore, PostgisStore>("postgis");
 
 // The ArcGIS REST consuming provider (ADR-0035): every configured remote

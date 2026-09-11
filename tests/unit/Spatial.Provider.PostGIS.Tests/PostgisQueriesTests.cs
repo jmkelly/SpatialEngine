@@ -89,4 +89,37 @@ public sealed class PostgisQueriesTests
         Assert.Contains("@p0", PostgisQueries.RowEstimate());
         Assert.Contains("@p0", PostgisQueries.TableExists());
     }
+
+    [Fact]
+    public void Insert_returning_lists_the_identity_columns_or_stays_plain()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            PostgisQueries.Insert(dataset, Schema, 4326),
+            PostgisQueries.InsertReturning(dataset, Schema, 4326, []));
+        Assert.Equal(
+            "INSERT INTO \"public\".\"places\" (\"id\", \"name\", \"geom\") VALUES (@p0, @p1, ST_SetSRID(ST_GeomFromEWKB(@p2), 4326)) RETURNING \"id\"",
+            PostgisQueries.InsertReturning(dataset, Schema, 4326, ["id"]));
+    }
+
+    [Fact]
+    public void Update_sets_every_field_and_targets_the_identity_parameter()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            "UPDATE \"public\".\"places\" SET \"id\" = @p0, \"name\" = @p1, \"geom\" = ST_SetSRID(ST_GeomFromEWKB(@p2), 4326) WHERE \"id\" = @p0",
+            PostgisQueries.Update(dataset, Schema, 4326, ["id"]));
+    }
+
+    [Fact]
+    public void Delete_targets_the_identity_columns_with_positional_parameters()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            "DELETE FROM \"public\".\"places\" WHERE \"tenant\" = @p0 AND \"id\" = @p1",
+            PostgisQueries.Delete(dataset, ["tenant", "id"]));
+    }
 }

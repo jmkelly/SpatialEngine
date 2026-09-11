@@ -38,6 +38,20 @@ public static class GeoServicesEndpoints
             FeatureQuery(
                 new FeatureQueryContext(catalog, context, service, layerId, services, operations, transforms),
                 cancellationToken));
+
+        // Editing (ADR-0037): POST-only, per spec §9.1.6–§9.1.9.
+        group.MapPost("/{service}/FeatureServer/{layerId:int}/addFeatures", (
+            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, context, service, layerId, services, EsriEditOperation.Add), cancellationToken));
+        group.MapPost("/{service}/FeatureServer/{layerId:int}/updateFeatures", (
+            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, context, service, layerId, services, EsriEditOperation.Update), cancellationToken));
+        group.MapPost("/{service}/FeatureServer/{layerId:int}/deleteFeatures", (
+            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, context, service, layerId, services, EsriEditOperation.Delete), cancellationToken));
+        group.MapPost("/{service}/FeatureServer/{layerId:int}/applyEdits", (
+            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, context, service, layerId, services, EsriEditOperation.Apply), cancellationToken));
     }
 
     private static IResult Catalog(GeoServicesCatalog catalog, string? format)
@@ -84,7 +98,7 @@ public static class GeoServicesEndpoints
         {
             EsriFormat.Ensure(f);
             var datasets = await ListDatasetsAsync(services, catalog, service, cancellationToken);
-            return EsriJson.Value(FeatureService.Root(datasets));
+            return EsriJson.Value(FeatureService.Root(datasets, IsEditable(services, catalog, service)));
         }
         catch (Exception exception)
         {
@@ -100,7 +114,8 @@ public static class GeoServicesEndpoints
             EsriFormat.Ensure(f);
             var datasets = await ListDatasetsAsync(services, catalog, service, cancellationToken);
             var description = await DescribeAsync(services, catalog, service, datasets, layerId, cancellationToken);
-            return EsriJson.Value(FeatureService.Layer(layerId, description));
+            var editable = IsEditable(services, catalog, service) && EsriObjectIdScheme.For(description).SupportsEditing;
+            return EsriJson.Value(FeatureService.Layer(layerId, description, editable));
         }
         catch (Exception exception)
         {
@@ -125,6 +140,49 @@ public static class GeoServicesEndpoints
             return EsriErrorMapper.Map(exception);
         }
     }
+
+    private static async Task<IResult> FeatureEdit(FeatureEditContext request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            EsriEditRequest.RejectUnsupported(parameters);
+            var datasets = await ListDatasetsAsync(request.Services, request.Catalog, request.Service, cancellationToken);
+            var description = await DescribeAsync(request.Services, request.Catalog, request.Service, datasets, request.LayerId, cancellationToken);
+            var store = request.Services.GetRequiredKeyedService<IFeatureStore>(ResolveFeature(request.Catalog, request.Service).Store);
+            var editStore = EditStore(request.Services, request.Catalog, request.Service)
+                ?? throw EsriInteropException.Invalid(
+                    $"Service '{request.Service}' is read-only; it exposes no feature-editing capability.");
+
+            var edits = request.Operation switch
+            {
+                EsriEditOperation.Add => EsriEditRequest.ParseAdd(parameters),
+                EsriEditOperation.Update => EsriEditRequest.ParseUpdate(parameters),
+                EsriEditOperation.Delete => EsriEditRequest.ParseDelete(parameters),
+                _ => EsriEditRequest.ParseApply(parameters),
+            };
+            return await FeatureService.EditsAsync(
+                request.Operation,
+                description,
+                store,
+                editStore,
+                edits,
+                EsriLayerModel.LayerCoordinateReference(description.Srid),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    private static bool IsEditable(IServiceProvider services, GeoServicesCatalog catalog, string service) =>
+        EditStore(services, catalog, service) is not null;
+
+    /// <summary>Resolves the service's keyed editing capability, or null when the store is read-only (ADR-0037).</summary>
+    private static IFeatureEditStore? EditStore(IServiceProvider services, GeoServicesCatalog catalog, string service) =>
+        services.GetKeyedService<IFeatureEditStore>(ResolveFeature(catalog, service).Store);
 
     private static async Task<IReadOnlyList<DatasetSummary>> ListDatasetsAsync(
         IServiceProvider services, GeoServicesCatalog catalog, string service, CancellationToken cancellationToken)
@@ -174,6 +232,15 @@ internal sealed record FeatureQueryContext(
     IServiceProvider Services,
     IGeometryOperations Operations,
     ICoordinateTransforms Transforms);
+
+/// <summary>The resolved services of one Feature Service editing request.</summary>
+internal sealed record FeatureEditContext(
+    GeoServicesCatalog Catalog,
+    HttpContext Context,
+    string Service,
+    int LayerId,
+    IServiceProvider Services,
+    EsriEditOperation Operation);
 
 /// <summary>The GeoServices catalog resource (spec §3).</summary>
 internal sealed record CatalogResponse(double CurrentVersion, IReadOnlyList<string> Folders, IReadOnlyList<EsriServiceEntry> Services);

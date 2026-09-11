@@ -41,14 +41,22 @@ GET    /arcgis/rest/services/Geometry/GeometryServer/{op}     # project/generali
 GET    /arcgis/rest/services/{service}/FeatureServer          # FeatureServer root (layers)
 GET    /arcgis/rest/services/{service}/FeatureServer/{layerId}
 GET    /arcgis/rest/services/{service}/FeatureServer/{layerId}/query
+POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/addFeatures
+POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/updateFeatures
+POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/deleteFeatures
+POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/applyEdits
 ```
 
 The GeoServices routes are the Esri boundary adapter (ADR-0035): `f=json`
-only, Esri JSON over HTTP, no core changes. The facade serves read-only
-Geometry Service operations and read-only FeatureServer queries over the
-same keyed stores; the engine API above is unchanged. Track C consumes a
-remote ArcGIS REST service as a keyed `IDataCatalogue`/`IFeatureStore`
-(`Spatial.Provider.ArcGisRest`).
+only, Esri JSON over HTTP, no core changes. The facade serves Geometry
+Service operations, FeatureServer queries, and — for a layer whose store
+implements `IFeatureEditStore` and whose dataset has an integer identity
+column — the editing operations `addFeatures`/`updateFeatures`/
+`deleteFeatures`/`applyEdits` (ADR-0037). Editing is advertised per layer
+via `capabilities` and field `editable`; `rollbackOnFailure` uses the
+store's `ITransactionStore`. The engine API above is unchanged. Track C
+consumes a remote ArcGIS REST service as a keyed
+`IDataCatalogue`/`IFeatureStore` (`Spatial.Provider.ArcGisRest`).
 
 The `store` query selects `demo` (default, always available) or `postgis`
 (needs configuration).

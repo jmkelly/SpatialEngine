@@ -1,7 +1,8 @@
 # GeoServices REST Implementation Plan
 
-> **Status:** implemented (first release). Companion to
-> `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`.
+> **Status:** implemented (serving + consuming + editing). Companion to
+> `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`
+> and `architecture/decisions/ADR-0037-feature-editing-gated-capability.md`.
 > This is a focused plan for two tracks — **serving** the Esri GeoServices
 > REST Specification from the engine and **consuming** ArcGIS REST as a data
 > provider. Where it disagrees with `architecture/implementation-plan.md`,
@@ -9,18 +10,23 @@
 > main plan still applies.
 >
 > **Delivered:** `Spatial.Interop.Esri` (geometry/feature codec, WKID ↔
-> EPSG map, error model, shared `where`/filter grammar);
-> `Spatial.Adapter.GeoServices` (catalog, Geometry Service with the S1a/S1b
-> verbs, read-only FeatureServer/layer/query); `Spatial.Provider.ArcGisRest`
-> (catalogue/describe/scan/query with pagination and `where` pushdown);
-> the new verbs of ADR-0036 in `Spatial.Operations.NetTopologySuite`; host
-> mounting and `Spatial:GeoServices` / `Spatial:ArcGisRest` configuration;
-> unit, HTTP and provider tests; architecture guards. **Not delivered:**
-> Feature editing (S3) — gated on a follow-up ADR extending the store
-> contracts — and MapServer/ImageServer/GeocodeServer/GPServer (non-goals).
+> EPSG map, error model, shared `where`/filter grammar, per-feature edit
+> results); `Spatial.Adapter.GeoServices` (catalog, Geometry Service with
+> the S1a/S1b verbs, read-only FeatureServer/layer/query, and Feature editing
+> `addFeatures`/`updateFeatures`/`deleteFeatures`/`applyEdits`);
+> `Spatial.Provider.ArcGisRest` (catalogue/describe/scan/query with
+> pagination and `where` pushdown); the `IFeatureEditStore` SDK capability
+> (ADR-0037) implemented by `Spatial.Provider.PostGIS`; the new verbs of
+> ADR-0036 in `Spatial.Operations.NetTopologySuite`; host mounting and
+> `Spatial:GeoServices` / `Spatial:ArcGisRest` configuration; unit, HTTP and
+> provider tests; architecture guards. **Not delivered:**
+> MapServer/ImageServer/GeocodeServer/GPServer (non-goals), service-level
+> `applyEdits`, attachments and `queryRelatedRecords` (out of scope).
 >
 > **Specification baseline:** Esri GeoServices REST Specification v1.0
-> (`architecture/references/geoservices-rest-spec.pdf`).
+> (`architecture/references/geoservices-rest-spec.pdf`), checked against the
+> current ArcGIS REST API online documentation (links in §2 and
+> `architecture/references/geoservices-compatibility.md`).
 > **Compatibility review:** `architecture/references/geoservices-compatibility.md`
 > (read it first — it catalogues today's gaps).
 
@@ -56,7 +62,7 @@ polluting the core:
 | S | S1a | Geometry Service over existing verbs (`project`, `generalize`, `intersect`, `buffer`) | S0 |
 | S | S1b | New geometry verbs + remaining Geometry Service operations | contract extension |
 | S | S2 | Read-only Feature Service (service/layer metadata, `query`) | S0 |
-| S | S3 | Feature editing (`add`/`update`/`delete`/`applyEdits`) | follow-up ADR, S2 |
+| S | S3 | Feature editing (`add`/`update`/`delete`/`applyEdits`) | ADR-0037, S2 |
 | C | C0 | Provider skeleton, config, catalogue/describe | — |
 | C | C1 | Scan/query with pagination and geometry conversion | C0, S0 codec |
 | C | C2 | `where` → parameterised filter translation, field pushdown | C1 |
@@ -216,12 +222,30 @@ maps and the operations project computes.
 **Proof:** facade-over-demo-store integration tests driven over HTTP;
 fixtures matching the spec's earthquake query example.
 
-### S3 — Editing (gated)
+### S3 — Editing (delivered, ADR-0037)
 
-Requires a follow-up ADR extending `IFeatureStore` with update and delete
-(and corresponding PostGIS SQL) plus per-feature edit results
-(`{objectId, globalId, success, error:{code,description}}`). Until then the
-facade advertises read-only capabilities and rejects edit routes.
+`IFeatureEditStore` (SDK) plus `addFeatures`/`updateFeatures`/
+`deleteFeatures`/`applyEdits` (layer, POST) in the facade, a shared
+per-feature result shape in `Spatial.Interop.Esri`, and PostGIS SQL for the
+writes. Editing is advertised only when the store implements the capability
+and the dataset has a single integer identity column: `OBJECTID` then maps
+to that column, so a key survives later writes. `updateFeatures` merges
+partial attributes by reading the existing feature; `rollbackOnFailure`
+uses the store's `ITransactionStore`. `gdbVersion`, `useGlobalIds` and
+`returnEditResults` are rejected explicitly. The demo and ArcGIS REST
+stores remain read-only and reject edit routes.
+
+**Proof:** HTTP fixtures over a writable in-memory store
+(`GeoServicesEditTests`) for the success, per-feature failure, rollback and
+read-only-rejection paths; `EsriEditResultTests` pins the result shape;
+`PostgisQueriesTests`/`PostgisDiagnosticsTests` pin the generated SQL and
+identity parsing.
+
+### Outside S3 (standing)
+
+Service-level `applyEdits`, attachments, `queryRelatedRecords` and
+`gdbVersion` versioning stay unsupported (no relationship, attachment or
+version model).
 
 ### Explicitly out of scope for Track S
 
@@ -271,7 +295,8 @@ client, which needs no engine work.
 | Security — secrets | ArcGIS token is host config (`Spatial:ArcGisRest:Token`), redaction-tested like the PostGIS connection string; never in request bodies or errors. |
 | CRS | Curated WKID ↔ `EPSG:` map in `Spatial.Interop.Esri`; EPSG-only core identity (ADR-0009) unchanged; x-first preserved; unknown codes rejected. |
 | Units | GeoServices `buffer` `unit`/`bufferSR` need projection or angular handling; until S1b, reject unsupported unit/CRS combinations explicitly. |
-| Errors (serve) | `SpatialException` → Esri `{error:{code,message,details}}`; HTTP status stays consistent with the engine mapping (400/404/503/499). |
+| Errors (serve) | `SpatialException` → Esri `{error:{code,message,details}}`; HTTP status stays consistent with the engine mapping (400/404/503/499). Per-feature edit failures use `{success:false, error:{code,description}}`. |
+| Editing | Add/update/delete only for stores implementing `IFeatureEditStore` and layers with an integer identity; `rollbackOnFailure` uses `ITransactionStore`; partial updates are read-modify-write. |
 | Errors (consume) | Remote Esri error → `SpatialException` (`invalid.arguments`/`not.found`/`store.unavailable`); remote unreachable → `store.unavailable`. |
 | Limits | Adapter enforces payload/time limits; provider caps page size. |
 | Observability | No secrets in logs; facade routes log method+route+status only. |
@@ -287,7 +312,7 @@ client, which needs no engine work.
 | 5 | Operation contract extension ADR + new verbs | 4 | unit + conformance per verb |
 | 6 | S1b remaining Geometry Service ops | 5 | spec §7 fixtures |
 | 7 | S2 FeatureServer/layer/query | 3 | HTTP + query fixtures |
-| 8 | S3 edit ADR + store update/delete | 7 | integration + edit-result fixtures |
+| 8 | S3 edit ADR (0037) + `IFeatureEditStore` + PostGIS update/delete | 7 | integration + edit-result fixtures |
 | 9 | `Spatial.Provider.ArcGisRest` catalogue/describe | 1 | provider unit tests |
 | 10 | C1 scan/query + pagination | 9 | provider against facade stub |
 | 11 | C2 filter translation | 10 | round-trip filter tests |
@@ -308,6 +333,10 @@ Track S is done when:
 - An unmodified GeoServices client can discover the catalog, read a
   Geometry Service operation and run a FeatureService `query` against the
   demo store, with results matching the spec's response shapes.
+- Against an editable (identity-backed) layer, a client can add, update and
+  delete features and read back the per-feature `addResults`/
+  `updateResults`/`deleteResults`, with `rollbackOnFailure` restoring the
+  batch.
 - `simplify` (repair) and `generalize` (Douglas-Peucker) are distinct and
   both correct; the semantic trap has an explicit regression test.
 - Unsafe `where` and the `{"url": ...}` form are rejected with typed
@@ -325,6 +354,7 @@ Track C is done when:
 | Risk | Mitigation |
 | --- | --- |
 | Name-trap (`simplify` vs `generalize`) silently wrong | Two distinct verbs, explicit regression fixture (S1b) |
+| Editing key drift (synthetic `OBJECTID` is not durable) | Edits require an integer identity column (ADR-0037); read-only layers advertise no edit capabilities |
 | Scope creep into Map/Image/GP | Non-goals are fixed in ADR-0035; facade advertises read-only capabilities |
 | `where` translation diverges from the engine's grammar | Single shared parser/fixture set; reject anything not provably supported |
 | WKID map drift / EPSG mismatch | Curated map with tests; unknown codes rejected, never guessed |
@@ -334,8 +364,20 @@ Track C is done when:
 
 ## 11. Traceability and open questions
 
-Implements ADR-0035, under ADR-0033; respects ADR-0001, 0005, 0009, 0020.
-Reviewed gaps: `architecture/references/geoservices-compatibility.md`.
+Implements ADR-0035 and ADR-0037, under ADR-0033; respects ADR-0001, 0005,
+0009, 0020, 0036. Reviewed gaps:
+`architecture/references/geoservices-compatibility.md`.
+
+**Online specification references** (checked 2026-09-11, used to pin the
+editing shapes and confirm the v1.0 baseline):
+
+- Feature Service — https://developers.arcgis.com/rest/services-reference/enterprise/feature-service/
+- Layer query — https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/
+- `addFeatures` — https://developers.arcgis.com/rest/services-reference/enterprise/add-features/
+- `updateFeatures` — https://developers.arcgis.com/rest/services-reference/enterprise/update-features/
+- `deleteFeatures` — https://developers.arcgis.com/rest/services-reference/enterprise/delete-features/
+- `applyEdits` — https://developers.arcgis.com/rest/services-reference/enterprise/apply-edits/
+- Geometry Service — https://developers.arcgis.com/rest/services-reference/enterprise/geometry-service/
 
 **Open questions** to settle before/within the owning package:
 

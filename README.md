@@ -74,11 +74,14 @@ The Esri GeoServices REST boundary (ADR-0035) is served by
 `union`, `difference`, `convexHull`, `densify`, `relation`, measures) and a
 read-only FeatureServer over the keyed stores, all `f=json`. The shared
 `Spatial.Interop.Esri` project owns the Esri wire codec, the curated
-WKID ↔ EPSG map, the Esri error model and the closed `where` filter
-grammar. `Spatial.Provider.ArcGisRest` consumes a configured remote ArcGIS
-REST service through `IDataCatalogue`/`IFeatureStore` with pagination and
-`where` pushdown. Editing is deliberately out of scope until a follow-up
-ADR extends the store contracts.
+WKID ↔ EPSG map, the Esri error model, the closed `where` filter grammar
+and the per-feature edit results. `Spatial.Provider.ArcGisRest` consumes a
+configured remote ArcGIS REST service through
+`IDataCatalogue`/`IFeatureStore` with pagination and `where` pushdown.
+Feature editing (`addFeatures`/`updateFeatures`/`deleteFeatures`/
+`applyEdits`, ADR-0037) is served for layers whose store implements the
+additive `IFeatureEditStore` capability and whose dataset has an integer
+identity column; the demo and ArcGIS REST stores stay read-only.
 
 ## Repository layout
 
@@ -89,9 +92,9 @@ ADR extends the store contracts.
 | `src/Spatial.Operations.NetTopologySuite` | Geometry operations (buffer, intersection, validate, simplify) plus measures/processing/relations (ADR-0036) |
 | `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
 | `src/Spatial.Interop.Esri` | Shared Esri JSON codec, WKID map, error model and filter grammar (ADR-0035) |
-| `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade (catalog, Geometry Service, read-only FeatureServer) |
+| `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade (catalog, Geometry Service, FeatureServer query + editing) |
 | `src/Spatial.Provider.ArcGisRest` | ArcGIS REST consuming provider (ADR-0035) |
-| `src/Spatial.Provider.PostGIS` | Data store: catalogue, dataset, feature scan/query/write and transactions |
+| `src/Spatial.Provider.PostGIS` | Data store: catalogue, dataset, feature scan/query/write, transactions and editing (ADR-0037) |
 | `src/Spatial.Provider.Demo` | Docker-free demo store + cancellable sleep |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host (typed routes, DI composition) |
 | `src/Spatial.AppHost` | Aspire AppHost for the local development profile (ADR-0034) |
@@ -134,7 +137,7 @@ dotnet run --project src/Spatial.Host
 1. `architecture/implementation-plan.md` — the full plan (source of truth)
 2. `architecture/principles.md` — the twenty principles
 3. `architecture/decisions/` — architecture decision records (ADR-0035 is current)
-4. `architecture/geoservices-implementation-plan.md` — Esri GeoServices REST track (ADR-0035)
+4. `architecture/geoservices-implementation-plan.md` — Esri GeoServices REST track (ADR-0035, ADR-0037)
 5. `AGENTS.md` — boundaries and guidance for development agents
 
 ## Planned milestones

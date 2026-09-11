@@ -36,7 +36,7 @@ decisions: `architecture/decisions/`.
 - Core/geometry changes → `architecture/distilled/core.md`, `src/Spatial.Core/AGENTS.md`
 - Services/operations/stores → `architecture/distilled/runtime.md`, `architecture/distilled/contracts.md`
 - Host API, workbench, deployment, secrets → `architecture/distilled/host-and-clients.md`
-- Esri GeoServices REST (serve/consume) → `architecture/geoservices-implementation-plan.md`, ADR-0035
+- Esri GeoServices REST (serve/consume/edit) → `architecture/geoservices-implementation-plan.md`, ADR-0035, ADR-0037
 
 ## Commands
 

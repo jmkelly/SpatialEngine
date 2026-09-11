@@ -33,6 +33,33 @@ internal static class PostgisQueries
         return $"INSERT INTO {dataset.QuoteQualified()} ({columns}) VALUES ({values})";
     }
 
+    /// <summary>Insert that returns the store-assigned identity columns (ADR-0037); unchanged when the table has no identity.</summary>
+    public static string InsertReturning(PostgisDatasetName dataset, IFeatureSchema batchSchema, int srid, IReadOnlyList<string> identityColumns)
+    {
+        var insert = Insert(dataset, batchSchema, srid);
+        return identityColumns.Count == 0
+            ? insert
+            : insert + " RETURNING " + string.Join(", ", identityColumns.Select(column => $"\"{column}\""));
+    }
+
+    /// <summary>Updates one feature in place, targeting its identity columns (ADR-0037).</summary>
+    public static string Update(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
+    {
+        var sets = string.Join(", ", schema.Fields.Select((field, i) =>
+            field.Kind == AttributeKind.Geometry
+                ? $"\"{field.Name}\" = ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})"
+                : $"\"{field.Name}\" = @p{i}"));
+        var predicate = string.Join(" AND ", identityColumns.Select(column => $"\"{column}\" = @p{schema.IndexOf(column)}"));
+        return $"UPDATE {dataset.QuoteQualified()} SET {sets} WHERE {predicate}";
+    }
+
+    /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037).</summary>
+    public static string Delete(PostgisDatasetName dataset, IReadOnlyList<string> identityColumns)
+    {
+        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{i}"));
+        return $"DELETE FROM {dataset.QuoteQualified()} WHERE {predicate}";
+    }
+
     /// <summary>Creates the result table from a defining batch's schema.</summary>
     public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid)
     {

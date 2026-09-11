@@ -7,10 +7,21 @@
 > This document remains the gap analysis those build on.
 
 Sources: `architecture/references/geoservices-rest-spec.pdf` (Esri, Sept
-2010, 221 pp, Open Web Foundation Agreement) and the current engine
-(`README.md`, `architecture/distilled/*`, ADRs 0001/0005/0020/0033,
+2010, 221 pp, Open Web Foundation Agreement) and the current ArcGIS REST
+API online documentation, checked 2026-09-11:
+
+- Feature Service — https://developers.arcgis.com/rest/services-reference/enterprise/feature-service/
+- Layer query — https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/
+- `addFeatures` — https://developers.arcgis.com/rest/services-reference/enterprise/add-features/
+- `updateFeatures` — https://developers.arcgis.com/rest/services-reference/enterprise/update-features/
+- `deleteFeatures` — https://developers.arcgis.com/rest/services-reference/enterprise/delete-features/
+- `applyEdits` — https://developers.arcgis.com/rest/services-reference/enterprise/apply-edits/
+- Geometry Service — https://developers.arcgis.com/rest/services-reference/enterprise/geometry-service/
+
+The current engine state is the authored code in `src/` plus `README.md`,
+`architecture/distilled/*`, ADRs 0001/0005/0020/0033/0035/0036/0037,
 `src/Spatial.Host/Api`, `src/Spatial.PluginSdk/Http`,
-`IGeometryOperations`). Review date: 2026-09-11.
+`IGeometryOperations`. Review date: 2026-09-11; editing addendum: 2026-09-13.
 
 ## Verdict
 
@@ -98,10 +109,10 @@ projection/units.
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
 | `query` (§9.1.4): `objectIds`, `where` (arbitrary SQL), `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; no `where`, field projection, outSR, ids-only, time, or the other 8 spatial relations |
 | `queryRelatedRecords` (§9.1.5) | — | Missing (no relationship model) |
-| `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only, returns count, not per-feature results |
-| `updateFeatures` (§9.1.7) | — | Missing |
-| `deleteFeatures` (§9.1.8) | — | Missing |
-| `applyEdits` (§9.1.9) | transactions (`begin`/`commit`/`rollback`) + write | Different lifecycle; no add/update/delete triple, no atomic single call |
+| `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only through the API; the GeoServices facade now maps `addFeatures` onto `IFeatureEditStore.AddAsync` (ADR-0037) |
+| `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
+| `deleteFeatures` (§9.1.8) | — | Implemented via `IFeatureEditStore.DeleteAsync` (ADR-0037) |
+| `applyEdits` (§9.1.9) | transactions (`begin`/`commit`/`rollback`) + write | Implemented at layer level; `rollbackOnFailure` maps to `ITransactionStore`; service-level `applyEdits` out of scope |
 | attachments, `htmlPopup`, `image` (§9.2–9.6) | — | Missing |
 
 Field types: GeoServices `esriFieldType*` (OID, string, integer, double,
@@ -163,7 +174,9 @@ Ordered by dependency:
 5. A safe `where` subset (translate to the existing parameterised filter,
    or reject).
 6. Edit results + `addFeatures`/`updateFeatures`/`deleteFeatures`/
-   `applyEdits` (needs update/delete verbs the store contracts lack).
+   `applyEdits` (needs update/delete verbs the store contracts lack) —
+   **delivered** as ADR-0037's additive `IFeatureEditStore`, with
+   `{objectId, globalId, success, error:{code,description}}` results.
 7. Service/layer metadata JSON (`FeatureServer` root, layer `fields`).
 8. Esri error envelope and per-edit `error{code,description}` mapping.
 

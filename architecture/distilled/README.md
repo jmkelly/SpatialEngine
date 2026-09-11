@@ -15,7 +15,7 @@ are dated decision records — their prose reflects the state at decision time.
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
 | Which services exist + their contracts | `contracts.md` | 0033 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
-| Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035 |
+| Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -84,6 +84,7 @@ shape is noted in brackets.
 | 0034 | Aspire AppHost composes the local development profile. |
 | 0035 | GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider. |
 | 0036 | Geometry measurement, processing and relation verbs are separate SDK interfaces. |
+| 0037 | Feature editing is a gated, per-feature `IFeatureEditStore` capability. |
 
 ## How to change the architecture
 

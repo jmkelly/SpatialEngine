@@ -329,6 +329,76 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         Assert.DoesNotContain(secret, exception.Message);
     }
 
+    [SkippableFact]
+    public async Task Edit_add_update_delete_round_trips_on_a_primary_key_table()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await context.ExecuteAsync("DROP TABLE IF EXISTS public.edit_target");
+        await context.ExecuteAsync(
+            "CREATE TABLE public.edit_target (id bigint PRIMARY KEY, name text, geom geometry(Point, 4326))");
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("id", AttributeKind.Int64, false),
+            new FieldDefinition("name", AttributeKind.String, false),
+            new FieldDefinition("geom", AttributeKind.Geometry, false),
+        ]);
+        var feature = new Feature(new FeatureId("1"), schema,
+        [
+            AttributeValue.FromInt64(1),
+            AttributeValue.FromString("one"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
+        ]);
+
+        var added = await context.Editor.AddAsync("public.edit_target", new FeatureBatch(schema, [feature]));
+        Assert.True(Assert.Single(added).Succeeded);
+        Assert.Equal("1", added[0].Id.Value);
+        Assert.Equal(1, await context.CountAsync("SELECT count(*) FROM public.edit_target"));
+
+        var renamed = new Feature(new FeatureId("1"), schema,
+        [
+            AttributeValue.FromInt64(1),
+            AttributeValue.FromString("uno"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(3, 4, CoordinateReference.Epsg(4326))),
+        ]);
+        Assert.True(Assert.Single(await context.Editor.UpdateAsync("public.edit_target", new FeatureBatch(schema, [renamed]))).Succeeded);
+        var scanned = (await context.Store.ScanAsync("public.edit_target")).SelectMany(batch => batch.Features).Single();
+        Assert.Equal("uno", scanned["name"].StringValue);
+
+        Assert.True(Assert.Single(await context.Editor.DeleteAsync("public.edit_target", [new FeatureId("1")])).Succeeded);
+        Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.edit_target"));
+        Assert.False(Assert.Single(await context.Editor.DeleteAsync("public.edit_target", [new FeatureId("1")])).Succeeded);
+    }
+
+    [SkippableFact]
+    public async Task Edit_inside_a_transaction_is_not_visible_until_commit()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await context.ExecuteAsync("DROP TABLE IF EXISTS public.edit_tx_target");
+        await context.ExecuteAsync(
+            "CREATE TABLE public.edit_tx_target (id bigint PRIMARY KEY, name text, geom geometry(Point, 4326))");
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("id", AttributeKind.Int64, false),
+            new FieldDefinition("name", AttributeKind.String, false),
+            new FieldDefinition("geom", AttributeKind.Geometry, false),
+        ]);
+        var feature = new Feature(new FeatureId("1"), schema,
+        [
+            AttributeValue.FromInt64(1),
+            AttributeValue.FromString("one"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
+        ]);
+
+        var transaction = await context.Store.BeginAsync();
+        Assert.True(Assert.Single(await context.Editor.AddAsync("public.edit_tx_target", new FeatureBatch(schema, [feature]), transaction)).Succeeded);
+        Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.edit_tx_target"));
+
+        Assert.True(await context.Store.CommitAsync(transaction));
+        Assert.Equal(1, await context.CountAsync("SELECT count(*) FROM public.edit_tx_target"));
+    }
+
     private static Feature FeatureWithId(string id, FeatureSchema schema) =>
         new(new FeatureId(id), schema,
         [

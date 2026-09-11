@@ -50,7 +50,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 - Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
   (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `ITransactionStore`, `IDemoJobs`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureEditStore`, `ITransactionStore`, `IDemoJobs`)
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
@@ -60,6 +60,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
 | `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
+| `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive capability, implemented by PostGIS only (ADR-0037) |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
@@ -75,8 +76,14 @@ holding algorithms. All verbs are pure, planar and cancellable.
 `Spatial.Core.Geometry` surface (SRID flag ↔ `EPSG:<srid>`; SRID 0 = unknown
 CRS); schema discovery via `geometry_columns` + `information_schema` +
 `pg_class` + primary keys; writes via `ST_GeomFromEWKB(@p, srid)`; commands
-run with the caller's token (DB-command cancellation).
+run with the caller's token (DB-command cancellation). Editing (ADR-0037)
+adds `UPDATE`/`DELETE`/`INSERT … RETURNING` built from discovered identities
+and back to the per-feature `FeatureEditOutcome`; it is available only when
+the table has a primary key.
 
 **Demo specifics:** read-only procedural datasets (110-point grid + 8
 cities, EPSG:4326); bbox queries only (attribute filters rejected);
-writes/creation rejected.
+writes/creation/editing rejected.
+
+**ArcGIS REST specifics:** read-only remote provider; writes, creation and
+editing rejected.
