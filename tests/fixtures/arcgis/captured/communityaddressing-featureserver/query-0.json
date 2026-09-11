@@ -1,0 +1,114 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "altunitid": null,
+          "altunittype": null,
+          "fulladdr": "4S631 Naperville Rd",
+          "municipality": "Unincorporated Area",
+          "objectid": 150360017,
+          "status": "Current",
+          "unitid": null,
+          "unittype": null
+        },
+        "geometry": {
+          "x": -9809302.736693949,
+          "y": 5131438.624014863
+        }
+      },
+      {
+        "attributes": {
+          "altunitid": null,
+          "altunittype": null,
+          "fulladdr": "1804 N Naper Blvd",
+          "municipality": "City of Naperville",
+          "objectid": 150360018,
+          "status": "Current",
+          "unitid": null,
+          "unittype": null
+        },
+        "geometry": {
+          "x": -9809415.761772957,
+          "y": 5131518.25331813
+        }
+      },
+      {
+        "attributes": {
+          "altunitid": null,
+          "altunittype": null,
+          "fulladdr": "1516 N Naper Blvd",
+          "municipality": "City of Naperville",
+          "objectid": 150360019,
+          "status": "Current",
+          "unitid": null,
+          "unittype": null
+        },
+        "geometry": {
+          "x": -9809327.82877605,
+          "y": 5130672.290511506
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Full Address",
+        "length": 250,
+        "name": "fulladdr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Bldg / Unit Type",
+        "length": 10,
+        "name": "unittype",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Bldg / Unit Number",
+        "length": 10,
+        "name": "unitid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Alt. Bldg / Unit Type",
+        "length": 10,
+        "name": "altunittype",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Alt. Bldg / Unit Number",
+        "length": 10,
+        "name": "altunitid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Municipality Name",
+        "length": 100,
+        "name": "municipality",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Status",
+        "length": 30,
+        "name": "status",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "objectid",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2128,
+  "status": 200
+}

@@ -17,8 +17,17 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Provider.ArcGisRest\Spatial.Provider.ArcGisRest.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Recorded real-world ArcGIS REST responses (research/arcgis). -->
+    <Content Include="..\..\..\tests\fixtures\arcgis\captured\**\*.json">
+      <Link>arcgis-fixtures\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

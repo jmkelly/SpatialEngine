@@ -1,0 +1,166 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "fcst_hr",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -66.59999999989998,
+      "xmin": -127.20000000019974,
+      "ymax": 49.100000000000136,
+      "ymin": 23.700000000399825
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Forecast Hour",
+        "length": 80,
+        "name": "fcst_hr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time",
+        "length": 80,
+        "name": "validtime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 80,
+        "name": "issuetime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Coverage",
+        "length": 80,
+        "name": "coverage",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confidence",
+        "length": 80,
+        "name": "confidnce",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Tops",
+        "length": 80,
+        "name": "tops",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data",
+        "length": 80,
+        "name": "data",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LBLPOS_X",
+        "length": 80,
+        "name": "lblpos_x",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LBLPOS_Y",
+        "length": 80,
+        "name": "lblpos_y",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "D18BXTOP",
+        "length": 80,
+        "name": "d18bxtop",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TCF Verification",
+        "length": 80,
+        "name": "verif",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Height Range",
+        "length": 80,
+        "name": "height",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REFL_DBZ",
+        "length": 80,
+        "name": "refl_dbz",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REFL_BIN",
+        "length": 80,
+        "name": "refl_bin",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "VRF_REFL",
+        "length": 80,
+        "name": "vrf_refl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 105,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "TCF 8 hour Coverage",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 10138,
+  "status": 200
+}

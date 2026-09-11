@@ -1,0 +1,58 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "antal_indlaeggelser": 0,
+          "newlyadmdate": 1582675200000
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "antal_indlaeggelser": 0,
+          "newlyadmdate": 1582761600000
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "antal_indlaeggelser": 0,
+          "newlyadmdate": 1582848000000
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "newlyadmdate",
+        "defaultValue": null,
+        "length": 8,
+        "name": "newlyadmdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "antal_indlaeggelser",
+        "defaultValue": null,
+        "name": "antal_indlaeggelser",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 1003,
+  "status": 200
+}

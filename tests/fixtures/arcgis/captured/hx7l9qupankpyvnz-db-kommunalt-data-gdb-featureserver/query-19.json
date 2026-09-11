@@ -1,0 +1,114 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Antal_pat": 4,
+          "Dagsdato": 1679443200000,
+          "Kommune": "K\u00f8benhavn",
+          "OBJECTID": 1,
+          "andel_newadm": 0.0045,
+          "antal_icu": 0,
+          "antal_newadm": 2,
+          "instAge": "00-02",
+          "municipalitycode": 101
+        }
+      },
+      {
+        "attributes": {
+          "Antal_pat": 1,
+          "Dagsdato": 1679443200000,
+          "Kommune": "Frederiksberg",
+          "OBJECTID": 2,
+          "andel_newadm": 0.0023,
+          "antal_icu": 0,
+          "antal_newadm": 1,
+          "instAge": "00-02",
+          "municipalitycode": 147
+        }
+      },
+      {
+        "attributes": {
+          "Antal_pat": 2,
+          "Dagsdato": 1679443200000,
+          "Kommune": "Gladsaxe",
+          "OBJECTID": 3,
+          "andel_newadm": 0.0045,
+          "antal_icu": 0,
+          "antal_newadm": 2,
+          "instAge": "00-02",
+          "municipalitycode": 159
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "municipalitycode",
+        "defaultValue": null,
+        "name": "municipalitycode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Kommune",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "instAge",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "instAge",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Antal_pat",
+        "defaultValue": null,
+        "name": "Antal_pat",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_icu",
+        "defaultValue": null,
+        "name": "antal_icu",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_newadm",
+        "defaultValue": null,
+        "name": "antal_newadm",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Dagsdato",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Dagsdato",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "andel_newadm",
+        "defaultValue": null,
+        "name": "andel_newadm",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2318,
+  "status": 200
+}

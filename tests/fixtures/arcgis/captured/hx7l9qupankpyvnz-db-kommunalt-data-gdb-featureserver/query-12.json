@@ -1,0 +1,157 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Kommune": "K\u00f8benhavn",
+          "OBJECTID": 1,
+          "antal_bor": 652229,
+          "antal_pat_7dg_yesterday": 122,
+          "antal_patienter": 397281,
+          "antal_patienter_7dage": 129,
+          "antal_testede_personer": 670325,
+          "antal_testede_personer_7dage": 951,
+          "c_kom": 101,
+          "incidens": 60911,
+          "incidens_7dage": 19.8,
+          "pospro": 13.56,
+          "test_incidens": 102774,
+          "test_incidens_7dage": 145.8
+        }
+      },
+      {
+        "attributes": {
+          "Kommune": "Frederiksberg",
+          "OBJECTID": 2,
+          "antal_bor": 104493,
+          "antal_pat_7dg_yesterday": 29,
+          "antal_patienter": 62531,
+          "antal_patienter_7dage": 29,
+          "antal_testede_personer": 115217,
+          "antal_testede_personer_7dage": 183,
+          "c_kom": 147,
+          "incidens": 59842,
+          "incidens_7dage": 27.8,
+          "pospro": 15.85,
+          "test_incidens": 110263,
+          "test_incidens_7dage": 175.1
+        }
+      },
+      {
+        "attributes": {
+          "Kommune": "Ballerup",
+          "OBJECTID": 3,
+          "antal_bor": 50027,
+          "antal_pat_7dg_yesterday": 13,
+          "antal_patienter": 30035,
+          "antal_patienter_7dage": 16,
+          "antal_testede_personer": 51331,
+          "antal_testede_personer_7dage": 107,
+          "c_kom": 151,
+          "incidens": 60038,
+          "incidens_7dage": 32,
+          "pospro": 14.95,
+          "test_incidens": 102607,
+          "test_incidens_7dage": 213.9
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "c_kom",
+        "defaultValue": null,
+        "name": "c_kom",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Kommune",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "antal_patienter",
+        "defaultValue": null,
+        "name": "antal_patienter",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incidens",
+        "defaultValue": null,
+        "name": "incidens",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_patienter_7dage",
+        "defaultValue": null,
+        "name": "antal_patienter_7dage",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incidens_7dage",
+        "defaultValue": null,
+        "name": "incidens_7dage",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "antal_testede_personer",
+        "defaultValue": null,
+        "name": "antal_testede_personer",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "test_incidens",
+        "defaultValue": null,
+        "name": "test_incidens",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_testede_personer_7dage",
+        "defaultValue": null,
+        "name": "antal_testede_personer_7dage",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "test_incidens_7dage",
+        "defaultValue": null,
+        "name": "test_incidens_7dage",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "antal_bor",
+        "defaultValue": null,
+        "name": "antal_bor",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_pat_7dg_yesterday",
+        "defaultValue": null,
+        "name": "antal_pat_7dg_yesterday",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "pospro",
+        "defaultValue": null,
+        "name": "pospro",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3805,
+  "status": 200
+}

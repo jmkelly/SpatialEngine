@@ -1,0 +1,70 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "c_kom",
+        "defaultValue": null,
+        "editable": true,
+        "name": "c_kom",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Kommune",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SampleDate",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "SampleDate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "antal_pat",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_pat",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 5,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "nyetilfaelde_pr_dag_kum_kommune",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6319,
+  "status": 200
+}

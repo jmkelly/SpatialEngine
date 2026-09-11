@@ -1,0 +1,117 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "Province_State",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 146.92110000000002,
+      "xmin": -127.64759999999995,
+      "ymax": 61.92410000000007,
+      "ymin": -37.471299999999985
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Province/State",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Province_State",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country/Region",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Country_Region",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last Update",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Last_Update",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Lat",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Long_",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Confirmed",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Deaths",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Recovered",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Deaths",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 8635,
+  "status": 200
+}

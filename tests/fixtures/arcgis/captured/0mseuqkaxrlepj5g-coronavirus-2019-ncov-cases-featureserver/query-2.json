@@ -1,0 +1,130 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Active": null,
+          "Confirmed": 195631,
+          "Country_Region": "Afghanistan",
+          "Deaths": 7787,
+          "Last_Update": 1662873645000,
+          "Lat": 33.93911,
+          "Long_": 67.709953,
+          "OBJECTID": 1,
+          "Recovered": null
+        },
+        "geometry": {
+          "x": 67.70995300000004,
+          "y": 33.93911000000003
+        }
+      },
+      {
+        "attributes": {
+          "Active": null,
+          "Confirmed": 330948,
+          "Country_Region": "Albania",
+          "Deaths": 3584,
+          "Last_Update": 1662873645000,
+          "Lat": 41.1533,
+          "Long_": 20.1683,
+          "OBJECTID": 2,
+          "Recovered": null
+        },
+        "geometry": {
+          "x": 20.168300000000045,
+          "y": 41.15330000000006
+        }
+      },
+      {
+        "attributes": {
+          "Active": null,
+          "Confirmed": 270532,
+          "Country_Region": "Algeria",
+          "Deaths": 6879,
+          "Last_Update": 1662873645000,
+          "Lat": 28.0339,
+          "Long_": 1.6596,
+          "OBJECTID": 3,
+          "Recovered": null
+        },
+        "geometry": {
+          "x": 1.6596000000000686,
+          "y": 28.033900000000074
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Country_Region",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Country_Region",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last_Update",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Last_Update",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "name": "Lat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "name": "Long_",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "Deaths",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "Recovered",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Active",
+        "defaultValue": null,
+        "name": "Active",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2614,
+  "status": 200
+}

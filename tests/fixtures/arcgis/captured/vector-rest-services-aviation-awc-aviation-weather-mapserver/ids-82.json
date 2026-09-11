@@ -1,0 +1,25 @@
+{
+  "body": {
+    "objectIdFieldName": "objectid",
+    "objectIds": [
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      26,
+      27,
+      137,
+      138,
+      139,
+      182,
+      183,
+      184
+    ]
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 97,
+  "status": 200
+}

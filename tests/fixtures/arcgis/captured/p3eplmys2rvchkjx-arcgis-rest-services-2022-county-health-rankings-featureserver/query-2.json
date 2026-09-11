@@ -1,0 +1,2203 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "FIPS": "15007",
+          "Factors_ClinicalCare_subrank": 2,
+          "Factors_HealthBehaviors_subrank": 3,
+          "Factors_PhysicalEnv_subrank": 1,
+          "Factors_SocEconEnv_subrank": 2,
+          "Health_Factors_Rank": 2,
+          "Health_Outcomes_Rank": 3,
+          "OBJECTID": 1,
+          "Outcomes_LengthOfLife_subrank": 3,
+          "Outcomes_QualityOfLife_subrank": 3,
+          "STATE": "HI",
+          "Shape__Area": 0.14197945339651596,
+          "Shape__Length": 2.866020970497064,
+          "county": "Kauai County",
+          "county_ranked": 1,
+          "v001_denominator": 198603,
+          "v001_flag": 0,
+          "v001_numerator": 764,
+          "v001_race_aian": null,
+          "v001_race_aian_flag": 2,
+          "v001_race_asian": 5369.2543796,
+          "v001_race_asian_flag": null,
+          "v001_race_black": null,
+          "v001_race_black_flag": 2,
+          "v001_race_hispanic": 7995.899775,
+          "v001_race_hispanic_flag": null,
+          "v001_race_white": 5641.6495274,
+          "v001_race_white_flag": null,
+          "v001_rawvalue": 5966.3469281,
+          "v002_denominator": null,
+          "v002_numerator": null,
+          "v002_rawvalue": 16.5,
+          "v003_denominator": 41523,
+          "v003_numerator": 2470,
+          "v003_rawvalue": 5.95,
+          "v004_denominator": 72293,
+          "v004_numerator": 56,
+          "v004_other_data_1": 1290.9464286,
+          "v004_rawvalue": 77.462548241,
+          "v005_denominator": null,
+          "v005_numerator": null,
+          "v005_race_aian": null,
+          "v005_race_asian": 2268,
+          "v005_race_black": null,
+          "v005_race_hispanic": 1771,
+          "v005_race_white": 1642,
+          "v005_rawvalue": 2052,
+          "v009_denominator": null,
+          "v009_numerator": null,
+          "v009_rawvalue": 14.7,
+          "v011_denominator": null,
+          "v011_numerator": null,
+          "v011_rawvalue": 24.9,
+          "v014_denominator": 13244,
+          "v014_numerator": 267,
+          "v014_race_aian": null,
+          "v014_race_asian": 19.274663961,
+          "v014_race_black": null,
+          "v014_race_hispanic": 31.399680681,
+          "v014_race_white": 16.917871424,
+          "v014_rawvalue": 20.160072486,
+          "v015_denominator": 502675,
+          "v015_numerator": 11,
+          "v015_race_aian": null,
+          "v015_race_asian": null,
+          "v015_race_black": null,
+          "v015_race_hispanic": null,
+          "v015_race_white": null,
+          "v015_rawvalue": 2.1882926344,
+          "v021_denominator": 675,
+          "v021_numerator": 616.31,
+          "v021_rawvalue": 91.31,
+          "v023_denominator": 35337,
+          "v023_numerator": 5719,
+          "v023_rawvalue": 16.18,
+          "v024_denominator": null,
+          "v024_numerator": 1516,
+          "v024_race_aian": null,
+          "v024_race_asian": 14.87,
+          "v024_race_black": null,
+          "v024_race_hispanic": 7.59,
+          "v024_race_white": 10.05,
+          "v024_rawvalue": 10.1,
+          "v036_rawvalue": 3.5819541853,
+          "v037_denominator": 5737,
+          "v037_flag": 0,
+          "v037_numerator": 469,
+          "v037_race_aian": null,
+          "v037_race_asian": 9.82,
+          "v037_race_black": null,
+          "v037_race_hispanic": 7.41,
+          "v037_race_white": 5.89,
+          "v037_rawvalue": 8.18,
+          "v039_denominator": 502675,
+          "v039_numerator": 47,
+          "v039_race_aian": null,
+          "v039_race_asian": 8.2486286655,
+          "v039_race_black": null,
+          "v039_race_hispanic": 19.631639063,
+          "v039_race_white": 7.541215644,
+          "v039_rawvalue": 9.3499776197,
+          "v042_denominator": null,
+          "v042_numerator": null,
+          "v042_rawvalue": 4.1349594155,
+          "v043_denominator": 71822,
+          "v043_numerator": 169,
+          "v043_rawvalue": 235.30394587,
+          "v044_denominator": 32206,
+          "v044_numerator": 142735,
+          "v044_rawvalue": 4.4319381482,
+          "v045_denominator": 72293,
+          "v045_numerator": 243,
+          "v045_rawvalue": 336.1,
+          "v049_denominator": null,
+          "v049_numerator": null,
+          "v049_rawvalue": 22.82,
+          "v050_denominator": null,
+          "v050_numerator": null,
+          "v050_race_aian": null,
+          "v050_race_asian": 50,
+          "v050_race_black": null,
+          "v050_race_hispanic": 42,
+          "v050_race_white": 35,
+          "v050_rawvalue": 42,
+          "v051_denominator": null,
+          "v051_numerator": null,
+          "v051_rawvalue": 71851,
+          "v052_numerator": 15474,
+          "v052_rawvalue": 21.54,
+          "v053_numerator": 15308,
+          "v053_rawvalue": 21.31,
+          "v054_numerator": 451,
+          "v054_rawvalue": 0.63,
+          "v055_numerator": 328,
+          "v055_rawvalue": 0.46,
+          "v056_numerator": 8306,
+          "v056_rawvalue": 11.56,
+          "v057_numerator": 36309,
+          "v057_rawvalue": 50.53,
+          "v058_numerator": 8628,
+          "v058_rawvalue": 12.86,
+          "v059_numerator": 2116,
+          "v059_rawvalue": 3.13,
+          "v060_denominator": null,
+          "v060_numerator": null,
+          "v060_rawvalue": 9.7,
+          "v061_denominator": null,
+          "v061_numerator": null,
+          "v061_rawvalue": null,
+          "v062_denominator": 71851,
+          "v062_numerator": 150,
+          "v062_other_data_1": 479.00666667,
+          "v062_rawvalue": 208.76536165,
+          "v063_race_aian": 39350,
+          "v063_race_asian": 94275,
+          "v063_race_black": 93196,
+          "v063_race_hispanic": 66650,
+          "v063_race_white": 77306,
+          "v063_rawvalue": 80517,
+          "v065_denominator": 9986,
+          "v065_numerator": 4554,
+          "v065_rawvalue": 45.6,
+          "v067_denominator": 34799,
+          "v067_numerator": 26888,
+          "v067_race_aian": null,
+          "v067_race_asian": 82.13,
+          "v067_race_black": null,
+          "v067_race_hispanic": 77.17,
+          "v067_race_white": 69.36,
+          "v067_rawvalue": 77.27,
+          "v069_denominator": 17783,
+          "v069_numerator": 10925,
+          "v069_rawvalue": 61.44,
+          "v070_denominator": null,
+          "v070_numerator": null,
+          "v070_rawvalue": 25.1,
+          "v080_denominator": 71851,
+          "v080_numerator": 6725,
+          "v080_rawvalue": 9.36,
+          "v081_denominator": 71851,
+          "v081_numerator": 21918,
+          "v081_rawvalue": 30.5,
+          "v082_denominator": 15615,
+          "v082_numerator": 3544,
+          "v082_rawvalue": 22.7,
+          "v083_denominator": 67091,
+          "v083_numerator": 4957.3628738,
+          "v083_rawvalue": 7.39,
+          "v085_denominator": 57061,
+          "v085_numerator": 2952,
+          "v085_rawvalue": 5.17,
+          "v088_denominator": 71851,
+          "v088_numerator": 50,
+          "v088_other_data_1": 1437.02,
+          "v088_rawvalue": 69.588453884,
+          "v122_denominator": 16267,
+          "v122_numerator": 528,
+          "v122_rawvalue": 3.25,
+          "v124_rawvalue": null,
+          "v125_rawvalue": 2.6,
+          "v126_denominator": 71851,
+          "v126_numerator": 20915,
+          "v126_rawvalue": 29.11,
+          "v127_denominator": 198603,
+          "v127_numerator": 764,
+          "v127_race_aian": null,
+          "v127_race_asian": 248.51901642,
+          "v127_race_black": null,
+          "v127_race_hispanic": 329.25078857,
+          "v127_race_white": 275.26059547,
+          "v127_rawvalue": 273.08655774,
+          "v128_denominator": 62905,
+          "v128_numerator": 24,
+          "v128_race_aian": null,
+          "v128_race_asian": 37.014188772,
+          "v128_race_black": null,
+          "v128_race_hispanic": null,
+          "v128_race_white": null,
+          "v128_rawvalue": 38.15277005,
+          "v129_denominator": 5937,
+          "v129_numerator": 30,
+          "v129_race_aian": null,
+          "v129_race_asian": null,
+          "v129_race_black": null,
+          "v129_race_hispanic": null,
+          "v129_race_white": null,
+          "v129_rawvalue": 5.0530570995,
+          "v131_denominator": 71851,
+          "v131_numerator": 34,
+          "v131_other_data_1": 2113.2647059,
+          "v131_rawvalue": 47.320148641,
+          "v132_denominator": 67091,
+          "v132_numerator": 60887,
+          "v132_rawvalue": 90.75,
+          "v133_rawvalue": 8.2,
+          "v134_denominator": 37,
+          "v134_numerator": 14,
+          "v134_rawvalue": 37.84,
+          "v135_denominator": 360465,
+          "v135_numerator": 253,
+          "v135_race_aian": null,
+          "v135_race_asian": 63.649406548,
+          "v135_race_black": null,
+          "v135_race_hispanic": 61.726870941,
+          "v135_race_white": 83.754817935,
+          "v135_rawvalue": 70.187119415,
+          "v136_denominator": 22525,
+          "v136_numerator": 5255,
+          "v136_other_data_1": 14.99,
+          "v136_other_data_2": 7.79,
+          "v136_other_data_3": 1.58,
+          "v136_rawvalue": 23.33,
+          "v137_denominator": 34799,
+          "v137_numerator": null,
+          "v137_rawvalue": 33.7,
+          "v138_denominator": 216277,
+          "v138_numerator": 41,
+          "v138_race_aian": null,
+          "v138_race_asian": 15,
+          "v138_race_black": null,
+          "v138_race_hispanic": null,
+          "v138_race_white": 24.436600597,
+          "v138_rawvalue": 18.957170665,
+          "v139_denominator": null,
+          "v139_numerator": 7000,
+          "v139_rawvalue": 10,
+          "v140_denominator": 72293,
+          "v140_numerator": 70,
+          "v140_rawvalue": 9.6828185301,
+          "v141_rawvalue": 56.369929719,
+          "v142_rawvalue": 36.705361323,
+          "v143_denominator": null,
+          "v143_numerator": null,
+          "v143_rawvalue": 38.13,
+          "v144_denominator": null,
+          "v144_numerator": null,
+          "v144_rawvalue": 10.7,
+          "v145_denominator": null,
+          "v145_numerator": null,
+          "v145_rawvalue": 13.3,
+          "v147_race_aian": null,
+          "v147_race_asian": 83.30612119,
+          "v147_race_black": null,
+          "v147_race_hispanic": 77.855890478,
+          "v147_race_white": 82.306015442,
+          "v147_rawvalue": 82.347674913,
+          "v148_denominator": 360465,
+          "v148_numerator": 20,
+          "v148_race_aian": null,
+          "v148_race_asian": 5.7388809182,
+          "v148_race_black": null,
+          "v148_race_hispanic": null,
+          "v148_race_white": null,
+          "v148_rawvalue": 5.5483888866,
+          "v149_denominator": 3070,
+          "v149_numerator": 348,
+          "v149_rawvalue": 11.34,
+          "v151_denominator": 51653,
+          "v151_numerator": 40981,
+          "v151_rawvalue": 0.7933905097,
+          "v153_denominator": 23331,
+          "v153_numerator": 15178,
+          "v153_rawvalue": 65.06,
+          "v154_denominator": 22097,
+          "v154_numerator": 3703,
+          "v154_rawvalue": 16.76,
+          "v155_denominator": null,
+          "v155_numerator": null,
+          "v155_race_aian": null,
+          "v155_race_asian": 48,
+          "v155_race_black": 25,
+          "v155_race_hispanic": 39,
+          "v155_race_white": 36,
+          "v155_rawvalue": 42,
+          "v156_rawvalue": 219.71359416,
+          "v158_denominator": 6900,
+          "v158_numerator": null,
+          "v158_other_data_1": 107,
+          "v158_other_data_2": 52,
+          "v158_rawvalue": 23.043478261,
+          "v159_other_data_1": null,
+          "v159_race_aian": null,
+          "v159_race_asian": 2.746038609,
+          "v159_race_black": null,
+          "v159_race_hispanic": null,
+          "v159_race_white": 3.059661458,
+          "v159_rawvalue": 2.833503599,
+          "v160_race_aian": null,
+          "v160_race_asian": 2.854674849,
+          "v160_race_black": null,
+          "v160_race_hispanic": null,
+          "v160_race_white": 3.07846323,
+          "v160_rawvalue": 2.917739225,
+          "v161_denominator": 360465,
+          "v161_numerator": 75,
+          "v161_other_data_1": 20.806458325,
+          "v161_race_aian": null,
+          "v161_race_asian": 19.348798522,
+          "v161_race_black": null,
+          "v161_race_hispanic": null,
+          "v161_race_white": 23.362500613,
+          "v161_rawvalue": 21.368552222,
+          "v166_denominator": 23331,
+          "v166_numerator": 20187,
+          "v166_rawvalue": 86.52,
+          "v167_denominator": null,
+          "v167_numerator": null,
+          "v167_rawvalue": 0.0753042149,
+          "v168_denominator": 51517,
+          "v168_numerator": 47590,
+          "v168_rawvalue": 92.38,
+          "v169_denominator": null,
+          "v169_numerator": null,
+          "v169_rawvalue": null,
+          "v170_denominator": null,
+          "v170_numerator": null,
+          "v170_rawvalue": null,
+          "v171_denominator": 80517,
+          "v171_numerator": null,
+          "v171_rawvalue": 21.13,
+          "v172_denominator": 4253,
+          "v172_numerator": 27,
+          "v172_rawvalue": 6.3484599107,
+          "v173_denominator": null,
+          "v173_numerator": null,
+          "v173_rawvalue": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -160.550477048,
+                21.6536489690001
+              ],
+              [
+                -160.552829012,
+                21.653610026
+              ],
+              [
+                -160.553835015,
+                21.6553479250001
+              ],
+              [
+                -160.554027056,
+                21.657849979
+              ],
+              [
+                -160.553622081,
+                21.6595410790001
+              ],
+              [
+                -160.553941983,
+                21.661079918
+              ],
+              [
+                -160.55384404,
+                21.6629219440001
+              ],
+              [
+                -160.554774831,
+                21.6644741530001
+              ],
+              [
+                -160.552633962,
+                21.665828973
+              ],
+              [
+                -160.550163999,
+                21.6658420090001
+              ],
+              [
+                -160.549419066,
+                21.6647220190001
+              ],
+              [
+                -160.549194934,
+                21.66266405
+              ],
+              [
+                -160.550196925,
+                21.6595230290001
+              ],
+              [
+                -160.549697016,
+                21.6575680170001
+              ],
+              [
+                -160.548469054,
+                21.655351936
+              ],
+              [
+                -160.549087966,
+                21.65408804
+              ],
+              [
+                -160.550477048,
+                21.6536489690001
+              ]
+            ],
+            [
+              [
+                -160.091635005,
+                22.005016024
+              ],
+              [
+                -160.091295047,
+                22.0047200230001
+              ],
+              [
+                -160.090624991,
+                22.0049309510001
+              ],
+              [
+                -160.089675983,
+                22.004639964
+              ],
+              [
+                -160.084504069,
+                21.9959329170001
+              ],
+              [
+                -160.081154961,
+                21.9952439750001
+              ],
+              [
+                -160.079235048,
+                21.995769958
+              ],
+              [
+                -160.074809071,
+                21.9958989880001
+              ],
+              [
+                -160.073598993,
+                21.9966410800001
+              ],
+              [
+                -160.072349971,
+                21.996802034
+              ],
+              [
+                -160.07104897,
+                21.9973589370001
+              ],
+              [
+                -160.069771034,
+                21.999691012
+              ],
+              [
+                -160.068640012,
+                21.9993259830001
+              ],
+              [
+                -160.067836079,
+                21.998668964
+              ],
+              [
+                -160.06681002,
+                21.998609964
+              ],
+              [
+                -160.06596096,
+                21.997234921
+              ],
+              [
+                -160.06419799,
+                21.996341068
+              ],
+              [
+                -160.062096064,
+                21.996676012
+              ],
+              [
+                -160.060287967,
+                21.9961000550001
+              ],
+              [
+                -160.060572937,
+                21.9944049430001
+              ],
+              [
+                -160.060353986,
+                21.994007991
+              ],
+              [
+                -160.059662036,
+                21.9938420230001
+              ],
+              [
+                -160.059011034,
+                21.994116965
+              ],
+              [
+                -160.05850494,
+                21.993859071
+              ],
+              [
+                -160.057409017,
+                21.9944960330001
+              ],
+              [
+                -160.056958079,
+                21.99318701
+              ],
+              [
+                -160.056489926,
+                21.9933030030001
+              ],
+              [
+                -160.056187072,
+                21.992743927
+              ],
+              [
+                -160.055695019,
+                21.992650998
+              ],
+              [
+                -160.054782947,
+                21.9928910080001
+              ],
+              [
+                -160.054845958,
+                21.9921900320001
+              ],
+              [
+                -160.054577034,
+                21.991569951
+              ],
+              [
+                -160.053885083,
+                21.991112996
+              ],
+              [
+                -160.052928051,
+                21.98894104
+              ],
+              [
+                -160.053075968,
+                21.988593059
+              ],
+              [
+                -160.052213036,
+                21.987461034
+              ],
+              [
+                -160.051573065,
+                21.9873159580001
+              ],
+              [
+                -160.050995938,
+                21.9867869670001
+              ],
+              [
+                -160.051328041,
+                21.986133959
+              ],
+              [
+                -160.051201016,
+                21.9853539270001
+              ]
+            ],
+            [
+              [
+                -160.096376038,
+                22.018679042
+              ],
+              [
+                -160.095844038,
+                22.0181719460001
+              ],
+              [
+                -160.094961049,
+                22.018441038
+              ],
+              [
+                -160.094222968,
+                22.0182299430001
+              ],
+              [
+                -160.093033949,
+                22.0189349300001
+              ],
+              [
+                -160.09058304,
+                22.021544955
+              ],
+              [
+                -160.090371945,
+                22.0222629790001
+              ],
+              [
+                -160.090523037,
+                22.0235290480001
+              ],
+              [
+                -160.088151017,
+                22.02240304
+              ],
+              [
+                -160.087277053,
+                22.020634053
+              ],
+              [
+                -160.087149025,
+                22.0194639210001
+              ],
+              [
+                -160.08737299,
+                22.0185939690001
+              ],
+              [
+                -160.088250965,
+                22.0176620080001
+              ],
+              [
+                -160.08838501,
+                22.016758962
+              ],
+              [
+                -160.090882049,
+                22.014475024
+              ],
+              [
+                -160.09199502,
+                22.013937007
+              ],
+              [
+                -160.092017918,
+                22.013538049
+              ],
+              [
+                -160.092634991,
+                22.012964933
+              ],
+              [
+                -160.093685954,
+                22.012893064
+              ],
+              [
+                -160.094369046,
+                22.01245299
+              ],
+              [
+                -160.095023057,
+                22.0125790120001
+              ],
+              [
+                -160.096414981,
+                22.0117600360001
+              ],
+              [
+                -160.097187993,
+                22.0117020390001
+              ],
+              [
+                -160.098737027,
+                22.0123099200001
+              ],
+              [
+                -160.100144996,
+                22.012239053
+              ],
+              [
+                -160.100702067,
+                22.0127829200001
+              ],
+              [
+                -160.102468045,
+                22.0132290110001
+              ],
+              [
+                -160.102210987,
+                22.013678946
+              ],
+              [
+                -160.102454006,
+                22.0139450290001
+              ],
+              [
+                -160.10130393,
+                22.0165650820001
+              ],
+              [
+                -160.101494969,
+                22.0174119700001
+              ],
+              [
+                -160.10094308,
+                22.019413947
+              ],
+              [
+                -160.101522045,
+                22.0228850660001
+              ],
+              [
+                -160.100702067,
+                22.024999026
+              ],
+              [
+                -160.099866043,
+                22.0258059670001
+              ],
+              [
+                -160.099507031,
+                22.025782066
+              ],
+              [
+                -160.099953958,
+                22.024780075
+              ],
+              [
+                -160.100060926,
+                22.0235340620001
+              ],
+              [
+                -160.099466082,
+                22.021435981
+              ],
+              [
+                -160.098329044,
+                22.019679028
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "FIPS": "15003",
+          "Factors_ClinicalCare_subrank": 1,
+          "Factors_HealthBehaviors_subrank": 1,
+          "Factors_PhysicalEnv_subrank": 2,
+          "Factors_SocEconEnv_subrank": 1,
+          "Health_Factors_Rank": 1,
+          "Health_Outcomes_Rank": 2,
+          "OBJECTID": 2,
+          "Outcomes_LengthOfLife_subrank": 1,
+          "Outcomes_QualityOfLife_subrank": 2,
+          "STATE": "HI",
+          "Shape__Area": 0.1361910621531024,
+          "Shape__Length": 4.110998315602512,
+          "county": "Honolulu County",
+          "county_ranked": 1,
+          "v001_denominator": 2672587,
+          "v001_flag": 0,
+          "v001_numerator": 9650,
+          "v001_race_aian": null,
+          "v001_race_aian_flag": 2,
+          "v001_race_asian": 5536.3224478,
+          "v001_race_asian_flag": null,
+          "v001_race_black": 6122.2756679,
+          "v001_race_black_flag": null,
+          "v001_race_hispanic": 6445.2610509,
+          "v001_race_hispanic_flag": null,
+          "v001_race_white": 5318.9403214,
+          "v001_race_white_flag": null,
+          "v001_rawvalue": 5724.5877976,
+          "v002_denominator": null,
+          "v002_numerator": null,
+          "v002_rawvalue": 16.6,
+          "v003_denominator": 566969,
+          "v003_numerator": 29292,
+          "v003_rawvalue": 5.17,
+          "v004_denominator": 974563,
+          "v004_numerator": 923,
+          "v004_other_data_1": 1055.864572,
+          "v004_rawvalue": 94.709115778,
+          "v005_denominator": null,
+          "v005_numerator": null,
+          "v005_race_aian": null,
+          "v005_race_asian": 1854,
+          "v005_race_black": 2349,
+          "v005_race_hispanic": 2301,
+          "v005_race_white": 2105,
+          "v005_rawvalue": 1989,
+          "v009_denominator": null,
+          "v009_numerator": null,
+          "v009_rawvalue": 13.6,
+          "v011_denominator": null,
+          "v011_numerator": null,
+          "v011_rawvalue": 25.4,
+          "v014_denominator": 179605,
+          "v014_numerator": 3014,
+          "v014_race_aian": null,
+          "v014_race_asian": 14.513738939,
+          "v014_race_black": 15.974440895,
+          "v014_race_hispanic": 28.874484384,
+          "v014_race_white": 15.86842697,
+          "v014_rawvalue": 16.781270009,
+          "v015_denominator": 6890226,
+          "v015_numerator": 167,
+          "v015_race_aian": null,
+          "v015_race_asian": 2.3506303159,
+          "v015_race_black": 4.2860877877,
+          "v015_race_hispanic": 2.0602808751,
+          "v015_race_white": 1.8724087201,
+          "v015_rawvalue": 2.4237231115,
+          "v021_denominator": 8397,
+          "v021_numerator": 7201.45,
+          "v021_rawvalue": 85.76,
+          "v023_denominator": 440915,
+          "v023_numerator": 44779,
+          "v023_rawvalue": 10.16,
+          "v024_denominator": null,
+          "v024_numerator": 17766,
+          "v024_race_aian": 9.12,
+          "v024_race_asian": 13.84,
+          "v024_race_black": 4.08,
+          "v024_race_hispanic": 12.78,
+          "v024_race_white": 6.85,
+          "v024_rawvalue": 9.1,
+          "v036_rawvalue": 3.2949369079,
+          "v037_denominator": 87521,
+          "v037_flag": 0,
+          "v037_numerator": 7296,
+          "v037_race_aian": 9.47,
+          "v037_race_asian": 9.26,
+          "v037_race_black": 10.92,
+          "v037_race_hispanic": 7.6,
+          "v037_race_white": 6.08,
+          "v037_rawvalue": 8.34,
+          "v039_denominator": 6890226,
+          "v039_numerator": 412,
+          "v039_race_aian": null,
+          "v039_race_asian": 5.686286669,
+          "v039_race_black": 8.5721755753,
+          "v039_race_hispanic": 6.6223313844,
+          "v039_race_white": 5.2828674602,
+          "v039_rawvalue": 5.9794845626,
+          "v042_denominator": null,
+          "v042_numerator": null,
+          "v042_rawvalue": 3.7941561105,
+          "v043_denominator": 995572,
+          "v043_numerator": 2366,
+          "v043_rawvalue": 237.65232449,
+          "v044_denominator": 39802,
+          "v044_numerator": 164245,
+          "v044_rawvalue": 4.1265514296,
+          "v045_denominator": 974563,
+          "v045_numerator": 6399,
+          "v045_rawvalue": 656.6,
+          "v049_denominator": null,
+          "v049_numerator": null,
+          "v049_rawvalue": 20.78,
+          "v050_denominator": null,
+          "v050_numerator": null,
+          "v050_race_aian": null,
+          "v050_race_asian": 47,
+          "v050_race_black": 25,
+          "v050_race_hispanic": 35,
+          "v050_race_white": 38,
+          "v050_rawvalue": 44,
+          "v051_denominator": null,
+          "v051_numerator": null,
+          "v051_rawvalue": 963826,
+          "v052_numerator": 201296,
+          "v052_rawvalue": 20.89,
+          "v053_numerator": 181138,
+          "v053_rawvalue": 18.79,
+          "v054_numerator": 24332,
+          "v054_rawvalue": 2.52,
+          "v055_numerator": 3049,
+          "v055_rawvalue": 0.32,
+          "v056_numerator": 98214,
+          "v056_rawvalue": 10.19,
+          "v057_numerator": 478956,
+          "v057_rawvalue": 49.69,
+          "v058_numerator": 8225,
+          "v058_rawvalue": 0.86,
+          "v059_numerator": 45069,
+          "v059_rawvalue": 4.91,
+          "v060_denominator": null,
+          "v060_numerator": null,
+          "v060_rawvalue": 9.7,
+          "v061_denominator": 822654,
+          "v061_numerator": 1514,
+          "v061_rawvalue": 184,
+          "v062_denominator": 963826,
+          "v062_numerator": 2769,
+          "v062_other_data_1": 348.07728422,
+          "v062_rawvalue": 287.2925196,
+          "v063_race_aian": 49301,
+          "v063_race_asian": 90312,
+          "v063_race_black": 73761,
+          "v063_race_hispanic": 76291,
+          "v063_race_white": 93342,
+          "v063_rawvalue": 89584,
+          "v065_denominator": 121080,
+          "v065_numerator": 50225,
+          "v065_rawvalue": 41.48,
+          "v067_denominator": 494042,
+          "v067_numerator": 322111,
+          "v067_race_aian": 63.85,
+          "v067_race_asian": 63.46,
+          "v067_race_black": 67.62,
+          "v067_race_hispanic": 67.19,
+          "v067_race_white": 67.23,
+          "v067_rawvalue": 65.2,
+          "v069_denominator": 273869,
+          "v069_numerator": 198630,
+          "v069_rawvalue": 72.53,
+          "v070_denominator": null,
+          "v070_numerator": null,
+          "v070_rawvalue": 25.1,
+          "v080_denominator": 963826,
+          "v080_numerator": 96178,
+          "v080_rawvalue": 9.98,
+          "v081_denominator": 963826,
+          "v081_numerator": 409654,
+          "v081_rawvalue": 42.5,
+          "v082_denominator": 205777,
+          "v082_numerator": 44406,
+          "v082_rawvalue": 21.58,
+          "v083_denominator": 953207,
+          "v083_numerator": 44029.763099,
+          "v083_rawvalue": 4.62,
+          "v085_denominator": 770224,
+          "v085_numerator": 33662,
+          "v085_rawvalue": 4.37,
+          "v088_denominator": 963826,
+          "v088_numerator": 970,
+          "v088_other_data_1": 993.63505155,
+          "v088_rawvalue": 100.64057205,
+          "v122_denominator": 212287,
+          "v122_numerator": 4829,
+          "v122_rawvalue": 2.27,
+          "v124_rawvalue": null,
+          "v125_rawvalue": 3.7,
+          "v126_denominator": 963826,
+          "v126_numerator": 169501,
+          "v126_rawvalue": 17.59,
+          "v127_denominator": 2672587,
+          "v127_numerator": 9650,
+          "v127_race_aian": null,
+          "v127_race_asian": 271.95952778,
+          "v127_race_black": 300.66469059,
+          "v127_race_hispanic": 366.68642752,
+          "v127_race_white": 282.49156876,
+          "v127_rawvalue": 287.17707747,
+          "v128_denominator": 823741,
+          "v128_numerator": 397,
+          "v128_race_aian": null,
+          "v128_race_asian": 41.924176548,
+          "v128_race_black": 142.72417003,
+          "v128_race_hispanic": 52.504095319,
+          "v128_race_white": 42.31053406,
+          "v128_rawvalue": 48.194760246,
+          "v129_denominator": 88951,
+          "v129_numerator": 491,
+          "v129_race_aian": null,
+          "v129_race_asian": 5.1695240403,
+          "v129_race_black": 12.548482774,
+          "v129_race_hispanic": 5.8522311631,
+          "v129_race_white": 4.3489254109,
+          "v129_rawvalue": 5.5198929748,
+          "v131_denominator": 963826,
+          "v131_numerator": 724,
+          "v131_other_data_1": 1331.2513812,
+          "v131_rawvalue": 75.117292955,
+          "v132_denominator": 953207,
+          "v132_numerator": 906068,
+          "v132_rawvalue": 95.05,
+          "v133_rawvalue": 8.3,
+          "v134_denominator": 274,
+          "v134_numerator": 72,
+          "v134_rawvalue": 26.28,
+          "v135_denominator": 4899724,
+          "v135_numerator": 2938,
+          "v135_race_aian": null,
+          "v135_race_asian": 58.307779365,
+          "v135_race_black": 51.041686119,
+          "v135_race_hispanic": 45.281967327,
+          "v135_race_white": 63.210459224,
+          "v135_rawvalue": 59.962561157,
+          "v136_denominator": 311525,
+          "v136_numerator": 85320,
+          "v136_other_data_1": 18.54,
+          "v136_other_data_2": 9.41,
+          "v136_other_data_3": 1.58,
+          "v136_rawvalue": 27.39,
+          "v137_denominator": 494042,
+          "v137_numerator": null,
+          "v137_rawvalue": 44.4,
+          "v138_denominator": 2918469,
+          "v138_numerator": 537,
+          "v138_race_aian": null,
+          "v138_race_asian": 16,
+          "v138_race_black": 16.666493057,
+          "v138_race_hispanic": 17.716783586,
+          "v138_race_white": 20.306745576,
+          "v138_rawvalue": 18.400058387,
+          "v139_denominator": null,
+          "v139_numerator": 103120,
+          "v139_rawvalue": 11,
+          "v140_denominator": 974563,
+          "v140_numerator": 625,
+          "v140_rawvalue": 6.4131308084,
+          "v141_rawvalue": 52.267016869,
+          "v142_rawvalue": 38.786593605,
+          "v143_denominator": null,
+          "v143_numerator": null,
+          "v143_rawvalue": 47.13,
+          "v144_denominator": null,
+          "v144_numerator": null,
+          "v144_rawvalue": 10.1,
+          "v145_denominator": null,
+          "v145_numerator": null,
+          "v145_rawvalue": 11.7,
+          "v147_race_aian": 85.206798837,
+          "v147_race_asian": 83.168857354,
+          "v147_race_black": 82.779128569,
+          "v147_race_hispanic": 76.198124268,
+          "v147_race_white": 81.881536717,
+          "v147_rawvalue": 82.377941948,
+          "v148_denominator": 4899724,
+          "v148_numerator": 149,
+          "v148_race_aian": null,
+          "v148_race_asian": 2.7840087787,
+          "v148_race_black": null,
+          "v148_race_hispanic": 2.6636451369,
+          "v148_race_white": 3.8309369227,
+          "v148_rawvalue": 3.0409876148,
+          "v149_denominator": 42455,
+          "v149_numerator": 3153,
+          "v149_rawvalue": 7.43,
+          "v151_denominator": 56010,
+          "v151_numerator": 46714,
+          "v151_rawvalue": 0.8340296376,
+          "v153_denominator": 316928,
+          "v153_numerator": 182360,
+          "v153_rawvalue": 57.54,
+          "v154_denominator": 307877,
+          "v154_numerator": 56714,
+          "v154_rawvalue": 18.42,
+          "v155_denominator": null,
+          "v155_numerator": null,
+          "v155_race_aian": 22,
+          "v155_race_asian": 50,
+          "v155_race_black": 25,
+          "v155_race_hispanic": 36,
+          "v155_race_white": 40,
+          "v155_rawvalue": 47,
+          "v156_rawvalue": 1596.3511383,
+          "v158_denominator": 85800,
+          "v158_numerator": null,
+          "v158_other_data_1": 635,
+          "v158_other_data_2": 311,
+          "v158_rawvalue": 11.025641026,
+          "v159_other_data_1": null,
+          "v159_race_aian": null,
+          "v159_race_asian": 2.919957657,
+          "v159_race_black": 2.92959935,
+          "v159_race_hispanic": 2.768940539,
+          "v159_race_white": 3.347268973,
+          "v159_rawvalue": 3.022209929,
+          "v160_race_aian": null,
+          "v160_race_asian": 3.009280078,
+          "v160_race_black": 2.768124501,
+          "v160_race_hispanic": 2.752465363,
+          "v160_race_white": 3.288000296,
+          "v160_rawvalue": 3.061896665,
+          "v161_denominator": 4899724,
+          "v161_numerator": 563,
+          "v161_other_data_1": 11.490443135,
+          "v161_race_aian": null,
+          "v161_race_asian": 9.7633598538,
+          "v161_race_black": 7.2540264564,
+          "v161_race_hispanic": 9.4138506007,
+          "v161_race_white": 15.665202321,
+          "v161_rawvalue": 11.106088337,
+          "v166_denominator": 316928,
+          "v166_numerator": 280542,
+          "v166_rawvalue": 88.52,
+          "v167_denominator": null,
+          "v167_numerator": null,
+          "v167_rawvalue": 0.1241313146,
+          "v168_denominator": 681697,
+          "v168_numerator": 630155,
+          "v168_rawvalue": 92.44,
+          "v169_denominator": null,
+          "v169_numerator": null,
+          "v169_rawvalue": null,
+          "v170_denominator": null,
+          "v170_numerator": null,
+          "v170_rawvalue": null,
+          "v171_denominator": 89584,
+          "v171_numerator": null,
+          "v171_rawvalue": 20.78,
+          "v172_denominator": 62345,
+          "v172_numerator": 324,
+          "v172_rawvalue": 5.1968882829,
+          "v173_denominator": 963826,
+          "v173_numerator": 275,
+          "v173_rawvalue": 20.209116821
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -157.715494985,
+                21.291440015
+              ],
+              [
+                -157.715410079,
+                21.2899869190001
+              ],
+              [
+                -157.715621007,
+                21.289718997
+              ],
+              [
+                -157.716285045,
+                21.290018006
+              ],
+              [
+                -157.71623106,
+                21.291222067
+              ],
+              [
+                -157.716627009,
+                21.2902349510001
+              ],
+              [
+                -157.717310938,
+                21.290383035
+              ],
+              [
+                -157.716584055,
+                21.2921480110001
+              ],
+              [
+                -157.715494985,
+                21.291440015
+              ]
+            ],
+            [
+              [
+                -157.902074981,
+                21.3091559590001
+              ],
+              [
+                -157.902541964,
+                21.3086640720001
+              ],
+              [
+                -157.903394033,
+                21.309076067
+              ],
+              [
+                -157.902818076,
+                21.3091469340001
+              ],
+              [
+                -157.902074981,
+                21.3091559590001
+              ]
+            ],
+            [
+              [
+                -157.890873068,
+                21.307349032
+              ],
+              [
+                -157.89144,
+                21.3070110790001
+              ],
+              [
+                -157.893062072,
+                21.307612942
+              ],
+              [
+                -157.892081976,
+                21.3101210130001
+              ],
+              [
+                -157.89081808,
+                21.307679965
+              ],
+              [
+                -157.890873068,
+                21.307349032
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "FIPS": "15001",
+          "Factors_ClinicalCare_subrank": 4,
+          "Factors_HealthBehaviors_subrank": 4,
+          "Factors_PhysicalEnv_subrank": 4,
+          "Factors_SocEconEnv_subrank": 3,
+          "Health_Factors_Rank": 4,
+          "Health_Outcomes_Rank": 4,
+          "OBJECTID": 3,
+          "Outcomes_LengthOfLife_subrank": 4,
+          "Outcomes_QualityOfLife_subrank": 4,
+          "STATE": "HI",
+          "Shape__Area": 0.8983317023444215,
+          "Shape__Length": 5.372360567129312,
+          "county": "Hawaii County",
+          "county_ranked": 1,
+          "v001_denominator": 557422,
+          "v001_flag": 0,
+          "v001_numerator": 2634,
+          "v001_race_aian": null,
+          "v001_race_aian_flag": 2,
+          "v001_race_asian": 6813.4127025,
+          "v001_race_asian_flag": null,
+          "v001_race_black": 6798.5883926,
+          "v001_race_black_flag": 1,
+          "v001_race_hispanic": 7576.7144104,
+          "v001_race_hispanic_flag": null,
+          "v001_race_white": 6847.6976532,
+          "v001_race_white_flag": null,
+          "v001_rawvalue": 6985.695274,
+          "v002_denominator": null,
+          "v002_numerator": null,
+          "v002_rawvalue": 18.7,
+          "v003_denominator": 113918,
+          "v003_numerator": 7523,
+          "v003_rawvalue": 6.6,
+          "v004_denominator": 201513,
+          "v004_numerator": 160,
+          "v004_other_data_1": 1259.45625,
+          "v004_rawvalue": 79.399343963,
+          "v005_denominator": null,
+          "v005_numerator": null,
+          "v005_race_aian": null,
+          "v005_race_asian": 2258,
+          "v005_race_black": 1030,
+          "v005_race_hispanic": 3169,
+          "v005_race_white": 2207,
+          "v005_rawvalue": 2300,
+          "v009_denominator": null,
+          "v009_numerator": null,
+          "v009_rawvalue": 17.6,
+          "v011_denominator": null,
+          "v011_numerator": null,
+          "v011_rawvalue": 25.2,
+          "v014_denominator": 38292,
+          "v014_numerator": 927,
+          "v014_race_aian": null,
+          "v014_race_asian": 20.727560669,
+          "v014_race_black": 15.277777778,
+          "v014_race_hispanic": 42.687193842,
+          "v014_race_white": 18.397291196,
+          "v014_rawvalue": 24.208712003,
+          "v015_denominator": 1395284,
+          "v015_numerator": 52,
+          "v015_race_aian": null,
+          "v015_race_asian": 3.544475368,
+          "v015_race_black": null,
+          "v015_race_hispanic": 6.7167437226,
+          "v015_race_white": 2.87492633,
+          "v015_rawvalue": 3.7268398405,
+          "v021_denominator": 1909,
+          "v021_numerator": 1577.865,
+          "v021_rawvalue": 82.65,
+          "v023_denominator": 89119,
+          "v023_numerator": 10133,
+          "v023_rawvalue": 11.37,
+          "v024_denominator": null,
+          "v024_numerator": 6718,
+          "v024_race_aian": 21.69,
+          "v024_race_asian": 20.11,
+          "v024_race_black": null,
+          "v024_race_hispanic": 24.07,
+          "v024_race_white": 9.33,
+          "v024_rawvalue": 16.1,
+          "v036_rawvalue": 3.9968987068,
+          "v037_denominator": 15758,
+          "v037_flag": 0,
+          "v037_numerator": 1344,
+          "v037_race_aian": null,
+          "v037_race_asian": 9.6,
+          "v037_race_black": 10,
+          "v037_race_hispanic": 8.77,
+          "v037_race_white": 6.27,
+          "v037_rawvalue": 8.53,
+          "v039_denominator": 1395284,
+          "v039_numerator": 166,
+          "v039_race_aian": null,
+          "v039_race_asian": 10.491647089,
+          "v039_race_black": null,
+          "v039_race_hispanic": 12.314030158,
+          "v039_race_white": 12.526464724,
+          "v039_rawvalue": 11.897219491,
+          "v042_denominator": null,
+          "v042_numerator": null,
+          "v042_rawvalue": 4.4731756339,
+          "v043_denominator": 194664.5,
+          "v043_numerator": 462,
+          "v043_rawvalue": 237.33140865,
+          "v044_denominator": 25174,
+          "v044_numerator": 127357,
+          "v044_rawvalue": 5.0590688806,
+          "v045_denominator": 201513,
+          "v045_numerator": 753,
+          "v045_rawvalue": 373.7,
+          "v049_denominator": null,
+          "v049_numerator": null,
+          "v049_rawvalue": 22.52,
+          "v050_denominator": null,
+          "v050_numerator": null,
+          "v050_race_aian": 31,
+          "v050_race_asian": 44,
+          "v050_race_black": 12,
+          "v050_race_hispanic": 35,
+          "v050_race_white": 32,
+          "v050_rawvalue": 36,
+          "v051_denominator": null,
+          "v051_numerator": null,
+          "v051_rawvalue": 203340,
+          "v052_numerator": 43054,
+          "v052_rawvalue": 21.17,
+          "v053_numerator": 45787,
+          "v053_rawvalue": 22.52,
+          "v054_numerator": 1381,
+          "v054_rawvalue": 0.68,
+          "v055_numerator": 1124,
+          "v055_rawvalue": 0.55,
+          "v056_numerator": 27474,
+          "v056_rawvalue": 13.51,
+          "v057_numerator": 102745,
+          "v057_rawvalue": 50.53,
+          "v058_numerator": 70313,
+          "v058_rawvalue": 37.99,
+          "v059_numerator": 6176,
+          "v059_rawvalue": 3.26,
+          "v060_denominator": null,
+          "v060_numerator": null,
+          "v060_rawvalue": 9.5,
+          "v061_denominator": 170021,
+          "v061_numerator": 399,
+          "v061_rawvalue": 234.7,
+          "v062_denominator": 203340,
+          "v062_numerator": 653,
+          "v062_other_data_1": 311.39356815,
+          "v062_rawvalue": 321.1370119,
+          "v063_race_aian": 23784,
+          "v063_race_asian": 73650,
+          "v063_race_black": null,
+          "v063_race_hispanic": 55809,
+          "v063_race_white": 63584,
+          "v063_rawvalue": 70313,
+          "v065_denominator": 27777,
+          "v065_numerator": 17327,
+          "v065_rawvalue": 62.38,
+          "v067_denominator": 87103,
+          "v067_numerator": 61657,
+          "v067_race_aian": null,
+          "v067_race_asian": 71,
+          "v067_race_black": null,
+          "v067_race_hispanic": 69.83,
+          "v067_race_white": 66.7,
+          "v067_rawvalue": 70.79,
+          "v069_denominator": 47891,
+          "v069_numerator": 28783,
+          "v069_rawvalue": 60.1,
+          "v070_denominator": null,
+          "v070_numerator": null,
+          "v070_rawvalue": 24.9,
+          "v080_denominator": 203340,
+          "v080_numerator": 26557,
+          "v080_rawvalue": 13.06,
+          "v081_denominator": 203340,
+          "v081_numerator": 42292,
+          "v081_rawvalue": 20.8,
+          "v082_denominator": 43145,
+          "v082_numerator": 11050,
+          "v082_rawvalue": 25.61,
+          "v083_denominator": 185079,
+          "v083_numerator": 14977.887763,
+          "v083_rawvalue": 8.09,
+          "v085_denominator": 156931,
+          "v085_numerator": 8771,
+          "v085_rawvalue": 5.59,
+          "v088_denominator": 203340,
+          "v088_numerator": 129,
+          "v088_other_data_1": 1576.2790698,
+          "v088_rawvalue": 63.440542933,
+          "v122_denominator": 45063,
+          "v122_numerator": 1362,
+          "v122_rawvalue": 3.02,
+          "v124_rawvalue": null,
+          "v125_rawvalue": 11.5,
+          "v126_denominator": 203340,
+          "v126_numerator": 60606,
+          "v126_rawvalue": 29.81,
+          "v127_denominator": 557422,
+          "v127_numerator": 2634,
+          "v127_race_aian": null,
+          "v127_race_asian": 315.10206791,
+          "v127_race_black": 362.07082519,
+          "v127_race_hispanic": 356.17482886,
+          "v127_race_white": 320.25716222,
+          "v127_rawvalue": 323.20212625,
+          "v128_denominator": 173466,
+          "v128_numerator": 73,
+          "v128_race_aian": null,
+          "v128_race_asian": 47.271745003,
+          "v128_race_black": null,
+          "v128_race_hispanic": 47.668986557,
+          "v128_race_white": 28.139469443,
+          "v128_rawvalue": 42.083174801,
+          "v129_denominator": 16139,
+          "v129_numerator": 85,
+          "v129_race_aian": null,
+          "v129_race_asian": 4.8165987403,
+          "v129_race_black": null,
+          "v129_race_hispanic": 6.7567567568,
+          "v129_race_white": 5.0403225806,
+          "v129_rawvalue": 5.2667451515,
+          "v131_denominator": 203340,
+          "v131_numerator": 111,
+          "v131_other_data_1": 1831.8918919,
+          "v131_rawvalue": 54.588374152,
+          "v132_denominator": 185079,
+          "v132_numerator": 122845,
+          "v132_rawvalue": 66.37,
+          "v133_rawvalue": 7.5,
+          "v134_denominator": 139,
+          "v134_numerator": 44,
+          "v134_rawvalue": 31.65,
+          "v135_denominator": 1004666,
+          "v135_numerator": 700,
+          "v135_race_aian": null,
+          "v135_race_asian": 60.447825847,
+          "v135_race_black": null,
+          "v135_race_hispanic": 52.28114957,
+          "v135_race_white": 87.234328567,
+          "v135_rawvalue": 69.674896931,
+          "v136_denominator": 68410,
+          "v136_numerator": 15395,
+          "v136_other_data_1": 14.88,
+          "v136_other_data_2": 6.75,
+          "v136_other_data_3": 3.3,
+          "v136_rawvalue": 22.5,
+          "v137_denominator": 87103,
+          "v137_numerator": null,
+          "v137_rawvalue": 37.1,
+          "v138_denominator": 605836,
+          "v138_numerator": 67,
+          "v138_race_aian": null,
+          "v138_race_asian": 6,
+          "v138_race_black": null,
+          "v138_race_hispanic": null,
+          "v138_race_white": 18.529692645,
+          "v138_rawvalue": 11.059098502,
+          "v139_denominator": null,
+          "v139_numerator": 26200,
+          "v139_rawvalue": 13,
+          "v140_denominator": 201513,
+          "v140_numerator": 134,
+          "v140_rawvalue": 6.6496950569,
+          "v141_rawvalue": 63.863888607,
+          "v142_rawvalue": 27.088059025,
+          "v143_denominator": null,
+          "v143_numerator": null,
+          "v143_rawvalue": 41.62,
+          "v144_denominator": null,
+          "v144_numerator": null,
+          "v144_rawvalue": 12.7,
+          "v145_denominator": null,
+          "v145_numerator": null,
+          "v145_rawvalue": 15.2,
+          "v147_race_aian": null,
+          "v147_race_asian": 81.606567974,
+          "v147_race_black": 83.008693465,
+          "v147_race_hispanic": 77.391541097,
+          "v147_race_white": 80.846422034,
+          "v147_rawvalue": 80.969820676,
+          "v148_denominator": 1004666,
+          "v148_numerator": 74,
+          "v148_race_aian": null,
+          "v148_race_asian": 6.1038521214,
+          "v148_race_black": null,
+          "v148_race_hispanic": 9.9949256531,
+          "v148_race_white": 8.5804257607,
+          "v148_rawvalue": 7.3656319613,
+          "v149_denominator": 8746,
+          "v149_numerator": 900,
+          "v149_rawvalue": 10.29,
+          "v151_denominator": 45502,
+          "v151_numerator": 42945,
+          "v151_rawvalue": 0.9438046679,
+          "v153_denominator": 71747,
+          "v153_numerator": 49721,
+          "v153_rawvalue": 69.3,
+          "v154_denominator": 68244,
+          "v154_numerator": 10979,
+          "v154_rawvalue": 16.09,
+          "v155_denominator": null,
+          "v155_numerator": null,
+          "v155_race_aian": 28,
+          "v155_race_asian": 45,
+          "v155_race_black": 20,
+          "v155_race_hispanic": 35,
+          "v155_race_white": 34,
+          "v155_rawvalue": 38,
+          "v156_rawvalue": 117.20553012,
+          "v158_denominator": 19100,
+          "v158_numerator": null,
+          "v158_other_data_1": 256,
+          "v158_other_data_2": 260,
+          "v158_rawvalue": 27.015706806,
+          "v159_other_data_1": null,
+          "v159_race_aian": null,
+          "v159_race_asian": 2.511566201,
+          "v159_race_black": null,
+          "v159_race_hispanic": 2.546817182,
+          "v159_race_white": 2.948460753,
+          "v159_rawvalue": 2.642386808,
+          "v160_race_aian": null,
+          "v160_race_asian": 2.52918329,
+          "v160_race_black": null,
+          "v160_race_hispanic": 2.496686367,
+          "v160_race_white": 2.769662559,
+          "v160_rawvalue": 2.592882193,
+          "v161_denominator": 1004666,
+          "v161_numerator": 197,
+          "v161_other_data_1": 19.608506708,
+          "v161_race_aian": null,
+          "v161_race_asian": 17.695590931,
+          "v161_race_black": null,
+          "v161_race_hispanic": 15.146713649,
+          "v161_race_white": 23.813614838,
+          "v161_rawvalue": 20.144205729,
+          "v166_denominator": 71747,
+          "v166_numerator": 58597,
+          "v166_rawvalue": 81.67,
+          "v167_denominator": null,
+          "v167_numerator": null,
+          "v167_rawvalue": 0.0737492796,
+          "v168_denominator": 143758,
+          "v168_numerator": 133526,
+          "v168_rawvalue": 92.88,
+          "v169_denominator": null,
+          "v169_numerator": null,
+          "v169_rawvalue": null,
+          "v170_denominator": null,
+          "v170_numerator": null,
+          "v170_rawvalue": null,
+          "v171_denominator": 70313,
+          "v171_numerator": null,
+          "v171_rawvalue": 23.74,
+          "v172_denominator": 11800,
+          "v172_numerator": 62,
+          "v172_rawvalue": 5.2542372881,
+          "v173_denominator": 203340,
+          "v173_numerator": 47,
+          "v173_rawvalue": 15.343474704
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -155.908560973,
+                19.1811439480001
+              ],
+              [
+                -155.908949067,
+                19.1809850000001
+              ],
+              [
+                -155.909653051,
+                19.181332981
+              ],
+              [
+                -155.909089964,
+                19.1816219620001
+              ],
+              [
+                -155.908560973,
+                19.1811439480001
+              ]
+            ],
+            [
+              [
+                -155.253927966,
+                19.267303009
+              ],
+              [
+                -155.254013039,
+                19.266979932
+              ],
+              [
+                -155.254403975,
+                19.2671809990001
+              ],
+              [
+                -155.254202072,
+                19.2677310490001
+              ],
+              [
+                -155.253479034,
+                19.267529983
+              ],
+              [
+                -155.253927966,
+                19.267303009
+              ]
+            ],
+            [
+              [
+                -155.849220015,
+                20.2681319930001
+              ],
+              [
+                -155.848635033,
+                20.2666439650001
+              ],
+              [
+                -155.847146002,
+                20.2654840280001
+              ],
+              [
+                -155.845746055,
+                20.2658829860001
+              ],
+              [
+                -155.845452059,
+                20.2654729970001
+              ],
+              [
+                -155.844527954,
+                20.2655139460001
+              ],
+              [
+                -155.844028045,
+                20.266019036
+              ],
+              [
+                -155.843156922,
+                20.2662430010001
+              ],
+              [
+                -155.841381083,
+                20.2666289220001
+              ],
+              [
+                -155.840669075,
+                20.2664089690001
+              ],
+              [
+                -155.840296024,
+                20.2667180070001
+              ],
+              [
+                -155.839371083,
+                20.2666690350001
+              ],
+              [
+                -155.837604937,
+                20.267279924
+              ],
+              [
+                -155.836578042,
+                20.2671420360001
+              ],
+              [
+                -155.83516907,
+                20.267549016
+              ],
+              [
+                -155.835049065,
+                20.26642702
+              ],
+              [
+                -155.834147022,
+                20.2659899540001
+              ],
+              [
+                -155.832928922,
+                20.264457969
+              ],
+              [
+                -155.831515938,
+                20.2644110030001
+              ],
+              [
+                -155.831118986,
+                20.2638820120001
+              ],
+              [
+                -155.829590009,
+                20.2653449690001
+              ],
+              [
+                -155.829628952,
+                20.264867958
+              ],
+              [
+                -155.82901004,
+                20.2644130090001
+              ],
+              [
+                -155.828934995,
+                20.26245198
+              ],
+              [
+                -155.82839397,
+                20.262190075
+              ],
+              [
+                -155.827451981,
+                20.2609529210001
+              ],
+              [
+                -155.826648048,
+                20.2610070740001
+              ],
+              [
+                -155.825648062,
+                20.2600050820001
+              ],
+              [
+                -155.822382022,
+                20.2592549670001
+              ],
+              [
+                -155.820861067,
+                20.2593880090001
+              ],
+              [
+                -155.820827974,
+                20.2595900790001
+              ],
+              [
+                -155.819988942,
+                20.2594520230001
+              ],
+              [
+                -155.819588981,
+                20.2597119220001
+              ],
+              [
+                -155.819509925,
+                20.259519045
+              ],
+              [
+                -155.817941002,
+                20.2600970080001
+              ],
+              [
+                -155.816821011,
+                20.259079974
+              ],
+              [
+                -155.816875999,
+                20.2584090830001
+              ],
+              [
+                -155.81588905,
+                20.2581259510001
+              ],
+              [
+                -155.815099992,
+                20.258818069
+              ],
+              [
+                -155.814519021,
+                20.258829936
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "County FIPS",
+        "defaultValue": null,
+        "length": 5,
+        "name": "FIPS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State",
+        "defaultValue": null,
+        "length": 2,
+        "name": "STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "defaultValue": null,
+        "length": 2147483647,
+        "name": "county",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "County Ranked (Yes=1, No=0)",
+        "defaultValue": null,
+        "name": "county_ranked",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death",
+        "defaultValue": null,
+        "name": "v001_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of years of potential life lost for deaths under 75 over 3 years",
+        "defaultValue": null,
+        "name": "v001_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Aggregate population under age 75 over 3 years reporting for premature death",
+        "defaultValue": null,
+        "name": "v001_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death flag (0 = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "name": "v001_race_aian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (American Indian/Alaska Native) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_race_aian_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "name": "v001_race_asian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (Asian/Pacific Islander) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_race_asian_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (Black)",
+        "defaultValue": null,
+        "name": "v001_race_black",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (Black) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_race_black_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (Hispanic)",
+        "defaultValue": null,
+        "name": "v001_race_hispanic",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (Hispanic) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_race_hispanic_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (White)",
+        "defaultValue": null,
+        "name": "v001_race_white",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (White) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_race_white_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Poor or fair health",
+        "defaultValue": null,
+        "name": "v002_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Respondents reporting poor or fair health",
+        "defaultValue": null,
+        "name": "v002_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of adult respondents reporting for health",
+        "defaultValue": null,
+        "name": "v002_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Poor physical health days",
+        "defaultValue": null,
+        "name": "v036_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Average number of poor mental health days",
+        "defaultValue": null,
+        "name": "v042_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of mentally unhealthy days",
+        "defaultValue": null,
+        "name": "v042_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of respondents reporting for mental health",
+        "defaultValue": null,
+        "name": "v042_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Low birthweight",
+        "defaultValue": null,
+        "name": "v037_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of low birthweight live births",
+        "defaultValue": null,
+        "name": "v037_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of live births (for low birthweight)",
+        "defaultValue": null,
+        "name": "v037_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Low birthweight unreliable indicator (Unreliable = Numerator < 20 or relative standard error > 20%)",
+        "defaultValue": null,
+        "name": "v037_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Low birthweight (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "name": "v037_race_aian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "name": "v037_race_asian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Black)",
+        "defaultValue": null,
+        "name": "v037_race_black",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Hispanic)",
+        "defaultValue": null,
+        "name": "v037_race_hispanic",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (White)",
+        "defaultValue": null,
+        "name": "v037_race_white",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Adult smoking",
+        "defaultValue": null,
+        "name": "v009_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Adult respondents reporting as current smokers",
+        "defaultValue": null,
+        "name": "v009_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of adult respondents reporting for smoking",
+        "defaultValue": null,
+        "name": "v009_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Adult obesity",
+        "defaultValue": null,
+        "name": "v011_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of respondents age 18 and older reporting a BMI 30+",
+        "defaultValue": null,
+        "name": "v011_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of respondents age 18 and older reporting for obesity",
+        "defaultValue": null,
+        "name": "v011_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Food environment index",
+        "defaultValue": null,
+        "name": "v133_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% of adults age 18 and over reporting no leisure-time physical activity",
+        "defaultValue": null,
+        "name": "v070_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Adults age 18 and over reporting no leisure-time physical activity",
+        "defaultValue": null,
+        "name": "v070_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Adults age 18 and over",
+        "defaultValue": null,
+        "name": "v070_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% of population with adequate access to locations for physical activity",
+        "defaultValue": null,
+        "name": "v132_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Total 2010 household population living in census blocks with adequate access to at least one location for physical activity",
+        "defaultValue": null,
+        "name": "v132_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident county population",
+        "defaultValue": null,
+        "name": "v132_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Excessive drinking",
+        "defaultValue": null,
+        "name": "v049_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of adults reporting excessive drinking",
+        "defaultValue": null,
+        "name": "v049_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of adult respondents reporting for excessive drinking",
+        "defaultValue": null,
+        "name": "v049_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% of driving deaths with alcohol involvement",
+        "defaultValue": null,
+        "name": "v134_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Total number of motor vehicle crash deaths",
+        "defaultValue": null,
+        "name": "v134_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of alcohol-impaired motor vehicle crash deaths",
+        "defaultValue": null,
+        "name": "v134_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Sexually transmitted infections per 100,000",
+        "defaultValue": null,
+        "name": "v045_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of sexually transmitted infections",
+        "defaultValue": null,
+        "name": "v045_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total population reporting for sexually transmitted infections",
+        "defaultValue": null,
+        "name": "v045_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Teen births per 1,000",
+        "defaultValue": null,
+        "name": "v014_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Females age 15-19 who had a birth",
+        "defaultValue": null,
+        "name": "v014_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total females age 15-19",
+        "defaultValue": null,
+        "name": "v014_denominator",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriDecimalDegrees"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 654405,
+  "status": 200
+}

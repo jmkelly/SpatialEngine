@@ -82,8 +82,7 @@ public static class EsriFeatureCodec
 
     private static string ReadIdentity(JsonElement attributes, string objectIdField)
     {
-        if (attributes.ValueKind == JsonValueKind.Object
-            && attributes.TryGetProperty(objectIdField, out var objectId)
+        if (EsriAttributeCodec.TryGetValue(attributes, objectIdField, out var objectId)
             && objectId.ValueKind == JsonValueKind.Number
             && objectId.TryGetInt64(out var id))
         {

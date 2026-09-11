@@ -165,10 +165,35 @@ internal static class ArcGisRestMapper
         }
     }
 
-    private static string ObjectIdField(JsonElement metadata) =>
-        metadata.TryGetProperty("objectIdField", out var objectId) && objectId.ValueKind == JsonValueKind.String
-            ? objectId.GetString()!
-            : "OBJECTID";
+    private static string ObjectIdField(JsonElement metadata)
+    {
+        if (metadata.TryGetProperty("objectIdField", out var objectId)
+            && objectId.ValueKind == JsonValueKind.String
+            && objectId.GetString() is { Length: > 0 } declared)
+        {
+            return declared;
+        }
+
+        // Older/MapServer layers omit objectIdField; the fields list still
+        // declares exactly one esriFieldTypeOID field, which is the identity.
+        if (metadata.TryGetProperty("fields", out var fields) && fields.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var field in fields.EnumerateArray())
+            {
+                if (field.TryGetProperty("type", out var type)
+                    && type.ValueKind == JsonValueKind.String
+                    && type.GetString() == EsriFieldType.Oid
+                    && field.TryGetProperty("name", out var name)
+                    && name.ValueKind == JsonValueKind.String
+                    && name.GetString() is { Length: > 0 } oid)
+                {
+                    return oid;
+                }
+            }
+        }
+
+        return "OBJECTID";
+    }
 
     private static FeatureSchema Schema(JsonElement metadata)
     {
@@ -177,15 +202,21 @@ internal static class ArcGisRestMapper
         {
             foreach (var field in fieldElements.EnumerateArray())
             {
-                fields.Add(Field(field));
+                var definition = Field(field);
+                // Esri carries geometry outside the attribute object under its own
+                // field name (Shape/SHAPE/Geometry). The engine's canonical column
+                // is GeometryFieldName, so drop the Esri-named geometry field and
+                // expose the canonical one below.
+                if (definition.Kind == AttributeKind.Geometry)
+                {
+                    continue;
+                }
+
+                fields.Add(definition);
             }
         }
 
-        if (!fields.Any(field => field.Kind == AttributeKind.Geometry))
-        {
-            fields.Add(new FieldDefinition(GeometryFieldName, AttributeKind.Geometry, nullable: true));
-        }
-
+        fields.Add(new FieldDefinition(GeometryFieldName, AttributeKind.Geometry, nullable: true));
         return new FeatureSchema(fields);
     }
 

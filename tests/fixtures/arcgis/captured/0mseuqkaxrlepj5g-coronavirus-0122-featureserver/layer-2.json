@@ -1,0 +1,151 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 135.0869299997198,
+      "xmin": 73.44127699963389,
+      "ymax": 53.56177099973189,
+      "ymin": 18.159828999808553
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "NAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 24,
+        "name": "NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POPNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 24,
+        "name": "POPNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "CODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TYPE",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TYPE",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "DISPLAY",
+        "defaultValue": null,
+        "editable": true,
+        "name": "DISPLAY",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "EXTENTION",
+        "defaultValue": null,
+        "editable": true,
+        "name": "EXTENTION",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "UPDATE_",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "UPDATE_",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "X",
+        "defaultValue": null,
+        "editable": true,
+        "name": "X",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Y",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Y",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "ID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 2,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "CHN_Province_Boundary",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 9972,
+  "status": 200
+}

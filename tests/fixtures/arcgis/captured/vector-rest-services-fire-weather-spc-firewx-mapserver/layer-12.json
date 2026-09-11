@@ -1,0 +1,42 @@
+{
+  "body": {
+    "capabilities": "Map,Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 10000,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -8609449.418,
+      "xmin": -13776900.180599999,
+      "ymax": 6313466.687200002,
+      "ymin": 2888032.3783
+    },
+    "fields": [],
+    "geometryType": null,
+    "hasAttachments": false,
+    "id": 12,
+    "isDataVersioned": false,
+    "name": "Day 5 Fire Weather Outlook",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": false,
+    "supportsStatistics": false,
+    "type": "Group Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2279,
+  "status": 200
+}

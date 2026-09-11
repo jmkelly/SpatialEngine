@@ -1,0 +1,62 @@
+{
+  "catalog": "https://apps.fs.usda.gov/arcx/rest/services",
+  "currentVersion": 11.5,
+  "directory": "arcx-rest-services-edw-edw-activityfactscommonattributes-01-mapserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 7476752,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 0,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Activity FACTS Common Attribute",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    },
+    {
+      "count": "count-1.json",
+      "countOnly": 145179,
+      "error": "error-1.json",
+      "errorCode": 400,
+      "features": "query-1.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 1,
+      "ids": "ids-1.json",
+      "idsOnly": 145179,
+      "maxRecordCount": 2000,
+      "metadata": "layer-1.json",
+      "name": "Activity FACTS Common Attribute 2021-2022",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    }
+  ],
+  "serviceType": "MapServer",
+  "slug": "arcx-rest-services-edw-edw-activityfactscommonattributes-01-mapserver",
+  "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ActivityFactsCommonAttributes_01/MapServer"
+}

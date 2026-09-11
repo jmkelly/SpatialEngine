@@ -1,0 +1,61 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "rhvpkkiftonktxq3-usa-wildfires-v1-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 568,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 568,
+      "maxRecordCount": 16000,
+      "metadata": "layer-0.json",
+      "name": "Current_Incidents",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4326
+    },
+    {
+      "count": "count-1.json",
+      "countOnly": 195,
+      "error": "error-1.json",
+      "errorCode": 400,
+      "features": "query-1.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 1,
+      "ids": "ids-1.json",
+      "idsOnly": 195,
+      "maxRecordCount": 2000,
+      "metadata": "layer-1.json",
+      "name": "Current_Perimeters",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4326
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "rhvpkkiftonktxq3-usa-wildfires-v1-featureserver",
+  "url": "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/USA_Wildfires_v1/FeatureServer"
+}

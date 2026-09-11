@@ -1,0 +1,332 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CREATEDATE": null,
+          "CREATEUSER": "JHATHAWAY",
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1757519559000,
+          "EDITUSER": "jhathaway@nps.gov",
+          "FEATUREID": "ARPO_ARK_POST",
+          "GEOMETRYID": "{41F70971-D3F9-4375-A3B1-674A936E6A11}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "GlobalID": "{380EA8CC-28A4-4086-AFE5-9130E52D80C5}",
+          "INFOLINK": "https://npgallery.nps.gov/LAND/SearchResults?unitcode=ARPO&relatedsystemid=ARK_POST",
+          "ISEXTANT": "Unknown",
+          "ISOUTPARK": "No",
+          "MAPLABEL": null,
+          "MAPMETHOD": "Unknown",
+          "MAPSOURCE": "411_41005",
+          "MONDESC": "Set By: USC&GS.  Type: BRASS CAP IN CONCRETE.  Vertical Datum: USACE DATUM FOR ARK POST.",
+          "MONRECOVBY": "Unknown",
+          "MONRECOVDATE": 97372800000,
+          "MONSETBY": "Other Federal Agency",
+          "MONSETDATE": null,
+          "MONSTAMPID": "USC&GS ARK POST",
+          "MONUTILITY": "Unknown",
+          "NGSPID": null,
+          "NOTES": "",
+          "OBJECTID": 1,
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "MWR",
+          "SOURCEDATE": 97372800000,
+          "UNITCODE": "ARPO",
+          "UNITNAME": "Arkansas Post National Memorial",
+          "XYACCURACY": "Unknown"
+        },
+        "geometry": {
+          "x": -91.34303458699998,
+          "y": 34.02272684900004
+        }
+      },
+      {
+        "attributes": {
+          "CREATEDATE": null,
+          "CREATEUSER": "JHATHAWAY",
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1757519559000,
+          "EDITUSER": "jhathaway@nps.gov",
+          "FEATUREID": "ARPO_ET-55",
+          "GEOMETRYID": "{03A9174E-D0A3-4873-A2D9-42AA3B2B38CF}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "GlobalID": "{280CAB14-FCBF-4A67-BC71-DF21D93A93DB}",
+          "INFOLINK": "https://npgallery.nps.gov/LAND/SearchResults?unitcode=ARPO&relatedsystemid=ET-55",
+          "ISEXTANT": "Unknown",
+          "ISOUTPARK": "No",
+          "MAPLABEL": null,
+          "MAPMETHOD": "Unknown",
+          "MAPSOURCE": "411_41005",
+          "MONDESC": "Set By: USACE.  Type: BRASS CAP IN CONCRETE.  Vertical Datum: USACE DATUM FOR ARK POST.",
+          "MONRECOVBY": "Unknown",
+          "MONRECOVDATE": 97372800000,
+          "MONSETBY": "US Army Corps of Engineers",
+          "MONSETDATE": null,
+          "MONSTAMPID": "USCE ET-55",
+          "MONUTILITY": "Unknown ",
+          "NGSPID": null,
+          "NOTES": "",
+          "OBJECTID": 2,
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "MWR",
+          "SOURCEDATE": 97372800000,
+          "UNITCODE": "ARPO",
+          "UNITNAME": "Arkansas Post National Memorial",
+          "XYACCURACY": "Unknown"
+        },
+        "geometry": {
+          "x": -91.34271274299994,
+          "y": 34.01126914800005
+        }
+      },
+      {
+        "attributes": {
+          "CREATEDATE": null,
+          "CREATEUSER": "JHATHAWAY",
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1757519560000,
+          "EDITUSER": "jhathaway@nps.gov",
+          "FEATUREID": "ARPO_RNET-55",
+          "GEOMETRYID": "{AABA2FE1-BD66-4D17-BE7D-FBBB144FFD93}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "GlobalID": "{7D029904-F683-4E28-9FF8-D06C3418416F}",
+          "INFOLINK": "https://npgallery.nps.gov/LAND/SearchResults?unitcode=ARPO&relatedsystemid=RNET-55",
+          "ISEXTANT": "Unknown",
+          "ISOUTPARK": "No",
+          "MAPLABEL": null,
+          "MAPMETHOD": "Unknown",
+          "MAPSOURCE": "411_41005",
+          "MONDESC": "Set By: USACE.  Type: BRASS CAP IN PIPE. ",
+          "MONRECOVBY": "Unknown",
+          "MONRECOVDATE": 97372800000,
+          "MONSETBY": "US Army Corps of Engineers",
+          "MONSETDATE": null,
+          "MONSTAMPID": "USCE RNET-55",
+          "MONUTILITY": "Unknown ",
+          "NGSPID": null,
+          "NOTES": "",
+          "OBJECTID": 3,
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "MWR",
+          "SOURCEDATE": 97372800000,
+          "UNITCODE": "ARPO",
+          "UNITNAME": "Arkansas Post National Memorial",
+          "XYACCURACY": "Unknown"
+        },
+        "geometry": {
+          "x": -91.34362760899995,
+          "y": 34.01215277000006
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "PUBLICDISPLAY",
+        "length": 50,
+        "name": "PUBLICDISPLAY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "DATAACCESS",
+        "length": 50,
+        "name": "DATAACCESS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITNAME",
+        "length": 254,
+        "name": "UNITNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPNAME",
+        "length": 254,
+        "name": "GROUPNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONCODE",
+        "length": 4,
+        "name": "REGIONCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEUSER",
+        "length": 50,
+        "name": "CREATEUSER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EDITUSER",
+        "length": 50,
+        "name": "EDITUSER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPMETHOD",
+        "length": 254,
+        "name": "MAPMETHOD",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "XYACCURACY",
+        "length": 50,
+        "name": "XYACCURACY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATUREID",
+        "length": 50,
+        "name": "FEATUREID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONSTAMPID",
+        "length": 255,
+        "name": "MONSTAMPID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPLABEL",
+        "length": 100,
+        "name": "MAPLABEL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONDESC",
+        "length": 255,
+        "name": "MONDESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONSETDATE",
+        "length": 8,
+        "name": "MONSETDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "MONSETBY",
+        "length": 50,
+        "name": "MONSETBY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONRECOVDATE",
+        "length": 8,
+        "name": "MONRECOVDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "MONRECOVBY",
+        "length": 50,
+        "name": "MONRECOVBY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "INFOLINK",
+        "length": 255,
+        "name": "INFOLINK",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISOUTPARK",
+        "length": 255,
+        "name": "ISOUTPARK",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISEXTANT",
+        "length": 255,
+        "name": "ISEXTANT",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEDATE",
+        "length": 8,
+        "name": "CREATEDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "NGS PID",
+        "length": 15,
+        "name": "NGSPID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "UNITCODE",
+        "length": 25,
+        "name": "UNITCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPCODE",
+        "length": 10,
+        "name": "GROUPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPSOURCE",
+        "length": 255,
+        "name": "MAPSOURCE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCEDATE",
+        "length": 8,
+        "name": "SOURCEDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GEOMETRYID",
+        "length": 38,
+        "name": "GEOMETRYID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOTES",
+        "length": 254,
+        "name": "NOTES",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONUTILITY",
+        "length": 255,
+        "name": "MONUTILITY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EDITDATE",
+        "length": 8,
+        "name": "EDITDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GlobalID",
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 6318,
+      "vcsWkid": 5703,
+      "wkid": 104145
+    }
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 7929,
+  "status": 200
+}

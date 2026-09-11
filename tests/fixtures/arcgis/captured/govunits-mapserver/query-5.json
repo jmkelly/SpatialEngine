@@ -1,0 +1,725 @@
+{
+  "body": {
+    "displayFieldName": "Place_Name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "areasqkm": 7.79830962,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61501,
+          "globalid": "{4EE9BDA6-FBD8-4809-829F-23A6AEF45AC1}",
+          "gnis_id": "2582661",
+          "gnis_name": "Abanda Census Designated Place",
+          "loaddate": 1758585600000,
+          "objectid": 106769,
+          "permanent_identifier": "8cf76fb0-397b-4bb4-8fb3-23de151a9213",
+          "place_fipscode": "00100",
+          "place_name": "Abanda",
+          "population": 133,
+          "shape_Area": 11140723.103908598,
+          "shape_Length": 17793.215828016517,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Place",
+          "source_datasetid": "57d2c447-74fc-4d57-a8f3-c547074e4ec5",
+          "source_featureid": "0100100",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9522495.4993,
+                3909077.603699997
+              ],
+              [
+                -9522483.8108,
+                3909099.530500002
+              ],
+              [
+                -9522470.6751,
+                3909196.6735000014
+              ],
+              [
+                -9522440.1735,
+                3909261.524599999
+              ],
+              [
+                -9522435.0528,
+                3909280.6609999985
+              ],
+              [
+                -9522431.3793,
+                3909296.7409000024
+              ],
+              [
+                -9522430.7114,
+                3909328.103500001
+              ],
+              [
+                -9522432.1585,
+                3909351.6256000027
+              ],
+              [
+                -9522444.515,
+                3909403.3210000023
+              ],
+              [
+                -9522456.0922,
+                3909428.9694000036
+              ],
+              [
+                -9522461.2129,
+                3909459.6679000035
+              ],
+              [
+                -9522464.7751,
+                3909461.9271000028
+              ],
+              [
+                -9522467.0015,
+                3909493.2902000025
+              ],
+              [
+                -9522460.6563,
+                3909518.1415000036
+              ],
+              [
+                -9522451.7508,
+                3909553.2256999984
+              ],
+              [
+                -9522445.1829,
+                3909606.3839000016
+              ],
+              [
+                -9522442.9565,
+                3909609.4404999986
+              ],
+              [
+                -9522437.8358,
+                3909639.4750000015
+              ],
+              [
+                -9522436.6113,
+                3909661.402900003
+              ],
+              [
+                -9522114.4526,
+                3909666.9846
+              ],
+              [
+                -9521489.1709,
+                3909680.539999999
+              ],
+              [
+                -9521340.6706,
+                3909683.463799998
+              ],
+              [
+                -9521248.0528,
+                3909685.457199998
+              ],
+              [
+                -9521228.7945,
+                3909685.855899997
+              ],
+              [
+                -9521194.5081,
+                3909686.653300002
+              ],
+              [
+                -9520712.4945,
+                3909708.4483999982
+              ],
+              [
+                -9520680.8798,
+                3909708.7141999975
+              ],
+              [
+                -9520598.6147,
+                3909709.1128999963
+              ],
+              [
+                -9520015.4117,
+                3909736.489699997
+              ],
+              [
+                -9519417.2919,
+                3909738.0845
+              ],
+              [
+                -9519416.5127,
+                3909720.1433999985
+              ],
+              [
+                -9519395.4733,
+                3909674.0282000005
+              ],
+              [
+                -9519371.4283,
+                3909642.6646
+              ],
+              [
+                -9519363.4132,
+                3909627.3816
+              ],
+              [
+                -9519356.9567,
+                3909601.7326999977
+              ],
+              [
+                -9519358.5152,
+                3909454.2194000036
+              ],
+              [
+                -9519362.8566,
+                3909419.799900003
+              ],
+              [
+                -9519374.5452,
+                3909375.945100002
+              ],
+              [
+                -9519370.0924,
+                3909366.6426
+              ],
+              [
+                -9519359.9623,
+                3909346.044200003
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "areasqkm": 61.482278109999996,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61501,
+          "globalid": "{FC3FAA1D-33BA-4CBA-BB80-E03433EFA3F9}",
+          "gnis_id": "2582662",
+          "gnis_name": "Ballplay Census Designated Place",
+          "loaddate": 1758585600000,
+          "objectid": 106770,
+          "permanent_identifier": "e5b1da72-df50-4955-a925-6ff053143249",
+          "place_fipscode": "03820",
+          "place_name": "Ballplay",
+          "population": 1437,
+          "shape_Area": 89718119.58842538,
+          "shape_Length": 58290.17122566651,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Place",
+          "source_datasetid": "57d2c447-74fc-4d57-a8f3-c547074e4ec5",
+          "source_featureid": "0103820",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9555786.1652,
+                4041601.7053000033
+              ],
+              [
+                -9555770.9144,
+                4041605.2004000023
+              ],
+              [
+                -9555743.0845,
+                4041607.620099999
+              ],
+              [
+                -9555725.2734,
+                4041607.8889999986
+              ],
+              [
+                -9555707.5736,
+                4041607.4856999964
+              ],
+              [
+                -9555686.0889,
+                4041605.603699997
+              ],
+              [
+                -9555643.2309,
+                4041599.8233999982
+              ],
+              [
+                -9555596.6993,
+                4041594.9839999974
+              ],
+              [
+                -9555579.4448,
+                4041592.8332
+              ],
+              [
+                -9555462.3367,
+                4041578.3150999993
+              ],
+              [
+                -9555283.3349,
+                4041558.8233999982
+              ],
+              [
+                -9555213.3149,
+                4041549.5480000004
+              ],
+              [
+                -9555188.8246,
+                4041545.1119000018
+              ],
+              [
+                -9555156.5419,
+                4041537.5841000006
+              ],
+              [
+                -9555134.278,
+                4041530.862800002
+              ],
+              [
+                -9555083.071,
+                4041513.521899998
+              ],
+              [
+                -9555035.9829,
+                4041496.1810000017
+              ],
+              [
+                -9555017.9491,
+                4041488.787600003
+              ],
+              [
+                -9554969.7478,
+                4041465.397699997
+              ],
+              [
+                -9554931.6765,
+                4041447.7880000025
+              ],
+              [
+                -9554882.5846,
+                4041425.742399998
+              ],
+              [
+                -9554828.5946,
+                4041401.680399999
+              ],
+              [
+                -9554774.6046,
+                4041377.484099999
+              ],
+              [
+                -9554765.4764,
+                4041372.6448
+              ],
+              [
+                -9554716.7185,
+                4041352.4812999964
+              ],
+              [
+                -9554688.8886,
+                4041339.4421999976
+              ],
+              [
+                -9554666.0681,
+                4041328.957199998
+              ],
+              [
+                -9554642.2457,
+                4041318.7409999967
+              ],
+              [
+                -9554618.0894,
+                4041309.465800002
+              ],
+              [
+                -9554591.2614,
+                4041300.325099997
+              ],
+              [
+                -9554567.2164,
+                4041293.738300003
+              ],
+              [
+                -9554532.0394,
+                4041286.6138999984
+              ],
+              [
+                -9554429.0688,
+                4041270.214400001
+              ],
+              [
+                -9554422.501,
+                4041268.601300001
+              ],
+              [
+                -9554412.5936,
+                4041266.3161000013
+              ],
+              [
+                -9554403.1314,
+                4041263.4931999967
+              ],
+              [
+                -9554394.3372,
+                4041259.8637999967
+              ],
+              [
+                -9554387.658,
+                4041255.965599999
+              ],
+              [
+                -9554375.4128,
+                4041246.5560000017
+              ],
+              [
+                -9554364.1696,
+                4041234.9957000017
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "areasqkm": 28.08349812,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61501,
+          "globalid": "{59F764A7-D19B-4B6B-A1A1-905D204E6817}",
+          "gnis_id": "2582664",
+          "gnis_name": "Bristow Cove Census Designated Place",
+          "loaddate": 1758585600000,
+          "objectid": 106771,
+          "permanent_identifier": "b535b182-7aac-441a-9381-fa59ffe6b463",
+          "place_fipscode": "09457",
+          "place_name": "Bristow Cove",
+          "population": 624,
+          "shape_Area": 41068562.48142696,
+          "shape_Length": 33621.236440256995,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Place",
+          "source_datasetid": "57d2c447-74fc-4d57-a8f3-c547074e4ec5",
+          "source_featureid": "0109457",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9607261.9822,
+                4042116.971500002
+              ],
+              [
+                -9607256.6389,
+                4042125.7097000033
+              ],
+              [
+                -9607250.8503,
+                4042131.6247000024
+              ],
+              [
+                -9607218.345,
+                4042164.6952000037
+              ],
+              [
+                -9607201.8697,
+                4042181.4993999973
+              ],
+              [
+                -9607185.951,
+                4042197.9003000036
+              ],
+              [
+                -9607181.0529,
+                4042202.2021000013
+              ],
+              [
+                -9607166.6927,
+                4042214.9733999968
+              ],
+              [
+                -9607161.906,
+                4042219.409699999
+              ],
+              [
+                -9607149.2156,
+                4042230.7021000013
+              ],
+              [
+                -9607111.033,
+                4042264.9827999994
+              ],
+              [
+                -9607098.4539,
+                4042276.4098000005
+              ],
+              [
+                -9607068.8429,
+                4042302.8933999985
+              ],
+              [
+                -9606980.2325,
+                4042382.613499999
+              ],
+              [
+                -9606950.7329,
+                4042409.3663000017
+              ],
+              [
+                -9606693.2508,
+                4042260.0088
+              ],
+              [
+                -9606188.1941,
+                4042156.091499999
+              ],
+              [
+                -9605917.3537,
+                4042100.4363999963
+              ],
+              [
+                -9604721.4481,
+                4042377.505099997
+              ],
+              [
+                -9603947.2209,
+                4042934.7547999993
+              ],
+              [
+                -9603515.7464,
+                4043245.4552000016
+              ],
+              [
+                -9603288.2093,
+                4043473.208999999
+              ],
+              [
+                -9603153.4014,
+                4043607.9274000004
+              ],
+              [
+                -9602285.5544,
+                4043923.889899999
+              ],
+              [
+                -9601797.0844,
+                4044374.1853
+              ],
+              [
+                -9601069.8338,
+                4045044.753700003
+              ],
+              [
+                -9598055.3012,
+                4046702.9904000014
+              ],
+              [
+                -9597455.4004,
+                4047097.8506999984
+              ],
+              [
+                -9597293.6531,
+                4047185.0015999973
+              ],
+              [
+                -9596429.591,
+                4047650.7589000016
+              ],
+              [
+                -9596207.0633,
+                4047812.292199999
+              ],
+              [
+                -9596055.8914,
+                4047879.407899998
+              ],
+              [
+                -9595911.3986,
+                4047949.7520999983
+              ],
+              [
+                -9595793.9565,
+                4047990.102600001
+              ],
+              [
+                -9595744.642,
+                4048006.3774000034
+              ],
+              [
+                -9595745.6439,
+                4047974.6349000037
+              ],
+              [
+                -9595743.3061,
+                4047946.1204999983
+              ],
+              [
+                -9595739.2986,
+                4047920.2963000014
+              ],
+              [
+                -9595731.061,
+                4047894.3376
+              ],
+              [
+                -9595720.263,
+                4047867.3029000014
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "areasqkm": "AREASQKM",
+      "data_security": "Data_Security",
+      "distribution_policy": "Distribution_Policy",
+      "fcode": "FCode",
+      "globalid": "GLOBALID",
+      "gnis_id": "GNIS_ID",
+      "gnis_name": "GNIS_NAME",
+      "loaddate": "LOADDATE",
+      "objectid": "OBJECTID",
+      "permanent_identifier": "PERMANENT_IDENTIFIER",
+      "place_fipscode": "PLACE_FIPSCODE",
+      "place_name": "PLACE_NAME",
+      "population": "POPULATION",
+      "shape_Area": "SHAPE_Area",
+      "shape_Length": "SHAPE_Length",
+      "source_datadesc": "SOURCE_DATADESC",
+      "source_datasetid": "SOURCE_DATASETID",
+      "source_featureid": "SOURCE_FEATUREID",
+      "source_originator": "SOURCE_ORIGINATOR",
+      "state_name": "STATE_NAME"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "STATE_NAME",
+        "length": 120,
+        "name": "state_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PLACE_FIPSCODE",
+        "length": 5,
+        "name": "place_fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PLACE_NAME",
+        "length": 120,
+        "name": "place_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POPULATION",
+        "name": "population",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "gnis_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "gnis_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 124782,
+  "status": 200
+}

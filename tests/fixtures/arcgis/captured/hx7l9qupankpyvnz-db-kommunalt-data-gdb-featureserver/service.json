@@ -1,0 +1,255 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 1691291.7872,
+      "xmin": 898658.7278000005,
+      "ymax": 7915519.374499999,
+      "ymin": 7276759.6523
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 1691291.7872,
+      "xmin": 898658.7278000005,
+      "ymax": 7915519.374499999,
+      "ymin": 7276759.6523
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 72223,
+        "minScale": 36978596,
+        "name": "Kommuner_med_data",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "",
+    "serviceItemId": "09464c2b6dbb43ceb3bec93758d5606e",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [
+      {
+        "defaultVisibility": true,
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Diverse_koen_all",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "dod_pr_dag_kum",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 4,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "indl_alder",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 5,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "nyetilfaelde_pr_dag_kum_kommune",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 6,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "nyindlaeggelser",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 7,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "stats_all_final",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 8,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "sygdomstilf_aldergrp_kom",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 9,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "tabel13",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 10,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Tilfaelde_dod_alder_reportage",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 11,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "incidens_kort_saml",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 12,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "positiv_procent",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 13,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "sygdomstilf_aldergrp_kom_7dag",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 14,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "tabel13_new",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 15,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "pcr_and_antigen_test",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 16,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "suspected_pos",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 17,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "suspected_pos_pr_mun_pr_day",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 18,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "new_admissions",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 19,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "sygdomstilf_alder_inst_kom_7dag",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 20,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "sygdomstilf_alder_inst_kom",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 21,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Tilfaelde_dod_alder_inst",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 22,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "indl_alder_inst",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      },
+      {
+        "defaultVisibility": true,
+        "id": 23,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "key_figures_mun",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      }
+    ],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 5900,
+  "status": 200
+}

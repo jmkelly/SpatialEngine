@@ -1,0 +1,150 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4269,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.98315284119521e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 179.0000000000001,
+      "xmin": -179.93689999999998,
+      "ymax": 111.83670000000006,
+      "ymin": -13.265299999999968
+    },
+    "fields": [
+      {
+        "alias": "objectid_1",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident and Update Number Code",
+        "length": 64,
+        "name": "snumunum",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name of Incident",
+        "length": 128,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Type of Incident",
+        "length": 64,
+        "name": "type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TID",
+        "length": 2,
+        "name": "tid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lattitude",
+        "length": 12,
+        "name": "lat",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Longitude",
+        "length": 12,
+        "name": "lon",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast DateTime Made",
+        "length": 30,
+        "name": "rmade",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast DateTime Posted",
+        "length": 30,
+        "name": "rfill",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast Status",
+        "length": 2,
+        "name": "stat",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Status Text",
+        "length": 60,
+        "name": "stattext",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast Office",
+        "length": 5,
+        "name": "wfo",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Access Level",
+        "length": 5,
+        "name": "acclevel",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "acts",
+        "length": 5,
+        "name": "acts",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Require Delivery Date Time",
+        "length": 30,
+        "name": "deliverdtg",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "hasAttachments": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "SPOT Forecast Monitor",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 46279,
+  "status": 200
+}

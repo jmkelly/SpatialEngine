@@ -1,0 +1,104 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "gaz_name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22031622.795485,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144170266.2027535,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 19325062.035899997,
+      "xmin": -19818952.8156,
+      "ymax": 11526405.634300001,
+      "ymin": -1608688.4560999982
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "hasAttachments": false,
+    "hasZ": true,
+    "id": 14,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Historical Physical Points",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 5229,
+  "status": 200
+}

@@ -1,0 +1,163 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "FID": 1,
+          "GlobalID": "927b561c-0080-433f-a61a-5170ca5059d1",
+          "code": "MS_01",
+          "feedId": "FGC,RODALIES,TMB",
+          "gtfsId": "MS_01",
+          "name": "Pla\u00e7a Catalunya",
+          "nameAgency": "FGC,Renfe Cercanias,TMB",
+          "routes": null,
+          "stopsGtfsI": null,
+          "type": null,
+          "zoomL0": 0,
+          "zoomL1": 1
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "attributes": {
+          "FID": 2,
+          "GlobalID": "80a65af0-4010-46c5-99f3-20803fda6b96",
+          "code": "MS_02",
+          "feedId": "RODALIES,TMB",
+          "gtfsId": "MS_02",
+          "name": "Estaci\u00f3 de Sants",
+          "nameAgency": "Renfe Cercanias,TMB",
+          "routes": null,
+          "stopsGtfsI": null,
+          "type": null,
+          "zoomL0": 0,
+          "zoomL1": 1
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "attributes": {
+          "FID": 3,
+          "GlobalID": "7e772e84-911c-4405-a704-a4175eda41e0",
+          "code": "MS_03",
+          "feedId": "RODALIES,TMB",
+          "gtfsId": "MS_03",
+          "name": "La Sagrera",
+          "nameAgency": "Renfe Cercanias,TMB",
+          "routes": null,
+          "stopsGtfsI": null,
+          "type": null,
+          "zoomL0": 0,
+          "zoomL1": 1
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "FID",
+        "defaultValue": null,
+        "name": "FID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gtfsId",
+        "defaultValue": null,
+        "length": 254,
+        "name": "gtfsId",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "code",
+        "defaultValue": null,
+        "length": 254,
+        "name": "code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "feedId",
+        "defaultValue": null,
+        "length": 254,
+        "name": "feedId",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "zoomL1",
+        "defaultValue": null,
+        "name": "zoomL1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "name",
+        "defaultValue": null,
+        "length": 254,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "nameAgency",
+        "defaultValue": null,
+        "length": 254,
+        "name": "nameAgency",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "zoomL0",
+        "defaultValue": null,
+        "name": "zoomL0",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "stopsGtfsI",
+        "defaultValue": null,
+        "length": 254,
+        "name": "stopsGtfsI",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "type",
+        "defaultValue": null,
+        "name": "type",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "routes",
+        "defaultValue": null,
+        "length": 254,
+        "name": "routes",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "FID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "FID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3255,
+  "status": 200
+}

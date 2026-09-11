@@ -1,0 +1,35 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 16,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "suspected_pos",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 5629,
+  "status": 200
+}

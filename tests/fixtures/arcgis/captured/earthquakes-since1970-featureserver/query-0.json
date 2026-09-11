@@ -1,0 +1,273 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "date_": 259200000,
+          "dy": 4.0,
+          "focal": 31.0,
+          "hist_damage": 3.0,
+          "hist_deaths": 4.0,
+          "hist_houses_dam": 3.0,
+          "hist_houses_dest": 3.0,
+          "hist_injured": null,
+          "hr": 17.0,
+          "latitude": 24.1,
+          "longitude": 102.5,
+          "magnitude": 7.8,
+          "mill_damages": null,
+          "mmi_int": 10.0,
+          "mn": 0.0,
+          "mo": 1.0,
+          "name": "CHINA: YUNNAN PROVINCE; VIETNAM: HANOI",
+          "num_deaths": 10000.0,
+          "num_houses_dam": null,
+          "num_houses_dest": null,
+          "num_injured": null,
+          "objectid": 1,
+          "sec": 40.2,
+          "tsu": null,
+          "year_": 1970.0,
+          "yyyymmdd": "19700104",
+          "yyyymmddhhmm": "197001041700",
+          "yyyymmddhhmmss": "19700104170040"
+        },
+        "geometry": {
+          "x": 102.5,
+          "y": 24.100000000000023
+        }
+      },
+      {
+        "attributes": {
+          "date_": 14169600000,
+          "dy": 14.0,
+          "focal": 10.0,
+          "hist_damage": null,
+          "hist_deaths": null,
+          "hist_houses_dam": null,
+          "hist_houses_dest": null,
+          "hist_injured": null,
+          "hr": 0.0,
+          "latitude": -52.0,
+          "longitude": -73.8,
+          "magnitude": 6.0,
+          "mill_damages": null,
+          "mmi_int": null,
+          "mn": 0.0,
+          "mo": 6.0,
+          "name": "S. CHILE",
+          "num_deaths": null,
+          "num_houses_dam": null,
+          "num_houses_dest": null,
+          "num_injured": null,
+          "objectid": 2,
+          "sec": 0.0,
+          "tsu": "Tsu",
+          "year_": 1970.0,
+          "yyyymmdd": "19700614",
+          "yyyymmddhhmm": "197006140000",
+          "yyyymmddhhmmss": "19700614000000"
+        },
+        "geometry": {
+          "x": -73.80000000000001,
+          "y": -52
+        }
+      },
+      {
+        "attributes": {
+          "date_": 9676800000,
+          "dy": 23.0,
+          "focal": 18.0,
+          "hist_damage": null,
+          "hist_deaths": 1.0,
+          "hist_houses_dam": 3.0,
+          "hist_houses_dest": 3.0,
+          "hist_injured": 1.0,
+          "hr": 9.0,
+          "latitude": 39.1,
+          "longitude": 28.7,
+          "magnitude": 5.7,
+          "mill_damages": null,
+          "mmi_int": 8.0,
+          "mn": 1.0,
+          "mo": 4.0,
+          "name": "TURKEY: DEMIRCI, MANISA",
+          "num_deaths": null,
+          "num_houses_dam": 150.0,
+          "num_houses_dest": 150.0,
+          "num_injured": 43.0,
+          "objectid": 3,
+          "sec": 0.0,
+          "tsu": null,
+          "year_": 1970.0,
+          "yyyymmdd": "19700423",
+          "yyyymmddhhmm": "197004230901",
+          "yyyymmddhhmmss": "19700423090100"
+        },
+        "geometry": {
+          "x": 28.700000000000045,
+          "y": 39.10000000000002
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Year_",
+        "name": "year_",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mo",
+        "name": "mo",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Dy",
+        "name": "dy",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hr",
+        "name": "hr",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mn",
+        "name": "mn",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Sec",
+        "name": "sec",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tsu",
+        "length": 255,
+        "name": "tsu",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "length": 255,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Focal",
+        "name": "focal",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Magnitude",
+        "name": "magnitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "MMI_Int",
+        "name": "mmi_int",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Deaths",
+        "name": "num_deaths",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Deaths",
+        "name": "hist_deaths",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Injured",
+        "name": "num_injured",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Injured",
+        "name": "hist_injured",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mill_Damages",
+        "name": "mill_damages",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Damage",
+        "name": "hist_damage",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Houses_Dest",
+        "name": "num_houses_dest",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Houses_Dest",
+        "name": "hist_houses_dest",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Houses_Dam",
+        "name": "num_houses_dam",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Houses_Dam",
+        "name": "hist_houses_dam",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Date_",
+        "length": 8,
+        "name": "date_",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "YYYYMMDD",
+        "length": 255,
+        "name": "yyyymmdd",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "YYYYMMDDHHMM",
+        "length": 255,
+        "name": "yyyymmddhhmm",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "YYYYMMDDHHMMSS",
+        "length": 255,
+        "name": "yyyymmddhhmmss",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "objectid",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 5078,
+  "status": 200
+}

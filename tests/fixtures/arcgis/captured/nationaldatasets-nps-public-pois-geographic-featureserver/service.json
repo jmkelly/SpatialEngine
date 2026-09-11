@@ -1,0 +1,90 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "National Park Service, ngp_support@nps.gov",
+    "currentVersion": 11.5,
+    "description": "The purpose of creating and utilizing a spatial data standard is to consolidate spatial data and integrate the existing feature attribute information into a national database for reporting, planning, analysis and sharing purposes. \n\nThe primary benefit of using a spatial data standard remains the organization and documentation of data to allow users to share spatial data between parks, regions, programs, other federal agencies, and the public, at the national level. \n\nUltimately, the point of interest container will go through a formal data standard development process. This will lead to wider use and more comprehensive access to all of our available point of interest data and provide a more integrated approach to point of interest data management across the NPS and at all levels:  park, region, program, and national. Until then, the point of interest spatial data container will serve as a pseudo-standard and enable data stewards to begin standardizing point of interest data.",
+    "fullExtent": {
+      "mmax": null,
+      "mmin": null,
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 145.72530260300005,
+      "xmin": -170.71302683799996,
+      "ymax": 68.14305600000006,
+      "ymin": -14.285511887999974,
+      "zmax": 0,
+      "zmin": 0
+    },
+    "hasArchivedData": false,
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 162.92302263483666,
+      "xmin": -187.91074686983657,
+      "ymax": 150.01218550427123,
+      "ymin": -96.15464139227115
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 15000000,
+        "name": "Points of Interest",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "The purpose of creating and utilizing a spatial data standard is to consolidate spatial data and integrate the existing feature attribute information into a national database for reporting, planning, analysis and sharing purposes. \n\nThe primary benefit of using a spatial data standard remains the organization and documentation of data to allow users to share spatial data between parks, regions, programs, other federal agencies, and the public, at the national level. \n\nUltimately, the point of interest container will go through a formal data standard development process. This will lead to wider use and more comprehensive access to all of our available point of interest data and provide a more integrated approach to point of interest data management across the NPS and at all levels:  park, region, program, and national. Until then, the point of interest spatial data container will serve as a pseudo-standard and enable data stewards to begin standardizing point of interest data.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": -100000,
+      "latestWkid": 6318,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 104145,
+      "xyTolerance": 8.983152841195215e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 6977,
+  "status": 200
+}

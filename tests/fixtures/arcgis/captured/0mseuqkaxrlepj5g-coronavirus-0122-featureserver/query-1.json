@@ -1,0 +1,149 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Cfm_Susp": 19,
+          "OBJECTID": 1,
+          "cases_0121_csv_Confirmed": 9,
+          "cases_0121_csv_Cured": null,
+          "cases_0121_csv_Date": 1579564800000,
+          "cases_0121_csv_Demised": null,
+          "cases_0121_csv_Province": "Shanghai",
+          "cases_0121_csv_Suspected": 10,
+          "cor_latlong_csv_Lat": 31.20327,
+          "cor_latlong_csv_Location": "Shanghai",
+          "cor_latlong_csv_Long": 121.4554
+        },
+        "geometry": {
+          "x": 121.45540000000005,
+          "y": 31.203270000000032
+        }
+      },
+      {
+        "attributes": {
+          "Cfm_Susp": null,
+          "OBJECTID": 2,
+          "cases_0121_csv_Confirmed": 1,
+          "cases_0121_csv_Cured": null,
+          "cases_0121_csv_Date": 1579564800000,
+          "cases_0121_csv_Demised": null,
+          "cases_0121_csv_Province": "Yunnan",
+          "cases_0121_csv_Suspected": 0,
+          "cor_latlong_csv_Lat": 24.97411,
+          "cor_latlong_csv_Location": "Yunnan",
+          "cor_latlong_csv_Long": 101.4868
+        },
+        "geometry": {
+          "x": 101.48680000000007,
+          "y": 24.974110000000053
+        }
+      },
+      {
+        "attributes": {
+          "Cfm_Susp": null,
+          "OBJECTID": 3,
+          "cases_0121_csv_Confirmed": 10,
+          "cases_0121_csv_Cured": null,
+          "cases_0121_csv_Date": 1579564800000,
+          "cases_0121_csv_Demised": null,
+          "cases_0121_csv_Province": "Beijing",
+          "cases_0121_csv_Suspected": 0,
+          "cor_latlong_csv_Lat": 40.18238,
+          "cor_latlong_csv_Location": "Beijing",
+          "cor_latlong_csv_Long": 116.4142
+        },
+        "geometry": {
+          "x": 116.41420000000005,
+          "y": 40.18238000000008
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Province",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "cases_0121_csv_Province",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "cases_0121_csv_Date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "cases_0121_csv_Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Suspected",
+        "defaultValue": null,
+        "name": "cases_0121_csv_Suspected",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cured",
+        "defaultValue": null,
+        "name": "cases_0121_csv_Cured",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Demised",
+        "defaultValue": null,
+        "name": "cases_0121_csv_Demised",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Location",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "cor_latlong_csv_Location",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "name": "cor_latlong_csv_Lat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "name": "cor_latlong_csv_Long",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Cfm_Susp",
+        "defaultValue": null,
+        "name": "Cfm_Susp",
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3758,
+  "status": 200
+}

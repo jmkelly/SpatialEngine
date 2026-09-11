@@ -1,0 +1,377 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "National Oceanic and Atmospheric Administration, National Weather Service, Storm Predictive Center",
+    "currentVersion": 11.3,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 10000,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -7469537.8322,
+      "xmin": -13868182.162999999,
+      "ymax": 6369492.179499999,
+      "ymin": 2876972.949000001
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 10000,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -7334923.721546188,
+      "xmin": -14208737.331753813,
+      "ymax": 7029001.592313575,
+      "ymin": 2186220.8677864275
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 1 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          1,
+          2
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 1 Outlook",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 1 Outlook Dry Thunderstorm",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 2 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          4,
+          5
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 4,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 2 Outlook",
+        "parentLayerId": 3,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 5,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 2 Outlook Dry Thunderstorm",
+        "parentLayerId": 3,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 6,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 3 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          7,
+          8
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 7,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 3 Dry Thunderstorm",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 8,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 3 Winds and Low Humidity",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 9,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 4 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          10,
+          11
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 10,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 4 Dry Thunderstorm",
+        "parentLayerId": 9,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 11,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 4 Winds and Low Humidity",
+        "parentLayerId": 9,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 12,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 5 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          13,
+          14
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 13,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 5 Dry Thunderstorm",
+        "parentLayerId": 12,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 14,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 5 Winds and Low Humidity",
+        "parentLayerId": 12,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 15,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 6 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          16,
+          17
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 16,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 6 Dry Thunderstorm",
+        "parentLayerId": 15,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 17,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 6 Winds and Low Humidity",
+        "parentLayerId": 15,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 18,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 7 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          19,
+          20
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 19,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 7 Dry Thunderstorm",
+        "parentLayerId": 18,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 20,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 7 Winds and Low Humidity",
+        "parentLayerId": 18,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 21,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 8 Fire Weather Outlook",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          22,
+          23
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 22,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 8 Dry Thunderstorm",
+        "parentLayerId": 21,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 23,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Day 8 Winds and Low Humidity",
+        "parentLayerId": 21,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "Fire Weather Outlooks",
+    "maxRecordCount": 2000,
+    "serviceDescription": "<div style='text-align:Left;'><div><div><p><span>The </span><span style='font-weight:bold;'>Fire Weather Outlooks Web Service </span><span>contains Fire Weather Outlooks polygons that, are  delineate areas of the continental U.S. where pre-existing fuel conditions, combined with forecast weather conditions during the next 8 days, will result in a significant threat for the ignition and/or spread of wildfires. This web service is designed for use in the NWS, as well as other federal, state, and local government agencies.  Each outlook consists of a categorical forecast that graphically depicts fire weather risk areas across the continental United States.</span></p><p><span style='font-weight:bold;'>Five types of Fire Weather Outlook risk areas </span><span>are:</span></p><p><span style='font-weight:bold;'>ELEVATED</span><span> - Elevated risk from wind and relative humidity</span></p><p><span style='font-weight:bold;'>CRITICAL</span><span> - Critical risk from wind and relative humidity</span></p><p><span style='font-weight:bold;'>EXTREME </span><span> - Extremely Critical risk from wind and relative humidity</span></p><p><span style='font-weight:bold;'>ISODRYT</span><span>  - Elevated risk from dry thunderstorms</span></p><p><span style='font-weight:bold;'>SCTDRYT</span><span>  - Critical risk from dry thunderstorms</span></p><p><span style='font-style:italic;font-weight:bold;font-size:12pt'>Guidelines for the issuance of Critical and Extremely Critical Areas are provided below:</span></p><p><span style='font-weight:bold;'>Critical for dry thunderstorms:</span></p><p><span>Dry fuels (as defined below)</span></p><p><span>At least 40% coverage (scattered) of cloud-to-ground lightning strikes with rainfall accumulation at or below 0.10\"</span></p><p><span>Relative humidity at or below regional thresholds (see this graphic)</span></p><p><span>Temperatures at or above 50-60 degrees F, depending on the season</span></p><p><span style='font-weight:bold;'>Critical for wind and relative humidity:</span></p><p><span>Dry fuels (as defined below)</span></p><p><span>Sustained winds 20 mph or greater (15 mph Florida)</span></p><p><span>Relative humidity at or below regional thresholds</span></p><p><span>Temperatures at or above 50-60 degrees F, depending on the season</span></p><p><span>Concurrency of the above criteria for 3 hours or more</span></p><p><span style='font-weight:bold;'>Extremely Critical for wind and relative humidity:</span></p><p><span>Very dry fuels (as defined below)</span></p><p><span>Sustained winds 30 mph or greater (25 mph Florida)</span></p><p><span>Relative humidity at or below 2/3 of regional thresholds (see this graphic)</span></p><p><span>Temperatures at or above 60-70 degrees F, depending on the season</span></p><p><span>Concurrency of the above criteria for 3 hours or more</span></p><p><span style='font-weight:bold;'>Extremely critical </span><span>delineations are made when wind, relative humidity and temperatures significantly deviate from climatological normal, but can be made for borderline weather conditions where exceptional drought exists.</span></p><p><span>SPC utilizes fuel dryness level grids produced by Geographic Area Coordination Centers (GACCs). Fuel dryness levels of dry or very dry are necessary for the issuance of any type of SPC fire weather outlook area. When GACC dryness level grids are not available, SPC considers fuels to be dry where there is a National Fire Danger Rating System Adjective Class Rating of at least High, or 100/1000-hr dead fuel moisture below 10 percent in the West, or 10-hr dead fuel moisture below 10 percent in the East, or at least severe drought.</span></p><p><span>If an area is being considered for a possible Critical area but there is low confidence, or the expected weather conditions will be just below the aforementioned criteria for a Critical area, an Elevated area is highlighted. Where Critical areas are highlighted, an Elevated area will surround the Critical area. Guidelines for an </span></p><p><span style='font-weight:bold;'>Elevated area are provided below:</span></p><p><span>Elevated for dry thunderstorms, or wind and relative humidity:</span></p><p><span>10-39% coverage (isolated) of cloud-to-ground lightning strikes with rainfall accumulation at or below 0.10\" over dry fuels OR</span></p><p><span>A combination of sustained wind speeds of 15 mph or greater (10 mph Florida), relative humidity up to 5% above regional critical thresholds (see this graphic), and temperatures at or above 45-55 degrees F (depending on the season), for a duration of 3 hours or more over dry fuels OR</span></p><p><span>Brief (duration of less than 3 hours) and/or localized exceedance of critical thresholds over dry fuels OR</span></p><p><span>Critical conditions occurring with marginal fuel dryness</span></p><p><span style='font-weight:bold;'>The Day 1 Fire Weather Outlook </span><span>is issued twice a day: at 400 am (CST and CDT), with an update by 1700 UTC. This outlook covers the period from 1200 UTC today through 1200 UTC the following day (except for the update where the period begins at issuance time). Each outlook consists of a categorical forecast that graphically depicts fire weather areas across the continental United States.  Within these individual geographic areas, a meteorological narrative emphasizes predominant forecast conditions such as sustained wind speeds, minimum RH values, temperatures, and/or coverage of dry thunderstorms. Meteorological justification for the type of risk issued is also provided. For the outlook update changes are made to the previous outlook and/or observational updates.</span></p><p><span>individual 3-tier categorical (DN=5: Elevated, DN = 8: Critical, DN = 10: Extreme) fire weather outlook</span></p><p><span>Individual 2-tier dry lightning (DN = 5: Isolated Dry Thunderstorm, DN = 8: Scattered Dry Thunderstorm) outlook</span></p><p><span style='font-weight:bold;'>The Day 2 Fire Weather Outlook </span><span>is issued twice a day: at 1000 UTC, with an update by 2000 UTC. This outlook covers the period from 1200 UTC the following day to 1200 UTC the day after that. For example, if today is Monday then the Day 2 Fire Weather Outlook will cover the period 1200 UTC Tuesday to 1200 UTC Wednesday. This outlook is similar to the Day 1 Fire Weather Outlook in terms of the graphic.</span></p><p><span>Individual 3-tier categorical (DN=5: Elevated, DN = 8: Critical, DN = 10: Extreme) fire weather outlook</span></p><p><span>Individual 2-tier dry lightning (DN = 5: Isolated Dry Thunderstorm, DN = 8: Scattered Dry Thunderstorm) outlook</span></p><p><span style='font-weight:bold;'>The Day 3-8 Fire Weather Outlook </span><span>is issued once a day at 2200 UTC. This outlook covers the period of 48 to 192 hours from 1200 UTC on the morning of product issuance.</span></p><p style='margin:0 0 11 0;'><span style='font-weight:bold;'>Update Frequency: </span><span>Updates Daily at the following times: Day 1 - at 01Z, 06Z, 13Z, 16:30Z, 20Z    Day 2 - 06Z and 17Z, Day 3 - 07:30Z, Day 4-8 - 09Z.  </span></p>\n<p><span>Link to graphical web page: </span><a href='https://www.spc.noaa.gov:443/products/fire_wx/overview.html' style='text-decoration:underline;'><span>https://www.spc.noaa.gov/products/fire_wx/overview.html</span></a></p><p><span>Link to data download (shapefile): </span><a href='https://www.spc.noaa.gov:443/gis' style='text-decoration:underline;'><span>https://www.spc.noaa.gov/gis</span></a></p><p><span>Link to </span><a href='https://www.weather.gov:443/gis/IDP-GISRestMetadata' style='text-decoration:underline;'><span>metadata</span></a></p><p><span>Questions/Concerns about the service, please contact the </span><a href='mailto:nws.mapservices@noaa.gov:25' style='text-decoration:underline;'><span>DISS GIS </span></a><span>team</span></p><p><span style='font-weight:bold;'>Time Information:</span></p><p><span>This service is not time enabled</span></p></div></div></div>",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -20037700,
+      "falseY": -30241100,
+      "falseZ": -100000,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 10000,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 15363,
+  "status": 200
+}

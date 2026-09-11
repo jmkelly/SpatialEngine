@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": -12792793.213093642,
+      "xmin": -16321121.144560557,
+      "ymax": 8288672.381952037,
+      "ymin": 6175471.4635699205
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": -12100409.640398383,
+      "xmin": -15202482.414470926,
+      "ymax": 8548646.965940852,
+      "ymin": 7245608.266804688
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "BCWS_ActiveFires_Points",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "",
+    "serviceItemId": "397a1defe7f04c2b8ef6511f6c087dbf",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2909,
+  "status": 200
+}

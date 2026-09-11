@@ -1,0 +1,53 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "wkt": "PROJCS[\"Albers Conical Equal Area (Florida Geographic Data Library)\",GEOGCS[\"GCS_North_American_1983_HARN\",DATUM[\"D_North_American_1983_HARN\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Albers\"],PARAMETER[\"False_Easting\",400000.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",-84.0],PARAMETER[\"Standard_Parallel_1\",24.0],PARAMETER[\"Standard_Parallel_2\",31.5],PARAMETER[\"Central_Parallel\",24.0],UNIT[\"Meter\",1.0]]"
+      },
+      "xmax": 799462.4453999997,
+      "xmin": 77729.66340000182,
+      "ymax": 780734.5935000004,
+      "ymin": 62210.639700000174
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "wkt": "PROJCS[\"Albers Conical Equal Area (Florida Geographic Data Library)\",GEOGCS[\"GCS_North_American_1983_HARN\",DATUM[\"D_North_American_1983_HARN\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Albers\"],PARAMETER[\"False_Easting\",400000.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",-84.0],PARAMETER[\"Standard_Parallel_1\",24.0],PARAMETER[\"Standard_Parallel_2\",31.5],PARAMETER[\"Central_Parallel\",24.0],UNIT[\"Meter\",1.0]]"
+      },
+      "xmax": 809126.2930625309,
+      "xmin": 758436.7891602793,
+      "ymax": 215637.93159141473,
+      "ymin": 190268.64454643495
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 92043,
+        "name": "Florida_Places",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "Florida Places and Municipal Zones, 2020",
+    "serviceItemId": "b9da2dd1866e46279042b7eddd0b374f",
+    "spatialReference": {
+      "wkt": "PROJCS[\"Albers Conical Equal Area (Florida Geographic Data Library)\",GEOGCS[\"GCS_North_American_1983_HARN\",DATUM[\"D_North_American_1983_HARN\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Albers\"],PARAMETER[\"False_Easting\",400000.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",-84.0],PARAMETER[\"Standard_Parallel_1\",24.0],PARAMETER[\"Standard_Parallel_2\",31.5],PARAMETER[\"Central_Parallel\",24.0],UNIT[\"Meter\",1.0]]"
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 4667,
+  "status": 200
+}

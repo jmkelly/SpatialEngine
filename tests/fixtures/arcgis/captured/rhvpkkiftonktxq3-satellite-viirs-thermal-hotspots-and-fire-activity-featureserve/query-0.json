@@ -1,0 +1,198 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "acq_date": 1788480000000,
+          "acq_time": 1788480420000,
+          "bright_ti4": 348.82,
+          "bright_ti5": 313.12,
+          "confidence": "nominal",
+          "daynight": "D",
+          "esritimeutc": 1788505620000,
+          "frp": 11.71,
+          "hours_old": 179,
+          "latitude": 19.40169,
+          "longitude": -155.2822,
+          "satellite": "N",
+          "scan": 0.43,
+          "track": 0.46,
+          "version": "2.0NRT"
+        },
+        "geometry": {
+          "x": -17285935.4333,
+          "y": 2202285.966499999
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "acq_date": 1788480000000,
+          "acq_time": 1788480420000,
+          "bright_ti4": 349.81,
+          "bright_ti5": 311.43,
+          "confidence": "nominal",
+          "daynight": "D",
+          "esritimeutc": 1788505620000,
+          "frp": 18.73,
+          "hours_old": 179,
+          "latitude": 19.41115,
+          "longitude": -155.2751,
+          "satellite": "N",
+          "scan": 0.43,
+          "track": 0.46,
+          "version": "2.0NRT"
+        },
+        "geometry": {
+          "x": -17285145.0649,
+          "y": 2203402.4833000004
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "acq_date": 1788480000000,
+          "acq_time": 1788480420000,
+          "bright_ti4": 348.23,
+          "bright_ti5": 313.61,
+          "confidence": "nominal",
+          "daynight": "D",
+          "esritimeutc": 1788505620000,
+          "frp": 8.8,
+          "hours_old": 179,
+          "latitude": 19.40198,
+          "longitude": -155.28172,
+          "satellite": "N",
+          "scan": 0.43,
+          "track": 0.46,
+          "version": "2.0NRT"
+        },
+        "geometry": {
+          "x": -17285881.9999,
+          "y": 2202320.1928000003
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Coordinate Latitude",
+        "defaultValue": null,
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Coordinate Longitude",
+        "defaultValue": null,
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "VIIRS I-4 brightness temp (K)",
+        "defaultValue": null,
+        "name": "bright_ti4",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Pixel Size along scan",
+        "defaultValue": null,
+        "name": "scan",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Pixel Size along track",
+        "defaultValue": null,
+        "name": "track",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Date VIIRS acquisition",
+        "defaultValue": null,
+        "length": 8,
+        "name": "acq_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Date and Time of VIIRS acquisition (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "acq_time",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Satellite acquired from",
+        "defaultValue": null,
+        "length": 20,
+        "name": "satellite",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Initial data quality assessment",
+        "defaultValue": null,
+        "length": 20,
+        "name": "confidence",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Collection and Source Version",
+        "defaultValue": null,
+        "length": 20,
+        "name": "version",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "VIIRS I-5 brightness temp (K)",
+        "defaultValue": null,
+        "name": "bright_ti5",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Fire Radiative Power (MW)",
+        "defaultValue": null,
+        "name": "frp",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Daytime or Nighttime",
+        "defaultValue": null,
+        "length": 20,
+        "name": "daynight",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PST or PDT for Date and Time of VIIRS acquisition (stored in Pacific Time Zone)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "esritimeutc",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Hours since Acquisition Date/Time",
+        "defaultValue": null,
+        "name": "hours_old",
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 7487,
+  "status": 200
+}

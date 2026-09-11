@@ -1,0 +1,113 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Delta_Confirmed": 282,
+          "Delta_Recovered": null,
+          "Mainland_China": 278,
+          "ObjectId": 1,
+          "Other_Locations": 4,
+          "Report_Date": 1579496400000,
+          "Report_Date_String": "2020/01/20",
+          "Total_Confirmed": 282,
+          "Total_Recovered": null
+        }
+      },
+      {
+        "attributes": {
+          "Delta_Confirmed": 50,
+          "Delta_Recovered": 25,
+          "Mainland_China": 326,
+          "ObjectId": 2,
+          "Other_Locations": 6,
+          "Report_Date": 1579582800000,
+          "Report_Date_String": "2020/01/21",
+          "Total_Confirmed": 332,
+          "Total_Recovered": 25
+        }
+      },
+      {
+        "attributes": {
+          "Delta_Confirmed": 223,
+          "Delta_Recovered": 3,
+          "Mainland_China": 547,
+          "ObjectId": 3,
+          "Other_Locations": 8,
+          "Report_Date": 1579669200000,
+          "Report_Date_String": "2020/01/22",
+          "Total_Confirmed": 555,
+          "Total_Recovered": 28
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "Report_Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Report_Date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "China",
+        "defaultValue": null,
+        "name": "Mainland_China",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Other Locations",
+        "defaultValue": null,
+        "name": "Other_Locations",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Confirmed",
+        "defaultValue": null,
+        "name": "Total_Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Recovered",
+        "defaultValue": null,
+        "name": "Total_Recovered",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Report Date String",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Report_Date_String",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Delta Confirmed",
+        "defaultValue": null,
+        "name": "Delta_Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Delta Recovered",
+        "defaultValue": null,
+        "name": "Delta_Recovered",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "ObjectId",
+        "defaultValue": null,
+        "name": "ObjectId",
+        "type": "esriFieldTypeOID"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "ObjectId",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "ObjectId"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2555,
+  "status": 200
+}

@@ -1,0 +1,180 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "satellite",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20023849.441299997,
+      "xmin": -19961324.6229,
+      "ymax": 13434303.854599997,
+      "ymin": -19407813.5646
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Coordinate Latitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "latitude",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Coordinate Longitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "longitude",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "VIIRS I-4 brightness temp (K)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "bright_ti4",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Pixel Size along scan",
+        "defaultValue": null,
+        "editable": true,
+        "name": "scan",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Pixel Size along track",
+        "defaultValue": null,
+        "editable": true,
+        "name": "track",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Date VIIRS acquisition",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "acq_date",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Date and Time of VIIRS acquisition (stored in UTC)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "acq_time",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Satellite acquired from",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "satellite",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Initial data quality assessment",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "confidence",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Collection and Source Version",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "version",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "VIIRS I-5 brightness temp (K)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "bright_ti5",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Fire Radiative Power (MW)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "frp",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Daytime or Nighttime",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "daynight",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PST or PDT for Date and Time of VIIRS acquisition (stored in Pacific Time Zone)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "esritimeutc",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Hours since Acquisition Date/Time",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hours_old",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 16000,
+    "name": "Satellite (VIIRS) Thermal Hotspots and Fire Activity",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 15602,
+  "status": 200
+}

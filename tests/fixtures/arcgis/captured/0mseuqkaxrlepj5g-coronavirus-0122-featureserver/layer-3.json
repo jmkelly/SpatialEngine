@@ -1,0 +1,75 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "National Geographic Society",
+    "description": "World Countries (Generalized) represents generalized boundaries for the countries of the world.",
+    "displayField": "ISO_3DIGIT",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180.00000033527647,
+      "xmin": -179.99999999999994,
+      "ymax": 83.62360016227024,
+      "ymin": -90
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "ISO_3DIGIT",
+        "defaultValue": null,
+        "editable": true,
+        "length": 3,
+        "name": "ISO_3DIGIT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 3,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Affected Regions",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 8304,
+  "status": 200
+}

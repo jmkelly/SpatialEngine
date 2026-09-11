@@ -119,6 +119,16 @@ public sealed class EsriAttributeCodecTests
     }
 
     [Fact]
+    public void Attribute_names_match_case_insensitively()
+    {
+        // Real MapServer responses do not always echo the layer metadata's
+        // field casing (declared Population, emitted population).
+        var field = new FieldDefinition("Population", AttributeKind.Int64);
+
+        Assert.Equal(42L, EsriAttributeCodec.Read(Wrap("""{"population":42}"""), field).Int64Value);
+    }
+
+    [Fact]
     public void A_geometry_field_cannot_be_read_from_attributes()
     {
         Assert.Throws<EsriInteropException>(() =>

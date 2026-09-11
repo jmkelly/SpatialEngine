@@ -1,0 +1,415 @@
+{
+  "body": {
+    "displayFieldName": "fcst_hr",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "confidnce": "High Confidence",
+          "coverage": "sparse",
+          "d18bxtop": null,
+          "data": "tcf",
+          "fcst_hr": "Hr4",
+          "height": "35,000 - 39,000",
+          "idp_filedate": 1789123944000,
+          "idp_ingestdate": 1789124093000,
+          "issuetime": "20260911_1100",
+          "lblpos_x": null,
+          "lblpos_y": null,
+          "objectid": 1,
+          "refl_bin": null,
+          "refl_dbz": null,
+          "st_area(shape)": 5.760000000089975,
+          "st_perimeter(shape)": 9.841406503486452,
+          "tops": "390",
+          "validtime": "20260911_1500",
+          "verif": ">=FL350 & <FL400",
+          "vrf_refl": ">=FL350 & <FL400|18dBZ"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -93.50000000009982,
+                28.200000000399825
+              ],
+              [
+                -94.09999999980005,
+                28.200000000399825
+              ],
+              [
+                -95.09999999960019,
+                27.599999999800275
+              ],
+              [
+                -95.89999999980006,
+                27.599999999800275
+              ],
+              [
+                -96.39999999970013,
+                27.99999999990024
+              ],
+              [
+                -96.2000000000998,
+                28.59999999960047
+              ],
+              [
+                -96.2000000000998,
+                29.399999999800286
+              ],
+              [
+                -96.10000000029964,
+                29.70000000010009
+              ],
+              [
+                -95.7999999999999,
+                30.100000000199998
+              ],
+              [
+                -95.09999999960019,
+                29.899999999700356
+              ],
+              [
+                -93.99999999999989,
+                29.60000000029993
+              ],
+              [
+                -93.29999999960017,
+                29.60000000029993
+              ],
+              [
+                -93.00000000019975,
+                29.60000000029993
+              ],
+              [
+                -93.00000000019975,
+                29.20000000020002
+              ],
+              [
+                -93.50000000009982,
+                28.200000000399825
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "confidnce": "High Confidence",
+          "coverage": "sparse",
+          "d18bxtop": null,
+          "data": "tcf",
+          "fcst_hr": "Hr4",
+          "height": "35,000 - 39,000",
+          "idp_filedate": 1789123944000,
+          "idp_ingestdate": 1789124093000,
+          "issuetime": "20260911_1100",
+          "lblpos_x": null,
+          "lblpos_y": null,
+          "objectid": 2,
+          "refl_bin": null,
+          "refl_dbz": null,
+          "st_area(shape)": 1.519999999410506,
+          "st_perimeter(shape)": 5.294629737963557,
+          "tops": "390",
+          "validtime": "20260911_1500",
+          "verif": ">=FL350 & <FL400",
+          "vrf_refl": ">=FL350 & <FL400|18dBZ"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -91.49999999960022,
+                28.99999999970038
+              ],
+              [
+                -90.59999999960019,
+                29.10000000039986
+              ],
+              [
+                -89.69999999960021,
+                28.700000000299895
+              ],
+              [
+                -89.99999999989996,
+                28.200000000399825
+              ],
+              [
+                -91.89999999970013,
+                28.200000000399825
+              ],
+              [
+                -91.89999999970013,
+                28.400000000000148
+              ],
+              [
+                -91.49999999960022,
+                28.99999999970038
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "confidnce": "High Confidence",
+          "coverage": "sparse",
+          "d18bxtop": null,
+          "data": "tcf",
+          "fcst_hr": "Hr4",
+          "height": "35,000 - 39,000",
+          "idp_filedate": 1789123944000,
+          "idp_ingestdate": 1789124093000,
+          "issuetime": "20260911_1100",
+          "lblpos_x": null,
+          "lblpos_y": null,
+          "objectid": 3,
+          "refl_bin": null,
+          "refl_dbz": null,
+          "st_area(shape)": 10.435000001054117,
+          "st_perimeter(shape)": 13.909577934462632,
+          "tops": "390",
+          "validtime": "20260911_1500",
+          "verif": ">=FL350 & <FL400",
+          "vrf_refl": ">=FL350 & <FL400|18dBZ"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -86.39999999989999,
+                29.10000000039986
+              ],
+              [
+                -87.39999999970013,
+                28.49999999980031
+              ],
+              [
+                -88.2999999997001,
+                28.300000000199987
+              ],
+              [
+                -88.59999999999991,
+                28.099999999700344
+              ],
+              [
+                -89.00000000009982,
+                28.300000000199987
+              ],
+              [
+                -89.30000000039962,
+                28.400000000000148
+              ],
+              [
+                -88.90000000029966,
+                29.10000000039986
+              ],
+              [
+                -88.50000000019975,
+                29.60000000029993
+              ],
+              [
+                -88.2999999997001,
+                30.29999999980032
+              ],
+              [
+                -88.50000000019975,
+                31.000000000199975
+              ],
+              [
+                -88.2999999997001,
+                31.500000000100044
+              ],
+              [
+                -87.39999999970013,
+                31.599999999900206
+              ],
+              [
+                -87.29999999989997,
+                32.30000000029992
+              ],
+              [
+                -86.99999999960022,
+                32.700000000399825
+              ],
+              [
+                -85.89999999999992,
+                32.40000000010008
+              ],
+              [
+                -85.30000000029969,
+                31.500000000100044
+              ],
+              [
+                -85.09999999980005,
+                30.69999999990023
+              ],
+              [
+                -85.19999999960021,
+                30.399999999600425
+              ],
+              [
+                -85.80000000019976,
+                29.899999999700356
+              ],
+              [
+                -86.39999999989999,
+                29.10000000039986
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "confidnce": "Confidence",
+      "coverage": "Coverage",
+      "d18bxtop": "Flight Level Top Altitude",
+      "data": "Data",
+      "fcst_hr": "Forecast Hour",
+      "height": "Height Range",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "issuetime": "Issue Time",
+      "lblpos_x": "LBLPOS_X",
+      "lblpos_y": "LBLPOS_Y",
+      "objectid": "OBJECTID",
+      "refl_bin": "Convection Intensity",
+      "refl_dbz": "Maximum Reflectivity (dBZ)",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "tops": "Tops",
+      "validtime": "Valid Time",
+      "verif": "TCF Verification",
+      "vrf_refl": "Observed Verification Reflectivity"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Forecast Hour",
+        "length": 80,
+        "name": "fcst_hr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time",
+        "length": 80,
+        "name": "validtime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 80,
+        "name": "issuetime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Coverage",
+        "length": 80,
+        "name": "coverage",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confidence",
+        "length": 80,
+        "name": "confidnce",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Tops",
+        "length": 80,
+        "name": "tops",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data",
+        "length": 80,
+        "name": "data",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LBLPOS_X",
+        "length": 80,
+        "name": "lblpos_x",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LBLPOS_Y",
+        "length": 80,
+        "name": "lblpos_y",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Level Top Altitude",
+        "length": 80,
+        "name": "d18bxtop",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TCF Verification",
+        "length": 80,
+        "name": "verif",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Height Range",
+        "length": 80,
+        "name": "height",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maximum Reflectivity (dBZ)",
+        "length": 80,
+        "name": "refl_dbz",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Convection Intensity",
+        "length": 80,
+        "name": "refl_bin",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Observed Verification Reflectivity",
+        "length": 80,
+        "name": "vrf_refl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 7679,
+  "status": 200
+}

@@ -1,0 +1,119 @@
+{
+  "body": {
+    "capabilities": "Query,Create,Update,Uploads,Editing",
+    "copyrightText": "",
+    "description": "Proposed site address points submitted by users of the Community Addressing application.",
+    "displayField": "fulladdr",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 148923141.92838538,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -6841404.127307699,
+      "xmin": -13795611.538423663,
+      "ymax": 6841348.886309871,
+      "ymin": 4066641.4119471996
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "objectid",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Full Address",
+        "defaultValue": null,
+        "editable": true,
+        "length": 250,
+        "name": "fulladdr",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Bldg / Unit Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "unittype",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Bldg / Unit Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "unitid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Alt. Bldg / Unit Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "altunittype",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Alt. Bldg / Unit Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "altunitid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Municipality Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "municipality",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Status",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "status",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Community Addresses",
+    "objectIdField": "objectid",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 14313,
+  "status": 200
+}

@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.067199998,
+      "xmin": -20037507.0672,
+      "ymax": 11677289.941399999,
+      "ymin": -1684785.4576000012
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.067199998,
+      "xmin": -20037507.0672,
+      "ymax": 11677289.941399999,
+      "ymin": -1684785.4576000012
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolyline",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "24NM_Contiguous_Zone",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "",
+    "serviceItemId": "c62dff504af1444d85b2d8854f405b23",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2932,
+  "status": 200
+}

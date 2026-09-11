@@ -1,0 +1,542 @@
+{
+  "body": {
+    "displayFieldName": "Name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 1.59454351,
+          "boundarytype": 1,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 67600,
+          "ftype": 676,
+          "globalid": "{8D9FE8BD-8D8E-4F2F-B82A-8995C666AC3F}",
+          "loaddate": 1768989755000,
+          "name": "Adams County Waterfowl Production Area",
+          "objectid": 54639,
+          "ownerormanagingagency": 10,
+          "permanent_identifier": "{67708d92-f086-4b80-a768-0fdc450032df}",
+          "shape_Area": 2765984.2086100364,
+          "shape_Length": 9534.58299795097,
+          "source_datadesc": "PAD-US 4.1",
+          "source_datasetid": "{fe359f7c-ec2f-4a35-a04c-a8a96a43d354}",
+          "source_featureid": null,
+          "source_originator": "U.S. Geological Survey (USGS)"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10980407.2518,
+                4953546.374600001
+              ],
+              [
+                -10980410.327,
+                4953049.145499997
+              ],
+              [
+                -10981042.668,
+                4953049.022500001
+              ],
+              [
+                -10981043.0137,
+                4953050.344999999
+              ],
+              [
+                -10981074.4298,
+                4953170.580200002
+              ],
+              [
+                -10981075.0564,
+                4953170.582800001
+              ],
+              [
+                -10981445.3435,
+                4953172.079400003
+              ],
+              [
+                -10981445.3551,
+                4953173.398400001
+              ],
+              [
+                -10981448.6613,
+                4953548.679799996
+              ],
+              [
+                -10981458.3133,
+                4954644.189099997
+              ],
+              [
+                -10980401.4362,
+                4954645.294399999
+              ],
+              [
+                -10980400.4553,
+                4954645.295400001
+              ],
+              [
+                -10980407.2518,
+                4953546.374600001
+              ]
+            ],
+            [
+              [
+                -10973051.4871,
+                4940301.586300001
+              ],
+              [
+                -10974130.0782,
+                4940269.2359
+              ],
+              [
+                -10974130.068,
+                4940270.566500001
+              ],
+              [
+                -10974121.8672,
+                4941348.777400002
+              ],
+              [
+                -10973060.8316,
+                4941360.329300001
+              ],
+              [
+                -10973059.8848,
+                4941360.339500003
+              ],
+              [
+                -10973051.4871,
+                4940301.586300001
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 1.38631641,
+          "boundarytype": 1,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 67600,
+          "ftype": 676,
+          "globalid": "{2CA2F002-1362-43AD-8DF6-9219EBC0B7BD}",
+          "loaddate": 1768989755000,
+          "name": "Adams County Waterfowl Production Area",
+          "objectid": 54640,
+          "ownerormanagingagency": 10,
+          "permanent_identifier": "{de538eb0-953b-4e4b-83ff-b7d2f29514f8}",
+          "shape_Area": 2666761.329465757,
+          "shape_Length": 7310.520178401322,
+          "source_datadesc": "PAD-US 4.1",
+          "source_datasetid": "{fe359f7c-ec2f-4a35-a04c-a8a96a43d354}",
+          "source_featureid": null,
+          "source_originator": "U.S. Geological Survey (USGS)"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9977318.98,
+                5441814.464299999
+              ],
+              [
+                -9978736.1531,
+                5441818.771200001
+              ],
+              [
+                -9978736.2036,
+                5441819.946999997
+              ],
+              [
+                -9978737.6189,
+                5441852.825499997
+              ],
+              [
+                -9978747.5147,
+                5442045.345399998
+              ],
+              [
+                -9978751.5616,
+                5442144.156000003
+              ],
+              [
+                -9978751.1544,
+                5442183.633599997
+              ],
+              [
+                -9978742.0064,
+                5442275.377300002
+              ],
+              [
+                -9978730.5399,
+                5442377.851400003
+              ],
+              [
+                -9978424.8379,
+                5442376.116099998
+              ],
+              [
+                -9978426.1064,
+                5442945.282300003
+              ],
+              [
+                -9978408.3389,
+                5443856.370200001
+              ],
+              [
+                -9978406.1386,
+                5444054.153499998
+              ],
+              [
+                -9978209.2936,
+                5444054.390100002
+              ],
+              [
+                -9977299.1255,
+                5444055.431100003
+              ],
+              [
+                -9977298.3381,
+                5444055.431999996
+              ],
+              [
+                -9977318.98,
+                5441814.464299999
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 250.17311205000001,
+          "boundarytype": 1,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 67600,
+          "ftype": 676,
+          "globalid": "{97D7B7DB-BAD5-4220-9909-64CA94FA0CF1}",
+          "loaddate": 1768989755000,
+          "name": "Agassiz National Wildlife Refuge",
+          "objectid": 54641,
+          "ownerormanagingagency": 10,
+          "permanent_identifier": "{5976fc72-da52-4c84-b04d-c7df761a77f1}",
+          "shape_Area": 565890702.568023,
+          "shape_Length": 118489.78706152279,
+          "source_datadesc": "PAD-US 4.1",
+          "source_datasetid": "{fe359f7c-ec2f-4a35-a04c-a8a96a43d354}",
+          "source_featureid": null,
+          "source_originator": "U.S. Geological Survey (USGS)"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10673153.8009,
+                6173702.927299999
+              ],
+              [
+                -10671254.5007,
+                6173678.5298999995
+              ],
+              [
+                -10671250.6191,
+                6174648.749899998
+              ],
+              [
+                -10671254.1836,
+                6174833.243500002
+              ],
+              [
+                -10671254.8367,
+                6174854.720799997
+              ],
+              [
+                -10671251.907,
+                6175489.222199999
+              ],
+              [
+                -10670125.6921,
+                6175488.2815999985
+              ],
+              [
+                -10668852.0839,
+                6175487.283200003
+              ],
+              [
+                -10668851.3804,
+                6175487.282700002
+              ],
+              [
+                -10668853.9744,
+                6175287.6499999985
+              ],
+              [
+                -10668853.3398,
+                6174845.9221
+              ],
+              [
+                -10668863.0437,
+                6174487.198299997
+              ],
+              [
+                -10668868.6566,
+                6174263.1884
+              ],
+              [
+                -10668876.3305,
+                6173966.470299996
+              ],
+              [
+                -10668878.9245,
+                6173868.849399999
+              ],
+              [
+                -10668899.0227,
+                6173189.555
+              ],
+              [
+                -10668897.3993,
+                6173087.558499999
+              ],
+              [
+                -10668896.746,
+                6173061.2236
+              ],
+              [
+                -10668897.7163,
+                6172548.367200002
+              ],
+              [
+                -10668897.4404,
+                6172403.464599997
+              ],
+              [
+                -10668897.1855,
+                6172220.575300001
+              ],
+              [
+                -10668896.7458,
+                6171844.307800002
+              ],
+              [
+                -10668895.7754,
+                6171350.070500001
+              ],
+              [
+                -10668894.8049,
+                6171184.197899997
+              ],
+              [
+                -10668890.5875,
+                6170607.560099997
+              ],
+              [
+                -10668911.9863,
+                6169456.818099998
+              ],
+              [
+                -10668921.6958,
+                6168944.683499999
+              ],
+              [
+                -10668935.9344,
+                6168171.200199999
+              ],
+              [
+                -10668935.953,
+                6168170.1919
+              ],
+              [
+                -10668341.808,
+                6168163.851300001
+              ],
+              [
+                -10668341.0839,
+                6168163.843699999
+              ],
+              [
+                -10668339.4637,
+                6167673.279700004
+              ],
+              [
+                -10668339.4604,
+                6167672.263099998
+              ],
+              [
+                -10667015.2667,
+                6167672.2632
+              ],
+              [
+                -10665982.359,
+                6167673.723999999
+              ],
+              [
+                -10665945.092,
+                6167673.7238000035
+              ],
+              [
+                -10665317.4909,
+                6167670.802900001
+              ],
+              [
+                -10664720.3637,
+                6167675.690300003
+              ],
+              [
+                -10664155.3996,
+                6167680.543200001
+              ],
+              [
+                -10664154.6625,
+                6167680.549500003
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "admintype": "AdminType",
+      "areasqkm": "AreaSqKm",
+      "boundarytype": "BoundaryType",
+      "data_security": "Data_Security",
+      "distribution_policy": "Distribution_Policy",
+      "fcode": "FCode",
+      "ftype": "FType",
+      "globalid": "GLOBALID",
+      "loaddate": "LoadDate",
+      "name": "Name",
+      "objectid": "OBJECTID",
+      "ownerormanagingagency": "OwnerOrManagingAgency",
+      "permanent_identifier": "Permanent_Identifier",
+      "shape_Area": "shape_Area",
+      "shape_Length": "shape_Length",
+      "source_datadesc": "Source_DataDesc",
+      "source_datasetid": "Source_DatasetID",
+      "source_featureid": "Source_FeatureID",
+      "source_originator": "Source_Originator"
+    },
+    "fields": [
+      {
+        "alias": "BoundaryType",
+        "name": "boundarytype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Permanent_Identifier",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_FeatureID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_DatasetID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_DataDesc",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_Originator",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LoadDate",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Name",
+        "length": 120,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AreaSqKm",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "FType",
+        "name": "ftype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AdminType",
+        "name": "admintype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OwnerOrManagingAgency",
+        "name": "ownerormanagingagency",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "shape_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "shape_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 110836,
+  "status": 200
+}

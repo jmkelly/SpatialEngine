@@ -1,0 +1,223 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20012846.037699997,
+      "xmin": -19942592.3656,
+      "ymax": 11523911.845299996,
+      "ymin": 2024070.8216000013
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "State Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State Abbreviation",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STUSPS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOID FIPS Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "GEO_ID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATENS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "STATENS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOID FIPS Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "GEOID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Total Population, 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Total_Pop_2020",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Seats in the U.S. House of Representatives, 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Seats_2020",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident Population, 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Resident_Pop_2020",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Overseas Population, 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Overseas_Pop_2020",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Population, 2010",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Total_Pop_2010",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Seats in the U.S. House of Representatives, 2010",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Seats_2010",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident Population, 2010",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Resident_Pop_2010",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Overseas Population, 2010",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Overseas_Pop_2010",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Change in Total Population, 2010 to 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalPopChange_2010to2020",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Percent Change in Total Population, 2010 to 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Total_Pct_Change_2010to2020",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Change in Seats in the U.S. House of Representatives, 2010 to 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Seats_Change_2010to2020",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Change in Seats in the U.S. House of Representatives, 2000 to 2010",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Seats_Change_2000to2010",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Change in Resident Population, 2010 to 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Resident_Change_2010to2020",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Percent Change in Resident Population, 2010 to 2020",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Resident_Pct_Change_2010to2020",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "States 2020 Apportionment - U.S. House of Representatives Seats",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 21042,
+  "status": 200
+}

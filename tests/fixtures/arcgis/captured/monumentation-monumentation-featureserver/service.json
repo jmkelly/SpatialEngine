@@ -1,0 +1,92 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "tim_smith@nps.gov",
+    "currentVersion": 11.5,
+    "description": "This data set contains information about any survey monument found on National Park lands or that supports NPS operations. Examples include survey monuments used for any survey control such as lidar surveys, cultural and natural resource survey control, facilities, park boundaries, etc.",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": 0,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestVcsWkid": 5703,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 1,
+        "vcsWkid": 5703,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 1
+      },
+      "xmax": -62.111139522846145,
+      "xmin": -132.44800685518925,
+      "ymax": 62.09457683776473,
+      "ymin": 14.124642960226277
+    },
+    "hasArchivedData": false,
+    "hasVersionedData": true,
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": 0,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestVcsWkid": 5703,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 1,
+        "vcsWkid": 5703,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 1
+      },
+      "xmax": -66.18911188673434,
+      "xmin": -127.58706379743458,
+      "ymax": 63.61248754693851,
+      "ymin": 10.761965710947862
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 15000000,
+        "name": "NPS Monuments",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "<div style='text-align:Left;font-size:12pt'><div><p><span>This data set contains information about any survey monument found on National Park lands or that supports NPS operations. Examples include survey monuments used for any survey control such as lidar surveys, cultural and natural resource survey control, facilities, park boundaries, etc.</span></p></div></div>",
+    "spatialReference": {
+      "falseM": 0,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestVcsWkid": 5703,
+      "latestWkid": 6318,
+      "mTolerance": 0.001,
+      "mUnits": 1,
+      "vcsWkid": 5703,
+      "wkid": 104145,
+      "xyTolerance": 8.983152841195215e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 1
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 5206,
+  "status": 200
+}

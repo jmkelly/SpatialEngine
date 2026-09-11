@@ -95,6 +95,21 @@ public sealed class EsriFeatureCodecTests
     }
 
     [Fact]
+    public void Object_id_and_attributes_match_case_insensitively()
+    {
+        // A real MapServer declared OBJECTID but emitted objectid; Esri field
+        // names are case-insensitive.
+        var element = JsonDocument.Parse(
+            """{"attributes":{"objectid":7,"NAME":"Amsterdam","population":900000},"geometry":{"x":1,"y":2}}""").RootElement;
+
+        var feature = EsriFeatureCodec.Decode(element, Schema, "OBJECTID", "geometry", CoordinateReference.Epsg(4326));
+
+        Assert.Equal("7", feature.Id.Value);
+        Assert.Equal("Amsterdam", feature["name"].StringValue);
+        Assert.Equal(900_000, feature["population"].Int64Value);
+    }
+
+    [Fact]
     public void A_missing_attribute_becomes_null_and_respects_nullability()
     {
         var nullable = new FeatureSchema(

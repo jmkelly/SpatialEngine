@@ -1,0 +1,88 @@
+{
+  "catalog": "https://apps.fs.usda.gov/arcx/rest/services",
+  "currentVersion": 11.5,
+  "directory": "arcx-rest-services-edw-edw-activityprojectareas-01-mapserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 4744,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeGeometry",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 4744,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Activity Project Area NEPA",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    },
+    {
+      "count": "count-1.json",
+      "countOnly": 29,
+      "error": "error-1.json",
+      "errorCode": 400,
+      "features": "query-1.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeGeometry",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 1,
+      "ids": "ids-1.json",
+      "idsOnly": 29,
+      "maxRecordCount": 2000,
+      "metadata": "layer-1.json",
+      "name": "Activity Project Area Sale Area Improvement (SAI) Plan",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    },
+    {
+      "count": "count-2.json",
+      "countOnly": 10976,
+      "error": "error-2.json",
+      "errorCode": 400,
+      "features": "query-2.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeGeometry",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 2,
+      "ids": "ids-2.json",
+      "idsOnly": 10976,
+      "maxRecordCount": 2000,
+      "metadata": "layer-2.json",
+      "name": "Activity Project Area Timber Sale",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    }
+  ],
+  "serviceType": "MapServer",
+  "slug": "arcx-rest-services-edw-edw-activityprojectareas-01-mapserver",
+  "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ActivityProjectAreas_01/MapServer"
+}

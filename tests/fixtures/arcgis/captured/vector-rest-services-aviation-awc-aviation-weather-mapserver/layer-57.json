@@ -1,0 +1,337 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "raw_text",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": "NaN",
+      "xmin": "NaN",
+      "ymax": "NaN",
+      "ymin": "NaN"
+    },
+    "fields": [
+      {
+        "alias": "OBJECT ID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Raw Observation",
+        "length": 8000,
+        "name": "raw_text",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Station ID",
+        "length": 8000,
+        "name": "station_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 8,
+        "name": "issue_time",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Bulletin Time",
+        "length": 8,
+        "name": "bulletin_time",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Valid Time From",
+        "length": 8,
+        "name": "valid_time_from",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Valid Time To",
+        "length": 8,
+        "name": "valid_time_to",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Remarks",
+        "length": 8000,
+        "name": "remarks",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Elevation Meters",
+        "name": "elevation_m",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Forecast Time From",
+        "length": 8,
+        "name": "fcst_time_from",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Forecast Time To",
+        "length": 8,
+        "name": "fcst_time_to",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Change Indicator",
+        "length": 8000,
+        "name": "change_indicator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Time Becoming",
+        "length": 8,
+        "name": "time_becoming",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Probability",
+        "name": "probability",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Direction",
+        "name": "winddir",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Wind Speed In Knots",
+        "name": "wind_speed_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wnd Gust In Knots",
+        "name": "wind_gust_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Shear Height In Feet AGL",
+        "length": 8000,
+        "name": "wind_shear_hgt_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Wind Shear Direction Degrees",
+        "length": 8000,
+        "name": "wind_shear_dir_degrees",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Wind Shear Speed In Knots",
+        "length": 8000,
+        "name": "wind_shear_speed_kt",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Visibility Statute Mile",
+        "length": 8000,
+        "name": "visibility_statute_mi",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Altimeter  In Hg",
+        "name": "altim_in_hg",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Vertical Visibity in Feet",
+        "name": "vert_vis_ft",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Weather",
+        "length": 8000,
+        "name": "wx_string",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Not Decoded",
+        "length": 8000,
+        "name": "not_decoded",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover",
+        "length": 8000,
+        "name": "sky_cover",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base Feet AGL",
+        "name": "cloud_base_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Coud Type",
+        "length": 8000,
+        "name": "cloud_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Intensity",
+        "name": "turbulence_intensity",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Minimum Altitude In  Feet AGL",
+        "name": "turbulence_min_alt_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Maximum Altitude In  Feet AGL",
+        "name": "turbulence_max_alt_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Icing Intensity",
+        "length": 8000,
+        "name": "icing_intensity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing  Minimum Altitude In  Feet AGL",
+        "length": 8000,
+        "name": "icing_min_alt_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Maximum Altitude In  Feet AGL",
+        "length": 8000,
+        "name": "icing_max_alt_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time ",
+        "length": 8000,
+        "name": "valid_time",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Surface Temperature Celsius",
+        "name": "sfc_temp_c",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Maximum or Minimum Temperature Celsius",
+        "name": "max_or_min_temp_c",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Base2 Feet AGL",
+        "name": "cloud_base2_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Coverage 2 ",
+        "length": 8000,
+        "name": "cloud_coverage2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base3 Feet AGL",
+        "name": "cloud_base3_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Coverage 3",
+        "length": 8000,
+        "name": "cloud_coverage3",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base4 Feet AGL",
+        "length": 8000,
+        "name": "cloud_base4_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Coverage 4",
+        "length": 8000,
+        "name": "cloud_coverage4",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8000,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8000,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Priority",
+        "name": "priority",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Decoded TAF",
+        "length": 8000,
+        "name": "taf_decoded",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast Type",
+        "length": 8000,
+        "name": "forecast_type",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "hasAttachments": false,
+    "id": 57,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "TAF Wind Velocity Barb Scale 5",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 30204,
+  "status": 200
+}

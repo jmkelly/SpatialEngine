@@ -1,0 +1,83 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "0mseuqkaxrlepj5g-2019-ncov-cases-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 8,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 8,
+      "maxRecordCount": 1000,
+      "metadata": "layer-0.json",
+      "name": "Deaths",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4326
+    },
+    {
+      "count": "count-1.json",
+      "countOnly": 58,
+      "error": "error-1.json",
+      "errorCode": 400,
+      "features": "query-1.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 1,
+      "ids": "ids-1.json",
+      "idsOnly": 58,
+      "maxRecordCount": 1000,
+      "metadata": "layer-1.json",
+      "name": "Cases",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4326
+    },
+    {
+      "count": "count-2.json",
+      "countOnly": 22,
+      "error": "error-2.json",
+      "errorCode": 400,
+      "features": "query-2.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 2,
+      "ids": "ids-2.json",
+      "idsOnly": 22,
+      "maxRecordCount": 1000,
+      "metadata": "layer-2.json",
+      "name": "Cases_country",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4326
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "0mseuqkaxrlepj5g-2019-ncov-cases-featureserver",
+  "url": "https://services1.arcgis.com/0MSEUqKaxRlEPj5g/arcgis/rest/services/2019_ncov_cases/FeatureServer"
+}

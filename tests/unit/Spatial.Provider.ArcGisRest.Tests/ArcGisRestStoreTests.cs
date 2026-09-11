@@ -61,6 +61,77 @@ public sealed class ArcGisRestStoreTests
     }
 
     [Fact]
+    public async Task Describe_canonicalises_a_named_esri_geometry_field()
+    {
+        // Real layers declare geometry as Shape/SHAPE; the engine's canonical
+        // column is "geometry", so the Esri-named field must not leak through.
+        const string metadata = """
+            {
+              "id": 0, "name": "Cities", "geometryType": "esriGeometryPoint", "objectIdField": "OBJECTID",
+              "spatialReference": { "wkid": 4326 },
+              "fields": [
+                { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+                { "name": "SHAPE", "type": "esriFieldTypeGeometry" },
+                { "name": "name", "type": "esriFieldTypeString" }
+              ]
+            }
+            """;
+        var store = Store(Handler(Route(ServiceRoot, metadata)));
+
+        var description = await store.DescribeAsync("arcgis.l0");
+
+        Assert.Equal("geometry", Assert.Single(description.Schema.Fields, field => field.Kind == AttributeKind.Geometry).Name);
+        Assert.DoesNotContain(description.Schema.Fields, field => field.Name == "SHAPE");
+    }
+
+    [Fact]
+    public async Task Describe_derives_the_object_id_from_the_oid_field()
+    {
+        // Older/MapServer layers omit objectIdField; the esriFieldTypeOID
+        // field is the identity.
+        const string metadata = """
+            {
+              "id": 0, "name": "Stations", "geometryType": "esriGeometryPoint",
+              "spatialReference": { "wkid": 4326 },
+              "fields": [
+                { "name": "objectid", "type": "esriFieldTypeOID" },
+                { "name": "SHAPE", "type": "esriFieldTypeGeometry" },
+                { "name": "name", "type": "esriFieldTypeString" }
+              ]
+            }
+            """;
+        var store = Store(Handler(Route(ServiceRoot, metadata)));
+
+        var description = await store.DescribeAsync("arcgis.l0");
+
+        Assert.Equal("objectid", Assert.Single(description.IdColumns));
+    }
+
+    [Fact]
+    public async Task Scan_decodes_geometry_from_a_named_esri_geometry_field()
+    {
+        const string metadata = """
+            {
+              "id": 0, "name": "Cities", "geometryType": "esriGeometryPoint", "objectIdField": "OBJECTID",
+              "spatialReference": { "wkid": 4326 },
+              "fields": [
+                { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+                { "name": "SHAPE", "type": "esriFieldTypeGeometry" },
+                { "name": "name", "type": "esriFieldTypeString" }
+              ]
+            }
+            """;
+        var handler = Handler(Route(ServiceRoot, metadata, QueryPage(
+            """{"attributes":{"OBJECTID":7,"name":"Berlin"},"geometry":{"x":13.405,"y":52.52}}""")));
+        var store = Store(handler);
+
+        var batches = await store.ScanAsync("arcgis.l0");
+
+        var feature = Assert.Single(Assert.Single(batches).Features);
+        Assert.NotNull(feature["geometry"].GeometryValue);
+    }
+
+    [Fact]
     public async Task Scan_decodes_features_into_a_canonical_batch()
     {
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage(

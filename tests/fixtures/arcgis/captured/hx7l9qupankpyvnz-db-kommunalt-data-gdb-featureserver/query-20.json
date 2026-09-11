@@ -1,0 +1,114 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Antal_pat": 53,
+          "Dagsdato": 1679443200000,
+          "Kommune": null,
+          "OBJECTID": 1,
+          "andel_newadm": 0,
+          "antal_icu": 0,
+          "antal_newadm": 1,
+          "instAge": ".",
+          "municipalitycode": null
+        }
+      },
+      {
+        "attributes": {
+          "Antal_pat": 115,
+          "Dagsdato": 1679443200000,
+          "Kommune": null,
+          "OBJECTID": 2,
+          "andel_newadm": 0.0004,
+          "antal_icu": 0,
+          "antal_newadm": 30,
+          "instAge": "00-02",
+          "municipalitycode": null
+        }
+      },
+      {
+        "attributes": {
+          "Antal_pat": 36,
+          "Dagsdato": 1679443200000,
+          "Kommune": null,
+          "OBJECTID": 3,
+          "andel_newadm": 0.0001,
+          "antal_icu": 0,
+          "antal_newadm": 6,
+          "instAge": "00-02",
+          "municipalitycode": 19
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "municipalitycode",
+        "defaultValue": null,
+        "name": "municipalitycode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Kommune",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "instAge",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "instAge",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Antal_pat",
+        "defaultValue": null,
+        "name": "Antal_pat",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_icu",
+        "defaultValue": null,
+        "name": "antal_icu",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_newadm",
+        "defaultValue": null,
+        "name": "antal_newadm",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Dagsdato",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Dagsdato",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "andel_newadm",
+        "defaultValue": null,
+        "name": "andel_newadm",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2297,
+  "status": 200
+}

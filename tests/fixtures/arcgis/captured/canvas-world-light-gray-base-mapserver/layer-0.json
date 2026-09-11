@@ -1,0 +1,73 @@
+{
+  "body": {
+    "capabilities": "Map,Tilemap",
+    "copyrightText": "Esri, HERE, Garmin, (c) OpenStreetMap contributors, and the GIS user community",
+    "description": "<DIV STYLE=\"text-align:Left;font-size:12pt\"><P><SPAN>This map draws attention to your thematic content by providing a neutral background with minimal colors, labels, and features. Only key information is represented to provide geographic context, allowing your data to come to the foreground. This light gray map supports any strong colors, creating a visually compelling map graphic which helps your reader see the patterns intended. This map was developed by Esri using HERE data, Garmin basemap layers, OpenStreetMap contributors, Esri basemap data, and select data from the GIS user community. Worldwide coverage is provided from Level 0 (1:591M scale) through Level 13 (1:72k scale). In North America (Canada, Mexico, United States), Europe, India, South America and Central America, Africa, most of the Middle east, and Australia &amp; New Zealand coverage is provided from Level 14 (1:36k scale) through Level 16 (1:9k scale). For more information on this map, including our terms of use, visit us online at https://goto.arcgisonline.com/maps/World_Light_Gray_Base</SPAN></P></DIV>",
+    "displayField": "Id",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 10000,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20037507.067161843,
+      "xmin": -20037507.067161843,
+      "ymax": 20034863.616507012,
+      "ymin": -19990709.43504232
+    },
+    "fields": [
+      {
+        "alias": "FID",
+        "name": "FID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Shape",
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "Id",
+        "name": "Id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Light_Gray_Canvas_Base",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -20037700,
+      "falseY": -30241100,
+      "falseZ": -100000,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 10000,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": false,
+    "supportsStatistics": false,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4773,
+  "status": 200
+}

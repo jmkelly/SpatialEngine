@@ -1,0 +1,67 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "reportagegrp": null,
+          "tot_antal_dod": null,
+          "tot_antal_tilf": 53
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "reportagegrp": "0-9",
+          "tot_antal_dod": 4,
+          "tot_antal_tilf": 350330
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "reportagegrp": "10-19",
+          "tot_antal_dod": 4,
+          "tot_antal_tilf": 533919
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "reportagegrp",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "reportagegrp",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "tot_antal_tilf",
+        "defaultValue": null,
+        "name": "tot_antal_tilf",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tot_antal_dod",
+        "defaultValue": null,
+        "name": "tot_antal_dod",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 1192,
+  "status": 200
+}

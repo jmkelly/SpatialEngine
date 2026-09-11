@@ -1,0 +1,150 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 6,
+          "county_name": "Allegheny",
+          "fcode": 99902,
+          "gaz_featureclass": "Civil",
+          "gaz_id": 2832406,
+          "gaz_name": "Borough of Mount Lebanon",
+          "incounty_id": 2872403,
+          "isunknowncoords": 2,
+          "objectid_1": 2342694,
+          "state_alpha": "PA"
+        },
+        "geometry": {
+          "points": [
+            [
+              -8911063.2696,
+              4920623.068899997
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 126,
+          "county_name": "Sharp",
+          "fcode": 99902,
+          "gaz_featureclass": "Civil",
+          "gaz_id": 2831169,
+          "gaz_name": "Township 8",
+          "incounty_id": 2742745,
+          "isunknowncoords": 2,
+          "objectid_1": 2330963,
+          "state_alpha": "AR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -10190926.1671,
+              4293722.393600002
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 128,
+          "county_name": "Mississippi",
+          "fcode": 99902,
+          "gaz_featureclass": "Civil",
+          "gaz_id": 2831731,
+          "gaz_name": "Justice of the Peace District 11",
+          "incounty_id": 2866650,
+          "isunknowncoords": 2,
+          "objectid_1": 2341283,
+          "state_alpha": "AR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -10035308.0413,
+              4244941.216200002
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "incounty_id": "incounty_id",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2797,
+  "status": 200
+}

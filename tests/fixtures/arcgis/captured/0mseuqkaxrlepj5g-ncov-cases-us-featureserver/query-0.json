@@ -1,0 +1,216 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Active": null,
+          "Admin2": "Autauga",
+          "Combined_Key": "Autauga, Alabama, US",
+          "Confirmed": 19790,
+          "Country_Region": "US",
+          "Deaths": 232,
+          "FIPS": "01001",
+          "ISO3": "USA",
+          "Incident_Rate": 35422.148239632,
+          "Last_Update": 1678454462000,
+          "Lat": 32.53952745,
+          "Long_": -86.64408227,
+          "OBJECTID": 1,
+          "People_Hospitalized": null,
+          "People_Tested": null,
+          "Province_State": "Alabama",
+          "Recovered": null,
+          "UID": 84001001
+        },
+        "geometry": {
+          "x": -86.64408226999996,
+          "y": 32.53952745000004
+        }
+      },
+      {
+        "attributes": {
+          "Active": null,
+          "Admin2": "Baldwin",
+          "Combined_Key": "Baldwin, Alabama, US",
+          "Confirmed": 69860,
+          "Country_Region": "US",
+          "Deaths": 727,
+          "FIPS": "01003",
+          "ISO3": "USA",
+          "Incident_Rate": 31294.516068340843,
+          "Last_Update": 1678454462000,
+          "Lat": 30.72774991,
+          "Long_": -87.72207058,
+          "OBJECTID": 2,
+          "People_Hospitalized": null,
+          "People_Tested": null,
+          "Province_State": "Alabama",
+          "Recovered": null,
+          "UID": 84001003
+        },
+        "geometry": {
+          "x": -87.72207057999998,
+          "y": 30.727749910000057
+        }
+      },
+      {
+        "attributes": {
+          "Active": null,
+          "Admin2": "Barbour",
+          "Combined_Key": "Barbour, Alabama, US",
+          "Confirmed": 7485,
+          "Country_Region": "US",
+          "Deaths": 103,
+          "FIPS": "01005",
+          "ISO3": "USA",
+          "Incident_Rate": 30320.829620027547,
+          "Last_Update": 1678454462000,
+          "Lat": 31.868263,
+          "Long_": -85.3871286,
+          "OBJECTID": 3,
+          "People_Hospitalized": null,
+          "People_Tested": null,
+          "Province_State": "Alabama",
+          "Recovered": null,
+          "UID": 84001005
+        },
+        "geometry": {
+          "x": -85.38712859999998,
+          "y": 31.86826300000007
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Province/State",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Province_State",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country/Region",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Country_Region",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last Update",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Last_Update",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Latitude",
+        "defaultValue": null,
+        "name": "Lat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "defaultValue": null,
+        "name": "Long_",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "Recovered",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "Deaths",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Active",
+        "defaultValue": null,
+        "name": "Active",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "County",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Admin2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State/County FIPS Code",
+        "defaultValue": null,
+        "length": 5,
+        "name": "FIPS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Combined Key",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Combined_Key",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Incident Rate",
+        "defaultValue": null,
+        "name": "Incident_Rate",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "People Tested",
+        "defaultValue": null,
+        "name": "People_Tested",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "People_Hospitalized",
+        "defaultValue": null,
+        "name": "People_Hospitalized",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "UID",
+        "defaultValue": null,
+        "name": "UID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "ISO3",
+        "defaultValue": null,
+        "length": 3,
+        "name": "ISO3",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 4922,
+  "status": 200
+}

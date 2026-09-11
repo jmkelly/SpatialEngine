@@ -1,0 +1,245 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Active": 3,
+          "Council": "Malta",
+          "Country": "Malta",
+          "GlobalID": "b3d98cf7-9c17-4457-a41e-814999d12178",
+          "Hospitalised": null,
+          "ITU": 0,
+          "OBJECTID": 1,
+          "TotalCases": 3,
+          "TotalCouncil": 3,
+          "TotalDeaths": 0,
+          "TotalRecovered": 0,
+          "TotalSwabs": 231,
+          "Vaccine_2ndDose": null,
+          "Vaccine_tot": null,
+          "Vaccine_yesterday": null,
+          "confirmed": 3,
+          "date": 1583535600000,
+          "deaths": 0,
+          "pos_test_today": 1.2987012987012987,
+          "pos_test_total": 1.2987012987012987,
+          "recovered": 0,
+          "swabs": 231
+        },
+        "geometry": {
+          "x": 449210.68350000033,
+          "y": 3972145.662900001
+        }
+      },
+      {
+        "attributes": {
+          "Active": 3,
+          "Council": "Malta",
+          "Country": "Malta",
+          "GlobalID": "0b69fd57-3e09-4c6c-913f-ae6c8a7e39a4",
+          "Hospitalised": null,
+          "ITU": 0,
+          "OBJECTID": 3,
+          "TotalCases": 3,
+          "TotalCouncil": 3,
+          "TotalDeaths": 0,
+          "TotalRecovered": 0,
+          "TotalSwabs": 540,
+          "Vaccine_2ndDose": null,
+          "Vaccine_tot": null,
+          "Vaccine_yesterday": null,
+          "confirmed": 0,
+          "date": 1583622000000,
+          "deaths": 0,
+          "pos_test_today": 0,
+          "pos_test_total": 0.5555555555555556,
+          "recovered": 0,
+          "swabs": 540
+        }
+      },
+      {
+        "attributes": {
+          "Active": 5,
+          "Council": "Malta",
+          "Country": "Malta",
+          "GlobalID": "f50ba216-bd66-450c-83b6-aba47b1f8992",
+          "Hospitalised": null,
+          "ITU": 0,
+          "OBJECTID": 7,
+          "TotalCases": 5,
+          "TotalCouncil": 5,
+          "TotalDeaths": 0,
+          "TotalRecovered": 0,
+          "TotalSwabs": 634,
+          "Vaccine_2ndDose": null,
+          "Vaccine_tot": null,
+          "Vaccine_yesterday": null,
+          "confirmed": 1,
+          "date": 1583791200000,
+          "deaths": 0,
+          "pos_test_today": 0.15772870662460567,
+          "pos_test_total": 0.7886435331230284,
+          "recovered": 0,
+          "swabs": 634
+        },
+        "geometry": {
+          "x": 449210.68350000033,
+          "y": 3972145.662900001
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Council",
+        "defaultValue": null,
+        "length": 255,
+        "name": "Council",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confirmed Cases",
+        "defaultValue": null,
+        "name": "confirmed",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "recovered",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "deaths",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "swabs",
+        "defaultValue": null,
+        "name": "swabs",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Country",
+        "defaultValue": null,
+        "length": 20,
+        "name": "Country",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Active Cases",
+        "defaultValue": null,
+        "name": "Active",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "TotalCases",
+        "defaultValue": null,
+        "name": "TotalCases",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Recovered",
+        "defaultValue": null,
+        "name": "TotalRecovered",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Deaths",
+        "defaultValue": null,
+        "name": "TotalDeaths",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Swabs",
+        "defaultValue": null,
+        "name": "TotalSwabs",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Council",
+        "defaultValue": null,
+        "name": "TotalCouncil",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "ITU",
+        "defaultValue": null,
+        "name": "ITU",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% positive/tested today",
+        "defaultValue": null,
+        "name": "pos_test_today",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% positive/tested total",
+        "defaultValue": null,
+        "name": "pos_test_total",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Vaccine doses",
+        "defaultValue": null,
+        "name": "Vaccine_tot",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Vaccine yesterday",
+        "defaultValue": null,
+        "name": "Vaccine_yesterday",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Vaccine 2nd dose",
+        "defaultValue": null,
+        "name": "Vaccine_2ndDose",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hospitalised",
+        "defaultValue": null,
+        "name": "Hospitalised",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 32633,
+      "wkid": 32633
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 5723,
+  "status": 200
+}

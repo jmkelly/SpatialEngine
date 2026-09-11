@@ -1,0 +1,234 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "FIRE_OF_NOTE_NAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": -12779421.627683356,
+      "xmin": -14907999.23443798,
+      "ymax": 8359476.44589422,
+      "ymin": 6174392.568166976
+    },
+    "fields": [
+      {
+        "alias": "Fire Year",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FIRE_YEAR",
+        "nullable": false,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Ignition Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "IGNITION_DATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Stage of Control",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "FIRE_STATUS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Fire Centre",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FIRE_CENTRE",
+        "nullable": false,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Zone",
+        "defaultValue": null,
+        "editable": true,
+        "name": "ZONE",
+        "nullable": false,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Fire ID",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FIRE_ID",
+        "nullable": false,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "LATITUDE",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LATITUDE",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "LONGITUDE",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LONGITUDE",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Estimated Size (HA)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "CURRENT_SIZE",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "FEATURE_CODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "FEATURE_CODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "RESPONSE_TYPE_DESC",
+        "defaultValue": null,
+        "editable": true,
+        "length": 200,
+        "name": "RESPONSE_TYPE_DESC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIRE_OUT_DATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "FIRE_OUT_DATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "INCIDENT_NAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "INCIDENT_NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Fire Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "FIRE_NUMBER",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Suspected Cause",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "FIRE_CAUSE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Fire Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 200,
+        "name": "FIRE_TYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Approximate Location",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2000,
+        "name": "GEOGRAPHIC_DESCRIPTION",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIRE_URL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "FIRE_URL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIRE_OF_NOTE_IND",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "FIRE_OF_NOTE_IND",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "WAS_FIRE_OF_NOTE_IND",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "WAS_FIRE_OF_NOTE_IND",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "BCWS_ActiveFires_Points",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 17812,
+  "status": 200
+}

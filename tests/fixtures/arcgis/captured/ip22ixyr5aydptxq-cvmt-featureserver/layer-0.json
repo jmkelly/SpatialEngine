@@ -1,0 +1,223 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "GeoSYS\n",
+    "description": "Covid19_Malta",
+    "displayField": "date",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 32633,
+        "wkid": 32633
+      },
+      "xmax": 449282.34148564615,
+      "xmin": -1188659.0429189384,
+      "ymax": 3989449.929300001,
+      "ymin": -1e-06
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "date",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Council",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "Council",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confirmed Cases",
+        "defaultValue": null,
+        "editable": true,
+        "name": "confirmed",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "editable": true,
+        "name": "recovered",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "deaths",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "swabs",
+        "defaultValue": null,
+        "editable": true,
+        "name": "swabs",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Country",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "Country",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Active Cases",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Active",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "TotalCases",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalCases",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Recovered",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalRecovered",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalDeaths",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Swabs",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalSwabs",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Council",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalCouncil",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "ITU",
+        "defaultValue": null,
+        "editable": true,
+        "name": "ITU",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% positive/tested today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "pos_test_today",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% positive/tested total",
+        "defaultValue": null,
+        "editable": true,
+        "name": "pos_test_total",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Vaccine doses",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Vaccine_tot",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Vaccine yesterday",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Vaccine_yesterday",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Vaccine 2nd dose",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Vaccine_2ndDose",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hospitalised",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Hospitalised",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": true,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Covid19_Malta",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 32633,
+      "wkid": 32633
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 11538,
+  "status": 200
+}

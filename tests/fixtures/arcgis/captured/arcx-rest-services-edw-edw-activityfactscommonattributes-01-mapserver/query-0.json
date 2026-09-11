@@ -1,0 +1,1238 @@
+{
+  "body": {
+    "displayFieldName": "NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "act_created_date": 1112972703000,
+          "act_modified_date": 1662657404000,
+          "activity": "Photo Stand Delineation",
+          "activity_code": "4301",
+          "activity_remarks": "43011988321-From TSMRS activity 4301  (Photo Stand Delineation ), fund 32 (P&M 032 Financed ), U of M A (Acres ), Method 000 (NONE ), Equipment 000 (NONE )...",
+          "activity_site_remarks": "ENTIRE STAND",
+          "activity_unit_cn": "AU32844010277",
+          "admin_district": "05",
+          "admin_forest": "17",
+          "admin_region": "01",
+          "aspect": "S",
+          "au_district": "05",
+          "au_forest": "17",
+          "au_name": null,
+          "au_org": "011705",
+          "au_region": "01",
+          "award_date": null,
+          "base_year": null,
+          "biomass_utilization": null,
+          "causal_agent": null,
+          "cong_dist_name": null,
+          "contract_planned_term": null,
+          "cost_per_unit": 35.0,
+          "county_name": "Idaho",
+          "crc_value": "10A7315796E33B60",
+          "cwpp": null,
+          "date_awarded": 573177600000,
+          "date_completed": 573177600000,
+          "elevation": 6590.0,
+          "equipment": "NA",
+          "equipment_code": "000",
+          "event_cn": "AC19064301027710277",
+          "event_name": null,
+          "event_year": null,
+          "exam_nbr": null,
+          "exclude_accomplishment": "N",
+          "facts_id": "A160100095",
+          "feature_type": "A",
+          "fireregime": null,
+          "fiscal_year_awarded": 1988,
+          "fiscal_year_completed": 1988,
+          "fiscal_year_planned": 1988,
+          "fs_unit_id": "0117",
+          "fuels_keypoint_area": null,
+          "fund_codes": "NFIM",
+          "gis_acres": 33.969,
+          "impl_project_nbr": null,
+          "impl_project_type": null,
+          "implementation_project": null,
+          "implementation_project_cn": null,
+          "iswui": "N",
+          "kv_nbr_units_funded": null,
+          "land_suitability_code": "500",
+          "latitude": 45.7036,
+          "legal_location": "  ",
+          "local_qualifier": "N/A",
+          "longitude": -115.24,
+          "lu_cn": "L32844010277000",
+          "method": "Not Applicable",
+          "method_code": "000",
+          "mgt_area_code": "TMVIS",
+          "mgt_prescription_code": null,
+          "name": "TSMRS LEGACY STAND",
+          "nbr_units_accomplished": 35.0,
+          "nbr_units_planned": 35.0,
+          "needs": null,
+          "needs_adjustment": "N",
+          "nepa_doc_nbr": "NOT REQD",
+          "nepa_doc_type": "NR",
+          "nepa_hfi": "N",
+          "nepa_hfra": "N",
+          "nepa_project_cn": "101027710277",
+          "nepa_project_name": "DEFAULT FOR NOT REQUIRED",
+          "nepa_signed_date": null,
+          "nfpors_category": null,
+          "nfpors_treatment": null,
+          "objectid": 1,
+          "ownership": "FS",
+          "pals_project_cn": "101027710277",
+          "percent_funded": null,
+          "proc_forest": "0117",
+          "productivity_class": "5",
+          "purchaser_name": null,
+          "purpose_code": null,
+          "reforestation_status": null,
+          "sale_category": null,
+          "sale_closure_date": null,
+          "sale_cn": null,
+          "sale_name": null,
+          "sale_number": null,
+          "site_nbr_of_units": 35.0,
+          "slope": 11,
+          "st_area(shape)": 1.5881949706524854e-05,
+          "st_perimeter(shape)": 0.02197354472264352,
+          "state_abbr": "ID",
+          "su_created_date": 1112972703000,
+          "su_modified_date": 1786732441000,
+          "su_security_id": "011705",
+          "subunit": "000",
+          "suid": "011705A160100095000",
+          "suid_cn": "11890010277",
+          "treatment_name": null,
+          "tsi": null,
+          "ukcn": "011705_AC19064301027710277",
+          "unit_id": null,
+          "uom": "ACRES",
+          "watershed_code": "170603020301",
+          "workforce_code": "FA"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -115.23851911399998,
+                45.70577037800007
+              ],
+              [
+                -115.23834226199995,
+                45.705685895000045
+              ],
+              [
+                -115.23788254399994,
+                45.705747975000065
+              ],
+              [
+                -115.23767619699998,
+                45.70574479100003
+              ],
+              [
+                -115.23764109899997,
+                45.70571909200004
+              ],
+              [
+                -115.23746146799999,
+                45.705722612000045
+              ],
+              [
+                -115.23751690899996,
+                45.70568924600008
+              ],
+              [
+                -115.23754343299998,
+                45.705671023000036
+              ],
+              [
+                -115.23754472599995,
+                45.70552360900007
+              ],
+              [
+                -115.23757112399994,
+                45.705505294000034
+              ],
+              [
+                -115.23757654399998,
+                45.70491599800005
+              ],
+              [
+                -115.23749851799994,
+                45.70482352500005
+              ],
+              [
+                -115.23749909899999,
+                45.704768268000066
+              ],
+              [
+                -115.23744682299997,
+                45.70473118800004
+              ],
+              [
+                -115.23742107199996,
+                45.70467579500007
+              ],
+              [
+                -115.23736879699999,
+                45.704638715000044
+              ],
+              [
+                -115.23736924999997,
+                45.70458345600008
+              ],
+              [
+                -115.23734323899998,
+                45.70456496300005
+              ],
+              [
+                -115.23734337099995,
+                45.704528061000076
+              ],
+              [
+                -115.23726547099994,
+                45.704435680000074
+              ],
+              [
+                -115.23726586099997,
+                45.704398782000055
+              ],
+              [
+                -115.23721358199998,
+                45.70436179100005
+              ],
+              [
+                -115.23718783199996,
+                45.70430639800003
+              ],
+              [
+                -115.23713555699999,
+                45.70426931800006
+              ],
+              [
+                -115.23713594399999,
+                45.704232510000054
+              ],
+              [
+                -115.23710980799996,
+                45.70421392500003
+              ],
+              [
+                -115.23711000299994,
+                45.70419547600005
+              ],
+              [
+                -115.237057919,
+                45.70414003700006
+              ],
+              [
+                -115.23705830899996,
+                45.70410313900004
+              ],
+              [
+                -115.23700622599995,
+                45.70404769900006
+              ],
+              [
+                -115.23700667799994,
+                45.703992441000025
+              ],
+              [
+                -115.23695440399996,
+                45.703955360000066
+              ],
+              [
+                -115.23695478999997,
+                45.70391855300005
+              ],
+              [
+                -115.23687637999996,
+                45.70386288600008
+              ],
+              [
+                -115.23688032199999,
+                45.70343927400006
+              ],
+              [
+                -115.23684130799995,
+                45.70339312700003
+              ],
+              [
+                -115.23693388899994,
+                45.70332903000008
+              ],
+              [
+                -115.236934083,
+                45.70331058100004
+              ],
+              [
+                -115.23698700199998,
+                45.70327404400007
+              ],
+              [
+                -115.23698719599997,
+                45.70325559500003
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "act_created_date": 1605622926000,
+          "act_modified_date": 1753802376000,
+          "activity": "Certification of Natural Regeneration without Site Prep",
+          "activity_code": "4382",
+          "activity_remarks": null,
+          "activity_site_remarks": null,
+          "activity_unit_cn": "6408653010602",
+          "admin_district": "05",
+          "admin_forest": "07",
+          "admin_region": "09",
+          "aspect": null,
+          "au_district": "05",
+          "au_forest": "07",
+          "au_name": null,
+          "au_org": "090705",
+          "au_region": "09",
+          "award_date": 1632873600000,
+          "base_year": null,
+          "biomass_utilization": null,
+          "causal_agent": "Harvest",
+          "cong_dist_name": null,
+          "contract_planned_term": 1759190400000,
+          "cost_per_unit": 4.0,
+          "county_name": "Houghton",
+          "crc_value": "55A0A9158AE6D9DE",
+          "cwpp": null,
+          "date_awarded": 1753747200000,
+          "date_completed": 1753747200000,
+          "elevation": null,
+          "equipment": "NA",
+          "equipment_code": "000",
+          "event_cn": "6194093010602",
+          "event_name": "HOBO PR",
+          "event_year": 2022,
+          "exam_nbr": null,
+          "exclude_accomplishment": "N",
+          "facts_id": "5112300006",
+          "feature_type": "A",
+          "fireregime": null,
+          "fiscal_year_awarded": 2025,
+          "fiscal_year_completed": 2025,
+          "fiscal_year_planned": 2025,
+          "fs_unit_id": "0907",
+          "fuels_keypoint_area": null,
+          "fund_codes": "CWKV",
+          "gis_acres": 28.074,
+          "impl_project_nbr": null,
+          "impl_project_type": null,
+          "implementation_project": null,
+          "implementation_project_cn": null,
+          "iswui": null,
+          "kv_nbr_units_funded": 28.0,
+          "land_suitability_code": "500",
+          "latitude": null,
+          "legal_location": null,
+          "local_qualifier": "N/A",
+          "longitude": null,
+          "lu_cn": "6408654010602",
+          "method": "Manual",
+          "method_code": "100",
+          "mgt_area_code": "2.1",
+          "mgt_prescription_code": null,
+          "name": null,
+          "nbr_units_accomplished": 28.0,
+          "nbr_units_planned": 28.0,
+          "needs": null,
+          "needs_adjustment": "N",
+          "nepa_doc_nbr": "41785",
+          "nepa_doc_type": "DN",
+          "nepa_hfi": null,
+          "nepa_hfra": null,
+          "nepa_project_cn": "41382",
+          "nepa_project_name": "(PALS)DECISION NOTICE FOR THE PORI JUNCTION VEGETATION MANAGEMENT PROJECT",
+          "nepa_signed_date": 1410307200000,
+          "nfpors_category": null,
+          "nfpors_treatment": null,
+          "objectid": 2,
+          "ownership": "FS",
+          "pals_project_cn": "95508",
+          "percent_funded": null,
+          "proc_forest": "0907",
+          "productivity_class": "6",
+          "purchaser_name": "TIGERTON LUMBER CO.  ",
+          "purpose_code": null,
+          "reforestation_status": null,
+          "sale_category": "C",
+          "sale_closure_date": 1718236800000,
+          "sale_cn": "19075010602",
+          "sale_name": "HOBO PR",
+          "sale_number": "51123",
+          "site_nbr_of_units": 28.0,
+          "slope": null,
+          "st_area(shape)": 1.3343424155227935e-05,
+          "st_perimeter(shape)": 0.0201181224918603,
+          "state_abbr": "MI",
+          "su_created_date": 1605622015000,
+          "su_modified_date": null,
+          "su_security_id": "090705",
+          "subunit": "000",
+          "suid": "0907055112300006000",
+          "suid_cn": "1259778010602",
+          "treatment_name": null,
+          "tsi": null,
+          "ukcn": "090705_6194093010602",
+          "unit_id": "06",
+          "uom": "ACRES",
+          "watershed_code": null,
+          "workforce_code": "FA"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -88.93812000099996,
+                46.621956589000035
+              ],
+              [
+                -88.93769587099996,
+                46.62192959200007
+              ],
+              [
+                -88.93745117399999,
+                46.62191283200008
+              ],
+              [
+                -88.93713999999994,
+                46.621866942000054
+              ],
+              [
+                -88.93688872399997,
+                46.62181760200008
+              ],
+              [
+                -88.93664796199994,
+                46.621720835000076
+              ],
+              [
+                -88.93611699199994,
+                46.62156411500007
+              ],
+              [
+                -88.93578451099995,
+                46.62141647200008
+              ],
+              [
+                -88.93512768899996,
+                46.62131724600005
+              ],
+              [
+                -88.93432252799994,
+                46.621250892000035
+              ],
+              [
+                -88.93373763799997,
+                46.62126927200006
+              ],
+              [
+                -88.93373256199999,
+                46.62126943200008
+              ],
+              [
+                -88.93277482599996,
+                46.621211635000066
+              ],
+              [
+                -88.93242976299996,
+                46.62116449100006
+              ],
+              [
+                -88.93216221899996,
+                46.62116995500003
+              ],
+              [
+                -88.93186688299994,
+                46.62113194800003
+              ],
+              [
+                -88.93147374099999,
+                46.62112209800006
+              ],
+              [
+                -88.93119412699997,
+                46.62114217100003
+              ],
+              [
+                -88.93040857899996,
+                46.62109451500004
+              ],
+              [
+                -88.93017661299996,
+                46.62105821100005
+              ],
+              [
+                -88.92982978599997,
+                46.62068488800003
+              ],
+              [
+                -88.92961553599997,
+                46.62057860200008
+              ],
+              [
+                -88.92973284399994,
+                46.62044601500003
+              ],
+              [
+                -88.92996309399996,
+                46.62031228500007
+              ],
+              [
+                -88.93015526999994,
+                46.62013076800008
+              ],
+              [
+                -88.93026618399995,
+                46.61999794800005
+              ],
+              [
+                -88.93069351699995,
+                46.619659985000055
+              ],
+              [
+                -88.93071305999996,
+                46.619528546000026
+              ],
+              [
+                -88.93120903199997,
+                46.61941787000006
+              ],
+              [
+                -88.93158102099994,
+                46.61934012800003
+              ],
+              [
+                -88.93182722999995,
+                46.61933779000003
+              ],
+              [
+                -88.93224687799994,
+                46.619424199000036
+              ],
+              [
+                -88.93268719599996,
+                46.61949801000003
+              ],
+              [
+                -88.93308305699998,
+                46.61964254800006
+              ],
+              [
+                -88.93394035799997,
+                46.61980913800005
+              ],
+              [
+                -88.93444898899997,
+                46.61981606200004
+              ],
+              [
+                -88.93552438599994,
+                46.61997630700006
+              ],
+              [
+                -88.93587104499994,
+                46.61992030700003
+              ],
+              [
+                -88.93623340999994,
+                46.619963433000066
+              ],
+              [
+                -88.93664952199998,
+                46.619948143000045
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "act_created_date": 1106580374000,
+          "act_modified_date": 1662657679000,
+          "activity": "TSI Certification - Release/weeding",
+          "activity_code": "4391",
+          "activity_remarks": "391",
+          "activity_site_remarks": null,
+          "activity_unit_cn": "AU72819010304",
+          "admin_district": "21",
+          "admin_forest": "05",
+          "admin_region": "09",
+          "aspect": "SE",
+          "au_district": "21",
+          "au_forest": "05",
+          "au_name": null,
+          "au_org": "090521",
+          "au_region": "09",
+          "award_date": null,
+          "base_year": null,
+          "biomass_utilization": null,
+          "causal_agent": null,
+          "cong_dist_name": null,
+          "contract_planned_term": null,
+          "cost_per_unit": 1.0,
+          "county_name": "Barry",
+          "crc_value": "64FA1FEE028EB001",
+          "cwpp": null,
+          "date_awarded": 873072000000,
+          "date_completed": 873072000000,
+          "elevation": null,
+          "equipment": "NA",
+          "equipment_code": "000",
+          "event_cn": "AC29213301030410304",
+          "event_name": null,
+          "event_year": null,
+          "exam_nbr": null,
+          "exclude_accomplishment": "N",
+          "facts_id": "0000223018",
+          "feature_type": "A",
+          "fireregime": null,
+          "fiscal_year_awarded": 1997,
+          "fiscal_year_completed": 1997,
+          "fiscal_year_planned": 1997,
+          "fs_unit_id": "0905",
+          "fuels_keypoint_area": null,
+          "fund_codes": "NFVW",
+          "gis_acres": 4.245,
+          "impl_project_nbr": null,
+          "impl_project_type": null,
+          "implementation_project": null,
+          "implementation_project_cn": null,
+          "iswui": "N",
+          "kv_nbr_units_funded": null,
+          "land_suitability_code": "500",
+          "latitude": null,
+          "legal_location": null,
+          "local_qualifier": "N/A",
+          "longitude": null,
+          "lu_cn": "L72819010304000",
+          "method": "Not Applicable",
+          "method_code": "000",
+          "mgt_area_code": "3.4",
+          "mgt_prescription_code": null,
+          "name": null,
+          "nbr_units_accomplished": 5.0,
+          "nbr_units_planned": 5.0,
+          "needs": null,
+          "needs_adjustment": "N",
+          "nepa_doc_nbr": "cds_to_fac",
+          "nepa_doc_type": "NR",
+          "nepa_hfi": "N",
+          "nepa_hfra": "N",
+          "nepa_project_cn": "8801030410304",
+          "nepa_project_name": "cds_accomp_mig_to_facts",
+          "nepa_signed_date": null,
+          "nfpors_category": null,
+          "nfpors_treatment": null,
+          "objectid": 3,
+          "ownership": "FS",
+          "pals_project_cn": "8801030410304",
+          "percent_funded": null,
+          "proc_forest": "0905",
+          "productivity_class": "6",
+          "purchaser_name": null,
+          "purpose_code": null,
+          "reforestation_status": null,
+          "sale_category": null,
+          "sale_closure_date": null,
+          "sale_cn": null,
+          "sale_name": null,
+          "sale_number": null,
+          "site_nbr_of_units": 5.0,
+          "slope": null,
+          "st_area(shape)": 1.729334867245653e-06,
+          "st_perimeter(shape)": 0.005960786218641242,
+          "state_abbr": "MO",
+          "su_created_date": 1103035490000,
+          "su_modified_date": null,
+          "su_security_id": "090521",
+          "subunit": "000",
+          "suid": "0905210000223018000",
+          "suid_cn": "31976010304",
+          "treatment_name": null,
+          "tsi": null,
+          "ukcn": "090521_AC29213301030410304",
+          "unit_id": null,
+          "uom": "ACRES",
+          "watershed_code": null,
+          "workforce_code": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -93.83619340099995,
+                36.56607311700003
+              ],
+              [
+                -93.83627924599995,
+                36.566002654000044
+              ],
+              [
+                -93.83675545099999,
+                36.56589113300004
+              ],
+              [
+                -93.83685782199996,
+                36.56586336700008
+              ],
+              [
+                -93.83702695799997,
+                36.56580809400003
+              ],
+              [
+                -93.83719747899994,
+                36.56575281100004
+              ],
+              [
+                -93.83753847699995,
+                36.56566927400007
+              ],
+              [
+                -93.83787842199996,
+                36.56558575400004
+              ],
+              [
+                -93.83838977399995,
+                36.56552807400004
+              ],
+              [
+                -93.83849167599999,
+                36.56555440300008
+              ],
+              [
+                -93.83859464399995,
+                36.565580718000035
+              ],
+              [
+                -93.83869609199996,
+                36.565661136000074
+              ],
+              [
+                -93.83876599099995,
+                36.565795871000034
+              ],
+              [
+                -93.83876674099997,
+                36.56599418800005
+              ],
+              [
+                -93.83869906599995,
+                36.56612989200005
+              ],
+              [
+                -93.83863155499995,
+                36.56618445200007
+              ],
+              [
+                -93.83829172199995,
+                36.56637615500006
+              ],
+              [
+                -93.83764446499998,
+                36.566461838000066
+              ],
+              [
+                -93.83723578599995,
+                36.56651879400005
+              ],
+              [
+                -93.83702554399997,
+                36.56668028300004
+              ],
+              [
+                -93.83692964299996,
+                36.56662912300004
+              ],
+              [
+                -93.83619340099995,
+                36.56607311700003
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "act_created_date": "ACT_CREATED_DATE",
+      "act_modified_date": "ACT_MODIFIED_DATE",
+      "activity": "ACTIVITY",
+      "activity_code": "ACTIVITY_CODE",
+      "activity_remarks": "ACTIVITY_REMARKS",
+      "activity_site_remarks": "ACTIVITY_SITE_REMARKS",
+      "activity_unit_cn": "ACTIVITY_UNIT_CN",
+      "admin_district": "ADMIN_DISTRICT",
+      "admin_forest": "ADMIN_FOREST",
+      "admin_region": "ADMIN_REGION",
+      "aspect": "ASPECT",
+      "au_district": "AU_DISTRICT",
+      "au_forest": "AU_FOREST",
+      "au_name": "AU_NAME",
+      "au_org": "AU_ORG",
+      "au_region": "AU_REGION",
+      "award_date": "AWARD_DATE",
+      "base_year": "BASE_YEAR",
+      "biomass_utilization": "BIOMASS_UTILIZATION",
+      "causal_agent": "CAUSAL_AGENT",
+      "cong_dist_name": "CONG_DIST_NAME",
+      "contract_planned_term": "CONTRACT_PLANNED_TERM",
+      "cost_per_unit": "COST_PER_UNIT",
+      "county_name": "COUNTY_NAME",
+      "crc_value": "CRC_VALUE",
+      "cwpp": "CWPP",
+      "date_awarded": "DATE_AWARDED",
+      "date_completed": "DATE_COMPLETED",
+      "elevation": "ELEVATION",
+      "equipment": "EQUIPMENT",
+      "equipment_code": "EQUIPMENT_CODE",
+      "event_cn": "EVENT_CN",
+      "event_name": "EVENT_NAME",
+      "event_year": "EVENT_YEAR",
+      "exam_nbr": "EXAM_NBR",
+      "exclude_accomplishment": "EXCLUDE_ACCOMPLISHMENT",
+      "facts_id": "FACTS_ID",
+      "feature_type": "FEATURE_TYPE",
+      "fireregime": "FIREREGIME",
+      "fiscal_year_awarded": "FISCAL_YEAR_AWARDED",
+      "fiscal_year_completed": "FISCAL_YEAR_COMPLETED",
+      "fiscal_year_planned": "FISCAL_YEAR_PLANNED",
+      "fs_unit_id": "FS_UNIT_ID",
+      "fuels_keypoint_area": "FUELS_KEYPOINT_AREA",
+      "fund_codes": "FUND_CODES",
+      "gis_acres": "GIS_ACRES",
+      "impl_project_nbr": "IMPL_PROJECT_NBR",
+      "impl_project_type": "IMPL_PROJECT_TYPE",
+      "implementation_project": "IMPLEMENTATION_PROJECT",
+      "implementation_project_cn": "IMPLEMENTATION_PROJECT_CN",
+      "iswui": "ISWUI",
+      "kv_nbr_units_funded": "KV_NBR_UNITS_FUNDED",
+      "land_suitability_code": "LAND_SUITABILITY_CODE",
+      "latitude": "LATITUDE",
+      "legal_location": "LEGAL_LOCATION",
+      "local_qualifier": "LOCAL_QUALIFIER",
+      "longitude": "LONGITUDE",
+      "lu_cn": "LU_CN",
+      "method": "METHOD",
+      "method_code": "METHOD_CODE",
+      "mgt_area_code": "MGT_AREA_CODE",
+      "mgt_prescription_code": "MGT_PRESCRIPTION_CODE",
+      "name": "NAME",
+      "nbr_units_accomplished": "NBR_UNITS_ACCOMPLISHED",
+      "nbr_units_planned": "NBR_UNITS_PLANNED",
+      "needs": "NEEDS",
+      "needs_adjustment": "NEEDS_ADJUSTMENT",
+      "nepa_doc_nbr": "NEPA_DOC_NBR",
+      "nepa_doc_type": "NEPA_DOC_TYPE",
+      "nepa_hfi": "NEPA_HFI",
+      "nepa_hfra": "NEPA_HFRA",
+      "nepa_project_cn": "NEPA_PROJECT_CN",
+      "nepa_project_name": "NEPA_PROJECT_NAME",
+      "nepa_signed_date": "NEPA_SIGNED_DATE",
+      "nfpors_category": "NFPORS_CATEGORY",
+      "nfpors_treatment": "NFPORS_TREATMENT",
+      "objectid": "OBJECTID",
+      "ownership": "OWNERSHIP",
+      "pals_project_cn": "PALS_PROJECT_CN",
+      "percent_funded": "PERCENT_FUNDED",
+      "proc_forest": "PROC_FOREST",
+      "productivity_class": "PRODUCTIVITY_CLASS",
+      "purchaser_name": "PURCHASER_NAME",
+      "purpose_code": "PURPOSE_CODE",
+      "reforestation_status": "REFORESTATION_STATUS",
+      "sale_category": "SALE_CATEGORY",
+      "sale_closure_date": "SALE_CLOSURE_DATE",
+      "sale_cn": "SALE_CN",
+      "sale_name": "SALE_NAME",
+      "sale_number": "SALE_NUMBER",
+      "site_nbr_of_units": "SITE_NBR_OF_UNITS",
+      "slope": "SLOPE",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "state_abbr": "STATE_ABBR",
+      "su_created_date": "SU_CREATED_DATE",
+      "su_modified_date": "SU_MODIFIED_DATE",
+      "su_security_id": "SU_SECURITY_ID",
+      "subunit": "SUBUNIT",
+      "suid": "SUID",
+      "suid_cn": "SUID_CN",
+      "treatment_name": "TREATMENT_NAME",
+      "tsi": "TSI",
+      "ukcn": "UKCN",
+      "unit_id": "UNIT_ID",
+      "uom": "UOM",
+      "watershed_code": "WATERSHED_CODE",
+      "workforce_code": "WORKFORCE_CODE"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "SU_SECURITY_ID",
+        "length": 30,
+        "name": "su_security_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AU_ORG",
+        "length": 6,
+        "name": "au_org",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SUID",
+        "length": 19,
+        "name": "suid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACTS_ID",
+        "length": 10,
+        "name": "facts_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SUBUNIT",
+        "length": 3,
+        "name": "subunit",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NAME",
+        "length": 60,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATURE_TYPE",
+        "length": 10,
+        "name": "feature_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SITE_NBR_OF_UNITS",
+        "name": "site_nbr_of_units",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "UOM",
+        "length": 40,
+        "name": "uom",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACTIVITY_CODE",
+        "length": 30,
+        "name": "activity_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACTIVITY",
+        "length": 80,
+        "name": "activity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOCAL_QUALIFIER",
+        "length": 40,
+        "name": "local_qualifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "METHOD_CODE",
+        "length": 30,
+        "name": "method_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "METHOD",
+        "length": 40,
+        "name": "method",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EQUIPMENT_CODE",
+        "length": 3,
+        "name": "equipment_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EQUIPMENT",
+        "length": 80,
+        "name": "equipment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FUND_CODES",
+        "length": 1000,
+        "name": "fund_codes",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COST_PER_UNIT",
+        "name": "cost_per_unit",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "WORKFORCE_CODE",
+        "length": 100,
+        "name": "workforce_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FISCAL_YEAR_PLANNED",
+        "name": "fiscal_year_planned",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "FISCAL_YEAR_AWARDED",
+        "name": "fiscal_year_awarded",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "DATE_AWARDED",
+        "length": 8,
+        "name": "date_awarded",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FISCAL_YEAR_COMPLETED",
+        "name": "fiscal_year_completed",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "DATE_COMPLETED",
+        "length": 8,
+        "name": "date_completed",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "NBR_UNITS_PLANNED",
+        "name": "nbr_units_planned",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "NBR_UNITS_ACCOMPLISHED",
+        "name": "nbr_units_accomplished",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "EXCLUDE_ACCOMPLISHMENT",
+        "length": 1,
+        "name": "exclude_accomplishment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TREATMENT_NAME",
+        "length": 60,
+        "name": "treatment_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FUELS_KEYPOINT_AREA",
+        "length": 1,
+        "name": "fuels_keypoint_area",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISWUI",
+        "length": 1,
+        "name": "iswui",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIREREGIME",
+        "name": "fireregime",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CWPP",
+        "length": 60,
+        "name": "cwpp",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BIOMASS_UTILIZATION",
+        "length": 1,
+        "name": "biomass_utilization",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NFPORS_CATEGORY",
+        "length": 255,
+        "name": "nfpors_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NFPORS_TREATMENT",
+        "length": 255,
+        "name": "nfpors_treatment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PURPOSE_CODE",
+        "length": 4,
+        "name": "purpose_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SALE_NAME",
+        "length": 80,
+        "name": "sale_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SALE_NUMBER",
+        "length": 6,
+        "name": "sale_number",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SALE_CATEGORY",
+        "length": 1,
+        "name": "sale_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNIT_ID",
+        "length": 8,
+        "name": "unit_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PURCHASER_NAME",
+        "length": 60,
+        "name": "purchaser_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CONTRACT_PLANNED_TERM",
+        "length": 8,
+        "name": "contract_planned_term",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "AWARD_DATE",
+        "length": 8,
+        "name": "award_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "SALE_CLOSURE_DATE",
+        "length": 8,
+        "name": "sale_closure_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "BASE_YEAR",
+        "length": 1,
+        "name": "base_year",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "KV_NBR_UNITS_FUNDED",
+        "name": "kv_nbr_units_funded",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "PERCENT_FUNDED",
+        "length": 1,
+        "name": "percent_funded",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CAUSAL_AGENT",
+        "length": 20,
+        "name": "causal_agent",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REFORESTATION_STATUS",
+        "length": 1,
+        "name": "reforestation_status",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EXAM_NBR",
+        "name": "exam_nbr",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "NEEDS_ADJUSTMENT",
+        "length": 1,
+        "name": "needs_adjustment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EVENT_NAME",
+        "length": 80,
+        "name": "event_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EVENT_YEAR",
+        "name": "event_year",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "IMPLEMENTATION_PROJECT",
+        "length": 2000,
+        "name": "implementation_project",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMPL_PROJECT_NBR",
+        "length": 2000,
+        "name": "impl_project_nbr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMPL_PROJECT_TYPE",
+        "length": 2000,
+        "name": "impl_project_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NEPA_DOC_NBR",
+        "length": 10,
+        "name": "nepa_doc_nbr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NEPA_DOC_TYPE",
+        "length": 10,
+        "name": "nepa_doc_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NEPA_PROJECT_NAME",
+        "length": 80,
+        "name": "nepa_project_name",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4269,
+      "wkid": 4269
+    }
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 42271,
+  "status": 200
+}

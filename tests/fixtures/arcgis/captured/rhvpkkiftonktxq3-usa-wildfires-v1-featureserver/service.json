@@ -1,0 +1,67 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": -67.86756218399995,
+      "xmin": -141.24669999999998,
+      "ymax": 65.02641000000006,
+      "ymin": 25.411025231000053
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": -63.58622528624997,
+      "xmin": -156.46747393874998,
+      "ymax": 79.42542456008532,
+      "ymin": 10.811415439914782
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Current_Incidents",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 2500000,
+        "name": "Current_Perimeters",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 18000,
+    "serviceDescription": "",
+    "serviceItemId": "d957997ccee7408287a963600a77f61f",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3413,
+  "status": 200
+}

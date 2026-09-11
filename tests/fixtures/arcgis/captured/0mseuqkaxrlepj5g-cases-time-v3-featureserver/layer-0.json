@@ -1,0 +1,102 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "Report_Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "Report_Date",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "China",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Mainland_China",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Other Locations",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Other_Locations",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Confirmed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Total_Confirmed",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Recovered",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Total_Recovered",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Report Date String",
+        "defaultValue": null,
+        "editable": true,
+        "length": 256,
+        "name": "Report_Date_String",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Delta Confirmed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Delta_Confirmed",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Delta Recovered",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Delta_Recovered",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "ObjectId",
+        "defaultValue": null,
+        "editable": false,
+        "name": "ObjectId",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "cases_time_v3",
+    "objectIdField": "ObjectId",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 7276,
+  "status": 200
+}

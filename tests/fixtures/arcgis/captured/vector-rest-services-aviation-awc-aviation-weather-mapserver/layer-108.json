@@ -1,0 +1,82 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "Name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -66.99999999999999,
+      "xmin": -180,
+      "ymax": 72,
+      "ymin": 23.999999999999993
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "Name",
+        "length": 255,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape_Length",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape_Area",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "idp_ingestdate",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "idp_filedate",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 108,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "ARRTC Highs Boundary",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4232,
+  "status": 200
+}

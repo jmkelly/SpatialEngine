@@ -1,0 +1,91 @@
+{
+  "body": {
+    "displayFieldName": "valid",
+    "features": [
+      {
+        "attributes": {
+          "dn": 0,
+          "expire": "202609121200",
+          "idp_filedate": 1789110620000,
+          "idp_ingestdate": 1789110629000,
+          "idp_source": "firewx_day1_20260911_1200_dryltg",
+          "objectid": 1,
+          "st_area(shape)": null,
+          "st_perimeter(shape)": null,
+          "valid": "202609111200"
+        }
+      }
+    ],
+    "fieldAliases": {
+      "dn": "Outlook",
+      "expire": "Expiration Date",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "idp_source": "GIS Source",
+      "objectid": "FID",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "valid": "Valid Date Time"
+    },
+    "fields": [
+      {
+        "alias": "FID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Outlook",
+        "name": "dn",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Valid Date Time",
+        "length": 12,
+        "name": "valid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Expiration Date",
+        "length": 12,
+        "name": "expire",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Source",
+        "length": 50,
+        "name": "idp_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 1376,
+  "status": 200
+}

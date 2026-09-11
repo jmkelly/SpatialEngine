@@ -1,0 +1,119 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "SampleDate",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "SampleDate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Sex",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Sex",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "tot_antal_tilf",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_tilf",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tot_antal_dod",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_dod",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_icu",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "antal_icu",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "tot_antal_icu",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_icu",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tot_antal_indlaeggeler",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_indlaeggeler",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "kum_dod",
+        "defaultValue": null,
+        "editable": true,
+        "name": "kum_dod",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "kum_tilf",
+        "defaultValue": null,
+        "editable": true,
+        "name": "kum_tilf",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "kum_indl",
+        "defaultValue": null,
+        "editable": true,
+        "name": "kum_indl",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 2,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Diverse_koen_all",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 7333,
+  "status": 200
+}

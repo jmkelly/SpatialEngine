@@ -1,0 +1,89 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 32633,
+        "wkid": 32633
+      },
+      "xmax": 461867.5437622202,
+      "xmin": -1188659.019146758,
+      "ymax": 3993389.8576029497,
+      "ymin": -1e-06
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 32633,
+        "wkid": 32633
+      },
+      "xmax": 493858.0302253278,
+      "xmin": 408498.6719516149,
+      "ymax": 3994603.766255582,
+      "ymin": 3959951.1381984046
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Covid19_Malta",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "MT_Councils",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "MT_Districts",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "MT_Country",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "",
+    "serviceItemId": "cc2d7851d7ba4cdd973a97195a4c273a",
+    "spatialReference": {
+      "latestWkid": 32633,
+      "wkid": 32633
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3678,
+  "status": 200
+}

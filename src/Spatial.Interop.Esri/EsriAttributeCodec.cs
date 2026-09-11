@@ -68,12 +68,32 @@ public static class EsriAttributeCodec
             : AttributeValue.Null;
     }
 
-    private static bool TryGetValue(JsonElement attributes, string name, out JsonElement element)
+    internal static bool TryGetValue(JsonElement attributes, string name, out JsonElement element)
     {
         element = default;
-        return attributes.ValueKind == JsonValueKind.Object
-            && attributes.TryGetProperty(name, out element)
-            && element.ValueKind != JsonValueKind.Null;
+        if (attributes.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (attributes.TryGetProperty(name, out element))
+        {
+            return element.ValueKind != JsonValueKind.Null;
+        }
+
+        // ArcGIS field names are case-insensitive, and real MapServer
+        // responses do not always echo the layer metadata's casing (declared
+        // OBJECTID, emitted objectid), so fall back to a case-insensitive match.
+        foreach (var property in attributes.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                element = property.Value;
+                return element.ValueKind != JsonValueKind.Null;
+            }
+        }
+
+        return false;
     }
 
     private static AttributeValue ReadValue(IFieldDefinition field, JsonElement element) => field.Kind switch

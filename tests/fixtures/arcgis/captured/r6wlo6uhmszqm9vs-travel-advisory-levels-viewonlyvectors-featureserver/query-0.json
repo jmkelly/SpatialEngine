@@ -1,0 +1,398 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "ADVDATE": 1722229200000,
+          "GlobalID": "c83e13fa-0fbd-4508-9290-96c5e5547fe9",
+          "LEVEL_": 4,
+          "NAME": "Afghanistan",
+          "OBJECTID": 3,
+          "Shape__Area": 934459490231.5,
+          "Shape__Length": 6923261.156196393,
+          "URL": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/afghanistan-advisory.html"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                7903664.3124,
+                4647353.724
+              ],
+              [
+                7907155.295,
+                4644803.1569
+              ],
+              [
+                7908034.0952,
+                4640106.4036
+              ],
+              [
+                7910009.5146,
+                4635850.6671
+              ],
+              [
+                7911448.2427,
+                4636460.2776
+              ],
+              [
+                7911192.2053,
+                4638142.9271
+              ],
+              [
+                7915340.3604,
+                4639254.1868
+              ],
+              [
+                7915740.5269,
+                4636935.7859
+              ],
+              [
+                7917117.0038,
+                4637045.5216
+              ],
+              [
+                7918472.3411,
+                4635655.6217
+              ],
+              [
+                7919787.0845,
+                4636350.5481
+              ],
+              [
+                7920286.9641,
+                4634765.6797
+              ],
+              [
+                7921935.2968,
+                4634204.9616
+              ],
+              [
+                7924385.2363,
+                4628233.8136
+              ],
+              [
+                7925889.0287,
+                4627930.7619
+              ],
+              [
+                7928686.8096,
+                4624993.785
+              ],
+              [
+                7930518.8035,
+                4624714.4413
+              ],
+              [
+                7931610.1146,
+                4623422.8435
+              ],
+              [
+                7936591.0354,
+                4623775.9762
+              ],
+              [
+                7938407.5958,
+                4622351.3427
+              ],
+              [
+                7940331.0753,
+                4622436.5885
+              ],
+              [
+                7940791.9004,
+                4621072.9932
+              ],
+              [
+                7940063.5987,
+                4619770.4578
+              ],
+              [
+                7940964.0694,
+                4617750.0278
+              ],
+              [
+                7943494.8649,
+                4617713.5344
+              ],
+              [
+                7945272.9149,
+                4615657.0051
+              ],
+              [
+                7944434.0716,
+                4611314.0881
+              ],
+              [
+                7945990.8923,
+                4609295.2986
+              ],
+              [
+                7944239.4757,
+                4607131.0467
+              ],
+              [
+                7945601.6738,
+                4602074.75
+              ],
+              [
+                7944167.378,
+                4600555.8971
+              ],
+              [
+                7942319.659,
+                4600033.4691
+              ],
+              [
+                7941201.9929,
+                4595612.131
+              ],
+              [
+                7939076.2473,
+                4593292.891
+              ],
+              [
+                7939352.9202,
+                4588801.5849
+              ],
+              [
+                7937304.8324,
+                4585476.8595
+              ],
+              [
+                7935302.6203,
+                4585246.3693
+              ],
+              [
+                7935496.7915,
+                4584130.2855
+              ],
+              [
+                7936590.478,
+                4583839.1744
+              ],
+              [
+                7936529.8327,
+                4582019.8094
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "ADVDATE": 1689220800000,
+          "GlobalID": "8889c3b4-0d12-4ba7-8310-7f153c3becf0",
+          "LEVEL_": 20,
+          "NAME": "Albania",
+          "OBJECTID": 4,
+          "Shape__Area": 50807097425.69043,
+          "Shape__Length": 1602751.8928057076,
+          "URL": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/albania-travel-advisory.html"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                2167454,
+                5139458.375
+              ],
+              [
+                2165182.4375,
+                5139876.375
+              ],
+              [
+                2165570.8125,
+                5139879.5
+              ],
+              [
+                2167454,
+                5139458.375
+              ]
+            ],
+            [
+              [
+                2156918.75,
+                5137939.125
+              ],
+              [
+                2156698.1875,
+                5137998.125
+              ],
+              [
+                2156677.8125,
+                5138346.25
+              ],
+              [
+                2156918.75,
+                5137939.125
+              ]
+            ],
+            [
+              [
+                2183077.875,
+                5127453.125
+              ],
+              [
+                2182812.3125,
+                5128042.5
+              ],
+              [
+                2183468.9375,
+                5128557
+              ],
+              [
+                2183077.875,
+                5127453.125
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "ADVDATE": 1727323200000,
+          "GlobalID": "de26b9f0-078c-415a-9e6b-c0c59203c9c1",
+          "LEVEL_": 20,
+          "NAME": "Algeria",
+          "OBJECTID": 5,
+          "Shape__Area": 3001134491556.5596,
+          "Shape__Length": 9159189.601373073,
+          "URL": "https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/algeria-travel-advisory.html"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -181613,
+                4193543
+              ],
+              [
+                -181877,
+                4193644
+              ],
+              [
+                -181546,
+                4193756
+              ],
+              [
+                -181613,
+                4193543
+              ]
+            ],
+            [
+              [
+                -164247,
+                4207309
+              ],
+              [
+                -164996,
+                4207353
+              ],
+              [
+                -164991,
+                4208293
+              ],
+              [
+                -164247,
+                4207309
+              ]
+            ],
+            [
+              [
+                -73852,
+                4261733
+              ],
+              [
+                -75461,
+                4262359
+              ],
+              [
+                -75564,
+                4262529
+              ],
+              [
+                -73852,
+                4261733
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Country or State name",
+        "defaultValue": null,
+        "length": 50,
+        "name": "NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Travel Advisory Level",
+        "defaultValue": null,
+        "name": "LEVEL_",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Advisory URL",
+        "defaultValue": null,
+        "length": 150,
+        "name": "URL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ADVDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 143866,
+  "status": 200
+}

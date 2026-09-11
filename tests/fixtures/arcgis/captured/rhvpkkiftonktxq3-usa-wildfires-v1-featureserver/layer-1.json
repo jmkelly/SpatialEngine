@@ -1,0 +1,255 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "IncidentName",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": -69.98242087199998,
+      "xmin": -121.63487724999999,
+      "ymax": 48.847456788000045,
+      "ymin": 25.411025231000053
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "IncidentName",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Feature Category",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "FeatureCategory",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Map Method",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "MapMethod",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Comments",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "Comments",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Calculated Acres",
+        "defaultValue": null,
+        "editable": true,
+        "name": "GISAcres",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Label",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "Label",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Create Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "CreateDate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Date Current",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "DateCurrent",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Polygon Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "PolygonDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Complex Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "ComplexName",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Complex ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "ComplexID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geographic Area Coordination Center",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "GACC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMT Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "IMTName",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Unit ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "UnitID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Local Incident ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "LocalIncidentID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IRWIN ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "IRWINID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geometry ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 38,
+        "name": "GeometryID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Global ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Days Since Current Date",
+        "defaultValue": null,
+        "editable": true,
+        "name": "CurrentDateAge",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Days Since Create Date",
+        "defaultValue": null,
+        "editable": true,
+        "name": "CreateDateAge",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "IncidentTypeCategory",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "IncidentTypeCategory",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 1,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Current_Perimeters",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 16377,
+  "status": 200
+}

@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 102440,
+        "wkid": 102440
+      },
+      "xmax": 762513.8753000005,
+      "xmin": 312943.5003000004,
+      "ymax": 6438879.999800001,
+      "ymin": 6172854.436399999
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 102440,
+        "wkid": 102440
+      },
+      "xmax": 828237.527005253,
+      "xmin": 293533.4677609138,
+      "ymax": 6447446.109223948,
+      "ymin": 6138314.952143165
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "novadi_2009_pol_stat",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "Karte satur inform\u0101ciju par saslimst\u012bbu novados ar Covid-19",
+    "serviceItemId": "4eeafd761c834b35867cf3883018b926",
+    "spatialReference": {
+      "latestWkid": 102440,
+      "wkid": 102440
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3172,
+  "status": 200
+}

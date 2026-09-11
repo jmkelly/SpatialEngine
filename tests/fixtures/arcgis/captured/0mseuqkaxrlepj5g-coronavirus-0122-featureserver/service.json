@@ -1,0 +1,89 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180.00000033527647,
+      "xmin": -179.99999999999994,
+      "ymax": 83.62360016227024,
+      "ymin": -90
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 147.0185017929601,
+      "xmin": 72.78608467543421,
+      "ymax": 54.50892817063256,
+      "ymin": 27.233551526197157
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Confirmed Cases",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Confirmed+Suspected Cases",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "CHN_Province_Boundary",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Affected Regions",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "Current situation for the noval coronavirus starting from Wuhan, China (as of 12 am, Jan 22, 2020)",
+    "serviceItemId": "e957a4b0647a434baabaa76eadc5734e",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3754,
+  "status": 200
+}

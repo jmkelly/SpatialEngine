@@ -1,0 +1,34 @@
+{
+  "catalog": "https://mapservices.nps.gov/arcgis/rest/services",
+  "currentVersion": 11.5,
+  "directory": "nationaldatasets-nps-public-buildings-geographic-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 29054,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 29054,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Buildings",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 6318
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "nationaldatasets-nps-public-buildings-geographic-featureserver",
+  "url": "https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Buildings_Geographic/FeatureServer"
+}

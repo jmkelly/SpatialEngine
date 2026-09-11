@@ -1,0 +1,132 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "SampleDate": 1582675200000,
+          "Sex": "M",
+          "antal_icu": null,
+          "kum_dod": 0,
+          "kum_indl": 0,
+          "kum_tilf": 1,
+          "tot_antal_dod": 0,
+          "tot_antal_icu": 0,
+          "tot_antal_indlaeggeler": 0,
+          "tot_antal_tilf": 1
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "SampleDate": 1582761600000,
+          "Sex": "M",
+          "antal_icu": null,
+          "kum_dod": 0,
+          "kum_indl": 0,
+          "kum_tilf": 2,
+          "tot_antal_dod": 0,
+          "tot_antal_icu": 0,
+          "tot_antal_indlaeggeler": 0,
+          "tot_antal_tilf": 1
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "SampleDate": 1582848000000,
+          "Sex": "M",
+          "antal_icu": null,
+          "kum_dod": 0,
+          "kum_indl": 0,
+          "kum_tilf": 3,
+          "tot_antal_dod": 0,
+          "tot_antal_icu": 0,
+          "tot_antal_indlaeggeler": 0,
+          "tot_antal_tilf": 1
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "SampleDate",
+        "defaultValue": null,
+        "length": 8,
+        "name": "SampleDate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Sex",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Sex",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "tot_antal_tilf",
+        "defaultValue": null,
+        "name": "tot_antal_tilf",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tot_antal_dod",
+        "defaultValue": null,
+        "name": "tot_antal_dod",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_icu",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "antal_icu",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "tot_antal_icu",
+        "defaultValue": null,
+        "name": "tot_antal_icu",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tot_antal_indlaeggeler",
+        "defaultValue": null,
+        "name": "tot_antal_indlaeggeler",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "kum_dod",
+        "defaultValue": null,
+        "name": "kum_dod",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "kum_tilf",
+        "defaultValue": null,
+        "name": "kum_tilf",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "kum_indl",
+        "defaultValue": null,
+        "name": "kum_indl",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2682,
+  "status": 200
+}

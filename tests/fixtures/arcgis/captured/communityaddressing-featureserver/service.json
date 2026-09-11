@@ -1,0 +1,86 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Create,Update,Uploads,Editing",
+    "copyrightText": "City of Naperville, Esri., Inc.",
+    "currentVersion": 10.91,
+    "description": "The Community Addressing Map has been authored for the Address Crowdsourcing app and is used by citizens to submit proposed addresses / contact information.",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 148923141.92838538,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -9807183.069456216,
+      "xmin": -9817914.645231755,
+      "ymax": 5130803.929293123,
+      "ymin": 5125487.091745195
+    },
+    "hasArchivedData": false,
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 148923141.92838538,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -9807907.225769984,
+      "xmin": -9809977.594494058,
+      "ymax": 5132417.384982768,
+      "ymin": 5131223.450303232
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 12500.000000010317,
+        "name": "Community Addresses",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "The Community Addressing Map has been authored for the Address Crowdsourcing app and is used by citizens to submit proposed addresses / contact information.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -20037700,
+      "falseY": -30241100,
+      "falseZ": -100000,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 148923141.92838538,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 3707,
+  "status": 200
+}

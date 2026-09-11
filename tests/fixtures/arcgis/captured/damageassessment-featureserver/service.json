@@ -1,0 +1,86 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Create,Update,Delete,Uploads,Editing",
+    "copyrightText": "City of Naperville, IL, Esri., Inc.",
+    "currentVersion": 10.91,
+    "description": "This map is used with ArcGIS Mobile to collect structural damage assessment.  It can be used to author the mobile map cache and mobile map service used in the Damage Assessment Mobile Application. ",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -28651323.825425006,
+        "falseY": -30665215.055140004,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 47351317.928349085,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 24922003.161315758,
+      "xmin": -23566597.603764575,
+      "ymax": 20087353.682474922,
+      "ymin": -21134812.09518998
+    },
+    "hasArchivedData": false,
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -28651323.825425006,
+        "falseY": -30665215.055140004,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 47351317.928349085,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -9812616.719289511,
+      "xmin": -9813850.810326092,
+      "ymax": 5128305.231088015,
+      "ymin": 5127570.522787967
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Damage to Residential Buildings",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "This map is used with ArcGIS Mobile to collect structural damage assessment.  It can be used to author the mobile map cache and mobile map service used in the Damage Assessment Mobile Application. ",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -28651323.825425006,
+      "falseY": -30665215.055140004,
+      "falseZ": -100000,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 47351317.928349085,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 3804,
+  "status": 200
+}

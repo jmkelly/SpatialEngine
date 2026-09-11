@@ -1,0 +1,168 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 174.11359999999996,
+      "xmin": -177.3813,
+      "ymax": 76.53329999999998,
+      "ymin": -14.331700000000014
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Id",
+        "length": 4,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icao",
+        "length": 4,
+        "name": "icao",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "length": 50,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State",
+        "length": 2,
+        "name": "state",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country",
+        "length": 2,
+        "name": "country",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Type",
+        "length": 3,
+        "name": "type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Elev",
+        "length": 5,
+        "name": "elev",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MagDec",
+        "length": 4,
+        "name": "magdec",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Owner",
+        "length": 1,
+        "name": "owner",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NumRwy",
+        "length": 2,
+        "name": "numrwy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "RwyLen",
+        "length": 1,
+        "name": "rwylen",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "RwyType",
+        "length": 1,
+        "name": "rwytype",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Services",
+        "length": 1,
+        "name": "services",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Tower",
+        "length": 1,
+        "name": "tower",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Beacon",
+        "length": 1,
+        "name": "beacon",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Regional",
+        "length": 255,
+        "name": "regional",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AIRPORT NAME",
+        "length": 255,
+        "name": "airport_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "idp_ingestdate",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "idp_filedate",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "hasAttachments": false,
+    "id": 92,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Regional Airports",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 5872,
+  "status": 200
+}

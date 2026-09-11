@@ -1,0 +1,158 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 2171,
+          "county_name": "Skagit",
+          "fcode": 61501,
+          "gaz_featureclass": "Census",
+          "gaz_id": 2407630,
+          "gaz_name": "Clear Lake Census Designated Place",
+          "incounty_id": 2780340,
+          "isunknowncoords": 2,
+          "objectid_1": 1873399,
+          "state_alpha": "WA"
+        },
+        "geometry": {
+          "points": [
+            [
+              -13606978.752999999,
+              6182676.2173999995
+            ],
+            [
+              -13609419.4085,
+              6182604.4636999965
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2831,
+          "county_name": "Stafford",
+          "fcode": 99901,
+          "gaz_featureclass": "Census",
+          "gaz_id": 2832540,
+          "gaz_name": "Stafford Lakes Village Census Designated Place",
+          "incounty_id": 2884783,
+          "isunknowncoords": 2,
+          "objectid_1": 2346768,
+          "state_alpha": "VA"
+        },
+        "geometry": {
+          "points": [
+            [
+              -8631524.3423,
+              4631231.8347999975
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3481,
+          "county_name": "St. Joseph",
+          "fcode": 61501,
+          "gaz_featureclass": "Census",
+          "gaz_id": 2830522,
+          "gaz_name": "Gilmer Park Census Designated Place",
+          "incounty_id": 2781174,
+          "isunknowncoords": 2,
+          "objectid_1": 2327266,
+          "state_alpha": "IN"
+        },
+        "geometry": {
+          "points": [
+            [
+              -9601043.6606,
+              5103425.131499998
+            ],
+            [
+              -9601434.5425,
+              5103413.268600002
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "incounty_id": "incounty_id",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2995,
+  "status": 200
+}

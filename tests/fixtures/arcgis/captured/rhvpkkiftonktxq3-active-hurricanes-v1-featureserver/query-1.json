@@ -1,0 +1,207 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "BASIN": "EP",
+          "DAY": 25,
+          "DTG": 1787680800000,
+          "HHMM": "1800",
+          "INTENSITY": 15,
+          "LAT": 10.1,
+          "LON": -136.7,
+          "MONTH": "AUG",
+          "MSLP": 0,
+          "OBJECTID": 45,
+          "SS": 0,
+          "STORMID": "ep122026",
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMTYPE": "Low",
+          "TAU": 0,
+          "YEAR": 2026
+        },
+        "geometry": {
+          "x": -136.69999999925494,
+          "y": 10.100000001490116
+        }
+      },
+      {
+        "attributes": {
+          "BASIN": "EP",
+          "DAY": 26,
+          "DTG": 1787702400000,
+          "HHMM": "0000",
+          "INTENSITY": 15,
+          "LAT": 10.2,
+          "LON": -136.4,
+          "MONTH": "AUG",
+          "MSLP": 0,
+          "OBJECTID": 46,
+          "SS": 0,
+          "STORMID": "ep122026",
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMTYPE": "Low",
+          "TAU": 0,
+          "YEAR": 2026
+        },
+        "geometry": {
+          "x": -136.39999999850988,
+          "y": 10.199999999254942
+        }
+      },
+      {
+        "attributes": {
+          "BASIN": "EP",
+          "DAY": 26,
+          "DTG": 1787724000000,
+          "HHMM": "0600",
+          "INTENSITY": 15,
+          "LAT": 10.3,
+          "LON": -136,
+          "MONTH": "AUG",
+          "MSLP": 0,
+          "OBJECTID": 47,
+          "SS": 0,
+          "STORMID": "ep122026",
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMTYPE": "Low",
+          "TAU": 0,
+          "YEAR": 2026
+        },
+        "geometry": {
+          "x": -136,
+          "y": 10.300000000745058
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STORMNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Date-Time Group",
+        "defaultValue": null,
+        "length": 8,
+        "name": "DTG",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Event Year",
+        "defaultValue": null,
+        "name": "YEAR",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Event Month",
+        "defaultValue": null,
+        "length": 4,
+        "name": "MONTH",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Event Day",
+        "defaultValue": null,
+        "name": "DAY",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Event Hour and Minute",
+        "defaultValue": null,
+        "length": 4,
+        "name": "HHMM",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TAU Value",
+        "defaultValue": null,
+        "name": "TAU",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mean Sea Level Pressure",
+        "defaultValue": null,
+        "name": "MSLP",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "length": 20,
+        "name": "BASIN",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "name": "STORMNUM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "length": 25,
+        "name": "STORMTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Intensity",
+        "defaultValue": null,
+        "name": "INTENSITY",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Saffir-Simpson Scale",
+        "defaultValue": null,
+        "name": "SS",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Latitude",
+        "defaultValue": null,
+        "name": "LAT",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "defaultValue": null,
+        "name": "LON",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Storm ID",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STORMID",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6024,
+  "status": 200
+}

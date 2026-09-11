@@ -1,0 +1,406 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "The Forest Service's Natural Resource Manager (NRM) Forest Activity Tracking System (FACTS) is the agency standard for managing information about activities related to fire/fuels, silviculture, and invasive species. This feature class contains the FACTS attributes most commonly needed to describe FACTS activities.",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -51.81414195699995,
+      "xmin": -151.56189785199996,
+      "ymax": 64.20583653300008,
+      "ymin": 8.572982215000025
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "SU_SECURITY_ID",
+        "length": 30,
+        "name": "su_security_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AU_ORG",
+        "length": 6,
+        "name": "au_org",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SUID",
+        "length": 19,
+        "name": "suid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACTS_ID",
+        "length": 10,
+        "name": "facts_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SUBUNIT",
+        "length": 3,
+        "name": "subunit",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NAME",
+        "length": 60,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATURE_TYPE",
+        "length": 10,
+        "name": "feature_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SITE_NBR_OF_UNITS",
+        "name": "site_nbr_of_units",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "UOM",
+        "length": 40,
+        "name": "uom",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACTIVITY_CODE",
+        "length": 30,
+        "name": "activity_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACTIVITY",
+        "length": 80,
+        "name": "activity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOCAL_QUALIFIER",
+        "length": 40,
+        "name": "local_qualifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "METHOD_CODE",
+        "length": 30,
+        "name": "method_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "METHOD",
+        "length": 40,
+        "name": "method",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EQUIPMENT_CODE",
+        "length": 3,
+        "name": "equipment_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EQUIPMENT",
+        "length": 80,
+        "name": "equipment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FUND_CODES",
+        "length": 1000,
+        "name": "fund_codes",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COST_PER_UNIT",
+        "name": "cost_per_unit",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "WORKFORCE_CODE",
+        "length": 100,
+        "name": "workforce_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FISCAL_YEAR_PLANNED",
+        "name": "fiscal_year_planned",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "FISCAL_YEAR_AWARDED",
+        "name": "fiscal_year_awarded",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "DATE_AWARDED",
+        "length": 8,
+        "name": "date_awarded",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FISCAL_YEAR_COMPLETED",
+        "name": "fiscal_year_completed",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "DATE_COMPLETED",
+        "length": 8,
+        "name": "date_completed",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "NBR_UNITS_PLANNED",
+        "name": "nbr_units_planned",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "NBR_UNITS_ACCOMPLISHED",
+        "name": "nbr_units_accomplished",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "EXCLUDE_ACCOMPLISHMENT",
+        "length": 1,
+        "name": "exclude_accomplishment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TREATMENT_NAME",
+        "length": 60,
+        "name": "treatment_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FUELS_KEYPOINT_AREA",
+        "length": 1,
+        "name": "fuels_keypoint_area",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISWUI",
+        "length": 1,
+        "name": "iswui",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIREREGIME",
+        "name": "fireregime",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CWPP",
+        "length": 60,
+        "name": "cwpp",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BIOMASS_UTILIZATION",
+        "length": 1,
+        "name": "biomass_utilization",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NFPORS_CATEGORY",
+        "length": 255,
+        "name": "nfpors_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NFPORS_TREATMENT",
+        "length": 255,
+        "name": "nfpors_treatment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PURPOSE_CODE",
+        "length": 4,
+        "name": "purpose_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SALE_NAME",
+        "length": 80,
+        "name": "sale_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SALE_NUMBER",
+        "length": 6,
+        "name": "sale_number",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SALE_CATEGORY",
+        "length": 1,
+        "name": "sale_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNIT_ID",
+        "length": 8,
+        "name": "unit_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PURCHASER_NAME",
+        "length": 60,
+        "name": "purchaser_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CONTRACT_PLANNED_TERM",
+        "length": 8,
+        "name": "contract_planned_term",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "AWARD_DATE",
+        "length": 8,
+        "name": "award_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "SALE_CLOSURE_DATE",
+        "length": 8,
+        "name": "sale_closure_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "BASE_YEAR",
+        "length": 1,
+        "name": "base_year",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "KV_NBR_UNITS_FUNDED",
+        "name": "kv_nbr_units_funded",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "PERCENT_FUNDED",
+        "length": 1,
+        "name": "percent_funded",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CAUSAL_AGENT",
+        "length": 20,
+        "name": "causal_agent",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REFORESTATION_STATUS",
+        "length": 1,
+        "name": "reforestation_status",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EXAM_NBR",
+        "name": "exam_nbr",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "NEEDS_ADJUSTMENT",
+        "length": 1,
+        "name": "needs_adjustment",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EVENT_NAME",
+        "length": 80,
+        "name": "event_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EVENT_YEAR",
+        "name": "event_year",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "IMPLEMENTATION_PROJECT",
+        "length": 2000,
+        "name": "implementation_project",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMPL_PROJECT_NBR",
+        "length": 2000,
+        "name": "impl_project_nbr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMPL_PROJECT_TYPE",
+        "length": 2000,
+        "name": "impl_project_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NEPA_DOC_NBR",
+        "length": 10,
+        "name": "nepa_doc_nbr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NEPA_DOC_TYPE",
+        "length": 10,
+        "name": "nepa_doc_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NEPA_PROJECT_NAME",
+        "length": 80,
+        "name": "nepa_project_name",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 1,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Activity FACTS Common Attribute 2021-2022",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestWkid": 4269,
+      "mTolerance": 2,
+      "mUnits": 10000,
+      "wkid": 4269,
+      "xyTolerance": 8.983152841195213e-09,
+      "xyUnits": 11258999068426.24,
+      "zTolerance": 2,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 17185,
+  "status": 200
+}

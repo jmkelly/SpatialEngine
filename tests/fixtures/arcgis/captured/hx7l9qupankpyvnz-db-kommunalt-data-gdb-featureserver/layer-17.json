@@ -1,0 +1,61 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "prdate",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "prdate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "location",
+        "defaultValue": null,
+        "editable": true,
+        "name": "location",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "positive",
+        "defaultValue": null,
+        "editable": true,
+        "name": "positive",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 17,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "suspected_pos_pr_mun_pr_day",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6141,
+  "status": 200
+}

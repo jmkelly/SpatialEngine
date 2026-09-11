@@ -1,0 +1,186 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "NHC, Esri",
+    "description": "Observed Position",
+    "displayField": "STORMNAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180,
+      "xmin": -180,
+      "ymax": 90,
+      "ymin": -90
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMNAME",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Date-Time Group",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "DTG",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Event Year",
+        "defaultValue": null,
+        "editable": true,
+        "name": "YEAR",
+        "nullable": false,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Event Month",
+        "defaultValue": null,
+        "editable": true,
+        "length": 4,
+        "name": "MONTH",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Event Day",
+        "defaultValue": null,
+        "editable": true,
+        "name": "DAY",
+        "nullable": false,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Event Hour and Minute",
+        "defaultValue": null,
+        "editable": true,
+        "length": 4,
+        "name": "HHMM",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TAU Value",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TAU",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mean Sea Level Pressure",
+        "defaultValue": null,
+        "editable": true,
+        "name": "MSLP",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "BASIN",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "editable": true,
+        "name": "STORMNUM",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "STORMTYPE",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Intensity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "INTENSITY",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Saffir-Simpson Scale",
+        "defaultValue": null,
+        "editable": true,
+        "name": "SS",
+        "nullable": false,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Latitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LAT",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LON",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Storm ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 1,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Observed Position",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 13020,
+  "status": 200
+}

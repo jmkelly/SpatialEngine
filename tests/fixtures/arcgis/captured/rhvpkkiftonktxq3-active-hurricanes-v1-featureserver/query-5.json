@@ -1,0 +1,18 @@
+{
+  "body": {
+    "features": [],
+    "geometryProperties": {
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriDecimalDegrees"
+    },
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 222,
+  "status": 200
+}

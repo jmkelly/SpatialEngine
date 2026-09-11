@@ -1,0 +1,358 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "IncidentName",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": -67.86756218399995,
+      "xmin": -141.24669999999998,
+      "ymax": 65.02641000000006,
+      "ymin": 25.419166700000062
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "IncidentName",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Incident Type Category",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "IncidentTypeCategory",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Unique Fire Identifier",
+        "defaultValue": null,
+        "editable": true,
+        "length": 22,
+        "name": "UniqueFireIdentifier",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Daily Acres",
+        "defaultValue": null,
+        "editable": true,
+        "name": "DailyAcres",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Calculated Acres",
+        "defaultValue": null,
+        "editable": true,
+        "name": "CalculatedAcres",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Percent Contained",
+        "defaultValue": null,
+        "editable": true,
+        "name": "PercentContained",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "ICS209 Report Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ICS209ReportDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Fire Discovery Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "FireDiscoveryDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Discovery Acres",
+        "defaultValue": null,
+        "editable": true,
+        "name": "DiscoveryAcres",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Point of Orgin County",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "POOCounty",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Point of Orgin State",
+        "defaultValue": null,
+        "editable": true,
+        "length": 6,
+        "name": "POOState",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cause",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "FireCause",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cause General",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "FireCauseGeneral",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geographic Area Coordination Center",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "GACC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Total Incident Personnel",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TotalIncidentPersonnel",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Incident Mgmt Organization",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "IncidentManagementOrganization",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Mgmt Complexity",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "FireMgmtComplexity",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Residences Destroyed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "ResidencesDestroyed",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Other Structures Destroyed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "OtherStructuresDestroyed",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Injuries",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Injuries",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Fatalities",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Fatalities",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Predominant Fuel Group",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "PredominantFuelGroup",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Predominant Fuel Model",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "PredominantFuelModel",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Primary Fuel Model",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "PrimaryFuelModel",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Containment Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ContainmentDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Control Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ControlDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Final Acres",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FinalAcres",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Is Valid",
+        "defaultValue": null,
+        "editable": true,
+        "name": "IsValid",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Fire Out Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "FireOutDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Modified On Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ModifiedOnDateTime",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Incident Type Kind",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "IncidentTypeKind",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IRWIN ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 40,
+        "name": "IrwinID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Global ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 40,
+        "name": "GlobalID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Days Since Modified On Date",
+        "defaultValue": null,
+        "editable": true,
+        "name": "ModifiedOnAge",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Days Since Fire Discovery Date",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FireDiscoveryAge",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 16000,
+    "name": "Current_Incidents",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 40644,
+  "status": 200
+}

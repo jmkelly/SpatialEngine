@@ -1,0 +1,805 @@
+{
+  "body": {
+    "features": [
+      {
+        "attributes": {
+          "NAME": "United States",
+          "OBJECTID": 1,
+          "Shape__Area": 21426588189925.33,
+          "Shape__Length": 256127809.12539688,
+          "fipscode": "00000",
+          "v001_denominator": 915437195,
+          "v001_flag": 0,
+          "v001_numerator": 3854074,
+          "v001_race_aian": 11696.31292,
+          "v001_race_asian": 3159.885747,
+          "v001_race_black": 10532.53278,
+          "v001_race_hispanic": 4970.145401,
+          "v001_race_white": 6934.53016,
+          "v001_rawvalue": 6906.641094,
+          "v002_rawvalue": 16.51,
+          "v003_denominator": 195883847,
+          "v003_numerator": 24386874,
+          "v003_rawvalue": 12.45,
+          "v004_denominator": 327167434,
+          "v004_numerator": 248034,
+          "v004_other_data_1": 1319.042688,
+          "v004_rawvalue": 75.8125578,
+          "v005_race_aian": 5941,
+          "v005_race_asian": 2464,
+          "v005_race_black": 6551,
+          "v005_race_hispanic": 4111,
+          "v005_race_white": 4037,
+          "v005_rawvalue": 4236,
+          "v009_rawvalue": 16.62,
+          "v011_numerator": 72159365,
+          "v011_rawvalue": 29.7,
+          "v014_denominator": 72198032,
+          "v014_numerator": 1507629,
+          "v014_race_aian": 34.93402104,
+          "v014_race_asian": 5.200299454,
+          "v014_race_black": 30.50747344,
+          "v014_race_hispanic": 32.30510797,
+          "v014_race_white": 14.66730155,
+          "v014_rawvalue": 20.88185728,
+          "v015_denominator": 2260658363,
+          "v015_numerator": 124897,
+          "v015_race_aian": 9.85144891,
+          "v015_race_asian": 1.683399162,
+          "v015_race_black": 21.46199852,
+          "v015_race_hispanic": 5.040297799,
+          "v015_race_white": 2.607709387,
+          "v015_rawvalue": 5.524806492,
+          "v021_denominator": null,
+          "v021_numerator": null,
+          "v021_rawvalue": 85,
+          "v023_denominator": 163100055,
+          "v023_numerator": 5984808,
+          "v023_rawvalue": 3.67,
+          "v024_numerator": 12000470,
+          "v024_race_aian": 32.23,
+          "v024_race_asian": 11.18,
+          "v024_race_black": 33.23,
+          "v024_race_hispanic": 26.63,
+          "v024_race_white": 11.13,
+          "v024_rawvalue": 16.8,
+          "v036_rawvalue": 3.741935147,
+          "v037_denominator": 27213918,
+          "v037_flag": 0,
+          "v037_numerator": 2220524,
+          "v037_race_aian": 7.87,
+          "v037_race_asian": 8.39,
+          "v037_race_black": 13.53,
+          "v037_race_hispanic": 7.3,
+          "v037_race_white": 6.97,
+          "v037_rawvalue": 8.16,
+          "v039_denominator": 2260658363,
+          "v039_numerator": 256694,
+          "v039_race_aian": 25.06922002,
+          "v039_race_asian": 4.600899499,
+          "v039_race_black": 13.06435607,
+          "v039_race_hispanic": 9.622431833,
+          "v039_race_white": 11.91299109,
+          "v039_rawvalue": 11.3548338,
+          "v042_rawvalue": 4.062791864,
+          "v043_denominator": 320992284.5,
+          "v043_numerator": 1240522.5,
+          "v043_rawvalue": 386.4648965,
+          "v044_denominator": 25766,
+          "v044_numerator": 126609,
+          "v044_rawvalue": 4.913801133,
+          "v045_denominator": 325719178,
+          "v045_numerator": 1758668,
+          "v045_rawvalue": 539.9,
+          "v049_rawvalue": 19.17,
+          "v050_race_aian": 29,
+          "v050_race_asian": 34,
+          "v050_race_black": 39,
+          "v050_race_hispanic": 31,
+          "v050_race_white": 44,
+          "v050_rawvalue": 42,
+          "v051_rawvalue": 328239523,
+          "v052_numerator": 255200373,
+          "v052_rawvalue": 22.25,
+          "v053_numerator": 54058263,
+          "v053_rawvalue": 16.47,
+          "v054_numerator": 41147488,
+          "v054_rawvalue": 12.54,
+          "v055_numerator": 4188092,
+          "v055_rawvalue": 1.28,
+          "v056_numerator": 60572237,
+          "v056_rawvalue": 18.45,
+          "v057_numerator": 166582199,
+          "v057_rawvalue": 50.75,
+          "v058_numerator": null,
+          "v058_rawvalue": 19.27,
+          "v059_numerator": 13193113,
+          "v059_rawvalue": 4.33,
+          "v060_numerator": 25502979,
+          "v060_rawvalue": 10.5,
+          "v061_denominator": 274605948,
+          "v061_numerator": 1023832,
+          "v061_rawvalue": 372.8,
+          "v062_denominator": 328239523,
+          "v062_numerator": 857380,
+          "v062_other_data_1": 382.840191,
+          "v062_rawvalue": 261.2055953,
+          "v063_race_aian": 43825,
+          "v063_race_asian": 88204,
+          "v063_race_black": 41935,
+          "v063_race_hispanic": 51811,
+          "v063_race_white": 68785,
+          "v063_rawvalue": 65712,
+          "v065_denominator": 47383482,
+          "v065_numerator": 24757334,
+          "v065_rawvalue": 52.25,
+          "v067_denominator": 152735781,
+          "v067_numerator": 116584507,
+          "v067_race_aian": 72.42,
+          "v067_race_asian": 66.44,
+          "v067_race_black": 72.77,
+          "v067_race_hispanic": 71.26,
+          "v067_race_white": 79.43,
+          "v067_rawvalue": 76.33,
+          "v069_denominator": 86009246,
+          "v069_numerator": 56880796,
+          "v069_rawvalue": 66.13,
+          "v070_numerator": 55261407,
+          "v070_rawvalue": 22.7,
+          "v080_numerator": 806937,
+          "v080_rawvalue": 0.25,
+          "v081_numerator": 19504862,
+          "v081_rawvalue": 5.94,
+          "v082_denominator": 73191304,
+          "v082_numerator": 18673072,
+          "v082_rawvalue": 25.51,
+          "v083_denominator": 308739316,
+          "v083_numerator": 18219456,
+          "v083_rawvalue": 5.9,
+          "v085_denominator": 268046715,
+          "v085_numerator": 27954329,
+          "v085_rawvalue": 10.43,
+          "v088_denominator": 328239523,
+          "v088_numerator": 233699,
+          "v088_other_data_1": 1404.539699,
+          "v088_rawvalue": 71.19770278,
+          "v122_denominator": 75996420,
+          "v122_numerator": 3942743,
+          "v122_rawvalue": 5.19,
+          "v124_rawvalue": null,
+          "v125_rawvalue": 7.2,
+          "v126_numerator": 197309822,
+          "v126_rawvalue": 60.11,
+          "v127_denominator": 915437195,
+          "v127_numerator": 3854074,
+          "v127_race_aian": 490.1084173,
+          "v127_race_asian": 155.945735,
+          "v127_race_black": 495.6300037,
+          "v127_race_hispanic": 242.2102116,
+          "v127_race_white": 343.3238954,
+          "v127_rawvalue": 339.160101,
+          "v128_denominator": 293736155,
+          "v128_numerator": 144218,
+          "v128_race_aian": 74.91629268,
+          "v128_race_asian": 33.36910952,
+          "v128_race_black": 89.15325574,
+          "v128_race_hispanic": 40.86229534,
+          "v128_race_white": 42.17789715,
+          "v128_rawvalue": 49.09780344,
+          "v129_numerator": 157994,
+          "v129_race_aian": 7.259280043,
+          "v129_race_asian": 3.997917194,
+          "v129_race_black": 11.07060056,
+          "v129_race_hispanic": 4.65492533,
+          "v129_race_white": 4.797840314,
+          "v129_rawvalue": 5.764338123,
+          "v131_denominator": 328239523,
+          "v131_numerator": 348445,
+          "v131_other_data_1": 942.0124352,
+          "v131_rawvalue": 106.1557112,
+          "v132_denominator": 308745538,
+          "v132_numerator": 259867080,
+          "v132_rawvalue": 84.17,
+          "v133_rawvalue": 7.8,
+          "v134_denominator": 183419,
+          "v134_numerator": 49578,
+          "v134_rawvalue": 27.03,
+          "v135_denominator": 1625672468,
+          "v135_numerator": 1175662,
+          "v135_race_aian": 113.9926532,
+          "v135_race_asian": 25.60707467,
+          "v135_race_black": 77.28729161,
+          "v135_race_hispanic": 40.869126,
+          "v135_race_white": 84.04140738,
+          "v135_rawvalue": 72.31850346,
+          "v136_denominator": 118825910,
+          "v136_numerator": 20845775,
+          "v136_other_data_1": 14.4,
+          "v136_other_data_2": 3.35,
+          "v136_other_data_3": 1,
+          "v136_rawvalue": 17.54,
+          "v137_denominator": 152735781,
+          "v137_rawvalue": 36.6,
+          "v138_numerator": 208234,
+          "v138_race_aian": 26.44270821,
+          "v138_race_asian": 3.944023812,
+          "v138_race_black": 22.29745099,
+          "v138_race_hispanic": 11.03345863,
+          "v138_race_white": 25.494246,
+          "v138_rawvalue": 21.22397851,
+          "v139_numerator": 37227000,
+          "v139_rawvalue": 1150,
+          "v140_denominator": 327167434,
+          "v140_numerator": 303975,
+          "v140_rawvalue": 9.291114225,
+          "v141_rawvalue": 61.49367858,
+          "v142_rawvalue": 46.56722319,
+          "v143_rawvalue": 35.22,
+          "v144_rawvalue": 11.42,
+          "v145_rawvalue": 12.66,
+          "v147_race_aian": 77.14098519,
+          "v147_race_asian": 87.867643,
+          "v147_race_black": 75.54555655,
+          "v147_race_hispanic": 83.73051189,
+          "v147_race_white": 78.90451872,
+          "v147_rawvalue": 79.17308788,
+          "v148_numerator": 194100,
+          "v148_race_aian": 14.28756791,
+          "v148_race_asian": 2.931604381,
+          "v148_race_black": 23.12399134,
+          "v148_race_hispanic": 6.490289279,
+          "v148_race_white": 11.98093122,
+          "v148_rawvalue": 11.93967443,
+          "v149_denominator": 17025696,
+          "v149_numerator": 1124551,
+          "v149_rawvalue": 6.61,
+          "v153_denominator": 120756048,
+          "v153_numerator": 77274381,
+          "v153_rawvalue": 63.99,
+          "v154_denominator": 117012341,
+          "v154_numerator": 16893492,
+          "v154_rawvalue": 14.44,
+          "v155_race_aian": 40,
+          "v155_race_asian": 49,
+          "v155_race_black": 35,
+          "v155_race_hispanic": 36,
+          "v155_race_white": 50,
+          "v155_rawvalue": 48,
+          "v156_rawvalue": null,
+          "v158_denominator": null,
+          "v158_other_data_1": null,
+          "v158_other_data_2": null,
+          "v158_rawvalue": null,
+          "v159_rawvalue": 3.053420931,
+          "v160_rawvalue": 3.002971869,
+          "v161_denominator": 1625672468,
+          "v161_numerator": 231902,
+          "v161_other_data_1": 14.26498908,
+          "v161_race_aian": 21.57026707,
+          "v161_race_asian": 6.823620656,
+          "v161_race_black": 6.71228831,
+          "v161_race_hispanic": 6.890945705,
+          "v161_race_white": 17.45296494,
+          "v161_rawvalue": 13.77677793,
+          "v166_rawvalue": 0.826664922,
+          "v168_denominator": 220622076,
+          "v168_numerator": 194149815,
+          "v168_rawvalue": 0.880010824
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -17395584,
+                11523516
+              ],
+              [
+                -17395936,
+                11523564
+              ],
+              [
+                -17396272,
+                11524028
+              ],
+              [
+                -17396240,
+                11524296
+              ],
+              [
+                -17397632,
+                11525700
+              ],
+              [
+                -17399520,
+                11526024
+              ],
+              [
+                -17400416,
+                11525300
+              ],
+              [
+                -17400784,
+                11525768
+              ],
+              [
+                -17400560,
+                11526504
+              ],
+              [
+                -17399184,
+                11526944
+              ],
+              [
+                -17397200,
+                11526444
+              ],
+              [
+                -17396240,
+                11525572
+              ],
+              [
+                -17395344,
+                11523936
+              ],
+              [
+                -17395584,
+                11523516
+              ]
+            ],
+            [
+              [
+                -17383296,
+                11518420
+              ],
+              [
+                -17387840,
+                11520060
+              ],
+              [
+                -17387440,
+                11520592
+              ],
+              [
+                -17386432,
+                11520616
+              ],
+              [
+                -17383424,
+                11519460
+              ],
+              [
+                -17383136,
+                11518880
+              ],
+              [
+                -17383296,
+                11518420
+              ]
+            ],
+            [
+              [
+                -17379648,
+                11516724
+              ],
+              [
+                -17381040,
+                11517752
+              ],
+              [
+                -17382480,
+                11518180
+              ],
+              [
+                -17382208,
+                11518844
+              ],
+              [
+                -17381168,
+                11518588
+              ],
+              [
+                -17380064,
+                11518028
+              ],
+              [
+                -17379184,
+                11516996
+              ],
+              [
+                -17379248,
+                11516796
+              ],
+              [
+                -17379648,
+                11516724
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "NAME",
+        "defaultValue": null,
+        "length": 50,
+        "name": "NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "5-digit FIPS Code",
+        "defaultValue": null,
+        "length": 255,
+        "name": "fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Premature death",
+        "defaultValue": null,
+        "name": "v001_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of years of potential life lost for deaths under 75 over 3 years",
+        "defaultValue": null,
+        "name": "v001_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Aggregate population under age 75 over 3 years reporting for premature death",
+        "defaultValue": null,
+        "name": "v001_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death flag (0 = No Flag/1=Unreliable/2=Suppressed)",
+        "defaultValue": null,
+        "name": "v001_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "name": "v001_race_aian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "name": "v001_race_asian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death (Black)",
+        "defaultValue": null,
+        "name": "v001_race_black",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death (Hispanic)",
+        "defaultValue": null,
+        "name": "v001_race_hispanic",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death (White)",
+        "defaultValue": null,
+        "name": "v001_race_white",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Poor or fair health",
+        "defaultValue": null,
+        "name": "v002_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Poor physical health days",
+        "defaultValue": null,
+        "name": "v036_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Average number of poor mental health days",
+        "defaultValue": null,
+        "name": "v042_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight",
+        "defaultValue": null,
+        "name": "v037_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of low birthweight live births",
+        "defaultValue": null,
+        "name": "v037_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of live births",
+        "defaultValue": null,
+        "name": "v037_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Low birthweight unreliable indicator (Unreliable = Numerator < 20 or relative standard error > 20%)",
+        "defaultValue": null,
+        "name": "v037_flag",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Low birthweight (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "name": "v037_race_aian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "name": "v037_race_asian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Black)",
+        "defaultValue": null,
+        "name": "v037_race_black",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Hispanic)",
+        "defaultValue": null,
+        "name": "v037_race_hispanic",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (White)",
+        "defaultValue": null,
+        "name": "v037_race_white",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Adult smoking",
+        "defaultValue": null,
+        "name": "v009_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Adult obesity",
+        "defaultValue": null,
+        "name": "v011_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of respondents age 20 and older reporting a BMI 30+",
+        "defaultValue": null,
+        "name": "v011_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Food environment index",
+        "defaultValue": null,
+        "name": "v133_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% of adults age 20 and over reporting no leisure-time physical activity",
+        "defaultValue": null,
+        "name": "v070_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Adults age 20 and over reporting no leisure-time physical activity",
+        "defaultValue": null,
+        "name": "v070_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% of population with adequate access to locations for physical activity",
+        "defaultValue": null,
+        "name": "v132_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Total 2010 household population living in census blocks with adequate access to at least one location for physical activity",
+        "defaultValue": null,
+        "name": "v132_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident county population",
+        "defaultValue": null,
+        "name": "v132_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Excessive drinking",
+        "defaultValue": null,
+        "name": "v049_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% of driving deaths with alcohol involvement",
+        "defaultValue": null,
+        "name": "v134_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Total number of motor vehicle crash deaths",
+        "defaultValue": null,
+        "name": "v134_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of alcohol-impaired motor vehicle crash deaths",
+        "defaultValue": null,
+        "name": "v134_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Sexually transmitted infections per 100,000",
+        "defaultValue": null,
+        "name": "v045_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of sexually transmitted infections",
+        "defaultValue": null,
+        "name": "v045_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total population reporting for sexually transmitted infections",
+        "defaultValue": null,
+        "name": "v045_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Teen births per 1,000",
+        "defaultValue": null,
+        "name": "v014_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Females age 15-19 who had a birth",
+        "defaultValue": null,
+        "name": "v014_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total females age 15-19",
+        "defaultValue": null,
+        "name": "v014_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Teen births per 1,000 (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "name": "v014_race_aian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Teen births per 1,000 (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "name": "v014_race_asian",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Teen births per 1,000 (Black)",
+        "defaultValue": null,
+        "name": "v014_race_black",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Teen births per 1,000 (Hispanic)",
+        "defaultValue": null,
+        "name": "v014_race_hispanic",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Teen births per 1,000 (White)",
+        "defaultValue": null,
+        "name": "v014_race_white",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% of population under age 65 without health insurance",
+        "defaultValue": null,
+        "name": "v085_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of people currently uninsured in the county under the age of 65",
+        "defaultValue": null,
+        "name": "v085_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Number of people in the county under age 65",
+        "defaultValue": null,
+        "name": "v085_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Primary care physicians per 100,000",
+        "defaultValue": null,
+        "name": "v004_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of primary care physicians",
+        "defaultValue": null,
+        "name": "v004_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total population reporting for primary care physicians",
+        "defaultValue": null,
+        "name": "v004_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Ratio of population to primary care physicians",
+        "defaultValue": null,
+        "name": "v004_other_data_1",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Dentists per 100,000",
+        "defaultValue": null,
+        "name": "v088_rawvalue",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of dentists",
+        "defaultValue": null,
+        "name": "v088_numerator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total population from Area Health Resource File/National Provider Identification file",
+        "defaultValue": null,
+        "name": "v088_denominator",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Ratio of population to dentists.",
+        "defaultValue": null,
+        "name": "v088_other_data_1",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mental health providers per 100,000",
+        "defaultValue": null,
+        "name": "v062_rawvalue",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 9918396,
+  "status": 200
+}

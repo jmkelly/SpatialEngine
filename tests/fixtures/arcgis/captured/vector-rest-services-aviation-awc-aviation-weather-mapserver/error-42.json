@@ -1,0 +1,12 @@
+{
+  "body": {
+    "error": {
+      "code": 400,
+      "details": [],
+      "message": "Failed to execute query."
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 72,
+  "status": 200
+}

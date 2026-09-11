@@ -1,0 +1,14 @@
+{
+  "body": {
+    "error": {
+      "code": 400,
+      "details": [
+        "Unable to perform query operation."
+      ],
+      "message": "Unable to complete operation."
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 113,
+  "status": 200
+}

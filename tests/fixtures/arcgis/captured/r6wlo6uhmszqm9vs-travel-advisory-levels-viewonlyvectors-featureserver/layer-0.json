@@ -1,0 +1,111 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "Travel_Advisory_Levels_1",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.0672,
+      "xmin": -20037507.0672,
+      "ymax": 18460513.247100003,
+      "ymin": -30240971.9584
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Country or State name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Travel Advisory Level",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LEVEL_",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Advisory URL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 150,
+        "name": "URL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ADVDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Travel Advisories",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 49406,
+  "status": 200
+}

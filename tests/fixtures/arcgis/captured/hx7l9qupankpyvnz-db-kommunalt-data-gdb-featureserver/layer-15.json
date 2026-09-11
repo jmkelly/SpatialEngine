@@ -1,0 +1,78 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "uge",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "uge",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "c_kom",
+        "defaultValue": null,
+        "editable": true,
+        "name": "c_kom",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Kommune",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "test",
+        "defaultValue": null,
+        "editable": true,
+        "name": "test",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "test_method",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "test_method",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 15,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "pcr_and_antigen_test",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6455,
+  "status": 200
+}
