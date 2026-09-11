@@ -13,8 +13,10 @@ implementations and the host — never the reverse.
   core geometry values.
 - `ICrsDirectory` + `ICoordinateTransforms` — CRS description and
   coordinate transformation (x-first convention).
-- `BoundingBox`, `IDataCatalogue`, `IFeatureStore`, `ITransactionStore` —
+- `BoundingBox`, `IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`,
+  `ITransactionStore` —
   dataset catalogue, feature reads/writes (canonical `FeatureBatch` pages),
+  additive read-by-identity lookup for edit resolution (ADR-0038), and
   store-owned string transaction handles.
 - `IDemoJobs` — the demo cancellable sleep with progress.
 - `Providers/DatasetSummary`, `Providers/DatasetDescription` — catalogue DTOs.

@@ -24,6 +24,42 @@ internal static class PostgisQueries
             ? Select(dataset, schema)
             : $"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE {predicate}";
 
+    /// <summary>
+    /// Reads features by identity (ADR-0038): one OR-group per requested
+    /// identity tuple, one bound parameter per identity value, in input order.
+    /// A single tuple carries <c>LIMIT 1</c> (the primary-key predicate is
+    /// already unique); a batch has no limit because each tuple matches at
+    /// most one row. Both the identity columns and the dataset identifier are
+    /// discovered identifiers, never client text.
+    /// </summary>
+    public static string SelectByIdentity(
+        PostgisDatasetName dataset, IFeatureSchema schema, IReadOnlyList<string> identityColumns, int count)
+    {
+        var builder = new StringBuilder($"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE ");
+        for (var feature = 0; feature < count; feature++)
+        {
+            if (feature > 0)
+            {
+                builder.Append(" OR ");
+            }
+
+            builder.Append('(');
+            for (var column = 0; column < identityColumns.Count; column++)
+            {
+                if (column > 0)
+                {
+                    builder.Append(" AND ");
+                }
+
+                builder.Append('"').Append(identityColumns[column]).Append("\" = @p").Append((feature * identityColumns.Count) + column);
+            }
+
+            builder.Append(')');
+        }
+
+        return count == 1 ? builder.Append(" LIMIT 1").ToString() : builder.ToString();
+    }
+
     /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry via EWKB with the column SRID enforced).</summary>
     public static string Insert(PostgisDatasetName dataset, IFeatureSchema batchSchema, int srid)
     {

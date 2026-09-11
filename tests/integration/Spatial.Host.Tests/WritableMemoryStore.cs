@@ -8,14 +8,15 @@ namespace Spatial.Host.Tests;
 
 /// <summary>
 /// A writable in-memory store double for the GeoServices editing tests
-/// (ADR-0037). It models a real spatial table: one dataset with a single
-/// integer identity column (<c>id</c>), a string, a nullable integer and a
-/// geometry, served identically to <c>PostgisStore</c> so the facade's
+/// (ADR-0037, ADR-0038). It models a real spatial table: one dataset with a
+/// single integer identity column (<c>id</c>), a string, a nullable integer
+/// and a geometry, served identically to <c>PostgisStore</c> so the facade's
 /// object-id and edit paths are exercised over HTTP without Docker. It
-/// implements the four store contracts (catalogue, feature read/write,
-/// editing, transactions) so the facade advertises and accepts edits.
+/// implements the store contracts (catalogue, feature read/write, editing,
+/// transactions and read-by-identity) so the facade advertises and accepts
+/// edits and resolves them through the lookup rather than a scan.
 /// </summary>
-public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, ITransactionStore
+public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore
 {
     private const string DatasetId = "memory.places";
     private const string IdColumn = "id";
@@ -24,6 +25,9 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, ITransa
     private readonly Dictionary<string, List<Feature>> _snapshots = new(StringComparer.Ordinal);
     private List<Feature> _features;
     private long _nextId;
+
+    /// <summary>How many read-by-identity calls the store has served (used to prove the facade does not scan, ADR-0038).</summary>
+    public int Lookups { get; private set; }
 
     public WritableMemoryStore()
     {
@@ -86,6 +90,18 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, ITransa
         {
             _features.AddRange(batch.Features);
             return Task.FromResult(batch.Count);
+        }
+    }
+
+    public Task<IReadOnlyList<Feature>> GetAsync(string dataset, IReadOnlyList<FeatureId> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        Lookups++;
+        lock (_gate)
+        {
+            var wanted = new HashSet<FeatureId>(ids);
+            IReadOnlyList<Feature> found = _features.Where(feature => wanted.Contains(feature.Id)).ToArray();
+            return Task.FromResult(found);
         }
     }
 
@@ -241,4 +257,39 @@ public sealed class WritableMemoryEditor : IFeatureEditStore
 
     public Task<IReadOnlyList<FeatureEditOutcome>> DeleteAsync(string dataset, IReadOnlyList<FeatureId> featureIds, string? transaction = null, CancellationToken cancellationToken = default) =>
         _store.DeleteAsync(dataset, featureIds, transaction, cancellationToken);
+}
+
+/// <summary>
+/// Wraps a writable memory store as a plain <see cref="IFeatureStore"/> and
+/// <see cref="ITransactionStore"/> <em>without</em> declaring
+/// <see cref="IFeatureLookup"/>, so the GeoServices facade is forced onto its
+/// scan fallback for update/delete (ADR-0038).
+/// </summary>
+public sealed class ScanOnlyMemoryStore : IFeatureStore, ITransactionStore
+{
+    private readonly WritableMemoryStore _store;
+
+    public ScanOnlyMemoryStore(WritableMemoryStore store)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        _store = store;
+    }
+
+    public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
+        _store.ScanAsync(dataset, cancellationToken);
+
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        _store.QueryAsync(dataset, bbox, filter, cancellationToken);
+
+    public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
+        _store.WriteAsync(dataset, batch, transaction, cancellationToken);
+
+    public Task<string> BeginAsync(CancellationToken cancellationToken = default) =>
+        _store.BeginAsync(cancellationToken);
+
+    public Task<bool> CommitAsync(string transaction, CancellationToken cancellationToken = default) =>
+        _store.CommitAsync(transaction, cancellationToken);
+
+    public Task<bool> RollbackAsync(string transaction, CancellationToken cancellationToken = default) =>
+        _store.RollbackAsync(transaction, cancellationToken);
 }

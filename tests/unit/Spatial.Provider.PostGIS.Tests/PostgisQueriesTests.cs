@@ -122,4 +122,28 @@ public sealed class PostgisQueriesTests
             "DELETE FROM \"public\".\"places\" WHERE \"tenant\" = @p0 AND \"id\" = @p1",
             PostgisQueries.Delete(dataset, ["tenant", "id"]));
     }
+
+    [Fact]
+    public void Select_by_identity_targets_the_identity_column_and_limits_a_single_lookup()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" WHERE (\"id\" = @p0) LIMIT 1",
+            PostgisQueries.SelectByIdentity(dataset, Schema, ["id"], 1));
+    }
+
+    [Fact]
+    public void Select_by_identity_batches_or_groups_the_identity_tuple_in_input_order()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        var sql = PostgisQueries.SelectByIdentity(dataset, Schema, ["tenant", "id"], 2);
+
+        Assert.Equal(
+            "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" "
+            + "WHERE (\"tenant\" = @p0 AND \"id\" = @p1) OR (\"tenant\" = @p2 AND \"id\" = @p3)",
+            sql);
+        Assert.DoesNotContain("LIMIT", sql);
+    }
 }

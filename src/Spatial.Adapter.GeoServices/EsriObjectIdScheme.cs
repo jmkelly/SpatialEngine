@@ -55,6 +55,16 @@ internal sealed record EsriObjectIdScheme(bool IsIdentity, int FieldIndex)
         return true;
     }
 
+    /// <summary>
+    /// Builds the store <see cref="FeatureId"/> an integer <c>OBJECTID</c>
+    /// refers to, the inverse of <see cref="ResolveAssigned"/> (ADR-0038).
+    /// Only called for identity-backed layers (editing is gated on
+    /// <see cref="SupportsEditing"/>), where the engine stores a single
+    /// integer identity column as its decimal string.
+    /// </summary>
+    public static FeatureId ToFeatureId(long objectId) =>
+        new(objectId.ToString(CultureInfo.InvariantCulture));
+
     /// <summary>Parses a store-assigned identity back to a numeric object id.</summary>
     public long ResolveAssigned(FeatureId id)
     {

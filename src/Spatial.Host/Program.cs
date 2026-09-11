@@ -56,6 +56,7 @@ builder.Services.AddSingleton<PostgisEditStore>();
 builder.Services.AddKeyedSingleton<IDataCatalogue, PostgisStore>("postgis");
 builder.Services.AddKeyedSingleton<IFeatureStore, PostgisStore>("postgis");
 builder.Services.AddKeyedSingleton<IFeatureEditStore>("postgis", (services, _) => services.GetRequiredService<PostgisEditStore>());
+builder.Services.AddKeyedSingleton<IFeatureLookup>("postgis", (services, _) => services.GetRequiredService<PostgisStore>());
 builder.Services.AddKeyedSingleton<ITransactionStore, PostgisStore>("postgis");
 
 // The ArcGIS REST consuming provider (ADR-0035): every configured remote

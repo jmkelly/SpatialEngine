@@ -50,7 +50,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 - Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
   (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureEditStore`, `ITransactionStore`, `IDemoJobs`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDemoJobs`)
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
@@ -61,6 +61,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive capability, implemented by PostGIS only (ADR-0037) |
+| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity capability, implemented by PostGIS only (ADR-0038) |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
@@ -79,7 +80,10 @@ CRS); schema discovery via `geometry_columns` + `information_schema` +
 run with the caller's token (DB-command cancellation). Editing (ADR-0037)
 adds `UPDATE`/`DELETE`/`INSERT … RETURNING` built from discovered identities
 and back to the per-feature `FeatureEditOutcome`; it is available only when
-the table has a primary key.
+the table has a primary key. Read-by-identity (ADR-0038) adds a targeted
+`SELECT … WHERE <identity> = @p…` (one bound parameter per identity value,
+`LIMIT 1` for a single lookup) so GeoServices edit merges no longer scan the
+dataset; a table without a primary key returns an empty result.
 
 **Demo specifics:** read-only procedural datasets (110-point grid + 8
 cities, EPSG:4326); bbox queries only (attribute filters rejected);

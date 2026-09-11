@@ -69,9 +69,11 @@ attachment model).
 - `Spatial.Core` and the existing `IFeatureStore` are unchanged; adding the
   capability touches the SDK, the adapter, the interop codec, `PostgisStore`
   and the host registration.
-- Update is read-modify-write, so a partial update scans the dataset to
-  merge unchanged fields. A store-level read-by-id is a future optimisation,
-  not a contract change.
+- Update is read-modify-write, so a partial update merges unchanged fields
+  from the existing feature. ADR-0038 now delivers the store-level
+  read-by-id optimisation (`IFeatureLookup`), so the facade resolves edits
+  through one identity-targeted read instead of scanning the whole dataset;
+  stores without the capability keep the scan fallback.
 - Adds to a serial-identity table require the client to supply the identity
   (the engine `Feature` model has no "unassigned" state). A future
   `IFeatureEditStore` revision may add an explicit "omit identity on insert"
@@ -84,7 +86,8 @@ attachment model).
 
 ## References
 
-- ADR-0035 (GeoServices boundary adapter), ADR-0036 (granular geometry verbs)
+- ADR-0035 (GeoServices boundary adapter), ADR-0036 (granular geometry verbs),
+  ADR-0038 (read-by-identity store capability)
 - `architecture/geoservices-implementation-plan.md` §5 (S3)
 - `architecture/references/geoservices-compatibility.md`
 - ArcGIS REST API (online, checked 2026-09-11):

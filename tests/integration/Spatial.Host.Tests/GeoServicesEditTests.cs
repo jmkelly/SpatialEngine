@@ -120,6 +120,44 @@ public sealed class GeoServicesEditTests
     }
 
     [Fact]
+    public async Task Update_resolves_features_through_the_read_by_identity_capability()
+    {
+        using var factory = new EditableFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            $"{Root}/FeatureServer/0/updateFeatures",
+            new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("features", """[{"attributes":{"OBJECTID":2,"population":9999999}}]"""),
+                new KeyValuePair<string, string>("f", "json"),
+            ]));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(factory.Store.Lookups > 0);
+    }
+
+    [Fact]
+    public async Task Update_falls_back_to_a_scan_when_the_store_has_no_lookup()
+    {
+        using var factory = new EditableFactory(scanFallback: true);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(
+            $"{Root}/FeatureServer/0/updateFeatures",
+            new FormUrlEncodedContent(
+            [
+                new KeyValuePair<string, string>("features", """[{"attributes":{"OBJECTID":2,"population":9999999}}]"""),
+                new KeyValuePair<string, string>("f", "json"),
+            ]));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(0, factory.Store.Lookups);
+        var query = await client.GetStringAsync($"{Root}/FeatureServer/0/query?where=" + Uri.EscapeDataString("name = 'Paris'") + "&f=json");
+        Assert.Contains("9999999", query);
+    }
+
+    [Fact]
     public async Task Rollback_on_failure_undoes_the_whole_batch()
     {
         using var context = new EditableContext();
@@ -222,6 +260,12 @@ public sealed class GeoServicesEditTests
     public sealed class EditableFactory : WebApplicationFactory<Program>
     {
         private readonly WritableMemoryStore _store = new();
+        private readonly bool _scanFallback;
+
+        public EditableFactory(bool scanFallback = false) => _scanFallback = scanFallback;
+
+        /// <summary>The backing store, so a test can prove the lookup path was exercised (ADR-0038).</summary>
+        public WritableMemoryStore Store => _store;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -235,7 +279,7 @@ public sealed class GeoServicesEditTests
             builder.ConfigureServices(services =>
             {
                 services.AddKeyedSingleton<IDataCatalogue>("editable", _store);
-                services.AddKeyedSingleton<IFeatureStore>("editable", _store);
+                services.AddKeyedSingleton<IFeatureStore>("editable", _scanFallback ? (IFeatureStore)new ScanOnlyMemoryStore(_store) : _store);
                 services.AddKeyedSingleton<IFeatureEditStore>("editable", new WritableMemoryEditor(_store));
                 services.AddKeyedSingleton<ITransactionStore>("editable", _store);
             });
