@@ -14,6 +14,7 @@ internal sealed record EsriFeatureQuery(
     IGeometry? Geometry,
     string SpatialRel,
     IReadOnlyList<string>? OutFields,
+    IReadOnlyList<EsriOrderByField>? OrderByFields,
     bool ReturnGeometry,
     CoordinateReference? OutSr,
     bool ReturnIdsOnly,
@@ -37,6 +38,7 @@ internal sealed record EsriFeatureQuery(
             ParseGeometry(parameters.Get("geometry"), fallback),
             ParseSpatialRel(parameters.Get("spatialRel")),
             ParseOutFields(parameters.Get("outFields")),
+            ParseOrderByFields(parameters.Get("orderByFields")),
             parameters.GetBool("returnGeometry", true),
             EsriValueParser.ParseSpatialReference(parameters.Get("outSR")),
             parameters.GetBool("returnIdsOnly", false),
@@ -98,6 +100,49 @@ internal sealed record EsriFeatureQuery(
         return value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
     }
 
+    private static EsriOrderByField[]? ParseOrderByFields(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var fields = value
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(ParseOrderByField)
+            .ToArray();
+
+        if (fields.Length == 0)
+        {
+            throw EsriInteropException.Invalid("'orderByFields' must name at least one field.");
+        }
+
+        return fields;
+    }
+
+    private static EsriOrderByField ParseOrderByField(string entry)
+    {
+        var parts = entry.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length is 0 or > 2)
+        {
+            throw EsriInteropException.Invalid(
+                $"'orderByFields' entry '{entry}' is not a field name optionally followed by ASC or DESC.");
+        }
+
+        if (parts.Length == 1)
+        {
+            return new EsriOrderByField(parts[0], false);
+        }
+
+        return parts[1].ToUpperInvariant() switch
+        {
+            "ASC" => new EsriOrderByField(parts[0], false),
+            "DESC" => new EsriOrderByField(parts[0], true),
+            _ => throw EsriInteropException.Invalid(
+                $"'orderByFields' entry '{entry}' has direction '{parts[1]}'; use ASC or DESC."),
+        };
+    }
+
     private static int? ParseNonNegativeInt(string? value, string name)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -131,3 +176,9 @@ internal sealed record EsriFeatureQuery(
         }
     }
 }
+
+/// <summary>
+/// One <c>orderByFields</c> entry: the field name (validated against the
+/// dataset schema by the service) and its sort direction.
+/// </summary>
+internal sealed record EsriOrderByField(string Name, bool Descending);

@@ -83,6 +83,15 @@ future-proof:
 | Geometry | point/polyline/polygon/multipoint/envelope | `hasZ`/`hasM` flags on geometry objects |
 | Edits | `addFeatures`/`updateFeatures`/`deleteFeatures`/`applyEdits` | `rollbackOnFailure`, `useGlobalIds`, `returnEditResults` variants |
 
+Implemented 10.x delta: `orderByFields` is now supported. It is a
+comma-separated list of `fieldName [ASC|DESC]` entries (direction is
+case-insensitive and defaults to ASC), validated against the dataset schema
+in the serving service. The ordering is applied in memory to the matched
+features **before** `resultOffset`/`resultRecordCount`, so it composes with
+pagination and never becomes SQL. Ordering is stable; nulls sort last
+ascending (first descending); ordering by a geometry field, by an unknown
+field, or with bad syntax is an `invalid.arguments` failure (HTTP 400).
+
 The facade must reject unknown parameters explicitly (or ignore them with a
 documented note) rather than silently mis-handling them.
 
