@@ -19,7 +19,6 @@
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Runtime\Spatial.Runtime.csproj" />
   </ItemGroup>
 
 </Project>

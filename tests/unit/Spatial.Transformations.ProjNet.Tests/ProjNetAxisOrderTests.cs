@@ -1,5 +1,5 @@
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk;
 using Spatial.PluginSdk.Transformations;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 
@@ -66,8 +66,7 @@ public sealed class ProjNetAxisOrderTests
     [Fact]
     public async Task Describe_reports_the_geographic_axes_as_lon_then_lat()
     {
-        var result = await DescribeAsync(TransformationArguments.Crs, "EPSG:4326");
-        var description = Assert.IsType<CrsDescription>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var description = await DescribeAsync("crs", "EPSG:4326");
 
         Assert.Equal(2, description.Axes.Count);
         Assert.Equal("Lon", description.Axes[0].Name);
@@ -79,8 +78,7 @@ public sealed class ProjNetAxisOrderTests
     [Fact]
     public async Task Describe_reports_the_projected_axes_as_easting_then_northing()
     {
-        var result = await DescribeAsync(TransformationArguments.Crs, "EPSG:32632");
-        var description = Assert.IsType<CrsDescription>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var description = await DescribeAsync("crs", "EPSG:32632");
 
         Assert.Equal("Easting", description.Axes[0].Name);
         Assert.Equal(AxisOrientation.East, description.Axes[0].Orientation);
@@ -90,11 +88,11 @@ public sealed class ProjNetAxisOrderTests
 
     private static async Task<(double X, double Y)> Transform(IGeometry geometry, string source, string target)
     {
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Source, source,
-            TransformationArguments.Target, target);
-        var point = Assert.IsType<Point>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var transformed = await TransformAsync(
+            "geometry", geometry,
+            "source", source,
+            "target", target);
+        var point = Assert.IsType<Point>(transformed);
         return (point.X!.Value, point.Y!.Value);
     }
 
