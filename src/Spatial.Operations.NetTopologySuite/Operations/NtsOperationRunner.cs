@@ -218,29 +218,43 @@ internal static class NtsOperationRunner
     {
         value = 0;
         error = null;
-        if (invocation.Arguments.TryGetValue(name, out var raw) && raw is not null)
+        if (!invocation.Arguments.TryGetValue(name, out var raw) || raw is null)
         {
-            switch (raw)
-            {
-                case double number:
-                    value = number;
-                    return true;
-                case float number:
-                    value = number;
-                    return true;
-                case int number:
-                    value = number;
-                    return true;
-                case long number:
-                    value = number;
-                    return true;
-            }
+            error = CapabilityError.InvalidArguments(
+                $"{invocation.Capability} requires '{name}' to be a number, got nothing.");
+            return false;
+        }
+
+        if (TryConvertToDouble(raw, out value))
+        {
+            return true;
         }
 
         error = CapabilityError.InvalidArguments(
-            $"{invocation.Capability} requires '{name}' to be a number, got "
-            + $"{(raw is null ? "nothing" : $"'{raw.GetType().Name}'")}.");
+            $"{invocation.Capability} requires '{name}' to be a number, got '{raw.GetType().Name}'.");
         return false;
+    }
+
+    private static bool TryConvertToDouble(object raw, out double value)
+    {
+        switch (raw)
+        {
+            case double number:
+                value = number;
+                return true;
+            case float number:
+                value = number;
+                return true;
+            case int number:
+                value = number;
+                return true;
+            case long number:
+                value = number;
+                return true;
+            default:
+                value = 0;
+                return false;
+        }
     }
 
     /// <summary>

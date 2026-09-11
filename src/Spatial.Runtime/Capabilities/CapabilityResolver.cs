@@ -38,35 +38,50 @@ internal sealed class CapabilityResolver
 
         if (options.ExplicitProvider is { } explicitId)
         {
-            return MatchOrNull(candidates, explicitId) is { } explicitMatch
-                ? ToResolved(explicitMatch, ResolutionStep.Explicit)
-                : null;
+            return ResolveOrNull(candidates, explicitId, ResolutionStep.Explicit);
         }
 
-        if (LocalProvider(options) is { } localId && MatchOrNull(candidates, localId) is { } localMatch)
-        {
-            return ToResolved(localMatch, ResolutionStep.ResourceLocal);
-        }
-
-        if (_active.PreferredFor(capability) is { } active
-            && MatchOrNull(candidates, active) is { } activeMatch)
-        {
-            return ToResolved(activeMatch, ResolutionStep.ActivePreferred);
-        }
-
-        if (ResolvePreference(
-                candidates,
-                _configuration.PreferredProviderFor(capability),
-                ResolutionStep.ConfiguredPreferred) is { } configured)
-        {
-            return configured;
-        }
-
-        return candidates.Count == 0 ? null : ToResolved(candidates[0], ResolutionStep.FirstHealthy);
+        return TryLocal(candidates, options)
+            ?? TryActivePreferred(candidates, capability)
+            ?? TryConfiguredPreferred(candidates, capability)
+            ?? TryFirstHealthy(candidates);
     }
 
-    private static ResolvedProvider? ResolvePreference(List<Candidate> candidates, ProviderId? preferred, ResolutionStep step) =>
-        preferred is { } id && MatchOrNull(candidates, id) is { } match ? ToResolved(match, step) : null;
+    private static ResolvedProvider? ResolveOrNull(List<Candidate> candidates, ProviderId id, ResolutionStep step) =>
+        MatchOrNull(candidates, id) is { } match ? ToResolved(match, step) : null;
+
+    private static ResolvedProvider? TryLocal(List<Candidate> candidates, InvocationOptions options)
+    {
+        if (LocalProvider(options) is not { } localId)
+        {
+            return null;
+        }
+
+        return ResolveOrNull(candidates, localId, ResolutionStep.ResourceLocal);
+    }
+
+    private ResolvedProvider? TryActivePreferred(List<Candidate> candidates, CapabilityId capability)
+    {
+        if (_active.PreferredFor(capability) is not { } active)
+        {
+            return null;
+        }
+
+        return ResolveOrNull(candidates, active, ResolutionStep.ActivePreferred);
+    }
+
+    private ResolvedProvider? TryConfiguredPreferred(List<Candidate> candidates, CapabilityId capability)
+    {
+        if (_configuration.PreferredProviderFor(capability) is not { } configured)
+        {
+            return null;
+        }
+
+        return ResolveOrNull(candidates, configured, ResolutionStep.ConfiguredPreferred);
+    }
+
+    private static ResolvedProvider? TryFirstHealthy(List<Candidate> candidates) =>
+        candidates.Count == 0 ? null : ToResolved(candidates[0], ResolutionStep.FirstHealthy);
 
     /// <summary>The actionable error for a failed resolution, naming the reason.</summary>
     public CapabilityError DescribeUnavailable(CapabilityId capability, InvocationOptions options)

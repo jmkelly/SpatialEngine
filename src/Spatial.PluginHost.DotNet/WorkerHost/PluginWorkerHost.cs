@@ -271,23 +271,7 @@ public sealed class PluginWorkerHost : IAsyncDisposable
             return false;
         }
 
-        if (!CapabilityId.TryParse(obj["capability"]?.GetValue<string>(), out var capability))
-        {
-            error = $"the invoke payload for {invokeId} must carry a valid 'capability'";
-            return false;
-        }
-
-        if (!TryReadArguments(obj["arguments"] as JsonObject, out var arguments, out error))
-        {
-            return false;
-        }
-
-        if (!TryReadPermissions(obj["permissions"] as JsonArray, out var permissions, out error))
-        {
-            return false;
-        }
-
-        if (!TryReadDeadline(obj["deadline"], out var deadline, out error))
+        if (!TryReadInvocationBody(obj, invokeId, out var capability, out var arguments, out var permissions, out var deadline, out error))
         {
             return false;
         }
@@ -301,6 +285,45 @@ public sealed class PluginWorkerHost : IAsyncDisposable
             progress,
             CancellationToken.None,
             _facilities);
+        return true;
+    }
+
+    private static bool TryReadInvocationBody(
+        JsonObject obj,
+        string invokeId,
+        out CapabilityId capability,
+        out IReadOnlyDictionary<string, object?> arguments,
+        out IReadOnlySet<Permission> permissions,
+        out DateTimeOffset? deadline,
+        out string? error)
+    {
+        capability = default!;
+        arguments = null!;
+        permissions = null!;
+        deadline = null;
+        error = null;
+
+        if (!CapabilityId.TryParse(obj["capability"]?.GetValue<string>(), out capability))
+        {
+            error = $"the invoke payload for {invokeId} must carry a valid 'capability'";
+            return false;
+        }
+
+        if (!TryReadArguments(obj["arguments"] as JsonObject, out arguments, out error))
+        {
+            return false;
+        }
+
+        if (!TryReadPermissions(obj["permissions"] as JsonArray, out permissions, out error))
+        {
+            return false;
+        }
+
+        if (!TryReadDeadline(obj["deadline"], out deadline, out error))
+        {
+            return false;
+        }
+
         return true;
     }
 

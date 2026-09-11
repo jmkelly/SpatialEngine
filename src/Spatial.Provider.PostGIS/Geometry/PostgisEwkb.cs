@@ -120,25 +120,24 @@ internal static class PostgisEwkb
             return GeometryFactory.CreateEmptyPoint(crs, LayoutOf(flags));
         }
 
-        if (!flags.HasZ && !flags.HasM)
+        return ReadOrdinatedPoint(cursor, endian, flags, crs, x, y);
+    }
+
+    private static Point ReadOrdinatedPoint(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs, double x, double y)
+    {
+        double? z = null;
+        double? m = null;
+        if (flags.HasZ)
         {
-            return GeometryFactory.CreatePoint(x, y, crs);
+            z = cursor.ReadDouble(endian);
         }
 
-        if (flags.HasZ && !flags.HasM)
+        if (flags.HasM)
         {
-            return GeometryFactory.CreatePoint(x, y, cursor.ReadDouble(endian), crs);
+            m = cursor.ReadDouble(endian);
         }
 
-        if (!flags.HasZ && flags.HasM)
-        {
-            var m = cursor.ReadDouble(endian);
-            return GeometryFactory.CreatePoint(new Coordinate(x, y, M: m), crs);
-        }
-
-        var z = cursor.ReadDouble(endian);
-        var m2 = cursor.ReadDouble(endian);
-        return GeometryFactory.CreatePoint(x, y, z, m2, crs);
+        return GeometryFactory.CreatePoint(new Coordinate(x, y, z, m), crs);
     }
 
     private static LineString ReadLineString(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs)

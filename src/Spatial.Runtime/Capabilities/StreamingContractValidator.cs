@@ -22,25 +22,31 @@ internal static class StreamingContractValidator
             return result;
         }
 
-        if (success.Value is not ResourceHandle handle)
-        {
-            return RequiresStreaming(resolved)
-                ? CapabilityResult.Failure(CapabilityError.ContractViolation(
-                    $"Streaming capability {resolved.Descriptor.Id} returned a value, not a stream; streaming capabilities must return a stream created through invocation.Facilities.Streams."))
-                : result;
-        }
+        return success.Value is ResourceHandle handle
+            ? ValidateStreamHandle(resolved, handle, resources, result)
+            : ValidateNonStreamValue(resolved, result);
+    }
 
+    private static CapabilityResult ValidateNonStreamValue(ResolvedProvider resolved, CapabilityResult result) =>
+        RequiresStreaming(resolved)
+            ? FailureForStreamingRequired(resolved)
+            : result;
+
+    private static CapabilityResult ValidateStreamHandle(
+        ResolvedProvider resolved,
+        ResourceHandle handle,
+        ResourceRegistry resources,
+        CapabilityResult result)
+    {
         var isStream = resources.IsStream(handle);
         if (RequiresStreaming(resolved) && !isStream)
         {
-            return CapabilityResult.Failure(CapabilityError.ContractViolation(
-                $"Streaming capability {resolved.Descriptor.Id} returned resource {handle.Kind}, but it is not backed by a bounded stream; a streaming capability must return a stream handle."));
+            return FailureForWrongResourceKind(resolved, handle);
         }
 
         if (!RequiresStreaming(resolved) && isStream)
         {
-            return CapabilityResult.Failure(CapabilityError.ContractViolation(
-                $"Capability {resolved.Descriptor.Id} returned a stream handle but does not declare the Streaming trait; add CapabilityTraits.Streaming to its descriptor or return a value."));
+            return FailureForUnexpectedStream(resolved);
         }
 
         return result;
@@ -48,4 +54,16 @@ internal static class StreamingContractValidator
 
     private static bool RequiresStreaming(ResolvedProvider resolved) =>
         (resolved.Descriptor.Traits & CapabilityTraits.Streaming) != 0;
+
+    private static CapabilityFailure FailureForStreamingRequired(ResolvedProvider resolved) =>
+        CapabilityResult.Failure(CapabilityError.ContractViolation(
+            $"Streaming capability {resolved.Descriptor.Id} returned a value, not a stream; streaming capabilities must return a stream created through invocation.Facilities.Streams."));
+
+    private static CapabilityFailure FailureForWrongResourceKind(ResolvedProvider resolved, ResourceHandle handle) =>
+        CapabilityResult.Failure(CapabilityError.ContractViolation(
+            $"Streaming capability {resolved.Descriptor.Id} returned resource {handle.Kind}, but it is not backed by a bounded stream; a streaming capability must return a stream handle."));
+
+    private static CapabilityFailure FailureForUnexpectedStream(ResolvedProvider resolved) =>
+        CapabilityResult.Failure(CapabilityError.ContractViolation(
+            $"Capability {resolved.Descriptor.Id} returned a stream handle but does not declare the Streaming trait; add CapabilityTraits.Streaming to its descriptor or return a value."));
 }
