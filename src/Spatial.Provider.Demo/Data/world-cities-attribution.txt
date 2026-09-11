@@ -1,0 +1,9 @@
+The demo store's world-cities snapshot (Data/world-cities.tsv) is derived
+from GeoNames (https://www.geonames.org/), file "cities15000"
+(all cities and towns with a population of roughly 15,000 or more),
+which is licensed under Creative Commons Attribution 4.0
+(https://creativecommons.org/licenses/by/4.0/).
+
+Each row keeps the GeoNames id, the place name, the ISO country code,
+the population, and the WGS 84 latitude/longitude. The workbench
+credits "Cities (c) GeoNames (CC-BY 4.0)" in the map toolbar.
