@@ -1,60 +1,60 @@
 # Host, HTTP API, Frontend, Deployment, Security (distilled)
 
-Implements ADR-0014/0015/0016/0017/0018/0019/0030/0031.
+Implements ADR-0033 (replaces ADR-0030/0031 HTTP/workbench surfaces).
 
 ## Host API (`Spatial.Host`, ASP.NET Core minimal API, JIT)
 
 - One JSON contract: camelCase properties and enum names; options come from
   the SDK's shared `HostApiJson`. Shapes live in `Spatial.PluginSdk.Http`;
   OpenAPI at `/openapi/v1.json` (source of the generated TypeScript wire types).
-- Inline values use `Spatial.PluginSdk.Codec.ValueCodec` — the same codec as
-  the worker wire (`$i64`, `$bytes`, `$geometry`, `$crs`, `$resource`).
-  Feature data never crosses inline — bounded streams only.
-- **Runtime outcomes are always 2xx** (`completed` with `ok: true/false`).
-  4xx/5xx reserved for undecodable requests and host failures.
-- Long work is a job, never a parked request: long-running capabilities (or
-  `wait: false`) return `202` + job to poll/subscribe.
+- Geometries cross as Base64 SGEOM strings, batches as Base64 SFBAT strings
+  (ADR-0020). Feature data never crosses as JSON geometry.
+- **Service outcomes are typed results.** `invalid.arguments` → 400,
+  `not.found` → 404, `store.unavailable` → 503 (all as `ErrorResponse`
+  `{code, message}`); cancelled calls → 499.
+- Long work is a cancellable request, never a parked job: `CancellationToken`
+  flows from the aborted connection (the demo sleep cancels over HTTP).
 
 ```
 GET    /                                # identity doc (index.html when workbench served)
-GET    /health/live | /health/ready
-GET    /api/capabilities[/{id}]
-POST   /api/invocations                 # capability, arguments, permissions, deadline, provider?, resource?, wait?
-GET    /api/jobs/{id}                   # snapshot: state, provider, step, error code
-POST   /api/jobs/{id}/cancel
-GET    /api/jobs/{id}/events            # JSON page; Accept: text/event-stream replays + pushes until `event: done`
-GET    /api/resources/{id}/metadata
-DELETE /api/resources/{id}              # dispose (closes stream, releases leases)
-GET    /api/resources/{id}/stream       # NDJSON of codec-encoded items; final {"$error":…} line on failure
-GET    /api/plugins[/{id}]
-POST   /api/plugins/{id}/route-new-work | /drain | /rollback   # ADR-0031; 404 no supervisor/unknown id; 409 bad state
+GET    /health/live | /health/ready     # ready includes the configured stores
+POST   /api/geometry/buffer             # {geometry, distance, quadrantSegments?} -> {geometry}
+POST   /api/geometry/intersection       # {left, right} -> {geometry}
+POST   /api/geometry/validate           # {geometry} -> {valid}
+POST   /api/geometry/simplify           # {geometry, tolerance} -> {geometry}
+POST   /api/crs/describe                # {crs} -> CrsDescription
+POST   /api/coordinates/transform       # {geometry, source?, target} -> {geometry}
+GET    /api/catalogue?store=&pattern=   # DatasetSummary[]
+GET    /api/datasets/{id}?store=        # DatasetDescription
+POST   /api/datasets?store=             # {dataset, batch, srid} -> {dataset}
+POST   /api/features/scan?store=        # {dataset} -> {batches[]}
+POST   /api/features/query?store=       # {dataset, bbox?, filter?} -> {batches[]}
+POST   /api/features/write?store=       # {dataset, batch, transaction?} -> {appended}
+POST   /api/transactions/begin?store=   # -> {transaction}
+POST   /api/transactions/commit?store=  # {transaction} -> {ok}
+POST   /api/transactions/rollback?store=# {transaction} -> {ok}
+POST   /api/demo/sleep                  # {milliseconds} -> {slept}
 GET    /openapi/v1.json
 ```
 
-- Stream reads: consuming to end closes the resource; abandoning the read also
-  closes it (backpressured producers always released).
-- Plugin control endpoints map 1:1 to supervisor primitives (`RouteNewWorkTo`,
-  `DrainAsync`, `RollbackAsync`); responses are the updated `PluginDto`.
+The `store` query selects `demo` (default, always available) or `postgis`
+(needs configuration).
 
 ## Configuration
 
 | Key | Meaning |
 | --- | --- |
-| `Spatial:PackagesRoot` | immutable plugin packages to activate (empty = none) |
-| `Spatial:Preferences` | configured provider preferences (`{"capability@1":"provider@1"}`) |
-| `Spatial:WorkerEnvironment` | host-managed worker env vars — the **only** secret channel |
-| `Spatial:WebRoot` | built workbench directory; when set, `GET /` serves it |
-
-The host waits for workers at startup (readiness); a failed activation is
-reported on `/api/plugins` and never blocks the rest.
+| `Spatial:Postgis:ConnectionString` | PostGIS connection string (empty = unconfigured; every PostGIS call throws `store.unavailable`) |
+| `SPATIAL_POSTGIS_CONNECTION` | Env fallback for the connection string — the **only** secret channel |
+| `Spatial:WebRoot` | Built workbench directory; when set, `GET /` serves it |
 
 ## Clients
 
-- TypeScript SDK: `clients/typescript` (`@spatial/client`) — wire types
-  generated from OpenAPI (`scripts/generate.mjs`), drift-checked in `npm test`,
-  includes the SFBAT decoder.
-- .NET SDK: `clients/dotnet/Spatial.Client` — typed methods, shared codec,
-  `ReadFeatureBatchesAsync`, `WaitForJobAsync`.
+- TypeScript SDK: `clients/typescript` (`@spatial/client`) — one method per
+  route, wire types generated from OpenAPI (`scripts/generate.mjs`),
+  drift-checked in `npm test`, includes the SFBAT decoder.
+- .NET SDK: `clients/dotnet/Spatial.Client` — one typed method per route,
+  core geometry values in and out, `SpatialClientException` failures.
 - `eng/e2e-web.sh` proves the real host end-to-end from the TS SDK.
 
 ## Frontend boundary
@@ -66,42 +66,36 @@ reported on `/api/plugins` and never blocks the rest.
 - Must run in a normal browser with zero Tauri dependency — Playwright
   (`eng/workbench-e2e.sh`); `package.json` must never include `@tauri-apps/*`
   (architecture test).
-- Persistence: results/recent jobs in localStorage; geometry stored as the
+- Persistence: results/recent runs in localStorage; geometry stored as the
   host-produced SGEOM base64, never re-encoded client-side.
 - MapLibre worker pinned: `public/maplibre-gl-worker.mjs` via `setWorkerUrl`.
 - Tauri shell: packages React assets, window/lifecycle/sidecar/narrow
-  adapters. **No geometry, operations, provider logic, capability resolution
-  or project-domain behaviour in the shell.** Desktop conformance mirrors
-  browser conformance.
+  adapters. **No geometry, operations, provider logic or project-domain
+  behaviour in the shell.** Desktop conformance mirrors browser conformance.
 
 ## Deployment profiles
 
 | Profile | Shape |
 | --- | --- |
-| Browser/server | React assets + ASP.NET Core host + external PostGIS; plugins out-of-process |
-| Local development | .NET Aspire composition; PostGIS container; hot reload; workers out-of-process |
+| Browser/server | React assets + ASP.NET Core host + external PostGIS; services in-process |
+| Local development | PostGIS container; hot reload; demo store for Docker-free work |
 | Desktop | Tauri 2 + React production assets + self-contained host sidecar or configured remote host |
 
 Invariants: one public API/contract set/TS SDK/React app in every profile;
-host independently executable; every profile runs the same conformance tests;
-browser tests never require Tauri.
+host independently executable; browser tests never require Tauri.
 
 ## Security model
 
-- Plugins receive no ambient authority; third-party plugins run out of
-  process (or WASM).
-- **Secrets flow host config → worker launch environment only**
-  (`WorkerSupervisorOptions.WorkerEnvironment`, e.g.
-  `SPATIAL_POSTGIS_CONNECTION`). Invocations never carry connection material.
-- **Redaction is a provider diagnostic contract**: no secret in logs,
-  `CapabilityError` messages, or the wire; unconfigured provider fails with
-  actionable `provider.unavailable` naming the env var; failures describe
-  config in redacted form (db/schema only) — asserted by a redaction test.
+- Implementation projects are fully trusted in-process code.
+- **Secrets flow host config → options only**
+  (`PostgisOptions.ConnectionString`). Request bodies never carry
+  connection material.
+- **Redaction is a store diagnostic contract**: no secret in logs or
+  `SpatialException` messages; unconfigured store fails with actionable
+  `store.unavailable` naming the setting; failures describe config in
+  redacted form (db name only) — asserted by a redaction test.
 - Client-supplied text never becomes SQL structure: strict identifier
   grammar + bound parameters (see `contracts.md`).
-- HTTP is the enforcement point for scoping: caller declares `permissions`;
-  host grants per its policy; runtime permission gate enforces against
-  declared capability requirements. Host binds loopback by default locally;
-  remote deployment is a deliberate config choice.
-- Payload, stream, memory and time limits enforced where supported; audit
-  events and provenance are structured.
+- The demo store is read-only; writes/creation/transactions against it are
+  `invalid.arguments`.
+- Payload and time limits enforced where supported; diagnostics are structured.
