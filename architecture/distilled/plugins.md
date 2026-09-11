@@ -12,6 +12,9 @@ Microsoft DI — keyed services where two stores serve one contract:
   one key per configured ArcGIS REST service (`ArcGisRestStore`, ADR-0035).
 - `IFeatureEditStore` keyed `"postgis"` only (ADR-0037); the demo and
   ArcGIS REST stores are read-only and do not implement it.
+- `IFeatureLookup` keyed `"postgis"` only (ADR-0038), resolving the canonical
+  `PostgisStore`; the demo and ArcGIS REST stores do not implement it and
+  callers fall back to the scan.
 - `ITransactionStore` keyed `"postgis"` only; the demo and ArcGIS stores are
   read-only.
 - `IGeometryOperations`, `IGeometryMeasures`, `IGeometryProcessing`,

@@ -2,7 +2,8 @@
 
 > **Status:** implemented (serving + consuming + editing). Companion to
 > `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`
-> and `architecture/decisions/ADR-0037-feature-editing-gated-capability.md`.
+> and `architecture/decisions/ADR-0037-feature-editing-gated-capability.md`,
+> plus `architecture/decisions/ADR-0038-read-by-identity-store-capability.md`.
 > This is a focused plan for two tracks — **serving** the Esri GeoServices
 > REST Specification from the engine and **consuming** ArcGIS REST as a data
 > provider. Where it disagrees with `architecture/implementation-plan.md`,
@@ -16,7 +17,8 @@
 > `addFeatures`/`updateFeatures`/`deleteFeatures`/`applyEdits`);
 > `Spatial.Provider.ArcGisRest` (catalogue/describe/scan/query with
 > pagination and `where` pushdown); the `IFeatureEditStore` SDK capability
-> (ADR-0037) implemented by `Spatial.Provider.PostGIS`; the new verbs of
+> (ADR-0037) and its `IFeatureLookup` read-by-identity sibling (ADR-0038)
+> implemented by `Spatial.Provider.PostGIS`; the new verbs of
 > ADR-0036 in `Spatial.Operations.NetTopologySuite`; host mounting and
 > `Spatial:GeoServices` / `Spatial:ArcGisRest` configuration; unit, HTTP and
 > provider tests; architecture guards. **Not delivered:**
@@ -222,7 +224,7 @@ maps and the operations project computes.
 **Proof:** facade-over-demo-store integration tests driven over HTTP;
 fixtures matching the spec's earthquake query example.
 
-### S3 — Editing (delivered, ADR-0037)
+### S3 — Editing (delivered, ADR-0037, ADR-0038)
 
 `IFeatureEditStore` (SDK) plus `addFeatures`/`updateFeatures`/
 `deleteFeatures`/`applyEdits` (layer, POST) in the facade, a shared
@@ -230,7 +232,9 @@ per-feature result shape in `Spatial.Interop.Esri`, and PostGIS SQL for the
 writes. Editing is advertised only when the store implements the capability
 and the dataset has a single integer identity column: `OBJECTID` then maps
 to that column, so a key survives later writes. `updateFeatures` merges
-partial attributes by reading the existing feature; `rollbackOnFailure`
+partial attributes by reading the existing feature — through the additive
+`IFeatureLookup` read-by-identity capability where the store provides one,
+so the merge no longer scans the dataset (ADR-0038) — and `rollbackOnFailure`
 uses the store's `ITransactionStore`. `gdbVersion`, `useGlobalIds` and
 `returnEditResults` are rejected explicitly. The demo and ArcGIS REST
 stores remain read-only and reject edit routes.
@@ -239,7 +243,9 @@ stores remain read-only and reject edit routes.
 (`GeoServicesEditTests`) for the success, per-feature failure, rollback and
 read-only-rejection paths; `EsriEditResultTests` pins the result shape;
 `PostgisQueriesTests`/`PostgisDiagnosticsTests` pin the generated SQL and
-identity parsing.
+identity parsing. The read-by-identity SQL is pinned by
+`PostgisQueriesTests` and the lookup hit/miss and scan fallback by the
+container and host suites.
 
 ### Outside S3 (standing)
 
@@ -364,7 +370,8 @@ Track C is done when:
 
 ## 11. Traceability and open questions
 
-Implements ADR-0035 and ADR-0037, under ADR-0033; respects ADR-0001, 0005,
+Implements ADR-0035 and ADR-0037, under ADR-0033; the read-by-identity edit
+optimisation is ADR-0038; respects ADR-0001, 0005,
 0009, 0020, 0036. Reviewed gaps:
 `architecture/references/geoservices-compatibility.md`.
 

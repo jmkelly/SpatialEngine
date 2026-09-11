@@ -13,16 +13,18 @@ namespace Spatial.Provider.PostGIS;
 
 /// <summary>
 /// The PostGIS store (ADR-0033): a direct, in-process implementation of
-/// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/> and
-/// <see cref="ITransactionStore"/> on Npgsql 10. Npgsql types, SQL and EWKB
-/// stay inside this assembly (ADR-0005). Reads return canonical
-/// <see cref="FeatureBatch"/> pages; writes append in one transaction;
-/// transactions are string handles over open connections owned here.
-/// Unconfigured (no connection string) throws <c>store.unavailable</c>;
-/// bad identifiers/filters throw <c>invalid.arguments</c>; diagnostics are
-/// redacted (database name only, never the secret).
+/// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
+/// <see cref="IFeatureLookup"/> and <see cref="ITransactionStore"/> on Npgsql
+/// 10. Npgsql types, SQL and EWKB stay inside this assembly (ADR-0005).
+/// Reads return canonical <see cref="FeatureBatch"/> pages (or, for the
+/// additive read-by-identity face, single features, ADR-0038); writes append
+/// in one transaction; transactions are string handles over open connections
+/// owned here. Unconfigured (no connection string) throws
+/// <c>store.unavailable</c>; bad identifiers/filters throw
+/// <c>invalid.arguments</c>; diagnostics are redacted (database name only,
+/// never the secret).
 /// </summary>
-public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionStore, IAsyncDisposable
+public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
 {
     private const int BatchSize = 512;
 
@@ -150,6 +152,56 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, ITransactionSt
             var predicate = BuildPredicate(description, bbox, filter, parameters);
             return await ReadBatchesAsync(
                 PostgisQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (SpatialException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            throw StoreFailure(exception);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Feature>> GetAsync(
+        string dataset, IReadOnlyList<FeatureId> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        try
+        {
+            var description = await DescribeInternalAsync(name, cancellationToken);
+            if (description.IdColumns.Count == 0)
+            {
+                return [];
+            }
+
+            var identityKinds = description.IdColumns
+                .Select(column => description.Schema[description.Schema.IndexOf(column)].Kind)
+                .ToArray();
+            var parameters = new List<object?>(ids.Count * identityKinds.Length);
+            foreach (var id in ids)
+            {
+                parameters.AddRange(PostgisDiagnostics.ParseFeatureIdentity(identityKinds, id));
+            }
+
+            var batches = await ReadBatchesAsync(
+                PostgisQueries.SelectByIdentity(name, description.Schema, description.IdColumns, ids.Count),
+                parameters,
+                description,
+                cancellationToken);
+            return batches.SelectMany(batch => batch.Features).ToArray();
         }
         catch (OperationCanceledException)
         {

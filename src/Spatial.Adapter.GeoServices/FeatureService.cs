@@ -17,7 +17,9 @@ namespace Spatial.Adapter.GeoServices;
 /// and never forwards client text as SQL. Editing is advertised and accepted
 /// only for layers whose dataset has an integer identity column and whose
 /// store implements <see cref="IFeatureEditStore"/> (ADR-0037); everything
-/// else stays read-only.
+/// else stays read-only. Partial updates and per-object deletes resolve
+/// their targets through <see cref="IFeatureLookup"/> when the store
+/// provides it, so the edit path does not scan the whole dataset (ADR-0038).
 /// </summary>
 internal static class FeatureService
 {
@@ -189,17 +191,38 @@ internal static class FeatureService
             return [];
         }
 
-        var existing = await IndexAsync(dataset, store, scheme, cancellationToken);
-        var features = new List<Feature>(updates.Count);
-        var positions = new List<int>(updates.Count);
+        var objectIds = new long[updates.Count];
+        var resolved = new bool[updates.Count];
+        var requested = new List<long>(updates.Count);
         for (var i = 0; i < updates.Count; i++)
         {
             try
             {
-                var objectId = ReadObjectId(updates[i]);
-                if (!existing.TryGetValue(objectId, out var feature))
+                objectIds[i] = ReadObjectId(updates[i]);
+                resolved[i] = true;
+                requested.Add(objectIds[i]);
+            }
+            catch (Exception exception) when (IsFeatureFailure(exception))
+            {
+                results[i] = ToFailure(exception);
+            }
+        }
+
+        var existing = await ResolveAsync(dataset, store, scheme, requested, cancellationToken);
+        var features = new List<Feature>(updates.Count);
+        var positions = new List<int>(updates.Count);
+        for (var i = 0; i < updates.Count; i++)
+        {
+            if (!resolved[i])
+            {
+                continue;
+            }
+
+            try
+            {
+                if (!existing.TryGetValue(objectIds[i], out var feature))
                 {
-                    throw EsriInteropException.Invalid($"No feature has OBJECTID {objectId} in layer '{dataset.Id}'.");
+                    throw EsriInteropException.Invalid($"No feature has OBJECTID {objectIds[i]} in layer '{dataset.Id}'.");
                 }
 
                 features.Add(BuildUpdate(updates[i], feature, dataset.Schema, layerCrs));
@@ -245,7 +268,7 @@ internal static class FeatureService
             return [];
         }
 
-        var existing = await IndexAsync(dataset, store, scheme, cancellationToken);
+        var existing = await ResolveAsync(dataset, store, scheme, targetIds, cancellationToken);
         var ids = new List<FeatureId>(targetIds.Count);
         var positions = new List<int>(targetIds.Count);
         for (var i = 0; i < targetIds.Count; i++)
@@ -309,6 +332,49 @@ internal static class FeatureService
         {
             ordinal++;
             if (scheme.TryResolve(feature, ordinal, out var objectId))
+            {
+                index[objectId] = feature;
+            }
+        }
+
+        return index;
+    }
+
+    /// <summary>
+    /// Resolves the requested OBJECTIDs to their features (ADR-0038). When
+    /// the store advertises <see cref="IFeatureLookup"/> the requested
+    /// identities are fetched in one targeted read; otherwise the dataset is
+    /// scanned and indexed exactly as before.
+    /// </summary>
+    private static async Task<Dictionary<long, Feature>> ResolveAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        EsriObjectIdScheme scheme,
+        IReadOnlyList<long> objectIds,
+        CancellationToken cancellationToken)
+    {
+        if (store is not IFeatureLookup lookup)
+        {
+            return await IndexAsync(dataset, store, scheme, cancellationToken);
+        }
+
+        var distinct = objectIds.Distinct().ToArray();
+        if (distinct.Length == 0)
+        {
+            return [];
+        }
+
+        var found = await lookup.GetAsync(dataset.Id, distinct.Select(EsriObjectIdScheme.ToFeatureId).ToArray(), cancellationToken);
+        var byId = new Dictionary<FeatureId, Feature>(found.Count);
+        foreach (var feature in found)
+        {
+            byId[feature.Id] = feature;
+        }
+
+        var index = new Dictionary<long, Feature>(distinct.Length);
+        foreach (var objectId in distinct)
+        {
+            if (byId.TryGetValue(EsriObjectIdScheme.ToFeatureId(objectId), out var feature))
             {
                 index[objectId] = feature;
             }

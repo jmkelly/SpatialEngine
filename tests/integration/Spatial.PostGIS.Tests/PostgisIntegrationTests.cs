@@ -399,6 +399,39 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         Assert.Equal(1, await context.CountAsync("SELECT count(*) FROM public.edit_tx_target"));
     }
 
+    [SkippableFact]
+    public async Task Lookup_by_identity_returns_matching_features_and_ignores_misses()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        var found = await context.Store.GetAsync(
+            "public.places", [new FeatureId("1"), new FeatureId("3"), new FeatureId("404")]);
+
+        Assert.Equal(["1", "3"], found.Select(feature => feature.Id.Value).OrderBy(value => value, StringComparer.Ordinal).ToArray());
+        var berlin = found.Single(feature => feature.Id.Value == "1");
+        Assert.Equal("Berlin", berlin["name"].StringValue);
+        Assert.Equal(GeometryType.Point, berlin[2].GeometryValue.Type);
+    }
+
+    [SkippableFact]
+    public async Task Lookup_by_identity_of_a_missing_feature_is_empty()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        Assert.Empty(await context.Store.GetAsync("public.places", [new FeatureId("404")]));
+    }
+
+    [SkippableFact]
+    public async Task Lookup_by_identity_of_a_table_without_a_primary_key_is_empty()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        Assert.Empty(await context.Store.GetAsync("public.roads", [new FeatureId("1")]));
+    }
+
     private static Feature FeatureWithId(string id, FeatureSchema schema) =>
         new(new FeatureId(id), schema,
         [
