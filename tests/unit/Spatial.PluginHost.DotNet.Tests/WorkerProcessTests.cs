@@ -14,6 +14,14 @@ namespace Spatial.PluginHost.DotNet.Tests;
 /// </summary>
 public sealed class WorkerProcessTests : IAsyncDisposable
 {
+    /// <summary>
+    /// Upper bound for worker handshakes, responses and clean exits. Generous on
+    /// purpose: the whole solution runs in parallel and several of these tests
+    /// spawn child processes at once, so a 5s response budget raced worker
+    /// startup under load. The timeout is a hang guard, not an assertion.
+    /// </summary>
+    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(30);
+
     private readonly List<WorkerRig> _rigs = [];
 
     public async ValueTask DisposeAsync()
@@ -29,7 +37,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     {
         await using var rig = Start(FixtureManifest.V1());
 
-        var hello = await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        var hello = await rig.Hello.WaitAsync(TestTimeout);
         Assert.Equal("fixture@1", hello.Id);
         Assert.Equal("dotnet", hello.Runtime);
         Assert.Equal(FixtureManifest.AssemblyName, hello.Assembly);
@@ -42,13 +50,13 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Health_ping_round_trips()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var response = await rig.Channel.RequestAsync(
             WorkerProtocol.Ping,
             new System.Text.Json.Nodes.JsonObject { ["nonce"] = "n1" },
             WorkerProtocol.Pong,
-            TimeSpan.FromSeconds(5));
+            TestTimeout);
         Assert.Equal("n1", response!["nonce"]!.GetValue<string>());
     }
 
@@ -56,9 +64,9 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Peek_invocation_returns_the_provider_id()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
-        var outcome = await rig.InvokeAsync(FixtureProviderV1.PeekCapability, timeout: TimeSpan.FromSeconds(5));
+        var outcome = await rig.InvokeAsync(FixtureProviderV1.PeekCapability, timeout: TestTimeout);
         Assert.Equal(WorkerOutcomeKind.Success, outcome.Kind);
         Assert.Equal("fixture@1", outcome.Value);
     }
@@ -67,10 +75,10 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Sleep_reports_progress_and_succeeds()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var outcome = await rig.InvokeAsync(
-            FixtureProviderV1.SleepCapability, new Dictionary<string, object?> { ["milliseconds"] = 80L }, timeout: TimeSpan.FromSeconds(10));
+            FixtureProviderV1.SleepCapability, new Dictionary<string, object?> { ["milliseconds"] = 80L }, timeout: TestTimeout);
 
         Assert.Equal(WorkerOutcomeKind.Success, outcome.Kind);
         Assert.Equal(80L, outcome.Value);
@@ -82,7 +90,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Cancel_mid_invoke_yields_cancelled()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var invokeId = Guid.NewGuid().ToString("N");
         var payload = WorkerPayload.Invoke(
@@ -94,7 +102,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
             WorkerProtocol.Invoke, payload, WorkerProtocol.Result, timeout: null, id: invokeId);
 
         // Wait until the worker reports progress, then cancel the invocation.
-        var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10);
+        var deadline = DateTimeOffset.UtcNow + TestTimeout;
         while (rig.Progress.Count == 0 && DateTimeOffset.UtcNow < deadline)
         {
             await Task.Delay(20);
@@ -103,7 +111,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
         Assert.NotEmpty(rig.Progress);
         await rig.Channel.SendAsync(WorkerProtocol.Cancel, null, invokeId);
 
-        var outcome = WorkerPayload.ReadOutcome(await pending.AsTask().WaitAsync(TimeSpan.FromSeconds(10)));
+        var outcome = WorkerPayload.ReadOutcome(await pending.AsTask().WaitAsync(TestTimeout));
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
         Assert.Equal(CapabilityErrorKind.Cancelled, outcome.Error!.Kind);
     }
@@ -112,13 +120,13 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Deadline_turns_a_far_running_invoke_into_a_timeout()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var outcome = await rig.InvokeAsync(
             FixtureProviderV1.TimeoutCapability,
             new Dictionary<string, object?> { ["milliseconds"] = 60000L },
             deadline: DateTimeOffset.UtcNow + TimeSpan.FromMilliseconds(350),
-            timeout: TimeSpan.FromSeconds(10));
+            timeout: TestTimeout);
 
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
         Assert.Equal(CapabilityErrorKind.DeadlineExceeded, outcome.Error!.Kind);
@@ -129,12 +137,12 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Crash_kills_the_process_and_disconnects_the_invocation()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var exception = await Assert.ThrowsAsync<WorkerDisconnectedException>(() =>
-            rig.InvokeAsync(FixtureProviderV1.CrashCapability, timeout: TimeSpan.FromSeconds(10)));
+            rig.InvokeAsync(FixtureProviderV1.CrashCapability, timeout: TestTimeout));
         Assert.Contains("disconnected", exception.Message);
-        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        await rig.WaitForExitAsync(TestTimeout);
         Assert.NotEqual(0, await rig.ExitCode);
         Assert.False(rig.Channel.IsConnected);
     }
@@ -143,16 +151,16 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Close_drains_inflight_work_and_exits_zero()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var pending = rig.InvokeAsync(
             FixtureProviderV1.SleepCapability, new Dictionary<string, object?> { ["milliseconds"] = 120L }, timeout: null);
         await rig.Channel.SendAsync(WorkerProtocol.Close, new System.Text.Json.Nodes.JsonObject { ["reason"] = "draining" });
 
-        var outcome = await pending.WaitAsync(TimeSpan.FromSeconds(10));
+        var outcome = await pending.WaitAsync(TestTimeout);
         Assert.Equal(WorkerOutcomeKind.Success, outcome.Kind);
-        Assert.Equal(0, await rig.Closed.WaitAsync(TimeSpan.FromSeconds(10)));
-        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, await rig.Closed.WaitAsync(TestTimeout));
+        await rig.WaitForExitAsync(TestTimeout);
         Assert.Equal(0, await rig.ExitCode);
     }
 
@@ -160,10 +168,10 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Malformed_invoke_is_a_contract_violation()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var payload = new System.Text.Json.Nodes.JsonObject { ["arguments"] = new System.Text.Json.Nodes.JsonObject() };
-        var response = await rig.Channel.RequestAsync(WorkerProtocol.Invoke, payload, WorkerProtocol.Result, TimeSpan.FromSeconds(5));
+        var response = await rig.Channel.RequestAsync(WorkerProtocol.Invoke, payload, WorkerProtocol.Result, TestTimeout);
         var outcome = WorkerPayload.ReadOutcome(response);
 
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
@@ -172,8 +180,8 @@ public sealed class WorkerProcessTests : IAsyncDisposable
 
         // Drain cleanly: a killed worker's coverlet results are never flushed.
         await rig.Channel.SendAsync(WorkerProtocol.Close, new System.Text.Json.Nodes.JsonObject { ["reason"] = "test done" });
-        Assert.Equal(0, await rig.Closed.WaitAsync(TimeSpan.FromSeconds(10)));
-        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, await rig.Closed.WaitAsync(TestTimeout));
+        await rig.WaitForExitAsync(TestTimeout);
         Assert.Equal(0, await rig.ExitCode);
     }
 
@@ -181,7 +189,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task Untagged_object_arguments_are_rejected_with_the_inline_protocol_hint()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         // Send the wire payload directly (bypassing the sender's codec) so the
         // *worker* decodes an untagged object and must reject it.
@@ -191,7 +199,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
             ["permissions"] = new System.Text.Json.Nodes.JsonArray(),
             ["arguments"] = new System.Text.Json.Nodes.JsonObject { ["unexpected"] = new System.Text.Json.Nodes.JsonObject { ["x"] = 1 } },
         };
-        var response = await rig.Channel.RequestAsync(WorkerProtocol.Invoke, payload, WorkerProtocol.Result, TimeSpan.FromSeconds(5));
+        var response = await rig.Channel.RequestAsync(WorkerProtocol.Invoke, payload, WorkerProtocol.Result, TestTimeout);
         var outcome = WorkerPayload.ReadOutcome(response);
 
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
@@ -203,7 +211,7 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task An_invoke_without_an_id_is_a_protocol_error()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var payload = WorkerPayload.Invoke(
             FixtureProviderV1.PeekCapability.ToString(),
@@ -212,13 +220,13 @@ public sealed class WorkerProcessTests : IAsyncDisposable
             null);
         await rig.Channel.SendAsync(WorkerProtocol.Invoke, payload);
 
-        var message = await rig.ProtocolError.WaitAsync(TimeSpan.FromSeconds(5));
+        var message = await rig.ProtocolError.WaitAsync(TestTimeout);
         Assert.Contains("must carry an id", message);
 
         // Drain cleanly: a killed worker's coverlet results are never flushed.
         await rig.Channel.SendAsync(WorkerProtocol.Close, new System.Text.Json.Nodes.JsonObject { ["reason"] = "test done" });
-        Assert.Equal(0, await rig.Closed.WaitAsync(TimeSpan.FromSeconds(10)));
-        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(0, await rig.Closed.WaitAsync(TestTimeout));
+        await rig.WaitForExitAsync(TestTimeout);
         Assert.Equal(0, await rig.ExitCode);
     }
 
@@ -226,10 +234,10 @@ public sealed class WorkerProcessTests : IAsyncDisposable
     public async Task An_unknown_capability_is_rejected_by_the_provider()
     {
         await using var rig = Start(FixtureManifest.V1());
-        await rig.Hello.WaitAsync(TimeSpan.FromSeconds(10));
+        await rig.Hello.WaitAsync(TestTimeout);
 
         var outcome = await rig.InvokeAsync(
-            CapabilityId.Parse("spatial.fixture.nobody@1"), timeout: TimeSpan.FromSeconds(5));
+            CapabilityId.Parse("spatial.fixture.nobody@1"), timeout: TestTimeout);
 
         Assert.Equal(WorkerOutcomeKind.Failure, outcome.Kind);
         Assert.Equal(CapabilityErrorKind.ContractViolation, outcome.Error!.Kind);
@@ -247,9 +255,9 @@ public sealed class WorkerProcessTests : IAsyncDisposable
         };
         await using var rig = Start(wrong);
 
-        await rig.WaitForExitAsync(TimeSpan.FromSeconds(10));
+        await rig.WaitForExitAsync(TestTimeout);
         Assert.NotEqual(0, await rig.ExitCode);
-        await rig.StderrDrained.WaitAsync(TimeSpan.FromSeconds(5));
+        await rig.StderrDrained.WaitAsync(TestTimeout);
         Assert.Contains("not compatible", rig.StandardError);
     }
 

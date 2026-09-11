@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "project": "/home/james/Work/SpatialEngine/src/Spatial.PluginHost.DotNet/Spatial.PluginHost.DotNet.csproj",
+    "project": "src/Spatial.PluginHost.DotNet/Spatial.PluginHost.DotNet.csproj",
     "mutation-level": "Standard",
     "coverage-analysis": "perTest",
     "additional-timeout": 2,
