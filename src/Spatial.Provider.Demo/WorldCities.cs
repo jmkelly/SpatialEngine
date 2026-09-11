@@ -102,29 +102,52 @@ internal static class WorldCities
     private static Feature ParseRow(string line, int lineNumber, FeatureSchema schema)
     {
         var parts = line.Split('\t');
-        if (parts.Length != 6
-            || string.IsNullOrWhiteSpace(parts[0])
-            || string.IsNullOrWhiteSpace(parts[1])
-            || string.IsNullOrWhiteSpace(parts[2])
-            || !long.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var population)
-            || !double.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude)
-            || !double.TryParse(parts[5], NumberStyles.Float, CultureInfo.InvariantCulture, out var longitude)
-            || latitude is < -90 or > 90
-            || longitude is < -180 or > 180)
+        if (!TryReadRow(parts, out var row))
         {
             throw new InvalidOperationException(
                 $"The embedded '{ResourceName}' snapshot has a malformed row {lineNumber}; expected 'geonameid, name, country, population, latitude, longitude'.");
         }
 
-        var geometry = GeometryFactory.CreatePoint(longitude, latitude, DemoDatasetCatalog.Wgs84);
+        var geometry = GeometryFactory.CreatePoint(row.Longitude, row.Latitude, DemoDatasetCatalog.Wgs84);
         return new Feature(
-            new FeatureId($"wd-{parts[0]}"),
+            new FeatureId($"wd-{row.Id}"),
             schema,
             [
-                AttributeValue.FromString(parts[1]),
-                AttributeValue.FromString(parts[2]),
-                AttributeValue.FromInt64(population),
+                AttributeValue.FromString(row.Name),
+                AttributeValue.FromString(row.Country),
+                AttributeValue.FromInt64(row.Population),
                 AttributeValue.FromGeometry(geometry),
             ]);
     }
+
+    private static bool TryReadRow(string[] parts, out CityRow row)
+    {
+        row = default;
+        if (parts.Length != 6 || !HasRequiredText(parts))
+        {
+            return false;
+        }
+
+        if (!long.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var population)
+            || !double.TryParse(parts[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var latitude)
+            || !double.TryParse(parts[5], NumberStyles.Float, CultureInfo.InvariantCulture, out var longitude))
+        {
+            return false;
+        }
+
+        if (!InRange(latitude, -90, 90) || !InRange(longitude, -180, 180))
+        {
+            return false;
+        }
+
+        row = new CityRow(parts[0], parts[1], parts[2], population, latitude, longitude);
+        return true;
+    }
+
+    private static bool HasRequiredText(string[] parts) =>
+        !string.IsNullOrWhiteSpace(parts[0]) && !string.IsNullOrWhiteSpace(parts[1]) && !string.IsNullOrWhiteSpace(parts[2]);
+
+    private static bool InRange(double value, double minimum, double maximum) => value >= minimum && value <= maximum;
+
+    private readonly record struct CityRow(string Id, string Name, string Country, long Population, double Latitude, double Longitude);
 }
