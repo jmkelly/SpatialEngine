@@ -1,0 +1,33 @@
+{
+  "catalog": "https://services.arcgisonline.com/arcgis/rest/services",
+  "currentVersion": 11.5,
+  "directory": "canvas-world-light-gray-base-mapserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": null,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeGeometry",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 0,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Light_Gray_Canvas_Base",
+      "queryExceeded": false,
+      "queryFeatureCount": 0,
+      "queryHasGeometry": false,
+      "srid": 3857
+    }
+  ],
+  "serviceType": "MapServer",
+  "slug": "canvas-world-light-gray-base-mapserver",
+  "url": "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer"
+}

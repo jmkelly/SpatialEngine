@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 10.91,
+    "description": "This service represents data collected from 1970 to 2009.   Data represented by this map is not updated on a regular basis.  This is a sample service hosted by ESRI, powered by ArcGIS Server. ESRI reserves the right to change or remove this service at any time and without notice.",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 179.10000000000008,
+      "xmin": -179.98399999999998,
+      "ymax": 70.78000000000003,
+      "ymin": -62.87699999999998
+    },
+    "hasArchivedData": false,
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 218.00083360936628,
+      "xmin": -72.05521761626625,
+      "ymax": 324.63458769045053,
+      "ymin": -42.889849887369564
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Earthquakes1970",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "This service represents data collected from 1970 to 2009.   Data represented by this map is not updated on a regular basis.  This is a sample service hosted by ESRI, powered by ArcGIS Server. ESRI reserves the right to change or remove this service at any time and without notice.",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2535,
+  "status": 200
+}

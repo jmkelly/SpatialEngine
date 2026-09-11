@@ -1,0 +1,162 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 180.00000000010016,
+      "xmin": -179.9999999999,
+      "ymax": 71.72300000015002,
+      "ymin": 5.898999999750345
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CWSU ID",
+        "length": 1024,
+        "name": "cwsu",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CWA ID",
+        "length": 1024,
+        "name": "cwaid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "length": 1024,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Series ID",
+        "length": 1024,
+        "name": "seriesid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Received Time",
+        "length": 1024,
+        "name": "receipttim",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Start Time",
+        "length": 1024,
+        "name": "validtimef",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory End Time",
+        "length": 1024,
+        "name": "validtimet",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hazard Type",
+        "length": 1024,
+        "name": "hazard",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Additional Information",
+        "length": 1024,
+        "name": "qualifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lowest Altitude in Feet",
+        "length": 1024,
+        "name": "base",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Highest Altitude in Feet",
+        "length": 1024,
+        "name": "top",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CWA Advisory",
+        "length": 1024,
+        "name": "cwatext",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CWA Observation",
+        "length": 1024,
+        "name": "rawtext",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source ",
+        "length": 1024,
+        "name": "data",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "hasM": true,
+    "hasZ": true,
+    "id": 113,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Center Weather Advisory",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 13364,
+  "status": 200
+}

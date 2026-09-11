@@ -219,6 +219,32 @@ public sealed class PostgisEwkbTests
         Assert.True(Read(Write(GeometryFactory.CreateEmptyPoint(), 0)).IsEmpty);
         Assert.True(Read(Write(GeometryFactory.CreateEmptyPoint(CoordinateReference.Epsg(4326), CoordinateLayout.Xyz), 4326)).IsEmpty);
         Assert.True(Read(Write(GeometryFactory.CreateEmptyLineString(), 0)).IsEmpty);
+        Assert.IsType<Polygon>(Read(Write(Read(EwkbFixture.PolygonEmpty()), 0)));
+        Assert.True(Read(Write(Read(EwkbFixture.PolygonEmpty()), 0)).IsEmpty);
+    }
+
+    [Fact]
+    public void Point_z_only_round_trips_through_the_writer()
+    {
+        var decoded = Assert.IsType<Point>(Read(EwkbFixture.PointZ(9)));
+
+        var roundTrip = Assert.IsType<Point>(Read(Write(decoded, 0)));
+
+        Assert.Equal(CoordinateLayout.Xyz, roundTrip.Layout);
+        Assert.Equal(9, roundTrip.Z);
+        Assert.Null(roundTrip.M);
+    }
+
+    [Fact]
+    public void Point_m_only_round_trips_through_the_writer()
+    {
+        var decoded = Assert.IsType<Point>(Read(EwkbFixture.PointM(1, 2, 7)));
+
+        var roundTrip = Assert.IsType<Point>(Read(Write(decoded, 0)));
+
+        Assert.Equal(CoordinateLayout.Xym, roundTrip.Layout);
+        Assert.Null(roundTrip.Z);
+        Assert.Equal(7, roundTrip.M);
     }
 
     [Fact]

@@ -1,0 +1,198 @@
+{
+  "body": {
+    "displayFieldName": "name",
+    "features": [
+      {
+        "attributes": {
+          "base": null,
+          "cwaid": null,
+          "cwatext": "FAUS21 KZJX 111017\nZJX1 CWA 111017 \nZJX CWA 101 VALID UNTIL 111217\nFROM 45WNW SAV-60N CTY-40ESE CEW-40S MGM-45WNW SAV\nAREA PTCHY LIFR CIG BLW 005. MINIMAL CHG EXPCD THRU PD. AL FL GA\n\n=",
+          "cwsu": "ZJX",
+          "data": null,
+          "hazard": "IFR",
+          "idp_filedate": 1789128145000,
+          "idp_ingestdate": 1789128159000,
+          "name": "Jacksonville",
+          "objectid": 1,
+          "qualifier": "PATCHY LIFR",
+          "rawtext": null,
+          "receipttim": null,
+          "seriesid": "101",
+          "st_area(shape)": 4.989154500302545,
+          "st_perimeter(shape)": 10.59569684393323,
+          "top": null,
+          "validtimef": "2026/09/11 10:17:00+00",
+          "validtimet": "2026/09/11 12:17:00+00"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -81.93199999980004,
+                32.43799999970037
+              ],
+              [
+                -83.05000000029969,
+                30.59799999960046
+              ],
+              [
+                -85.96900000014978,
+                30.568000000200016
+              ],
+              [
+                -86.31999999970014,
+                31.555000000349878
+              ],
+              [
+                -81.93199999980004,
+                32.43799999970037
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "base": "Lowest Altitude in Feet",
+      "cwaid": "CWA ID",
+      "cwatext": "CWA Advisory",
+      "cwsu": "CWSU ID",
+      "data": "Source ",
+      "hazard": "Hazard Type",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "name": "Name",
+      "objectid": "OBJECTID",
+      "qualifier": "Additional Information",
+      "rawtext": "CWA Observation",
+      "receipttim": "Received Time",
+      "seriesid": "Series ID",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "top": "Highest Altitude in Feet",
+      "validtimef": "Advisory Start Time",
+      "validtimet": "Advisory End Time"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CWSU ID",
+        "length": 1024,
+        "name": "cwsu",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CWA ID",
+        "length": 1024,
+        "name": "cwaid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "length": 1024,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Series ID",
+        "length": 1024,
+        "name": "seriesid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Received Time",
+        "length": 1024,
+        "name": "receipttim",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Start Time",
+        "length": 1024,
+        "name": "validtimef",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory End Time",
+        "length": 1024,
+        "name": "validtimet",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hazard Type",
+        "length": 1024,
+        "name": "hazard",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Additional Information",
+        "length": 1024,
+        "name": "qualifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lowest Altitude in Feet",
+        "length": 1024,
+        "name": "base",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Highest Altitude in Feet",
+        "length": 1024,
+        "name": "top",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CWA Advisory",
+        "length": 1024,
+        "name": "cwatext",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CWA Observation",
+        "length": 1024,
+        "name": "rawtext",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source ",
+        "length": 1024,
+        "name": "data",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 3151,
+  "status": 200
+}

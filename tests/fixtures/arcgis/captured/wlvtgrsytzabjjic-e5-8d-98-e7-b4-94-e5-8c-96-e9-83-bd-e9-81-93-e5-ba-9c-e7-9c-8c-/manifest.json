@@ -1,0 +1,34 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "wlvtgrsytzabjjic-e5-8d-98-e7-b4-94-e5-8c-96-e9-83-bd-e9-81-93-e5-ba-9c-e7-9c-8c-",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 47,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 47,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "\u5358\u7d14\u5316\u90fd\u9053\u5e9c\u770c",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 3857
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "wlvtgrsytzabjjic-e5-8d-98-e7-b4-94-e5-8c-96-e9-83-bd-e9-81-93-e5-ba-9c-e7-9c-8c-",
+  "url": "https://services.arcgis.com/wlVTGRSYTzAbjjiC/arcgis/rest/services/%E5%8D%98%E7%B4%94%E5%8C%96%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C/FeatureServer"
+}

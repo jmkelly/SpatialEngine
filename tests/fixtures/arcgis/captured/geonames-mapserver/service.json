@@ -1,0 +1,264 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "USGS The National Map: Geographic Names Information System. Data Refreshed July, 2026.",
+    "currentVersion": 11.3,
+    "description": "USGS developed The National Map Gazetteer as the Federal and national standard (ANSI INCITS 446-2008) for geographic nomenclature based on the Geographic Names Information System (GNIS). The National Map Gazetteer contains information about physical and cultural geographic features, geographic areas, and locational entities that are generally recognizable and locatable by name (have achieved some landmark status) and are of interest to any level of government or to the public for any purpose that would lead to the representation of the feature in printed or electronic maps and/or geographic information systems. The dataset includes features of all types in the United States, its associated areas, and Antarctica, current and historical, but not including roads and highways. The dataset holds the federally recognized name of each feature and defines the feature location by state, county, USGS topographic map, and geographic coordinates. Other attributes include names or spellings other than the official name, feature classification, and historical and descriptive information. The dataset assigns a unique, permanent feature identifier, the Feature ID, as a standard Federal key for accessing, integrating, or reconciling feature data from multiple data sets. This dataset is a flat model, establishing no relationships between features, such as hierarchical, spatial, jurisdictional, organizational, administrative, or in any other manner. As an integral part of The National Map, the Gazetteer collects data from a broad program of partnerships with federal, state, and local government agencies and other authorized contributors. The Gazetteer provides data to all levels of government and to the public, as well as to numerous applications through a web query site, web map, feature and XML services, file download services, and customized files upon request. The National Map download client allows free downloads of public domain geographic names data by state in a pipe-delimited text format. For additional information on the GNIS, go to https://www.usgs.gov/tools/geographic-names-information-system-gnis. See https://apps.nationalmap.gov/help/ for assistance with The National Map viewer, download client, services, or metadata.",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22031622.795485,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144170266.2027535,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20035653.014200002,
+      "xmin": -20028419.1855,
+      "ymax": 11541612.016400004,
+      "ymin": -27654657.5539
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22031622.795485,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144170266.2027535,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -3031915.166558029,
+      "xmin": -20290784.65711996,
+      "ymax": 10466836.845951054,
+      "ymin": 620280.0118798949
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Places (expand for more)",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          1,
+          2,
+          3
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Incorporated Places (Civil)",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Unincorporated Places (Census)",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Populated Places",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "id": 4,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Physical Points (expand for more)",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 5,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Landforms",
+        "parentLayerId": 4,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 6,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Streams (Mouth)",
+        "parentLayerId": 4,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 7,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Other Hydrographic Features",
+        "parentLayerId": 4,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 8,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Antarctica",
+        "parentLayerId": 4,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "id": 9,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Cultural Points (expand for more)",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          10
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 10,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Crossings",
+        "parentLayerId": 9,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "id": 11,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Historical Points (expand for more)",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          12,
+          13,
+          14
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 12,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Historical Cultural-Political Points",
+        "parentLayerId": 11,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 13,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Historical Hydrographic Points",
+        "parentLayerId": 11,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryMultipoint",
+        "id": 14,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Historical Physical Points",
+        "parentLayerId": 11,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "geonames",
+    "maxRecordCount": 2000,
+    "serviceDescription": "USGS developed The National Map Gazetteer as the Federal and national standard (ANSI INCITS 446-2008) for geographic nomenclature based on the Geographic Names Information System (GNIS). The National Map Gazetteer contains information about physical and cultural geographic features, geographic areas, and locational entities that are generally recognizable and locatable by name (have achieved some landmark status) and are of interest to any level of government or to the public for any purpose that would lead to the representation of the feature in printed or electronic maps and/or geographic information systems. The dataset includes features of all types in the United States, its associated areas, and Antarctica, current and historical, but not including roads and highways. The dataset holds the federally recognized name of each feature and defines the feature location by state, county, USGS topographic map, and geographic coordinates. Other attributes include names or spellings other than the official name, feature classification, and historical and descriptive information. The dataset assigns a unique, permanent feature identifier, the Feature ID, as a standard Federal key for accessing, integrating, or reconciling feature data from multiple data sets. This dataset is a flat model, establishing no relationships between features, such as hierarchical, spatial, jurisdictional, organizational, administrative, or in any other manner. As an integral part of The National Map, the Gazetteer collects data from a broad program of partnerships with federal, state, and local government agencies and other authorized contributors. The Gazetteer provides data to all levels of government and to the public, as well as to numerous applications through a web query site, web map, feature and XML services, file download services, and customized files upon request. The National Map download client allows free downloads of public domain geographic names data by state in a pipe-delimited text format. For additional information on the GNIS, go to https://www.usgs.gov/tools/geographic-names-information-system-gnis. See https://apps.nationalmap.gov/help/ for assistance with The National Map viewer, download client, services, or metadata.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -22031622.795485,
+      "falseY": -30241100,
+      "falseZ": -100000,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 144170266.2027535,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 12434,
+  "status": 200
+}

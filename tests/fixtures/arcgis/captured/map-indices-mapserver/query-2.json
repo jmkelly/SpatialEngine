@@ -1,0 +1,226 @@
+{
+  "body": {
+    "displayFieldName": "CELL_NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 76777,
+          "CELL_MAPCODE": "44068-E1",
+          "CELL_NAME": "Bangor",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D30DD484-D396-11DE-9C20-00144F233E68}",
+          "OBJECTID": 1,
+          "PRIMARY_STATE": "Maine",
+          "SHAPE_Area": 8724591112.229046,
+          "SHAPE_Length": 379387.6748172793
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -7569725.339663688,
+                5543148.633824691
+              ],
+              [
+                -7681044.868108382,
+                5543148.629307255
+              ],
+              [
+                -7681044.8713516705,
+                5621522.938097455
+              ],
+              [
+                -7569725.3426753115,
+                5621522.942730717
+              ],
+              [
+                -7569725.339663688,
+                5543148.633824691
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 76779,
+          "CELL_MAPCODE": "37118-E1",
+          "CELL_NAME": "Benton Range",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D30FFF8E-D396-11DE-9C20-00144F233E68}",
+          "OBJECTID": 2,
+          "PRIMARY_STATE": "California",
+          "SHAPE_Area": 7836273612.080349,
+          "SHAPE_Length": 363427.8825563021
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -13135701.302394077,
+                4509032.1276770085
+              ],
+              [
+                -13247020.811958205,
+                4509032.117831312
+              ],
+              [
+                -13247020.818328947,
+                4579426.5492557585
+              ],
+              [
+                -13135701.308648989,
+                4579426.559564777
+              ],
+              [
+                -13135701.302394077,
+                4509032.1276770085
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 76781,
+          "CELL_MAPCODE": "45106-A1",
+          "CELL_NAME": "Birney",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D310228B-D396-11DE-9C20-00144F233E68}",
+          "OBJECTID": 3,
+          "PRIMARY_STATE": "Montana",
+          "SHAPE_Area": 8801061795.694633,
+          "SHAPE_Length": 380761.5632793169
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -11799867.258745205,
+                5621522.588517383
+              ],
+              [
+                -11911186.77560673,
+                5621522.574965075
+              ],
+              [
+                -11911186.785452424,
+                5700583.8395115435
+              ],
+              [
+                -11799867.268475067,
+                5700583.853411347
+              ],
+              [
+                -11799867.258745205,
+                5621522.588517383
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "CELL_ALLWATER": "Cell_AllWater",
+      "CELL_DESCRIPTION": "CELL_DESCRIPTION",
+      "CELL_DIACRITIC": "CELL_DIACRITIC",
+      "CELL_ID": "CELL_ID",
+      "CELL_MAPCODE": "CELL_MAPCODE",
+      "CELL_NAME": "CELL_NAME",
+      "CELL_TYPE": "Cell_Type",
+      "GLOBALID": "GLOBALID",
+      "OBJECTID": "OBJECTID",
+      "PRIMARY_STATE": "PRIMARY_STATE",
+      "SHAPE_Area": "Shape_Area",
+      "SHAPE_Length": "Shape_Length"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Shape_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "CELL_ID",
+        "name": "CELL_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_NAME",
+        "length": 120,
+        "name": "CELL_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PRIMARY_STATE",
+        "length": 50,
+        "name": "PRIMARY_STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_MAPCODE",
+        "length": 8,
+        "name": "CELL_MAPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell_Type",
+        "name": "CELL_TYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cell_AllWater",
+        "name": "CELL_ALLWATER",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_DESCRIPTION",
+        "length": 240,
+        "name": "CELL_DESCRIPTION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_DIACRITIC",
+        "length": 100,
+        "name": "CELL_DIACRITIC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4262,
+  "status": 200
+}

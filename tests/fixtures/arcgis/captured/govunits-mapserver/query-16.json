@@ -1,0 +1,408 @@
+{
+  "body": {
+    "displayFieldName": "Name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 1.00396219,
+          "boundarytype": 2,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 67300,
+          "ftype": 673,
+          "globalid": "{0B163A8E-38A4-4C15-AEE4-8176AC4A01CE}",
+          "loaddate": 1768989755000,
+          "name": "Homestead ARB",
+          "objectid": 56527,
+          "ownerormanagingagency": 5,
+          "permanent_identifier": "{e1a075bf-598d-44f5-b356-e4b06d1af76d}",
+          "shape_Area": 1116066.5054781148,
+          "shape_Length": 5500.82637444855,
+          "source_datadesc": "PAD-US 4.1",
+          "source_datasetid": "{1e8f7ace-dbbe-4a54-ac86-68abcdd6a63f}",
+          "source_featureid": null,
+          "source_originator": "U.S. Geological Survey (USGS)"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -7377535.9518,
+                2037570.8779000007
+              ],
+              [
+                -7378493.018100001,
+                2037555.6981999986
+              ],
+              [
+                -7378498.401000001,
+                2037706.7745000012
+              ],
+              [
+                -7379019.5131,
+                2037328.6550999992
+              ],
+              [
+                -7379056.9964000005,
+                2037360.2980000004
+              ],
+              [
+                -7378500.4934,
+                2037765.3513000011
+              ],
+              [
+                -7378533.272299999,
+                2038683.1363999993
+              ],
+              [
+                -7377567.980799999,
+                2038697.9151000008
+              ],
+              [
+                -7377535.9518,
+                2037570.8779000007
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 0.20734166,
+          "boundarytype": 2,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 67300,
+          "ftype": 673,
+          "globalid": "{00A3CBCF-03ED-4897-8E7D-4097F6916286}",
+          "loaddate": 1768989755000,
+          "name": "NG GUARNG Barrigada Complex",
+          "objectid": 56528,
+          "ownerormanagingagency": 5,
+          "permanent_identifier": "{7215ca2f-52b3-41ec-aef2-4ef2ea0dfd7f}",
+          "shape_Area": 220561.86682854727,
+          "shape_Length": 2090.0058171938654,
+          "source_datadesc": "PAD-US 4.1",
+          "source_datasetid": "{1e8f7ace-dbbe-4a54-ac86-68abcdd6a63f}",
+          "source_featureid": null,
+          "source_originator": "U.S. Geological Survey (USGS)"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                16119989.8068,
+                1514087.1301000006
+              ],
+              [
+                16120009.739799999,
+                1514111.9629999995
+              ],
+              [
+                16120009.555,
+                1514112.1328999996
+              ],
+              [
+                16120027.714199997,
+                1514135.6534000002
+              ],
+              [
+                16120045.689000003,
+                1514159.7325000018
+              ],
+              [
+                16120058.9247,
+                1514177.941399999
+              ],
+              [
+                16120071.629,
+                1514195.9503999986
+              ],
+              [
+                16120083.875799999,
+                1514213.6629000008
+              ],
+              [
+                16120087.3328,
+                1514218.7991999984
+              ],
+              [
+                16120427.339199997,
+                1514115.3660999984
+              ],
+              [
+                16120503.315200001,
+                1514092.2624000013
+              ],
+              [
+                16120503.321000002,
+                1513862.5703000017
+              ],
+              [
+                16120166.648199998,
+                1513862.6011000015
+              ],
+              [
+                16120166.631700002,
+                1513673.3099999987
+              ],
+              [
+                16119884.685000002,
+                1513673.3033000007
+              ],
+              [
+                16119884.688500002,
+                1513967.4825999998
+              ],
+              [
+                16119905.562399998,
+                1513990.5417000018
+              ],
+              [
+                16119928.3561,
+                1514015.6231999993
+              ],
+              [
+                16119955.110699996,
+                1514045.8143000007
+              ],
+              [
+                16119972.0502,
+                1514065.6730000004
+              ],
+              [
+                16119989.8068,
+                1514087.1301000006
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 0.41632472,
+          "boundarytype": 2,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 67300,
+          "ftype": 673,
+          "globalid": "{68770717-7E1F-4F9C-A81D-7B8403129894}",
+          "loaddate": 1768989755000,
+          "name": "US Army Garrison Selfridge",
+          "objectid": 56529,
+          "ownerormanagingagency": 5,
+          "permanent_identifier": "{53c53072-cc25-4876-83c5-f5d8f7e6e5a2}",
+          "shape_Area": 770292.2510312103,
+          "shape_Length": 3572.7220059538267,
+          "source_datadesc": "PAD-US 4.1",
+          "source_datasetid": "{1e8f7ace-dbbe-4a54-ac86-68abcdd6a63f}",
+          "source_featureid": null,
+          "source_originator": "U.S. Geological Survey (USGS)"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9218390.638,
+                5260024.866099998
+              ],
+              [
+                -9218553.477,
+                5259886.563199997
+              ],
+              [
+                -9218561.2485,
+                5259897.373400003
+              ],
+              [
+                -9218636.8873,
+                5259829.447700001
+              ],
+              [
+                -9219118.3904,
+                5260374.325499997
+              ],
+              [
+                -9219048.3888,
+                5260424.5858
+              ],
+              [
+                -9219039.3886,
+                5260432.419299997
+              ],
+              [
+                -9219240.6987,
+                5260659.246799998
+              ],
+              [
+                -9219151.4346,
+                5260745.5983000025
+              ],
+              [
+                -9218697.2026,
+                5261172.763999999
+              ],
+              [
+                -9218290.924,
+                5260726.105300002
+              ],
+              [
+                -9218298.1545,
+                5260718.239600003
+              ],
+              [
+                -9218211.3385,
+                5260623.293700002
+              ],
+              [
+                -9218390.638,
+                5260024.866099998
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "admintype": "AdminType",
+      "areasqkm": "AreaSqKm",
+      "boundarytype": "BoundaryType",
+      "data_security": "Data_Security",
+      "distribution_policy": "Distribution_Policy",
+      "fcode": "FCode",
+      "ftype": "FType",
+      "globalid": "GLOBALID",
+      "loaddate": "LoadDate",
+      "name": "Name",
+      "objectid": "OBJECTID",
+      "ownerormanagingagency": "OwnerOrManagingAgency",
+      "permanent_identifier": "Permanent_Identifier",
+      "shape_Area": "shape_Area",
+      "shape_Length": "shape_Length",
+      "source_datadesc": "Source_DataDesc",
+      "source_datasetid": "Source_DatasetID",
+      "source_featureid": "Source_FeatureID",
+      "source_originator": "Source_Originator"
+    },
+    "fields": [
+      {
+        "alias": "BoundaryType",
+        "name": "boundarytype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Permanent_Identifier",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_FeatureID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_DatasetID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_DataDesc",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_Originator",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LoadDate",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Name",
+        "length": 120,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AreaSqKm",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "FType",
+        "name": "ftype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AdminType",
+        "name": "admintype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OwnerOrManagingAgency",
+        "name": "ownerormanagingagency",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "shape_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "shape_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 44389,
+  "status": 200
+}

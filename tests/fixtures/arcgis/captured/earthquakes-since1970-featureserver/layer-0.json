@@ -1,0 +1,268 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "Data represented by this map is not updated on a regular basis.  This is a sample service hosted by ESRI, powered by ArcGIS Server. ESRI reserves the right to change or remove this service at any time and without notice.\n",
+    "displayField": "name",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 179.10000000000008,
+      "xmin": -179.98399999999998,
+      "ymax": 70.78000000000003,
+      "ymin": -62.87699999999998
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "objectid",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Year_",
+        "defaultValue": null,
+        "editable": true,
+        "name": "year_",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mo",
+        "defaultValue": null,
+        "editable": true,
+        "name": "mo",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Dy",
+        "defaultValue": null,
+        "editable": true,
+        "name": "dy",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hr",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hr",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mn",
+        "defaultValue": null,
+        "editable": true,
+        "name": "mn",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Sec",
+        "defaultValue": null,
+        "editable": true,
+        "name": "sec",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tsu",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "tsu",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "name",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "latitude",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "longitude",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Focal",
+        "defaultValue": null,
+        "editable": true,
+        "name": "focal",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Magnitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "magnitude",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "MMI_Int",
+        "defaultValue": null,
+        "editable": true,
+        "name": "mmi_int",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "num_deaths",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hist_deaths",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Injured",
+        "defaultValue": null,
+        "editable": true,
+        "name": "num_injured",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Injured",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hist_injured",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mill_Damages",
+        "defaultValue": null,
+        "editable": true,
+        "name": "mill_damages",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Damage",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hist_damage",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Houses_Dest",
+        "defaultValue": null,
+        "editable": true,
+        "name": "num_houses_dest",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Houses_Dest",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hist_houses_dest",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Num_Houses_Dam",
+        "defaultValue": null,
+        "editable": true,
+        "name": "num_houses_dam",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Hist_Houses_Dam",
+        "defaultValue": null,
+        "editable": true,
+        "name": "hist_houses_dam",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Date_",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "date_",
+        "nullable": true,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "YYYYMMDD",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "yyyymmdd",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "YYYYMMDDHHMM",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "yyyymmddhhmm",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "YYYYMMDDHHMMSS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "yyyymmddhhmmss",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Earthquakes1970",
+    "objectIdField": "objectid",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 11141,
+  "status": 200
+}

@@ -1,0 +1,142 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "id",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -64.38860000018974,
+      "xmin": -128.47309999996492,
+      "ymax": 49.944099999615446,
+      "ymin": 23.852500000274915
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Hazard",
+        "length": 80,
+        "name": "hazard",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Product",
+        "length": 80,
+        "name": "product",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Additional Information",
+        "length": 80,
+        "name": "dueto",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast",
+        "length": 80,
+        "name": "forecast",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Severity",
+        "length": 80,
+        "name": "severity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Top Altitude of Hazard In Feet",
+        "length": 80,
+        "name": "top",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Base Altitude of Hazard In Feet",
+        "length": 80,
+        "name": "base",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 80,
+        "name": "issuetime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time",
+        "length": 80,
+        "name": "validtime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Receipt Time",
+        "length": 80,
+        "name": "receipttim",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "ID",
+        "length": 80,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 110,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "G-AIRMETs (Graphical AIRMETs)",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 11619,
+  "status": 200
+}

@@ -1,0 +1,120 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "FSNRC boundaries attributed with NRCS Regions",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -65.58991742999996,
+      "xmin": -134.36765066999993,
+      "ymax": 56.35666985000006,
+      "ymin": 17.926836670000057
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "ID",
+        "length": 30,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NAME",
+        "length": 120,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS_ACRES",
+        "length": 1073741822,
+        "name": "gis_acres",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_REGION_CODE",
+        "length": 2,
+        "name": "admin_region_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_REGION_NAME",
+        "length": 254,
+        "name": "admin_region_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "INITIATED_FY",
+        "length": 4,
+        "name": "initiated_fy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NRCS_REGION",
+        "length": 25,
+        "name": "nrcs_region",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SHAPE",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Joint Chiefs' Landscape Restoration Partnership Projects (2021-2023)",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestWkid": 4269,
+      "mTolerance": 2,
+      "mUnits": 10000,
+      "wkid": 4269,
+      "xyTolerance": 8.983152841195213e-09,
+      "xyUnits": 11258999068426.24,
+      "zTolerance": 2,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 7792,
+  "status": 200
+}

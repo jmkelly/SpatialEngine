@@ -1,0 +1,619 @@
+{
+  "body": {
+    "features": [
+      {
+        "attributes": {
+          "Affected": "Noatak Valley; Lower Kobuk Valley; Upper Kobuk Valleys",
+          "AreaIds": "AKZ814 AKZ816 AKZ819",
+          "Category": "Met",
+          "Certainty": "Possible",
+          "DamageThreat": null,
+          "Description": "ESFAFG\n\n...Locations Impacted...\nStreams draining southern slopes of the Western Brooks Range.\n\nIncoming rainfall from a atmospheric river will bring rainfall to the\nsouthern slopes of the western end of the Brooks Range through\nFriday.  Rainfall totals ma\u2026",
+          "End_": 1789164000000,
+          "Event": "Hydrologic Outlook",
+          "HrsSinceUpdated": 15,
+          "HrsUntilEffective": -15,
+          "HrsUntilExpiration": 9,
+          "Instruction": null,
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.bb5c996011e89b7969ce7479df48edf2c56813bb.001.1",
+          "OBJECTID": 2357177,
+          "Severity": "Unknown",
+          "Shape__Area": 322177743123.53125,
+          "Shape__Length": 4720948.789162366,
+          "Start": 1789076280000,
+          "Summary": "Hydrologic Outlook issued September 10 at 1:38PM AKDT by NWS Fairbanks AK",
+          "Uid": "bb5c996011e89b7969ce7479df48edf2c56813bb.001.1",
+          "Updated": 1789076280000,
+          "Urgency": "Future"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -17834279.6601782,
+                10009718.5952568
+              ],
+              [
+                -17834747.7603068,
+                10008881.4973502
+              ],
+              [
+                -17835617.4438286,
+                10011859.2391978
+              ],
+              [
+                -17835316.2672765,
+                10012629.8504505
+              ],
+              [
+                -17835358.3266744,
+                10014898.2962834
+              ],
+              [
+                -17835007.968726,
+                10015629.9307821
+              ],
+              [
+                -17834508.2575355,
+                10015423.9886972
+              ],
+              [
+                -17834992.3587277,
+                10012453.2372532
+              ],
+              [
+                -17833720.3513154,
+                10011057.1810323
+              ],
+              [
+                -17834279.6601782,
+                10009718.5952568
+              ]
+            ],
+            [
+              [
+                -17949359.189412,
+                10028638.1199889
+              ],
+              [
+                -17948662.8951253,
+                10027107.0946126
+              ],
+              [
+                -17949450.8634617,
+                10027599.2183029
+              ],
+              [
+                -17949359.189412,
+                10028638.1199889
+              ]
+            ],
+            [
+              [
+                -17947325.9140884,
+                10026788.4373023
+              ],
+              [
+                -17947628.1713302,
+                10026441.2838006
+              ],
+              [
+                -17948911.9226148,
+                10029301.0816578
+              ],
+              [
+                -17946944.337702,
+                10028523.6508982
+              ],
+              [
+                -17946983.0715415,
+                10027276.6343402
+              ],
+              [
+                -17947325.9140884,
+                10026788.4373023
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Affected": "Kuskokwim Delta Coast and Nunivak Island",
+          "AreaIds": "AKZ755",
+          "Category": "Met",
+          "Certainty": "Possible",
+          "DamageThreat": null,
+          "Description": "ESFAFC\n\nUPDATE: Based on forecast winds and water levels, flooding continues\nto look very unlikely along Kuskokwim River and the coast. However,\nhigher water levels and winds gusting up to 30 to 45 mph may still\nimpact activities along the water.\n\nFor comm\u2026",
+          "End_": 1789171200000,
+          "Event": "Hydrologic Outlook",
+          "HrsSinceUpdated": 13,
+          "HrsUntilEffective": -13,
+          "HrsUntilExpiration": 11,
+          "Instruction": null,
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.86ecb6d667ee943d6da0963a377a2a19df11d2c1.001.1",
+          "OBJECTID": 2357302,
+          "Severity": "Unknown",
+          "Shape__Area": 103073389460.46875,
+          "Shape__Length": 4291298.771958342,
+          "Start": 1789083720000,
+          "Summary": "Hydrologic Outlook issued September 10 at 3:42PM AKDT by NWS Anchorage AK",
+          "Uid": "86ecb6d667ee943d6da0963a377a2a19df11d2c1.001.1",
+          "Updated": 1789083720000,
+          "Urgency": "Future"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -18247434.673191,
+                8326946.46541546
+              ],
+              [
+                -18248621.6029014,
+                8326721.49770763
+              ],
+              [
+                -18256113.1867795,
+                8331012.28362322
+              ],
+              [
+                -18259098.9636525,
+                8333987.82449269
+              ],
+              [
+                -18259598.1568734,
+                8335757.81636118
+              ],
+              [
+                -18258113.775361,
+                8335132.71099757
+              ],
+              [
+                -18257880.3431756,
+                8333829.0910561
+              ],
+              [
+                -18254248.135244,
+                8332206.47185533
+              ],
+              [
+                -18247360.3530707,
+                8327922.80690179
+              ],
+              [
+                -18247434.673191,
+                8326946.46541546
+              ]
+            ],
+            [
+              [
+                -18275954.8379404,
+                8353944.15059685
+              ],
+              [
+                -18273939.6373399,
+                8351734.13583658
+              ],
+              [
+                -18271424.0271305,
+                8351782.98163228
+              ],
+              [
+                -18271590.8101104,
+                8350878.18965878
+              ],
+              [
+                -18273504.8385483,
+                8350966.36518934
+              ],
+              [
+                -18278437.3585425,
+                8354968.10905152
+              ],
+              [
+                -18281913.8138085,
+                8360634.62463357
+              ],
+              [
+                -18281266.6089682,
+                8361014.02288578
+              ],
+              [
+                -18279392.4177686,
+                8358950.5445288
+              ],
+              [
+                -18278250.6857752,
+                8356531.7892425
+              ],
+              [
+                -18275954.8379404,
+                8353944.15059685
+              ]
+            ],
+            [
+              [
+                -18490538.1253537,
+                8362072.34933005
+              ],
+              [
+                -18490993.4113844,
+                8361630.62818993
+              ],
+              [
+                -18490886.5614825,
+                8362076.92427979
+              ],
+              [
+                -18490538.1253537,
+                8362072.34933005
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Affected": "Interior Kuskokwim Delta",
+          "AreaIds": "AKZ756",
+          "Category": "Met",
+          "Certainty": "Possible",
+          "DamageThreat": null,
+          "Description": "ESFAFC\n\nUPDATE: Based on upstream river observations and forecast winds,\nflooding looks very unlikely along the Kuskokwim and Johnson Rivers.\nHowever, bankfull conditions and winds gusting up to 30 to 45 mph may\nstill impact activities along the river.\n\nHy\u2026",
+          "End_": 1789171200000,
+          "Event": "Hydrologic Outlook",
+          "HrsSinceUpdated": 13,
+          "HrsUntilEffective": -13,
+          "HrsUntilExpiration": 11,
+          "Instruction": null,
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.bed4356a413d677f92920106f227800c3e81b8b7.001.1",
+          "OBJECTID": 2357304,
+          "Severity": "Unknown",
+          "Shape__Area": 122824575317.51562,
+          "Shape__Length": 2044422.3377397603,
+          "Start": 1789083600000,
+          "Summary": "Hydrologic Outlook issued September 10 at 3:40PM AKDT by NWS Anchorage AK",
+          "Uid": "bed4356a413d677f92920106f227800c3e81b8b7.001.1",
+          "Updated": 1789083600000,
+          "Urgency": "Future"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -17914246.7131383,
+                8787152.72679422
+              ],
+              [
+                -17895824.1303407,
+                8735730.49774081
+              ],
+              [
+                -17808700.7357113,
+                8630350.11342187
+              ],
+              [
+                -17774303.9669529,
+                8609828.38339799
+              ],
+              [
+                -17754163.7536894,
+                8588435.37403075
+              ],
+              [
+                -17740563.4454057,
+                8545029.34582976
+              ],
+              [
+                -17740564.9014646,
+                8505774.96438488
+              ],
+              [
+                -17748167.5775192,
+                8505774.51285998
+              ],
+              [
+                -17748167.0209217,
+                8486225.33246567
+              ],
+              [
+                -17767503.9957089,
+                8486224.88191759
+              ],
+              [
+                -17767503.105153,
+                8447281.16858422
+              ],
+              [
+                -17786840.4138987,
+                8447280.72041941
+              ],
+              [
+                -17786839.9686207,
+                8427885.77865368
+              ],
+              [
+                -17793923.3391394,
+                8427885.55516161
+              ],
+              [
+                -17793922.3373753,
+                8389247.48990892
+              ],
+              [
+                -17813058.8257596,
+                8389247.04526461
+              ],
+              [
+                -17813058.0464119,
+                8350809.65141583
+              ],
+              [
+                -17838782.5335808,
+                8350808.98791661
+              ],
+              [
+                -17838781.7542331,
+                8312569.62019231
+              ],
+              [
+                -17857722.0977859,
+                8312569.18014313
+              ],
+              [
+                -17857721.3184381,
+                8274525.4553903
+              ],
+              [
+                -17864034.6921503,
+                8274525.23649383
+              ],
+              [
+                -17864028.2356198,
+                8255576.1975864
+              ],
+              [
+                -17882776.9982177,
+                8255575.76091146
+              ],
+              [
+                -17882776.6642593,
+                8236674.37604279
+              ],
+              [
+                -17901525.5381766,
+                8236673.94047921
+              ],
+              [
+                -17901525.5237051,
+                8234188.42468403
+              ],
+              [
+                -17956603.65916,
+                8246101.42936893
+              ],
+              [
+                -18003540.327327,
+                8293968.66308111
+              ],
+              [
+                -17979553.1069368,
+                8312283.51168329
+              ],
+              [
+                -17963259.9006887,
+                8339167.772872
+              ],
+              [
+                -17953076.6468115,
+                8376068.61212379
+              ],
+              [
+                -17941761.9202565,
+                8411341.63539331
+              ],
+              [
+                -17939046.3858076,
+                8452708.28757997
+              ],
+              [
+                -17941974.0713835,
+                8490928.86485528
+              ],
+              [
+                -17974503.9102014,
+                8526097.0396566
+              ],
+              [
+                -18012403.8244095,
+                8544240.47085576
+              ],
+              [
+                -18025066.6803145,
+                8544559.05107901
+              ],
+              [
+                -18036771.7570129,
+                8549247.43732402
+              ],
+              [
+                -18050248.9249004,
+                8559529.6256876
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Subject Type",
+        "defaultValue": null,
+        "length": 45,
+        "name": "Event",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Severity Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Severity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Summary Overview",
+        "defaultValue": null,
+        "length": 512,
+        "name": "Summary",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Details",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Link",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Urgency Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Urgency",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Certainty Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Certainty",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Topic Category",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Updated (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Updated",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Effective (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Start",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Expiration (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "End_",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Unique ID",
+        "defaultValue": null,
+        "length": 50,
+        "name": "Uid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Areas Affected",
+        "defaultValue": null,
+        "length": 1024,
+        "name": "Affected",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Area Ids Affected",
+        "defaultValue": null,
+        "length": 768,
+        "name": "AreaIds",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Detailed Description",
+        "defaultValue": null,
+        "length": 5120,
+        "name": "Description",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Authoritative Instruction",
+        "defaultValue": null,
+        "length": 2048,
+        "name": "Instruction",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hours Since Update",
+        "defaultValue": null,
+        "name": "HrsSinceUpdated",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Effective",
+        "defaultValue": null,
+        "name": "HrsUntilEffective",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Expiration",
+        "defaultValue": null,
+        "name": "HrsUntilExpiration",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Observed Threat Damage Level",
+        "defaultValue": null,
+        "length": 25,
+        "name": "DamageThreat",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 96144,
+  "status": 200
+}

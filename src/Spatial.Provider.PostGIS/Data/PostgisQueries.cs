@@ -24,13 +24,76 @@ internal static class PostgisQueries
             ? Select(dataset, schema)
             : $"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE {predicate}";
 
-    /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry via EWKB + SRID).</summary>
+    /// <summary>
+    /// Reads features by identity (ADR-0038): one OR-group per requested
+    /// identity tuple, one bound parameter per identity value, in input order.
+    /// A single tuple carries <c>LIMIT 1</c> (the primary-key predicate is
+    /// already unique); a batch has no limit because each tuple matches at
+    /// most one row. Both the identity columns and the dataset identifier are
+    /// discovered identifiers, never client text.
+    /// </summary>
+    public static string SelectByIdentity(
+        PostgisDatasetName dataset, IFeatureSchema schema, IReadOnlyList<string> identityColumns, int count)
+    {
+        var builder = new StringBuilder($"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE ");
+        for (var feature = 0; feature < count; feature++)
+        {
+            if (feature > 0)
+            {
+                builder.Append(" OR ");
+            }
+
+            builder.Append('(');
+            for (var column = 0; column < identityColumns.Count; column++)
+            {
+                if (column > 0)
+                {
+                    builder.Append(" AND ");
+                }
+
+                builder.Append('"').Append(identityColumns[column]).Append("\" = @p").Append((feature * identityColumns.Count) + column);
+            }
+
+            builder.Append(')');
+        }
+
+        return count == 1 ? builder.Append(" LIMIT 1").ToString() : builder.ToString();
+    }
+
+    /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry via EWKB with the column SRID enforced).</summary>
     public static string Insert(PostgisDatasetName dataset, IFeatureSchema batchSchema, int srid)
     {
         var columns = string.Join(", ", batchSchema.Fields.Select(field => $"\"{field.Name}\""));
         var values = string.Join(", ", batchSchema.Fields.Select((field, i) =>
-            field.Kind == AttributeKind.Geometry ? $"ST_GeomFromEWKB(@p{i}, {srid})" : $"@p{i}"));
+            field.Kind == AttributeKind.Geometry ? $"ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})" : $"@p{i}"));
         return $"INSERT INTO {dataset.QuoteQualified()} ({columns}) VALUES ({values})";
+    }
+
+    /// <summary>Insert that returns the store-assigned identity columns (ADR-0037); unchanged when the table has no identity.</summary>
+    public static string InsertReturning(PostgisDatasetName dataset, IFeatureSchema batchSchema, int srid, IReadOnlyList<string> identityColumns)
+    {
+        var insert = Insert(dataset, batchSchema, srid);
+        return identityColumns.Count == 0
+            ? insert
+            : insert + " RETURNING " + string.Join(", ", identityColumns.Select(column => $"\"{column}\""));
+    }
+
+    /// <summary>Updates one feature in place, targeting its identity columns (ADR-0037).</summary>
+    public static string Update(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
+    {
+        var sets = string.Join(", ", schema.Fields.Select((field, i) =>
+            field.Kind == AttributeKind.Geometry
+                ? $"\"{field.Name}\" = ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})"
+                : $"\"{field.Name}\" = @p{i}"));
+        var predicate = string.Join(" AND ", identityColumns.Select(column => $"\"{column}\" = @p{schema.IndexOf(column)}"));
+        return $"UPDATE {dataset.QuoteQualified()} SET {sets} WHERE {predicate}";
+    }
+
+    /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037).</summary>
+    public static string Delete(PostgisDatasetName dataset, IReadOnlyList<string> identityColumns)
+    {
+        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{i}"));
+        return $"DELETE FROM {dataset.QuoteQualified()} WHERE {predicate}";
     }
 
     /// <summary>Creates the result table from a defining batch's schema.</summary>

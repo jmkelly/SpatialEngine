@@ -1,0 +1,120 @@
+{
+  "body": {
+    "displayFieldName": "label",
+    "features": [],
+    "fieldAliases": {
+      "end_date": "End Date",
+      "end_dt2": "End Date2",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "idp_source": "GIS Source",
+      "idp_subset": "GIS Subset",
+      "issue_time_dt": "issue_time_dt",
+      "label": "Hazards",
+      "objectid": "Object ID",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "start_date": "Start Date",
+      "start_dt2": "Start Date2",
+      "valid_time_dt": "valid_time_dt",
+      "validendtime_dt": "validendtime_dt"
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Hazards",
+        "length": 254,
+        "name": "label",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Start Date",
+        "length": 8,
+        "name": "start_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date",
+        "length": 8,
+        "name": "end_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Start Date2",
+        "length": 8,
+        "name": "start_dt2",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date2",
+        "length": 8,
+        "name": "end_dt2",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Source",
+        "length": 50,
+        "name": "idp_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Subset",
+        "length": 64,
+        "name": "idp_subset",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "issue_time_dt",
+        "length": 8,
+        "name": "issue_time_dt",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "valid_time_dt",
+        "length": 8,
+        "name": "valid_time_dt",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "validendtime_dt",
+        "length": 8,
+        "name": "validendtime_dt",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 1829,
+  "status": 200
+}

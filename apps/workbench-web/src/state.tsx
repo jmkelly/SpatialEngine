@@ -1,51 +1,48 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { fromBase64, type CapabilitySummaryDto, type JobResponse, type PluginDto } from "@spatial/client";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { batchToGeoJson, decodeSgeom } from "./sgeom.ts";
 import {
   deleteResult,
-  geometryToBase64,
-  loadJobs,
   loadResults,
-  recordJob,
+  loadRuns,
+  recordRun,
   saveResult,
-  type SavedJob,
   type SavedResult,
+  type SavedRun,
 } from "./persistence.ts";
 import { createClient } from "./api.ts";
-import { attachGeometryWire, describe, failure, geometryFromWire, outcomeFromResponse, resourceTokenFrom } from "./state-helpers.ts";
+import { attachGeometryBytes, describe, failure, fromBase64, geometryFromBase64, toBase64, withoutOperationResults } from "./state-helpers.ts";
 import type { RunOutcome } from "./run-outcome.ts";
 
-/** One finished invocation the Run screen shows (inline or job terminal). */
+/** One finished operation the Run screen shows. */
 export type { RunOutcome };
 
 export interface WorkbenchActions {
   refreshAll: () => Promise<void>;
-  refreshPlugins: () => Promise<void>;
-  refreshCapabilities: () => Promise<void>;
   loadCatalogue: () => Promise<void>;
   loadDataset: (datasetId: string) => Promise<void>;
   selectFeature: (id: string | null) => void;
-  runInvocation: (capabilityId: string, args: Record<string, unknown>, permissions: string[]) => Promise<RunOutcome>;
+  runOperation: (op: string, values: Record<string, unknown>) => Promise<RunOutcome>;
+  cancelRunning: () => void;
   persistResult: (outcome: RunOutcome, name: string, note: string) => void;
   removeResult: (id: string) => void;
+  /** Drops unsaved operation previews from the map, keeping saved results. */
+  clearResults: () => void;
 }
 
 interface WorkbenchState {
   client: ReturnType<typeof createClient>;
-  plugins: PluginDto[];
-  capabilities: CapabilitySummaryDto[];
   catalogueDatasets: string[];
   selectedDataset: string | null;
   geojson: GeoJSON.FeatureCollection;
   resultGeojson: GeoJSON.FeatureCollection;
   selectedFeatureId: string | null;
   selectedProperties: Record<string, unknown> | null;
-  /** The wire-encoded <c>{$geometry}</c> tag of the selected feature, for capability arguments. */
-  selectedGeometryWire: unknown;
+  /** The base64 SGEOM bytes of the selected feature, for operation arguments. */
+  selectedGeometryBase64: string | null;
   savedResults: SavedResult[];
-  savedJobs: SavedJob[];
+  savedRuns: SavedRun[];
   recentOutcome: RunOutcome | null;
-  runningJobs: string[];
+  running: boolean;
   error: string | null;
   busy: boolean;
   actions: WorkbenchActions;
@@ -55,62 +52,25 @@ const Context = createContext<WorkbenchState | null>(null);
 
 export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const client = useMemo(() => createClient(), []);
-  const [plugins, setPlugins] = useState<PluginDto[]>([]);
-  const [capabilities, setCapabilities] = useState<CapabilitySummaryDto[]>([]);
   const [catalogueDatasets, setCatalogueDatasets] = useState<string[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<string | null>(null);
   const [geojson, setGeojson] = useState<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
   const [resultGeojson, setResultGeojson] = useState<GeoJSON.FeatureCollection>({ type: "FeatureCollection", features: [] });
-  const [geometryWireById, setGeometryWireById] = useState<Record<string, unknown>>({});
+  const [geometryBase64ById, setGeometryBase64ById] = useState<Record<string, string>>({});
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<Record<string, unknown> | null>(null);
   const [savedResults, setSavedResults] = useState<SavedResult[]>(() => loadResults());
-  const [savedJobs, setSavedJobs] = useState<SavedJob[]>(() => loadJobs());
+  const [savedRuns, setSavedRuns] = useState<SavedRun[]>(() => loadRuns());
   const [recentOutcome, setRecentOutcome] = useState<RunOutcome | null>(null);
-  const [runningJobs, setRunningJobs] = useState<string[]>([]);
+  const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const refreshPlugins = useCallback(async () => {
-    try {
-      setPlugins(await client.getPlugins());
-    } catch (err) {
-      setError(describe(err));
-    }
-  }, [client]);
-
-  const refreshCapabilities = useCallback(async () => {
-    try {
-      setCapabilities(await client.getCapabilities());
-    } catch (err) {
-      setError(describe(err));
-    }
-  }, [client]);
+  const abortRef = useRef<AbortController | null>(null);
 
   const loadCatalogue = useCallback(async () => {
     try {
-      const servesCatalogue = (await client.getCapabilities()).some(
-        (capability) => capability.id === "spatial.catalogue.list@1",
-      );
-      if (!servesCatalogue) {
-        setCatalogueDatasets([]);
-        return;
-      }
-      const response = await client.invoke({ capability: "spatial.catalogue.list@1" });
-      if (!response.ok) {
-        setError(`catalogue: ${response.error?.message ?? "failed"}`);
-        return;
-      }
-      const token = resourceTokenFrom(response);
-      if (token === null) return;
-      const datasets: string[] = [];
-      for await (const item of client.readStream(token)) {
-        if (typeof item === "string") {
-          const parsed = JSON.parse(item) as { id?: string };
-          if (typeof parsed.id === "string") datasets.push(parsed.id);
-        }
-      }
-      setCatalogueDatasets(datasets);
+      const catalogue = await client.catalogue();
+      setCatalogueDatasets(catalogue.datasets.map((dataset) => dataset.id));
     } catch (err) {
       setError(describe(err));
     }
@@ -122,30 +82,20 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         setSelectedDataset(datasetId);
-        const response = await client.invoke({
-          capability: "spatial.feature.scan@1",
-          arguments: { dataset: datasetId },
-          permissions: ["spatial.feature.read"],
-        });
-        if (!response.ok) {
-          setError(`scan ${datasetId}: ${response.error?.message ?? "failed"}`);
-          setGeojson({ type: "FeatureCollection", features: [] });
-          return;
-        }
-        const token = resourceTokenFrom(response);
-        if (token === null) return;
+        const batches = await client.scan(datasetId);
         const features: GeoJSON.Feature[] = [];
-        const wires: Record<string, unknown> = {};
-        for await (const batch of client.readFeatureBatches(token)) {
+        const bytes: Record<string, string> = {};
+        for (const batch of batches) {
           features.push(...batchToGeoJson(batch).features);
-          for (const feature of batch.features) attachGeometryWire(wires, feature.id, feature);
+          for (const feature of batch.features) attachGeometryBytes(bytes, feature.id, feature);
         }
         setGeojson({ type: "FeatureCollection", features });
-        setGeometryWireById(wires);
+        setGeometryBase64ById(bytes);
         setSelectedFeatureId(null);
         setSelectedProperties(null);
       } catch (err) {
         setError(describe(err));
+        setGeojson({ type: "FeatureCollection", features: [] });
       } finally {
         setBusy(false);
       }
@@ -166,71 +116,64 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     [geojson.features],
   );
 
-  const selectedGeometryWire = selectedFeatureId === null ? null : (geometryWireById[selectedFeatureId] ?? null);
+  const selectedGeometryBase64 = selectedFeatureId === null ? null : (geometryBase64ById[selectedFeatureId] ?? null);
 
-  const runInvocation = useCallback(
-    async (capabilityId: string, args: Record<string, unknown>, permissions: string[]): Promise<RunOutcome> => {
+  const runOperation = useCallback(
+    async (op: string, values: Record<string, unknown>): Promise<RunOutcome> => {
       setError(null);
+      setRunning(true);
+      const abort = new AbortController();
+      abortRef.current = abort;
+      const startedAt = new Date().toISOString();
       try {
-        const response = await client.invoke({ capability: capabilityId, arguments: args, permissions });
-        const outcome = response.kind === "completed"
-          ? outcomeFromResponse(response)
-          : response.kind === "job" && response.job
-            ? await watchJob(response.job.jobId, capabilityId)
-            : failure("the host answered with an unexpected invocation kind");
+        const outcome = await execute(client, op, values, selectedGeometryBase64, abort.signal);
         setRecentOutcome(outcome);
+        setSavedRuns(recordRun({ id: crypto.randomUUID(), op, ok: outcome.ok, startedAt, detail: outcome.summary ?? outcome.error }));
         applyResultToMap(outcome, setResultGeojson);
         return outcome;
       } catch (err) {
-        const outcome = failure(describe(err));
+        if (abort.signal.aborted) {
+          const outcome: RunOutcome = { op, ok: false, error: "cancelled", geometryBase64: null, summary: null, finishedAt: new Date().toISOString() };
+          setRecentOutcome(outcome);
+          return outcome;
+        }
+        const outcome = failure(op, describe(err));
         setRecentOutcome(outcome);
         return outcome;
+      } finally {
+        setRunning(false);
+        abortRef.current = null;
       }
     },
-    [client],
+    [client, selectedGeometryBase64],
   );
 
-  const watchJob = useCallback(async (jobId: string, capability: string): Promise<RunOutcome> => {
-    setRunningJobs((jobs) => [...jobs, jobId]);
-    try {
-      const job = await client.waitForJob(jobId);
-      setSavedJobs(recordJob({ id: job.id, capability, state: job.state, startedAt: job.createdAt, provider: job.provider }));
-      const result = await readJobResult(client, job);
-      const outcome: RunOutcome = {
-        capability,
-        provider: job.provider,
-        ok: job.state === "completed",
-        error: job.state === "completed" ? null : `job ended ${job.state}${job.errorCode ? ` (${job.errorCode})` : ""}`,
-        result,
-        jobId,
-        step: null,
-        finishedAt: new Date().toISOString(),
-      };
-      return outcome;
-    } catch (err) {
-      return failure(describe(err), jobId);
-    } finally {
-      setRunningJobs((jobs) => jobs.filter((id) => id !== jobId));
-    }
-  }, [client]);
+  const cancelRunning = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const persistResult = useCallback((outcome: RunOutcome, name: string, note: string) => {
     const saved: SavedResult = {
       id: crypto.randomUUID(),
       name,
-      capability: outcome.capability,
-      provider: outcome.provider,
+      op: outcome.op,
       savedAt: new Date().toISOString(),
-      geometryBase64: geometryToBase64(outcome.result),
-      valueJson: scalarToJson(outcome.result),
+      geometryBase64: outcome.geometryBase64,
+      summary: outcome.summary,
       note,
     };
     setSavedResults(saveResult(saved));
     if (saved.geometryBase64 !== null) {
-      setResultGeojson((current) => ({
-        type: "FeatureCollection",
-        features: [...current.features, savedResultFeature(saved)],
-      }));
+      const geometry = geometryFromBase64(saved.geometryBase64);
+      if (geometry !== null) {
+        const feature: GeoJSON.Feature = {
+          type: "Feature",
+          id: saved.id,
+          properties: { name: saved.name, op: saved.op, kind: "saved" },
+          geometry: geometry as GeoJSON.Geometry,
+        };
+        setResultGeojson((current) => ({ type: "FeatureCollection", features: [...current.features, feature] }));
+      }
     }
   }, []);
 
@@ -238,38 +181,40 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     setSavedResults(deleteResult(id));
   }, []);
 
+  const clearResults = useCallback(() => {
+    setResultGeojson(withoutOperationResults);
+  }, []);
+
   const refreshAll = useCallback(async () => {
     setBusy(true);
-    await Promise.all([refreshCapabilities(), refreshPlugins(), loadCatalogue()]);
+    await loadCatalogue();
     setBusy(false);
-  }, [refreshCapabilities, refreshPlugins, loadCatalogue]);
+  }, [loadCatalogue]);
 
   const actions: WorkbenchActions = useMemo(
-    () => ({ refreshAll, refreshPlugins, refreshCapabilities, loadCatalogue, loadDataset, selectFeature, runInvocation, persistResult, removeResult }),
-    [refreshAll, refreshPlugins, refreshCapabilities, loadCatalogue, loadDataset, selectFeature, runInvocation, persistResult, removeResult],
+    () => ({ refreshAll, loadCatalogue, loadDataset, selectFeature, runOperation, cancelRunning, persistResult, removeResult, clearResults }),
+    [refreshAll, loadCatalogue, loadDataset, selectFeature, runOperation, cancelRunning, persistResult, removeResult, clearResults],
   );
 
   const state: WorkbenchState = useMemo(
     () => ({
       client,
-      plugins,
-      capabilities,
       catalogueDatasets,
       selectedDataset,
       geojson,
       resultGeojson,
       selectedFeatureId,
       selectedProperties,
-      selectedGeometryWire,
+      selectedGeometryBase64,
       savedResults,
-      savedJobs,
+      savedRuns,
       recentOutcome,
-      runningJobs,
+      running,
       error,
       busy,
       actions,
     }),
-    [client, plugins, capabilities, catalogueDatasets, selectedDataset, geojson, resultGeojson, selectedFeatureId, selectedProperties, selectedGeometryWire, savedResults, savedJobs, recentOutcome, runningJobs, error, busy, actions],
+    [client, catalogueDatasets, selectedDataset, geojson, resultGeojson, selectedFeatureId, selectedProperties, selectedGeometryBase64, savedResults, savedRuns, recentOutcome, running, error, busy, actions],
   );
 
   return <Context.Provider value={state}>{children}</Context.Provider>;
@@ -283,21 +228,97 @@ export function useWorkbench(): WorkbenchState {
   return state;
 }
 
-async function readJobResult(client: ReturnType<typeof createClient>, job: JobResponse): Promise<unknown> {
-  const events = await client.getJobEvents(job.id).catch(() => ({ events: [] as never[] }));
-  const resourceEvent = events.events.find((event) => event.resource !== null && event.resource !== undefined);
-  if (resourceEvent?.resource?.id) {
-    const first: unknown[] = [];
-    for await (const item of client.readStream(resourceEvent.resource.id)) {
-      if (first.length < 2) first.push(item);
+type Client = ReturnType<typeof createClient>;
+
+async function execute(
+  client: Client,
+  op: string,
+  values: Record<string, unknown>,
+  selectedBase64: string | null,
+  signal: AbortSignal,
+): Promise<RunOutcome> {
+  const finishedAt = () => new Date().toISOString();
+  switch (op) {
+    case "buffer": {
+      const geometry = requireSelection(selectedBase64);
+      const result = await client.buffer(fromBase64(geometry), Number(values.distance ?? 1), intOr(values.quadrantSegments, 8), signal);
+      return { op, ok: true, error: null, geometryBase64: toBase64(result), summary: `${result.length} bytes buffered`, finishedAt: finishedAt() };
     }
-    return first.length > 0 ? { streamPreview: first } : null;
+    case "intersection": {
+      const geometry = requireSelection(selectedBase64);
+      const other = requireText(values.other, "other geometry");
+      const result = await client.intersection(fromBase64(geometry), fromBase64(other), signal);
+      return { op, ok: true, error: null, geometryBase64: toBase64(result), summary: `${result.length} bytes intersected`, finishedAt: finishedAt() };
+    }
+    case "validate": {
+      const geometry = requireSelection(selectedBase64);
+      const valid = await client.validate(fromBase64(geometry), signal);
+      return { op, ok: true, error: null, geometryBase64: null, summary: valid ? "valid" : "invalid", finishedAt: finishedAt() };
+    }
+    case "simplify": {
+      const geometry = requireSelection(selectedBase64);
+      const result = await client.simplify(fromBase64(geometry), Number(values.tolerance ?? 0.5), signal);
+      return { op, ok: true, error: null, geometryBase64: toBase64(result), summary: `${result.length} bytes simplified`, finishedAt: finishedAt() };
+    }
+    case "transform": {
+      const geometry = requireSelection(selectedBase64);
+      const target = requireText(values.target, "target CRS");
+      const source = typeof values.source === "string" && values.source.trim() !== "" ? values.source.trim() : undefined;
+      const result = await client.transform(fromBase64(geometry), target, source, signal);
+      return { op, ok: true, error: null, geometryBase64: toBase64(result), summary: `transformed to ${target}`, finishedAt: finishedAt() };
+    }
+    case "describe": {
+      const description = await client.describeCrs(requireText(values.crs, "CRS"), signal);
+      return { op, ok: true, error: null, geometryBase64: null, summary: `${description.authority}:${description.code} ${description.name}`, finishedAt: finishedAt() };
+    }
+    case "scan": {
+      const batches = await client.scan(requireText(values.dataset, "dataset"), "demo", signal);
+      const count = batches.reduce((sum, batch) => sum + batch.features.length, 0);
+      return { op, ok: true, error: null, geometryBase64: null, summary: `${count} features in ${batches.length} batches`, finishedAt: finishedAt() };
+    }
+    case "query": {
+      const bbox = readBbox(values);
+      const filter = typeof values.filter === "string" && values.filter.trim() !== "" ? values.filter.trim() : undefined;
+      const batches = await client.query(requireText(values.dataset, "dataset"), { bbox: bbox ?? undefined, filter }, "demo", signal);
+      const count = batches.reduce((sum, batch) => sum + batch.features.length, 0);
+      return { op, ok: true, error: null, geometryBase64: null, summary: `${count} features match`, finishedAt: finishedAt() };
+    }
+    case "sleep": {
+      const slept = await client.sleep(intOr(values.milliseconds, 1000), signal);
+      return { op, ok: true, error: null, geometryBase64: null, summary: `slept ${slept} ms`, finishedAt: finishedAt() };
+    }
+    default:
+      return failure(op, `unknown operation ${op}`);
   }
-  return null;
+}
+
+function requireSelection(selectedBase64: string | null): string {
+  if (selectedBase64 === null) throw new Error("no geometry selected — pick a feature on the map");
+  return selectedBase64;
+}
+
+function requireText(value: unknown, name: string): string {
+  if (typeof value !== "string" || value.trim() === "") throw new Error(`${name} is required`);
+  return value.trim();
+}
+
+function intOr(value: unknown, fallback: number): number {
+  if (value === undefined || value === null || value === "") return fallback;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) throw new Error(`expected a number, got ${String(value)}`);
+  return Math.trunc(numeric);
+}
+
+function readBbox(values: Record<string, unknown>): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const names = ["minx", "miny", "maxx", "maxy"] as const;
+  const present = names.filter((name) => values[name] !== undefined && values[name] !== null && values[name] !== "");
+  if (present.length === 0) return null;
+  if (present.length !== 4) throw new Error("the bounding box is all-or-none (minx, miny, maxx, maxy)");
+  return { minX: Number(values.minx), minY: Number(values.miny), maxX: Number(values.maxx), maxY: Number(values.maxy) };
 }
 
 function applyResultToMap(outcome: RunOutcome, setter: (update: (current: GeoJSON.FeatureCollection) => GeoJSON.FeatureCollection) => void): void {
-  const geometry = geometryFromWire(outcome.result);
+  const geometry = geometryFromBase64(outcome.geometryBase64);
   if (geometry === null) return;
   setter((current) => ({
     type: "FeatureCollection",
@@ -306,31 +327,22 @@ function applyResultToMap(outcome: RunOutcome, setter: (update: (current: GeoJSO
       {
         type: "Feature",
         id: `result-${Date.now()}`,
-        properties: { capability: outcome.capability, provider: outcome.provider, kind: "invocation" },
+        properties: { op: outcome.op, kind: "operation" },
         geometry: geometry as GeoJSON.Geometry,
       },
     ],
   }));
 }
 
-function savedResultFeature(saved: SavedResult): GeoJSON.Feature {
-  const fallback = { type: "Feature", id: saved.id, properties: { name: saved.name, capability: saved.capability, provider: saved.provider, kind: "saved" }, geometry: { type: "Point", coordinates: [0, 0] } } as GeoJSON.Feature;
+export function savedResultFeature(saved: SavedResult): GeoJSON.Feature {
+  const fallback = { type: "Feature", id: saved.id, properties: { name: saved.name, op: saved.op, kind: "saved" }, geometry: { type: "Point", coordinates: [0, 0] } } as GeoJSON.Feature;
   if (saved.geometryBase64 === null) return fallback;
-  try {
-    const geometry = decodeSgeom(fromBase64(saved.geometryBase64));
-    return {
-      type: "Feature",
-      id: saved.id,
-      properties: { name: saved.name, capability: saved.capability, provider: saved.provider, kind: "saved" },
-      geometry: geometry as GeoJSON.Geometry,
-    };
-  } catch {
-    // Unsupported or malformed saved geometry: persist the record, skip the map.
-    return fallback;
-  }
-}
-
-function scalarToJson(value: unknown): string | null {
-  if (value === null || value === undefined || typeof value === "object") return null;
-  return JSON.stringify(value);
+  const geometry = geometryFromBase64(saved.geometryBase64);
+  if (geometry === null) return fallback;
+  return {
+    type: "Feature",
+    id: saved.id,
+    properties: { name: saved.name, op: saved.op, kind: "saved" },
+    geometry: geometry as GeoJSON.Geometry,
+  };
 }

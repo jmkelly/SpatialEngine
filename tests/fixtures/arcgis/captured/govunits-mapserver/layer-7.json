@@ -1,0 +1,168 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "USGS TNM - Governmental Units Dataset, U.S. Census Bureau - TIGER/Line",
+    "description": "Labels for legal and statistical American Indiana, Alaska Native, and Native Hawaiian entities (federally recognized American Indian reservations and off-reservations trust land areas, state-reocgnized American Indian reservations, and Hawaiian home lands), and Alaska Native Regional Corporations.",
+    "displayField": "Name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.705511045,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148036.0563282,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20021886.4032,
+      "xmin": -19951914.9256,
+      "ymax": 11554348.247299999,
+      "ymin": 2144424.339400001
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Shape",
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "PERMANENT_IDENTIFIER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "SOURCE_FEATUREID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "SOURCE_DATASETID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "SOURCE_DATADESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "SOURCE_ORIGINATOR",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "DATA_SECURITY",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "DISTRIBUTION_POLICY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "LOADDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "NAME",
+        "length": 120,
+        "name": "NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "AREASQKM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "GNIS_ID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "GNIS_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FType",
+        "name": "FTYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "FCode",
+        "name": "FCODE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "NATIVEAMERICANAREA_FIPSCODE",
+        "length": 5,
+        "name": "NATIVEAMERICANAREA_FIPSCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AdminType",
+        "name": "ADMINTYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "POPULATION",
+        "name": "POPULATION",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 7,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Native American Area labels",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 17026,
+  "status": 200
+}

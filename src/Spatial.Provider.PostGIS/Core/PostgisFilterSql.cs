@@ -59,10 +59,22 @@ internal static class PostgisFilterSql
         return builder.AppendBoundingBox(geometryColumn, srid, bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
     }
 
-    private sealed class SqlBuilder(IFeatureSchema? schema, List<object?> parameters)
+    private sealed class SqlBuilder
     {
+        private readonly IFeatureSchema? _schema;
+        private readonly List<object?> _parameters;
         private readonly StringBuilder _sql = new();
         private int _parameterIndex;
+
+        public SqlBuilder(IFeatureSchema? schema, List<object?> parameters)
+        {
+            _schema = schema;
+            _parameters = parameters;
+            // Continue placeholder numbering from already-bound values so a
+            // bbox predicate combined with an attribute filter never reuses
+            // @p0..@pn (each literal becomes one positional parameter in order).
+            _parameterIndex = parameters.Count;
+        }
 
         public string? Error { get; private set; }
 
@@ -157,7 +169,7 @@ internal static class PostgisFilterSql
                 return;
             }
 
-            _sql.Append('"').Append(schema![index].Name).Append("\" ")
+            _sql.Append('"').Append(_schema![index].Name).Append("\" ")
                 .Append(SqlOperator(comparison.Operator))
                 .Append(' ')
                 .Append(Parameter(value));
@@ -170,7 +182,7 @@ internal static class PostgisFilterSql
                 return;
             }
 
-            _sql.Append('"').Append(schema![index].Name).Append("\" IS ")
+            _sql.Append('"').Append(_schema![index].Name).Append("\" IS ")
                 .Append(isNull.Negated ? "NOT NULL" : "NULL");
         }
 
@@ -205,16 +217,16 @@ internal static class PostgisFilterSql
 
         private bool TryResolveColumn(string column, out int index, out AttributeKind kind)
         {
-            if (schema is not null)
+            if (_schema is not null)
             {
-                index = schema.IndexOf(column);
+                index = _schema.IndexOf(column);
                 if (index >= 0)
                 {
-                    kind = schema[index].Kind;
+                    kind = _schema[index].Kind;
                     return true;
                 }
 
-                var fields = string.Join(", ", schema.Fields.Select(field => $"'{field.Name}'"));
+                var fields = string.Join(", ", _schema.Fields.Select(field => $"'{field.Name}'"));
                 Error = $"the filter column '{column}' is not a field of this dataset; available fields: {fields}.";
             }
             else
@@ -241,7 +253,7 @@ internal static class PostgisFilterSql
 
         private string Parameter(object? value)
         {
-            parameters.Add(value);
+            _parameters.Add(value);
             return $"@p{_parameterIndex++}";
         }
     }

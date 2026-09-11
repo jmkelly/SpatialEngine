@@ -1,0 +1,129 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "county_name": "Navajo",
+          "fcode": 45800,
+          "gaz_featureclass": "Spring",
+          "gaz_id": 4344,
+          "gaz_name": "Echo Spring",
+          "isunknowncoords": 2,
+          "objectid_1": 911796,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "x": -12281709.391800001,
+          "y": 4202681.993900001
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "county_name": "Pima",
+          "fcode": 45800,
+          "gaz_featureclass": "Spring",
+          "gaz_id": 4349,
+          "gaz_name": "Eda Hugkam Swadag",
+          "isunknowncoords": 2,
+          "objectid_1": 1171076,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "x": -12445441.4224,
+          "y": 3781712.165100001
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "county_name": "Cochise",
+          "fcode": 45800,
+          "gaz_featureclass": "Spring",
+          "gaz_id": 4394,
+          "gaz_name": "Elefante Spring",
+          "isunknowncoords": 2,
+          "objectid_1": 1488689,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "x": -12190180.0353,
+          "y": 3793511.4272999987
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2400,
+  "status": 200
+}

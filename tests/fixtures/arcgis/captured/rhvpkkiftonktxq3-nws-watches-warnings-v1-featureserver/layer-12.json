@@ -1,0 +1,237 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "NOAA, NWS, Esri",
+    "description": "",
+    "displayField": "Event",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.067161843,
+      "xmin": -20037502.043775853,
+      "ymax": 9768456.395282911,
+      "ymin": 586178.526876489
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Subject Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 45,
+        "name": "Event",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Severity Level",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "Severity",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Summary Overview",
+        "defaultValue": null,
+        "editable": true,
+        "length": 512,
+        "name": "Summary",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Details",
+        "defaultValue": null,
+        "editable": true,
+        "length": 256,
+        "name": "Link",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Urgency Level",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "Urgency",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Certainty Level",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "Certainty",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Topic Category",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "Category",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Updated (stored in UTC)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "Updated",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Effective (stored in UTC)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "Start",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Expiration (stored in UTC)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "End_",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Unique ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "Uid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Areas Affected",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1024,
+        "name": "Affected",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Area Ids Affected",
+        "defaultValue": null,
+        "editable": true,
+        "length": 768,
+        "name": "AreaIds",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Detailed Description",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5120,
+        "name": "Description",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Authoritative Instruction",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2048,
+        "name": "Instruction",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hours Since Update",
+        "defaultValue": null,
+        "editable": true,
+        "name": "HrsSinceUpdated",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Effective",
+        "defaultValue": null,
+        "editable": true,
+        "name": "HrsUntilEffective",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Expiration",
+        "defaultValue": null,
+        "editable": true,
+        "name": "HrsUntilExpiration",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Observed Threat Damage Level",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "DamageThreat",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 12,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Other Events",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 43063,
+  "status": 200
+}

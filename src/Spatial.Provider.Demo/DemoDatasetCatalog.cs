@@ -6,13 +6,14 @@ namespace Spatial.Provider.Demo;
 
 /// <summary>
 /// The demo provider's in-memory dataset catalog (Phase 10, ADR-0031): two
-/// procedurally generated point datasets served by <c>demo@1</c> so the
+/// procedurally generated point datasets plus the GeoNames world-cities
+/// snapshot (see <see cref="WorldCities"/>), served by <c>demo@1</c> so the
 /// browser workbench can browse, map and select real features without a
 /// database. Geometry is produced from <c>Spatial.Core</c> factory types
 /// (points at <see cref="Wgs84"/>), stamped with an EPSG:4326 identity like
-/// the PostGIS adapter does — the datasets are deliberately small, stable
-/// and deterministic so automated tests can assert exact feature counts and
-/// shapes.
+/// the PostGIS adapter does — the datasets are deliberately small (grids)
+/// or committed snapshots (world cities), stable and deterministic so
+/// automated tests can assert exact feature counts and shapes.
 /// </summary>
 internal static class DemoDatasetCatalog
 {
@@ -28,11 +29,12 @@ internal static class DemoDatasetCatalog
     /// <summary>Eight named points with a population — catalogue pattern filtering practice.</summary>
     private static readonly DemoDataset Cities = BuildCities();
 
-    /// <summary>The two datasets, ordered by id — the catalogue stream order.</summary>
-    internal static readonly IReadOnlyList<DemoDataset> Datasets =
+    /// <summary>The three datasets, ordered by id — the catalogue stream order.</summary>
+    internal static IReadOnlyList<DemoDataset> Datasets =>
     [
-        PointsGrid,
         Cities,
+        PointsGrid,
+        WorldCities.Dataset,
     ];
 
     /// <summary>The dataset whose id matches, or null when the catalog has no such dataset.</summary>
@@ -121,7 +123,7 @@ internal static class DemoDatasetCatalog
     }
 
     /// <summary>Precomputes each feature's envelope as plain doubles (the only geometry touch in this file).</summary>
-    private static Dictionary<string, DemoBox> BoxesFor(List<Feature> features)
+    internal static Dictionary<string, DemoBox> BoxesFor(List<Feature> features)
     {
         var boxes = new Dictionary<string, DemoBox>(features.Count);
         foreach (var feature in features)

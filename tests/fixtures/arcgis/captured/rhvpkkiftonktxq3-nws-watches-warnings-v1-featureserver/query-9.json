@@ -1,0 +1,644 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Affected": "South-Central Shasta County Including Redding Metro; Sierra Nevada of Tehama-Butte-Plumas Counties Between 1000-3000 ft; Northern Sacramento Valley in Tehama County; Central Glenn County Including Interstate 5; Eastern Glenn County; Butte County Below 1000\u2026",
+          "AreaIds": "CAZ124 CAZ129 CAZ142 CAZ144 CAZ145 CAZ146 CAZ148 CAZ149 CAZ150",
+          "Category": "Met",
+          "Certainty": "Possible",
+          "DamageThreat": null,
+          "Description": "...FIRE WEATHER WATCH IN EFFECT FROM SATURDAY MORNING THROUGH MONDAY\nMORNING DUE TO GUSTY WINDS AND LOW RELATIVE HUMIDITY FOR PORTIONS OF\nNORTHERN CALIFORNIA...\n\nThe National Weather Service in Sacramento CA has issued a Fire\nWeather Watch.\n\n* AFFECTED ARE\u2026",
+          "End_": 1789408800000,
+          "Event": "Fire Weather Watch",
+          "HrsSinceUpdated": 19,
+          "HrsUntilEffective": 29,
+          "HrsUntilExpiration": 77,
+          "Instruction": "A Fire Weather Watch means that critical fire weather conditions are\nforecast to occur. Listen for later forecasts and possible Red Flag\nWarnings.",
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.42ff964ce39f4b7bdf8ee2528bafddfbd1db0301.001.1",
+          "OBJECTID": 2356954,
+          "Severity": "Severe",
+          "Shape__Area": 28274444569.246094,
+          "Shape__Length": 4360291.110270524,
+          "Start": 1789236000000,
+          "Summary": "Fire Weather Watch issued September 10 at 10:41AM PDT until September 14 at 11:00AM PDT by NWS Sacramento CA",
+          "Uid": "42ff964ce39f4b7bdf8ee2528bafddfbd1db0301.001.1",
+          "Updated": 1789062060000,
+          "Urgency": "Future"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -13604969.2468262,
+                4716587.57080395
+              ],
+              [
+                -13605091.9456179,
+                4716229.09689741
+              ],
+              [
+                -13605377.0194718,
+                4716374.34925504
+              ],
+              [
+                -13604969.2468262,
+                4716587.57080395
+              ]
+            ],
+            [
+              [
+                -13604938.7555271,
+                4716603.51475703
+              ],
+              [
+                -13604969.2468262,
+                4716587.57080395
+              ],
+              [
+                -13604946.3942705,
+                4716654.33788542
+              ],
+              [
+                -13604938.7555271,
+                4716603.51475703
+              ]
+            ],
+            [
+              [
+                -13604353.9807723,
+                4719230.88583582
+              ],
+              [
+                -13604710.5732801,
+                4719313.54807979
+              ],
+              [
+                -13604338.459273,
+                4719251.34554484
+              ],
+              [
+                -13604353.9807723,
+                4719230.88583582
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Affected": "Owyhee Mountains; Southern Highlands",
+          "AreaIds": "IDZ423 IDZ426",
+          "Category": "Met",
+          "Certainty": "Possible",
+          "DamageThreat": null,
+          "Description": "...HOT AND DRY WITH POTENTIALLY STRONG WINDS AHEAD OF A COLD\nFRONT SATURDAY AFTERNOON...\n\nHot and dry conditions on Saturday could combined with increase\nsoutherly winds ahead of an approaching cold front. Sustained of\n15 to 25 mph with gusts up to 45 mph \u2026",
+          "End_": 1789268400000,
+          "Event": "Fire Weather Watch",
+          "HrsSinceUpdated": 18,
+          "HrsUntilEffective": 29,
+          "HrsUntilExpiration": 38,
+          "Instruction": "A Fire Weather Watch means that critical fire weather conditions\nare possible. Listen for later forecasts and possible Red Flag\nWarnings.",
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.ae84fffd37ebeca7e7619c17260b021246241687.001.1",
+          "OBJECTID": 2357014,
+          "Severity": "Severe",
+          "Shape__Area": 39189718237.98828,
+          "Shape__Length": 1036267.8930158374,
+          "Start": 1789236000000,
+          "Summary": "Fire Weather Watch issued September 10 at 12:40PM MDT until September 12 at 9:00PM MDT by NWS Boise ID",
+          "Uid": "ae84fffd37ebeca7e7619c17260b021246241687.001.1",
+          "Updated": 1789065600000,
+          "Urgency": "Future"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -13014027.331683,
+                5403827.22095261
+              ],
+              [
+                -13009697.0034911,
+                5402474.57487557
+              ],
+              [
+                -13009062.4823936,
+                5402858.82921409
+              ],
+              [
+                -13007125.5232538,
+                5402858.82921409
+              ],
+              [
+                -13003774.8065809,
+                5400154.01794826
+              ],
+              [
+                -13002617.0838767,
+                5398110.56565389
+              ],
+              [
+                -13002127.2781172,
+                5395867.89678362
+              ],
+              [
+                -12999956.5480467,
+                5392550.97182375
+              ],
+              [
+                -13000412.9579589,
+                5390294.29930064
+              ],
+              [
+                -12999900.8883013,
+                5384800.7556444
+              ],
+              [
+                -12996049.2339198,
+                5381687.14752483
+              ],
+              [
+                -12994134.5386782,
+                5378743.21877794
+              ],
+              [
+                -12988390.4529533,
+                5373179.90485262
+              ],
+              [
+                -12987344.0497398,
+                5371050.48269132
+              ],
+              [
+                -12982201.0892652,
+                5368278.36977698
+              ],
+              [
+                -12980319.7898708,
+                5364879.44896066
+              ],
+              [
+                -12979763.1924168,
+                5362461.15432993
+              ],
+              [
+                -12978126.7959021,
+                5360364.78779886
+              ],
+              [
+                -12977625.8581936,
+                5358788.99865176
+              ],
+              [
+                -12974453.252706,
+                5357626.45163477
+              ],
+              [
+                -12971080.2721349,
+                5357381.72341137
+              ],
+              [
+                -12968586.7155411,
+                5355026.54345346
+              ],
+              [
+                -12966950.3190265,
+                5356097.00587439
+              ],
+              [
+                -12961317.5527923,
+                5357198.18146978
+              ],
+              [
+                -12958467.773828,
+                5355072.41788804
+              ],
+              [
+                -12957911.1763741,
+                5353726.86179681
+              ],
+              [
+                -12957933.4402722,
+                5352091.05000498
+              ],
+              [
+                -12956230.2520631,
+                5350516.66161835
+              ],
+              [
+                -12955005.7376644,
+                5348193.77867507
+              ],
+              [
+                -12954961.2098681,
+                5347108.94637419
+              ],
+              [
+                -12955840.6338453,
+                5344618.89386952
+              ],
+              [
+                -12955673.6546091,
+                5343381.75336048
+              ],
+              [
+                -12955996.4811324,
+                5341457.63904055
+              ],
+              [
+                -12955606.8629147,
+                5340846.89217636
+              ],
+              [
+                -12954237.6331779,
+                5339869.78043965
+              ],
+              [
+                -12952167.0906491,
+                5337122.20271697
+              ],
+              [
+                -12950441.6385418,
+                5336618.5679612
+              ],
+              [
+                -12950085.4161713,
+                5334787.39812517
+              ],
+              [
+                -12948226.3806751,
+                5333490.53700248
+              ],
+              [
+                -12947146.5816144,
+                5330470.31241983
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Affected": "Southern Mono County; West Humboldt Basin - Pershing County; Lahontan Basin - Churchill and Eastern Mineral Counties",
+          "AreaIds": "CAZ274 NVZ423 NVZ429",
+          "Category": "Met",
+          "Certainty": "Possible",
+          "DamageThreat": null,
+          "Description": "The National Weather Service in Reno has issued a Fire Weather\nWatch for strong winds and low humidity, which is in effect from\nSaturday morning through Saturday evening.\n\n* Affected Area...Fire Weather Zone 274 Southern Mono County,\nFire Weather Zone 423 \u2026",
+          "End_": 1789282800000,
+          "Event": "Fire Weather Watch",
+          "HrsSinceUpdated": 18,
+          "HrsUntilEffective": 29,
+          "HrsUntilExpiration": 42,
+          "Instruction": "Avoid outdoor activities that can cause a spark near dry\nvegetation, such as yard work, target shooting, or campfires.\nFollow local fire restrictions. Check weather.gov/reno for\nupdates and livingwithfire.info for preparedness tips.",
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.e33e2fce9340333cef87272d02210d877644f9d6.001.1",
+          "OBJECTID": 2357016,
+          "Severity": "Severe",
+          "Shape__Area": 77126498737.49219,
+          "Shape__Length": 1959087.7215593006,
+          "Start": 1789236000000,
+          "Summary": "Fire Weather Watch issued September 10 at 11:42AM PDT until September 13 at 12:00AM PDT by NWS Reno NV",
+          "Uid": "e33e2fce9340333cef87272d02210d877644f9d6.001.1",
+          "Updated": 1789065720000,
+          "Urgency": "Future"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -13223274.5785271,
+                5006563.18358395
+              ],
+              [
+                -13223274.5785271,
+                4991111.91458644
+              ],
+              [
+                -13096092.0602958,
+                4991391.55773191
+              ],
+              [
+                -13095958.4769068,
+                4965888.70147378
+              ],
+              [
+                -13057909.4749537,
+                4965595.10808457
+              ],
+              [
+                -13057820.419361,
+                4942824.41245948
+              ],
+              [
+                -13084692.9444385,
+                4866089.36492612
+              ],
+              [
+                -13082288.4434374,
+                4862921.90691693
+              ],
+              [
+                -13082110.3322521,
+                4861890.52178721
+              ],
+              [
+                -13080963.741497,
+                4861469.28262233
+              ],
+              [
+                -13080997.1373442,
+                4860496.14322902
+              ],
+              [
+                -13080273.560654,
+                4858927.7013468
+              ],
+              [
+                -13077568.4970278,
+                4857156.24077963
+              ],
+              [
+                -13076611.1494069,
+                4854644.79298412
+              ],
+              [
+                -13076700.2049996,
+                4853933.57338486
+              ],
+              [
+                -13076266.0589855,
+                4853033.73579797
+              ],
+              [
+                -13076466.4340689,
+                4852192.02598113
+              ],
+              [
+                -13075776.253226,
+                4849435.19963636
+              ],
+              [
+                -13075843.0449205,
+                4846592.11608724
+              ],
+              [
+                -13076299.4548327,
+                4846244.03923399
+              ],
+              [
+                -13076132.4755965,
+                4845330.39541829
+              ],
+              [
+                -13076778.1286431,
+                4844663.343387
+              ],
+              [
+                -13076588.8855088,
+                4844097.83429054
+              ],
+              [
+                -13076922.8439812,
+                4842778.43799151
+              ],
+              [
+                -13077668.6845695,
+                4842329.01324581
+              ],
+              [
+                -13078703.9558339,
+                4840690.95928043
+              ],
+              [
+                -13078214.1500744,
+                4838618.4098755
+              ],
+              [
+                -13078759.6155792,
+                4837951.80732015
+              ],
+              [
+                -13078536.9765977,
+                4835169.947676
+              ],
+              [
+                -13079416.4005749,
+                4833113.03003581
+              ],
+              [
+                -13079639.0395565,
+                4831186.86522801
+              ],
+              [
+                -13079494.3242185,
+                4829579.5989207
+              ],
+              [
+                -13078292.0737179,
+                4828566.14070386
+              ],
+              [
+                -13077579.6289768,
+                4828508.23191544
+              ],
+              [
+                -13077323.594148,
+                4827494.88252447
+              ],
+              [
+                -13078548.1085467,
+                4824701.46638231
+              ],
+              [
+                -13078303.205667,
+                4823399.10433253
+              ],
+              [
+                -13078559.2404958,
+                4822907.14510374
+              ],
+              [
+                -13077935.8513474,
+                4821561.61573358
+              ],
+              [
+                -13076076.8158511,
+                4819333.93340599
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Subject Type",
+        "defaultValue": null,
+        "length": 45,
+        "name": "Event",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Severity Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Severity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Summary Overview",
+        "defaultValue": null,
+        "length": 512,
+        "name": "Summary",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Details",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Link",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Urgency Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Urgency",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Certainty Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Certainty",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Topic Category",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Updated (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Updated",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Effective (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Start",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Expiration (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "End_",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Unique ID",
+        "defaultValue": null,
+        "length": 50,
+        "name": "Uid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Areas Affected",
+        "defaultValue": null,
+        "length": 1024,
+        "name": "Affected",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Area Ids Affected",
+        "defaultValue": null,
+        "length": 768,
+        "name": "AreaIds",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Detailed Description",
+        "defaultValue": null,
+        "length": 5120,
+        "name": "Description",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Authoritative Instruction",
+        "defaultValue": null,
+        "length": 2048,
+        "name": "Instruction",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hours Since Update",
+        "defaultValue": null,
+        "name": "HrsSinceUpdated",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Effective",
+        "defaultValue": null,
+        "name": "HrsUntilEffective",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Expiration",
+        "defaultValue": null,
+        "name": "HrsUntilExpiration",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Observed Threat Damage Level",
+        "defaultValue": null,
+        "length": 25,
+        "name": "DamageThreat",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 246021,
+  "status": 200
+}

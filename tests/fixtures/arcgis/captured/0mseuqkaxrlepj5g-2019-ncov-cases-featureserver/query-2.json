@@ -1,0 +1,121 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Confirmed": 9,
+          "Country_Region": "Australia",
+          "Deaths": null,
+          "Last_Update": 1580382000000,
+          "Lat": -25.2744,
+          "Long_": 133.7751,
+          "OBJECTID": 1,
+          "Recovered": 2
+        },
+        "geometry": {
+          "x": 133.77510000000007,
+          "y": -25.274399999999957
+        }
+      },
+      {
+        "attributes": {
+          "Confirmed": 1,
+          "Country_Region": "Cambodia",
+          "Deaths": null,
+          "Last_Update": 1580382000000,
+          "Lat": 12.5657,
+          "Long_": 104.991,
+          "OBJECTID": 2,
+          "Recovered": null
+        },
+        "geometry": {
+          "x": 104.99100000000004,
+          "y": 12.56570000000005
+        }
+      },
+      {
+        "attributes": {
+          "Confirmed": 3,
+          "Country_Region": "Canada",
+          "Deaths": null,
+          "Last_Update": 1580382000000,
+          "Lat": 43.6532,
+          "Long_": -79.3832,
+          "OBJECTID": 3,
+          "Recovered": null
+        },
+        "geometry": {
+          "x": -79.38319999999999,
+          "y": 43.65320000000003
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Country_Region",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Country_Region",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last_Update",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Last_Update",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "name": "Lat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "name": "Long_",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "Deaths",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "Recovered",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2393,
+  "status": 200
+}

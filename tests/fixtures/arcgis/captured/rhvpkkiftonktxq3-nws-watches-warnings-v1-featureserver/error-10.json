@@ -1,0 +1,14 @@
+{
+  "body": {
+    "error": {
+      "code": 400,
+      "details": [
+        "'Invalid field: __spatialengine_no_such_field__' parameter is invalid"
+      ],
+      "message": "Cannot perform query. Invalid query parameters."
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 166,
+  "status": 200
+}

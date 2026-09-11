@@ -1,0 +1,146 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "name",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 2.2893603305925034,
+      "xmin": -1e-08,
+      "ymax": 41.52999198050217,
+      "ymin": -1e-08
+    },
+    "fields": [
+      {
+        "alias": "FID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "FID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gtfsId",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "gtfsId",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "code",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "feedId",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "feedId",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "zoomL1",
+        "defaultValue": null,
+        "editable": true,
+        "name": "zoomL1",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "name",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "nameAgency",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "nameAgency",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "zoomL0",
+        "defaultValue": null,
+        "editable": true,
+        "name": "zoomL0",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "stopsGtfsI",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "stopsGtfsI",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "type",
+        "defaultValue": null,
+        "editable": true,
+        "name": "type",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "routes",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "routes",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 1,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "PRE_TP",
+    "objectIdField": "FID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 9436,
+  "status": 200
+}

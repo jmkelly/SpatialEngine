@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The GeoServices REST serving facade (ADR-0035): a boundary adapter that
+    maps the Esri GeoServices REST specification onto the in-process engine
+    services. It contains no spatial algorithms — the adapter maps protocol
+    to verbs and delegates to IGeometryOperations, ICoordinateTransforms and
+    the keyed stores. ASP.NET Core types stay inside this project; the adapter
+    is mounted by Spatial.Host only.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Adapter.GeoServices</AssemblyName>
+    <RootNamespace>Spatial.Adapter.GeoServices</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Adapter.GeoServices.Tests" />
+    <InternalsVisibleTo Include="Spatial.Host.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,42 @@
+{
+  "body": {
+    "capabilities": "Map,Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 10000,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -7469537.8322,
+      "xmin": -13868182.162999999,
+      "ymax": 6369492.179499999,
+      "ymin": 2876972.949000001
+    },
+    "fields": [],
+    "geometryType": null,
+    "hasAttachments": false,
+    "id": 3,
+    "isDataVersioned": false,
+    "name": "Day 2 Fire Weather Outlook",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": false,
+    "supportsStatistics": false,
+    "type": "Group Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2275,
+  "status": 200
+}

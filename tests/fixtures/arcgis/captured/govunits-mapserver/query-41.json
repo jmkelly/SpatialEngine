@@ -1,0 +1,753 @@
+{
+  "body": {
+    "displayFieldName": "Name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 21027.72868154,
+          "data_security": 5,
+          "designation": "119",
+          "distribution_policy": "E4",
+          "fcode": 62800,
+          "ftype": 628,
+          "globalid": "{44B80E7B-E8CC-4248-824E-DADA298A28CD}",
+          "gnis_id": null,
+          "gnis_name": null,
+          "loaddate": 1758585600000,
+          "name": "Congressional District 1",
+          "objectid": 2809,
+          "ownerormanagingagency": null,
+          "permanent_identifier": "b5cf0421-50f7-46d0-8dae-af06fe90c836",
+          "shape_Area": 28726336761.986248,
+          "shape_Length": 1538570.9109099647,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Congressional Districts, 119th Congress",
+          "source_datasetid": "fcde1cb4-9b31-4c1c-978d-e45e825fd16d",
+          "source_featureid": "0101",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_fipscode": "01",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9842293.3193,
+                3604939.218199998
+              ],
+              [
+                -9842251.4632,
+                3604920.688500002
+              ],
+              [
+                -9842205.4882,
+                3604900.215099998
+              ],
+              [
+                -9842093.0555,
+                3604852.2712000012
+              ],
+              [
+                -9841952.9042,
+                3604795.1275999993
+              ],
+              [
+                -9841928.4139,
+                3604785.0205999985
+              ],
+              [
+                -9841867.0769,
+                3604756.1248999983
+              ],
+              [
+                -9841828.6716,
+                3604733.7082
+              ],
+              [
+                -9841800.0625,
+                3604710.643600002
+              ],
+              [
+                -9841747.4084,
+                3604680.322800003
+              ],
+              [
+                -9841499.6111,
+                3604518.224299997
+              ],
+              [
+                -9841360.6843,
+                3604428.5591999963
+              ],
+              [
+                -9841241.3498,
+                3604333.4526999965
+              ],
+              [
+                -9841158.4168,
+                3604245.4733999968
+              ],
+              [
+                -9841123.2398,
+                3604195.1997999996
+              ],
+              [
+                -9841035.2974,
+                3604078.4570000023
+              ],
+              [
+                -9840972.4018,
+                3603994.2369000018
+              ],
+              [
+                -9840943.6814,
+                3603951.7383999974
+              ],
+              [
+                -9840879.5614,
+                3603856.7651999965
+              ],
+              [
+                -9840852.7333,
+                3603821.911600001
+              ],
+              [
+                -9840833.9203,
+                3603795.4799999967
+              ],
+              [
+                -9840811.4338,
+                3603770.4736
+              ],
+              [
+                -9840773.2512,
+                3603736.9158999994
+              ],
+              [
+                -9840667.8316,
+                3603640.519100003
+              ],
+              [
+                -9840638.9999,
+                3603613.569600001
+              ],
+              [
+                -9840609.7228,
+                3603588.0452999994
+              ],
+              [
+                -9840595.0286,
+                3603575.088799998
+              ],
+              [
+                -9840559.1838,
+                3603543.7343000025
+              ],
+              [
+                -9840522.671,
+                3603511.732000001
+              ],
+              [
+                -9840485.1563,
+                3603476.361100003
+              ],
+              [
+                -9840273.7605,
+                3603282.147
+              ],
+              [
+                -9840238.2496,
+                3603249.8862999976
+              ],
+              [
+                -9840160.3259,
+                3603181.0895000026
+              ],
+              [
+                -9840111.1227,
+                3603139.6303000003
+              ],
+              [
+                -9840079.0626,
+                3603126.9333999977
+              ],
+              [
+                -9840069.0439,
+                3603122.269299999
+              ],
+              [
+                -9840028.4123,
+                3603115.9208000004
+              ],
+              [
+                -9839937.2416,
+                3603112.1635999978
+              ],
+              [
+                -9839929.6718,
+                3603112.293200001
+              ],
+              [
+                -9839842.5087,
+                3603114.107000001
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 24749.06698736,
+          "data_security": 5,
+          "designation": "119",
+          "distribution_policy": "E4",
+          "fcode": 62800,
+          "ftype": 628,
+          "globalid": "{E030097E-01F6-41C5-941A-528D7F9D40D7}",
+          "gnis_id": null,
+          "gnis_name": null,
+          "loaddate": 1758585600000,
+          "name": "Congressional District 2",
+          "objectid": 2810,
+          "ownerormanagingagency": null,
+          "permanent_identifier": "144c3e0c-1e40-48d8-a430-0fef77690944",
+          "shape_Area": 34338206433.28629,
+          "shape_Length": 1746551.1146606898,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Congressional Districts, 119th Congress",
+          "source_datasetid": "fcde1cb4-9b31-4c1c-978d-e45e825fd16d",
+          "source_featureid": "0102",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_fipscode": "01",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9847815.8855,
+                3723727.8762999997
+              ],
+              [
+                -9847788.167,
+                3723726.829599999
+              ],
+              [
+                -9847218.4337,
+                3723724.8671000004
+              ],
+              [
+                -9846361.2734,
+                3723734.025600001
+              ],
+              [
+                -9845303.1813,
+                3723745.408500001
+              ],
+              [
+                -9844965.9945,
+                3723748.9411000013
+              ],
+              [
+                -9844794.5624,
+                3723750.7727999985
+              ],
+              [
+                -9844637.7132,
+                3723752.473700002
+              ],
+              [
+                -9844390.8065,
+                3723755.090400003
+              ],
+              [
+                -9844380.2311,
+                3723755.221199997
+              ],
+              [
+                -9844376.335,
+                3723755.221199997
+              ],
+              [
+                -9844347.9485,
+                3723755.482900001
+              ],
+              [
+                -9844326.2412,
+                3723755.744599998
+              ],
+              [
+                -9844251.5458,
+                3723756.529600002
+              ],
+              [
+                -9844249.6533,
+                3723756.529600002
+              ],
+              [
+                -9844043.9349,
+                3723757.3147
+              ],
+              [
+                -9843667.5636,
+                3723754.305399999
+              ],
+              [
+                -9842117.5506,
+                3723738.6050999984
+              ],
+              [
+                -9841245.3621,
+                3723732.8483000025
+              ],
+              [
+                -9840948.8069,
+                3723750.5112999976
+              ],
+              [
+                -9840926.7656,
+                3723751.819600001
+              ],
+              [
+                -9840915.0771,
+                3723752.4738000035
+              ],
+              [
+                -9840904.7244,
+                3723753.1279999986
+              ],
+              [
+                -9840900.9395,
+                3723753.389700003
+              ],
+              [
+                -9840731.8452,
+                3723763.4641000032
+              ],
+              [
+                -9840668.5043,
+                3723771.052699998
+              ],
+              [
+                -9840626.9822,
+                3723776.155299999
+              ],
+              [
+                -9840573.7714,
+                3723774.1926999986
+              ],
+              [
+                -9840435.2899,
+                3723769.220899999
+              ],
+              [
+                -9840433.8428,
+                3723769.220899999
+              ],
+              [
+                -9840173.5778,
+                3723766.8659000024
+              ],
+              [
+                -9840090.4221,
+                3723766.0808999985
+              ],
+              [
+                -9839807.2252,
+                3723763.594999999
+              ],
+              [
+                -9839803.7743,
+                3723763.594999999
+              ],
+              [
+                -9839079.8635,
+                3723756.660700001
+              ],
+              [
+                -9838269.2347,
+                3723749.333899997
+              ],
+              [
+                -9837862.6958,
+                3723748.679700002
+              ],
+              [
+                -9837748.482,
+                3723758.3615999967
+              ],
+              [
+                -9837033.4767,
+                3723762.286700003
+              ],
+              [
+                -9836846.3486,
+                3723763.3334000036
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "admintype": 1,
+          "areasqkm": 17793.95252549,
+          "data_security": 5,
+          "designation": "119",
+          "distribution_policy": "E4",
+          "fcode": 62800,
+          "ftype": 628,
+          "globalid": "{863D9760-A08F-4439-AB21-8CFBE298ED69}",
+          "gnis_id": null,
+          "gnis_name": null,
+          "loaddate": 1758585600000,
+          "name": "Congressional District 3",
+          "objectid": 2811,
+          "ownerormanagingagency": null,
+          "permanent_identifier": "0557a35a-6aba-4083-8790-aed5b0a8fd62",
+          "shape_Area": 25608004705.109425,
+          "shape_Length": 956459.9578254063,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Congressional Districts, 119th Congress",
+          "source_datasetid": "fcde1cb4-9b31-4c1c-978d-e45e825fd16d",
+          "source_featureid": "0103",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_fipscode": "01",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9637796.9251,
+                3997495.1378000006
+              ],
+              [
+                -9637796.9251,
+                3997735.3724000007
+              ],
+              [
+                -9637790.8026,
+                3998021.276900001
+              ],
+              [
+                -9637790.6912,
+                3998027.8386999965
+              ],
+              [
+                -9637790.8026,
+                3998043.5068000033
+              ],
+              [
+                -9637776.4424,
+                3999508.229199998
+              ],
+              [
+                -9637768.2048,
+                4000349.7558000013
+              ],
+              [
+                -9637767.9822,
+                4000784.2717999965
+              ],
+              [
+                -9637767.7596,
+                4000968.3166000023
+              ],
+              [
+                -9637767.7596,
+                4000983.9886000007
+              ],
+              [
+                -9637767.6482,
+                4000999.526799999
+              ],
+              [
+                -9637767.3143,
+                4001256.0430999994
+              ],
+              [
+                -9637767.3143,
+                4001259.793700002
+              ],
+              [
+                -9637766.7577,
+                4001875.188500002
+              ],
+              [
+                -9637766.7577,
+                4001963.736299999
+              ],
+              [
+                -9637766.6464,
+                4002148.603699997
+              ],
+              [
+                -9637766.8691,
+                4002244.1198000014
+              ],
+              [
+                -9637417.8824,
+                4002246.1291999966
+              ],
+              [
+                -9637237.8787,
+                4002247.4689000025
+              ],
+              [
+                -9636756.5331,
+                4002243.048100002
+              ],
+              [
+                -9636434.931,
+                4002240.100900002
+              ],
+              [
+                -9636284.093,
+                4002238.895199999
+              ],
+              [
+                -9635992.6585,
+                4002236.8857999966
+              ],
+              [
+                -9635852.7299,
+                4002235.144199997
+              ],
+              [
+                -9635830.9113,
+                4002234.474399999
+              ],
+              [
+                -9635015.6071,
+                4002227.2404000014
+              ],
+              [
+                -9634819.1281,
+                4002225.4988999963
+              ],
+              [
+                -9634622.4265,
+                4002223.7573999986
+              ],
+              [
+                -9634586.8043,
+                4002223.8913000003
+              ],
+              [
+                -9634235.3685,
+                4002224.695100002
+              ],
+              [
+                -9634020.9671,
+                4002225.2309999987
+              ],
+              [
+                -9634009.9465,
+                4002225.2309999987
+              ],
+              [
+                -9633589.8266,
+                4002226.0348000005
+              ],
+              [
+                -9633326.3333,
+                4002226.5706999972
+              ],
+              [
+                -9633152.5635,
+                4002226.838600002
+              ],
+              [
+                -9632753.7057,
+                4002229.7858000025
+              ],
+              [
+                -9632749.8095,
+                4002229.7858000025
+              ],
+              [
+                -9632735.5606,
+                4002229.9197999984
+              ],
+              [
+                -9632614.445,
+                4002230.7236
+              ],
+              [
+                -9632167.2745,
+                4002229.25
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "admintype": "AdminType",
+      "areasqkm": "AREASQKM",
+      "data_security": "Data_Security",
+      "designation": "DESIGNATION",
+      "distribution_policy": "Distribution_Policy",
+      "fcode": "FCode",
+      "ftype": "FType",
+      "globalid": "GLOBALID",
+      "gnis_id": "GNIS_ID",
+      "gnis_name": "GNIS_NAME",
+      "loaddate": "LOADDATE",
+      "name": "NAME",
+      "objectid": "OBJECTID",
+      "ownerormanagingagency": "OwnerOrManagingAgency",
+      "permanent_identifier": "PERMANENT_IDENTIFIER",
+      "shape_Area": "SHAPE_Area",
+      "shape_Length": "SHAPE_Length",
+      "source_datadesc": "SOURCE_DATADESC",
+      "source_datasetid": "SOURCE_DATASETID",
+      "source_featureid": "SOURCE_FEATUREID",
+      "source_originator": "SOURCE_ORIGINATOR",
+      "state_fipscode": "STATE_FIPSCODE",
+      "state_name": "STATE_NAME"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "NAME",
+        "length": 120,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "gnis_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "gnis_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FType",
+        "name": "ftype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "DESIGNATION",
+        "length": 60,
+        "name": "designation",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATE_FIPSCODE",
+        "length": 2,
+        "name": "state_fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATE_NAME",
+        "length": 120,
+        "name": "state_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AdminType",
+        "name": "admintype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OwnerOrManagingAgency",
+        "name": "ownerormanagingagency",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2719417,
+  "status": 200
+}

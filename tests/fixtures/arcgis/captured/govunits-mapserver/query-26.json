@@ -1,0 +1,725 @@
+{
+  "body": {
+    "displayFieldName": "MINORCIVILDIVISION_NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "areasqkm": 705.48377228,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61308,
+          "globalid": "{1045A5D2-1303-4624-987B-F089C9B4162E}",
+          "gnis_id": "161623",
+          "gnis_name": "Dadeville Division",
+          "loaddate": 1758844800000,
+          "minorcivildivision_fipscode": "0112390819",
+          "minorcivildivision_name": "Dadeville",
+          "objectid": 376066,
+          "permanent_identifier": "efc36308-71cc-407b-b7ff-ae99ed6c454f",
+          "population": 12479,
+          "shape_Area": 1002249226.6720802,
+          "shape_Length": 205240.8706514534,
+          "source_datadesc": "2025 TIGER/Line Shapefile, County Subdivision",
+          "source_datasetid": "d5ad2cf0-3334-4371-ba8f-7fbf12eea558",
+          "source_featureid": "0112390819",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9563628.7284,
+                3852782.695299998
+              ],
+              [
+                -9563618.821,
+                3852846.7065000013
+              ],
+              [
+                -9563615.0361,
+                3852889.9540000036
+              ],
+              [
+                -9563613.8116,
+                3852970.233400002
+              ],
+              [
+                -9563627.5039,
+                3853277.468999997
+              ],
+              [
+                -9563636.8548,
+                3853485.912299998
+              ],
+              [
+                -9563384.1595,
+                3854730.168200001
+              ],
+              [
+                -9563374.92,
+                3854762.5759000033
+              ],
+              [
+                -9563292.5436,
+                3855052.0002999976
+              ],
+              [
+                -9563210.0558,
+                3855341.564199999
+              ],
+              [
+                -9563198.3673,
+                3855382.4397
+              ],
+              [
+                -9563176.326,
+                3855459.8257
+              ],
+              [
+                -9562880.6614,
+                3855887.640900001
+              ],
+              [
+                -9562871.7558,
+                3855900.6052
+              ],
+              [
+                -9562862.8502,
+                3855913.4372999966
+              ],
+              [
+                -9562814.9828,
+                3855963.7073
+              ],
+              [
+                -9562789.3794,
+                3855990.6944999993
+              ],
+              [
+                -9562752.4213,
+                3856029.587899998
+              ],
+              [
+                -9562337.1995,
+                3856183.046099998
+              ],
+              [
+                -9562193.486,
+                3856236.0955
+              ],
+              [
+                -9562045.3197,
+                3856414.4277999997
+              ],
+              [
+                -9561725.944,
+                3856798.883299999
+              ],
+              [
+                -9561596.3681,
+                3857065.0724000037
+              ],
+              [
+                -9561372.9498,
+                3857535.151799999
+              ],
+              [
+                -9561299.5903,
+                3857801.8867999986
+              ],
+              [
+                -9561383.9705,
+                3858066.5108999982
+              ],
+              [
+                -9561648.6883,
+                3858791.611100003
+              ],
+              [
+                -9561654.3656,
+                3859006.6357000023
+              ],
+              [
+                -9561635.2187,
+                3859152.193099998
+              ],
+              [
+                -9561616.4057,
+                3859197.4486000016
+              ],
+              [
+                -9561610.2831,
+                3859212.1367999986
+              ],
+              [
+                -9561323.3014,
+                3859504.7140000015
+              ],
+              [
+                -9560975.9845,
+                3859858.5687000006
+              ],
+              [
+                -9560628.7789,
+                3860212.434100002
+              ],
+              [
+                -9560325.3219,
+                3860521.5786999986
+              ],
+              [
+                -9560226.1362,
+                3860710.0339
+              ],
+              [
+                -9560156.8955,
+                3860841.5837000012
+              ],
+              [
+                -9560116.7092,
+                3861165.8325000033
+              ],
+              [
+                -9560146.4315,
+                3861486.5166999996
+              ],
+              [
+                -9560295.4884,
+                3861887.4174000025
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "areasqkm": 478.71752607999997,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61308,
+          "globalid": "{D1AC290C-5301-41A3-AE7A-407D5FCAB036}",
+          "gnis_id": "165905",
+          "gnis_name": "Montgomery Division",
+          "loaddate": 1758844800000,
+          "minorcivildivision_fipscode": "0110192214",
+          "minorcivildivision_name": "Montgomery",
+          "objectid": 376067,
+          "permanent_identifier": "5c19a872-2b17-4b31-a0d5-0221bb46874d",
+          "population": 180446,
+          "shape_Area": 673131818.1641743,
+          "shape_Length": 183358.91704802294,
+          "source_datadesc": "2025 TIGER/Line Shapefile, County Subdivision",
+          "source_datasetid": "d5ad2cf0-3334-4371-ba8f-7fbf12eea558",
+          "source_featureid": "0110192214",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9628972.9522,
+                3807991.5878000036
+              ],
+              [
+                -9628969.9466,
+                3808000.283699997
+              ],
+              [
+                -9628891.689,
+                3808222.4267000034
+              ],
+              [
+                -9628819.3313,
+                3808381.3286999986
+              ],
+              [
+                -9628791.9467,
+                3808456.6959000006
+              ],
+              [
+                -9628792.3919,
+                3808477.909400001
+              ],
+              [
+                -9628791.9467,
+                3808481.2035000026
+              ],
+              [
+                -9628791.6127,
+                3808483.443400003
+              ],
+              [
+                -9628785.7128,
+                3808531.668200001
+              ],
+              [
+                -9628779.7015,
+                3808571.987499997
+              ],
+              [
+                -9628777.3638,
+                3808609.5398999974
+              ],
+              [
+                -9628732.7247,
+                3808618.6314999983
+              ],
+              [
+                -9628690.2006,
+                3808622.4526000023
+              ],
+              [
+                -9628649.4577,
+                3808628.645499997
+              ],
+              [
+                -9628608.7147,
+                3808633.6525000036
+              ],
+              [
+                -9628566.302,
+                3808640.636
+              ],
+              [
+                -9628525.4477,
+                3808647.751199998
+              ],
+              [
+                -9628484.7048,
+                3808656.842799999
+              ],
+              [
+                -9628443.9619,
+                3808666.856899999
+              ],
+              [
+                -9628403.2189,
+                3808678.847400002
+              ],
+              [
+                -9628365.8155,
+                3808695.0543000028
+              ],
+              [
+                -9628328.4122,
+                3808714.160099998
+              ],
+              [
+                -9628292.7899,
+                3808736.2964999974
+              ],
+              [
+                -9628258.8375,
+                3808761.200000003
+              ],
+              [
+                -9628226.5548,
+                3808787.5529000014
+              ],
+              [
+                -9628195.942,
+                3808816.6730000004
+              ],
+              [
+                -9628167.1102,
+                3808847.7695999965
+              ],
+              [
+                -9628141.618,
+                3808880.974600002
+              ],
+              [
+                -9628119.5768,
+                3808917.2102999985
+              ],
+              [
+                -9628102.5449,
+                3808954.3684
+              ],
+              [
+                -9628088.9639,
+                3808994.4255999997
+              ],
+              [
+                -9628075.3829,
+                3809034.878200002
+              ],
+              [
+                -9628065.1415,
+                3809075.989699997
+              ],
+              [
+                -9628053.7869,
+                3809110.3812000006
+              ],
+              [
+                -9628044.7701,
+                3809157.422700003
+              ],
+              [
+                -9628036.3098,
+                3809198.6664000005
+              ],
+              [
+                -9628027.8495,
+                3809239.9103000015
+              ],
+              [
+                -9628020.9477,
+                3809281.1543999985
+              ],
+              [
+                -9628012.4874,
+                3809322.2668000013
+              ],
+              [
+                -9628004.0271,
+                3809363.3792999983
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "areasqkm": 248.35449612,
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61308,
+          "globalid": "{2465BE53-8529-47D6-9C0C-CA190B486324}",
+          "gnis_id": "165912",
+          "gnis_name": "Eva Division",
+          "loaddate": 1758844800000,
+          "minorcivildivision_fipscode": "0110391035",
+          "minorcivildivision_name": "Eva",
+          "objectid": 376068,
+          "permanent_identifier": "7f2f44df-a497-4d66-85d3-5b9853f6fe26",
+          "population": 5715,
+          "shape_Area": 365283838.03488094,
+          "shape_Length": 118536.62396312795,
+          "source_datadesc": "2025 TIGER/Line Shapefile, County Subdivision",
+          "source_datasetid": "d5ad2cf0-3334-4371-ba8f-7fbf12eea558",
+          "source_featureid": "0110391035",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_name": "Alabama"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9673185.0707,
+                4071484.6171000004
+              ],
+              [
+                -9673138.4279,
+                4071501.4646999985
+              ],
+              [
+                -9673124.5129,
+                4071507.6647000015
+              ],
+              [
+                -9673082.2115,
+                4071527.0732000023
+              ],
+              [
+                -9673030.114,
+                4071540.4165999964
+              ],
+              [
+                -9673002.2841,
+                4071548.907899998
+              ],
+              [
+                -9672976.9032,
+                4071554.9729999974
+              ],
+              [
+                -9672953.8601,
+                4071569.5295
+              ],
+              [
+                -9672939.3886,
+                4071588.9381000027
+              ],
+              [
+                -9672930.817,
+                4071642.446800001
+              ],
+              [
+                -9672921.0209,
+                4071720.2168999985
+              ],
+              [
+                -9672927.0321,
+                4071746.904100001
+              ],
+              [
+                -9672928.2566,
+                4071756.608599998
+              ],
+              [
+                -9672922.2454,
+                4071785.8567999974
+              ],
+              [
+                -9672890.6306,
+                4071847.723200001
+              ],
+              [
+                -9672836.0841,
+                4071937.6253999993
+              ],
+              [
+                -9672802.2429,
+                4071974.152599998
+              ],
+              [
+                -9672757.3812,
+                4072033.593800001
+              ],
+              [
+                -9672741.5738,
+                4072076.1867000014
+              ],
+              [
+                -9672726.9909,
+                4072122.284400001
+              ],
+              [
+                -9672688.2518,
+                4072184.287299998
+              ],
+              [
+                -9672665.2086,
+                4072215.8281000033
+              ],
+              [
+                -9672659.3087,
+                4072219.0631000027
+              ],
+              [
+                -9672638.9372,
+                4072237.7989000008
+              ],
+              [
+                -9672621.1261,
+                4072252.2214
+              ],
+              [
+                -9672575.4851,
+                4072276.348899998
+              ],
+              [
+                -9672560.0117,
+                4072282.8188000023
+              ],
+              [
+                -9672538.193,
+                4072288.8844000027
+              ],
+              [
+                -9672523.8328,
+                4072291.849799998
+              ],
+              [
+                -9672502.9048,
+                4072289.423600003
+              ],
+              [
+                -9672491.1049,
+                4072289.153999999
+              ],
+              [
+                -9672388.8022,
+                4072304.7897000015
+              ],
+              [
+                -9672323.235,
+                4072314.090300001
+              ],
+              [
+                -9672274.1431,
+                4072319.482000001
+              ],
+              [
+                -9672212.0268,
+                4072330.939199999
+              ],
+              [
+                -9672149.02,
+                4072344.1488000005
+              ],
+              [
+                -9672113.7317,
+                4072345.3619000018
+              ],
+              [
+                -9672069.5379,
+                4072340.5094000027
+              ],
+              [
+                -9672034.3609,
+                4072339.970200002
+              ],
+              [
+                -9672004.5273,
+                4072340.5094000027
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "areasqkm": "AREASQKM",
+      "data_security": "Data_Security",
+      "distribution_policy": "Distribution_Policy",
+      "fcode": "FCode",
+      "globalid": "GLOBALID",
+      "gnis_id": "GNIS_ID",
+      "gnis_name": "GNIS_NAME",
+      "loaddate": "LOADDATE",
+      "minorcivildivision_fipscode": "MINORCIVILDIVISION_FIPSCODE",
+      "minorcivildivision_name": "MINORCIVILDIVISION_NAME",
+      "objectid": "OBJECTID",
+      "permanent_identifier": "PERMANENT_IDENTIFIER",
+      "population": "POPULATION",
+      "shape_Area": "SHAPE_Area",
+      "shape_Length": "SHAPE_Length",
+      "source_datadesc": "SOURCE_DATADESC",
+      "source_datasetid": "SOURCE_DATASETID",
+      "source_featureid": "SOURCE_FEATUREID",
+      "source_originator": "SOURCE_ORIGINATOR",
+      "state_name": "STATE_NAME"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "STATE_NAME",
+        "length": 120,
+        "name": "state_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MINORCIVILDIVISION_FIPSCODE",
+        "length": 10,
+        "name": "minorcivildivision_fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MINORCIVILDIVISION_NAME",
+        "length": 120,
+        "name": "minorcivildivision_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POPULATION",
+        "name": "population",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "gnis_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "gnis_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 676919,
+  "status": 200
+}

@@ -33,6 +33,15 @@ public class GeometryTraversalTests
     }
 
     [Fact]
+    public void Multipart_parts_are_their_members()
+    {
+        var ring = Ring((0, 0), (10, 0), (10, 10), (0, 10), (0, 0));
+        var polygon = GeometryFactory.CreatePolygon(ring);
+        var multiPolygon = GeometryFactory.CreateMultiPolygon(polygon);
+        Assert.Equal(new IGeometry[] { polygon }, multiPolygon.Parts());
+    }
+
+    [Fact]
     public void DepthFirst_yields_self_then_descendants()
     {
         var point = GeometryFactory.CreatePoint(1, 2);

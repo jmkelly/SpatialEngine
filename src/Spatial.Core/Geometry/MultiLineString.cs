@@ -12,12 +12,13 @@ public sealed class MultiLineString : GeometryCollectionBase<LineString>, IMulti
 
     public override GeometryType Type => GeometryType.MultiLineString;
 
-    public bool Equals(MultiLineString? other) =>
-        other is not null
-        && Nullable.Equals(CoordinateReference, other.CoordinateReference)
-        && LineStrings.SequenceEqual(other.LineStrings);
+    public bool Equals(MultiLineString? other) => other is not null && ContentEquals(other);
 
-    public override bool Equals(object? obj) => obj is MultiLineString other && Equals(other);
+    public override bool Equals(object? obj) => obj is MultiLineString other && ContentEquals(other);
+
+    private bool ContentEquals(MultiLineString other) =>
+        Nullable.Equals(CoordinateReference, other.CoordinateReference)
+        && LineStrings.SequenceEqual(other.LineStrings);
 
     public override int GetHashCode()
     {

@@ -1,0 +1,97 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "US Forest Service Enterprise Map Services Program",
+    "currentVersion": 11.5,
+    "description": "A map service that depicts activity FACTS common attributes data. The Forest Service's Natural Resource Manager (NRM) Forest Activity Tracking System (FACTS) is the agency standard for managing information about activities related to fire/fuels, silviculture, and invasive species. This feature class contains the FACTS attributes most commonly needed to describe FACTS activities.",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -72.19017415695001,
+      "xmin": -123.64689076605,
+      "ymax": 55.22515641092172,
+      "ymin": 18.67314392307827
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -75.60466961161288,
+      "xmin": -156.37993414259986,
+      "ymax": 44.02655751317814,
+      "ymin": 1.37891949220937
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 750000,
+        "name": "Activity FACTS Common Attribute",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 750000,
+        "name": "Activity FACTS Common Attribute 2021-2022",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "EDW_ActivityFactsCommonAttributes_01",
+    "maxRecordCount": 2000,
+    "serviceDescription": "A map service that depicts activity FACTS common attributes data. The Forest Service's Natural Resource Manager (NRM) Forest Activity Tracking System (FACTS) is the agency standard for managing information about activities related to fire/fuels, silviculture, and invasive species. This feature class contains the FACTS attributes most commonly needed to describe FACTS activities.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestWkid": 4269,
+      "mTolerance": 2,
+      "mUnits": 10000,
+      "wkid": 4269,
+      "xyTolerance": 8.983152841195213e-09,
+      "xyUnits": 11258999068426.24,
+      "zTolerance": 2,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 3872,
+  "status": 200
+}

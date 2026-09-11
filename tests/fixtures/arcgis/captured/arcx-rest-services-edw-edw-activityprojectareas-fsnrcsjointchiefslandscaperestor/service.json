@@ -1,0 +1,97 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "The USDA Forest Service makes no warranty, expressed or implied, including the warranties of merchantability and fitness for a particular purpose, nor assumes any legal liability or responsibility for the accuracy, reliability, completeness or utility of these geospatial data, or for the improper or incorrect use of these geospatial data. These geospatial data and related maps or graphics are not legal documents and are not intended to be used as such. The data and maps may not be used to determine title, ownership, legal descriptions or boundaries, legal jurisdiction, or restrictions that may be in place on either public or private land. Natural hazards may or may not be depicted on the data and maps, and land users should exercise due caution. The data are dynamic and may change over time. The user is responsible to verify the limitations of the geospatial data and to use the data accordingly.",
+    "currentVersion": 11.5,
+    "description": "A public map service depicting activities completed under the FS/NRCS Joint Chiefs' Landscape Restoration Partnership (LRP) program. Displays areas in which Activities associated with FSNRC funding may occur.",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -65.58991742999996,
+      "xmin": -134.36765066999993,
+      "ymax": 56.35666985000006,
+      "ymin": 17.926836670000057
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -21.11109126897597,
+      "xmin": -153.3591429039546,
+      "ymax": 74.96508876881943,
+      "ymin": 8.87882652975243
+    },
+    "layers": [
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Joint Chiefs' Landscape Restoration Partnership Projects (2021-2023)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Actv_ProjectArea_FSNRC",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "EDW_ActivityProjectAreas_FSNRCSJointChiefsLandscapeRestoration_01",
+    "maxRecordCount": 2000,
+    "serviceDescription": "A public map service depicting activities completed under the FS/NRCS Joint Chiefs' Landscape Restoration Partnership (LRP) program. Displays areas in which Activities associated with FSNRC funding may occur.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestWkid": 4269,
+      "mTolerance": 2,
+      "mUnits": 10000,
+      "wkid": 4269,
+      "xyTolerance": 8.983152841195213e-09,
+      "xyUnits": 11258999068426.24,
+      "zTolerance": 2,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 4776,
+  "status": 200
+}

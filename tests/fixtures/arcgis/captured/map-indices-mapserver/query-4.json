@@ -1,0 +1,273 @@
+{
+  "body": {
+    "displayFieldName": "CELL_NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 42216,
+          "CELL_MAPCODE": "36076-D3",
+          "CELL_NAME": "South Mills",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{ED63B11F-D397-11DE-9C20-00144F233E68}",
+          "ISMULTPRIM": 0,
+          "ISNOPRIM": 0,
+          "ISPRIMDIFF": 0,
+          "OBJECTID": 1,
+          "PRIMARY_STATE": "North Carolina",
+          "SEQ_GOVTUNITS": "37029,37139,37053",
+          "SHAPE_Area": 240676687.04430106,
+          "SHAPE_Length": 62422.43802740989,
+          "STATE_ALPHA": "NC"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -8488111.385596028,
+                4352345.24538023
+              ],
+              [
+                -8502026.326289639,
+                4352345.244801067
+              ],
+              [
+                -8502026.32698463,
+                4369641.523121163
+              ],
+              [
+                -8488111.386291018,
+                4369641.523700319
+              ],
+              [
+                -8488111.385596028,
+                4352345.24538023
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 42218,
+          "CELL_MAPCODE": "37095-D2",
+          "CELL_NAME": "South Mound",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{ED659B74-D397-11DE-9C20-00144F233E68}",
+          "ISMULTPRIM": 0,
+          "ISNOPRIM": 0,
+          "ISPRIMDIFF": 0,
+          "OBJECTID": 2,
+          "PRIMARY_STATE": "Kansas",
+          "SEQ_GOVTUNITS": "20133,20099",
+          "SHAPE_Area": 243855808.11981195,
+          "SHAPE_Length": 62879.37473368661,
+          "STATE_ALPHA": "KS"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10589267.38816882,
+                4491507.582724676
+              ],
+              [
+                -10603182.328167442,
+                4491507.5817980245
+              ],
+              [
+                -10603182.32944159,
+                4509032.329108328
+              ],
+              [
+                -10589267.389442967,
+                4509032.330150813
+              ],
+              [
+                -10589267.38816882,
+                4491507.582724676
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 42219,
+          "CELL_MAPCODE": "37108-G4",
+          "CELL_NAME": "South Mountain",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{ED65BFF6-D397-11DE-9C20-00144F233E68}",
+          "ISMULTPRIM": 0,
+          "ISNOPRIM": 0,
+          "ISPRIMDIFF": 0,
+          "OBJECTID": 3,
+          "PRIMARY_STATE": "Colorado",
+          "SEQ_GOVTUNITS": "08033",
+          "SHAPE_Area": 245089121.52991253,
+          "SHAPE_Length": 63056.63974246218,
+          "STATE_ALPHA": "CO"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -12064250.999528216,
+                4544169.979991294
+              ],
+              [
+                -12078165.938831847,
+                4544169.9788329825
+              ],
+              [
+                -12078165.940337662,
+                4561783.359400578
+              ],
+              [
+                -12064251.001034029,
+                4561783.360558897
+              ],
+              [
+                -12064250.999528216,
+                4544169.979991294
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "CELL_ALLWATER": "Cell_AllWater",
+      "CELL_DESCRIPTION": "CELL_DESCRIPTION",
+      "CELL_DIACRITIC": "CELL_DIACRITIC",
+      "CELL_ID": "CELL_ID",
+      "CELL_MAPCODE": "CELL_MAPCODE",
+      "CELL_NAME": "CELL_NAME",
+      "CELL_TYPE": "Cell_Type",
+      "GLOBALID": "GLOBALID",
+      "ISMULTPRIM": "IsMultPrim",
+      "ISNOPRIM": "IsNoPrim",
+      "ISPRIMDIFF": "IsPrimDiff",
+      "OBJECTID": "OBJECTID",
+      "PRIMARY_STATE": "PRIMARY_STATE",
+      "SEQ_GOVTUNITS": "SEQ_GOVTUNITS",
+      "SHAPE_Area": "Shape_Area",
+      "SHAPE_Length": "Shape_Length",
+      "STATE_ALPHA": "STATE_ALPHA"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CELL_ID",
+        "name": "CELL_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_NAME",
+        "length": 120,
+        "name": "CELL_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PRIMARY_STATE",
+        "length": 50,
+        "name": "PRIMARY_STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATE_ALPHA",
+        "length": 100,
+        "name": "STATE_ALPHA",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEQ_GOVTUNITS",
+        "length": 150,
+        "name": "SEQ_GOVTUNITS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_MAPCODE",
+        "length": 8,
+        "name": "CELL_MAPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell_Type",
+        "name": "CELL_TYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cell_AllWater",
+        "name": "CELL_ALLWATER",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_DESCRIPTION",
+        "length": 240,
+        "name": "CELL_DESCRIPTION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_DIACRITIC",
+        "length": 100,
+        "name": "CELL_DIACRITIC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IsNoPrim",
+        "name": "ISNOPRIM",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "IsMultPrim",
+        "name": "ISMULTPRIM",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "IsPrimDiff",
+        "name": "ISPRIMDIFF",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Shape_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 5258,
+  "status": 200
+}

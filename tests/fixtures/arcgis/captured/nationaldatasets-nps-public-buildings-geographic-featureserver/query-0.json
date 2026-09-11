@@ -1,0 +1,517 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "ASMISID": null,
+          "BLDGALTNAME": null,
+          "BLDGCODE": null,
+          "BLDGNAME": "Gnann House",
+          "BLDGSTATUS": "Unknown",
+          "BLDGTYPE": null,
+          "CLIID": null,
+          "CREATEDATE": 1745851824000,
+          "CRID": null,
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1745851824000,
+          "FACASSETID": null,
+          "FACLOCID": "",
+          "FACMAINTAIN": null,
+          "FACOCCUPANT": null,
+          "FACOWNER": null,
+          "FACUSE": null,
+          "FEATUREID": "{7F94F2AB-3340-41BF-B9E1-5CBD22B28059}",
+          "FIREBLDGID": null,
+          "GEOMETRYID": "{243B9042-D58D-4376-8F13-90B04A54AFD1}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "ISEXTANT": "True",
+          "LCSID": null,
+          "MAPLABEL": "Gnann House",
+          "MAPMETHOD": "HDIG",
+          "MAPSOURCE": "Digitized from 1999 Orthophotos",
+          "NOTES": "No Public Access",
+          "OBJECTID": 1,
+          "PARKBLDGID": null,
+          "POLYGONTYPE": "Perimeter polygon",
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "SER",
+          "SEASDESC": null,
+          "SEASONAL": "Unknown",
+          "SOURCEDATE": 928195200000,
+          "Shape__Area": 4.380882271600001e-08,
+          "Shape__Length": 0.00130111,
+          "UNITCODE": "JICA",
+          "UNITNAME": "Jimmy Carter National Historic Site",
+          "XYACCURACY": "Unkown"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -84.40166108599999,
+                32.034546714000044
+              ],
+              [
+                -84.40166108599999,
+                32.034496158000024
+              ],
+              [
+                -84.40160497499994,
+                32.034496158000024
+              ],
+              [
+                -84.40160497499994,
+                32.03444282500004
+              ],
+              [
+                -84.40151830799994,
+                32.03444282500004
+              ],
+              [
+                -84.40151830799994,
+                32.03441782500005
+              ],
+              [
+                -84.40146830799995,
+                32.03441782500005
+              ],
+              [
+                -84.40146830799995,
+                32.03445893600008
+              ],
+              [
+                -84.40140053099998,
+                32.03445893600008
+              ],
+              [
+                -84.40140053099998,
+                32.034392825000054
+              ],
+              [
+                -84.40185608599995,
+                32.034392825000054
+              ],
+              [
+                -84.40185608599995,
+                32.03452449100007
+              ],
+              [
+                -84.40176330799994,
+                32.03452449100007
+              ],
+              [
+                -84.40176330799994,
+                32.034546714000044
+              ],
+              [
+                -84.40166108599999,
+                32.034546714000044
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "ASMISID": null,
+          "BLDGALTNAME": "WLD Apgar Building 240 Comfort Stn Loop D Lower",
+          "BLDGCODE": "35240100",
+          "BLDGNAME": "WLD Apgar Building 240 Comfort Stn Loop D Lower",
+          "BLDGSTATUS": "Existing",
+          "BLDGTYPE": "Bldg Comfort Stations/Restrooms",
+          "CLIID": " ",
+          "CREATEDATE": null,
+          "CRID": null,
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1617824315000,
+          "FACASSETID": null,
+          "FACLOCID": "7592",
+          "FACMAINTAIN": "NPS",
+          "FACOCCUPANT": "NPS",
+          "FACOWNER": "NPS",
+          "FACUSE": "Public Use",
+          "FEATUREID": "2C8928CC-11C6-465B-8C59-F3CACF1C74FD",
+          "FIREBLDGID": null,
+          "GEOMETRYID": "2CA05DED-0688-452F-A28F-B55516FFBDA8",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "ISEXTANT": "True",
+          "LCSID": null,
+          "MAPLABEL": null,
+          "MAPMETHOD": "Digitized",
+          "MAPSOURCE": "DOQQ",
+          "NOTES": "WLD0226",
+          "OBJECTID": 2,
+          "PARKBLDGID": "240",
+          "POLYGONTYPE": "Perimeter polygon",
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "IMR",
+          "SEASDESC": null,
+          "SEASONAL": "Yes",
+          "SOURCEDATE": null,
+          "Shape__Area": 1.3063581450500003e-08,
+          "Shape__Length": 0.00047415322423991266,
+          "UNITCODE": "GLAC",
+          "UNITNAME": "Glacier National Park",
+          "XYACCURACY": "Scaled"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -113.98265539999994,
+                48.52407090400004
+              ],
+              [
+                -113.98266051799999,
+                48.52415797500004
+              ],
+              [
+                -113.98251071299995,
+                48.52416186000005
+              ],
+              [
+                -113.98250559599995,
+                48.524074788000064
+              ],
+              [
+                -113.98265539999994,
+                48.52407090400004
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "ASMISID": null,
+          "BLDGALTNAME": null,
+          "BLDGCODE": null,
+          "BLDGNAME": null,
+          "BLDGSTATUS": "Existing",
+          "BLDGTYPE": null,
+          "CLIID": null,
+          "CREATEDATE": 1743436839000,
+          "CRID": null,
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1757684862000,
+          "FACASSETID": null,
+          "FACLOCID": null,
+          "FACMAINTAIN": null,
+          "FACOCCUPANT": null,
+          "FACOWNER": null,
+          "FACUSE": null,
+          "FEATUREID": null,
+          "FIREBLDGID": null,
+          "GEOMETRYID": "{f56ff0bd-1c04-4b44-b340-d2175e785399}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "ISEXTANT": "Unknown",
+          "LCSID": null,
+          "MAPLABEL": " ",
+          "MAPMETHOD": "Unknown",
+          "MAPSOURCE": "Unknown",
+          "NOTES": "{\"name\": \"\", \"source\": \"nps:buildings\", \"building\": \"yes\", \"nps:fcat\": \"Warehouse Fire Cache\", \"nps:fmss_id\": \"27809\", \"nps:unit_code\": \"badl\", \"nps:building_id\": \"{624E2A95-025B-40BB-84E2-5868C3127E6F}\"}",
+          "OBJECTID": 3,
+          "PARKBLDGID": null,
+          "POLYGONTYPE": "Circumscribed polygon",
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "MWR",
+          "SEASDESC": null,
+          "SEASONAL": "Unknown",
+          "SOURCEDATE": null,
+          "Shape__Area": 2.4215731800000007e-08,
+          "Shape__Length": 0.000623198,
+          "UNITCODE": "badl",
+          "UNITNAME": null,
+          "XYACCURACY": "Unknown"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -102.23759842499999,
+                43.88067337600006
+              ],
+              [
+                -102.23745022499998,
+                43.88067337600006
+              ],
+              [
+                -102.23745022499998,
+                43.88050997700003
+              ],
+              [
+                -102.23759842499999,
+                43.88050997700003
+              ],
+              [
+                -102.23759842499999,
+                43.88067337600006
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "BLDGNAME",
+        "length": 254,
+        "name": "BLDGNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGALTNAME",
+        "length": 254,
+        "name": "BLDGALTNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPLABEL",
+        "length": 100,
+        "name": "MAPLABEL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGSTATUS",
+        "length": 50,
+        "name": "BLDGSTATUS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGCODE",
+        "length": 10,
+        "name": "BLDGCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGTYPE",
+        "length": 50,
+        "name": "BLDGTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACOWNER",
+        "length": 20,
+        "name": "FACOWNER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACOCCUPANT",
+        "length": 20,
+        "name": "FACOCCUPANT",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACMAINTAIN",
+        "length": 20,
+        "name": "FACMAINTAIN",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACUSE",
+        "length": 20,
+        "name": "FACUSE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASONAL",
+        "length": 20,
+        "name": "SEASONAL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASDESC",
+        "length": 1073741822,
+        "name": "SEASDESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISEXTANT",
+        "length": 20,
+        "name": "ISEXTANT",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POLYGONTYPE",
+        "length": 50,
+        "name": "POLYGONTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PUBLICDISPLAY",
+        "length": 50,
+        "name": "PUBLICDISPLAY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "DATAACCESS",
+        "length": 50,
+        "name": "DATAACCESS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITCODE",
+        "length": 10,
+        "name": "UNITCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITNAME",
+        "length": 254,
+        "name": "UNITNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPCODE",
+        "length": 10,
+        "name": "GROUPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPNAME",
+        "length": 254,
+        "name": "GROUPNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONCODE",
+        "length": 4,
+        "name": "REGIONCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEDATE",
+        "length": 8,
+        "name": "CREATEDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "EDITDATE",
+        "length": 8,
+        "name": "EDITDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "MAPMETHOD",
+        "length": 254,
+        "name": "MAPMETHOD",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPSOURCE",
+        "length": 254,
+        "name": "MAPSOURCE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCEDATE",
+        "length": 8,
+        "name": "SOURCEDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "XYACCURACY",
+        "length": 50,
+        "name": "XYACCURACY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACLOCID",
+        "length": 10,
+        "name": "FACLOCID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACASSETID",
+        "length": 10,
+        "name": "FACASSETID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CRID",
+        "length": 38,
+        "name": "CRID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ASMISID",
+        "length": 100,
+        "name": "ASMISID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CLIID",
+        "length": 100,
+        "name": "CLIID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LCSID",
+        "length": 100,
+        "name": "LCSID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIREBLDGID",
+        "length": 50,
+        "name": "FIREBLDGID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PARKBLDGID",
+        "length": 50,
+        "name": "PARKBLDGID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATUREID",
+        "length": 50,
+        "name": "FEATUREID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOMETRYID",
+        "length": 38,
+        "name": "GEOMETRYID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOTES",
+        "length": 1073741822,
+        "name": "NOTES",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape.STArea()",
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape.STLength()",
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "hasM": false,
+    "hasZ": false,
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 6318,
+      "wkid": 104145
+    }
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 10893,
+  "status": 200
+}

@@ -1,0 +1,93 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "NOAA, NWS, Esri",
+    "description": "Official NWS Advanced Weather Interactive Processing System (AWIPS) background US Coastal and Offshore Marine Zones.\n\nSee: \"http://www.nws.noaa.gov/geodata/index.html\"",
+    "displayField": "Name",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.067161843,
+      "xmin": -20037507.067161843,
+      "ymax": 12808319.154019495,
+      "ymin": -1694388.8232823536
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Geography Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "Name",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Universal Geography Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 6,
+        "name": "UGC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source of Geography Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 3,
+        "name": "SGC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 5,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Coastal and Offshore Marine Zones",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 10310,
+  "status": 200
+}

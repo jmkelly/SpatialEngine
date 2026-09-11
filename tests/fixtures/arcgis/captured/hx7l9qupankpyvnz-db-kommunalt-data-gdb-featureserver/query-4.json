@@ -1,0 +1,58 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "antal_indl": 1,
+          "reportagegrp": null
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "antal_indl": 3653,
+          "reportagegrp": "0-9"
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "antal_indl": 1816,
+          "reportagegrp": "10-19"
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "reportagegrp",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "reportagegrp",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "antal_indl",
+        "defaultValue": null,
+        "name": "antal_indl",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 922,
+  "status": 200
+}

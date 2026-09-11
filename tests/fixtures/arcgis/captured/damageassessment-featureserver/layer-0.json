@@ -1,0 +1,429 @@
+{
+  "body": {
+    "capabilities": "Query,Create,Update,Delete,Uploads,Editing",
+    "copyrightText": "",
+    "description": "The location of damaged residential structures and a description of the extent to which the structure and its contents were damaged.",
+    "displayField": "firstname",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -28651323.825425006,
+        "falseY": -30665215.055140004,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 47351317.928349085,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 365227716.6599,
+      "xmin": -20004698.6492,
+      "ymax": 54792015.7859,
+      "ymin": -22048025.335699998
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "objectid",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "incidentid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Incident Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "incidentnm",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "inspectid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "inspector",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector's Email Address",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "inspemail",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector's Phone Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "inspphone",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Affiliation",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "affil",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspection Date Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "inspdate",
+        "nullable": true,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Contact First Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "firstname",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Contact Last Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "lastname",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Full Address",
+        "defaultValue": null,
+        "editable": true,
+        "length": 250,
+        "name": "fulladdr",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Postal City",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "pstlcity",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Postal Zip 5",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "pstlzip5",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Site ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "siteid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Parcel Identification Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "parcelid",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "USNG Coordinate",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "usngcoord",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Home Phone",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "homephone",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Work Phone",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "workphone",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell Phone",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "cellphone",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Email",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "email",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SMS or Text",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "sms",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Owner / Occupant",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "represent",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Primary Residence",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "primres",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Habitable",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "habitable",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Number of Occupants",
+        "defaultValue": null,
+        "editable": true,
+        "name": "numoccup",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Structure Insured",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "strinsur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Contents Insured",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "continsur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Renter's Insurance",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "rentinsur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Earthquake Coverage",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "earinsur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flood Coverage",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "floodinsur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Wildland Fire Coverage",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "fireinsur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Insurance Deductible",
+        "defaultValue": null,
+        "editable": true,
+        "name": "deduct",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Value Before Damage",
+        "defaultValue": null,
+        "editable": true,
+        "name": "predisval",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Estimated $ Loss Structure",
+        "defaultValue": null,
+        "editable": true,
+        "name": "strloss",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Estimated $ Loss Contents",
+        "defaultValue": null,
+        "editable": true,
+        "name": "contloss",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Extent of Damage",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "typdamage",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Primary Cause of Damage",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "primcause",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Description of Damage",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "descdamage",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Impact to Jurisdiction",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "impactjur",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Additional Comments",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "comments",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last Update Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "lastupdate",
+        "nullable": true,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Last Editor",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "lasteditor",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": true,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Damage to Residential Buildings",
+    "objectIdField": "objectid",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 23025,
+  "status": 200
+}

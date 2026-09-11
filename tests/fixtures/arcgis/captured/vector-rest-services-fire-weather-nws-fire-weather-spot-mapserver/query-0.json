@@ -1,0 +1,213 @@
+{
+  "body": {
+    "displayFieldName": "name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "acclevel": null,
+          "acts": null,
+          "deliverdtg": "2026-09-19 09:00:00 AM MDT",
+          "idp_filedate": 1789128475000,
+          "idp_ingestdate": 1789128480000,
+          "lat": "43.8513",
+          "lon": "-104.2187",
+          "name": "Newcastle Shine and Show",
+          "objectid": 1,
+          "rfill": "Incomplete",
+          "rmade": "2026-03-08 08:14:27 AM MDT",
+          "snumunum": "2605059",
+          "stat": "P",
+          "stattext": "Request pending",
+          "tid": "7",
+          "type": "Other 2026-09-19 09:00:00 AM MDT",
+          "wfo": "UNR"
+        },
+        "geometry": {
+          "x": -104.21869999999996,
+          "y": 43.85130000000004
+        }
+      },
+      {
+        "attributes": {
+          "acclevel": null,
+          "acts": null,
+          "deliverdtg": "2026-09-09 11:00:00 AM HST",
+          "idp_filedate": 1789128475000,
+          "idp_ingestdate": 1789128480000,
+          "lat": "23.8692",
+          "lon": "-166.2876",
+          "name": "French Frigate Shoals",
+          "objectid": 2,
+          "rfill": "2026-09-09 12:54:20 PM HST",
+          "rmade": "2026-09-09 10:08:19 AM HST",
+          "snumunum": "2611796",
+          "stat": "C",
+          "stattext": "Completed: 2026-09-09 12:54:20 PM HST",
+          "tid": "2",
+          "type": "Marine 2026-09-09 11:00:00 AM HST",
+          "wfo": "HFO"
+        },
+        "geometry": {
+          "x": -166.28759999999997,
+          "y": 23.869200000000035
+        }
+      },
+      {
+        "attributes": {
+          "acclevel": null,
+          "acts": null,
+          "deliverdtg": "2026-09-10 15:00:00 PM MDT",
+          "idp_filedate": 1789128475000,
+          "idp_ingestdate": 1789128480000,
+          "lat": "46.7777",
+          "lon": "-115.2125",
+          "name": "Moose Mountain",
+          "objectid": 3,
+          "rfill": "2026-09-10 12:48:42 PM MDT",
+          "rmade": "2026-09-10 09:00:04 AM MDT",
+          "snumunum": "2618978",
+          "stat": "C",
+          "stattext": "Completed: 2026-09-10 12:48:42 PM MDT",
+          "tid": "0",
+          "type": "Fire 2026-09-10 15:00:00 PM MDT",
+          "wfo": "MSO"
+        },
+        "geometry": {
+          "x": -115.21249999999998,
+          "y": 46.77770000000004
+        }
+      }
+    ],
+    "fieldAliases": {
+      "acclevel": "Access Level",
+      "acts": "acts",
+      "deliverdtg": "Require Delivery Date Time",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "lat": "Lattitude",
+      "lon": "Longitude",
+      "name": "Name of Incident",
+      "objectid": "objectid_1",
+      "rfill": "Forecast DateTime Posted",
+      "rmade": "Forecast DateTime Made",
+      "snumunum": "Incident and Update Number Code",
+      "stat": "Forecast Status",
+      "stattext": "Status Text",
+      "tid": "TID",
+      "type": "Type of Incident",
+      "wfo": "Forecast Office"
+    },
+    "fields": [
+      {
+        "alias": "objectid_1",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident and Update Number Code",
+        "length": 64,
+        "name": "snumunum",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name of Incident",
+        "length": 128,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Type of Incident",
+        "length": 64,
+        "name": "type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TID",
+        "length": 2,
+        "name": "tid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lattitude",
+        "length": 12,
+        "name": "lat",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Longitude",
+        "length": 12,
+        "name": "lon",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast DateTime Made",
+        "length": 30,
+        "name": "rmade",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast DateTime Posted",
+        "length": 30,
+        "name": "rfill",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast Status",
+        "length": 2,
+        "name": "stat",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Status Text",
+        "length": 60,
+        "name": "stattext",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast Office",
+        "length": 5,
+        "name": "wfo",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Access Level",
+        "length": 5,
+        "name": "acclevel",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "acts",
+        "length": 5,
+        "name": "acts",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Require Delivery Date Time",
+        "length": 30,
+        "name": "deliverdtg",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "spatialReference": {
+      "latestWkid": 4269,
+      "wkid": 4269
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4528,
+  "status": 200
+}

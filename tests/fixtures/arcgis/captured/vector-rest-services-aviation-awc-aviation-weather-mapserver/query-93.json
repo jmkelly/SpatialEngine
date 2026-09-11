@@ -1,0 +1,243 @@
+{
+  "body": {
+    "displayFieldName": "name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "airport_name": "ADAK",
+          "beacon": "B",
+          "country": "US",
+          "elev": "5",
+          "icao": "PADK",
+          "id": "ADK",
+          "idp_filedate": 1747624942000,
+          "idp_ingestdate": 1762053742000,
+          "magdec": "07E",
+          "name": "ADAK",
+          "numrwy": "1",
+          "objectid": 1,
+          "owner": "P",
+          "regional": null,
+          "rwylen": "M",
+          "rwytype": "A",
+          "services": "S",
+          "state": "AK",
+          "tower": "-",
+          "type": "ARP"
+        },
+        "geometry": {
+          "x": -176.64250000000004,
+          "y": 51.88360000000003
+        }
+      },
+      {
+        "attributes": {
+          "airport_name": "AKHIOK",
+          "beacon": "-",
+          "country": "US",
+          "elev": "13",
+          "icao": "PAKH",
+          "id": "AKK",
+          "idp_filedate": 1747624942000,
+          "idp_ingestdate": 1762053742000,
+          "magdec": "18E",
+          "name": "AKHIOK",
+          "numrwy": "1",
+          "objectid": 2,
+          "owner": "P",
+          "regional": null,
+          "rwylen": "S",
+          "rwytype": "G",
+          "services": "-",
+          "state": "AK",
+          "tower": "-",
+          "type": "ARP"
+        },
+        "geometry": {
+          "x": -154.18260000000004,
+          "y": 56.93869999999998
+        }
+      },
+      {
+        "attributes": {
+          "airport_name": "AKIACHAK",
+          "beacon": "-",
+          "country": "US",
+          "elev": "6",
+          "icao": "PFZK",
+          "id": "Z13",
+          "idp_filedate": 1747624942000,
+          "idp_ingestdate": 1762053742000,
+          "magdec": "19E",
+          "name": "AKIACHAK",
+          "numrwy": "1",
+          "objectid": 3,
+          "owner": "P",
+          "regional": null,
+          "rwylen": "S",
+          "rwytype": "G",
+          "services": "-",
+          "state": "AK",
+          "tower": "-",
+          "type": "ARP"
+        },
+        "geometry": {
+          "x": -161.49330000000003,
+          "y": 60.91380000000004
+        }
+      }
+    ],
+    "fieldAliases": {
+      "airport_name": "AIRPORT NAME",
+      "beacon": "Beacon",
+      "country": "Country",
+      "elev": "Elev",
+      "icao": "Icao",
+      "id": "Id",
+      "idp_filedate": "idp_filedate",
+      "idp_ingestdate": "idp_ingestdate",
+      "magdec": "MagDec",
+      "name": "Name",
+      "numrwy": "NumRwy",
+      "objectid": "OBJECTID",
+      "owner": "Owner",
+      "regional": "Regional",
+      "rwylen": "RwyLen",
+      "rwytype": "RwyType",
+      "services": "Services",
+      "state": "State",
+      "tower": "Tower",
+      "type": "Type"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Id",
+        "length": 4,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icao",
+        "length": 4,
+        "name": "icao",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "length": 50,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State",
+        "length": 2,
+        "name": "state",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country",
+        "length": 2,
+        "name": "country",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Type",
+        "length": 3,
+        "name": "type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Elev",
+        "length": 5,
+        "name": "elev",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MagDec",
+        "length": 4,
+        "name": "magdec",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Owner",
+        "length": 1,
+        "name": "owner",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NumRwy",
+        "length": 2,
+        "name": "numrwy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "RwyLen",
+        "length": 1,
+        "name": "rwylen",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "RwyType",
+        "length": 1,
+        "name": "rwytype",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Services",
+        "length": 1,
+        "name": "services",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Tower",
+        "length": 1,
+        "name": "tower",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Beacon",
+        "length": 1,
+        "name": "beacon",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Regional",
+        "length": 255,
+        "name": "regional",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AIRPORT NAME",
+        "length": 255,
+        "name": "airport_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "idp_ingestdate",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "idp_filedate",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4032,
+  "status": 200
+}

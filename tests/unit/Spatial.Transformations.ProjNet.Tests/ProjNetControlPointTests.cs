@@ -1,5 +1,5 @@
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk;
 using Spatial.PluginSdk.Transformations;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 
@@ -106,11 +106,10 @@ public sealed class ProjNetControlPointTests
 
     private static async Task<(double X, double Y)> Transform(IGeometry geometry, string source, string target)
     {
-        var result = await TransformAsync(
-            TransformationArguments.Geometry, geometry,
-            TransformationArguments.Source, source,
-            TransformationArguments.Target, target);
-        var transformed = (IGeometry)Assert.IsType<CapabilitySuccess>(result).Value!;
+        var transformed = await TransformAsync(
+            "geometry", geometry,
+            "source", source,
+            "target", target);
         var point = Assert.IsType<Point>(transformed);
         Assert.Equal(new CoordinateReference("EPSG", target[(target.IndexOf(':') + 1)..]), transformed.CoordinateReference);
         return (point.X!.Value, point.Y!.Value);

@@ -1,0 +1,222 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "Florida_Places",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "wkt": "PROJCS[\"Albers Conical Equal Area (Florida Geographic Data Library)\",GEOGCS[\"GCS_North_American_1983_HARN\",DATUM[\"D_North_American_1983_HARN\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Albers\"],PARAMETER[\"False_Easting\",400000.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",-84.0],PARAMETER[\"Standard_Parallel_1\",24.0],PARAMETER[\"Standard_Parallel_2\",31.5],PARAMETER[\"Central_Parallel\",24.0],UNIT[\"Meter\",1.0]]"
+      },
+      "xmax": 799462.4453999997,
+      "xmin": 77729.66340000182,
+      "ymax": 780734.5935000004,
+      "ymin": 62210.639700000174
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "STATEFP",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "STATEFP",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PLACEFP",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "PLACEFP",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PLACENS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "PLACENS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 7,
+        "name": "GEOID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NAMELSAD",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "NAMELSAD",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LSAD",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "LSAD",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CLASSFP",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "CLASSFP",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PCICBSA",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "PCICBSA",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PCINECTA",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "PCINECTA",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MTFCC",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "MTFCC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FUNCSTAT",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "FUNCSTAT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ALAND",
+        "defaultValue": null,
+        "editable": true,
+        "name": "ALAND",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "AWATER",
+        "defaultValue": null,
+        "editable": true,
+        "name": "AWATER",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "INTPTLAT",
+        "defaultValue": null,
+        "editable": true,
+        "length": 11,
+        "name": "INTPTLAT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "INTPTLON",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "INTPTLON",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Area_2",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area_2",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length_2",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length_2",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Florida_Places",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "wkt": "PROJCS[\"Albers Conical Equal Area (Florida Geographic Data Library)\",GEOGCS[\"GCS_North_American_1983_HARN\",DATUM[\"D_North_American_1983_HARN\",SPHEROID[\"GRS_1980\",6378137.0,298.257222101]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Albers\"],PARAMETER[\"False_Easting\",400000.0],PARAMETER[\"False_Northing\",0.0],PARAMETER[\"Central_Meridian\",-84.0],PARAMETER[\"Standard_Parallel_1\",24.0],PARAMETER[\"Standard_Parallel_2\",31.5],PARAMETER[\"Central_Parallel\",24.0],UNIT[\"Meter\",1.0]]"
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 13055,
+  "status": 200
+}

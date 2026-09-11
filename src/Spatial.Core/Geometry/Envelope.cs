@@ -124,8 +124,10 @@ public readonly struct Envelope : IEquatable<Envelope>
     public bool Contains(Coordinate coordinate) => Contains(coordinate.X, coordinate.Y);
 
     /// <summary>Whether <paramref name="other"/> lies entirely inside this envelope (boundaries included).</summary>
-    public bool Contains(in Envelope other) =>
-        !IsEmpty && !other.IsEmpty
+    public bool Contains(in Envelope other) => !IsEmpty && ContainsBounds(other);
+
+    private bool ContainsBounds(in Envelope other) =>
+        !other.IsEmpty
         && _minX <= other._minX && other._maxX <= _maxX
         && _minY <= other._minY && other._maxY <= _maxY;
 

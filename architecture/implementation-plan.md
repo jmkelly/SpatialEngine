@@ -1,6 +1,13 @@
 # Spatial Engine Implementation Plan
 
-> **Status:** Updated architectural plan  
+> **Status:** Updated architectural plan — as amended by ADR-0033 (in-process
+> service interfaces replace worker plugins; ADRs
+> 0002/0003/0006–0008/0013/0022–0028/0030/0031 are superseded history).
+> Where this plan still describes worker packages, manifests, the
+> `spatial.worker/1` wire, jobs/resources/streams or plugin control
+> endpoints, ADR-0033 governs: interfaces in `Spatial.PluginSdk`,
+> implementations linked by `Spatial.Host` with DI, typed HTTP routes,
+> cancellable Tasks, store-owned transaction handles.
 > **Architecture:** Geometry-centred spatial microkernel  
 > **Backend:** .NET 10, initially JIT-compiled  
 > **Initial data provider:** PostGIS  
@@ -139,6 +146,9 @@ Out-of-process plugin workers
 ```
 
 #### Local development profile
+
+Implemented by `src/Spatial.AppHost` (ADR-0034): one `dotnet run` starts
+the composition below and prints the endpoints on the Aspire dashboard.
 
 ```text
 .NET Aspire composition
@@ -1174,6 +1184,10 @@ ADR-0029 Feature model contract faces and the codec namespace
 ADR-0030 Host API contract shapes and value codec live in the SDK
 ADR-0031 Browser workbench hosting and plugin control
 ADR-0032 Geometry contract faces and the geometry codec namespace
+ADR-0033 In-process service interfaces and DI replace worker plugins
+ADR-0034 Aspire AppHost composes the local development profile
+ADR-0035 GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider
+ADR-0036 Geometry measurement, processing and relation verbs are separate SDK interfaces
 ```
 
 ## 25. Recommended Starting Sequence

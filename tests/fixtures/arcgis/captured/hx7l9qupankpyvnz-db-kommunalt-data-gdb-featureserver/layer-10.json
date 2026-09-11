@@ -1,0 +1,60 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "reportagegrp",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "reportagegrp",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "tot_antal_tilf",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_tilf",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tot_antal_dod",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_dod",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 10,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Tilfaelde_dod_alder_reportage",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6168,
+  "status": 200
+}

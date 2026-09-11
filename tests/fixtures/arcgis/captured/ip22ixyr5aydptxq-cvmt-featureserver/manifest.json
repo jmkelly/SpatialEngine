@@ -1,0 +1,113 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "ip22ixyr5aydptxq-cvmt-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 988,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 988,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Covid19_Malta",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 32633
+    },
+    {
+      "count": "count-1.json",
+      "countOnly": 58,
+      "error": "error-1.json",
+      "errorCode": 400,
+      "features": "query-1.json",
+      "fieldTypes": [
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 1,
+      "ids": "ids-1.json",
+      "idsOnly": 58,
+      "maxRecordCount": 2000,
+      "metadata": "layer-1.json",
+      "name": "MT_Councils",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 32633
+    },
+    {
+      "count": "count-2.json",
+      "countOnly": 6,
+      "error": "error-2.json",
+      "errorCode": 400,
+      "features": "query-2.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 2,
+      "ids": "ids-2.json",
+      "idsOnly": 6,
+      "maxRecordCount": 2000,
+      "metadata": "layer-2.json",
+      "name": "MT_Districts",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 32633
+    },
+    {
+      "count": "count-3.json",
+      "countOnly": 1,
+      "error": "error-3.json",
+      "errorCode": 400,
+      "features": "query-3.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 3,
+      "ids": "ids-3.json",
+      "idsOnly": 1,
+      "maxRecordCount": 2000,
+      "metadata": "layer-3.json",
+      "name": "MT_Country",
+      "queryExceeded": false,
+      "queryFeatureCount": 1,
+      "queryHasGeometry": true,
+      "srid": 32633
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "ip22ixyr5aydptxq-cvmt-featureserver",
+  "url": "https://services1.arcgis.com/iP22iXyR5aydpTXq/arcgis/rest/services/CVMT/FeatureServer"
+}

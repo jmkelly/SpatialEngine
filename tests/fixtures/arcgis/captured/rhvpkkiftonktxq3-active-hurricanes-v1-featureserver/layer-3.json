@@ -1,0 +1,130 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "NHC, Esri",
+    "description": "Observed Track",
+    "displayField": "STORMTYPE",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180,
+      "xmin": -180,
+      "ymax": 90,
+      "ymin": -90
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "editable": true,
+        "name": "STORMNUM",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "STORMTYPE",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Saffir-Simpson Scale",
+        "defaultValue": null,
+        "editable": true,
+        "name": "SS",
+        "nullable": false,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Start Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "STARTDTG",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ENDDTG",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Storm ID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "BASIN",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolyline",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 3,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Observed Track",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 15729,
+  "status": 200
+}

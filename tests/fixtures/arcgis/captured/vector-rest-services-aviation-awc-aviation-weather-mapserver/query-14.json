@@ -1,0 +1,530 @@
+{
+  "body": {
+    "displayFieldName": "raw_text",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "altim_in_hg": 29.94,
+          "auto": null,
+          "auto_station": "TRUE",
+          "ceiling_ft": 3600,
+          "cloud_base_ft_agl": 1600,
+          "cloud_base_ft_agl_1": "6000",
+          "cloud_base_ft_agl_2": null,
+          "cloud_base_ft_agl_3": null,
+          "corrected": null,
+          "dewpoint_c": 23.3,
+          "elevation_m": 67,
+          "flight_category": "IFR",
+          "freezing_rain_sensor_off": null,
+          "idp_filedate": 1789128147000,
+          "idp_ingestdate": 1789128161000,
+          "latitude": 30.6882,
+          "lightning_sensor_off": null,
+          "longitude": -88.2459,
+          "maintenance_indicator_on": null,
+          "maxt24hr_c": null,
+          "maxt_c": "261",
+          "metar_type": "METAR",
+          "mint24hr_c": null,
+          "mint_c": "244",
+          "no_signal": null,
+          "objectid": 334,
+          "observation_time": 1789127760000,
+          "pcp24hr_in": "0.59",
+          "pcp3hr_in": null,
+          "pcp6hr_in": "0.59",
+          "precip_in": 0.36,
+          "present_weather_sensor_off": null,
+          "priority": 1,
+          "raw_text": "METAR KMOB 111156Z 24005G15KT 1 1/2SM +TSRA BR BKN016CB BKN036 OVC060 24/23 A2994 RMK AO2 RAB06 TSE48B50 SLP136 FRQ LTGICCG ALQDS TS ALQDS MOV NE P0036 60059 70059 T02440233 10261 20244 53004",
+          "sea_level_pressure_mb": 1013.6,
+          "sky_cover": "BKN",
+          "sky_cover_1": "OVC",
+          "sky_cover_2": null,
+          "sky_cover_3": null,
+          "snow_in": null,
+          "station_id": "KMOB",
+          "temp_c": 24.4,
+          "three_hr_pressure_tendency_mb": "0.04",
+          "vert_vis_ft": null,
+          "visibility_statute_mi": "1.5",
+          "wind_gust_kt": 15,
+          "wind_speed_kt": 5,
+          "winddir": 240,
+          "wx_string": "+TSRA BR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -88.24589999999995,
+              30.68820000000005
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "altim_in_hg": 30.02,
+          "auto": null,
+          "auto_station": "TRUE",
+          "ceiling_ft": 25000,
+          "cloud_base_ft_agl": 15000,
+          "cloud_base_ft_agl_1": "25000",
+          "cloud_base_ft_agl_2": null,
+          "cloud_base_ft_agl_3": null,
+          "corrected": null,
+          "dewpoint_c": 22.2,
+          "elevation_m": 8,
+          "flight_category": "VFR",
+          "freezing_rain_sensor_off": null,
+          "idp_filedate": 1789128147000,
+          "idp_ingestdate": 1789128161000,
+          "latitude": 30.4953,
+          "lightning_sensor_off": null,
+          "longitude": -81.6937,
+          "maintenance_indicator_on": "TRUE",
+          "maxt24hr_c": null,
+          "maxt_c": "239",
+          "metar_type": "METAR",
+          "mint24hr_c": null,
+          "mint_c": "228",
+          "no_signal": null,
+          "objectid": 335,
+          "observation_time": 1789127760000,
+          "pcp24hr_in": "0.15",
+          "pcp3hr_in": null,
+          "pcp6hr_in": null,
+          "precip_in": null,
+          "present_weather_sensor_off": null,
+          "priority": 1,
+          "raw_text": "METAR KJAX 111156Z 00000KT 10SM SCT150 BKN250 23/22 A3002 RMK AO2 SLP166 70015 T02330222 10239 20228 53015 $",
+          "sea_level_pressure_mb": 1016.6,
+          "sky_cover": "SCT",
+          "sky_cover_1": "BKN",
+          "sky_cover_2": null,
+          "sky_cover_3": null,
+          "snow_in": null,
+          "station_id": "KJAX",
+          "temp_c": 23.3,
+          "three_hr_pressure_tendency_mb": "0.15",
+          "vert_vis_ft": null,
+          "visibility_statute_mi": "10+",
+          "wind_gust_kt": null,
+          "wind_speed_kt": 0,
+          "winddir": 0,
+          "wx_string": null
+        },
+        "geometry": {
+          "points": [
+            [
+              -81.69369999999998,
+              30.495300000000043
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "altim_in_hg": 29.94,
+          "auto": null,
+          "auto_station": "TRUE",
+          "ceiling_ft": 900,
+          "cloud_base_ft_agl": 300,
+          "cloud_base_ft_agl_1": "900",
+          "cloud_base_ft_agl_2": null,
+          "cloud_base_ft_agl_3": null,
+          "corrected": null,
+          "dewpoint_c": 13.9,
+          "elevation_m": 2,
+          "flight_category": "IFR",
+          "freezing_rain_sensor_off": null,
+          "idp_filedate": 1789128147000,
+          "idp_ingestdate": 1789128161000,
+          "latitude": 37.6196,
+          "lightning_sensor_off": null,
+          "longitude": -122.3656,
+          "maintenance_indicator_on": "TRUE",
+          "maxt24hr_c": null,
+          "maxt_c": "161",
+          "metar_type": "METAR",
+          "mint24hr_c": null,
+          "mint_c": "156",
+          "no_signal": null,
+          "objectid": 362,
+          "observation_time": 1789127760000,
+          "pcp24hr_in": null,
+          "pcp3hr_in": null,
+          "pcp6hr_in": null,
+          "precip_in": null,
+          "present_weather_sensor_off": null,
+          "priority": 1,
+          "raw_text": "METAR KSFO 111156Z 27008KT 10SM FEW003 BKN009 16/14 A2994 RMK AO2 SLP139 T01610139 10161 20156 58004 $",
+          "sea_level_pressure_mb": 1013.9,
+          "sky_cover": "FEW",
+          "sky_cover_1": "BKN",
+          "sky_cover_2": null,
+          "sky_cover_3": null,
+          "snow_in": null,
+          "station_id": "KSFO",
+          "temp_c": 16.1,
+          "three_hr_pressure_tendency_mb": "-0.04",
+          "vert_vis_ft": null,
+          "visibility_statute_mi": "10+",
+          "wind_gust_kt": null,
+          "wind_speed_kt": 8,
+          "winddir": 270,
+          "wx_string": null
+        },
+        "geometry": {
+          "points": [
+            [
+              -122.36559999999997,
+              37.61960000000005
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "altim_in_hg": "Altimeter In HG",
+      "auto": "Automatic Source",
+      "auto_station": "Automatic Station",
+      "ceiling_ft": "Ceiling in Feet",
+      "cloud_base_ft_agl": "Cloud Base In FT AGL",
+      "cloud_base_ft_agl_1": "Cloud Base 1 (FT AGL)",
+      "cloud_base_ft_agl_2": "Cloud Base 2 (FT AGL)",
+      "cloud_base_ft_agl_3": "Cloud Base 3 (FT AGL)",
+      "corrected": "Corrected",
+      "dewpoint_c": "Dewpoint in Celsius",
+      "elevation_m": "Elevation In Meters",
+      "flight_category": "Flight Category",
+      "freezing_rain_sensor_off": "Freezing Rain Sensor Off",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "latitude": "Latitude",
+      "lightning_sensor_off": "Lightning Sensor Off",
+      "longitude": "Longitude",
+      "maintenance_indicator_on": "Maintenance Indicator Is On",
+      "maxt24hr_c": "Maximum Temperature 24hr In Celsius",
+      "maxt_c": "Maximum Temperature in Celsius",
+      "metar_type": "METAR Type",
+      "mint24hr_c": "Minimum Temperature 24hr in Celsius",
+      "mint_c": "Minimum Temperature in Celsius",
+      "no_signal": "No Signal",
+      "objectid": "Object ID",
+      "observation_time": "Observation Time",
+      "pcp24hr_in": "Precipitation 24hr In Inches",
+      "pcp3hr_in": "Precipitation 3hr In Inches",
+      "pcp6hr_in": "Precipitation 6hr In Inches",
+      "precip_in": "Precipitation In Inches",
+      "present_weather_sensor_off": "Present Weather Sensor Off",
+      "priority": "Priority",
+      "raw_text": "Raw Observation",
+      "sea_level_pressure_mb": "Sea  Level Pressure In MB",
+      "sky_cover": "Sky Cover",
+      "sky_cover_1": "Sky Cover 1",
+      "sky_cover_2": "Sky Cover 2",
+      "sky_cover_3": "Sky Cover 3",
+      "snow_in": "Snow in Inches",
+      "station_id": "Station ID",
+      "temp_c": "Temperature in Celsius",
+      "three_hr_pressure_tendency_mb": "Three Hour Pressure Tendency In MB",
+      "vert_vis_ft": "Vertical Visibility In Feet",
+      "visibility_statute_mi": "Visibility in Statute MI",
+      "wind_gust_kt": "Wind Gust In Knots",
+      "wind_speed_kt": "Wind Speed In Knots",
+      "winddir": "Wind Direction",
+      "wx_string": "Weather"
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Raw Observation",
+        "length": 8000,
+        "name": "raw_text",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Station ID",
+        "length": 8000,
+        "name": "station_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Observation Time",
+        "length": 8,
+        "name": "observation_time",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Temperature in Celsius",
+        "name": "temp_c",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Dewpoint in Celsius",
+        "name": "dewpoint_c",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Wind Direction",
+        "name": "winddir",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Wind Speed In Knots",
+        "name": "wind_speed_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Gust In Knots",
+        "name": "wind_gust_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Visibility in Statute MI",
+        "length": 8000,
+        "name": "visibility_statute_mi",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Altimeter In HG",
+        "name": "altim_in_hg",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Sea  Level Pressure In MB",
+        "name": "sea_level_pressure_mb",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Corrected",
+        "length": 8000,
+        "name": "corrected",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Automatic Source",
+        "length": 8000,
+        "name": "auto",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Automatic Station",
+        "length": 8000,
+        "name": "auto_station",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maintenance Indicator Is On",
+        "length": 8000,
+        "name": "maintenance_indicator_on",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "No Signal",
+        "length": 8000,
+        "name": "no_signal",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lightning Sensor Off",
+        "length": 8000,
+        "name": "lightning_sensor_off",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Freezing Rain Sensor Off",
+        "length": 8000,
+        "name": "freezing_rain_sensor_off",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Present Weather Sensor Off",
+        "length": 8000,
+        "name": "present_weather_sensor_off",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Weather",
+        "length": 8000,
+        "name": "wx_string",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover",
+        "length": 8000,
+        "name": "sky_cover",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Category",
+        "length": 8000,
+        "name": "flight_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Three Hour Pressure Tendency In MB",
+        "length": 8000,
+        "name": "three_hr_pressure_tendency_mb",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maximum Temperature in Celsius",
+        "length": 8000,
+        "name": "maxt_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Minimum Temperature in Celsius",
+        "length": 8000,
+        "name": "mint_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maximum Temperature 24hr In Celsius",
+        "length": 8000,
+        "name": "maxt24hr_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Minimum Temperature 24hr in Celsius",
+        "length": 8000,
+        "name": "mint24hr_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Precipitation In Inches",
+        "name": "precip_in",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Precipitation 3hr In Inches",
+        "length": 8000,
+        "name": "pcp3hr_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Precipitation 6hr In Inches",
+        "length": 8000,
+        "name": "pcp6hr_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Precipitation 24hr In Inches",
+        "length": 8000,
+        "name": "pcp24hr_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Snow in Inches",
+        "length": 8000,
+        "name": "snow_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Vertical Visibility In Feet",
+        "name": "vert_vis_ft",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "METAR Type",
+        "length": 8000,
+        "name": "metar_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Elevation In Meters",
+        "name": "elevation_m",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Base In FT AGL",
+        "name": "cloud_base_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Priority",
+        "name": "priority",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Sky Cover 1",
+        "length": 20,
+        "name": "sky_cover_1",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover 2",
+        "length": 20,
+        "name": "sky_cover_2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover 3",
+        "length": 20,
+        "name": "sky_cover_3",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base 1 (FT AGL)",
+        "length": 20,
+        "name": "cloud_base_ft_agl_1",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base 2 (FT AGL)",
+        "length": 20,
+        "name": "cloud_base_ft_agl_2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base 3 (FT AGL)",
+        "length": 20,
+        "name": "cloud_base_ft_agl_3",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Ceiling in Feet",
+        "name": "ceiling_ft",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 12715,
+  "status": 200
+}

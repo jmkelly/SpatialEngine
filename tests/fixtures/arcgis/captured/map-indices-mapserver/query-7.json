@@ -1,0 +1,226 @@
+{
+  "body": {
+    "displayFieldName": "CELL_NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": "Derived from row with cell_id_nmbr = 68901",
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 321684,
+          "CELL_MAPCODE": "40100-A1",
+          "CELL_NAME": "McCook E",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D5B0399C-D396-11DE-9C20-00144F233E68}",
+          "OBJECTID": 1,
+          "PRIMARY_STATE": "Nebraska",
+          "SHAPE_Area": 16297113042.138103,
+          "SHAPE_Length": 515437.87875382614
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -11131950.073945569,
+                4865943.266757414
+              ],
+              [
+                -11243269.592428738,
+                4865943.257143378
+              ],
+              [
+                -11243269.605401888,
+                5012342.677689627
+              ],
+              [
+                -11131950.086802887,
+                5012342.687882818
+              ],
+              [
+                -11131950.073945569,
+                4865943.266757414
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": "Derived from row with cell_id_nmbr = 68903",
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 321688,
+          "CELL_MAPCODE": "45100-A1",
+          "CELL_NAME": "McIntosh E",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D5B20D2E-D396-11DE-9C20-00144F233E68}",
+          "OBJECTID": 2,
+          "PRIMARY_STATE": "South Dakota",
+          "SHAPE_Area": 17680631687.440258,
+          "SHAPE_Length": 540294.5903692094
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -11131950.14773036,
+                5621522.666356288
+              ],
+              [
+                -11243269.667371847,
+                5621522.653846465
+              ],
+              [
+                -11243269.685673255,
+                5780350.4288683385
+              ],
+              [
+                -11131950.165684273,
+                5780350.4420731515
+              ],
+              [
+                -11131950.14773036,
+                5621522.666356288
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": "Derived from row with cell_id_nmbr = 76867",
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 322447,
+          "CELL_MAPCODE": "26093-A1",
+          "CELL_NAME": "Keathley Canyon W",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D5B22D0F-D396-11DE-9C20-00144F233E68}",
+          "OBJECTID": 3,
+          "PRIMARY_STATE": "Louisiana",
+          "SHAPE_Area": 13847128386.21812,
+          "SHAPE_Length": 471420.71616741846
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10352713.339851532,
+                2999081.495372068
+              ],
+              [
+                -10464032.859724682,
+                2999081.492476277
+              ],
+              [
+                -10464032.8630838,
+                3123472.33051309
+              ],
+              [
+                -10352713.343210652,
+                3123472.333756376
+              ],
+              [
+                -10352713.339851532,
+                2999081.495372068
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "CELL_ALLWATER": "Cell_AllWater",
+      "CELL_DESCRIPTION": "CELL_DESCRIPTION",
+      "CELL_DIACRITIC": "CELL_DIACRITIC",
+      "CELL_ID": "CELL_ID",
+      "CELL_MAPCODE": "CELL_MAPCODE",
+      "CELL_NAME": "CELL_NAME",
+      "CELL_TYPE": "Cell_Type",
+      "GLOBALID": "GLOBALID",
+      "OBJECTID": "OBJECTID",
+      "PRIMARY_STATE": "PRIMARY_STATE",
+      "SHAPE_Area": "Shape_Area",
+      "SHAPE_Length": "Shape_Length"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CELL_ID",
+        "name": "CELL_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_NAME",
+        "length": 120,
+        "name": "CELL_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PRIMARY_STATE",
+        "length": 50,
+        "name": "PRIMARY_STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_MAPCODE",
+        "length": 8,
+        "name": "CELL_MAPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell_Type",
+        "name": "CELL_TYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cell_AllWater",
+        "name": "CELL_ALLWATER",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_DESCRIPTION",
+        "length": 240,
+        "name": "CELL_DESCRIPTION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_DIACRITIC",
+        "length": 100,
+        "name": "CELL_DIACRITIC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4490,
+  "status": 200
+}

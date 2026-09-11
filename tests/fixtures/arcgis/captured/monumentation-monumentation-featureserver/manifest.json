@@ -1,0 +1,34 @@
+{
+  "catalog": "https://mapservices.nps.gov/arcgis/rest/services",
+  "currentVersion": 11.5,
+  "directory": "monumentation-monumentation-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 10299,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 10299,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "NPS Monuments",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 6318
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "monumentation-monumentation-featureserver",
+  "url": "https://mapservices.nps.gov/arcgis/rest/services/Monumentation/Monumentation/FeatureServer"
+}

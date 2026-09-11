@@ -1,12 +1,9 @@
 namespace Spatial.PluginSdk.Providers;
 
 /// <summary>
-/// The catalogue entry of one spatial dataset (plan §13.2 "browse datasets"):
-/// the stable identifier (<c>schema.table</c>), the geometry column and its
-/// SRID, and a Postgres row-count estimate. The wire form is the
-/// <c>catalogue.metadata</c> JSON document produced by
-/// <see cref="DatasetMetadataJson.WriteSummary"/> — one item per dataset on
-/// the <c>spatial.catalogue.list@1</c> stream (ADR-0028).
+/// The catalogue entry of one spatial dataset: the stable identifier
+/// (<c>schema.table</c>), the geometry column and its SRID, and a Postgres
+/// row-count estimate. Served as JSON by <c>GET /api/catalogue</c> (ADR-0033).
 /// </summary>
 public sealed record DatasetSummary(
     string Id,

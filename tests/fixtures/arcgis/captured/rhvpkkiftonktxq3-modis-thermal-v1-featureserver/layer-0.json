@@ -1,0 +1,151 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "NASA, Esri",
+    "description": "Thermal activity detected by MODIS satellites for the last 48 hours.",
+    "displayField": "SATELLITE",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 19660245.4753,
+      "xmin": -18362108.8182,
+      "ymax": 11374615.999200001,
+      "ymin": -5311398.0320999995
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Brightness (K)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "BRIGHTNESS",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Scan Resolution",
+        "defaultValue": null,
+        "editable": true,
+        "name": "SCAN",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Track Resolution",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TRACK",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Satellite (Aqua or Terra)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "SATELLITE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confidence (%)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "CONFIDENCE",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Source Version",
+        "defaultValue": null,
+        "editable": true,
+        "length": 6,
+        "name": "VERSION",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Brightness T31 (K)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "BRIGHT_T31",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Fire Radiative Power (MW)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FRP",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Acquisition date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ACQ_DATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Solar Zenith Angle Ascending (Day) or Descending (Night)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "DAYNIGHT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hours since Acquisition Date/Time",
+        "defaultValue": null,
+        "editable": true,
+        "name": "HOURS_OLD",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Relative Days since Acquisition Date",
+        "defaultValue": null,
+        "editable": true,
+        "name": "DAY_OF_ACQ",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 16000,
+    "name": "MODIS Thermal (Last 48 hours)",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 13755,
+  "status": 200
+}

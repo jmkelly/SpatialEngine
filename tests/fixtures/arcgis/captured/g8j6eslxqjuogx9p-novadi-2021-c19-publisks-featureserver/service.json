@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3059,
+        "wkid": 3059
+      },
+      "xmax": 762534.0948000002,
+      "xmin": 312827.1002000002,
+      "ymax": 438865.2819999993,
+      "ymin": 172932.0610000007
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3059,
+        "wkid": 3059
+      },
+      "xmax": 794003.5429645693,
+      "xmin": 268125.6144259793,
+      "ymax": 471119.9583279432,
+      "ymin": 110001.5107338924
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Administrativas_teritorijas_2021",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "",
+    "serviceItemId": "0111bad35dac4209bfdb64453cc1081f",
+    "spatialReference": {
+      "latestWkid": 3059,
+      "wkid": 3059
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3168,
+  "status": 200
+}

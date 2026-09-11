@@ -44,9 +44,13 @@ public sealed class FeatureBatch : IFeatureBatch, IEquatable<FeatureBatch>
 
     public Feature this[int index] => _features[index];
 
-    public bool Equals(FeatureBatch? other)
+    public bool Equals(FeatureBatch? other) => other is not null && ContentEquals(other);
+
+    public override bool Equals(object? obj) => obj is FeatureBatch other && ContentEquals(other);
+
+    private bool ContentEquals(FeatureBatch other)
     {
-        if (other is null || !Schema.Equals(other.Schema) || _features.Length != other._features.Length)
+        if (!Schema.Equals(other.Schema) || _features.Length != other._features.Length)
         {
             return false;
         }
@@ -61,8 +65,6 @@ public sealed class FeatureBatch : IFeatureBatch, IEquatable<FeatureBatch>
 
         return true;
     }
-
-    public override bool Equals(object? obj) => obj is FeatureBatch other && Equals(other);
 
     public override int GetHashCode()
     {

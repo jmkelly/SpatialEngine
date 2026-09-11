@@ -1,0 +1,16 @@
+{
+  "body": {
+    "error": {
+      "code": 400,
+      "details": [
+        "The requested capability is not supported."
+      ],
+      "extendedCode": -2147220222,
+      "message": "Requested operation is not supported by this service."
+    },
+    "features": []
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 172,
+  "status": 200
+}

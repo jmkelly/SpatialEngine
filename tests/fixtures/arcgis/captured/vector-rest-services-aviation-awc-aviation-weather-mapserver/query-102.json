@@ -1,0 +1,470 @@
+{
+  "body": {
+    "displayFieldName": "fcst_hr",
+    "features": [
+      {
+        "attributes": {
+          "confidnce": "High Confidence",
+          "coverage": "sparse",
+          "d18bxtop": null,
+          "data": "tcf",
+          "fcst_hr": "Hr6",
+          "height": "30,000 - 34,000",
+          "idp_filedate": 1789123944000,
+          "idp_ingestdate": 1789124093000,
+          "issuetime": "20260911_1100",
+          "lblpos_x": null,
+          "lblpos_y": null,
+          "objectid": 10,
+          "refl_bin": null,
+          "refl_dbz": null,
+          "st_area(shape)": 9.514999998840944,
+          "st_perimeter(shape)": 18.241195928129173,
+          "tops": "340",
+          "validtime": "20260911_1700",
+          "verif": ">=FL300 & <FL350",
+          "vrf_refl": ">=FL300 & <FL350|18dBZ"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -79.50000000019975,
+                30.20000000000016
+              ],
+              [
+                -79.40000000039959,
+                31.100000000000136
+              ],
+              [
+                -78.79999999980004,
+                32.099999999800275
+              ],
+              [
+                -77.99999999960022,
+                32.90000000000015
+              ],
+              [
+                -75.69999999970014,
+                33.99999999960045
+              ],
+              [
+                -72.9999999997001,
+                35.500000000199975
+              ],
+              [
+                -72.59999999960019,
+                35.000000000299906
+              ],
+              [
+                -76.49999999989996,
+                32.099999999800275
+              ],
+              [
+                -77.89999999980006,
+                30.90000000039987
+              ],
+              [
+                -78.79999999980004,
+                30.000000000399837
+              ],
+              [
+                -79.2999999997001,
+                30.000000000399837
+              ],
+              [
+                -79.50000000019975,
+                30.20000000000016
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "confidnce": "High Confidence",
+          "coverage": "sparse",
+          "d18bxtop": null,
+          "data": "tcf",
+          "fcst_hr": "Hr6",
+          "height": "40,000 or greater",
+          "idp_filedate": 1789123944000,
+          "idp_ingestdate": 1789124093000,
+          "issuetime": "20260911_1100",
+          "lblpos_x": null,
+          "lblpos_y": null,
+          "objectid": 11,
+          "refl_bin": null,
+          "refl_dbz": null,
+          "st_area(shape)": 14.680000000274951,
+          "st_perimeter(shape)": 22.40677797290776,
+          "tops": ">400",
+          "validtime": "20260911_1700",
+          "verif": ">=FL400",
+          "vrf_refl": ">=FL400|18dBZ"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -89.9000000000998,
+                28.099999999700344
+              ],
+              [
+                -90.39999999999992,
+                28.400000000000148
+              ],
+              [
+                -90.70000000029967,
+                28.49999999980031
+              ],
+              [
+                -91.2999999999999,
+                28.400000000000148
+              ],
+              [
+                -91.89999999970013,
+                28.300000000199987
+              ],
+              [
+                -92.19999999999987,
+                28.300000000199987
+              ],
+              [
+                -92.10000000019977,
+                28.899999999900217
+              ],
+              [
+                -91.39999999980006,
+                29.20000000020002
+              ],
+              [
+                -90.30000000019976,
+                29.300000000000125
+              ],
+              [
+                -89.59999999980005,
+                29.20000000020002
+              ],
+              [
+                -88.79999999960017,
+                28.99999999970038
+              ],
+              [
+                -88.19999999989994,
+                29.10000000039986
+              ],
+              [
+                -87.79999999980004,
+                29.899999999700356
+              ],
+              [
+                -87.60000000019977,
+                30.399999999600425
+              ],
+              [
+                -87.29999999989997,
+                30.79999999970039
+              ],
+              [
+                -86.70000000019974,
+                31.100000000000136
+              ],
+              [
+                -86.30000000009983,
+                31.500000000100044
+              ],
+              [
+                -86.20000000029967,
+                31.800000000399848
+              ],
+              [
+                -85.89999999999992,
+                32.30000000029992
+              ],
+              [
+                -84.99999999999989,
+                31.90000000020001
+              ],
+              [
+                -84.69999999970014,
+                31.29999999960046
+              ],
+              [
+                -83.7999999997001,
+                30.79999999970039
+              ],
+              [
+                -83.50000000029968,
+                30.399999999600425
+              ],
+              [
+                -83.19999999999987,
+                29.899999999700356
+              ],
+              [
+                -83.19999999999987,
+                29.60000000029993
+              ],
+              [
+                -83.60000000009984,
+                29.300000000000125
+              ],
+              [
+                -84.59999999989998,
+                28.800000000100056
+              ],
+              [
+                -85.30000000029969,
+                28.899999999900217
+              ],
+              [
+                -86.30000000009983,
+                29.10000000039986
+              ],
+              [
+                -87.10000000029964,
+                28.700000000299895
+              ],
+              [
+                -87.8999999996002,
+                28.099999999700344
+              ],
+              [
+                -88.40000000039959,
+                28.099999999700344
+              ],
+              [
+                -89.9000000000998,
+                28.099999999700344
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "confidnce": "High Confidence",
+          "coverage": "sparse",
+          "d18bxtop": null,
+          "data": "tcf",
+          "fcst_hr": "Hr6",
+          "height": "35,000 - 39,000",
+          "idp_filedate": 1789123944000,
+          "idp_ingestdate": 1789124093000,
+          "issuetime": "20260911_1100",
+          "lblpos_x": null,
+          "lblpos_y": null,
+          "objectid": 12,
+          "refl_bin": null,
+          "refl_dbz": null,
+          "st_area(shape)": 3.4099999996352857,
+          "st_perimeter(shape)": 8.01589908964451,
+          "tops": "390",
+          "validtime": "20260911_1700",
+          "verif": ">=FL350 & <FL400",
+          "vrf_refl": ">=FL350 & <FL400|18dBZ"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -81.59999999960019,
+                25.20000000010009
+              ],
+              [
+                -81.2000000003996,
+                25.500000000399837
+              ],
+              [
+                -81.59999999960019,
+                26.000000000299906
+              ],
+              [
+                -81.30000000019976,
+                27.300000000399848
+              ],
+              [
+                -80.00000000009982,
+                27.199999999700367
+              ],
+              [
+                -79.90000000029966,
+                26.400000000399814
+              ],
+              [
+                -80.19999999970014,
+                25.500000000399837
+              ],
+              [
+                -80.69999999960021,
+                24.800000000000125
+              ],
+              [
+                -81.39999999999992,
+                24.60000000039986
+              ],
+              [
+                -81.80000000009983,
+                24.800000000000125
+              ],
+              [
+                -81.59999999960019,
+                25.20000000010009
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "confidnce": "Confidence",
+      "coverage": "Coverage",
+      "d18bxtop": "D18BXTOP",
+      "data": "Data",
+      "fcst_hr": "Forecast Hour",
+      "height": "Height Range",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "issuetime": "Issue Time",
+      "lblpos_x": "LBLPOS_X",
+      "lblpos_y": "LBLPOS_Y",
+      "objectid": "OBJECTID",
+      "refl_bin": "REFL_BIN",
+      "refl_dbz": "REFL_DBZ",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "tops": "Tops",
+      "validtime": "Valid Time",
+      "verif": "TCF Verification",
+      "vrf_refl": "VRF_REFL"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Forecast Hour",
+        "length": 80,
+        "name": "fcst_hr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time",
+        "length": 80,
+        "name": "validtime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 80,
+        "name": "issuetime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Coverage",
+        "length": 80,
+        "name": "coverage",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confidence",
+        "length": 80,
+        "name": "confidnce",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Tops",
+        "length": 80,
+        "name": "tops",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data",
+        "length": 80,
+        "name": "data",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LBLPOS_X",
+        "length": 80,
+        "name": "lblpos_x",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LBLPOS_Y",
+        "length": 80,
+        "name": "lblpos_y",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "D18BXTOP",
+        "length": 80,
+        "name": "d18bxtop",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TCF Verification",
+        "length": 80,
+        "name": "verif",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Height Range",
+        "length": 80,
+        "name": "height",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REFL_DBZ",
+        "length": 80,
+        "name": "refl_dbz",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REFL_BIN",
+        "length": 80,
+        "name": "refl_bin",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "VRF_REFL",
+        "length": 80,
+        "name": "vrf_refl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 7173,
+  "status": 200
+}

@@ -1,0 +1,90 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "National Park Service, ngp_support@nps.gov",
+    "currentVersion": 11.5,
+    "description": "The National Park Service Building Spatial Data Standard is intended to provide a framework for organizing our building point and polygon spatial data, documenting its lineage, and facilitating data integration as well as data sharing. The standards will help ensure spatial data consistency, quality, and accuracy and will assist in program direction, reporting, and information requests.",
+    "fullExtent": {
+      "mmax": null,
+      "mmin": null,
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 145.72460891800006,
+      "xmin": -170.69710169699997,
+      "ymax": 67.92464543700004,
+      "ymin": -14.283979517999967,
+      "zmax": 0,
+      "zmin": 0
+    },
+    "hasArchivedData": false,
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 161.66050123945232,
+      "xmin": -186.63299401845225,
+      "ymax": 149.01253908235196,
+      "ymin": -95.37187316335188
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 15000000,
+        "name": "Buildings",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "The National Park Service Building Spatial Data Standard is intended to provide a framework for organizing our building point and polygon spatial data, documenting its lineage, and facilitating data integration as well as data sharing. The standards will help ensure spatial data consistency, quality, and accuracy and will assist in program direction, reporting, and information requests.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": -100000,
+      "latestWkid": 6318,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 104145,
+      "xyTolerance": 8.983152841195215e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 5105,
+  "status": 200
+}

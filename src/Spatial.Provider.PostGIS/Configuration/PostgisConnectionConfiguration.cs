@@ -5,7 +5,7 @@ namespace Spatial.Provider.PostGIS.Configuration;
 /// <summary>
 /// The provider's connection configuration (plan §19, ADR-0028,
 /// architecture/distilled/host-and-clients.md): a host-managed connection string that reaches the
-/// worker through its launch environment (<c>SPATIAL_POSTGIS_CONNECTION</c>),
+/// host configuration (<c>SPATIAL_POSTGIS_CONNECTION</c>),
 /// never through invocations or the web client. The configuration is the
 /// only place the secret exists; everything else talks about it through
 /// <see cref="RedactedKey"/> and <see cref="Redact"/> so diagnostics never
@@ -31,7 +31,7 @@ internal sealed class PostgisConnectionConfiguration
     /// <summary>Whether a connection string is configured at all.</summary>
     public bool IsConfigured { get; private init; }
 
-    /// <summary>Reads the configuration from the worker's launch environment.</summary>
+    /// <summary>Reads the configuration from the process environment.</summary>
     public static PostgisConnectionConfiguration FromEnvironment() =>
         FromEnvironmentValue(Environment.GetEnvironmentVariable(EnvironmentVariable));
 
@@ -60,7 +60,7 @@ internal sealed class PostgisConnectionConfiguration
     /// </summary>
     public string RedactedKey => IsConfigured
         ? $"the configured PostGIS database '{_database}'"
-        : $"no connection configuration (set {EnvironmentVariable} in the provider's launch environment)";
+        : $"no connection configuration (set {EnvironmentVariable} in the host environment)";
 
     /// <summary>
     /// Scrubs every occurrence of the raw connection string (and of the

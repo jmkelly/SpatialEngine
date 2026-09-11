@@ -1,5 +1,5 @@
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk;
 using Spatial.PluginSdk.Transformations;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 
@@ -19,9 +19,8 @@ public sealed class ProjNetCatalogTests
         var described = new List<string>();
         foreach (var code in ProjEpsgCatalog.Codes.Order())
         {
-            var result = await DescribeAsync(TransformationArguments.Crs, $"EPSG:{code}");
-            var success = Assert.IsType<CapabilitySuccess>(result);
-            described.Add(((CrsDescription)success.Value!).Code);
+            var description = await DescribeAsync("crs", $"EPSG:{code}");
+            described.Add(description.Code);
         }
 
         Assert.Equal(
@@ -94,9 +93,6 @@ public sealed class ProjNetCatalogTests
         Assert.Equal("EPSG:4326", identity.ToString());
     }
 
-    private static async Task<CrsDescription> Describe(int code)
-    {
-        var result = await DescribeAsync(TransformationArguments.Crs, $"EPSG:{code}");
-        return Assert.IsType<CrsDescription>(Assert.IsType<CapabilitySuccess>(result).Value);
-    }
+    private static Task<CrsDescription> Describe(int code) =>
+        DescribeAsync("crs", $"EPSG:{code}");
 }

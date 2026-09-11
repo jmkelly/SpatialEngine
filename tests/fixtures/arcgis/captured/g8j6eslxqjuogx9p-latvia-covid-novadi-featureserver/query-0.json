@@ -1,0 +1,715 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "ATVK": "0427500",
+          "Apaks_vert_aktiv_g": 1,
+          "Augs_vert_akt_gad": 5,
+          "Cetr_2": 1,
+          "Cetr_D_100": 1,
+          "Cetrp_D_100_relat": 0,
+          "Covid_sasl": 111,
+          "GlobalID": "ecce3985-8018-4486-b7c9-8f8b607fb919",
+          "Nos_pilns": "P\u0101rgaujas novads",
+          "Nosaukums": "P\u0101rgaujas",
+          "Novadu_radit": null,
+          "OBJECTID": 1,
+          "Plan_reg": "Vidzemes",
+          "Relat_sk_apaks": null,
+          "Relat_sk_augs": 3104,
+          "Shape__Area": 485176271.9213867,
+          "Shape__Length": 153564.43965456434,
+          "Tips": "Novads",
+          "apaks_vertiba": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                563656.6479,
+                6373826.0232
+              ],
+              [
+                563864.6407,
+                6373664.2506
+              ],
+              [
+                564272.9239,
+                6373895.3541
+              ],
+              [
+                564491.5837,
+                6373805.537
+              ],
+              [
+                565151.1175,
+                6372709.0225
+              ],
+              [
+                565328.2972,
+                6372346.9596
+              ],
+              [
+                565736.580299999,
+                6372470.2154
+              ],
+              [
+                565875.2422,
+                6372508.7322
+              ],
+              [
+                566144.8634,
+                6372501.0286
+              ],
+              [
+                566545.443,
+                6372647.3951
+              ],
+              [
+                566660.9943,
+                6372762.9463
+              ],
+              [
+                566861.2846,
+                6373086.4914
+              ],
+              [
+                567107.7952,
+                6373202.0436
+              ],
+              [
+                567468.6947,
+                6372491.6846
+              ],
+              [
+                567947.4711,
+                6372162.0774
+              ],
+              [
+                567993.6924,
+                6372015.711
+              ],
+              [
+                568101.5401,
+                6371992.6013
+              ],
+              [
+                568425.0851,
+                6372000.3049
+              ],
+              [
+                568563.747,
+                6371106.7041
+              ],
+              [
+                568586.857699999,
+                6371006.559
+              ],
+              [
+                568563.747,
+                6370852.49
+              ],
+              [
+                568517.5267,
+                6370621.3865
+              ],
+              [
+                568163.1674,
+                6369966.5928
+              ],
+              [
+                568278.7197,
+                6369843.338
+              ],
+              [
+                568186.2781,
+                6369327.2061
+              ],
+              [
+                568170.871,
+                6369157.73
+              ],
+              [
+                568232.4994,
+                6368980.5504
+              ],
+              [
+                568271.0162,
+                6368803.3718
+              ],
+              [
+                568140.0578,
+                6368371.978
+              ],
+              [
+                569765.4858,
+                6367863.5497
+              ],
+              [
+                570378.5546,
+                6367258.3606
+              ],
+              [
+                570629.094600001,
+                6366843.1777
+              ],
+              [
+                570708.468999999,
+                6366631.5108
+              ],
+              [
+                570867.2197,
+                6366419.8438
+              ],
+              [
+                571025.9704,
+                6366208.1769
+              ],
+              [
+                571074.8213,
+                6366134.9005
+              ],
+              [
+                571184.720099999,
+                6365970.0508
+              ],
+              [
+                571237.6373,
+                6365599.6342
+              ],
+              [
+                571343.4708,
+                6365176.2993
+              ],
+              [
+                571422.8462,
+                6364752.9654
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "ATVK": "0427300",
+          "Apaks_vert_aktiv_g": 1,
+          "Augs_vert_akt_gad": 5,
+          "Cetr_2": 1,
+          "Cetr_D_100": 1,
+          "Cetrp_D_100_relat": 0,
+          "Covid_sasl": 362,
+          "GlobalID": "e4913239-e715-4e21-8431-af35abbc5fbe",
+          "Nos_pilns": "Prieku\u013cu novads",
+          "Nosaukums": "Prieku\u013cu",
+          "Novadu_radit": null,
+          "OBJECTID": 2,
+          "Plan_reg": "Vidzemes",
+          "Relat_sk_apaks": null,
+          "Relat_sk_augs": 4791,
+          "Shape__Area": 302974862.87280273,
+          "Shape__Length": 131104.89879667197,
+          "Tips": "Novads",
+          "apaks_vertiba": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                599746.4578,
+                6370526.8242
+              ],
+              [
+                599521.652,
+                6370322.4553
+              ],
+              [
+                599430.0654,
+                6370261.3983
+              ],
+              [
+                599425.7052,
+                6370258.4911
+              ],
+              [
+                599653.9446,
+                6369925.5795
+              ],
+              [
+                599759.778,
+                6369793.2879
+              ],
+              [
+                599892.0696,
+                6369449.3294
+              ],
+              [
+                599820.4275,
+                6369225.3345
+              ],
+              [
+                599910.1125,
+                6368834.3293
+              ],
+              [
+                600046.8718,
+                6368760.6904
+              ],
+              [
+                599825.953,
+                6368034.8147
+              ],
+              [
+                599872.0279,
+                6367893.045
+              ],
+              [
+                599586.1271,
+                6367753.4697
+              ],
+              [
+                599339.9104,
+                6367674.6801
+              ],
+              [
+                599244.5934,
+                6367669.7024
+              ],
+              [
+                599210.0815,
+                6367579.4388
+              ],
+              [
+                599203.8628,
+                6367452.9953
+              ],
+              [
+                598505.3217,
+                6366024.9382
+              ],
+              [
+                598522.4113,
+                6365630.6542
+              ],
+              [
+                598487.756,
+                6365492.0343
+              ],
+              [
+                598146.5725,
+                6365171.0052
+              ],
+              [
+                598153.4354,
+                6365122.9642
+              ],
+              [
+                598185.504,
+                6364898.486
+              ],
+              [
+                598053.2114,
+                6364713.2782
+              ],
+              [
+                597791.9091,
+                6364370.317
+              ],
+              [
+                598060.3446,
+                6364094.2845
+              ],
+              [
+                597898.6212,
+                6363574.4602
+              ],
+              [
+                597760.0023,
+                6363482.0472
+              ],
+              [
+                597621.3824,
+                6363089.291
+              ],
+              [
+                597563.6237,
+                6363019.9816
+              ],
+              [
+                596836.1259,
+                6363031.5323
+              ],
+              [
+                596836.1259,
+                6362781.8155
+              ],
+              [
+                596862.584,
+                6362332.0225
+              ],
+              [
+                596778.1112,
+                6361795.5059
+              ],
+              [
+                596674.1465,
+                6361368.0955
+              ],
+              [
+                596515.6846,
+                6360853.0685
+              ],
+              [
+                596438.8283,
+                6360762.2387
+              ],
+              [
+                595186.9125,
+                6360728.9935
+              ],
+              [
+                595184.2081,
+                6360760.5471
+              ],
+              [
+                595280.5163,
+                6361113.6735
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "ATVK": "0500200",
+          "Apaks_vert_aktiv_g": 1,
+          "Augs_vert_akt_gad": 5,
+          "Cetr_2": 1,
+          "Cetr_D_100": 1,
+          "Cetrp_D_100_relat": 0,
+          "Covid_sasl": 1707,
+          "GlobalID": "d55d99cb-0e00-4d5f-82a5-40368d360f63",
+          "Nos_pilns": "Gulbenes novads",
+          "Nosaukums": "Gulbenes",
+          "Novadu_radit": null,
+          "OBJECTID": 3,
+          "Plan_reg": "Vidzemes",
+          "Relat_sk_apaks": null,
+          "Relat_sk_augs": 8634,
+          "Shape__Area": 1876555283.631836,
+          "Shape__Length": 271317.16488350503,
+          "Tips": "Novads",
+          "apaks_vertiba": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                652043.85,
+                6365451.8812
+              ],
+              [
+                651881.1927,
+                6364651.106
+              ],
+              [
+                652156.4583,
+                6364038.0127
+              ],
+              [
+                652356.6523,
+                6363800.2829
+              ],
+              [
+                652706.9914,
+                6364188.1577
+              ],
+              [
+                653225.3996,
+                6363669.2027
+              ],
+              [
+                653268.3421,
+                6363713.1917
+              ],
+              [
+                654683.9944,
+                6365140.4818
+              ],
+              [
+                656147.8208,
+                6363700.1858
+              ],
+              [
+                656486.558,
+                6362371.7107
+              ],
+              [
+                656467.2443,
+                6361569.0964
+              ],
+              [
+                657631.149400001,
+                6360912.053
+              ],
+              [
+                658748.5443,
+                6359929.2424
+              ],
+              [
+                659151.733,
+                6359860.7849
+              ],
+              [
+                659339.4599,
+                6359729.376
+              ],
+              [
+                659039.0982,
+                6359410.2413
+              ],
+              [
+                658312.1872,
+                6358799.8287
+              ],
+              [
+                658418.0207,
+                6358667.5361
+              ],
+              [
+                658709.063,
+                6358667.5361
+              ],
+              [
+                661279.0029,
+                6357832.758
+              ],
+              [
+                661268.5469,
+                6357793.0248
+              ],
+              [
+                661189.2299,
+                6357491.6226
+              ],
+              [
+                661109.8555,
+                6356935.9961
+              ],
+              [
+                661136.3136,
+                6356565.5795
+              ],
+              [
+                661037.7598,
+                6356302.7699
+              ],
+              [
+                660977.5629,
+                6356142.2446
+              ],
+              [
+                661231.0807,
+                6355877.9461
+              ],
+              [
+                662390.5682,
+                6355414.1509
+              ],
+              [
+                662480.0628,
+                6355203.1659
+              ],
+              [
+                662691.7502,
+                6355017.6663
+              ],
+              [
+                662876.9375,
+                6354832.6664
+              ],
+              [
+                663062.1259,
+                6354673.6668
+              ],
+              [
+                663220.8756,
+                6354541.666
+              ],
+              [
+                663326.75,
+                6354382.6665
+              ],
+              [
+                663401.8112,
+                6354393.4072
+              ],
+              [
+                663511.9384,
+                6354409.1666
+              ],
+              [
+                663670.688,
+                6354435.6667
+              ],
+              [
+                663670.688,
+                6354568.1661
+              ],
+              [
+                663670.688,
+                6354677.0491
+              ],
+              [
+                663839.9266,
+                6354726.7407
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID_1",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Tips",
+        "defaultValue": null,
+        "length": 10,
+        "name": "Tips",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Nosaukums",
+        "defaultValue": null,
+        "length": 30,
+        "name": "Nosaukums",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Nos_pilns",
+        "defaultValue": null,
+        "length": 40,
+        "name": "Nos_pilns",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ATVK",
+        "defaultValue": null,
+        "length": 15,
+        "name": "ATVK",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Plan_reg",
+        "defaultValue": null,
+        "length": 20,
+        "name": "Plan_reg",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Covid_sasl",
+        "defaultValue": null,
+        "name": "Covid_sasl",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Apak\u0161\u0113j\u0101 v\u0113rt\u012bba",
+        "defaultValue": null,
+        "name": "apaks_vertiba",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Relat\u012bvais skaits_1",
+        "defaultValue": null,
+        "name": "Relat_sk_apaks",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Relat\u012bvais skaits_2",
+        "defaultValue": null,
+        "name": "Relat_sk_augs",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Skaits uz 100 000 iedz.",
+        "defaultValue": null,
+        "name": "Novadu_radit",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Akt\u012bvie gad\u012bjumi apak\u0161",
+        "defaultValue": null,
+        "name": "Apaks_vert_aktiv_g",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "14 D gad\u012bjumu skaits",
+        "defaultValue": null,
+        "name": "Augs_vert_akt_gad",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "14D saslimst\u012bba uz 100 tk.",
+        "defaultValue": null,
+        "name": "Cetrp_D_100_relat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "14D relat 2",
+        "defaultValue": null,
+        "name": "Cetr_2",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "14D 100",
+        "defaultValue": null,
+        "name": "Cetr_D_100",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 102440,
+      "wkid": 102440
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 85856,
+  "status": 200
+}

@@ -1,0 +1,383 @@
+{
+  "body": {
+    "displayFieldName": "receipt_time",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "above_ground_level_indicated": null,
+          "aircraft_ref": "A321",
+          "altitude_ft_msl": 22000,
+          "bad_location": null,
+          "cloud_base_ft_msl": null,
+          "cloud_top_ft_msl": null,
+          "flt_lvl_range": null,
+          "icing_base_ft_msl": null,
+          "icing_intensity": "LGT",
+          "icing_top_ft_msl": null,
+          "icing_type": "RIME",
+          "idp_filedate": 1789128147000,
+          "idp_ingestdate": 1789128181000,
+          "latitude": 39.8898,
+          "longitude": -73.6525,
+          "mid_point_assumed": null,
+          "no_flt_lvl": null,
+          "no_time_stamp": null,
+          "objectid": 207,
+          "observation_time": 1789127400000,
+          "raw_text": "JFK UA /OV JFK185045/TM 1150/FL220/TP A321/TA M17/IC LGT RIME",
+          "receipt_time": 1789127703000,
+          "report_type": "PIREP",
+          "sky_cover": null,
+          "temp_c": -17,
+          "turbulence_base_ft_msl": null,
+          "turbulence_freq": null,
+          "turbulence_intensity": null,
+          "turbulence_top_ft_msl": null,
+          "turbulence_type": null,
+          "vert_gust_kt": null,
+          "visibility_statute_mi": null,
+          "wind_dir_degrees": null,
+          "wind_speed_kt": null,
+          "wx_string": null
+        },
+        "geometry": {
+          "x": -73.65249999999997,
+          "y": 39.88980000000004
+        }
+      },
+      {
+        "attributes": {
+          "above_ground_level_indicated": null,
+          "aircraft_ref": "A321",
+          "altitude_ft_msl": 20000,
+          "bad_location": null,
+          "cloud_base_ft_msl": null,
+          "cloud_top_ft_msl": null,
+          "flt_lvl_range": null,
+          "icing_base_ft_msl": null,
+          "icing_intensity": "TRC",
+          "icing_top_ft_msl": null,
+          "icing_type": "RIME",
+          "idp_filedate": 1789128147000,
+          "idp_ingestdate": 1789128181000,
+          "latitude": 39.8173,
+          "longitude": -74.4316,
+          "mid_point_assumed": null,
+          "no_flt_lvl": null,
+          "no_time_stamp": null,
+          "objectid": 234,
+          "observation_time": 1789127340000,
+          "raw_text": "MJX UA /OV CYN/TM 1149/FL200/TP A321/TA M21/IC TRACE RIME",
+          "receipt_time": 1789127703000,
+          "report_type": "PIREP",
+          "sky_cover": null,
+          "temp_c": -21,
+          "turbulence_base_ft_msl": null,
+          "turbulence_freq": null,
+          "turbulence_intensity": null,
+          "turbulence_top_ft_msl": null,
+          "turbulence_type": null,
+          "vert_gust_kt": null,
+          "visibility_statute_mi": null,
+          "wind_dir_degrees": null,
+          "wind_speed_kt": null,
+          "wx_string": null
+        },
+        "geometry": {
+          "x": -74.43159999999995,
+          "y": 39.817300000000046
+        }
+      },
+      {
+        "attributes": {
+          "above_ground_level_indicated": null,
+          "aircraft_ref": "B738",
+          "altitude_ft_msl": 28000,
+          "bad_location": null,
+          "cloud_base_ft_msl": null,
+          "cloud_top_ft_msl": null,
+          "flt_lvl_range": null,
+          "icing_base_ft_msl": null,
+          "icing_intensity": "NEG",
+          "icing_top_ft_msl": null,
+          "icing_type": null,
+          "idp_filedate": 1789128147000,
+          "idp_ingestdate": 1789128181000,
+          "latitude": 40.2049,
+          "longitude": -84.0336,
+          "mid_point_assumed": null,
+          "no_flt_lvl": null,
+          "no_time_stamp": null,
+          "objectid": 574,
+          "observation_time": 1789126440000,
+          "raw_text": "DAY UA /OV ROD180005/TM 1134/FL280/TP B738/TB CONS LGT CHOP/IC NEG",
+          "receipt_time": 1789127406000,
+          "report_type": "PIREP",
+          "sky_cover": null,
+          "temp_c": null,
+          "turbulence_base_ft_msl": null,
+          "turbulence_freq": "CONT",
+          "turbulence_intensity": "LGT",
+          "turbulence_top_ft_msl": null,
+          "turbulence_type": "CHOP",
+          "vert_gust_kt": null,
+          "visibility_statute_mi": null,
+          "wind_dir_degrees": null,
+          "wind_speed_kt": null,
+          "wx_string": null
+        },
+        "geometry": {
+          "x": -84.03359999999998,
+          "y": 40.204900000000066
+        }
+      }
+    ],
+    "fieldAliases": {
+      "above_ground_level_indicated": "AGL Indicated",
+      "aircraft_ref": "Aircraft Reference",
+      "altitude_ft_msl": "Altitude In Feet (MSL)",
+      "bad_location": "Bad Location",
+      "cloud_base_ft_msl": "Cloud Base (Layer 1)",
+      "cloud_top_ft_msl": "Cloud Top (Layer 1)",
+      "flt_lvl_range": "Flight Level Range",
+      "icing_base_ft_msl": "Icing Base In Feet",
+      "icing_intensity": "Icing Intensity",
+      "icing_top_ft_msl": "Icing Top In Feet",
+      "icing_type": "Icing Type (Primary)",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "mid_point_assumed": "Mid Point Assumed",
+      "no_flt_lvl": "No Flight Level",
+      "no_time_stamp": "No Time Stamp",
+      "objectid": "OBJECTID",
+      "observation_time": "Observation Time",
+      "raw_text": "Raw Observation",
+      "receipt_time": "Receipt Time",
+      "report_type": "Report Type",
+      "sky_cover": "Sky Cover (Layer 1)",
+      "temp_c": "Temperature In Celsius",
+      "turbulence_base_ft_msl": "Turbulence Base In Feet",
+      "turbulence_freq": "Turbulence Frequency",
+      "turbulence_intensity": "Turbulence Intensity (Primary)",
+      "turbulence_top_ft_msl": "Turbulence Top In Feet",
+      "turbulence_type": "Turbulence Type (Primary)",
+      "vert_gust_kt": "Vertical Gust In Knots",
+      "visibility_statute_mi": "Visibility in Miles (SM)",
+      "wind_dir_degrees": "Wind Direction In Degrees",
+      "wind_speed_kt": "Wind Speed In Knots",
+      "wx_string": "Weather"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Receipt Time",
+        "length": 8,
+        "name": "receipt_time",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Observation Time",
+        "length": 8,
+        "name": "observation_time",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Mid Point Assumed",
+        "length": 8000,
+        "name": "mid_point_assumed",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "No Time Stamp",
+        "length": 8000,
+        "name": "no_time_stamp",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Level Range",
+        "length": 8000,
+        "name": "flt_lvl_range",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AGL Indicated",
+        "length": 8000,
+        "name": "above_ground_level_indicated",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "No Flight Level",
+        "length": 8000,
+        "name": "no_flt_lvl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Bad Location",
+        "length": 8000,
+        "name": "bad_location",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Aircraft Reference",
+        "length": 8000,
+        "name": "aircraft_ref",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Altitude In Feet (MSL)",
+        "name": "altitude_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Sky Cover (Layer 1)",
+        "length": 8000,
+        "name": "sky_cover",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base (Layer 1)",
+        "name": "cloud_base_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Top (Layer 1)",
+        "length": 8000,
+        "name": "cloud_top_ft_msl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Type (Primary)",
+        "length": 8000,
+        "name": "turbulence_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Intensity (Primary)",
+        "length": 8000,
+        "name": "turbulence_intensity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Base In Feet",
+        "name": "turbulence_base_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Top In Feet",
+        "name": "turbulence_top_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Frequency",
+        "length": 8000,
+        "name": "turbulence_freq",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Type (Primary)",
+        "length": 8000,
+        "name": "icing_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Intensity",
+        "length": 8000,
+        "name": "icing_intensity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Base In Feet",
+        "length": 8000,
+        "name": "icing_base_ft_msl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Top In Feet",
+        "length": 8000,
+        "name": "icing_top_ft_msl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Visibility in Miles (SM)",
+        "name": "visibility_statute_mi",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Weather",
+        "length": 8000,
+        "name": "wx_string",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Temperature In Celsius",
+        "name": "temp_c",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Direction In Degrees",
+        "name": "wind_dir_degrees",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Speed In Knots",
+        "name": "wind_speed_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Vertical Gust In Knots",
+        "length": 8000,
+        "name": "vert_gust_kt",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Report Type",
+        "length": 8000,
+        "name": "report_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Raw Observation",
+        "length": 8000,
+        "name": "raw_text",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 9503,
+  "status": 200
+}

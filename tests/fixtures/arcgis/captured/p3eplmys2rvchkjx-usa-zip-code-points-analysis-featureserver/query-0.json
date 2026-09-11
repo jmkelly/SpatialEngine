@@ -1,0 +1,123 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "POPULATION": null,
+          "POP_SQMI": null,
+          "PO_NAME": "Holtsville",
+          "SQMI": null,
+          "STATE": "NY",
+          "ZIP_CODE": "00501",
+          "ZIP_TYPE": "Post Office or large volume customer"
+        },
+        "geometry": {
+          "x": -8131340.553956478,
+          "y": 4985356.996949511
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "POPULATION": null,
+          "POP_SQMI": null,
+          "PO_NAME": "Holtsville",
+          "SQMI": null,
+          "STATE": "NY",
+          "ZIP_CODE": "00544",
+          "ZIP_TYPE": "Post Office or large volume customer"
+        },
+        "geometry": {
+          "x": -8131348.568959813,
+          "y": 4985419.658207028
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "POPULATION": null,
+          "POP_SQMI": null,
+          "PO_NAME": "Adjuntas",
+          "SQMI": 67.1,
+          "STATE": "PR",
+          "ZIP_CODE": "00601",
+          "ZIP_TYPE": "Zip Code Area"
+        },
+        "geometry": {
+          "x": -7427541.71943071,
+          "y": 2056742.7762698454
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "ZIP Code",
+        "defaultValue": null,
+        "length": 10,
+        "name": "ZIP_CODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Post Office Name",
+        "defaultValue": null,
+        "length": 100,
+        "name": "PO_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State Abbreviation",
+        "defaultValue": null,
+        "length": 2,
+        "name": "STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ZIP Code Type",
+        "defaultValue": null,
+        "length": 50,
+        "name": "ZIP_TYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "2023 Total Population",
+        "defaultValue": null,
+        "name": "POPULATION",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "People per square mile",
+        "defaultValue": null,
+        "name": "POP_SQMI",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Area in square miles",
+        "defaultValue": null,
+        "name": "SQMI",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3530,
+  "status": 200
+}

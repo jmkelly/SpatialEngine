@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Sync",
+    "copyrightText": "Florida Department of Agriculture and Consumer Services (FDACS).",
+    "currentVersion": 12,
+    "description": "County boundaries for the state of Florida with basic county information. Boundaries are simplified for web performance.",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3087,
+        "wkid": 3087
+      },
+      "xmax": 807844.6573431905,
+      "xmin": 31764.28621699667,
+      "ymax": 783237.532805305,
+      "ymin": 52204.98677073978
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3087,
+        "wkid": 3087
+      },
+      "xmax": 1397234.992189745,
+      "xmin": -549768.992289747,
+      "ymax": 1049863.1830748096,
+      "ymin": 157078.69270418817
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 12000000,
+        "name": "Florida Counties",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "County boundaries for the state of Florida.",
+    "serviceItemId": "eba558c6b1e24744820b839cd46c3128",
+    "spatialReference": {
+      "latestWkid": 3087,
+      "wkid": 3087
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3681,
+  "status": 200
+}

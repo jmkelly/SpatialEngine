@@ -1,22 +1,17 @@
 using Spatial.Core.Features;
-using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
-using Spatial.PluginSdk.Providers;
-using Spatial.PluginSdk.Resources;
+using Spatial.PluginSdk;
 using Spatial.Provider.PostGIS;
-using Spatial.Provider.PostGIS.Configuration;
 
 namespace Spatial.PostGIS.Tests;
 
 /// <summary>
-/// The containerised data-path tests (plan §18, ADR-0028): catalogue,
-/// schema discovery, scan/query streaming with canonical feature batches,
-/// bbox and parameterised attribute filtering, writing, result-table
-/// creation, transactions (commit/rollback/enlist), mid-stream database
-/// cancellation and secret redaction — against a real PostGIS container.
-/// Every test skips with an explicit reason when no Docker daemon is
-/// available.
+/// The containerised data-path tests (ADR-0033): catalogue, schema
+/// discovery, scan/query with canonical feature batches, bbox and
+/// parameterised attribute filtering, writing, result-table creation,
+/// transactions (commit/rollback), cancellation and secret redaction —
+/// against a real PostGIS container. Every test skips with an explicit
+/// reason when no Docker daemon is available.
 /// </summary>
 public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixture>
 {
@@ -31,11 +26,10 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     public async Task Catalogue_lists_the_seeded_datasets()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var items = await context.ReadItemsAsync(CatalogueListContract.Id, new Dictionary<string, object?>());
+        var ids = (await context.Store.ListAsync()).Select(summary => summary.Id).ToArray();
 
-        var ids = items.Cast<string>().Select(DatasetMetadataJson.ReadSummary).Select(summary => summary.Id).ToArray();
         Assert.Contains("public.places", ids);
         Assert.Contains("public.roads", ids);
         Assert.Contains("public.bigpoints", ids);
@@ -45,13 +39,10 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     public async Task Catalogue_pattern_filters_the_listed_datasets()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var items = await context.ReadItemsAsync(
-            CatalogueListContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Pattern] = "places" });
+        var ids = (await context.Store.ListAsync("%places%")).Select(summary => summary.Id).ToArray();
 
-        var ids = items.Cast<string>().Select(DatasetMetadataJson.ReadSummary).Select(summary => summary.Id).ToArray();
         Assert.Equal(["public.places"], ids);
     }
 
@@ -59,13 +50,10 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     public async Task Describe_reports_the_schema_geometry_srid_and_identity_columns()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var items = await context.ReadItemsAsync(
-            DatasetDescribeContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" });
+        var description = await context.Store.DescribeAsync("public.places");
 
-        var description = DatasetMetadataJson.ReadDescription((string)Assert.Single(items)!);
         Assert.Equal("public.places", description.Id);
         Assert.Equal("geom", description.GeometryColumn);
         Assert.Equal(4326, description.Srid);
@@ -76,27 +64,23 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     }
 
     [SkippableFact]
-    public async Task Describe_of_an_unknown_dataset_is_an_invalid_argument()
+    public async Task Describe_of_an_unknown_dataset_is_not_found()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var outcome = await context.InvokeAsync(
-            DatasetDescribeContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.nowhere" });
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => context.Store.DescribeAsync("public.nowhere"));
 
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, outcome.Error!.Kind);
+        Assert.Equal(SpatialException.NotFound, exception.Code);
     }
 
     [SkippableFact]
-    public async Task Scan_streams_canonical_batches_with_crs_stamped_geometry()
+    public async Task Scan_returns_canonical_batches_with_crs_stamped_geometry()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var batches = await context.ReadBatchesAsync(
-            FeatureScanContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" });
+        var batches = await context.Store.ScanAsync("public.places");
 
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         Assert.Equal(3, features.Length);
@@ -113,11 +97,9 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     public async Task Scan_of_a_table_without_a_primary_key_uses_ordinal_identities()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var batches = await context.ReadBatchesAsync(
-            FeatureScanContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.roads" });
+        var batches = await context.Store.ScanAsync("public.roads");
 
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         Assert.Equal(2, features.Length);
@@ -129,17 +111,10 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     public async Task Query_bounding_box_returns_only_intersecting_features()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        // A box around Berlin only.
-        var batches = await context.ReadBatchesAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.MinX] = 13.0,
-            [ProviderArguments.MinY] = 52.0,
-            [ProviderArguments.MaxX] = 13.5,
-            [ProviderArguments.MaxY] = 53.0,
-        });
+        var batches = await context.Store.QueryAsync(
+            "public.places", new BoundingBox(13.0, 52.0, 13.5, 53.0));
 
         var names = batches.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray();
         Assert.Equal(["Berlin"], names);
@@ -149,62 +124,37 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     public async Task Query_attribute_filters_are_parameterised_and_resolved_against_the_schema()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var byName = await context.ReadBatchesAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.Filter] = "name = 'Berlin'",
-        });
+        var byName = await context.Store.QueryAsync("public.places", null, "name = 'Berlin'");
         Assert.Equal(["Berlin"], byName.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var like = await context.ReadBatchesAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.Filter] = "name LIKE 'P%'",
-        });
+        var like = await context.Store.QueryAsync("public.places", null, "name LIKE 'P%'");
         Assert.Equal(["Paris"], like.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var prefix = await context.ReadBatchesAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.Filter] = "id < 3 AND name != 'London'",
-        });
+        var prefix = await context.Store.QueryAsync("public.places", null, "id < 3 AND name != 'London'");
         Assert.Equal(["Berlin"], prefix.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var filteredBox = await context.ReadBatchesAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.MinX] = -1.0,
-            [ProviderArguments.MinY] = 48.0,
-            [ProviderArguments.MaxX] = 15.0,
-            [ProviderArguments.MaxY] = 54.0,
-            [ProviderArguments.Filter] = "id = 3",
-        });
+        var filteredBox = await context.Store.QueryAsync(
+            "public.places", new BoundingBox(-1.0, 48.0, 15.0, 54.0), "id = 3");
         Assert.Equal(["Paris"], filteredBox.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var unknownColumn = await context.InvokeAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.Filter] = "mystery = 1",
-        });
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, unknownColumn.Error!.Kind);
-        Assert.Contains("'mystery'", unknownColumn.Error.Message);
+        var unknownColumn = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Store.QueryAsync("public.places", null, "mystery = 1"));
+        Assert.Equal(SpatialException.InvalidArguments, unknownColumn.Code);
+        Assert.Contains("'mystery'", unknownColumn.Message);
 
-        var geometryColumn = await context.InvokeAsync(FeatureQueryContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.Filter] = "geom = 1",
-        });
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, geometryColumn.Error!.Kind);
-        Assert.Contains("bounding box", geometryColumn.Error.Message);
+        var geometryColumn = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Store.QueryAsync("public.places", null, "geom = 1"));
+        Assert.Equal(SpatialException.InvalidArguments, geometryColumn.Code);
+        Assert.Contains("bounding box", geometryColumn.Message);
     }
 
     [SkippableFact]
     public async Task Write_appends_features_in_a_single_transaction()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         await context.ExecuteAsync("DROP TABLE IF EXISTS public.write_target");
         await context.ExecuteAsync(
             "CREATE TABLE public.write_target (id bigint PRIMARY KEY, name text, geom geometry(Point, 3857))");
@@ -215,7 +165,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             new FieldDefinition("name", AttributeKind.String, true),
             new FieldDefinition("geom", AttributeKind.Geometry, true),
         ]);
-        var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema,
+        var batch = new FeatureBatch(schema,
         [
             new Feature(new FeatureId("10"), schema,
             [
@@ -229,46 +179,31 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
                 AttributeValue.FromString("eleven"),
                 AttributeValue.FromGeometry(GeometryFactory.CreatePoint(11, 11, CoordinateReference.Epsg(3857))),
             ]),
-        ]));
+        ]);
 
-        var outcome = await context.InvokeAsync(FeatureWriteContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.write_target",
-            [ProviderArguments.Batch] = batchBytes,
-        });
-
-        Assert.True(outcome.TryGetValue(out var value));
-        Assert.Equal(2L, value);
+        Assert.Equal(2, await context.Store.WriteAsync("public.write_target", batch));
         Assert.Equal(2, await context.CountAsync("SELECT count(*) FROM public.write_target"));
     }
 
     [SkippableFact]
-    public async Task Write_rejects_a_batch_whose_schema_is_not_decodable_from_the_dataset()
+    public async Task Write_rejects_a_batch_whose_schema_does_not_match_the_dataset()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var schema = new FeatureSchema(
-        [
-            new FieldDefinition("mystery", AttributeKind.String, false),
-        ]);
-        var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema, []));
+        var schema = new FeatureSchema([new FieldDefinition("mystery", AttributeKind.String, false)]);
+        var batch = new FeatureBatch(schema, []);
 
-        var outcome = await context.InvokeAsync(FeatureWriteContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.places",
-            [ProviderArguments.Batch] = batchBytes,
-        });
-
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, outcome.Error!.Kind);
-        Assert.Contains("decodable", outcome.Error.Message);
+        var exception = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Store.WriteAsync("public.places", batch));
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
     }
 
     [SkippableFact]
     public async Task Create_builds_a_result_table_from_a_defining_batch()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         await context.ExecuteAsync("DROP TABLE IF EXISTS public.created");
 
         var schema = new FeatureSchema(
@@ -276,35 +211,20 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             new FieldDefinition("name", AttributeKind.String, false),
             new FieldDefinition("geom", AttributeKind.Geometry, false),
         ]);
-        var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema, []));
+        var batch = new FeatureBatch(schema, []);
 
-        var outcome = await context.InvokeAsync(DatasetCreateContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.created",
-            [ProviderArguments.Batch] = batchBytes,
-            [ProviderArguments.Srid] = 3857,
-        });
+        Assert.Equal("public.created", await context.Store.CreateAsync("public.created", batch, 3857));
 
-        Assert.True(outcome.TryGetValue(out var value));
-        Assert.Equal("public.created", value);
-
-        var description = DatasetMetadataJson.ReadDescription((string)(await context.ReadItemsAsync(
-            DatasetDescribeContract.Id, new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.created" })).Single()!);
+        var description = await context.Store.DescribeAsync("public.created");
         Assert.Equal(3857, description.Srid);
         Assert.Equal("geom", description.GeometryColumn);
-        Assert.Equal(CapabilityErrorKind.InvalidArguments,
-            (await context.InvokeAsync(DatasetCreateContract.Id, new Dictionary<string, object?>
-            {
-                [ProviderArguments.Dataset] = "public.created",
-                [ProviderArguments.Batch] = batchBytes,
-            })).Error!.Kind);
     }
 
     [SkippableFact]
     public async Task Committed_enlisted_writes_become_visible_after_commit()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         await context.ExecuteAsync("DROP TABLE IF EXISTS public.tx_target");
         await context.ExecuteAsync("CREATE TABLE public.tx_target (id bigint PRIMARY KEY, geom geometry(Point, 4326))");
         var schema = new FeatureSchema(
@@ -313,51 +233,31 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             new FieldDefinition("geom", AttributeKind.Geometry, false),
         ]);
 
-        var begin = await context.InvokeAsync(TransactionBeginContract.Id, new Dictionary<string, object?>());
-        Assert.True(begin.TryGetValue(out var handleValue));
-        var transaction = Assert.IsType<ResourceHandle>(handleValue);
-
-        var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema,
+        var transaction = await context.Store.BeginAsync();
+        var batch = new FeatureBatch(schema,
         [
             new Feature(new FeatureId("1"), schema,
             [
                 AttributeValue.FromInt64(1),
                 AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
             ]),
-        ]));
-        var write = await context.InvokeAsync(FeatureWriteContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.tx_target",
-            [ProviderArguments.Batch] = batchBytes,
-            [ProviderArguments.Transaction] = transaction,
-        });
-        Assert.True(write.TryGetValue(out var count));
-        Assert.Equal(1L, count);
-        // Uncommitted: invisible to other connections.
+        ]);
+        Assert.Equal(1, await context.Store.WriteAsync("public.tx_target", batch, transaction));
         Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.tx_target"));
 
-        var commit = await context.InvokeAsync(TransactionCommitContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Transaction] = transaction,
-        });
-        Assert.True(commit.TryGetValue(out var committed));
-        Assert.Equal(true, committed);
+        Assert.True(await context.Store.CommitAsync(transaction));
         Assert.Equal(1, await context.CountAsync("SELECT count(*) FROM public.tx_target"));
 
-        // The ended handle is inactive.
-        var again = await context.InvokeAsync(TransactionCommitContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Transaction] = transaction,
-        });
-        Assert.Equal(CapabilityErrorKind.InvalidArguments, again.Error!.Kind);
-        Assert.Contains("no longer active", again.Error.Message);
+        var again = await Assert.ThrowsAsync<SpatialException>(() => context.Store.CommitAsync(transaction));
+        Assert.Equal(SpatialException.InvalidArguments, again.Code);
+        Assert.Contains("Unknown transaction", again.Message);
     }
 
     [SkippableFact]
     public async Task Rolled_back_enlisted_writes_never_become_visible()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         await context.ExecuteAsync("DROP TABLE IF EXISTS public.tx_target");
         await context.ExecuteAsync("CREATE TABLE public.tx_target (id bigint PRIMARY KEY, geom geometry(Point, 4326))");
         var schema = new FeatureSchema(
@@ -365,40 +265,27 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             new FieldDefinition("id", AttributeKind.Int64, false),
             new FieldDefinition("geom", AttributeKind.Geometry, false),
         ]);
-        var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema,
+        var batch = new FeatureBatch(schema,
         [
             new Feature(new FeatureId("1"), schema,
             [
                 AttributeValue.FromInt64(1),
                 AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
             ]),
-        ]));
+        ]);
 
-        var begin = await context.InvokeAsync(TransactionBeginContract.Id, new Dictionary<string, object?>());
-        Assert.True(begin.TryGetValue(out var handleValue));
-        var transaction = Assert.IsType<ResourceHandle>(handleValue);
-        await context.InvokeAsync(FeatureWriteContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.tx_target",
-            [ProviderArguments.Batch] = batchBytes,
-            [ProviderArguments.Transaction] = transaction,
-        });
+        var transaction = await context.Store.BeginAsync();
+        await context.Store.WriteAsync("public.tx_target", batch, transaction);
 
-        var rollback = await context.InvokeAsync(TransactionRollbackContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Transaction] = transaction,
-        });
-        Assert.True(rollback.TryGetValue(out var value));
-        Assert.Equal(true, value);
-
+        Assert.True(await context.Store.RollbackAsync(transaction));
         Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.tx_target"));
     }
 
     [SkippableFact]
-    public async Task A_write_failure_atomicity_keeps_the_implicit_transaction_pure()
+    public async Task A_write_failure_keeps_the_implicit_transaction_pure()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         await context.ExecuteAsync("DROP TABLE IF EXISTS public.atomic_target");
         await context.ExecuteAsync("CREATE TABLE public.atomic_target (id bigint PRIMARY KEY, geom geometry(Point, 4326))");
         var schema = new FeatureSchema(
@@ -406,45 +293,24 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             new FieldDefinition("id", AttributeKind.Int64, false),
             new FieldDefinition("geom", AttributeKind.Geometry, false),
         ]);
-        // Two features with the SAME primary key: the second insert fails, and
-        // the first must not survive (single-transaction append, ADR-0028).
-        var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema,
-        [
-            FeatureWithId("1", schema),
-            FeatureWithId("1", schema),
-        ]));
+        var batch = new FeatureBatch(schema, [FeatureWithId("1", schema), FeatureWithId("1", schema)]);
 
-        var outcome = await context.InvokeAsync(FeatureWriteContract.Id, new Dictionary<string, object?>
-        {
-            [ProviderArguments.Dataset] = "public.atomic_target",
-            [ProviderArguments.Batch] = batchBytes,
-        });
-
-        Assert.Equal(CapabilityErrorKind.ProviderFailure, outcome.Error!.Kind);
+        var exception = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Store.WriteAsync("public.atomic_target", batch));
+        Assert.Equal(SpatialException.StoreUnavailable, exception.Code);
         Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.atomic_target"));
     }
 
     [SkippableFact]
-    public async Task Cancelling_a_scan_mid_stream_fails_the_stream_with_operation_cancelled()
+    public async Task Cancelling_a_scan_throws_operation_cancelled()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
-        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         using var cancellation = new CancellationTokenSource();
-
-        var (handle, stream) = await context.InvokeScanStreamAsync(
-            FeatureScanContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.bigpoints" },
-            cancellation.Token);
-
-        // The bounded buffer has produced items; the 200k-row scan is still
-        // running. Cancel the invocation token — the Npgsql command breaks
-        // and the stream fails with operation.cancelled.
-        await stream.ReadBatchAsync(1, cancellation.Token);
         cancellation.Cancel();
 
-        var completion = await stream.WaitForCompletionAsync();
-        Assert.True(completion.IsFailed);
-        Assert.Equal("operation.cancelled", completion.Error?.Code);
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            context.Store.ScanAsync("public.bigpoints", cancellation.Token));
     }
 
     [SkippableFact]
@@ -452,19 +318,118 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         var secret = $"TRUE-SECRET-{Guid.NewGuid():N}";
-        var broken = PostgisConnectionConfiguration.FromConnectionString(
-            $"Host={_fixture.ConnectionString.GetHost()};Port={_fixture.ConnectionString.GetPort()};Database=spatial;Username=spatial;Password={secret}");
-        var registry = new Spatial.Runtime.Capabilities.CapabilityRegistry();
-        registry.Register(new PostgisProvider(broken));
-        var runtime = new Spatial.Runtime.Capabilities.CapabilityRuntime(registry);
+        var broken = new PostgisStore(new PostgisOptions
+        {
+            ConnectionString = $"Host=localhost;Port=5432;Database=spatial;Username=spatial;Password={secret}",
+        });
 
-        var outcome = await runtime.InvokeAsync(CapabilityInvocation.Create(
-            FeatureScanContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" }));
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => broken.ListAsync());
 
-        Assert.Equal(CapabilityErrorKind.ProviderFailure, outcome.Error!.Kind);
-        Assert.DoesNotContain(secret, outcome.Error.Message);
-        Assert.Contains("'spatial'", outcome.Error.Message);
+        Assert.Equal(SpatialException.StoreUnavailable, exception.Code);
+        Assert.DoesNotContain(secret, exception.Message);
+    }
+
+    [SkippableFact]
+    public async Task Edit_add_update_delete_round_trips_on_a_primary_key_table()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await context.ExecuteAsync("DROP TABLE IF EXISTS public.edit_target");
+        await context.ExecuteAsync(
+            "CREATE TABLE public.edit_target (id bigint PRIMARY KEY, name text, geom geometry(Point, 4326))");
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("id", AttributeKind.Int64, false),
+            new FieldDefinition("name", AttributeKind.String, false),
+            new FieldDefinition("geom", AttributeKind.Geometry, false),
+        ]);
+        var feature = new Feature(new FeatureId("1"), schema,
+        [
+            AttributeValue.FromInt64(1),
+            AttributeValue.FromString("one"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
+        ]);
+
+        var added = await context.Editor.AddAsync("public.edit_target", new FeatureBatch(schema, [feature]));
+        Assert.True(Assert.Single(added).Succeeded);
+        Assert.Equal("1", added[0].Id.Value);
+        Assert.Equal(1, await context.CountAsync("SELECT count(*) FROM public.edit_target"));
+
+        var renamed = new Feature(new FeatureId("1"), schema,
+        [
+            AttributeValue.FromInt64(1),
+            AttributeValue.FromString("uno"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(3, 4, CoordinateReference.Epsg(4326))),
+        ]);
+        Assert.True(Assert.Single(await context.Editor.UpdateAsync("public.edit_target", new FeatureBatch(schema, [renamed]))).Succeeded);
+        var scanned = (await context.Store.ScanAsync("public.edit_target")).SelectMany(batch => batch.Features).Single();
+        Assert.Equal("uno", scanned["name"].StringValue);
+
+        Assert.True(Assert.Single(await context.Editor.DeleteAsync("public.edit_target", [new FeatureId("1")])).Succeeded);
+        Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.edit_target"));
+        Assert.False(Assert.Single(await context.Editor.DeleteAsync("public.edit_target", [new FeatureId("1")])).Succeeded);
+    }
+
+    [SkippableFact]
+    public async Task Edit_inside_a_transaction_is_not_visible_until_commit()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await context.ExecuteAsync("DROP TABLE IF EXISTS public.edit_tx_target");
+        await context.ExecuteAsync(
+            "CREATE TABLE public.edit_tx_target (id bigint PRIMARY KEY, name text, geom geometry(Point, 4326))");
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("id", AttributeKind.Int64, false),
+            new FieldDefinition("name", AttributeKind.String, false),
+            new FieldDefinition("geom", AttributeKind.Geometry, false),
+        ]);
+        var feature = new Feature(new FeatureId("1"), schema,
+        [
+            AttributeValue.FromInt64(1),
+            AttributeValue.FromString("one"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
+        ]);
+
+        var transaction = await context.Store.BeginAsync();
+        Assert.True(Assert.Single(await context.Editor.AddAsync("public.edit_tx_target", new FeatureBatch(schema, [feature]), transaction)).Succeeded);
+        Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.edit_tx_target"));
+
+        Assert.True(await context.Store.CommitAsync(transaction));
+        Assert.Equal(1, await context.CountAsync("SELECT count(*) FROM public.edit_tx_target"));
+    }
+
+    [SkippableFact]
+    public async Task Lookup_by_identity_returns_matching_features_and_ignores_misses()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        var found = await context.Store.GetAsync(
+            "public.places", [new FeatureId("1"), new FeatureId("3"), new FeatureId("404")]);
+
+        Assert.Equal(["1", "3"], found.Select(feature => feature.Id.Value).OrderBy(value => value, StringComparer.Ordinal).ToArray());
+        var berlin = found.Single(feature => feature.Id.Value == "1");
+        Assert.Equal("Berlin", berlin["name"].StringValue);
+        Assert.Equal(GeometryType.Point, berlin[2].GeometryValue.Type);
+    }
+
+    [SkippableFact]
+    public async Task Lookup_by_identity_of_a_missing_feature_is_empty()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        Assert.Empty(await context.Store.GetAsync("public.places", [new FeatureId("404")]));
+    }
+
+    [SkippableFact]
+    public async Task Lookup_by_identity_of_a_table_without_a_primary_key_is_empty()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        Assert.Empty(await context.Store.GetAsync("public.roads", [new FeatureId("1")]));
     }
 
     private static Feature FeatureWithId(string id, FeatureSchema schema) =>
@@ -473,13 +438,4 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             AttributeValue.FromInt64(1),
             AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
         ]);
-}
-
-internal static class ConnectionStringExtensions
-{
-    public static string GetHost(this string connectionString) =>
-        connectionString.Split(';').First(part => part.StartsWith("Host=", StringComparison.Ordinal)).Split('=')[1];
-
-    public static string GetPort(this string connectionString) =>
-        connectionString.Split(';').First(part => part.StartsWith("Port=", StringComparison.Ordinal)).Split('=')[1];
 }

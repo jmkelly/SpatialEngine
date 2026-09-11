@@ -1,0 +1,170 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "United States Forest Service Natural Resource Manager (NRM) Forest Activity Tracking System (FACTS)",
+    "description": "Actv_ProjectArea_TimberSale represents an area (polygon) within which one or more Timber Sale related activities are aggregated or organized. The data comes from the Forest Service's Natural Resource Manager (NRM) Forest Activity Tracking System (FACTS), which is the agency standard for managing information about activities related to fire/fuels, silviculture, and invasive species. FACTS is an activity tracking application for all levels of the Forest Service.",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestWkid": 4269,
+        "mTolerance": 2,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.983152841195213e-09,
+        "xyUnits": 11258999068426.24,
+        "zTolerance": 2,
+        "zUnits": 10000
+      },
+      "xmax": -71.17832064499999,
+      "xmin": -149.68593828099998,
+      "ymax": 60.78161836500004,
+      "ymin": 29.004359656000076
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CN",
+        "length": 34,
+        "name": "cn",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ID",
+        "length": 254,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NAME",
+        "length": 254,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PROJECTTYPE",
+        "name": "projecttype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "REV_DATE",
+        "length": 8,
+        "name": "rev_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "DATA_SOURCE",
+        "length": 2,
+        "name": "data_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACCURACY",
+        "name": "accuracy",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SALE_CATEGORY",
+        "length": 2,
+        "name": "sale_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FY_AWARD",
+        "name": "fy_award",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "ADMIN_REGION_CODE",
+        "length": 2,
+        "name": "admin_region_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_REGION_NAME",
+        "length": 254,
+        "name": "admin_region_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_FOREST_CODE",
+        "length": 2,
+        "name": "admin_forest_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_FOREST_NAME",
+        "length": 254,
+        "name": "admin_forest_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_DISTRICT_CODE",
+        "length": 2,
+        "name": "admin_district_code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ADMIN_DISTRICT_NAME",
+        "length": 254,
+        "name": "admin_district_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS_ACRES",
+        "name": "gis_acres",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 2,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Activity Project Area Timber Sale",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestWkid": 4269,
+      "mTolerance": 2,
+      "mUnits": 10000,
+      "wkid": 4269,
+      "xyTolerance": 8.983152841195213e-09,
+      "xyUnits": 11258999068426.24,
+      "zTolerance": 2,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 6365,
+  "status": 200
+}

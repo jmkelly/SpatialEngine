@@ -1,0 +1,33 @@
+{
+  "catalog": "https://mapservices.nps.gov/arcgis/rest/services",
+  "currentVersion": 11.5,
+  "directory": "nationaldatasets-nps-public-pois-geographic-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 35570,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 35570,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Points of Interest",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 6318
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "nationaldatasets-nps-public-pois-geographic-featureserver",
+  "url": "https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_POIs_Geographic/FeatureServer"
+}

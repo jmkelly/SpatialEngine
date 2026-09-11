@@ -1,0 +1,250 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "receipt_time",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 313.0167000000001,
+      "xmin": -179.99999999999997,
+      "ymax": 83.13330000000008,
+      "ymin": -76.89999999999998
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Receipt Time",
+        "length": 8,
+        "name": "receipt_time",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Observation Time",
+        "length": 8,
+        "name": "observation_time",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Mid Point Assumed",
+        "length": 8000,
+        "name": "mid_point_assumed",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "No Time Stamp",
+        "length": 8000,
+        "name": "no_time_stamp",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Level Range",
+        "length": 8000,
+        "name": "flt_lvl_range",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AGL Indicated",
+        "length": 8000,
+        "name": "above_ground_level_indicated",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "No Flight Level",
+        "length": 8000,
+        "name": "no_flt_lvl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Bad Location",
+        "length": 8000,
+        "name": "bad_location",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Aircraft Reference",
+        "length": 8000,
+        "name": "aircraft_ref",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Altitude In Feet (MSL)",
+        "name": "altitude_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Sky Cover (Layer 1)",
+        "length": 8000,
+        "name": "sky_cover",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base (Layer 1)",
+        "name": "cloud_base_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Top (Layer 1)",
+        "length": 8000,
+        "name": "cloud_top_ft_msl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Type (Primary)",
+        "length": 8000,
+        "name": "turbulence_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Intensity (Primary)",
+        "length": 8000,
+        "name": "turbulence_intensity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Base In Feet",
+        "name": "turbulence_base_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Top In Feet",
+        "name": "turbulence_top_ft_msl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Frequency",
+        "length": 8000,
+        "name": "turbulence_freq",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Type (Primary)",
+        "length": 8000,
+        "name": "icing_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Intensity",
+        "length": 8000,
+        "name": "icing_intensity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Base In Feet",
+        "length": 8000,
+        "name": "icing_base_ft_msl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Top In Feet",
+        "length": 8000,
+        "name": "icing_top_ft_msl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Visibility in Miles (SM)",
+        "name": "visibility_statute_mi",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Weather",
+        "length": 8000,
+        "name": "wx_string",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Temperature In Celsius",
+        "name": "temp_c",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Direction In Degrees",
+        "name": "wind_dir_degrees",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Speed In Knots",
+        "name": "wind_speed_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Vertical Gust In Knots",
+        "length": 8000,
+        "name": "vert_gust_kt",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Report Type",
+        "length": 8000,
+        "name": "report_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Raw Observation",
+        "length": 8000,
+        "name": "raw_text",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "hasAttachments": false,
+    "id": 2,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "In-Flight Turbulence Type From Pilot Report",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 13896,
+  "status": 200
+}

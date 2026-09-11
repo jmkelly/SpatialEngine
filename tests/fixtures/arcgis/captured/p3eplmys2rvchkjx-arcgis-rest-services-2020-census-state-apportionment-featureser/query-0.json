@@ -1,0 +1,685 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "GEOID": "01",
+          "GEO_ID": "0400000US01",
+          "NAME": "Alabama",
+          "OBJECTID": 1,
+          "Overseas_Pop_2010": 23246,
+          "Overseas_Pop_2020": 5774,
+          "Resident_Change_2010to2020": 244543,
+          "Resident_Pct_Change_2010to2020": 5.1,
+          "Resident_Pop_2010": 4779736,
+          "Resident_Pop_2020": 5024279,
+          "STATENS": "01779775",
+          "STUSPS": "AL",
+          "Seats_2010": 7,
+          "Seats_2020": 7,
+          "Seats_Change_2000to2010": 0,
+          "Seats_Change_2010to2020": 0,
+          "Shape__Area": 190122625630.81445,
+          "Shape__Length": 2312415.8927827002,
+          "TotalPopChange_2010to2020": 227071,
+          "Total_Pct_Change_2010to2020": 4.7,
+          "Total_Pop_2010": 4802982,
+          "Total_Pop_2020": 5030053
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -9805779.6231,
+                3536997.5778
+              ],
+              [
+                -9804448.4642,
+                3535612.8432
+              ],
+              [
+                -9804560.0063,
+                3535228.8301
+              ],
+              [
+                -9804886.1725,
+                3535087.0832
+              ],
+              [
+                -9808297.6706,
+                3534707.9825
+              ],
+              [
+                -9809490.9045,
+                3535230.1186
+              ],
+              [
+                -9811375.7667,
+                3535620.5749
+              ],
+              [
+                -9814658.1341,
+                3535630.3686
+              ],
+              [
+                -9819330.3257,
+                3535057.1872
+              ],
+              [
+                -9827348.7821,
+                3533184.6064
+              ],
+              [
+                -9830042.9372,
+                3532895.6199
+              ],
+              [
+                -9830994.7191,
+                3533152.3961
+              ],
+              [
+                -9830627.5873,
+                3533565.8517
+              ],
+              [
+                -9829478.7698,
+                3533382.7649
+              ],
+              [
+                -9827372.1592,
+                3533636.4588
+              ],
+              [
+                -9824877.3775,
+                3534385.5877
+              ],
+              [
+                -9821119.787,
+                3535154.09
+              ],
+              [
+                -9815412.9918,
+                3536037.977
+              ],
+              [
+                -9813737.967,
+                3536034.7553
+              ],
+              [
+                -9811827.724,
+                3536373.8161
+              ],
+              [
+                -9810657.5332,
+                3537288.9776
+              ],
+              [
+                -9809999.7555,
+                3538760.4371
+              ],
+              [
+                -9809992.6218,
+                3540062.1881
+              ],
+              [
+                -9805779.6231,
+                3536997.5778
+              ]
+            ],
+            [
+              [
+                -9839992.0343,
+                3548934.5001
+              ],
+              [
+                -9839975.0903,
+                3548566.5155
+              ],
+              [
+                -9839982.5465,
+                3548724.4754
+              ],
+              [
+                -9839992.0343,
+                3548934.5001
+              ]
+            ],
+            [
+              [
+                -9799034.8,
+                3570130.2132
+              ],
+              [
+                -9798785.9547,
+                3566733.1528
+              ],
+              [
+                -9802057.4606,
+                3568886.8588
+              ],
+              [
+                -9800010.6463,
+                3570885.4045
+              ],
+              [
+                -9799034.8,
+                3570130.2132
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "GEOID": "02",
+          "GEO_ID": "0400000US02",
+          "NAME": "Alaska",
+          "OBJECTID": 2,
+          "Overseas_Pop_2010": 11292,
+          "Overseas_Pop_2020": 2690,
+          "Resident_Change_2010to2020": 23160,
+          "Resident_Pct_Change_2010to2020": 3.3,
+          "Resident_Pop_2010": 710231,
+          "Resident_Pop_2020": 733391,
+          "STATENS": "01785533",
+          "STUSPS": "AK",
+          "Seats_2010": 1,
+          "Seats_2020": 1,
+          "Seats_Change_2000to2010": 0,
+          "Seats_Change_2010to2020": 0,
+          "Shape__Area": 8208933682478.086,
+          "Shape__Length": 63996878.60258275,
+          "TotalPopChange_2010to2020": 14558,
+          "Total_Pct_Change_2010to2020": 2,
+          "Total_Pop_2010": 721523,
+          "Total_Pop_2020": 736081
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -19937057.4487,
+                6661392.0514
+              ],
+              [
+                -19940312.0958,
+                6660277.0626
+              ],
+              [
+                -19941351.82,
+                6661939.7356
+              ],
+              [
+                -19942592.3656,
+                6670399.6458
+              ],
+              [
+                -19941467.9279,
+                6672041.4183
+              ],
+              [
+                -19938824.7589,
+                6674675.1721
+              ],
+              [
+                -19936728.6133,
+                6674751.3762
+              ],
+              [
+                -19934591.3902,
+                6671794.5542
+              ],
+              [
+                -19933891.1901,
+                6667925.243
+              ],
+              [
+                -19934241.1782,
+                6665806.5722
+              ],
+              [
+                -19937057.4487,
+                6661392.0514
+              ]
+            ],
+            [
+              [
+                -19923872.7734,
+                6677093.2073
+              ],
+              [
+                -19924769.6742,
+                6676498.0259
+              ],
+              [
+                -19925153.5038,
+                6676606.6583
+              ],
+              [
+                -19925310.4664,
+                6689022.1788
+              ],
+              [
+                -19923717.2627,
+                6692165.0979
+              ],
+              [
+                -19922219.014,
+                6692800.8578
+              ],
+              [
+                -19918050.2106,
+                6689437.5868
+              ],
+              [
+                -19916640.1263,
+                6685933.7798
+              ],
+              [
+                -19916047.4607,
+                6681761.0611
+              ],
+              [
+                -19921107.4872,
+                6681523.1672
+              ],
+              [
+                -19921121.0679,
+                6680362.1348
+              ],
+              [
+                -19922313.4105,
+                6678571.9095
+              ],
+              [
+                -19923872.7734,
+                6677093.2073
+              ]
+            ],
+            [
+              [
+                -19845469.6769,
+                6705534.4926
+              ],
+              [
+                -19846952.5549,
+                6705364.7358
+              ],
+              [
+                -19849072.4083,
+                6706555.1519
+              ],
+              [
+                -19849072.4084,
+                6707065.8709
+              ],
+              [
+                -19846422.592,
+                6707406.1408
+              ],
+              [
+                -19845152.0388,
+                6706725.6161
+              ],
+              [
+                -19845469.6769,
+                6705534.4926
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "GEOID": "04",
+          "GEO_ID": "0400000US04",
+          "NAME": "Arizona",
+          "OBJECTID": 3,
+          "Overseas_Pop_2010": 20683,
+          "Overseas_Pop_2020": 7421,
+          "Resident_Change_2010to2020": 759485,
+          "Resident_Pct_Change_2010to2020": 11.9,
+          "Resident_Pop_2010": 6392017,
+          "Resident_Pop_2020": 7151502,
+          "STATENS": "01779777",
+          "STUSPS": "AZ",
+          "Seats_2010": 9,
+          "Seats_2020": 9,
+          "Seats_Change_2000to2010": 1,
+          "Seats_Change_2010to2020": 0,
+          "Shape__Area": 434049121723.0742,
+          "Shape__Length": 2905041.897816847,
+          "TotalPopChange_2010to2020": 746223,
+          "Total_Pct_Change_2010to2020": 11.6,
+          "Total_Pop_2010": 6412700,
+          "Total_Pop_2020": 7158923
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -12138854.2127,
+                4438965.0002
+              ],
+              [
+                -12138854.3241,
+                4438947.4376
+              ],
+              [
+                -12138857.2183,
+                4438592.2905
+              ],
+              [
+                -12138858.8881,
+                4438066.8396
+              ],
+              [
+                -12138860.4465,
+                4437800.779
+              ],
+              [
+                -12138860.4465,
+                4437774.02
+              ],
+              [
+                -12138861.0031,
+                4436719.7415
+              ],
+              [
+                -12138861.1144,
+                4436549.7288
+              ],
+              [
+                -12138861.7822,
+                4435456.6963
+              ],
+              [
+                -12138861.7822,
+                4435436.4921
+              ],
+              [
+                -12138858.4426,
+                4434861.1775
+              ],
+              [
+                -12138858.4426,
+                4434803.9125
+              ],
+              [
+                -12138857.9973,
+                4434740.0993
+              ],
+              [
+                -12138856.3274,
+                4434365.4483
+              ],
+              [
+                -12138856.3274,
+                4434355.5562
+              ],
+              [
+                -12138856.3274,
+                4434353.0484
+              ],
+              [
+                -12138858.3311,
+                4433668.9865
+              ],
+              [
+                -12138858.8877,
+                4433494.704
+              ],
+              [
+                -12138859.1104,
+                4433376.7062
+              ],
+              [
+                -12138858.6651,
+                4433361.1033
+              ],
+              [
+                -12138866.0121,
+                4432377.6089
+              ],
+              [
+                -12138866.1233,
+                4431510.7886
+              ],
+              [
+                -12138866.5686,
+                4430894.7386
+              ],
+              [
+                -12138866.3459,
+                4430859.0832
+              ],
+              [
+                -12138866.3459,
+                4430844.0411
+              ],
+              [
+                -12138866.4572,
+                4430557.549
+              ],
+              [
+                -12138866.4572,
+                4430400.3089
+              ],
+              [
+                -12138866.4572,
+                4430198.0868
+              ],
+              [
+                -12138866.6798,
+                4429591.3043
+              ],
+              [
+                -12138866.7911,
+                4429402.4666
+              ],
+              [
+                -12138866.7911,
+                4429395.3643
+              ],
+              [
+                -12138866.9024,
+                4428830.4033
+              ],
+              [
+                -12138866.9024,
+                4428829.0108
+              ],
+              [
+                -12138867.1249,
+                4428094.0635
+              ],
+              [
+                -12138867.3475,
+                4427509.9573
+              ],
+              [
+                -12138867.3475,
+                4427072.9082
+              ],
+              [
+                -12138867.4588,
+                4427064.276
+              ],
+              [
+                -12138867.4588,
+                4427018.4697
+              ],
+              [
+                -12138867.4588,
+                4427008.7237
+              ],
+              [
+                -12138867.904,
+                4425770.3606
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "State Name",
+        "defaultValue": null,
+        "length": 100,
+        "name": "NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State Abbreviation",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STUSPS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOID FIPS Code",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "GEO_ID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATENS",
+        "defaultValue": null,
+        "length": 8,
+        "name": "STATENS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOID FIPS Code",
+        "defaultValue": null,
+        "length": 10,
+        "name": "GEOID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Total Population, 2020",
+        "defaultValue": null,
+        "name": "Total_Pop_2020",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Seats in the U.S. House of Representatives, 2020",
+        "defaultValue": null,
+        "name": "Seats_2020",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident Population, 2020",
+        "defaultValue": null,
+        "name": "Resident_Pop_2020",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Overseas Population, 2020",
+        "defaultValue": null,
+        "name": "Overseas_Pop_2020",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total Population, 2010",
+        "defaultValue": null,
+        "name": "Total_Pop_2010",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Seats in the U.S. House of Representatives, 2010",
+        "defaultValue": null,
+        "name": "Seats_2010",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident Population, 2010",
+        "defaultValue": null,
+        "name": "Resident_Pop_2010",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Overseas Population, 2010",
+        "defaultValue": null,
+        "name": "Overseas_Pop_2010",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Change in Total Population, 2010 to 2020",
+        "defaultValue": null,
+        "name": "TotalPopChange_2010to2020",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Percent Change in Total Population, 2010 to 2020",
+        "defaultValue": null,
+        "name": "Total_Pct_Change_2010to2020",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Change in Seats in the U.S. House of Representatives, 2010 to 2020",
+        "defaultValue": null,
+        "name": "Seats_Change_2010to2020",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Change in Seats in the U.S. House of Representatives, 2000 to 2010",
+        "defaultValue": null,
+        "name": "Seats_Change_2000to2010",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Change in Resident Population, 2010 to 2020",
+        "defaultValue": null,
+        "name": "Resident_Change_2010to2020",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Percent Change in Resident Population, 2010 to 2020",
+        "defaultValue": null,
+        "name": "Resident_Pct_Change_2010to2020",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2423424,
+  "status": 200
+}

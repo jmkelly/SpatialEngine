@@ -1,14 +1,12 @@
 namespace Spatial.Host.Api;
 
-/// <summary>Maps the public spatial host API (plan §12) onto the application.</summary>
+/// <summary>Maps the typed public host API (ADR-0033).</summary>
 public static class SpatialApi
 {
     public static void MapSpatialApi(this IEndpointRouteBuilder app)
     {
-        CapabilityEndpoints.Map(app);
-        InvocationEndpoints.Map(app);
-        JobEndpoints.Map(app);
-        ResourceEndpoints.Map(app);
-        PluginEndpoints.Map(app);
+        GeometryEndpoints.Map(app);
+        TransformEndpoints.Map(app);
+        StoreEndpoints.Map(app);
     }
 }

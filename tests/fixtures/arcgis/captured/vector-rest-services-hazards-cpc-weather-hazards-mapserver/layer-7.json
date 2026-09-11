@@ -1,0 +1,136 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "label",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -65.30111694365785,
+      "xmin": -178.2175983623774,
+      "ymax": 71.4062353939862,
+      "ymin": 17.92222213746875
+    },
+    "fields": [
+      {
+        "alias": "Object Id",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Hazards",
+        "length": 254,
+        "name": "label",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Start Date",
+        "length": 8,
+        "name": "start_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date",
+        "length": 8,
+        "name": "end_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Start Date2",
+        "length": 8,
+        "name": "start_dt2",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date2",
+        "length": 8,
+        "name": "end_dt2",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Source",
+        "length": 50,
+        "name": "idp_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Subset",
+        "length": 50,
+        "name": "idp_subset",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "issue_time_dt",
+        "length": 8,
+        "name": "issue_time_dt",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "valid_time_dt",
+        "length": 8,
+        "name": "valid_time_dt",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "validendtime_dt",
+        "length": 8,
+        "name": "validendtime_dt",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 7,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "3-7 Day WildFire/Drought",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 8326,
+  "status": 200
+}

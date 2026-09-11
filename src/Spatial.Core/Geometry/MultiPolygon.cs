@@ -12,12 +12,13 @@ public sealed class MultiPolygon : GeometryCollectionBase<Polygon>, IMultiPolygo
 
     public override GeometryType Type => GeometryType.MultiPolygon;
 
-    public bool Equals(MultiPolygon? other) =>
-        other is not null
-        && Nullable.Equals(CoordinateReference, other.CoordinateReference)
-        && Polygons.SequenceEqual(other.Polygons);
+    public bool Equals(MultiPolygon? other) => other is not null && ContentEquals(other);
 
-    public override bool Equals(object? obj) => obj is MultiPolygon other && Equals(other);
+    public override bool Equals(object? obj) => obj is MultiPolygon other && ContentEquals(other);
+
+    private bool ContentEquals(MultiPolygon other) =>
+        Nullable.Equals(CoordinateReference, other.CoordinateReference)
+        && Polygons.SequenceEqual(other.Polygons);
 
     public override int GetHashCode()
     {

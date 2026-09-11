@@ -1,0 +1,160 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "firname",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 257.1829999998504,
+      "xmin": -197.9999999999,
+      "ymax": 89.48799999990024,
+      "ymin": -80.00000000009982
+    },
+    "fields": [
+      {
+        "alias": "objectid",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "ICAO ID",
+        "length": 80,
+        "name": "icaoid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Information Region ID",
+        "length": 80,
+        "name": "firid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Information Region Name",
+        "length": 80,
+        "name": "firname",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Series ID",
+        "length": 80,
+        "name": "seriesid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hazard",
+        "length": 80,
+        "name": "hazard",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Qualifier",
+        "length": 80,
+        "name": "qualifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time From",
+        "length": 80,
+        "name": "validtimef",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time To",
+        "length": 80,
+        "name": "validtimet",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hazard Base Altitude",
+        "length": 80,
+        "name": "base",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hazard Top Altitude",
+        "length": 80,
+        "name": "top",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Direction",
+        "length": 80,
+        "name": "dir",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Speed in Knots",
+        "length": 80,
+        "name": "spd",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Change In Intensity",
+        "length": 80,
+        "name": "chng",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sigmet Message",
+        "length": 254,
+        "name": "rawsigmet",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 112,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "International SIGMET",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 12731,
+  "status": 200
+}

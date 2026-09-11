@@ -1,0 +1,330 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "raw_text",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4326,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4326,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": "NaN",
+      "xmin": "NaN",
+      "ymax": "NaN",
+      "ymin": "NaN"
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Raw Observation",
+        "length": 8000,
+        "name": "raw_text",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Station ID",
+        "length": 8000,
+        "name": "station_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Observation Time",
+        "length": 8,
+        "name": "observation_time",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Temperature in Celsius",
+        "name": "temp_c",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Dewpoint in Celsius",
+        "name": "dewpoint_c",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Wind Direction",
+        "name": "winddir",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Wind Speed In Knots",
+        "name": "wind_speed_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Gust In Knots",
+        "name": "wind_gust_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Visibility in Statute MI",
+        "length": 8000,
+        "name": "visibility_statute_mi",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Altimeter In HG",
+        "name": "altim_in_hg",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Sea  Level Pressure In MB",
+        "name": "sea_level_pressure_mb",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Corrected",
+        "length": 8000,
+        "name": "corrected",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Automatic Source",
+        "length": 8000,
+        "name": "auto",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Automatic Station",
+        "length": 8000,
+        "name": "auto_station",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maintenance Indicator Is On",
+        "length": 8000,
+        "name": "maintenance_indicator_on",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "No Signal",
+        "length": 8000,
+        "name": "no_signal",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lightning Sensor Off",
+        "length": 8000,
+        "name": "lightning_sensor_off",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Freezing Rain Sensor Off",
+        "length": 8000,
+        "name": "freezing_rain_sensor_off",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Present Weather Sensor Off",
+        "length": 8000,
+        "name": "present_weather_sensor_off",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Weather",
+        "length": 8000,
+        "name": "wx_string",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover",
+        "length": 8000,
+        "name": "sky_cover",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flight Category",
+        "length": 8000,
+        "name": "flight_category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Three Hour Pressure Tendency In MB",
+        "length": 8000,
+        "name": "three_hr_pressure_tendency_mb",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maximum Temperature in Celsius",
+        "length": 8000,
+        "name": "maxt_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Minimum Temperature in Celsius",
+        "length": 8000,
+        "name": "mint_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maximum Temperature 24hr In Celsius",
+        "length": 8000,
+        "name": "maxt24hr_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Minimum Temperature 24hr in Celsius",
+        "length": 8000,
+        "name": "mint24hr_c",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Precipitation In Inches",
+        "name": "precip_in",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Precipitation 3hr In Inches",
+        "length": 8000,
+        "name": "pcp3hr_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Precipitation 6hr In Inches",
+        "length": 8000,
+        "name": "pcp6hr_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Precipitation 24hr In Inches",
+        "length": 8000,
+        "name": "pcp24hr_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Snow in Inches",
+        "length": 8000,
+        "name": "snow_in",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Vertical Visibility In Feet",
+        "name": "vert_vis_ft",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "METAR Type",
+        "length": 8000,
+        "name": "metar_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Elevation In Meters",
+        "name": "elevation_m",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Base In FT AGL",
+        "name": "cloud_base_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Priority",
+        "name": "priority",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "Sky Cover 1",
+        "length": 20,
+        "name": "sky_cover_1",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover 2",
+        "length": 20,
+        "name": "sky_cover_2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover 3",
+        "length": 20,
+        "name": "sky_cover_3",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base 1 (FT AGL)",
+        "length": 20,
+        "name": "cloud_base_ft_agl_1",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base 2 (FT AGL)",
+        "length": 20,
+        "name": "cloud_base_ft_agl_2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base 3 (FT AGL)",
+        "length": 20,
+        "name": "cloud_base_ft_agl_3",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Ceiling in Feet",
+        "name": "ceiling_ft",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "hasAttachments": false,
+    "id": 34,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "METARs Skycover By Flight Category All Scales",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 150893,
+  "status": 200
+}

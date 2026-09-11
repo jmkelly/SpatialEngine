@@ -1,0 +1,85 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "National Oceanic and Atmospheric Administration,NOAA, National Weather Service,NWS",
+    "currentVersion": 11.3,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4269,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.98315284119521e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 179.0000000000001,
+      "xmin": -179.93689999999998,
+      "ymax": 111.83670000000006,
+      "ymin": -13.265299999999968
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 4269,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 4269,
+        "xyTolerance": 8.98315284119521e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -74.33734661632388,
+      "xmin": -206.38078399208638,
+      "ymax": 90.32742804304362,
+      "ymin": -2.700612806660949
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "SPOT Forecast Monitor",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "NWS Spot Forecast Monitor",
+    "maxRecordCount": 2000,
+    "serviceDescription": "<div style='text-align:Left;'><div><div><p><span style='font-weight:bold;'>NWS Fire Weather Spot Web Services </span><span>is made up </span><span style='font-style:italic;'>of </span><span style='font-style:italic;font-weight:bold;'>Site-specific (SPOT) forecasts</span><span>. The web service is updated every 15 minutes. Spot Forecast are issued by WFOs in support of wildfire management, and natural resource management. These forecasts aid the land management and fire control agencies in protecting life and property during wildland fires, hazardous fuels reduction, and rehabilitation and restoration of natural resources. Spot forecasts are also issued for hazardous materials incidents and other threats to public safety.  SPOT forecasts are non-routine, near term (typically not more than 48 hours) products issued at the request of the user. WFOs will provide spot forecast service upon request of any federal, state, tribal, or local official who represents the spot forecast is required to support a wildfire.</span></p><p style='margin:0 0 11 0;'><span style='font-weight:bold;'>Update Frequency:</span><span>Every 15 minutes</span></p><p><span style='font-weight:bold;'>For non-wildfire purposes, resources permitting, WFOs will provide spot forecast service under the following circumstances and conditions:</span></p><p><span>1. Upon request of any federal official who represents that the spot forecast is required under the terms of the Interagency Agreement for Meteorological Services (NWS Instruction 10-406).</span></p><span>2. Upon request of any state, tribal, or local official who represents that the spot forecast is required to carry out their wildland fire management responsibilities in coordination with any federal land management agency participating in the Interagency Agreement for Meteorological Services (NWS Instruction 10-406).</span></p><p><span>3. Upon request of any public safety official who represents the spot forecast is essential to public safety, e.g. due to the proximity of population centers or critical infrastructure. A \u201cpublic safety official\u201d is an employee or contract agent of a government agency at any level (federal, state, local, tribal, etc.) charged with protecting the public from hazards including wildland fires of whatever origin and/or other hazards influenced by weather conditions such as hazardous material releases.</span></p><p><span /></p><p><span style='font-weight:bold;'>The source data is derived from json. Below is a snippet of the json file that can be downloaded from weather.gov/spot. Description of codes follows</span><span>:</span></p><p><p><span>{</span></p><p><span /></p><p><span>\"total\": \"1\",</span></p><p><span /></p><p><span>\"page\": \"1\",</span></p><p><span /></p><p><span>\"records\": \"124\",</span></p><p><span /></p><p><span>\"reqtime\": \"\",</span></p><p><span /></p><p><span>\"rows\": [</span></p><p><span /></p><p><span>{\"snumunum\":\"2005590.0\", \"name\":\"Saint Simons Sound Incident Forecast #341\", \"type\":\"Marine</span></p><p><span>2020-04-30 4:00 AM EDT\", \"tid\" :\"2\", \"lat\":\"31.1289\", \"lon\" :\"-81.4112\", \"rmade\":\"2020-04-07 7:20 AM EDT\", \"rfill\" :\"Incomplete\", \"stat\":\"P\", \"stattext\":\"</span></p><p><span /></p><p><span>Request pending</span></p><p><span>\",\"wfo\":\"JAX\", \"wfoid\":\"89\", \"accesslevel\":\"4\", \"acts\" :\"\", \"deliverdtg\":\"2020-04-30 4:00 AM EDT\" },</span></p><p><span>\u2026</span></p><p><span /></p><p><span>{\"snumunum\":\"2005683.0\", \"name\":\"Sam Dale Rx II\", \"type\":\"Prescribed</span></p><p><span>2020-04-10 8:00 AM CDT\", \"tid\" :\"1\", \"lat\":\"38.5463\", \"lon\" :\"-88.5831\", \"rmade\":\"2020-04-09 5:26 PM CDT\", \"rfill\" :\"2020-04-10 3:55 AM CDT\", \"stat\":\"C\", \"stattext\":\"</span></p><p><span /></p><p><span>Completed: 2020-04-10 3:55 AM CDT</span></p><p><span>\",\"wfo\":\"PAH\", \"wfoid\":\"36\", \"accesslevel\":\"1\", \"acts\" :\"\", \"deliverdtg\":\"2020-04-10 8:00 AM CDT\" }</span></p><p><span>]</span></p><p><span /></p><p><span>}</span></p><p><span /></p><p><span style='font-weight:bold;'>Attributes:</span></p><p><span /></p><p><span>snumunum: incident and update number code for incident (2005590.0 where 20 is the year, 05590 is the incident number, and .0 is how many times the forecast has been updated for this incident.)</span></p><p><span /></p><p><span>name: Name of incident</span></p><p><span /></p><p><span>type: type of incident. Possible values - Wildfire, Prescribed Burn, HAZMAT Land, HAZMAT Inland Waterway, HAZMAT Marine, SAR Land, SAR Inland Waterway, SAR Marine, Marine, Other. Date/time associated with type is the date/time the customer wants the forecast delivered to them.</span></p><p><span /></p><p><span>lat/lon: lat/lon location of the incident.</span></p><p><span /></p><p><span>rmade: date/time when the request for a forecast was made.</span></p><p><span /></p><p><span>rfill: Date/time the forecast was posted on the website. If not posted yet, then will have \u201cIncomplete\u201d</span></p><p><span /></p><p><span style='font-style:italic;'>stat: </span><span>Status of forecast needed - P=Forecast Pending, Q=Customer was asked a question on the request, C=Forecast Completed, F=Feedback provided on the forecast.</span></p><p><span /></p><p><span style='font-style:italic;'>wfo: </span><span>Forecast office responsible for writing the forecast.</span></p><p><span /></p><p><span style='font-style:italic;'>deliverdtg: </span><span>Date/time the customer needs the forecast by. When a forecast is needed ASAP, then this date/time is set to the request submitted date/time.</span></p><p><span /></p><p><span /></p></div></div><p>Link to <span style='font-weight:bold;'>graphical web page: </span>\n<a href='https://spot.weather.gov/' style='text-decoration:underline;'>https://spot.weather.gov</span></a></p><p><span /></p><p>Link to <span style='font-weight:bold;'>data download: </span><a href='https://spot.weather.gov/cms/api/1.0/geojson' style='text-decoration:underline;'><span>https://spot.weather.gov/cms/api/1.0/geojson</span></a></p><p><span /></p><p><span>Link to </span><a href='https://www.weather.gov:443/gis/IDP-GISRestMetadata' style='text-decoration:underline;'><span>metadata</span></a></p><p><span /></p><p><span style='font-weight:bold;'>Questions/Concerns </span><span>about the service, please contact the </span><a href='mailto:nws.mapservices@noaa.gov:25' target='_blank' style='text-decoration:underline;'><span>DISS-GIS</span></a><span> team.</span></p><p><span style='font-weight:bold;'>Time Information: </span><span>This service is not time enabled.</span></p><p><span /></p></div>",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": -100000,
+      "latestWkid": 4269,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 4269,
+      "xyTolerance": 8.98315284119521e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 9507,
+  "status": 200
+}

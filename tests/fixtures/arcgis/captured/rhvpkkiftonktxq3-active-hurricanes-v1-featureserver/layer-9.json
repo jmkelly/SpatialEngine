@@ -1,0 +1,82 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "NHC, Esri",
+    "description": "Visually prepared Wind Force Probability (120 Hour Forecast) for wind speeds of 64 knots or greater (Hurricane Force Winds).",
+    "displayField": "RADII",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180,
+      "xmin": -180,
+      "ymax": 90,
+      "ymin": -90
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Radii",
+        "defaultValue": null,
+        "editable": true,
+        "name": "RADII",
+        "nullable": false,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Peak Wind Speed Probability at 120 hours",
+        "defaultValue": null,
+        "editable": true,
+        "name": "PWIND120",
+        "nullable": false,
+        "type": "esriFieldTypeSingle"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 9,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Hurricane Force (64kts+)",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 13103,
+  "status": 200
+}

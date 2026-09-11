@@ -1,7 +1,7 @@
 namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
-/// The attribute filter model of <c>spatial.feature.query@1</c> (ADR-0028,
+/// The attribute filter model of feature queries (ADR-0028,
 /// architecture/distilled/contracts.md): a small, fully-parameterised expression
 /// language over a dataset's fields. Consumers of the AST never see SQL or
 /// literals inlined anywhere — <see cref="PostgisFilterSql"/> turns the tree

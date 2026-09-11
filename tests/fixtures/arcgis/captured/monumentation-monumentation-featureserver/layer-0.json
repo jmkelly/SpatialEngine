@@ -1,0 +1,356 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "tim_smith@nps.gov",
+    "description": "This data set contains information about any survey monument found on National Park lands or that supports NPS operations. Examples include survey monuments used for any survey control such as lidar surveys, cultural and natural resource survey control, facilities, park boundaries, etc.",
+    "displayField": "UNITNAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": 0,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": 0,
+        "latestVcsWkid": 5703,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 1,
+        "vcsWkid": 5703,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 1
+      },
+      "xmax": 144.71368509800004,
+      "xmin": -177.25889393799997,
+      "ymax": 83.93284379600004,
+      "ymin": 13.458539642000062
+    },
+    "fields": [
+      {
+        "alias": "PUBLICDISPLAY",
+        "defaultValue": "No Public Map Display",
+        "editable": true,
+        "length": 50,
+        "name": "PUBLICDISPLAY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "DATAACCESS",
+        "defaultValue": "Internal NPS Only",
+        "editable": true,
+        "length": 50,
+        "name": "DATAACCESS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "UNITNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "GROUPNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 4,
+        "name": "REGIONCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEUSER",
+        "defaultValue": null,
+        "editable": false,
+        "length": 50,
+        "name": "CREATEUSER",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EDITUSER",
+        "defaultValue": null,
+        "editable": false,
+        "length": 50,
+        "name": "EDITUSER",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPMETHOD",
+        "defaultValue": "Unknown",
+        "editable": true,
+        "length": 254,
+        "name": "MAPMETHOD",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "XYACCURACY",
+        "defaultValue": "Unknown",
+        "editable": true,
+        "length": 50,
+        "name": "XYACCURACY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATUREID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "FEATUREID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONSTAMPID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "MONSTAMPID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPLABEL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "MAPLABEL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONDESC",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "MONDESC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONSETDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "MONSETDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "MONSETBY",
+        "defaultValue": "Unknown",
+        "editable": true,
+        "length": 50,
+        "name": "MONSETBY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONRECOVDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "MONRECOVDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "MONRECOVBY",
+        "defaultValue": "Unknown",
+        "editable": true,
+        "length": 50,
+        "name": "MONRECOVBY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "INFOLINK",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "INFOLINK",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISOUTPARK",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "ISOUTPARK",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISEXTANT",
+        "defaultValue": "Unknown",
+        "editable": true,
+        "length": 255,
+        "name": "ISEXTANT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEDATE",
+        "defaultValue": null,
+        "editable": false,
+        "length": 8,
+        "name": "CREATEDATE",
+        "nullable": true,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "NGS PID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "NGSPID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "UNITCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "UNITCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "GROUPCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPSOURCE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "MAPSOURCE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCEDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "SOURCEDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GEOMETRYID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 38,
+        "name": "GEOMETRYID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOTES",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "NOTES",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MONUTILITY",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "MONUTILITY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EDITDATE",
+        "defaultValue": null,
+        "editable": false,
+        "length": 8,
+        "name": "EDITDATE",
+        "nullable": true,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": true,
+    "maxRecordCount": 2000,
+    "name": "NPS Monuments",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": 0,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": 0,
+      "latestVcsWkid": 5703,
+      "latestWkid": 6318,
+      "mTolerance": 0.001,
+      "mUnits": 1,
+      "vcsWkid": 5703,
+      "wkid": 104145,
+      "xyTolerance": 8.983152841195215e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 1
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 18872,
+  "status": 200
+}

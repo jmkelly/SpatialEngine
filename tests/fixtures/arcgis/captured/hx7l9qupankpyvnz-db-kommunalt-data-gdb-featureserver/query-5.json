@@ -1,0 +1,77 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Kommune": "Roskilde",
+          "OBJECTID": 1,
+          "SampleDate": 1582675200000,
+          "antal_pat": 1,
+          "c_kom": 265
+        }
+      },
+      {
+        "attributes": {
+          "Kommune": "K\u00f8benhavn",
+          "OBJECTID": 2,
+          "SampleDate": 1582761600000,
+          "antal_pat": 1,
+          "c_kom": 101
+        }
+      },
+      {
+        "attributes": {
+          "Kommune": "\u00c5rhus",
+          "OBJECTID": 3,
+          "SampleDate": 1582848000000,
+          "antal_pat": 1,
+          "c_kom": 751
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "c_kom",
+        "defaultValue": null,
+        "name": "c_kom",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Kommune",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SampleDate",
+        "defaultValue": null,
+        "length": 8,
+        "name": "SampleDate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "antal_pat",
+        "defaultValue": null,
+        "name": "antal_pat",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 1349,
+  "status": 200
+}

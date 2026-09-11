@@ -1,0 +1,32 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": null,
+    "hasVersionedData": false,
+    "initialExtent": null,
+    "layers": [],
+    "maxRecordCount": 2000,
+    "serviceDescription": "",
+    "serviceItemId": "fb2f4816d6ac4527834faac54eda4b64",
+    "supportedQueryFormats": "JSON",
+    "tables": [
+      {
+        "defaultVisibility": true,
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "cases_time_v3",
+        "parentLayerId": -1,
+        "subLayerIds": null
+      }
+    ],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2687,
+  "status": 200
+}

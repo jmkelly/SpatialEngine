@@ -1,0 +1,33 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "cy1lxxl9zljeburz-florida-places-and-municipal-zones-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 920,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 920,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Florida_Places",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": null
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "cy1lxxl9zljeburz-florida-places-and-municipal-zones-featureserver",
+  "url": "https://services1.arcgis.com/CY1LXxl9zlJeBuRZ/arcgis/rest/services/Florida_Places_and_Municipal_Zones/FeatureServer"
+}
