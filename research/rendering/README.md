@@ -9,8 +9,9 @@ from the engine's existing services?
 and composition**, both hidden behind `Spatial.PluginSdk` interfaces and
 wired by DI in `Spatial.Host`. The style document is the MapLibre style spec
 (so the browser workbench and the server agree); a CSS-ish authoring layer
-lowers to the same compiled style model. A runnable spike proves the
-pipeline end to end and measures it.
+lowers to the same compiled style model. A runnable spike (since retired
+once its findings were promoted) proved the pipeline end to end and
+measured it.
 
 This directory is the research half of the change. The decision record is
 `architecture/decisions/ADR-0044-raster-rendering-pipeline.md` (proposed);
@@ -23,9 +24,12 @@ the production shape is a later, separately-verified change.
 2. **Filter on the repo's hard walls** (ADR-0005/0033): .NET 10, permissive
    licence, third-party types can stay inside one implementation project,
    no cross-implementation references.
-3. **Spike the survivor** in `spike/RenderSpike`: real `Spatial.Core`
-   geometry → `ICoordinateTransforms` → `IGeometryOperations.Simplify` →
-   Skia raster → NetVips composite/encode, then measure it.
+3. **Spike the survivor** (retired): a runnable `RenderSpike` proved real
+   `Spatial.Core` geometry → `ICoordinateTransforms` →
+   `IGeometryOperations.Simplify` → Skia raster → NetVips composite/encode
+   and measured it. The findings are promoted into ADR-0044 and the
+   production rendering projects, so the spike code is removed; the numbers
+   below stand as the record.
 
 Environment for the numbers below: .NET 10.0.401, 24 cores, SkiaSharp
 4.152.0, NetVips 3.2.0 / libvips 8.18.6, Release build.
@@ -166,8 +170,8 @@ batch parallelises trivially, and the same pipeline answers a one-off
 
 ## Spike results
 
-`spike/RenderSpike` renders core geometry to a styled 512×512 tile and
-composites it over NetVips imagery. Per-stage mean over 20 iterations,
+The retired `RenderSpike` rendered core geometry to a styled 512×512 tile and
+composited it over NetVips imagery. Per-stage mean over 20 iterations,
 1.79–48.9 ms simplify / 9.06–651.41 ms raster / 9.68–40.19 ms compose.
 These are indicative single-machine numbers, not a controlled benchmark
 suite; the durable results are the ratios (parallel scaling, dash cost):
@@ -238,8 +242,8 @@ two dashed roads and four city points composed over the imagery floor.
 
 ```bash
 python3 research/rendering/probe.py                 # candidate facts
-cd research/rendering/spike/RenderSpike
-dotnet run -c Release                               # sample -> /tmp/render-spike/sample.png
-dotnet run -c Release -- --bench                    # stage + parallel numbers
-dotnet run -c Release -- --imagery /path/base.tif   # composite over real imagery
 ```
+
+The spike's runnable code was removed once its findings landed; the
+reproducible checks are now `eng/verify.sh` and the
+`Spatial.Rendering.Skia.Tests` / `Spatial.Imagery.Vips.Tests` suites.
