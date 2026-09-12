@@ -39,6 +39,15 @@ public static class CoordinateLayoutExtensions
     public static bool HasM(this CoordinateLayout layout) =>
         layout is CoordinateLayout.Xym or CoordinateLayout.Xyzm;
 
+    /// <summary>The layout carrying exactly the requested ordinates.</summary>
+    public static CoordinateLayout FromOrdinates(bool hasZ, bool hasM) => (hasZ, hasM) switch
+    {
+        (true, true) => CoordinateLayout.Xyzm,
+        (true, false) => CoordinateLayout.Xyz,
+        (false, true) => CoordinateLayout.Xym,
+        (false, false) => CoordinateLayout.Xy,
+    };
+
     /// <summary>
     /// Infers the layout that can represent every ordinate present in
     /// <paramref name="coordinates"/>: the presence of any Z ordinate raises
@@ -55,12 +64,6 @@ public static class CoordinateLayoutExtensions
             hasM |= coordinate.M is not null;
         }
 
-        return (hasZ, hasM) switch
-        {
-            (true, true) => CoordinateLayout.Xyzm,
-            (true, false) => CoordinateLayout.Xyz,
-            (false, true) => CoordinateLayout.Xym,
-            (false, false) => CoordinateLayout.Xy,
-        };
+        return FromOrdinates(hasZ, hasM);
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Npgsql;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
@@ -47,9 +48,16 @@ internal sealed class PostgisTestContext : IAsyncDisposable
         var invocation = CapabilityInvocation.Create(capability, arguments) with
         {
             CancellationToken = cancellationToken,
+            GrantedPermissions = DataProviderPermissions,
         };
         return _runtime.InvokeAsync(invocation);
     }
+
+    /// <summary>The permission set the data contracts require (the runtime gates every invocation).</summary>
+    internal static readonly ImmutableHashSet<Permission> DataProviderPermissions = ImmutableHashSet.Create(
+        Permission.Parse("spatial.feature.read"),
+        Permission.Parse("spatial.feature.write"),
+        Permission.Parse("spatial.dataset.create"));
 
     /// <summary>Invokes a scanning capability and decodes every streamed canonical feature batch.</summary>
     public async Task<List<FeatureBatch>> ReadBatchesAsync(

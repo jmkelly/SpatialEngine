@@ -17,13 +17,7 @@ internal static class GeometryAggregates
             hasM |= part.Layout.HasM();
         }
 
-        return (hasZ, hasM) switch
-        {
-            (true, true) => CoordinateLayout.Xyzm,
-            (true, false) => CoordinateLayout.Xyz,
-            (false, true) => CoordinateLayout.Xym,
-            (false, false) => CoordinateLayout.Xy,
-        };
+        return CoordinateLayoutExtensions.FromOrdinates(hasZ, hasM);
     }
 
     public static Envelope? MergeEnvelopes(IEnumerable<IGeometry> parts)

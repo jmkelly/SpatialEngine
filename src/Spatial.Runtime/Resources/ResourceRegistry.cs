@@ -209,21 +209,48 @@ public sealed class ResourceRegistry
     {
         lock (_gate)
         {
+            if (TryGetLeasedStream(handle, lease, out var bounded))
+            {
+                stream = bounded;
+                return true;
+            }
+
             stream = null;
-            if (lease is null || !_records.TryGetValue(handle.Id, out var record)
-                || record.State == ResourceState.Closed || record.Payload is not BoundedStream bounded)
-            {
-                return false;
-            }
-
-            if (!lease.IsActive(_clock()))
-            {
-                return false;
-            }
-
-            stream = bounded;
-            return true;
+            return false;
         }
+    }
+
+    /// <summary>The stream payload behind an active lease, or false when the resource or lease is unusable.</summary>
+    private bool TryGetLeasedStream(
+        ResourceHandle handle,
+        ResourceLease? lease,
+        [NotNullWhen(true)] out BoundedStream? bounded)
+    {
+        bounded = null;
+        if (lease is null || !_records.TryGetValue(handle.Id, out var record))
+        {
+            return false;
+        }
+
+        return TryGetLiveStream(record, lease, out bounded);
+    }
+
+    /// <summary>The stream payload of an open resource under an unexpired lease.</summary>
+    private bool TryGetLiveStream(ResourceRecord record, ResourceLease lease, [NotNullWhen(true)] out BoundedStream? bounded)
+    {
+        bounded = null;
+        if (record.State == ResourceState.Closed || record.Payload is not BoundedStream stream)
+        {
+            return false;
+        }
+
+        if (!lease.IsActive(_clock()))
+        {
+            return false;
+        }
+
+        bounded = stream;
+        return true;
     }
 
     /// <summary>Whether the handle refers to a registered, stream-backed resource (streaming contract enforcement).</summary>

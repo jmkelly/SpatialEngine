@@ -43,8 +43,8 @@ public sealed class PostgisQueriesTests
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
 
         Assert.Equal(
-            "INSERT INTO \"public\".\"places\" (\"id\", \"name\", \"geom\") VALUES (@p0, @p1, ST_GeomFromEWKB(@p2, 4326))",
-            PostgisQueries.Insert(dataset, Schema, 4326));
+            "INSERT INTO \"public\".\"places\" (\"id\", \"name\", \"geom\") VALUES (@p0, @p1, ST_GeomFromEWKB(@p2))",
+            PostgisQueries.Insert(dataset, Schema));
     }
 
     [Fact]

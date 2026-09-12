@@ -36,15 +36,24 @@ internal static class GeometryAdapter
     public static NtsGeometry ToNts(IGeometry geometry) => geometry switch
     {
         Point point => PointToNts(point),
-        LineString lineString => Factory.CreateLineString(SequenceFor(lineString.Sequence, lineString.Layout)),
+        LineString lineString => LineStringToNts(lineString),
         Polygon polygon => PolygonToNts(polygon),
+        _ => ToNtsAggregate(geometry),
+    };
+
+    /// <summary>The aggregate core shapes (multi* and collections) on the way to NTS.</summary>
+    private static NtsGeometryCollection ToNtsAggregate(IGeometry geometry) => geometry switch
+    {
         MultiPoint multiPoint => Factory.CreateMultiPoint(multiPoint.Points.Select(PointToNts).ToArray()),
         MultiLineString multiLineString => Factory.CreateMultiLineString(
-            multiLineString.LineStrings.Select(line => Factory.CreateLineString(SequenceFor(line.Sequence, line.Layout))).ToArray()),
+            multiLineString.LineStrings.Select(LineStringToNts).ToArray()),
         MultiPolygon multiPolygon => Factory.CreateMultiPolygon(multiPolygon.Polygons.Select(PolygonToNts).ToArray()),
         GeometryCollection collection => Factory.CreateGeometryCollection(collection.Geometries.Select(ToNts).ToArray()),
         _ => throw new ArgumentException($"Cannot convert core geometry type '{geometry.Type}' to NetTopologySuite.", nameof(geometry)),
     };
+
+    private static NtsLineString LineStringToNts(LineString lineString) =>
+        Factory.CreateLineString(SequenceFor(lineString.Sequence, lineString.Layout));
 
     /// <summary>Converts an NTS result back to an immutable core geometry carrying <paramref name="crs"/>.</summary>
     public static IGeometry ToCore(NtsGeometry geometry, CoordinateReference? crs) => geometry switch
@@ -52,6 +61,12 @@ internal static class GeometryAdapter
         NtsPoint point => PointToCore(point, crs),
         NtsLineString lineString => LineStringToCore(lineString, crs),
         NtsPolygon polygon => PolygonToCore(polygon, crs),
+        _ => ToCoreAggregate(geometry, crs),
+    };
+
+    /// <summary>The aggregate NTS shapes (multi* and collections) on the way back to core.</summary>
+    private static IGeometry ToCoreAggregate(NtsGeometry geometry, CoordinateReference? crs) => geometry switch
+    {
         NtsMultiPoint multiPoint => MultiPointToCore(multiPoint, crs),
         NtsMultiLineString multiLineString => MultiLineStringToCore(multiLineString, crs),
         NtsMultiPolygon multiPolygon => MultiPolygonToCore(multiPolygon, crs),
@@ -204,13 +219,8 @@ internal static class GeometryAdapter
             crs);
 
     /// <summary>The layout that can represent every ordinate the sequence stores.</summary>
-    private static CoordinateLayout LayoutFor(NtsSequence sequence) => (sequence.HasZ, sequence.HasM) switch
-    {
-        (true, true) => CoordinateLayout.Xyzm,
-        (true, false) => CoordinateLayout.Xyz,
-        (false, true) => CoordinateLayout.Xym,
-        (false, false) => CoordinateLayout.Xy,
-    };
+    private static CoordinateLayout LayoutFor(NtsSequence sequence) =>
+        CoordinateLayoutExtensions.FromOrdinates(sequence.HasZ, sequence.HasM);
 
     private static Span<Coordinate> AsSpan(List<Coordinate> coordinates) =>
         CollectionsMarshal.AsSpan(coordinates);

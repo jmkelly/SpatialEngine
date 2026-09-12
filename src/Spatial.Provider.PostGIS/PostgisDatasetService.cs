@@ -1,3 +1,4 @@
+using Npgsql;
 using Spatial.Core.Features;
 using Spatial.PluginSdk.Capabilities;
 using Spatial.PluginSdk.Providers;
@@ -50,8 +51,17 @@ internal sealed class PostgisDatasetService
         int srid)
     {
         await using var connection = await _store.Value.OpenConnectionAsync(invocation.CancellationToken);
-        await PostgisDataStore.ExecuteNonQueryAsync(
-            connection, PostgisQueries.CreateTable(dataset, batch.Schema, srid), [], invocation.CancellationToken);
+        try
+        {
+            await PostgisDataStore.ExecuteNonQueryAsync(
+                connection, PostgisQueries.CreateTable(dataset, batch.Schema, srid), [], invocation.CancellationToken);
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.DuplicateTable)
+        {
+            throw new PostgisDatasetExistsException(
+                $"the dataset '{dataset.Qualified}' already exists; drop it first or create a different dataset.");
+        }
+
         return CapabilityResult.Success(dataset.Qualified);
     }
 }

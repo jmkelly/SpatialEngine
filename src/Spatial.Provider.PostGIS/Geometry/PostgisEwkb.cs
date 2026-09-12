@@ -120,25 +120,24 @@ internal static class PostgisEwkb
             return GeometryFactory.CreateEmptyPoint(crs, LayoutOf(flags));
         }
 
-        if (!flags.HasZ && !flags.HasM)
-        {
-            return GeometryFactory.CreatePoint(x, y, crs);
-        }
+        return CreatePoint(cursor, endian, flags, x, y, crs);
+    }
 
-        if (flags.HasZ && !flags.HasM)
-        {
-            return GeometryFactory.CreatePoint(x, y, cursor.ReadDouble(endian), crs);
-        }
+    /// <summary>The ordinate-aware point builders, keyed by the present Z/M flags (one read per present ordinate).</summary>
+    private static readonly Dictionary<(bool HasZ, bool HasM), Func<double, double, double, double, CoordinateReference?, Point>> PointBuilders = new()
+    {
+        [(false, false)] = (x, y, _, _, crs) => GeometryFactory.CreatePoint(x, y, crs),
+        [(true, false)] = (x, y, z, _, crs) => GeometryFactory.CreatePoint(x, y, z, crs),
+        [(false, true)] = (x, y, _, m, crs) => GeometryFactory.CreatePoint(new Coordinate(x, y, M: m), crs),
+        [(true, true)] = (x, y, z, m, crs) => GeometryFactory.CreatePoint(x, y, z, m, crs),
+    };
 
-        if (!flags.HasZ && flags.HasM)
-        {
-            var m = cursor.ReadDouble(endian);
-            return GeometryFactory.CreatePoint(new Coordinate(x, y, M: m), crs);
-        }
-
-        var z = cursor.ReadDouble(endian);
-        var m2 = cursor.ReadDouble(endian);
-        return GeometryFactory.CreatePoint(x, y, z, m2, crs);
+    /// <summary>Reads the ordinates the flags declare and builds the matching point layout.</summary>
+    private static Point CreatePoint(Reader cursor, byte endian, LayoutFlags flags, double x, double y, CoordinateReference? crs)
+    {
+        var z = flags.HasZ ? cursor.ReadDouble(endian) : double.NaN;
+        var m = flags.HasM ? cursor.ReadDouble(endian) : double.NaN;
+        return PointBuilders[(flags.HasZ, flags.HasM)](x, y, z, m, crs);
     }
 
     private static LineString ReadLineString(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs)

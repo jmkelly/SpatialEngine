@@ -264,43 +264,53 @@ public sealed class PluginWorkerHost : IAsyncDisposable
         out string? error)
     {
         invocation = null!;
-        error = null;
-        if (payload is not JsonObject obj)
-        {
-            error = $"the invoke payload for {invokeId} is not an object";
-            return false;
-        }
-
-        if (!CapabilityId.TryParse(obj["capability"]?.GetValue<string>(), out var capability))
-        {
-            error = $"the invoke payload for {invokeId} must carry a valid 'capability'";
-            return false;
-        }
-
-        if (!TryReadArguments(obj["arguments"] as JsonObject, out var arguments, out error))
+        if (!TryParseHeader(payload, invokeId, out var capability, out var obj, out error))
         {
             return false;
         }
 
-        if (!TryReadPermissions(obj["permissions"] as JsonArray, out var permissions, out error))
+        if (!TryReadArguments(obj["arguments"] as JsonObject, out var arguments, out error)
+            || !TryReadPermissions(obj["permissions"] as JsonArray, out var permissions, out error)
+            || !TryReadDeadline(obj["deadline"], out var deadline, out error))
         {
             return false;
         }
 
-        if (!TryReadDeadline(obj["deadline"], out var deadline, out error))
-        {
-            return false;
-        }
-
-        var progress = new ProgressRelay(_channel, invokeId);
         invocation = new CapabilityInvocation(
             capability,
             arguments,
             permissions,
             deadline,
-            progress,
+            new ProgressRelay(_channel, invokeId),
             CancellationToken.None,
             _facilities);
+        return true;
+    }
+
+    /// <summary>Validates the payload object shape and its capability header.</summary>
+    private static bool TryParseHeader(
+        JsonNode? payload,
+        string invokeId,
+        out CapabilityId capability,
+        out JsonObject obj,
+        out string? error)
+    {
+        capability = default;
+        obj = null!;
+        error = null;
+        if (payload is not JsonObject objectPayload)
+        {
+            error = $"the invoke payload for {invokeId} is not an object";
+            return false;
+        }
+
+        if (!CapabilityId.TryParse(objectPayload["capability"]?.GetValue<string>(), out capability))
+        {
+            error = $"the invoke payload for {invokeId} must carry a valid 'capability'";
+            return false;
+        }
+
+        obj = objectPayload;
         return true;
     }
 

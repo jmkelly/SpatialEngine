@@ -34,7 +34,7 @@ internal static class PostgisFilterSql
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(parameters);
 
-        var builder = new SqlBuilder(schema, parameters);
+        var builder = new SqlBuilder(schema, parameters, parameters.Count);
         builder.Visit(expression);
         if (builder.Error is not null)
         {
@@ -55,14 +55,14 @@ internal static class PostgisFilterSql
         int srid,
         List<object?> parameters)
     {
-        var builder = new SqlBuilder(null!, parameters);
+        var builder = new SqlBuilder(null!, parameters, parameters.Count);
         return builder.AppendBoundingBox(geometryColumn, srid, bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
     }
 
-    private sealed class SqlBuilder(IFeatureSchema? schema, List<object?> parameters)
+    private sealed class SqlBuilder(IFeatureSchema? schema, List<object?> parameters, int parameterStart)
     {
         private readonly StringBuilder _sql = new();
-        private int _parameterIndex;
+        private int _parameterIndex = parameterStart;
 
         public string? Error { get; private set; }
 

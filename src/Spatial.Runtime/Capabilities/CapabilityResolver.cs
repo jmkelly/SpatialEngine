@@ -33,40 +33,28 @@ internal sealed class CapabilityResolver
     /// </summary>
     public ResolvedProvider? Resolve(CapabilityId capability, InvocationOptions? options = null)
     {
-        var candidates = Candidates(capability);
         options ??= InvocationOptions.None;
+        var candidates = Candidates(capability);
 
+        // The caller's explicit pin is a hard constraint: a miss resolves to nothing.
         if (options.ExplicitProvider is { } explicitId)
         {
-            return MatchOrNull(candidates, explicitId) is { } explicitMatch
-                ? ToResolved(explicitMatch, ResolutionStep.Explicit)
-                : null;
+            return Preference(candidates, explicitId, ResolutionStep.Explicit);
         }
 
-        if (LocalProvider(options) is { } localId && MatchOrNull(candidates, localId) is { } localMatch)
-        {
-            return ToResolved(localMatch, ResolutionStep.ResourceLocal);
-        }
-
-        if (_active.PreferredFor(capability) is { } active
-            && MatchOrNull(candidates, active) is { } activeMatch)
-        {
-            return ToResolved(activeMatch, ResolutionStep.ActivePreferred);
-        }
-
-        if (ResolvePreference(
-                candidates,
-                _configuration.PreferredProviderFor(capability),
-                ResolutionStep.ConfiguredPreferred) is { } configured)
-        {
-            return configured;
-        }
-
-        return candidates.Count == 0 ? null : ToResolved(candidates[0], ResolutionStep.FirstHealthy);
+        return Preference(candidates, LocalProvider(options), ResolutionStep.ResourceLocal)
+            ?? Preference(candidates, _active.PreferredFor(capability), ResolutionStep.ActivePreferred)
+            ?? Preference(candidates, _configuration.PreferredProviderFor(capability), ResolutionStep.ConfiguredPreferred)
+            ?? FirstHealthy(candidates);
     }
 
-    private static ResolvedProvider? ResolvePreference(List<Candidate> candidates, ProviderId? preferred, ResolutionStep step) =>
+    /// <summary>The candidate at a preferred provider id, resolved with <paramref name="step"/>; null when absent.</summary>
+    private static ResolvedProvider? Preference(List<Candidate> candidates, ProviderId? preferred, ResolutionStep step) =>
         preferred is { } id && MatchOrNull(candidates, id) is { } match ? ToResolved(match, step) : null;
+
+    /// <summary>The first healthy provider by stable id, or null when nothing is registered.</summary>
+    private static ResolvedProvider? FirstHealthy(List<Candidate> candidates) =>
+        candidates.Count == 0 ? null : ToResolved(candidates[0], ResolutionStep.FirstHealthy);
 
     /// <summary>The actionable error for a failed resolution, naming the reason.</summary>
     public CapabilityError DescribeUnavailable(CapabilityId capability, InvocationOptions options)

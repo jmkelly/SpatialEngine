@@ -301,9 +301,11 @@ public sealed class PostgisInvocationValidatorTests
             new BoundingBox(1, 2, 3, 4), filter);
 
         Assert.True(build.IsValid);
-        Assert.False(string.IsNullOrEmpty(build.Sql));
-        Assert.Contains(" AND ", build.Sql);
-        Assert.NotEmpty(build.Parameters);
+        // The bbox and the filter share one parameter list: the filter must not restart at @p0.
+        Assert.Equal(
+            "\"geom\" && ST_MakeEnvelope(@p0, @p1, @p2, @p3, 4326) AND \"name\" = @p4",
+            build.Sql);
+        Assert.Equal(new object?[] { 1.0, 2.0, 3.0, 4.0, "x" }, build.Parameters);
     }
 
     [Fact]
@@ -436,6 +438,10 @@ public sealed class PostgisInvocationValidatorTests
         var inactive = executor.MapFailure(Invocation, new PostgisInactiveTransactionException("inactive"));
         Assert.Equal(CapabilityErrorKind.InvalidArguments, inactive.Kind);
         Assert.Contains("inactive", inactive.Message);
+
+        var exists = executor.MapFailure(Invocation, new PostgisDatasetExistsException("the dataset 'public.places' already exists"));
+        Assert.Equal(CapabilityErrorKind.InvalidArguments, exists.Kind);
+        Assert.Contains("already exists", exists.Message);
 
         var other = executor.MapFailure(Invocation, new InvalidOperationException("boom"));
         Assert.Equal(CapabilityErrorKind.ProviderFailure, other.Kind);

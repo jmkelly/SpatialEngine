@@ -49,7 +49,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
 
         var items = await context.ReadItemsAsync(
             CatalogueListContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Pattern] = "places" });
+            new Dictionary<string, object?> { [ProviderArguments.Pattern] = "%.places" });
 
         var ids = items.Cast<string>().Select(DatasetMetadataJson.ReadSummary).Select(summary => summary.Id).ToArray();
         Assert.Equal(["public.places"], ids);
@@ -237,7 +237,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             [ProviderArguments.Batch] = batchBytes,
         });
 
-        Assert.True(outcome.TryGetValue(out var value));
+        Assert.True(outcome.TryGetValue(out var value), $"write failed: {outcome.Error}");
         Assert.Equal(2L, value);
         Assert.Equal(2, await context.CountAsync("SELECT count(*) FROM public.write_target"));
     }
@@ -285,7 +285,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             [ProviderArguments.Srid] = 3857,
         });
 
-        Assert.True(outcome.TryGetValue(out var value));
+        Assert.True(outcome.TryGetValue(out var value), $"create failed: {outcome.Error}");
         Assert.Equal("public.created", value);
 
         var description = DatasetMetadataJson.ReadDescription((string)(await context.ReadItemsAsync(
@@ -314,7 +314,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         ]);
 
         var begin = await context.InvokeAsync(TransactionBeginContract.Id, new Dictionary<string, object?>());
-        Assert.True(begin.TryGetValue(out var handleValue));
+        Assert.True(begin.TryGetValue(out var handleValue), $"begin failed: {begin.Error}");
         var transaction = Assert.IsType<ResourceHandle>(handleValue);
 
         var batchBytes = FeatureBatchCodec.Encode(new FeatureBatch(schema,
@@ -331,7 +331,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
             [ProviderArguments.Batch] = batchBytes,
             [ProviderArguments.Transaction] = transaction,
         });
-        Assert.True(write.TryGetValue(out var count));
+        Assert.True(write.TryGetValue(out var count), $"enlisted write failed: {write.Error}");
         Assert.Equal(1L, count);
         // Uncommitted: invisible to other connections.
         Assert.Equal(0, await context.CountAsync("SELECT count(*) FROM public.tx_target"));
@@ -375,7 +375,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         ]));
 
         var begin = await context.InvokeAsync(TransactionBeginContract.Id, new Dictionary<string, object?>());
-        Assert.True(begin.TryGetValue(out var handleValue));
+        Assert.True(begin.TryGetValue(out var handleValue), $"begin failed: {begin.Error}");
         var transaction = Assert.IsType<ResourceHandle>(handleValue);
         await context.InvokeAsync(FeatureWriteContract.Id, new Dictionary<string, object?>
         {
@@ -460,7 +460,10 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
 
         var outcome = await runtime.InvokeAsync(CapabilityInvocation.Create(
             FeatureScanContract.Id,
-            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" }));
+            new Dictionary<string, object?> { [ProviderArguments.Dataset] = "public.places" }) with
+        {
+            GrantedPermissions = PostgisTestContext.DataProviderPermissions,
+        });
 
         Assert.Equal(CapabilityErrorKind.ProviderFailure, outcome.Error!.Kind);
         Assert.DoesNotContain(secret, outcome.Error.Message);

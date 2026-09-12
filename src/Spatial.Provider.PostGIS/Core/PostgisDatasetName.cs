@@ -43,14 +43,34 @@ internal readonly record struct PostgisDatasetName
             return ParsePart(text, isSchema: false, out name, out reason);
         }
 
-        if (dot == 0 || dot == text.Length - 1 || text.IndexOf('.', dot + 1) >= 0)
+        if (!TrySplitSchemaTable(text, dot, out var schema, out var table))
         {
             reason = $"'{text}' is not a dataset identifier: expected schema.table with no other dots.";
             return false;
         }
 
-        var schema = text[..dot];
-        var table = text[(dot + 1)..];
+        return TryBuildQualified(schema, table, text, out name, out reason);
+    }
+
+    /// <summary>Splits at the single dot; false when the dot is leading, trailing or repeated.</summary>
+    private static bool TrySplitSchemaTable(string text, int dot, out string schema, out string table)
+    {
+        schema = string.Empty;
+        table = string.Empty;
+        if (dot == 0 || dot == text.Length - 1 || text.IndexOf('.', dot + 1) >= 0)
+        {
+            return false;
+        }
+
+        schema = text[..dot];
+        table = text[(dot + 1)..];
+        return true;
+    }
+
+    /// <summary>Validates both identifier parts and constructs the name.</summary>
+    private static bool TryBuildQualified(string schema, string table, string text, out PostgisDatasetName name, out string reason)
+    {
+        name = default;
         if (!IsIdentifierPart(schema, out var schemaProblem))
         {
             reason = $"'{text}' is not a valid dataset identifier: {schemaProblem}";
@@ -64,6 +84,7 @@ internal readonly record struct PostgisDatasetName
         }
 
         name = new PostgisDatasetName(schema, table);
+        reason = string.Empty;
         return true;
     }
 
