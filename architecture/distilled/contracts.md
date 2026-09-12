@@ -50,7 +50,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 - Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
   (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDemoJobs`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IPublicationRegistry`, `IDemoJobs`)
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
@@ -62,6 +62,8 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive capability, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity capability, implemented by PostGIS only (ADR-0038) |
+| `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive capability (ADR-0041) |
+| `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IPublicationRegistry`) | publication name / `Publication` | runtime service registry (ADR-0041): declared entries immutable, runtime entries persisted; `Publication` carries name, kind, store and stable-id layers |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
@@ -69,6 +71,8 @@ holding algorithms. All verbs are pure, planar and cancellable.
 - Feature data is **canonical `FeatureBatch` pages** (ADR-0020); on HTTP as
   Base64 SFBAT strings.
 - Metadata is **JSON DTOs** — never feature/geometry payloads.
+- `Publication`/`PublicationKind`/`PublicationLayer` and the ingest records
+  are core-typed (ADR-0041); no protocol or provider type crosses.
 - Dataset identifiers: strict `schema.table` grammar (`[a-z_][a-z0-9_]*` per
   part; `public` default), validated, never concatenated raw into SQL;
   filter literals are always bound parameters.

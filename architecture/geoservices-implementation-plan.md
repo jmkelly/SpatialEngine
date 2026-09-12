@@ -33,6 +33,13 @@
 > `architecture/references/geoservices-compatibility.md`).
 > **Compatibility review:** `architecture/references/geoservices-compatibility.md`
 > (read it first — it catalogues today's gaps).
+>
+> **Runtime service creation, data ingest and the Esri admin surface are
+> not in this plan** (the v1.0 spec does not define them): see
+> `architecture/publishing-and-ingest-plan.md` and the
+> `architecture/map-service-plan.md` / `architecture/image-service-plan.md`
+> scaffolds. This plan assumes a static, config-declared service map; the
+> publishing plan makes it a runtime registry.
 
 ## 1. Goal and non-goals
 

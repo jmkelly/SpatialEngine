@@ -36,6 +36,8 @@ truth: `architecture/decisions/` (ADRs) and
 - Services/operations/stores → `architecture/distilled/runtime.md`, `architecture/distilled/contracts.md`
 - Host API, workbench, deployment, secrets → `architecture/distilled/host-and-clients.md`
 - Esri GeoServices REST (serve/consume/edit) → `architecture/geoservices-implementation-plan.md`, ADR-0035, ADR-0037
+- Ingest, runtime service publishing, Esri admin → `architecture/publishing-and-ingest-plan.md`, ADR-0041
+- MapServer / ImageServer scaffolds → `architecture/map-service-plan.md`, `architecture/image-service-plan.md`
 
 ## Commands
 

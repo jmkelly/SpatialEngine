@@ -5,6 +5,7 @@
     <Project Path="src/Spatial.Core/Spatial.Core.csproj" />
     <Project Path="src/Spatial.Host/Spatial.Host.csproj" />
     <Project Path="src/Spatial.Interop.Esri/Spatial.Interop.Esri.csproj" />
+    <Project Path="src/Spatial.Interop.Ingest/Spatial.Interop.Ingest.csproj" />
     <Project Path="src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
     <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
     <Project Path="src/Spatial.Provider.Demo/Spatial.Provider.Demo.csproj" />
@@ -17,6 +18,7 @@
     <Project Path="tests/unit/Spatial.Adapter.GeoServices.Tests/Spatial.Adapter.GeoServices.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Esri.Tests/Spatial.Interop.Esri.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Interop.Ingest.Tests/Spatial.Interop.Ingest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Client.Tests/Spatial.Client.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.Demo.Tests/Spatial.Provider.Demo.Tests.csproj" />

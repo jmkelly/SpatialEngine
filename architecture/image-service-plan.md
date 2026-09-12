@@ -1,0 +1,133 @@
+# Image Service (ImageServer) Implementation Plan — scaffold
+
+> **Status:** scaffold, not scheduled. Read
+> `architecture/references/geoservices-compatibility.md` §4 and
+> `publishing-and-ingest-plan.md` first.
+>
+> **Blocking decision:** the engine has no raster concept anywhere
+> (ADR-0035 lists image as out of scope; core holds geometry/feature
+> values only). The raster boundary is the whole plan. Nothing here should
+> be started before that ADR.
+
+## 1. What the spec requires (v1.0 §8)
+
+| Resource / operation | Depends on |
+| --- | --- |
+| Image Service root (§8.0): `extent`, `pixelSizeX/Y`, `bandCount`, `pixelType`, `min/max/mean/stdv` values, `serviceDataType`, `fields`, `objectIdField` | raster metadata |
+| Export Image (§8.0.4) | **raster reader + warp/render + image encoding** |
+| Query (Image Services) (§8.0.5) | raster catalog (a table of raster items) |
+| Identify (§8.0.6) | pixel/band sampling at a point |
+| Download Rasters (§8.0.7) | raw raster byte streaming |
+| Raster Catalog Item (§8.1) | catalog row |
+| Raster Image / Thumbnail / Info / File (§8.2–8.5) | raster data + metadata |
+| Raster functions, key properties, legend (modern 10.x additions) | raster processing pipeline — **non-goal** |
+
+The catalog-less case matters: Query and Download are defined only when the
+service has an accessible catalog.
+
+## 2. Context
+
+- The engine is headless and its contracts carry canonical geometry/feature
+  values only. There is no `Raster` type, no band model, no nodata/mask
+  concept, no raster read path, and no image encoding.
+- `PublicationKind.Image` in `publishing-and-ingest-plan.md` is the natural
+  carrier: an ImageServer is a named raster source (single raster or
+  catalog) plus metadata, exposed by a publication.
+- The `map-service-plan.md` M0 data-only pattern applies here too: a
+  metadata-only ImageServer root is cheap and useful for discovery before
+  any pixels are produced.
+
+## 3. Decision: the raster boundary
+
+| Option | Shape | Cost / risk |
+| --- | --- | --- |
+| **A. Provider-owned rasters (recommended)** | rasters never become core values; an implementation project owns COG/GDAL/tiling; the wire carries **encoded image bytes + JSON metadata**; footprints/extents cross as core geometry | keeps core small (principles 1, 17); needs a raster engine dependency |
+| **B. Core raster value type** | `Raster`/`Band`/tile types in `Spatial.Core`, raster verbs in the SDK | large core change; pulls a whole raster model into the value kernel; contradicts ADR-0001/0032 |
+| **C. Facade over external services only** | ImageServer is a proxy over remote imagery | no local data; SSRF/token/config; not a real image implementation |
+| **D. Client-side only** | leave raster to the MapLibre client; no ImageServer | no Esri imagery interop at all |
+
+**Decided direction:** **A**. Rasters are provider-owned and never cross a
+contract as raster values — only encoded images and metadata do. This is
+the same shape ADR-0035 used for Esri JSON and is the only option that
+keeps the core a geometry/feature value model. The engine choice (managed
+COG reader vs GDAL) is settled **inside** the I0 ADR, with measured demand
+as ADR-0021 requires.
+
+**Engine choice (part of the same ADR):** a managed COG/GeoTIFF reader plus
+a warp/sample implementation, or GDAL (native packages, container
+implications, JIT-only). GDAL is the pragmatic breadth choice (mosaics,
+warps, many formats) but is a native dependency and needs a package
+allowlist entry + ADR; a managed path is narrower (COG only) but keeps the
+"framework-only" project rule. Decide with measured demand, as ADR-0021
+demands for AOT.
+
+## 4. Phases
+
+### I0 — Raster boundary ADR
+- **Deliverable:** the ADR that fixes option A/C, the engine choice, the
+  catalog model, and the wire rule (encoded images + metadata, never raster
+  values in contracts). Package allowlist and project boundaries updated
+  with it.
+- **Proof:** architecture tests; an interop test that no raster/third-party
+  type reaches the SDK.
+
+### I1 — Raster catalogue and metadata
+- **Deliverable:** `PublicationKind.Image` publications; Image Server root
+  metadata from a raster provider (`IDataCatalogue`-style but raster-typed,
+  e.g. `IRasterCatalogue.DescribeAsync`); raster info; per-item catalog
+  listing when a catalog dataset exists; `identify` of catalog items.
+- **Proof:** metadata fixtures from the spec's example; empty/absent
+  catalog behaviour; footprint geometry round-trips as core geometry.
+
+### I2 — Export Image
+- **Deliverable:** `exportImage` with `bbox` + `size` (or `bboxSR`/
+  `imageSR`), `format` (png/jpg/tiff), `interpolation`, `compression`,
+  `pixelType`, `noData`; `f=image` streaming and the JSON `href` shape.
+- **Proof:** golden-image tests at fixed extent/size; nodata and
+  transparency; CRS transformation correctness; pixel-type conversion
+  limits rejected explicitly.
+
+### I3 — Catalog operations
+- **Deliverable:** `query` over the image catalog (reuse the safe `where`
+  subset), `download` raw rasters, raster thumbnail/image/file resources.
+- **Proof:** catalog query fixtures; download size/format caps; range
+  handling if the provider supports it.
+
+### I4 — Scale, cache and limits
+- **Deliverable:** tile/export caching policy, request size caps,
+  concurrency limits, cancellation over HTTP (client disconnect cancels
+  raster work); optional pre-tiled/COG mosaicking.
+- **Proof:** cancellation and cap tests; load-shape check that export does
+  not park a request.
+
+### I5 — (Explicit non-goal) raster analytics
+Raster functions, statistics computation beyond stored metadata, on-the-fly
+mosaicking, and multidimensional/time-aware imagery are recorded as
+non-goals unless a separate ADR adopts them.
+
+## 5. Non-goals (standing)
+
+Raster analytics and raster-function chains; spectral indices; server-side
+time-series; elevation/point-cloud services; editing imagery. The engine
+serves *existing* imagery; it does not become a raster processing engine.
+
+## 6. Risks
+
+- Native dependency (GDAL) breaks the framework-only packages rule and the
+  Docker image size/attestation story; a managed alternative may be too
+  narrow for mosaics.
+- Pixel correctness (nodata, masks, palette, bit depth, resampling) is
+  easy to get subtly wrong; ownership of band statistics is unclear
+  (stored vs computed).
+- The raster catalog is a feature-like dataset with a raster per row;
+  decide whether the catalog is `PublicationKind.Image` metadata or a
+  normal dataset plus a raster locator column, before I3.
+- `download` exposes raw data — authorization and size limits are
+  mandatory, not optional.
+
+## 7. References
+
+- `architecture/publishing-and-ingest-plan.md` (Publication/registry/admin)
+- `architecture/map-service-plan.md` (M0 data-only pattern; shared render path)
+- `architecture/references/geoservices-compatibility.md` §4
+- ADR-0001/0032 (core values), ADR-0021 (native/AOT evidence), ADR-0035, principles 1–2

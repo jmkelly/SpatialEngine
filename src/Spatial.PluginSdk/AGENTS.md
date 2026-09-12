@@ -13,11 +13,16 @@ implementations and the host — never the reverse.
   core geometry values.
 - `ICrsDirectory` + `ICoordinateTransforms` — CRS description and
   coordinate transformation (x-first convention).
-- `BoundingBox`, `IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`,
-  `ITransactionStore` —
+- `BoundingBox`, `IDataCatalogue`, `IFeatureStore`, `IFeatureEditStore`,
+  `IFeatureLookup`, `ITransactionStore` —
   dataset catalogue, feature reads/writes (canonical `FeatureBatch` pages),
-  additive read-by-identity lookup for edit resolution (ADR-0038), and
-  store-owned string transaction handles.
+  additive per-feature editing (ADR-0037) and read-by-identity lookup for
+  edit resolution (ADR-0038), and store-owned string transaction handles.
+- `IPublicationRegistry` + `Publication`/`PublicationKind`/`PublicationLayer`
+  — the runtime publication registry (ADR-0041), the neutral unit of
+  service exposure (name, kind, store, stable-id layers).
+- `IDatasetIngest` + `IngestRequest`/`IngestOutcome`/`IngestIdentity` —
+  atomic bulk create-and-load with an identity mode (ADR-0041).
 - `IDemoJobs` — the demo cancellable sleep with progress.
 - `Providers/DatasetSummary`, `Providers/DatasetDescription` — catalogue DTOs.
 - `Transformations/CrsDescription` (+ axes, ellipsoid, kind, identity) —

@@ -16,6 +16,8 @@ reflects the state at decision time.
 | Which services exist + their contracts | `contracts.md` | 0033 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
+| Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
+| MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -88,6 +90,7 @@ shape is noted in brackets.
 | 0038 | Read-by-identity is an additive store capability (`IFeatureLookup`). |
 | 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
 | 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
+| 0041 | Ingest and publications are protocol-neutral SDK capabilities; Esri admin is a gated projection. |
 
 ## How to change the architecture
 

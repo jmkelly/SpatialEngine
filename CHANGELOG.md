@@ -9,6 +9,21 @@ this file together, then tag the release (`RELEASING.md`).
 
 ## [Unreleased]
 
+### Added
+
+- **Ingest codec** (ADR-0041): `Spatial.Interop.Ingest` decodes GeoJSON,
+  newline-delimited GeoJSON and CSV uploads into canonical `FeatureBatch`
+  pages with inferred schemas (`DatasetDecoder.Decode`). Core-only; no host
+  wiring yet.
+- **Ingest and publication SDK contracts** (ADR-0041):
+  `IPublicationRegistry` with the core-typed
+  `Publication`/`PublicationKind`/`PublicationLayer` runtime service registry,
+  and the additive `IDatasetIngest`
+  (`IngestRequest`/`IngestOutcome`/`IngestIdentity`) atomic bulk
+  create-and-load capability. Contracts only — implementations, the host
+  admin API and the Esri admin projection land in later phases of
+  `architecture/publishing-and-ingest-plan.md`.
+
 ### Changed
 
 - **Quality metrics gate recalibrated** (ADR-0040): `.dependably` now uses

@@ -208,6 +208,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Core",
         "Spatial.PluginSdk",
         "Spatial.Interop.Esri",
+        "Spatial.Interop.Ingest",
         "Spatial.Operations.NetTopologySuite",
         "Spatial.Transformations.ProjNet",
         "Spatial.Provider.Demo",
