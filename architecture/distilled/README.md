@@ -87,6 +87,7 @@ shape is noted in brackets.
 | 0037 | Feature editing is a gated, per-feature `IFeatureEditStore` capability. |
 | 0038 | Read-by-identity is an additive store capability (`IFeatureLookup`). |
 | 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
+| 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
 
 ## How to change the architecture
 

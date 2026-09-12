@@ -9,7 +9,14 @@ this file together, then tag the release (`RELEASING.md`).
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **Quality metrics gate recalibrated** (ADR-0040): `.dependably` now uses
+  published thresholds (cyclomatic ≤ 15, cognitive ≤ 15, nesting ≤ 4, MI
+  ≥ 20, in-repo coupling ≤ 40), disables the raw LCOM4 rule (it is
+  meaningless for stateless types and gates through the tool's guard-aware
+  diagnoses) and sets `failOn` to `moderate`. The metrics gate drops from
+  26 high findings to 3 high + 1 moderate, all genuine.
 
 ## [0.1.0] - 2026-09-12
 

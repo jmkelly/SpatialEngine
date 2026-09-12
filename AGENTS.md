@@ -59,22 +59,24 @@ truth: `architecture/decisions/` (ADRs) and
 
 Last full measurement: warnings 0, coverage 84.8% branches authored
 (95.5% lines), **CRAP red (15/1058 methods ≥ 10)**, **metrics red
-(26 high coupling/LCOM4)**. The earlier "1 high" metrics baseline was
+(3 high + 1 moderate after the ADR-0040 recalibration)**. The earlier "1 high" metrics baseline was
 stale (pre-refactor report); the queue is the source of truth.
 
 - Warnings: green (zero build warnings, `--no-incremental`).
-- Metrics (`.dependably`: MI ≥ 20, cyclomatic ≤ 25, coupling ≤ 20,
-  LCOM4 ≤ 4): **red** — 26 high, 1 moderate, 10 low. High coupling
-  fans out across `FeatureService` (51), `GeoServicesEndpoints`,
-  `SpatialClient`, `PostgisStore`, `PostgisEwkb`, `HostComposition`,
-  `StoreEndpoints`; high LCOM4 in `FeatureService` (21),
-  `GeometryFactory` (15), `GeometryAdapter` (13), `GeometryService`,
-  `PostgisQueries`, `ArcGisRestMapper`, `EsriGeometryCodec`,
-  `DemoStore`. Facade splits must stay cohesive per API area; see
-  SKILL.md anti-gaming rules before refactoring or grandfathering.
-  Dependably 0.1.2 `exceptions` only suppress metric rules, not
-  `god-class`/`hub` diagnoses (verified empirically) — the facades stay
-  visible until a cohesive per-area split lands (own ADR).
+- Metrics (`.dependably`, ADR-0040: MI ≥ 20, cyclomatic ≤ 15,
+  cognitive ≤ 15, nesting ≤ 4, coupling ≤ 40, LCOM4 via the tool's
+  guard-aware diagnoses, `failOn: moderate`): **red — 3 high, 1
+  moderate, 10 low**. The recalibrated gate fails on `FeatureService`
+  in-repo coupling 51, `FeatureService.EditsAsync` cognitive 17,
+  `SpatialClient` god-class (high) and `PostgisStore` god-class
+  (moderate); the 4 hubs and 6 long-parameter-lists are reported but do
+  not gate. The raw `lcom4` rule is off because LCOM4 is meaningless for
+  stateless types; a stateful class is flagged through `low-cohesion` /
+  `god-class` instead (ADR-0040). Facade splits must stay cohesive per
+  API area; see SKILL.md anti-gaming rules before refactoring or
+  grandfathering. Dependably 0.1.2 `exceptions` only suppress metric
+  rules, not `god-class`/`hub` diagnoses — the facades stay visible until
+  a cohesive per-area split lands.
 - CRAP (`scripts/dotnet/audit.py`: solution-wide `dotnet test`, merged coverage):
   the merge canonicalizes coverlet's per-run-relative filenames (suffix
   unification, skill `coverage_merge.py`). **Red — 15 of 1058 methods
