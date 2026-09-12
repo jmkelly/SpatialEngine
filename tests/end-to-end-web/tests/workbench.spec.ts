@@ -35,6 +35,22 @@ async function openTab(page: Page, label: string) {
   await page.getByRole("tab", { name: label, exact: true }).click();
 }
 
+/** Uploads a one-point GeoJSON through the composer's inline import form. */
+async function uploadPointLayer(page: Page, fileName: string, lon: number, lat: number) {
+  const body = JSON.stringify({
+    type: "FeatureCollection",
+    features: [
+      { type: "Feature", geometry: { type: "Point", coordinates: [lon, lat] }, properties: { name: fileName } },
+    ],
+  });
+  await page.getByTestId("composer-file").setInputFiles({
+    name: fileName,
+    mimeType: "application/geo+json",
+    buffer: Buffer.from(body),
+  });
+  await page.getByTestId("composer-upload").click();
+}
+
 /** Loads demo.points, waits for the fitted camera, and clicks the pixel of lng/lat (0,0). */
 async function selectGridCentre(page: Page) {
   await page.getByTestId("dataset-select").selectOption("demo.points");
@@ -186,4 +202,61 @@ test("a GeoJSON upload is ingested and published as a feature service", async ({
   await expect(page.getByTestId("ingest-result")).toContainText("public.e2e_cities", { timeout: 30_000 });
   await expect(page.getByTestId("ingest-result")).toContainText("2 feature(s)");
   await expect(page.getByTestId("publications")).toContainText("e2e_cities");
+});
+
+test("the map composer uploads, styles, reorders and publishes layers", async ({ page }) => {
+  // The run's publications file is isolated, but never assume a clean name.
+  await page.request.delete("/api/publications/composer_e2e", {
+    headers: { authorization: "Bearer workbench-e2e-token" },
+  });
+  await page.goto("/?basemap=none");
+  await openTab(page, "Composer");
+
+  await page.getByTestId("composer-store").selectOption("memory");
+  await page.getByTestId("composer-token").fill("workbench-e2e-token");
+
+  await uploadPointLayer(page, "composer_a.geojson", 10, 10);
+  await expect(page.getByTestId("composer-layer")).toHaveCount(1, { timeout: 30_000 });
+  await expect(page.getByTestId("composer-status")).toContainText("Imported 1 feature(s)");
+
+  await uploadPointLayer(page, "composer_b.geojson", 20, 20);
+  await expect(page.getByTestId("composer-layer")).toHaveCount(2, { timeout: 30_000 });
+  await expect(page.getByTestId("composer-layer").nth(0)).toContainText("public.composer_a");
+
+  // Style: open the editor and flip layer visibility.
+  await page.getByTestId("layer-style").first().click();
+  await expect(page.getByTestId("style-editor")).toBeVisible();
+  const eye = page.getByTestId("layer-visibility").first();
+  await expect(eye).toHaveText("◉");
+  await eye.click();
+  await expect(eye).toHaveText("○");
+
+  // Reorder: the accessible control moves the top layer down.
+  await page.getByTestId("composer-layer").nth(0).getByTestId("layer-down").click();
+  await expect(page.getByTestId("composer-layer").nth(0)).toContainText("public.composer_b");
+
+  // Publish the ordered composition as a map service.
+  await page.getByTestId("composer-name").fill("composer_e2e");
+  await page.getByTestId("composer-kind").selectOption("map");
+  await page.getByTestId("composer-publish").click();
+  await expect(page.getByTestId("composer-status")).toContainText("Published composer_e2e", { timeout: 30_000 });
+  await expect(page.getByTestId("composer-publications")).toContainText("composer_e2e");
+  await expect(page.getByTestId("composer-publications")).toContainText("2 layer(s)");
+});
+
+test("the map composer reorders layers by drag and drop", async ({ page }) => {
+  await page.goto("/?basemap=none");
+  await openTab(page, "Composer");
+  await page.getByTestId("composer-store").selectOption("memory");
+  await page.getByTestId("composer-token").fill("workbench-e2e-token");
+
+  await uploadPointLayer(page, "drag_a.geojson", 10, 10);
+  await expect(page.getByTestId("composer-layer")).toHaveCount(1, { timeout: 30_000 });
+  await uploadPointLayer(page, "drag_b.geojson", 20, 20);
+  await expect(page.getByTestId("composer-layer")).toHaveCount(2, { timeout: 30_000 });
+
+  const first = page.getByTestId("composer-layer").nth(0);
+  await expect(first).toContainText("public.drag_a");
+  await first.dragTo(page.getByTestId("composer-layer").nth(1));
+  await expect(page.getByTestId("composer-layer").nth(0)).toContainText("public.drag_b");
 });

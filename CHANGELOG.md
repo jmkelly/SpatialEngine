@@ -11,6 +11,15 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Map composer** (`architecture/map-composer-plan.md`): a workbench
+  screen that composes engine datasets into an ordered, styled MapLibre
+  preview — add catalogue datasets or upload GeoJSON/NDJSON/CSV inline,
+  reorder layers by drag and drop, style them, and publish the composition
+  as a neutral feature or map service through the existing
+  `PUT /api/publications/{name}` and `POST /api/ingest` routes. Loads and
+  deletes existing services, preserving their stable layer ids. No host
+  contract, SDK or ADR change; per-layer style stays a client-side authoring
+  aid until the MapServer render model lands.
 - **Raster rendering pipeline** (ADR-0044, plan R0–R3): the core-typed
   `IMapRenderer`/`IRasterOperations` contracts and DTOs in
   `Spatial.PluginSdk`, the `Spatial.Rendering.Skia` vector rasterizer

@@ -115,6 +115,9 @@ MapLibre) that a first-time user can operate without documentation:
   coordinate;
 - run typed operation forms — buffer, scan, query, cancellable sleep — and
   preview results without leaving the page;
+- compose a map or feature service: stack datasets into ordered layers,
+  style them on the map, reorder by drag and drop, import a GeoJSON/NDJSON/
+  CSV file inline, then publish and reopen the service;
 - keep unsaved previews in the browser, and clear them when you are done.
 
 **A headless engine** with a typed HTTP surface: geometry operations, CRS
