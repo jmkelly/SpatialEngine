@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Research spike, deliberately outside /src and /tests:
+    - not in SpatialEngine.slnx (architecture Solution_membership_is_exact
+      only scans src/ and tests/)
+    - inline package versions, central package management opted out, so the
+      spike can prove the stack without touching the repo's dependency set.
+    Do not promote this file; promote the findings into an ADR + real project.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RootNamespace>RenderSpike</RootNamespace>
+    <AssemblyName>RenderSpike</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="4.152.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.152.0" />
+    <PackageReference Include="NetVips" Version="3.2.0" />
+    <PackageReference Include="NetVips.Native.linux-x64" Version="8.18.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../../src/Spatial.Core/Spatial.Core.csproj" />
+    <ProjectReference Include="../../../../src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="../../../../src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
+    <ProjectReference Include="../../../../src/Spatial.Transformations.ProjNet/Spatial.Transformations.ProjNet.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -18,6 +18,7 @@ reflects the state at decision time.
 | Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
 | Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
 | MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
+| Raster rendering / imagery (proposed) | `../../research/rendering/README.md` | 0042 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -91,6 +92,7 @@ shape is noted in brackets.
 | 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
 | 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
 | 0041 | Ingest and publications are protocol-neutral SDK capabilities; Esri admin is a gated projection. |
+| 0042 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. *(proposed)* |
 
 ## How to change the architecture
 
