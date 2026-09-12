@@ -370,11 +370,16 @@ real) and its gate.
 - **Proof:** HTTP tests per route; the unsupported matrix tested;
   token required; no route mounted without config.
 
-### P7 — Clients & workbench
+### P7 — Clients & workbench — **delivered**
 
-- **Deliverable:** TS + .NET SDK methods; a workbench **Data** screen
+- **Delivered:** TS + .NET SDK methods; a workbench **Data** screen
   (choose file → format/SRID/identity → target store → publish → result);
-  progress and typed errors.
+  progress and typed errors. The **Map composer**
+  (`architecture/map-composer-plan.md`) adds multi-layer composition with
+  MapLibre styling, drag/drop ordering, inline upload and
+  publish/load/delete over the same neutral routes; per-layer style is an
+  authoring aid held client-side (no contract change) until the MapServer
+  render model lands.
 - **Proof:** `eng/e2e-web.sh` and `eng/workbench-e2e.sh` extended to
   upload and publish from the real client paths.
 

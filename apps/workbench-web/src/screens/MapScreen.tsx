@@ -3,6 +3,8 @@ import { Map as MapLibreMap, NavigationControl, LngLatBounds, setWorkerUrl, type
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useWorkbench } from "../state.tsx";
 import { lngSpanPixels, nearestFeatureId } from "../click-match.ts";
+import { basemapSource, initialBasemap, rememberBasemap, type Basemap } from "../basemap.ts";
+import { collectionCoordinates } from "../map-geometry.ts";
 
 // Maplibre computes its worker URL from its bundle location; under a static
 // SPA build the worker must be served next to the app, so pin it to the
@@ -10,23 +12,6 @@ import { lngSpanPixels, nearestFeatureId } from "../click-match.ts";
 // the map never finishes loading.
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs");
-}
-
-/** The background raster behind engine data. `?basemap=none` (or the stored choice) keeps the offline dark canvas. */
-export type Basemap = "dark" | "light" | "none";
-
-const BasemapStorageKey = "spatial:basemap";
-
-function initialBasemap(): Basemap {
-  try {
-    const param = new URLSearchParams(window.location.search).get("basemap");
-    if (param === "dark" || param === "light" || param === "none") return param;
-    const stored = window.localStorage.getItem(BasemapStorageKey);
-    if (stored === "dark" || stored === "light" || stored === "none") return stored;
-  } catch {
-    // Storage or URL access can fail in locked-down browsers — fall back to the dark map.
-  }
-  return "dark";
 }
 
 /**
@@ -110,11 +95,7 @@ export function MapScreen() {
     const map = mapRef.current;
     if (map === null || appliedBasemap.current === basemap) return;
     appliedBasemap.current = basemap;
-    try {
-      window.localStorage.setItem(BasemapStorageKey, basemap);
-    } catch {
-      // Locked-down browsers may refuse storage — the map still switches.
-    }
+    rememberBasemap(basemap);
     map.setStyle(basemapStyle(basemap));
     map.once("style.load", () => {
       updateSource(map, "features", { type: "FeatureCollection", features: featuresRef.current });
@@ -204,22 +185,6 @@ function datasetOptions(catalogue: string[]): string[] {
   return ["demo.points", "demo.cities", "demo.world_cities"];
 }
 
-function basemapSource(basemap: Basemap): Record<string, { type: "raster"; tiles: string[]; tileSize: number; maxzoom: number; attribution: string }> {
-  // Esri's Canvas gray basemaps need no API key (CARTO's free tiles now
-  // print an "API KEY REQUIRED" watermark). Note Esri's {z}/{y}/{x} order.
-  if (basemap === "none") return {};
-  const service = basemap === "dark" ? "Canvas/World_Dark_Gray_Base" : "Canvas/World_Light_Gray_Base";
-  return {
-    basemap: {
-      type: "raster",
-      tiles: [`https://server.arcgisonline.com/ArcGIS/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`],
-      tileSize: 256,
-      maxzoom: 16,
-      attribution: "© OpenStreetMap contributors © Esri",
-    },
-  };
-}
-
 function basemapStyle(basemap: Basemap): StyleSpecification {
   return {
     version: 8,
@@ -302,36 +267,11 @@ function fitFeatures(map: MapLibreMap): void {
   }
   const data = source.serialize()?.data;
   if (typeof data !== "object" || data === null) return;
-  const features: GeoJSON.Feature[] = (data as GeoJSON.FeatureCollection).features ?? [];
-  const coordinates: [number, number][] = [];
-  for (const feature of features) collect(coordinates, feature.geometry);
+  const coordinates = collectionCoordinates(data as GeoJSON.FeatureCollection);
   if (coordinates.length === 0) return;
   const bounds = new LngLatBounds(coordinates[0]!, coordinates[0]!);
   for (const [x, y] of coordinates) bounds.extend([x, y]);
   map.fitBounds(bounds, { padding: 40, maxZoom: 12, duration: 0 });
-}
-
-function collect(target: [number, number][], geometry: GeoJSON.Geometry | null): void {
-  if (geometry === null) return;
-  switch (geometry.type) {
-    case "Point":
-      target.push(geometry.coordinates as [number, number]);
-      break;
-    case "MultiPoint":
-    case "LineString":
-      (geometry.coordinates as number[][]).forEach((point) => target.push(point as [number, number]));
-      break;
-    case "MultiLineString":
-    case "Polygon":
-      (geometry.coordinates as number[][][]).forEach((ring) => ring.forEach((point) => target.push(point as [number, number])));
-      break;
-    case "MultiPolygon":
-      (geometry.coordinates as number[][][][]).forEach((polygon) => polygon.forEach((ring) => ring.forEach((point) => target.push(point as [number, number]))));
-      break;
-    case "GeometryCollection":
-      geometry.geometries.forEach((child) => collect(target, child));
-      break;
-  }
 }
 
 function attributeDisplay(value: unknown): string {

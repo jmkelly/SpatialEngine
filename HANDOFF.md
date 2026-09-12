@@ -51,13 +51,15 @@ ADR-0044 (accepted) is implemented through R3 of
   labels/symbols, R7 GPU.
 
 **CRAP gate caveat:** the `crap4dotnet` audit globs every `*.csproj` under
-whatever solution it is given, ignoring solution membership. Because
-`SpatialEngine.slnx` lives at the repo root, the throwaway research spike at
-`research/rendering/spike/RenderSpike` is analyzed too (21 of the ~21 CRAP
-findings). `.dependably` excludes `**/research/**` so the metrics gate is
-clean; the CRAP tool has no equivalent config. Treat those findings as
-pre-existing research noise, not product regressions; if the spike is ever
-promoted or removed, the gate goes green.
+whatever solution it is given, ignoring solution membership. The throwaway
+rendering research spike (`research/rendering/spike/RenderSpike`) was
+analyzed for this reason and produced 21 of the 22 CRAP findings; it has now
+been **removed** (its findings are promoted into ADR-0044 and the production
+`Spatial.Rendering.Skia` / `Spatial.Imagery.Vips` projects). One finding
+remains: `PostgisEwkb.WritePoint` (CRAP 10.5). It is a crap4dotnet
+coverage-matching artifact, not a real gap — the merged cobertura shows the
+method fully line-covered with every branch taken — so do not rewrite the
+method for it.
 
 ## Hard-won gotchas (read before touching this code)
 

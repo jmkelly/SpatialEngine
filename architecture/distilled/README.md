@@ -17,6 +17,7 @@ reflects the state at decision time.
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
 | Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
+| Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041 |
 | MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
 | Raster rendering / imagery (R0–R3) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044 |
 | Any architectural change | this file + `../principles.md` | — |

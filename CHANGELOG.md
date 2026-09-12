@@ -19,6 +19,15 @@ this file together, then tag the release (`RELEASING.md`).
   Seq container (`Aspire.Hosting.Seq`) and injects its endpoint; the host
   still runs with no Seq (ADR-0018). Diagnostics carry configuration
   *state* only, never a connection string or token.
+- **Map composer** (`architecture/map-composer-plan.md`): a workbench
+  screen that composes engine datasets into an ordered, styled MapLibre
+  preview — add catalogue datasets or upload GeoJSON/NDJSON/CSV inline,
+  reorder layers by drag and drop, style them, and publish the composition
+  as a neutral feature or map service through the existing
+  `PUT /api/publications/{name}` and `POST /api/ingest` routes. Loads and
+  deletes existing services, preserving their stable layer ids. No host
+  contract, SDK or ADR change; per-layer style stays a client-side authoring
+  aid until the MapServer render model lands.
 - **Raster rendering pipeline** (ADR-0044, plan R0–R3): the core-typed
   `IMapRenderer`/`IRasterOperations` contracts and DTOs in
   `Spatial.PluginSdk`, the `Spatial.Rendering.Skia` vector rasterizer
@@ -52,9 +61,18 @@ this file together, then tag the release (`RELEASING.md`).
   diagnoses) and sets `failOn` to `moderate`. The metrics gate drops from
   26 high findings to 3 high + 1 moderate, all genuine.
 - **Research code excluded from the metrics gate**: `.dependably` ignores
-  `**/research/**`, so the throwaway `research/rendering/spike` project is
-  not measured as product code (the CRAP audit globs every `.csproj` under
-  the solution directory and still reports that spike — see HANDOFF.md).
+  `**/research/**`, so research probes are never measured as product code.
+
+### Removed
+
+- **Rendering research spike** (`research/rendering/spike/RenderSpike`): the
+  throwaway vertical slice is deleted now that its findings are promoted into
+  ADR-0044 and the production `Spatial.Rendering.Skia` /
+  `Spatial.Imagery.Vips` projects. Its measured results remain recorded in
+  `research/rendering/README.md`. Because `crap4dotnet` globs every `.csproj`
+  under the solution directory (ignoring solution membership), the spike had
+  produced 21 of the 22 CRAP gate findings; only the known
+  `PostgisEwkb.WritePoint` coverage-matching artifact remains (see HANDOFF.md).
 
 ## [0.1.0] - 2026-09-12
 

@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { useWorkbench } from "./state.tsx";
 import { OverviewScreen } from "./screens/OverviewScreen.tsx";
 import { MapScreen } from "./screens/MapScreen.tsx";
+import { ComposerScreen } from "./screens/ComposerScreen.tsx";
 import { RunScreen } from "./screens/RunScreen.tsx";
 import { RuntimeScreen } from "./screens/RuntimeScreen.tsx";
 import { DataScreen } from "./screens/DataScreen.tsx";
 
-type Tab = "explore" | "map" | "run" | "data" | "runtime";
+type Tab = "explore" | "map" | "composer" | "run" | "data" | "runtime";
 
 const Tabs: { id: Tab; label: string; title: string }[] = [
   { id: "explore", label: "Explore", title: "Service catalogue and datasets" },
   { id: "map", label: "Map", title: "Dataset map with selection and attribute inspection" },
+  { id: "composer", label: "Composer", title: "Compose, style and publish datasets as a service" },
   { id: "run", label: "Run", title: "Operation forms, cancellation, result preview and persistence" },
   { id: "data", label: "Data", title: "Upload data and publish feature services" },
   { id: "runtime", label: "Runtime", title: "Host health and recent runs" },
@@ -66,6 +68,7 @@ export function App() {
       <main className="content">
         {tab === "explore" && <OverviewScreen />}
         {tab === "map" && <MapScreen />}
+        {tab === "composer" && <ComposerScreen />}
         {tab === "run" && <RunScreen />}
         {tab === "data" && <DataScreen />}
         {tab === "runtime" && <RuntimeScreen />}

@@ -136,7 +136,9 @@ injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
 - Workbench = React 19 + TypeScript + MapLibre; talks **only** to the public
   host API through the TS SDK; engine-neutral app state; no spatial logic.
   Only client-side spatial code: `src/sgeom.ts` (SGEOM → GeoJSON, byte-exact
-  codec mirror) and `src/click-match.ts` (pure projection math, no pixel reads).
+  codec mirror), `src/click-match.ts` and `src/map-geometry.ts` (pure
+  projection/bounds math, no pixel reads). `src/composer.ts` is model and
+  MapLibre-style mapping only — it publishes ordered layers, not geometry.
 - Must run in a normal browser — Playwright (`eng/workbench-e2e.sh`).
 - Persistence: results/recent runs in localStorage; geometry stored as the
   host-produced SGEOM base64, never re-encoded client-side.
