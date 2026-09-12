@@ -1,0 +1,19 @@
+# Keep the build context to source only: build outputs and dependencies are
+# produced inside the image.
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+artifacts/
+test-results/
+playwright-report/
+StrykerOutput/
+
+# VCS and CI metadata are not part of any build.
+.git/
+.github/
+
+# Local, secret-bearing configuration must never enter an image layer.
+.env
+*.local.json
+appsettings.Local.json

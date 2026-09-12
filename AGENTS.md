@@ -41,6 +41,12 @@ truth: `architecture/decisions/` (ADRs) and
 
 - `eng/verify.sh` — format check + build + full test run; required before done
 - `eng/build.sh`, `eng/test.sh`, `eng/format.sh [--check]`
+- `eng/e2e-web.sh` (real host + TypeScript SDK) and
+  `eng/workbench-e2e.sh` (real host + built workbench + Playwright) — the
+  delivered client paths; both run in CI
+- CI `.github/workflows/ci.yml` runs verify + the JavaScript suites + both
+  e2e scripts on every push/PR; `Dockerfile` packages host + workbench
+  (`RELEASING.md` has the version/tag checklist)
 - Quality loop (skill `quality-loop`, `~/.pi/agent/skills/quality-loop/SKILL.md`):
   `python3 ~/.pi/agent/skills/quality-loop/scripts/dotnet/warnings-audit.py`,
   `.../metrics-audit.py`, `.../coverage-audit.py`, `.../dotnet/audit.py` (CRAP),
@@ -49,31 +55,44 @@ truth: `architecture/decisions/` (ADRs) and
   Repo policy lives here: `.dependably`, `coverage-policy.json`.
   Queue/report artifacts are gitignored — never commit them.
 
-## Quality gates (baselines 2026-09-11, remeasured 2026-09-12; loop supports .slnx + all 9 test projects)
+## Quality gates (remeasured 2026-09-12 after the GeoServices proof; loop supports .slnx + all 9 test projects)
+
+Last full measurement: warnings 0, coverage 84.8% branches authored
+(95.5% lines), **CRAP red (15/1058 methods ≥ 10)**, **metrics red
+(26 high coupling/LCOM4)**. The earlier "1 high" metrics baseline was
+stale (pre-refactor report); the queue is the source of truth.
 
 - Warnings: green (zero build warnings, `--no-incremental`).
-- Metrics (`.dependably`: MI ≥ 20, cyclomatic ≤ 25, …): 1 high —
-  `SpatialClient` god-class (typed SDK facade, 25 thin per-route methods),
-  plus moderate `PostgisStore` / low `ProjNetTransforms`, `StoreEndpoints`
-  facades. Facade splits must stay cohesive per API area; see SKILL.md
-  anti-gaming rules before refactoring or grandfathering. Dependably 0.1.2
-  `exceptions` only suppress metric rules, not `god-class`/`hub`
-  diagnoses (verified empirically) — the facades stay visible until a
-  cohesive per-area split lands (own ADR).
+- Metrics (`.dependably`: MI ≥ 20, cyclomatic ≤ 25, coupling ≤ 20,
+  LCOM4 ≤ 4): **red** — 26 high, 1 moderate, 10 low. High coupling
+  fans out across `FeatureService` (51), `GeoServicesEndpoints`,
+  `SpatialClient`, `PostgisStore`, `PostgisEwkb`, `HostComposition`,
+  `StoreEndpoints`; high LCOM4 in `FeatureService` (21),
+  `GeometryFactory` (15), `GeometryAdapter` (13), `GeometryService`,
+  `PostgisQueries`, `ArcGisRestMapper`, `EsriGeometryCodec`,
+  `DemoStore`. Facade splits must stay cohesive per API area; see
+  SKILL.md anti-gaming rules before refactoring or grandfathering.
+  Dependably 0.1.2 `exceptions` only suppress metric rules, not
+  `god-class`/`hub` diagnoses (verified empirically) — the facades stay
+  visible until a cohesive per-area split lands (own ADR).
 - CRAP (`scripts/dotnet/audit.py`: solution-wide `dotnet test`, merged coverage):
   the merge canonicalizes coverlet's per-run-relative filenames (suffix
-  unification, skill `coverage_merge.py`), without which every method
-  counted twice (once covered, once phantom-uncovered). Remaining 0%
-  flags are crap4dotnet's own method-matching limits: expression-bodied
-  `switch` members, async state machines and accessors it cannot pair
-  (see its UNMATCHED/ORPHANED warnings) — several are proven covered by
-  the deduped data. Truly-complex-and-partly-uncovered methods are rare;
-  the irreducible residue is one-line dead defensive arms (`_ => throw`
-  on closed enums, verified unreachable) plus Docker-only PostGIS paths.
-- Coverage (`coverage-policy.json` floor 70% branches): green — ~91%
-  branches (~94% lines) on authored code after the merge fix (was 48.8%
-  phantom). The queue lists genuinely untested authored methods
-  worst-first; Docker-only `PostgisStore` live paths cover only in CI.
+  unification, skill `coverage_merge.py`). **Red — 15 of 1058 methods
+  ≥ 10.** Three are complexity-bound and cannot pass on coverage alone
+  (minimum CRAP = cyclomatic): `EsriFilterClause.EvaluateConstant`
+  (cx 14), `FeatureService.EditsAsync` (cx 12),
+  `FeatureService.UpdateRangeAsync` (cx 10); the rest (cx 4–9, low
+  coverage) could pass with tests: `CompareSameKind`/`CompareByKind`,
+  `EsriErrorMapper.Map`, `EsriFeatureCodec.ResolveGeometryField`,
+  `Envelope.ThrowIfInvalid`, `EsriGeometryCodec.ReadCoordinate`.
+  crap4dotnet's own UNMATCHED (15) / ORPHANED (408, 29%) warnings flag
+  expression-bodied `switch` members, async state machines and
+  accessors it cannot pair — not all 0% flags are truly uncovered.
+- Coverage (`coverage-policy.json` floor 70% branches): green — 84.8%
+  branches (95.5% lines) on authored code (was 48.8% phantom before the
+  merge fix; the stale 09-11 report claimed 91.2%). The queue lists
+  genuinely untested authored methods worst-first; Docker-only
+  `PostgisStore` live paths cover only in CI.
 - Stryker: per-test-project runs (~11 min each × 9); run only when cheap
   gates are green.
 

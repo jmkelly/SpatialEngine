@@ -100,8 +100,13 @@ The `store` query selects `demo` (default, always available) or `postgis`
 
 | Profile | Shape |
 | --- | --- |
-| Browser/server | React assets + ASP.NET Core host + external PostGIS; services in-process |
+| Browser/server | React assets + ASP.NET Core host + external PostGIS; services in-process. Delivered as the repository `Dockerfile` (workbench built and host published into one image on port 8080, non-root). |
 | Local development | PostGIS container; hot reload; demo store for Docker-free work |
+
+Container configuration is environment based: `SPATIAL__WEBROOT` selects the
+built workbench, `SPATIAL_POSTGIS_CONNECTION` the store (absent → the store
+reports `store.unavailable`), `ASPNETCORE_URLS` the bind address. See
+`RELEASING.md`.
 
 Invariants: one public API/contract set/TS SDK/React app in every profile;
 host independently executable; browser tests run against the host directly.

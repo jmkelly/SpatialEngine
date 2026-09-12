@@ -112,8 +112,13 @@ identity column; the demo and ArcGIS REST stores stay read-only.
 ## Quickstart
 
 ```bash
-./eng/verify.sh    # format check + build + full test run
+./eng/verify.sh          # format check + build + full test run
+./eng/e2e-web.sh         # real host + TypeScript SDK over HTTP
+./eng/workbench-e2e.sh   # real host + built workbench + Playwright
 ```
+
+CI (`.github/workflows/ci.yml`) runs all three plus the JavaScript suites
+(typecheck, generated-types drift, unit) on every push and pull request.
 
 ### Local development (Aspire)
 
@@ -132,6 +137,26 @@ host directly:
 ```bash
 dotnet run --project src/Spatial.Host
 ```
+
+## Deployment
+
+The engine ships as the independently executable host with the browser
+workbench served from `Spatial:WebRoot` (ADR-0039). `Dockerfile` builds both
+into one image that listens on port 8080 as a non-root user:
+
+```bash
+docker build -t spatial-engine:0.1.0 .
+docker run --rm -p 8080:8080 \
+  -e SPATIAL_POSTGIS_CONNECTION="Host=…;Database=…;Username=…;Password=…" \
+  spatial-engine:0.1.0
+```
+
+The demo store and the GeoServices FeatureServer are always available; the
+PostGIS store is keyed `postgis` and advertised once
+`Spatial:Postgis:ConnectionString` / `SPATIAL_POSTGIS_CONNECTION` is set.
+Secrets flow host config → options only and never appear in request bodies.
+See `RELEASING.md` for the version/tag checklist and `CHANGELOG.md` for
+what shipped.
 
 ## Reading order for new contributors
 
