@@ -85,6 +85,47 @@ internal static class FeatureService
         return WriteFeatures(dataset, layerCrs, query, features, page.Exceeded);
     }
 
+    /// <summary>
+    /// Reads one feature by its Esri <c>OBJECTID</c> (the Feature resource,
+    /// spec §9.1.2) and writes the <c>{"feature": ...}</c> envelope. The
+    /// object id is resolved exactly as <c>query</c> does — the identity
+    /// column when the layer has one, otherwise the scan ordinal — so the
+    /// resource agrees with <c>returnIdsOnly</c>.
+    /// </summary>
+    public static async Task<IResult> FeatureAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        long objectId,
+        EsriFeatureQuery query,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
+        var scheme = EsriObjectIdScheme.For(dataset);
+        var batches = await store.ScanAsync(dataset.Id, cancellationToken);
+        long ordinal = 0;
+        foreach (var feature in batches.SelectMany(batch => batch.Features))
+        {
+            ordinal++;
+            if (!scheme.TryResolve(feature, ordinal, out var candidate))
+            {
+                throw new EsriInteropException(
+                    EsriErrorCodes.ServerError,
+                    $"The identity column of layer '{dataset.Id}' is not an integer.");
+            }
+
+            if (candidate != objectId)
+            {
+                continue;
+            }
+
+            var transformed = TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, transforms, cancellationToken);
+            return WriteFeature(transformed, query);
+        }
+
+        throw new EsriInteropException(EsriErrorCodes.NotFound, $"Feature {objectId} does not exist in layer '{dataset.Id}'.");
+    }
+
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
     public static async Task<IResult> EditsAsync(
         EsriEditOperation operation,
@@ -700,6 +741,18 @@ internal static class FeatureService
         var attributes = feature.Attributes.ToArray();
         attributes[geometryIndex] = AttributeValue.FromGeometry(transformed);
         return new MatchedFeature(match.ObjectId, new Feature(feature.Id, feature.Schema, attributes));
+    }
+
+    private static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query)
+    {
+        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, feature.ObjectId, query.OutFields, query.ReturnGeometry);
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("feature");
+            EsriFeatureCodec.Write(writer, feature.Feature, options);
+            writer.WriteEndObject();
+        });
     }
 
     private static IResult IdsOnly(List<MatchedFeature> matches) =>

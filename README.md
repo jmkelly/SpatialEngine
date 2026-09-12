@@ -72,7 +72,8 @@ The Esri GeoServices REST boundary (ADR-0035) is served by
 (`/arcgis/rest/services` by default): a catalog, a Geometry Service
 (`project`, `generalize`, `buffer`, `intersect`, `simplify`-as-repair,
 `union`, `difference`, `convexHull`, `densify`, `relation`, measures) and a
-read-only FeatureServer over the keyed stores, all `f=json`. The shared
+FeatureServer over the keyed stores (query, the feature resource, and gated
+editing), all `f=json` on GET or POST. The shared
 `Spatial.Interop.Esri` project owns the Esri wire codec, the curated
 WKID ↔ EPSG map, the Esri error model, the closed `where` filter grammar
 and the per-feature edit results. `Spatial.Provider.ArcGisRest` consumes a

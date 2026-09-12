@@ -54,21 +54,33 @@
 - **Style/quality traps still apply** (CA1859/CA1826/CA1068/CA1305/CA1861,
   `Results<…>` typed results, format before commit).
 
-## Next up — GeoServices REST
+## GeoServices REST — status
 
 The GeoServices track (ADR-0035/0036/0037/0038,
-`architecture/geoservices-implementation-plan.md`) is implemented, but its
-compatibility claim is unproven. Remaining work, in order:
+`architecture/geoservices-implementation-plan.md`) is implemented and its
+compatibility claim is now proven against a real Esri client. Completed:
 
-1. **Real-client proof.** Point an unmodified Esri client (ArcGIS Maps SDK
-   for JS) at `Spatial:GeoServices:Root` and pin the round trip; today's
-   tests use the engine's own HTTP client against recorded fixtures.
-2. **Close the recorded-corpus gaps** (`research/arcgis/README.md`):
-   `esriGeometryEnvelope`, `esriFieldTypeGUID`, SRIDs outside the curated
-   `WkidMap`, and non-spatial group/table layers advertised as datasets.
-3. **Decide the five unfinished Geometry Service operations** (`offset`,
-   `cut`, `reshape`, `trimExtend`, `autoComplete`): implement or record as
-   non-goals.
-4. Wire the `research/arcgis` corpus into CI as a provider regression gate.
+1. **Real-client proof.** `clients/typescript/test/geoservices-e2e.test.ts`
+   drives the live host with the official **ArcGIS REST JS** libraries — the
+   request layer ArcGIS Maps SDK for JS uses — and runs inside
+   `eng/e2e-web.sh`. It found and closed three real gaps: POST resource reads
+   (`getService`/`getLayer`), the Esri match-all `where=1=1`, and the Feature
+   (object) resource `FeatureServer/<layerId>/<objectId>` that `getFeature`
+   reads.
+2. **Recorded-corpus gaps** (`research/arcgis/README.md`): group layers are
+   skipped by the provider (`A_group_layer_is_not_listed_as_a_dataset`) and
+   tables stay as non-spatial datasets; `esriGeometryEnvelope` and
+   `esriFieldTypeGUID` are codec-supported and pinned by unit tests (the
+   corpus simply has no such real layer); SRIDs outside `WkidMap` remain a
+   deliberate allow-list.
+3. **Five Geometry Service operations** (`offset`, `cut`, `reshape`,
+   `trimExtend`, `autoComplete`) are recorded non-goals in the plan and
+   compatibility review, rejected with a typed `invalid.arguments` failure
+   and pinned by `GeometryServiceTests`.
+4. The `research/arcgis` corpus is a provider regression gate: the recorded
+   fixtures are copied into `Spatial.Provider.ArcGisRest.Tests` and run by
+   `eng/verify.sh`.
 
-`eng/verify.sh` is the gate; the quality-loop queues are gitignored.
+`eng/verify.sh` is green. The quality-loop queues are gitignored; the
+`codemetrics` gate was already red at `HEAD` (pre-existing facade
+coupling/LCOM4 findings), so treat the AGENTS baseline note as stale.

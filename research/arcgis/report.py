@@ -42,14 +42,6 @@ MAPPED_GEOMETRY_TYPES = {
     "esriGeometryPoint", "esriGeometryMultipoint", "esriGeometryPolyline", "esriGeometryPolygon",
 }
 TARGET_GEOMETRY_TYPES = MAPPED_GEOMETRY_TYPES | {"esriGeometryEnvelope"}
-# esriFieldType* that exist in the wild but have no core AttributeKind mapping.
-KNOWN_UNSUPPORTED_FIELD_TYPES = {
-    "esriFieldTypeBigInteger", "esriFieldTypeDateOnly", "esriFieldTypeTimeOnly",
-    "esriFieldTypeTimestampOffset", "esriFieldTypeBlob", "esriFieldTypeRaster",
-    "esriFieldTypeXML", "esriFieldTypeGUID", "esriFieldTypeSingle",
-}
-
-
 def iter_layers(index: dict[str, Any]) -> Iterable[dict[str, Any]]:
     for endpoint in index.get("endpoints", []):
         for layer in endpoint.get("layers", []):
@@ -93,12 +85,20 @@ def main() -> int:
     paged_queries = 0
     query_srids = collections.Counter()
     non_queryable = 0
+    group_layers = 0
+    table_layers = 0
     for layer in layers:
         directory = root / layer["endpoint"]["directory"]
         metadata = load_fixture(directory, layer.get("metadata")) or {}
         query = load_fixture(directory, layer.get("features")) or {}
         if not metadata.get("geometryType"):
             non_queryable += 1
+            # The provider skips group layers (containers, not data) and
+            # keeps tables (queryable non-spatial datasets).
+            if metadata.get("type") == "Group Layer":
+                group_layers += 1
+            elif metadata.get("type") == "Table":
+                table_layers += 1
         features = query.get("features") or []
         if not features:
             empty_queries += 1
@@ -125,6 +125,8 @@ def main() -> int:
         "nullGeometryQueries": null_geometries,
         "pagedQueries": paged_queries,
         "nonQueryableLayers": non_queryable,
+        "groupLayers": group_layers,
+        "tableLayers": table_layers,
     }
 
     gaps: list[str] = []
@@ -146,8 +148,9 @@ def main() -> int:
         gaps.append("no empty query response (empty-result branch unproven)")
     if not report["nullGeometryQueries"]:
         gaps.append("no feature with a null geometry (null-geometry branch unproven)")
-    if report["nonQueryableLayers"]:
-        gaps.append(f"{report['nonQueryableLayers']} layers have no geometryType (group/raster layers the provider still lists)")
+    unclassified = report["nonQueryableLayers"] - report["groupLayers"] - report["tableLayers"]
+    if unclassified:
+        gaps.append(f"{unclassified} layers have no geometryType and are neither group layers nor tables")
 
     report["gaps"] = gaps
     if args.json:
@@ -165,7 +168,10 @@ def main() -> int:
     print("query srids:", dict(query_srids))
     print("error codes:", dict(error_codes))
     print(f"empty queries: {empty_queries}  null-geometry queries: {null_geometries}  paged queries: {paged_queries}")
-    print(f"non-queryable (no geometryType) layers: {non_queryable}")
+    print(
+        f"non-queryable (no geometryType) layers: {non_queryable} "
+        f"({group_layers} group layers skipped, {table_layers} tables as non-spatial datasets)"
+    )
     print("\nGAPS (next harvest targets):")
     for gap in gaps:
         print(f"  - {gap}")

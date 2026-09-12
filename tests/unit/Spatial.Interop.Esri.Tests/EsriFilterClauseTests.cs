@@ -124,7 +124,6 @@ public sealed class EsriFilterClauseTests
     [InlineData("name = AND")]
     [InlineData("name IS 1")]
     [InlineData("(name = 'x'")]
-    [InlineData("'x' = 'y'")]
     [InlineData("name @ 1")]
     public void Unsupported_constructs_are_rejected(string text)
     {
@@ -198,6 +197,33 @@ public sealed class EsriFilterClauseTests
         Assert.True(Parse("score <= 1.5").Matches(feature));
         Assert.True(Parse("score > 1").Matches(feature));
         Assert.True(Parse("score >= 1.5").Matches(feature));
+    }
+
+    [Theory]
+    [InlineData("1=1", true)]
+    [InlineData("1 = 1", true)]
+    [InlineData("1=0", false)]
+    [InlineData("1 <> 2", true)]
+    [InlineData("1 < 2", true)]
+    [InlineData("2 <= 1", false)]
+    [InlineData("'a' = 'a'", true)]
+    [InlineData("'a' = 'b'", false)]
+    [InlineData("TRUE = TRUE", true)]
+    [InlineData("FALSE = TRUE", false)]
+    public void Constant_predicates_are_evaluated_without_a_field(string text, bool expected)
+    {
+        // The Esri match-all / match-none idioms reference no column, so they
+        // must not require a schema lookup (ArcGIS REST JS sends where=1=1 by
+        // default).
+        Assert.Equal(expected, Parse(text).Matches(Feature("Berlin", 1)));
+    }
+
+    [Fact]
+    public void Constant_predicates_render_for_the_remote_where()
+    {
+        Assert.Equal("1 = 1", Parse("1=1").ToWhere());
+        Assert.Equal("1 = 0", Parse("1=0").ToWhere());
+        Assert.Equal("1 = 1", Parse("1 = 1").ToWhere());
     }
 
     [Fact]

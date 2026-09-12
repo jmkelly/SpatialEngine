@@ -70,11 +70,19 @@ sample servers).
 
 ### Known gaps (next iterations)
 
-- `esriGeometryEnvelope` is not produced by the sampled services.
-- `esriFieldTypeGUID` is not represented (`GlobalID` is).
+- `esriGeometryEnvelope` is not produced by the sampled services. The codec
+  decodes envelopes (as query inputs, `EsriGeometryCodecTests`) — no real
+  service declares an envelope *layer*, so this is a corpus limit, not a code
+  gap.
+- `esriFieldTypeGUID` is not represented (`GlobalID` is). Both map to
+  `AttributeKind.Guid` and are pinned by `EsriFieldTypeTests` /
+  `EsriAttributeCodecTests`, so only the corpus dimension is missing.
 - SRIDs outside the curated `WkidMap` (3059, 3087, 6318, 102440) decode with no
   CRS by design; the map is a deliberate allow-list (ADR-0035).
-- 58 non-spatial layers (group layers / tables) are still listed as datasets.
+- The 58 non-spatial layers are resolved: 35 **group layers** are now skipped by
+  the provider (containers, not queryable data; see
+  `A_group_layer_is_not_listed_as_a_dataset`) and 23 **tables** are listed as
+  non-spatial datasets (`A_table_layer_is_listed_but_has_no_geometry`).
 
 ## What the recorded corpus found
 

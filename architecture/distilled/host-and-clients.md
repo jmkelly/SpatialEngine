@@ -35,12 +35,13 @@ POST   /api/transactions/commit?store=  # {transaction} -> {ok}
 POST   /api/transactions/rollback?store=# {transaction} -> {ok}
 POST   /api/demo/sleep                  # {milliseconds} -> {slept}
 GET    /openapi/v1.json
-GET    /arcgis/rest/services                                  # GeoServices catalog (ADR-0035)
-GET    /arcgis/rest/services/Geometry/GeometryServer          # Geometry Service
-GET    /arcgis/rest/services/Geometry/GeometryServer/{op}     # project/generalize/buffer/intersect/simplify/…
-GET    /arcgis/rest/services/{service}/FeatureServer          # FeatureServer root (layers)
-GET    /arcgis/rest/services/{service}/FeatureServer/{layerId}
-GET    /arcgis/rest/services/{service}/FeatureServer/{layerId}/query
+GET|POST /arcgis/rest/services                                # GeoServices catalog (ADR-0035)
+GET|POST /arcgis/rest/services/Geometry/GeometryServer         # Geometry Service
+GET|POST /arcgis/rest/services/Geometry/GeometryServer/{op}    # project/generalize/buffer/intersect/simplify/…
+GET|POST /arcgis/rest/services/{service}/FeatureServer         # FeatureServer root (layers)
+GET|POST /arcgis/rest/services/{service}/FeatureServer/{layerId}
+GET|POST /arcgis/rest/services/{service}/FeatureServer/{layerId}/{objectId}  # feature resource
+GET|POST /arcgis/rest/services/{service}/FeatureServer/{layerId}/query
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/addFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/updateFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/deleteFeatures
@@ -48,7 +49,9 @@ POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/applyEdits
 ```
 
 The GeoServices routes are the Esri boundary adapter (ADR-0035): `f=json`
-only, Esri JSON over HTTP, no core changes. The facade serves Geometry
+only, Esri JSON over HTTP, no core changes. Resources are requestable with
+either GET or POST (spec §2.0.1), because ArcGIS REST JS — and therefore the
+Maps SDK — POSTs reads. The facade serves Geometry
 Service operations, FeatureServer queries, and — for a layer whose store
 implements `IFeatureEditStore` and whose dataset has an integer identity
 column — the editing operations `addFeatures`/`updateFeatures`/

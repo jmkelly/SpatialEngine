@@ -211,6 +211,16 @@ Ordered by dependency:
   `resultOffset`/`resultRecordCount` — it is never rendered as SQL. Unknown
   fields, geometry fields and malformed entries fail `invalid.arguments`
   (HTTP 400).
+- Real-client proof: the e2e suite in `clients/typescript/test/geoservices-e2e.test.ts`
+  drives the live host with the official **ArcGIS REST JS** libraries (what
+  ArcGIS Maps SDK for JS uses), and closed three real gaps against it:
+  resource reads over **POST** (`getService`/`getLayer` POST rather than GET,
+  per spec §2.0.1), the Esri **match-all** `where=1=1` predicate (and the
+  general constant predicate), and the **Feature (object) resource**
+  `FeatureServer/<layerId>/<objectId>` that `getFeature` reads.
+- Recorded Geometry Service non-goals: `offset`, `cut`, `reshape`,
+  `trimExtend` and `autoComplete` have no engine verb; the facade rejects
+  them with a typed `invalid.arguments` failure and does not advertise them.
 
 ## 8. Documentation baseline
 

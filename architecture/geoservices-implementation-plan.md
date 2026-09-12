@@ -23,7 +23,9 @@
 > `Spatial:GeoServices` / `Spatial:ArcGisRest` configuration; unit, HTTP and
 > provider tests; architecture guards. **Not delivered:**
 > MapServer/ImageServer/GeocodeServer/GPServer (non-goals), service-level
-> `applyEdits`, attachments and `queryRelatedRecords` (out of scope).
+> `applyEdits`, attachments and `queryRelatedRecords` (out of scope); the
+> Geometry Service verbs `offset`, `cut`, `reshape`, `trimExtend` and
+> `autoComplete` (recorded non-goals — see S1b).
 >
 > **Specification baseline:** Esri GeoServices REST Specification v1.0
 > (`architecture/references/geoservices-rest-spec.pdf`), checked against the
@@ -207,10 +209,18 @@ Extend `Spatial.PluginSdk` operation interfaces and implement in
    resolved by two distinct engine verbs.
 2. Measurements: area/perimeter, length, distance, label point.
 3. Set ops: `union`, `difference`.
-4. Constructors: `densify`, `convexHull`, `offset`, `cut`, `reshape`,
-   `trimExtend`, `autoComplete`.
+4. Constructors: `densify`, `convexHull`.
 5. Predicates for `relation` (DE-9IM `relationParam`) and the `spatialRel`
    family, if S2 needs more than envelope-intersects.
+
+**Not delivered (recorded non-goals):** `offset`, `cut`, `reshape`,
+`trimExtend` and `autoComplete`. Each needs a geometry verb the engine's
+operation set does not have (parallel-curve offsetting, cutting a line
+against a polyline, rubber-sheet reshaping, line extension, polygon
+auto-completion) and none is required by the shipped Feature Service / query
+use case. The facade rejects them with a typed `invalid.arguments` failure
+rather than mapping a near-miss verb; `GeometryServiceTests` pins each
+rejection and `GeometryService.Info` does not advertise them.
 
 Interface granularity (one extended `IGeometryOperations` vs
 `IGeometryProcessing` + `IGeometryMeasures` + `IGeometryRelations`) is an

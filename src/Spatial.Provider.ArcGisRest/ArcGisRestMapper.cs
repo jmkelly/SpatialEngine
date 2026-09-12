@@ -149,6 +149,17 @@ internal static class ArcGisRestMapper
     private static bool HasNumericId(JsonElement layer) =>
         layer.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number;
 
+    /// <summary>
+    /// A MapServer group layer is a container for its sublayers, not queryable
+    /// data. The corpus has plenty of them (geonames, govunits, NOAA weather);
+    /// listing one as a dataset would advertise a layer whose query always
+    /// fails, so they are skipped. Feature layers and tables are kept.
+    /// </summary>
+    private static bool IsGroupLayer(JsonElement layer) =>
+        layer.TryGetProperty("type", out var type)
+        && type.ValueKind == JsonValueKind.String
+        && string.Equals(type.GetString(), "Group Layer", StringComparison.OrdinalIgnoreCase);
+
     private static IEnumerable<JsonElement> LayerElements(JsonElement root, string property)
     {
         if (!root.TryGetProperty(property, out var elements) || elements.ValueKind != JsonValueKind.Array)
@@ -158,7 +169,7 @@ internal static class ArcGisRestMapper
 
         foreach (var layer in elements.EnumerateArray())
         {
-            if (HasNumericId(layer))
+            if (HasNumericId(layer) && !IsGroupLayer(layer))
             {
                 yield return layer;
             }

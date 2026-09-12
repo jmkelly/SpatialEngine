@@ -168,6 +168,30 @@ public sealed class RealWorldFixtureTests
     }
 
     [Fact]
+    public async Task A_group_layer_is_not_listed_as_a_dataset()
+    {
+        // Group layers are containers, not queryable data (real MapServers
+        // such as geonames/govunits are mostly group layers). Replaying a real
+        // service root where layer 0 is a group over layer 1's captured
+        // metadata must list only the feature layer.
+        const string directory = "arcx-rest-services-edw-edw-activityfactscommonattributes-01-mapserver";
+        const string url = "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ActivityFactsCommonAttributes_01/MapServer";
+        const string serviceRoot = """
+            {"layers":[
+              {"id":0,"name":"Labels","type":"Group Layer","subLayerIds":[1]},
+              {"id":1,"name":"Activity","type":"Feature Layer"}
+            ],"tables":[]}
+            """;
+        var store = new ArcGisRestStore(
+            new HttpClient(new FixtureHandler(url, Path.Combine(FixtureRoot, directory), serviceRoot)),
+            new ArcGisRestServiceOptions { Name = "remote", Url = url });
+
+        var datasets = await store.ListAsync();
+
+        Assert.Equal(["arcgis.l1"], datasets.Select(dataset => dataset.Id));
+    }
+
+    [Fact]
     public async Task A_wkid_outside_the_curated_map_leaves_geometry_without_a_crs()
     {
         // WKID 104145/latestWkid 6318 (NAD83(2011)) is real but not in the

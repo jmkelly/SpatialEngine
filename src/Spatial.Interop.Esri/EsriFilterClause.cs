@@ -111,6 +111,18 @@ public sealed class EsriFilterClause
         public override string Render() => $"{Field} IS {(Negated ? "NOT " : string.Empty)}NULL";
     }
 
+    /// <summary>
+    /// A field-independent predicate whose value is fixed when the clause is
+    /// parsed, such as the Esri match-all <c>1=1</c> (and <c>1=0</c>). It
+    /// references no column, so evaluating it never touches the feature.
+    /// </summary>
+    private sealed record ConstantNode(bool Value, string Text) : Node
+    {
+        public override bool Evaluate(IFeature feature) => Value;
+
+        public override string Render() => Text;
+    }
+
     private sealed record ComparisonNode(string Field, ComparisonOperator Operator, Literal Value) : Node
     {
         public override bool Evaluate(IFeature feature)
@@ -271,6 +283,46 @@ public sealed class EsriFilterClause
             _ => false,
         };
     }
+
+    /// <summary>Evaluates a literal-to-literal comparison (no field involved).</summary>
+    private static bool EvaluateConstant(Literal left, ComparisonOperator comparisonOperator, Literal right)
+    {
+        if (left.Kind is LiteralKind.Null || right.Kind is LiteralKind.Null)
+        {
+            return false;
+        }
+
+        if (left.Kind == LiteralKind.Boolean || right.Kind == LiteralKind.Boolean)
+        {
+            if (left.Kind != LiteralKind.Boolean || right.Kind != LiteralKind.Boolean)
+            {
+                return false;
+            }
+
+            return comparisonOperator switch
+            {
+                ComparisonOperator.Equals => left.Boolean == right.Boolean,
+                ComparisonOperator.NotEquals => left.Boolean != right.Boolean,
+                _ => false,
+            };
+        }
+
+        if (left.Kind == LiteralKind.String && right.Kind == LiteralKind.String)
+        {
+            return comparisonOperator == ComparisonOperator.Like
+                ? Regex.IsMatch(left.Text ?? string.Empty, ToRegex(right.Text ?? string.Empty), RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1))
+                : SatisfiesComparison(StringComparer.Ordinal.Compare(left.Text, right.Text), comparisonOperator);
+        }
+
+        if (IsNumeric(left) && IsNumeric(right))
+        {
+            return ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
+        }
+
+        return false;
+    }
+
+    private static bool IsNumeric(Literal literal) => literal.Kind is LiteralKind.Integer or LiteralKind.Decimal;
 
     private static bool MatchesLike(AttributeValue attribute, Literal literal)
     {
@@ -621,6 +673,11 @@ public sealed class EsriFilterClause
 
         private bool TryComparison(out Node expression, out string error)
         {
+            if (Current.Kind is TokenKind.Number or TokenKind.String or TokenKind.True or TokenKind.False or TokenKind.Null)
+            {
+                return TryConstantComparison(out expression, out error);
+            }
+
             if (Current.Kind != TokenKind.Identifier)
             {
                 error = $"expected a field name at position {Current.Position}, found '{Current.Text}'";
@@ -648,6 +705,25 @@ public sealed class EsriFilterClause
             }
 
             expression = new ComparisonNode(field, comparisonOperator, literal);
+            return true;
+        }
+
+        /// <summary>
+        /// Parses a comparison between two literals (for example the Esri
+        /// match-all <c>1=1</c>). The value is constant, so it is evaluated
+        /// once when parsed rather than per feature.
+        /// </summary>
+        private bool TryConstantComparison(out Node expression, out string error)
+        {
+            if (!TryValue(out var left, out error) || !TryOperator(out var comparisonOperator, out error) || !TryValue(out var right, out error))
+            {
+                expression = null!;
+                return false;
+            }
+
+            expression = new ConstantNode(
+                EvaluateConstant(left, comparisonOperator, right),
+                $"{left.Render()} {OperatorText(comparisonOperator)} {right.Render()}");
             return true;
         }
 

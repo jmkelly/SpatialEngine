@@ -15,8 +15,11 @@ zero runtime dependencies.
   route (geometry, transforms, catalogue, features, transactions, demo
   sleep, health). Geometries cross as Base64 canonical SGEOM bytes;
   feature batches as Base64 canonical SFBAT bytes.
-- `test/` — `node:test` suites; `test/e2e.test.ts` runs against a live host
-  (set `SPATIAL_HOST_URL`), driven by `eng/e2e-web.sh`.
+- `test/` — `node:test` suites; `test/e2e.test.ts` and
+  `test/geoservices-e2e.test.ts` run against a live host (set
+  `SPATIAL_HOST_URL`), driven by `eng/e2e-web.sh`. The latter is the
+  real-client proof: it drives the GeoServices boundary with the official
+  Esri `@esri/arcgis-rest-feature-service` / `arcgis-rest-request` libraries.
 
 ## Commands (node >= 22.6)
 

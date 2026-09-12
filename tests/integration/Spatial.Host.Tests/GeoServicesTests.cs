@@ -279,6 +279,47 @@ public sealed class GeoServicesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task A_resource_read_is_accepted_as_a_form_post()
+    {
+        // The spec allows GET or POST for resources; ArcGIS REST JS (and so
+        // the Maps SDK) POSTs reads. Without this the client sees a 405.
+        var catalog = await PostFormAsync(Root, ("f", "json"));
+        Assert.NotEmpty(catalog.GetProperty("services").EnumerateArray());
+
+        var info = await PostFormAsync($"{Root}/Geometry/GeometryServer", ("f", "json"));
+        Assert.Contains("Project", info.GetProperty("capabilities").GetString());
+
+        var root = await PostFormAsync($"{Root}/demo/FeatureServer", ("f", "json"));
+        Assert.NotEmpty(root.GetProperty("layers").EnumerateArray());
+
+        var layer = await PostFormAsync($"{Root}/demo/FeatureServer/0", ("f", "json"));
+        Assert.Equal("OBJECTID", layer.GetProperty("objectIdField").GetString());
+    }
+
+    [Fact]
+    public async Task The_feature_resource_reads_one_feature_by_object_id()
+    {
+        var feature = await GetJsonAsync($"{Root}/demo/FeatureServer/0/1?f=json");
+
+        var attributes = feature.GetProperty("feature").GetProperty("attributes");
+        Assert.Equal(1, attributes.GetProperty("OBJECTID").GetInt64());
+
+        var missing = await _client.GetAsync($"{Root}/demo/FeatureServer/0/9999?f=json");
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal(404, (await ErrorAsync(missing)).GetProperty("code").GetInt32());
+    }
+
+    [Fact]
+    public async Task The_esri_match_all_where_is_supported()
+    {
+        // ArcGIS REST JS defaults to where=1=1; the closed grammar must treat
+        // it as a constant predicate rather than reject it as a bad field.
+        var result = await GetJsonAsync($"{Root}/demo/FeatureServer/0/query?where=" + Uri.EscapeDataString("1=1") + "&f=json");
+
+        Assert.Equal(8, result.GetProperty("features").GetArrayLength());
+    }
+
+    [Fact]
     public async Task Geometry_operations_accept_a_form_post()
     {
         var result = await PostFormAsync(

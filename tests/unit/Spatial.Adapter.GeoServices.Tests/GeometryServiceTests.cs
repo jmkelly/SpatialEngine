@@ -52,10 +52,20 @@ public sealed class GeometryServiceTests
         Assert.Contains("AreasAndLengths", info.GetProperty("capabilities").GetString());
     }
 
-    [Fact]
-    public async Task An_unknown_operation_is_rejected()
+    [Theory]
+    [InlineData("rotate")]
+    // Recorded non-goals (ADR-0035): the engine has no verb for these, so the
+    // facade rejects them explicitly rather than mis-mapping a near-miss.
+    [InlineData("offset")]
+    [InlineData("cut")]
+    [InlineData("reshape")]
+    [InlineData("trimExtend")]
+    [InlineData("autoComplete")]
+    public async Task An_unsupported_operation_is_a_typed_failure(string operation)
     {
-        await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("rotate"));
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync(operation));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
     }
 
     [Fact]
