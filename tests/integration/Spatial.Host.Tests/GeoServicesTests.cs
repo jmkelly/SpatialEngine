@@ -242,6 +242,18 @@ public sealed class GeoServicesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task Query_projects_features_into_out_sr()
+    {
+        var result = await GetJsonAsync(
+            $"{Root}/demo/FeatureServer/0/query?outSR=3857&f=json");
+
+        var feature = result.GetProperty("features")[0];
+        var geometry = feature.GetProperty("geometry");
+        Assert.Equal(3857, geometry.GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        Assert.True(geometry.GetProperty("x").GetDouble() > 100_000);
+    }
+
+    [Fact]
     public async Task An_unknown_service_is_a_404()
     {
         var response = await _client.GetAsync($"{Root}/missing/FeatureServer?f=json");

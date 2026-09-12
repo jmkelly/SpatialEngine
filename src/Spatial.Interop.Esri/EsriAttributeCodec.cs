@@ -24,36 +24,29 @@ public static class EsriAttributeCodec
     public static void WriteValue(Utf8JsonWriter writer, AttributeValue value)
     {
         ArgumentNullException.ThrowIfNull(writer);
-        switch (value.Kind)
+        if (!Writers.TryGetValue(value.Kind, out var write))
         {
-            case AttributeKind.Null:
-                writer.WriteNullValue();
-                break;
-            case AttributeKind.Boolean:
-                writer.WriteBooleanValue(value.BooleanValue);
-                break;
-            case AttributeKind.Int64:
-                writer.WriteNumberValue(value.Int64Value);
-                break;
-            case AttributeKind.Double:
-                writer.WriteNumberValue(value.DoubleValue);
-                break;
-            case AttributeKind.String:
-                writer.WriteStringValue(value.StringValue);
-                break;
-            case AttributeKind.DateTimeOffset:
-                writer.WriteNumberValue(value.DateTimeOffsetValue.ToUnixTimeMilliseconds());
-                break;
-            case AttributeKind.Guid:
-                writer.WriteStringValue(value.GuidValue);
-                break;
-            case AttributeKind.Geometry:
-                writer.WriteNullValue();
-                break;
-            default:
-                throw EsriInteropException.Invalid($"Attribute kind {value.Kind} has no Esri JSON encoding.");
+            ThrowUnknownKind(value.Kind);
+            return;
         }
+
+        write(writer, value);
     }
+
+    private static readonly Dictionary<AttributeKind, Action<Utf8JsonWriter, AttributeValue>> Writers = new()
+    {
+        [AttributeKind.Null] = (w, _) => w.WriteNullValue(),
+        [AttributeKind.Geometry] = (w, _) => w.WriteNullValue(),
+        [AttributeKind.Boolean] = (w, v) => w.WriteBooleanValue(v.BooleanValue),
+        [AttributeKind.Int64] = (w, v) => w.WriteNumberValue(v.Int64Value),
+        [AttributeKind.Double] = (w, v) => w.WriteNumberValue(v.DoubleValue),
+        [AttributeKind.String] = (w, v) => w.WriteStringValue(v.StringValue),
+        [AttributeKind.DateTimeOffset] = (w, v) => w.WriteNumberValue(v.DateTimeOffsetValue.ToUnixTimeMilliseconds()),
+        [AttributeKind.Guid] = (w, v) => w.WriteStringValue(v.GuidValue),
+    };
+
+    private static void ThrowUnknownKind(AttributeKind kind) =>
+        throw EsriInteropException.Invalid($"Attribute kind {kind} has no Esri JSON encoding.");
 
     /// <summary>
     /// Reads the named attribute in the shape its field kind requires. A

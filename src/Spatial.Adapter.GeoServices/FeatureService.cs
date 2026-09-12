@@ -987,16 +987,28 @@ internal static class FeatureService
                 return left.Kind.CompareTo(right.Kind);
             }
 
-            return left.Kind switch
+            return CompareSameKind(left, right);
+        }
+
+        private static int CompareSameKind(AttributeValue left, AttributeValue right)
+        {
+            switch (left.Kind)
             {
-                AttributeKind.Boolean => left.BooleanValue.CompareTo(right.BooleanValue),
-                AttributeKind.Int64 => left.Int64Value.CompareTo(right.Int64Value),
-                AttributeKind.Double => left.DoubleValue.CompareTo(right.DoubleValue),
-                AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
-                AttributeKind.DateTimeOffset => left.DateTimeOffsetValue.UtcTicks.CompareTo(right.DateTimeOffsetValue.UtcTicks),
-                AttributeKind.Guid => left.GuidValue.CompareTo(right.GuidValue),
-                _ => 0,
-            };
+                case AttributeKind.Boolean:
+                    return left.BooleanValue.CompareTo(right.BooleanValue);
+                case AttributeKind.Int64:
+                    return left.Int64Value.CompareTo(right.Int64Value);
+                case AttributeKind.Double:
+                    return left.DoubleValue.CompareTo(right.DoubleValue);
+                case AttributeKind.String:
+                    return string.CompareOrdinal(left.StringValue, right.StringValue);
+                case AttributeKind.DateTimeOffset:
+                    return left.DateTimeOffsetValue.UtcTicks.CompareTo(right.DateTimeOffsetValue.UtcTicks);
+                case AttributeKind.Guid:
+                    return left.GuidValue.CompareTo(right.GuidValue);
+                default:
+                    return 0;
+            }
         }
     }
 

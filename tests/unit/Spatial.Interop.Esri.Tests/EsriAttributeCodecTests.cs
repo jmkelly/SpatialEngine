@@ -155,4 +155,5 @@ public sealed class EsriAttributeCodecTests
         var element = JsonDocument.Parse(Encoding.UTF8.GetString(stream.ToArray())).RootElement;
         Assert.Equal("x", element.GetProperty("name").GetString());
     }
+
 }

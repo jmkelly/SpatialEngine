@@ -174,25 +174,52 @@ internal static class ArcGisRestMapper
             return declared;
         }
 
-        // Older/MapServer layers omit objectIdField; the fields list still
-        // declares exactly one esriFieldTypeOID field, which is the identity.
-        if (metadata.TryGetProperty("fields", out var fields) && fields.ValueKind == JsonValueKind.Array)
+        var oid = FindOidField(metadata);
+        if (oid is not null)
         {
-            foreach (var field in fields.EnumerateArray())
-            {
-                if (field.TryGetProperty("type", out var type)
-                    && type.ValueKind == JsonValueKind.String
-                    && type.GetString() == EsriFieldType.Oid
-                    && field.TryGetProperty("name", out var name)
-                    && name.ValueKind == JsonValueKind.String
-                    && name.GetString() is { Length: > 0 } oid)
-                {
-                    return oid;
-                }
-            }
+            return oid;
         }
 
         return "OBJECTID";
+    }
+
+    private static string? FindOidField(JsonElement metadata)
+    {
+        if (!metadata.TryGetProperty("fields", out var fields) || fields.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var field in fields.EnumerateArray())
+        {
+            if (TryReadOidName(field, out var name))
+            {
+                return name;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryReadOidName(JsonElement field, out string? name)
+    {
+        name = null;
+        if (!field.TryGetProperty("type", out var type)
+            || type.ValueKind != JsonValueKind.String
+            || type.GetString() != EsriFieldType.Oid)
+        {
+            return false;
+        }
+
+        if (!field.TryGetProperty("name", out var nameElement)
+            || nameElement.ValueKind != JsonValueKind.String
+            || nameElement.GetString() is not { Length: > 0 } oid)
+        {
+            return false;
+        }
+
+        name = oid;
+        return true;
     }
 
     private static FeatureSchema Schema(JsonElement metadata)

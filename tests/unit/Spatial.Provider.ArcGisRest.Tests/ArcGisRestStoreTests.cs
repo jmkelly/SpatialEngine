@@ -271,6 +271,21 @@ public sealed class ArcGisRestStoreTests
         Assert.All(handler.Requests, request => Assert.Contains("token=secret-token", request, StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","objectIdField":"FID","spatialReference":{"wkid":4326},"fields":[{"name":"FID","type":"esriFieldTypeOID"}]}""", "FID")]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326},"fields":[{"name":"OID","type":"esriFieldTypeOID"}]}""", "OID")]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326},"fields":[]}""", "OBJECTID")]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326}}""", "OBJECTID")]
+    public async Task Object_id_field_resolves_from_metadata(string metadata, string expectedIdField)
+    {
+        var handler = Handler(Route(ServiceRoot, metadata));
+        var store = Store(handler);
+
+        var description = await store.DescribeAsync("arcgis.l0");
+
+        Assert.Equal(expectedIdField, Assert.Single(description.IdColumns));
+    }
+
     private static ArcGisRestStore Store(HttpMessageHandler handler) =>
         new(new HttpClient(handler), new ArcGisRestServiceOptions { Name = "remote", Url = BaseUrl });
 

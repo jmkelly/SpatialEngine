@@ -32,6 +32,26 @@ public sealed class EsriGeometryCodecTests
     }
 
     [Fact]
+    public void Three_element_coordinate_treats_third_as_z_when_hasM_is_absent()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"z":3,"hasZ":true}"""));
+
+        Assert.Equal(3, decoded.Z);
+        Assert.Null(decoded.M);
+        Assert.Equal(CoordinateLayout.Xyz, decoded.Layout);
+    }
+
+    [Fact]
+    public void Three_element_coordinate_treats_third_as_m_when_hasM_is_true_and_hasZ_is_false()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"m":3,"hasM":true}"""));
+
+        Assert.Null(decoded.Z);
+        Assert.Equal(3, decoded.M);
+        Assert.Equal(CoordinateLayout.Xym, decoded.Layout);
+    }
+
+    [Fact]
     public void Multipoint_round_trips()
     {
         var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2],[3,4]],"spatialReference":{"wkid":3857}}"""));

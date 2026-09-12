@@ -105,6 +105,25 @@ public sealed class GeoServicesEditTests
     }
 
     [Fact]
+    public async Task Delete_features_by_where_clause()
+    {
+        using var context = new EditableContext();
+        var before = (await context.GetJsonAsync($"{Root}/FeatureServer/0/query?returnCountOnly=true&f=json")).GetProperty("count").GetInt32();
+
+        var result = await context.PostFormAsync(
+            $"{Root}/FeatureServer/0/deleteFeatures",
+            ("where", "name = 'Berlin'"),
+            ("f", "json"));
+
+        var deleted = Assert.Single(result.GetProperty("deleteResults").EnumerateArray());
+        Assert.True(deleted.GetProperty("success").GetBoolean());
+        Assert.Equal(1, deleted.GetProperty("objectId").GetInt64());
+
+        var after = (await context.GetJsonAsync($"{Root}/FeatureServer/0/query?returnCountOnly=true&f=json")).GetProperty("count").GetInt32();
+        Assert.Equal(before - 1, after);
+    }
+
+    [Fact]
     public async Task A_failed_feature_fails_alone_without_rollback()
     {
         using var context = new EditableContext();

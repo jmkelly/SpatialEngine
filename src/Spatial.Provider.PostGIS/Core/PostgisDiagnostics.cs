@@ -55,15 +55,18 @@ internal static class PostgisDiagnostics
         return values;
     }
 
-    private static object? ParseIdentityPart(AttributeKind kind, string value) => kind switch
+    private static object? ParseIdentityPart(AttributeKind kind, string value)
     {
-        AttributeKind.Int64 => long.Parse(value, CultureInfo.InvariantCulture),
-        AttributeKind.Double => double.Parse(value, CultureInfo.InvariantCulture),
-        AttributeKind.Boolean => bool.Parse(value),
-        AttributeKind.Guid => Guid.Parse(value),
-        AttributeKind.DateTimeOffset => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture),
-        _ => value,
-    };
+        return kind switch
+        {
+            AttributeKind.Int64 => long.Parse(value, CultureInfo.InvariantCulture),
+            AttributeKind.Double => double.Parse(value, CultureInfo.InvariantCulture),
+            AttributeKind.Boolean => bool.Parse(value),
+            AttributeKind.Guid => Guid.Parse(value),
+            AttributeKind.DateTimeOffset => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture),
+            _ => value,
+        };
+    }
 
     /// <summary>Reads a date-only or timestamp value into a <see cref="DateTimeOffset"/> (UTC unless the value says otherwise).</summary>
     public static DateTimeOffset ToDateTimeOffset(DateTime value) =>

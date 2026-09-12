@@ -159,17 +159,40 @@ public sealed class EsriFilterClause
             return false;
         }
 
-        return attribute.Kind switch
-        {
-            AttributeKind.Int64 => CompareNumber(attribute.Int64Value, literal, comparisonOperator),
-            AttributeKind.Double => CompareNumber(attribute.DoubleValue, literal, comparisonOperator),
-            AttributeKind.String => CompareStrings(attribute.StringValue, literal, comparisonOperator),
-            AttributeKind.Boolean => CompareBoolean(attribute.BooleanValue, literal, comparisonOperator),
-            AttributeKind.DateTimeOffset => CompareNumber(attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds(), literal, comparisonOperator),
-            AttributeKind.Guid => CompareGuid(attribute.GuidValue, literal, comparisonOperator),
-            _ => false,
-        };
+        return CompareByKind(attribute, comparisonOperator, literal);
     }
+
+    private static bool CompareByKind(AttributeValue attribute, ComparisonOperator comparisonOperator, Literal literal)
+    {
+        switch (attribute.Kind)
+        {
+            case AttributeKind.Int64:
+                return CompareNumber(attribute.Int64Value, literal, comparisonOperator);
+            case AttributeKind.Double:
+                return CompareNumber(attribute.DoubleValue, literal, comparisonOperator);
+            case AttributeKind.String:
+                return CompareStrings(attribute.StringValue, literal, comparisonOperator);
+            case AttributeKind.Boolean:
+                return CompareBoolean(attribute.BooleanValue, literal, comparisonOperator);
+            case AttributeKind.DateTimeOffset:
+                return CompareNumber(attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds(), literal, comparisonOperator);
+            case AttributeKind.Guid:
+                return CompareGuid(attribute.GuidValue, literal, comparisonOperator);
+            default:
+                return false;
+        }
+    }
+
+    private static readonly Func<double, double, bool>[] NumberComparisonPredicates =
+    [
+        (l, r) => l == r,
+        (l, r) => l != r,
+        (l, r) => l < r,
+        (l, r) => l <= r,
+        (l, r) => l > r,
+        (l, r) => l >= r,
+        (_, _) => false,
+    ];
 
     private static bool CompareNumber(double left, Literal literal, ComparisonOperator comparisonOperator)
     {
@@ -178,17 +201,15 @@ public sealed class EsriFilterClause
             return false;
         }
 
-        var right = literal.Number;
-        return comparisonOperator switch
-        {
-            ComparisonOperator.Equals => left == right,
-            ComparisonOperator.NotEquals => left != right,
-            ComparisonOperator.LessThan => left < right,
-            ComparisonOperator.LessOrEqual => left <= right,
-            ComparisonOperator.GreaterThan => left > right,
-            ComparisonOperator.GreaterOrEqual => left >= right,
-            _ => false,
-        };
+        return ApplyNumberComparison(left, literal.Number, comparisonOperator);
+    }
+
+    private static bool ApplyNumberComparison(double left, double right, ComparisonOperator op)
+    {
+        var index = (int)op;
+        if ((uint)index >= (uint)NumberComparisonPredicates.Length)
+            return false;
+        return NumberComparisonPredicates[index](left, right);
     }
 
     private static bool CompareStrings(string left, Literal literal, ComparisonOperator comparisonOperator)
@@ -199,16 +220,26 @@ public sealed class EsriFilterClause
         }
 
         var comparison = StringComparer.Ordinal.Compare(left, literal.Text);
-        return comparisonOperator switch
-        {
-            ComparisonOperator.Equals => comparison == 0,
-            ComparisonOperator.NotEquals => comparison != 0,
-            ComparisonOperator.LessThan => comparison < 0,
-            ComparisonOperator.LessOrEqual => comparison <= 0,
-            ComparisonOperator.GreaterThan => comparison > 0,
-            ComparisonOperator.GreaterOrEqual => comparison >= 0,
-            _ => false,
-        };
+        return SatisfiesComparison(comparison, comparisonOperator);
+    }
+
+    private static readonly Func<int, bool>[] ComparisonPredicates =
+    [
+        c => c == 0,
+        c => c != 0,
+        c => c < 0,
+        c => c <= 0,
+        c => c > 0,
+        c => c >= 0,
+        _ => false,
+    ];
+
+    private static bool SatisfiesComparison(int comparison, ComparisonOperator op)
+    {
+        var index = (int)op;
+        if ((uint)index >= (uint)ComparisonPredicates.Length)
+            return false;
+        return ComparisonPredicates[index](comparison);
     }
 
     private static bool CompareBoolean(bool left, Literal literal, ComparisonOperator comparisonOperator)

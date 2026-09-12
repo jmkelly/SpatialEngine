@@ -25,15 +25,23 @@ internal static class EsriLayerModel
     /// <summary>The configured maximum page size in features.</summary>
     public const int MaxRecordCount = 1000;
 
-    /// <summary>Maps an engine geometry-type name onto its Esri constant.</summary>
-    public static string GeometryType(string engineGeometryType) => engineGeometryType.Trim().ToLowerInvariant() switch
+    private static readonly Dictionary<string, string> GeometryTypeMap = new(StringComparer.OrdinalIgnoreCase)
     {
-        "point" => "esriGeometryPoint",
-        "multipoint" => "esriGeometryMultipoint",
-        "linestring" or "multilinestring" or "line" or "linearring" => "esriGeometryPolyline",
-        "polygon" or "multipolygon" => "esriGeometryPolygon",
-        _ => "esriGeometryNull",
+        ["point"] = "esriGeometryPoint",
+        ["multipoint"] = "esriGeometryMultipoint",
+        ["linestring"] = "esriGeometryPolyline",
+        ["multilinestring"] = "esriGeometryPolyline",
+        ["line"] = "esriGeometryPolyline",
+        ["linearring"] = "esriGeometryPolyline",
+        ["polygon"] = "esriGeometryPolygon",
+        ["multipolygon"] = "esriGeometryPolygon",
     };
+
+    /// <summary>Maps an engine geometry-type name onto its Esri constant.</summary>
+    public static string GeometryType(string engineGeometryType)
+    {
+        return GeometryTypeMap.TryGetValue(engineGeometryType.Trim(), out var result) ? result : "esriGeometryNull";
+    }
 
     /// <summary>Builds the layer reference for the <c>FeatureServer</c> root.</summary>
     public static EsriLayerRef Reference(int id, DatasetSummary dataset) =>

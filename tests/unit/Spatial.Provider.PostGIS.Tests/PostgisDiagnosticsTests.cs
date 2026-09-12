@@ -1,3 +1,4 @@
+using System.Globalization;
 using Spatial.Core.Features;
 using Spatial.Provider.PostGIS.Configuration;
 using Spatial.Provider.PostGIS.Core;
@@ -65,6 +66,18 @@ public sealed class PostgisDiagnosticsTests
             PostgisDiagnostics.ParseFeatureIdentity([AttributeKind.Int64, AttributeKind.Int64], new FeatureId("7")));
 
         Assert.Equal(Spatial.PluginSdk.SpatialException.InvalidArguments, exception.Code);
+    }
+
+    [Fact]
+    public void Parse_feature_identity_handles_all_scalar_kinds()
+    {
+        var values = PostgisDiagnostics.ParseFeatureIdentity(
+            [AttributeKind.Double, AttributeKind.Boolean, AttributeKind.DateTimeOffset],
+            new FeatureId("3.14|true|2023-11-14T22:13:20+00:00"));
+
+        Assert.Equal(3.14, values[0]);
+        Assert.Equal(true, values[1]);
+        Assert.Equal(DateTimeOffset.Parse("2023-11-14T22:13:20+00:00", CultureInfo.InvariantCulture), values[2]);
     }
 
     [Fact]

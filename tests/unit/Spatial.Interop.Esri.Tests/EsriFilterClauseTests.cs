@@ -31,6 +31,40 @@ public sealed class EsriFilterClauseTests
     }
 
     [Fact]
+    public void Strings_compare_across_all_ordering_operators()
+    {
+        var feature = Feature("Berlin", 1);
+
+        Assert.True(Parse("name = 'Berlin'").Matches(feature));
+        Assert.True(Parse("name != 'Paris'").Matches(feature));
+        Assert.True(Parse("name < 'C'").Matches(feature));
+        Assert.True(Parse("name <= 'Berlin'").Matches(feature));
+        Assert.True(Parse("name > 'A'").Matches(feature));
+        Assert.True(Parse("name >= 'Berlin'").Matches(feature));
+        Assert.False(Parse("name = 'Paris'").Matches(feature));
+        Assert.False(Parse("name != 'Berlin'").Matches(feature));
+        Assert.False(Parse("name < 'A'").Matches(feature));
+        Assert.False(Parse("name > 'C'").Matches(feature));
+    }
+
+    [Fact]
+    public void Integers_compare_across_all_ordering_operators()
+    {
+        var feature = Feature("Berlin", 3664000);
+
+        Assert.True(Parse("population = 3664000").Matches(feature));
+        Assert.True(Parse("population != 1").Matches(feature));
+        Assert.True(Parse("population < 4000000").Matches(feature));
+        Assert.True(Parse("population <= 3664000").Matches(feature));
+        Assert.True(Parse("population > 1000").Matches(feature));
+        Assert.True(Parse("population >= 3664000").Matches(feature));
+        Assert.False(Parse("population = 1").Matches(feature));
+        Assert.False(Parse("population != 3664000").Matches(feature));
+        Assert.False(Parse("population < 1000").Matches(feature));
+        Assert.False(Parse("population > 4000000").Matches(feature));
+    }
+
+    [Fact]
     public void And_or_and_parentheses_nest()
     {
         var feature = Feature("Berlin", 3);

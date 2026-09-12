@@ -334,13 +334,18 @@ public static class EsriGeometryCodec
         return values.Length switch
         {
             2 => new Coordinate(values[0], values[1]),
-            3 => flags.HasM && !flags.HasZ
-                ? new Coordinate(values[0], values[1], null, values[2])
-                : new Coordinate(values[0], values[1], values[2], null),
+            3 => CoordinateFrom3(values, flags),
             4 => new Coordinate(values[0], values[1], values[2], values[3]),
             _ => throw EsriInteropException.Invalid(
                 $"An Esri coordinate array must hold 2, 3 or 4 numbers (x, y, z, m); got {values.Length}."),
         };
+    }
+
+    private static Coordinate CoordinateFrom3(double[] values, GeometryFlags flags)
+    {
+        return flags.HasM && !flags.HasZ
+            ? new Coordinate(values[0], values[1], null, values[2])
+            : new Coordinate(values[0], values[1], values[2], null);
     }
 
     private static double? ReadOrdinate(JsonElement element, string property, bool present)
