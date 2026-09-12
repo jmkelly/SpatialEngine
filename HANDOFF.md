@@ -15,8 +15,10 @@
   `ICoordinateTransforms`, `IDataCatalogue`, `IFeatureStore`,
   `ITransactionStore`, `IDemoJobs`, `SpatialException`, DTOs, HTTP shapes)
   → implementations (`NtsGeometryOperations`, `ProjNetTransforms`,
-  `DemoStore`, `PostgisStore`) → `Spatial.Host` (typed routes, keyed DI
-  `"demo"`/`"postgis"`, `PostgisOptions`).
+  `DemoStore`, `PostgisStore`, `VipsRasterOperations`) → `Spatial.Host`
+  (typed routes, keyed DI `"demo"`/`"postgis"`, `PostgisOptions`).
+  Rendering adds `IMapRenderer` (`MapRenderer` in `Spatial.Rendering.Skia`,
+  SkiaSharp) and `IRasterOperations` (NetVips).
 - **Tests:** `eng/verify.sh` is the gate. Counts (post-refactor):
   Core 308, NTS 28, ProjNet 61, Demo 15, PostGIS 130 unit, Client 9,
   Host 14, Architecture 8, PostGIS integration 16 (skip without Docker).
@@ -24,6 +26,38 @@
 - **Web:** `eng/e2e-web.sh` (real host + TS SDK) and
   `eng/workbench-e2e.sh` (real host + built app + Playwright chromium, 5
   specs) are green.
+
+## Raster rendering — status
+
+ADR-0044 (accepted) is implemented through R3 of
+`architecture/rendering-implementation-plan.md`:
+
+- **Contracts** in the root `Spatial.PluginSdk` namespace (per the ADR, not
+  the plan's earlier `.Rendering` suggestion — that namespace tripped the
+  metrics `architectural-rigidity` zone-of-pain diagnosis): `IMapRenderer`,
+  `IRasterOperations` and the core-typed DTOs. HTTP DTOs in `.Http`.
+- **`Spatial.Rendering.Skia`** implements `IMapRenderer`: `StyleCompiler`
+  (MapLibre subset: background/fill/line/circle, zoom windows, filters),
+  `SceneBuilder`/`FeaturePipeline`/`GeometryPipeline`/`ZoomEstimator`,
+  `SkiaVectorRasterizer`. `MapRenderer` is a thin facade; `RenderValidator`
+  applies the pixel/layer caps.
+- **`Spatial.Imagery.Vips`** implements `IRasterOperations`; it
+  un-premultiplies the Skia buffer so every libvips layer is straight before
+  `composite2`, and normalises to 4-band sRGB.
+- **Host**: `POST /api/render` (+ `X-Raster-Width/Height/Format` headers) and
+  `GET /api/render/capabilities`; `.NET` `SpatialClient.RenderAsync` and TS
+  `SpatialClient.render`. `eng/e2e-web.sh` covers the live render route.
+- **Not done**: R4 tiles/cache, R5 GeoServices `export`/`tile` seam, R6
+  labels/symbols, R7 GPU.
+
+**CRAP gate caveat:** the `crap4dotnet` audit globs every `*.csproj` under
+whatever solution it is given, ignoring solution membership. Because
+`SpatialEngine.slnx` lives at the repo root, the throwaway research spike at
+`research/rendering/spike/RenderSpike` is analyzed too (21 of the ~21 CRAP
+findings). `.dependably` excludes `**/research/**` so the metrics gate is
+clean; the CRAP tool has no equivalent config. Treat those findings as
+pre-existing research noise, not product regressions; if the spike is ever
+promoted or removed, the gate goes green.
 
 ## Hard-won gotchas (read before touching this code)
 
@@ -53,6 +87,13 @@
   with `npm install` when the SDK changes and the lock drifts.
 - **Style/quality traps still apply** (CA1859/CA1826/CA1068/CA1305/CA1861,
   `Results<…>` typed results, format before commit).
+- **libvips needs sRGB interpretation and straight alpha**: tag every input
+  `Copy(interpretation: Srgb)` before `composite2`, and un-premultiply the
+  Skia RGBA buffer (`Unpremultiply`) so all stack layers are straight; the
+  band counts must match. Row stride is handled by repacking non-tight
+  buffers before `NewFromMemory`.
+- **Skia v4 uses `SKPathBuilder`**: `SKPath` mutators are obsolete; build a
+  path with the builder and `Detach()` it.
 
 ## GeoServices REST — status
 

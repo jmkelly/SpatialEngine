@@ -188,7 +188,7 @@ internal static class StoreEndpoints
         }
     }
 
-    private static IDataCatalogue ResolveCatalogue(IServiceProvider services, string store) =>
+    internal static IDataCatalogue ResolveCatalogue(IServiceProvider services, string store) =>
         store switch
         {
             Demo => services.GetRequiredKeyedService<IDataCatalogue>(Demo),
@@ -196,7 +196,7 @@ internal static class StoreEndpoints
             _ => throw SpatialException.BadArguments($"Unknown store '{store}'; expected 'demo' or 'postgis'."),
         };
 
-    private static IFeatureStore ResolveFeatures(IServiceProvider services, string store) =>
+    internal static IFeatureStore ResolveFeatures(IServiceProvider services, string store) =>
         store switch
         {
             Demo => services.GetRequiredKeyedService<IFeatureStore>(Demo),

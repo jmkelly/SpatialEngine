@@ -1,6 +1,9 @@
 # Raster Rendering Implementation Plan
 
-> **Status:** proposed — no code yet. Companion to
+> **Status:** R0–R3 implemented (contracts, Skia vector render, NetVips
+> imagery, MapLibre-subset style document, host route and clients); R4–R7
+> (tiles/cache, GeoServices export seam, labels/symbols, GPU) remain.
+> Companion to
 > `architecture/decisions/ADR-0044-raster-rendering-pipeline.md` (the gating
 > decision) and the research at `research/rendering/README.md` (candidate
 > survey, spike, measured baselines, integration gotchas). Read the research
@@ -81,10 +84,12 @@ Rules (enforced by `tests/architecture`):
 - `Spatial.Host` resolves the keyed store per layer at the edge and passes
   it in.
 
-## 3. Contracts (`Spatial.PluginSdk.Rendering`)
+## 3. Contracts (`Spatial.PluginSdk`)
 
 Core/framework types only. `Envelope` is the viewport bounds; pixel buffers
-are `ReadOnlyMemory<byte>`; nothing Skia/NetVips-shaped appears.
+are `ReadOnlyMemory<byte>`; nothing Skia/NetVips-shaped appears. The types
+live in the root `Spatial.PluginSdk` namespace alongside the other service
+contracts (`IFeatureStore`, `BoundingBox`), per ADR-0044.
 
 ```csharp
 public enum RasterFormat { Png, Jpeg, WebP, Tiff }
@@ -139,6 +144,12 @@ public interface IRasterOperations
     Task<RasterImage> CompositeAsync(RasterCompositeRequest request, CancellationToken cancellationToken = default);
 }
 ```
+
+As-built deltas from the sketch above: the contracts sit in the root
+`Spatial.PluginSdk` namespace (the ADR's wording; a `.Rendering` sub-namespace
+tripped the metrics zone-of-pain diagnosis), `RasterCompositeRequest` carries
+the `RasterViewport` so configured imagery can be resized to the frame, and
+the WebP enum member is spelled `Webp` so the camelCase wire value is `webp`.
 
 HTTP DTOs live in `Spatial.PluginSdk.Http` and use **primitives**, not core
 structs (the known STJ struct-binding trap): viewport as

@@ -8,11 +8,23 @@ import type {
   FeatureBatchesResponse,
   FeatureWriteResponse,
   GeometryResponse,
+  RasterFormat,
+  RenderCapabilitiesResponse,
+  RenderRequest,
   SleepResponse,
   TransactionResponse,
   ValidateResponse,
 } from "./generated-types.ts";
 import { decodeFeatureBatch, type FeatureBatch } from "./feature-batch.ts";
+
+/** An encoded raster result from the render route, with the host's metadata headers. */
+export interface RasterImage {
+  bytes: Uint8Array;
+  mediaType: string;
+  width: number;
+  height: number;
+  format: RasterFormat;
+}
 
 /**
  * The TypeScript SDK client for the typed spatial host API (ADR-0033): a
@@ -181,6 +193,36 @@ export class SpatialClient {
     return Number(response.slept);
   }
 
+  // ---- rendering (ADR-0044) ----
+
+  /** Describes the configured raster formats, pixel cap and imagery sources. */
+  async renderCapabilities(signal?: AbortSignal): Promise<RenderCapabilitiesResponse> {
+    return this.get<RenderCapabilitiesResponse>("/api/render/capabilities", signal);
+  }
+
+  /** Renders a styled vector/imagery request to encoded image bytes. */
+  async render(request: RenderRequest, signal?: AbortSignal): Promise<RasterImage> {
+    const response = await this.fetchFn(`${this.baseUrl}/api/render`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+      signal,
+    });
+    if (!response.ok) {
+      throw await this.fail(response);
+    }
+
+    const contentType = response.headers.get("content-type") ?? "application/octet-stream";
+    const mediaType = contentType.split(";")[0]?.trim() || "application/octet-stream";
+    return {
+      bytes: new Uint8Array(await response.arrayBuffer()),
+      mediaType,
+      width: Number(response.headers.get("x-raster-width") ?? 0),
+      height: Number(response.headers.get("x-raster-height") ?? 0),
+      format: formatOf(mediaType),
+    };
+  }
+
   // ---- transport ----
 
   private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -203,6 +245,10 @@ export class SpatialClient {
       return (await response.json()) as T;
     }
 
+    throw await this.fail(response);
+  }
+
+  private async fail(response: Response): Promise<SpatialApiError> {
     let code = "http.error";
     let message = `the host failed with ${response.status}`;
     try {
@@ -213,8 +259,15 @@ export class SpatialClient {
       // Keep the status-only failure.
     }
 
-    throw new SpatialApiError(response.status, code, message);
+    return new SpatialApiError(response.status, code, message);
   }
+}
+
+function formatOf(mediaType: string): RasterFormat {
+  if (mediaType === "image/jpeg") return "jpeg";
+  if (mediaType === "image/webp") return "webp";
+  if (mediaType === "image/tiff") return "tiff";
+  return "png";
 }
 
 function toBase64(bytes: Uint8Array): string {

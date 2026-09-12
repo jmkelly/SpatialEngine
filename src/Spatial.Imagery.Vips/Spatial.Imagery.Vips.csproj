@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The NetVips/libvips imagery implementation (ADR-0044): the in-process
+    implementation of IRasterOperations. Every NetVips type lives inside this
+    assembly (ADR-0005); libvips itself ships as a shared library through
+    NetVips.Native (LGPL-2.1 dynamic linking). It references Core + the SDK
+    contracts only and is composed by Spatial.Host.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="NetVips" />
+    <PackageReference Include="NetVips.Native" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Imagery.Vips.Tests" />
+  </ItemGroup>
+
+</Project>

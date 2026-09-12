@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
 ---
@@ -100,6 +100,19 @@ Raster rendering is a **composed pipeline**, not a new subsystem bolted on:
   lands.
 - Scope is fixed and honest: label placement/collision, full style-spec
   coverage, tile caching and GPU back ends are **not** in this decision.
+
+## Implementation status
+
+Implemented (R0–R3 of `rendering-implementation-plan.md`): the
+`Spatial.PluginSdk` rendering contracts, `Spatial.Rendering.Skia`
+(`IMapRenderer`: MapLibre-subset `background`/`fill`/`line`/`circle`,
+attribute filters, zoom windows, bbox pushdown, screen-space simplify/cull),
+`Spatial.Imagery.Vips` (`IRasterOperations`: read/normalise, blend,
+PNG/JPEG/WebP/TIFF encode) and the host's `POST /api/render` +
+`GET /api/render/capabilities` routes with the .NET and TypeScript clients.
+Not yet implemented: tiles and the content-addressed cache (R4), the
+GeoServices `export`/`tile` seam (R5), labels/symbols (R6) and any GPU
+backend (R7).
 
 ## Alternatives
 

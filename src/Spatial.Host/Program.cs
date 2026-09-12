@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.Extensions.FileProviders;
 using Spatial.Adapter.GeoServices;
 using Spatial.Host.Api;
+using Spatial.Imagery.Vips;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
@@ -9,6 +10,7 @@ using Spatial.PluginSdk.Providers;
 using Spatial.Provider.ArcGisRest;
 using Spatial.Provider.Demo;
 using Spatial.Provider.PostGIS;
+using Spatial.Rendering.Skia;
 using Spatial.Transformations.ProjNet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,6 +84,24 @@ internal static class HostComposition
         builder.Services.AddKeyedSingleton<ITransactionStore, PostgisStore>("postgis");
 
         ConfigureRemoteServices(builder);
+        ConfigureRendering(builder);
+    }
+
+    /// <summary>Registers the vector renderer and the imagery pipeline (ADR-0044).</summary>
+    private static void ConfigureRendering(WebApplicationBuilder builder)
+    {
+        var renderingOptions = builder.Configuration.GetSection("Spatial:Rendering").Get<RenderingOptions>()
+            ?? new RenderingOptions();
+        var imageryOptions = builder.Configuration.GetSection("Spatial:Imagery").Get<ImageryOptions>()
+            ?? new ImageryOptions();
+        builder.Services.AddSingleton(renderingOptions);
+        builder.Services.AddSingleton(imageryOptions);
+        builder.Services.AddSingleton<IRasterOperations>(new VipsRasterOperations(imageryOptions.ToSourceMap()));
+        builder.Services.AddSingleton<IMapRenderer>(services => new MapRenderer(
+            services.GetRequiredService<ICoordinateTransforms>(),
+            services.GetRequiredService<IGeometryOperations>(),
+            services.GetRequiredService<IRasterOperations>(),
+            new RenderLimits(renderingOptions.MaxPixels, renderingOptions.MaxLayers)));
     }
 
     /// <summary>Registers the ArcGIS REST consuming provider's keyed stores (ADR-0035).</summary>

@@ -38,6 +38,33 @@ test("the live host serves buffer, catalogue, scan and structured errors", { ski
   assert.equal(description.code, "4326");
 });
 
+test("the live host renders a styled raster and advertises its capabilities", { skip: !ENABLED ? "set SPATIAL_HOST_URL to a running host" : false }, async () => {
+  const client = new SpatialClient(HOST!);
+
+  const capabilities = await client.renderCapabilities();
+  assert.ok(capabilities.formats.includes("png"), "png is advertised");
+  assert.ok(Number(capabilities.maxPixels) > 0);
+
+  const image = await client.render({
+    viewport: { minX: -10, minY: 35, maxX: 30, maxY: 60, width: 400, height: 250, crs: "EPSG:4326" },
+    style: {
+      version: 8,
+      layers: [
+        { id: "bg", type: "background", paint: { "background-color": "#101820" } },
+        { id: "cities", type: "circle", "source-layer": "demo.cities", paint: { "circle-color": "#ffd166", "circle-radius": 6 } },
+      ],
+    },
+    layers: [{ dataset: "demo.cities", store: "demo" }],
+    format: "png",
+  });
+
+  assert.equal(image.mediaType, "image/png");
+  assert.equal(image.format, "png");
+  assert.equal(image.width, 400);
+  assert.equal(image.height, 250);
+  assert.equal(image.bytes[0], 0x89, "a PNG signature");
+});
+
 /**
  * The canonical SGEOM encoding of an XY point at the origin: magic +
  * version + layout(0=Xy) + type(1=Point) + crs(0=none) + present(1) + x(0.0)

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The SkiaSharp vector rasterizer (ADR-0044): the in-process implementation
+    of IMapRenderer. Every SkiaSharp type lives inside this assembly (ADR-0005);
+    it references Core + the SDK contracts only and is composed by Spatial.Host.
+    Imagery and encoding are delegated to the IRasterOperations contract, never
+    to the Vips implementation directly (ADR-0033).
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The rasterizer split (paths, paints, scene) is pinned by its unit tests. -->
+    <InternalsVisibleTo Include="Spatial.Rendering.Skia.Tests" />
+  </ItemGroup>
+
+</Project>

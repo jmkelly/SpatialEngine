@@ -656,6 +656,77 @@
         }
       }
     },
+    "/api/render": {
+      "post": {
+        "tags": [
+          "RenderEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/render/capabilities": {
+      "get": {
+        "tags": [
+          "RenderEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderCapabilitiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/arcgis/rest/services": {
       "get": {
         "tags": [
@@ -1597,6 +1668,17 @@
           }
         }
       },
+      "ImagerySourceDto": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "IntersectionRequest": {
         "required": [
           "left",
@@ -1609,6 +1691,178 @@
           },
           "right": {
             "type": "string"
+          }
+        }
+      },
+      "JsonElement": { },
+      "RasterBlend": {
+        "enum": [
+          "over",
+          "multiply",
+          "screen",
+          "darken",
+          "lighten"
+        ],
+        "default": "over"
+      },
+      "RasterFormat": {
+        "enum": [
+          "png",
+          "jpeg",
+          "webp",
+          "tiff"
+        ],
+        "default": "png"
+      },
+      "RenderCapabilitiesResponse": {
+        "required": [
+          "formats",
+          "pixelFormats",
+          "blendModes",
+          "maxPixels",
+          "imagerySources"
+        ],
+        "type": "object",
+        "properties": {
+          "formats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pixelFormats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blendModes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxPixels": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "imagerySources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImagerySourceDto"
+            }
+          }
+        }
+      },
+      "RenderImageryDto": {
+        "required": [
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "blend": {
+            "$ref": "#/components/schemas/RasterBlend"
+          },
+          "opacity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double",
+            "default": 1
+          }
+        }
+      },
+      "RenderLayerDto": {
+        "required": [
+          "dataset"
+        ],
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string"
+          },
+          "store": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "filter": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RenderRequest": {
+        "required": [
+          "viewport",
+          "style",
+          "layers"
+        ],
+        "type": "object",
+        "properties": {
+          "viewport": {
+            "$ref": "#/components/schemas/ViewportDto"
+          },
+          "style": {
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RenderLayerDto"
+            }
+          },
+          "imagery": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RenderImageryDto"
+            }
+          },
+          "format": {
+            "$ref": "#/components/schemas/RasterFormat"
+          },
+          "quality": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32",
+            "default": 90
+          },
+          "background": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "transparent": {
+            "type": "boolean",
+            "default": true
+          },
+          "scale": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double",
+            "default": 1
           }
         }
       },
@@ -1740,6 +1994,71 @@
             "type": "boolean"
           }
         }
+      },
+      "ViewportDto": {
+        "required": [
+          "minX",
+          "minY",
+          "maxX",
+          "maxY",
+          "width",
+          "height",
+          "crs"
+        ],
+        "type": "object",
+        "properties": {
+          "minX": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minY": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxX": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxY": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "width": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "height": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "crs": {
+            "type": "string"
+          }
+        }
       }
     }
   },
@@ -1755,6 +2074,9 @@
     },
     {
       "name": "StoreEndpoints"
+    },
+    {
+      "name": "RenderEndpoints"
     },
     {
       "name": "GeoServicesEndpoints"

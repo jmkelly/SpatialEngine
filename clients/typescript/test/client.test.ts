@@ -10,7 +10,7 @@ import { decodeFeatureBatch } from "../src/feature-batch.ts";
  * SDK's client tests: URL assertions, the camelCase wire contract, batch
  * decoding and structured error mapping — no .NET needed.
  */
-function fakeHost(routes: Record<string, (req: import("node:http").IncomingMessage) => { status: number; body: string; contentType: string }>): Promise<{ url: string; server: Server; requests: string[] }> {
+function fakeHost(routes: Record<string, (req: import("node:http").IncomingMessage) => { status: number; body: string | Uint8Array; contentType: string; headers?: Record<string, string> }>): Promise<{ url: string; server: Server; requests: string[] }> {
   const requests: string[] = [];
   const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -22,7 +22,7 @@ function fakeHost(routes: Record<string, (req: import("node:http").IncomingMessa
       return;
     }
     const answer = route(req);
-    res.writeHead(answer.status, { "content-type": answer.contentType });
+    res.writeHead(answer.status, { "content-type": answer.contentType, ...(answer.headers ?? {}) });
     res.end(answer.body);
   });
   return new Promise((resolve) => {
@@ -183,3 +183,55 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   }
   return result;
 }
+
+test("render returns image bytes and metadata headers", async (t) => {
+  const host = await fakeHost({
+    "/api/render": () => ({
+      status: 200,
+      body: Uint8Array.of(0x89, 0x50, 0x4e, 0x47),
+      contentType: "image/png",
+      headers: { "x-raster-width": "400", "x-raster-height": "250" },
+    }),
+    "/api/render/capabilities": () => ({
+      status: 200,
+      body: JSON.stringify({ formats: ["png"], pixelFormats: ["rgba8888"], blendModes: ["over"], maxPixels: 16777216, imagerySources: [] }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  const image = await client.render({
+    viewport: { minX: -10, minY: 35, maxX: 30, maxY: 60, width: 400, height: 250, crs: "EPSG:4326" },
+    style: { version: 8, layers: [] },
+    layers: [{ dataset: "demo.cities", store: "demo" }],
+    format: "png",
+  });
+
+  assert.equal(image.mediaType, "image/png");
+  assert.equal(image.format, "png");
+  assert.equal(image.width, 400);
+  assert.equal(image.height, 250);
+  assert.deepEqual([...image.bytes], [0x89, 0x50, 0x4e, 0x47]);
+
+  const capabilities = await client.renderCapabilities();
+  assert.deepEqual(capabilities.formats, ["png"]);
+  assert.deepEqual(host.requests, ["POST /api/render", "GET /api/render/capabilities"]);
+});
+
+test("render maps host failures to SpatialApiError", async (t) => {
+  const host = await fakeHost({
+    "/api/render": () => ({
+      status: 400,
+      body: JSON.stringify({ code: "invalid.arguments", message: "bad format" }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  await assert.rejects(
+    () => client.render({ viewport: { minX: 0, minY: 0, maxX: 1, maxY: 1, width: 10, height: 10, crs: "EPSG:4326" }, style: {}, layers: [] }),
+    (error: unknown) => error instanceof SpatialApiError && error.status === 400 && error.code === "invalid.arguments",
+  );
+});

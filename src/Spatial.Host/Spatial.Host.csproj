@@ -16,6 +16,8 @@
     <ProjectReference Include="..\Spatial.Provider.Demo\Spatial.Provider.Demo.csproj" />
     <ProjectReference Include="..\Spatial.Provider.PostGIS\Spatial.Provider.PostGIS.csproj" />
     <ProjectReference Include="..\Spatial.Provider.ArcGisRest\Spatial.Provider.ArcGisRest.csproj" />
+    <ProjectReference Include="..\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
+    <ProjectReference Include="..\Spatial.Imagery.Vips\Spatial.Imagery.Vips.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -38,6 +38,7 @@ truth: `architecture/decisions/` (ADRs) and
 - Esri GeoServices REST (serve/consume/edit) → `architecture/geoservices-implementation-plan.md`, ADR-0035, ADR-0037
 - Ingest, runtime service publishing, Esri admin → `architecture/publishing-and-ingest-plan.md`, ADR-0041
 - MapServer / ImageServer scaffolds → `architecture/map-service-plan.md`, `architecture/image-service-plan.md`
+- Raster rendering / imagery → `architecture/distilled/rendering.md`, ADR-0044, `architecture/rendering-implementation-plan.md`
 
 ## Commands
 

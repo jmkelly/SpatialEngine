@@ -118,9 +118,51 @@ export interface GeometryResponse {
   geometry: string;
 }
 
+export interface ImagerySourceDto {
+  name: string;
+}
+
 export interface IntersectionRequest {
   left: string;
   right: string;
+}
+
+export type JsonElement = unknown;
+
+export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";
+
+export type RasterFormat = "png" | "jpeg" | "webp" | "tiff";
+
+export interface RenderCapabilitiesResponse {
+  formats: string[];
+  pixelFormats: string[];
+  blendModes: string[];
+  maxPixels: number | string;
+  imagerySources: ImagerySourceDto[];
+}
+
+export interface RenderImageryDto {
+  source: string;
+  blend?: RasterBlend;
+  opacity?: number | string;
+}
+
+export interface RenderLayerDto {
+  dataset: string;
+  store?: null | string;
+  filter?: null | string;
+}
+
+export interface RenderRequest {
+  viewport: ViewportDto;
+  style: JsonElement;
+  layers: RenderLayerDto[];
+  imagery?: null | RenderImageryDto[];
+  format?: RasterFormat;
+  quality?: number | string;
+  background?: null | string;
+  transparent?: boolean;
+  scale?: number | string;
 }
 
 export interface ScanRequest {
@@ -160,4 +202,14 @@ export interface ValidateRequest {
 
 export interface ValidateResponse {
   valid: boolean;
+}
+
+export interface ViewportDto {
+  minX: number | string;
+  minY: number | string;
+  maxX: number | string;
+  maxY: number | string;
+  width: number | string;
+  height: number | string;
+  crs: string;
 }

@@ -1,6 +1,7 @@
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
+using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
 using Spatial.PluginSdk.Providers;
 using Spatial.PluginSdk.Transformations;
@@ -168,6 +169,19 @@ public sealed class SpatialClient
             new TransactionRequest(transaction), cancellationToken);
         return response.Ok;
     }
+
+    // ---- rendering (ADR-0044) ----
+
+    /// <summary>Renders a styled vector and imagery request to encoded image bytes.</summary>
+    public async Task<RasterImage> RenderAsync(RenderRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await _transport.PostForImageAsync("/api/render", request, cancellationToken);
+    }
+
+    /// <summary>Describes the configured raster formats, pixel cap and imagery sources.</summary>
+    public Task<RenderCapabilitiesResponse> RenderCapabilitiesAsync(CancellationToken cancellationToken = default) =>
+        _transport.GetAsync<RenderCapabilitiesResponse>("/api/render/capabilities", cancellationToken);
 
     // ---- demo ----
 

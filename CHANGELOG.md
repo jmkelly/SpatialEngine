@@ -11,6 +11,17 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Raster rendering pipeline** (ADR-0044, plan R0–R3): the core-typed
+  `IMapRenderer`/`IRasterOperations` contracts and DTOs in
+  `Spatial.PluginSdk`, the `Spatial.Rendering.Skia` vector rasterizer
+  (MapLibre-subset `background`/`fill`/`line`/`circle`, attribute filters,
+  zoom windows, bbox pushdown, screen-space simplify/cull) and the
+  `Spatial.Imagery.Vips` NetVips imagery pipeline
+  (read/normalise/compose/encode). The host serves `POST /api/render` and
+  `GET /api/render/capabilities`, configured by `Spatial:Rendering` and
+  `Spatial:Imagery`; the .NET and TypeScript clients expose `RenderAsync` /
+  `render`. Tiles, the GeoServices `export` seam, labels and a GPU backend
+  remain (R4–R7).
 - **Ingest codec** (ADR-0041): `Spatial.Interop.Ingest` decodes GeoJSON,
   newline-delimited GeoJSON and CSV uploads into canonical `FeatureBatch`
   pages with inferred schemas (`DatasetDecoder.Decode`). Core-only; no host
@@ -32,6 +43,10 @@ this file together, then tag the release (`RELEASING.md`).
   meaningless for stateless types and gates through the tool's guard-aware
   diagnoses) and sets `failOn` to `moderate`. The metrics gate drops from
   26 high findings to 3 high + 1 moderate, all genuine.
+- **Research code excluded from the metrics gate**: `.dependably` ignores
+  `**/research/**`, so the throwaway `research/rendering/spike` project is
+  not measured as product code (the CRAP audit globs every `.csproj` under
+  the solution directory and still reports that spike — see HANDOFF.md).
 
 ## [0.1.0] - 2026-09-12
 

@@ -8,5 +8,6 @@ public static class SpatialApi
         GeometryEndpoints.Map(app);
         TransformEndpoints.Map(app);
         StoreEndpoints.Map(app);
+        RenderEndpoints.Map(app);
     }
 }

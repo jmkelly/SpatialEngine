@@ -1,9 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
 using Spatial.Core.Geometry.Codec;
+using Spatial.PluginSdk;
+using Spatial.PluginSdk.Http;
 
 namespace Spatial.Client.Tests;
 
@@ -152,5 +155,63 @@ public sealed class SpatialClientTests
         using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"slept":50}""")));
 
         Assert.Equal(50, await stub.Client.SleepAsync(50));
+    }
+
+    [Fact]
+    public async Task Render_reads_image_bytes_and_metadata_headers()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => Image([1, 2, 3], "image/png", 400, 250)));
+        using var style = JsonDocument.Parse("""{"version":8,"layers":[]}""");
+        var request = new RenderRequest(
+            new ViewportDto(-10, 35, 30, 60, 400, 250, "EPSG:4326"),
+            style.RootElement.Clone(),
+            [new RenderLayerDto("demo.cities", "demo")]);
+
+        var image = await stub.Client.RenderAsync(request);
+
+        Assert.Equal([1, 2, 3], image.Content);
+        Assert.Equal("image/png", image.MediaType);
+        Assert.Equal(400, image.Width);
+        Assert.Equal(250, image.Height);
+        Assert.Equal(RasterFormat.Png, image.Format);
+        Assert.Equal("/api/render", Assert.Single(stub.Handler.Exchanges).Request.RequestUri?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task Render_maps_a_host_failure_to_a_client_exception()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"code":"invalid.arguments","message":"bad"}""", HttpStatusCode.BadRequest)));
+        using var style = JsonDocument.Parse("""{"version":8,"layers":[]}""");
+        var request = new RenderRequest(
+            new ViewportDto(0, 0, 1, 1, 10, 10, "EPSG:4326"),
+            style.RootElement.Clone(),
+            []);
+
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() => stub.Client.RenderAsync(request));
+
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
+    }
+
+    [Fact]
+    public async Task Render_capabilities_are_read_from_the_host()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"formats":["png"],"pixelFormats":["rgba8888"],"blendModes":["over"],"maxPixels":100,"imagerySources":[{"name":"basemap"}]}""")));
+
+        var capabilities = await stub.Client.RenderCapabilitiesAsync();
+
+        Assert.Equal("png", Assert.Single(capabilities.Formats));
+        Assert.Equal("basemap", Assert.Single(capabilities.ImagerySources).Name);
+    }
+
+    private static HttpResponseMessage Image(byte[] bytes, string mediaType, int width, int height)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue(mediaType);
+        response.Headers.Add("X-Raster-Width", width.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        response.Headers.Add("X-Raster-Height", height.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return response;
     }
 }

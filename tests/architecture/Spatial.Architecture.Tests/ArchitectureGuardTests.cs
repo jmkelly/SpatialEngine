@@ -104,6 +104,8 @@ public sealed class ArchitectureGuardTests
             "Spatial.Provider.PostGIS",
             "Spatial.Adapter.GeoServices",
             "Spatial.Provider.ArcGisRest",
+            "Spatial.Rendering.Skia",
+            "Spatial.Imagery.Vips",
         };
         var host = PlatformProject("Spatial.Host");
         var violations = host.ProjectReferences
@@ -215,6 +217,8 @@ public sealed class ArchitectureGuardTests
         "Spatial.Provider.PostGIS",
         "Spatial.Adapter.GeoServices",
         "Spatial.Provider.ArcGisRest",
+        "Spatial.Rendering.Skia",
+        "Spatial.Imagery.Vips",
         "Spatial.Host",
     ];
 
@@ -226,6 +230,8 @@ public sealed class ArchitectureGuardTests
         "Spatial.Provider.PostGIS",
         "Spatial.Adapter.GeoServices",
         "Spatial.Provider.ArcGisRest",
+        "Spatial.Rendering.Skia",
+        "Spatial.Imagery.Vips",
     ];
 
     /// <summary>ADR-0035 boundary projects may also reference the shared Esri codec.</summary>
@@ -249,6 +255,8 @@ public sealed class ArchitectureGuardTests
             ["Spatial.Operations.NetTopologySuite"] = ["NetTopologySuite"],
             ["Spatial.Transformations.ProjNet"] = ["ProjNET"],
             ["Spatial.Provider.PostGIS"] = ["Npgsql"],
+            ["Spatial.Rendering.Skia"] = ["SkiaSharp", "SkiaSharp.NativeAssets.Linux.NoDependencies"],
+            ["Spatial.Imagery.Vips"] = ["NetVips", "NetVips.Native"],
         };
 
     private static bool IsAllowedPackage(string projectName, string id) =>
