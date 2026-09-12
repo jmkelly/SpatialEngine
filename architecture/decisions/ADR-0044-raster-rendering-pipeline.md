@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0042: Raster rendering is a pipeline over Skia (vector) and NetVips (imagery)
+# ADR-0044: Raster rendering is a pipeline over Skia (vector) and NetVips (imagery)
 
 ## Context
 
@@ -14,6 +14,10 @@ GeoServices work (`architecture/geoservices-implementation-plan.md` §Non-goals;
 ADR-0035). Server-side raster output is now wanted: take the engine's vector
 outputs, apply a style, and produce tiles or a one-off raster for export,
 with **NetVips as the imagery layer** (the maintainer's stated requirement).
+
+Numbering: ADR-0041 is the ingest/publications decision and ADR-0042/0043 are
+reserved by `publishing-and-ingest-plan.md`, so this decision takes 0044.
+The execution plan is `architecture/rendering-implementation-plan.md`.
 
 Three standing decisions constrain how this can be built:
 

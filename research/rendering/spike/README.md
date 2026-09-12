@@ -1,6 +1,6 @@
 # Rendering spike
 
-A runnable vertical slice of [ADR-0042](../../../architecture/decisions/ADR-0042-raster-rendering-pipeline.md):
+A runnable vertical slice of [ADR-0044](../../../architecture/decisions/ADR-0044-raster-rendering-pipeline.md):
 real `Spatial.Core` geometry → `ICoordinateTransforms` → `IGeometryOperations`
 → Skia vector raster → NetVips imagery composite/encode.
 

@@ -53,7 +53,10 @@ Map services are read-only (spec §4.0) — no editing concerns.
 discoverable and queryable from ArcGIS clients and reuses everything
 already built. Defer **M2 (rendering)** until a real client needs it, then
 prefer **B** (in-process, JIT, no sidecar). Record the choice in its own
-ADR (numbered at implementation time; ADR-0041 covers ingest/publications).
+ADR: `architecture/decisions/ADR-0044-raster-rendering-pipeline.md` with the
+execution plan at `architecture/rendering-implementation-plan.md`
+(ADR-0041 covers ingest/publications; ADR-0042/0043 are reserved by
+`publishing-and-ingest-plan.md`).
 Option D is a separate
 future track and should not be smuggled in as "MapServer".
 
