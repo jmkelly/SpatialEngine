@@ -1,0 +1,174 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "Labels for incorporated places, which are reported to the Census Bureau as legally in existence as of January 1, 2017, under the laws of their respective states. An incorporated place provides governmental functions for a concentration of people.  An incorporated place usually is a city, town, village, or borough, but can have other legal descriptions.",
+    "displayField": "PLACE_NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.705511045,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148036.0563282,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 16259860.713200001,
+      "xmin": -19669787.5466,
+      "ymax": 11519604.962000001,
+      "ymin": -1622439.957800001
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Shape",
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "PERMANENT_IDENTIFIER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "SOURCE_FEATUREID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "SOURCE_DATASETID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "SOURCE_DATADESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "SOURCE_ORIGINATOR",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "DATA_SECURITY",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "DISTRIBUTION_POLICY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "LOADDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FCode",
+        "name": "FCODE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "STATE_NAME",
+        "length": 120,
+        "name": "STATE_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PLACE_FIPSCODE",
+        "length": 5,
+        "name": "PLACE_FIPSCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PLACE_NAME",
+        "length": 120,
+        "name": "PLACE_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POPULATION",
+        "name": "POPULATION",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "IsCapitalCity",
+        "name": "ISCAPITALCITY",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "IsCountySeat",
+        "name": "ISCOUNTYSEAT",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "AREASQKM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "GNIS_ID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "GNIS_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 4,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Incorporated Place labels",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 12027,
+  "status": 200
+}

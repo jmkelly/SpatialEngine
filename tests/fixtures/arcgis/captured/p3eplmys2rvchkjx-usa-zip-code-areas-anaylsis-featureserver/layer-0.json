@@ -1,0 +1,117 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "Sources: Esri; TomTom North America, Inc.; United States Postal Service",
+    "description": "&lt;div&gt;U.S. ZIP Code Boundaries represents five-digit ZIP Code areas used \nby the U.S. Postal Service to deliver mail more effectively. The first \ndigit of a five-digit ZIP Code divides the United States into 10 large \ngroups of states (or equivalent areas) numbered from 0 in the Northeast \nto 9 in the far West. Within these areas, each state is divided into an \naverage of 10 smaller geographical areas, identified by the second and \nthird digits. These digits, in conjunction with the first digit, \nrepresent a Sectional Center Facility (SCF) or a mail processing \nfacility area. The fourth and fifth digits identify a post office, \nstation, branch or local delivery area.&lt;/div&gt;&lt;div&gt;&lt;br /&gt;&lt;/div&gt;This layer is updated annually. The boundaries are sourced from &lt;a href=\"https://www.tomtom.com/\" target=\"_blank\"&gt;TomTom&lt;/a&gt; (March 2023) and the population estimates are from &lt;a href=\"https://www.esri.com/\" target=\"_blank\"&gt;Esri&lt;/a&gt; Demographics.",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20012847.179425254,
+      "xmin": -19942590.665807378,
+      "ymax": 11537127.311200451,
+      "ymin": 1486500.944415731
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": "",
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "ZIP Code",
+        "defaultValue": "",
+        "editable": true,
+        "length": 10,
+        "name": "ZIP_CODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Postal area name",
+        "defaultValue": "",
+        "editable": true,
+        "length": 100,
+        "name": "PO_NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State Abbreviation",
+        "defaultValue": "",
+        "editable": true,
+        "length": 2,
+        "name": "STATE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "2023 Total Population",
+        "defaultValue": "",
+        "editable": true,
+        "name": "POPULATION",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Persons per square mile",
+        "defaultValue": "",
+        "editable": true,
+        "name": "POP_SQMI",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Area in square miles",
+        "defaultValue": "",
+        "editable": true,
+        "name": "SQMI",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "zip_poly",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 10679,
+  "status": 200
+}

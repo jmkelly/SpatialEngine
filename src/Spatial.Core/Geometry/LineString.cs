@@ -36,12 +36,13 @@ public sealed class LineString : ILineString, IEquatable<LineString>
 
     public Envelope? Envelope => _sequence.Count == 0 ? null : Spatial.Core.Geometry.Envelope.FromSequence(_sequence);
 
-    public bool Equals(LineString? other) =>
-        other is not null
-        && Nullable.Equals(_coordinateReference, other._coordinateReference)
-        && CoordinateSequenceComparer.ValuesEqual(_sequence, other._sequence);
+    public bool Equals(LineString? other) => other is not null && ContentEquals(other);
 
-    public override bool Equals(object? obj) => obj is LineString other && Equals(other);
+    public override bool Equals(object? obj) => obj is LineString other && ContentEquals(other);
+
+    private bool ContentEquals(LineString other) =>
+        Nullable.Equals(_coordinateReference, other._coordinateReference)
+        && CoordinateSequenceComparer.ValuesEqual(_sequence, other._sequence);
 
     public override int GetHashCode()
     {

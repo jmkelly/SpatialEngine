@@ -1,0 +1,42 @@
+{
+  "body": {
+    "capabilities": "Map,Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22031622.795485,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144170266.2027535,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 19325062.035899997,
+      "xmin": -19818952.8156,
+      "ymax": 11526405.634300001,
+      "ymin": -1608688.4560999982
+    },
+    "fields": [],
+    "geometryType": null,
+    "hasAttachments": false,
+    "id": 11,
+    "isDataVersioned": false,
+    "name": "Historical Points (expand for more)",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": false,
+    "supportsStatistics": false,
+    "type": "Group Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2387,
+  "status": 200
+}

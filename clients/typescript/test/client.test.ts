@@ -1,15 +1,14 @@
-import { test, after } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer, type Server } from "node:http";
 import { SpatialClient } from "../src/client.ts";
-import { CapabilityStreamError, SpatialApiError } from "../src/errors.ts";
+import { SpatialApiError } from "../src/errors.ts";
 import { decodeFeatureBatch } from "../src/feature-batch.ts";
-import { toBase64, encode } from "../src/wire.ts";
 
 /**
  * A tiny scriptable HTTP server that behaves like the spatial host for the
- * SDK's client tests: URL assertions, the camelCase wire contract, job
- * polling, stream decoding and structured error mapping — no .NET needed.
+ * SDK's client tests: URL assertions, the camelCase wire contract, batch
+ * decoding and structured error mapping — no .NET needed.
  */
 function fakeHost(routes: Record<string, (req: import("node:http").IncomingMessage) => { status: number; body: string; contentType: string }>): Promise<{ url: string; server: Server; requests: string[] }> {
   const requests: string[] = [];
@@ -19,7 +18,7 @@ function fakeHost(routes: Record<string, (req: import("node:http").IncomingMessa
     const route = routes[url.pathname];
     if (!route) {
       res.writeHead(404, { "content-type": "application/json" });
-      res.end("{}");
+      res.end(JSON.stringify({ code: "not.found", message: "no such route" }));
       return;
     }
     const answer = route(req);
@@ -34,206 +33,117 @@ function fakeHost(routes: Record<string, (req: import("node:http").IncomingMessa
   });
 }
 
-const capabilities = [
-  {
-    id: "fixture.echo@1",
-    purpose: "Echoes",
-    inputSchema: "scalar",
-    outputSchema: "scalar",
-    traits: ["Cancellable"],
-    requiredPermissions: [],
-    providers: ["fixture@1"],
-  },
-];
-
-const completedEcho = {
-  kind: "completed",
-  capability: "fixture.echo@1",
-  ok: true,
-  result: "pong",
-  error: null,
-  provenance: { capability: "fixture.echo@1", provider: "fixture@1", step: "FirstHealthy", startedAt: "2026-09-01T00:00:00Z", durationMs: 1, deadline: null, jobId: null },
-  job: null,
-};
-
-const completedJob = {
-  kind: "job",
-  capability: "fixture.sleep@1",
-  ok: false,
-  result: null,
-  error: null,
-  provenance: null,
-  job: { jobId: "job-1", state: "pending", location: "/api/jobs/job-1" },
-};
-
-test("health methods decode live and ready", async (t) => {
+test("geometry methods post SGEOM and decode the result", async (t) => {
+  const buffered = pointBuffer();
   const host = await fakeHost({
-    "/health/live": () => ({ status: 200, body: JSON.stringify({ status: "live" }), contentType: "application/json" }),
-    "/health/ready": () => ({ status: 200, body: JSON.stringify({ status: "ready", plugins: 3 }), contentType: "application/json" }),
+    "/api/geometry/buffer": () => ({
+      status: 200,
+      body: JSON.stringify({ geometry: toBase64(buffered) }),
+      contentType: "application/json",
+    }),
+    "/api/geometry/validate": () => ({ status: 200, body: JSON.stringify({ valid: true }), contentType: "application/json" }),
   });
   t.after(() => host.server.close());
   const client = new SpatialClient(host.url);
 
-  const live = await client.getHealthLive();
-  const ready = await client.getHealthReady();
-  assert.equal(live.status, "live");
-  assert.equal(ready.status, "ready");
-  assert.equal(ready.plugins, 3);
+  const result = await client.buffer(new Uint8Array([1, 2, 3]), 1.5);
+  assert.deepEqual(result, buffered);
+
+  assert.equal(await client.validate(new Uint8Array([9])), true);
+
+  assert.deepEqual(host.requests, ["POST /api/geometry/buffer", "POST /api/geometry/validate"]);
 });
 
-test("the client walks capabilities, invocation and job polling", async (t) => {
-  let jobState = "running";
+test("describe and transform hit the typed routes", async (t) => {
   const host = await fakeHost({
-    "/api/capabilities": () => ({ status: 200, body: JSON.stringify(capabilities), contentType: "application/json" }),
-    "/api/invocations": () => {
-      if (jobState !== "running") return { status: 200, body: JSON.stringify(completedEcho), contentType: "application/json" };
-      return { status: 202, body: JSON.stringify(completedJob), contentType: "application/json" };
-    },
-    "/api/jobs/job-1": () => {
-      jobState = "completed";
-      return {
-        status: 200,
-        body: JSON.stringify({
-          id: "job-1",
-          capability: "fixture.sleep@1",
-          state: jobState,
-          createdAt: "2026-09-01T00:00:00Z",
-          startedAt: "2026-09-01T00:00:00Z",
-          completedAt: "2026-09-01T00:00:02Z",
-          deadline: null,
-          provider: "fixture@1",
-          step: "FirstHealthy",
-          errorCode: null,
-        }),
-        contentType: "application/json",
-      };
-    },
+    "/api/crs/describe": () => ({
+      status: 200,
+      body: JSON.stringify({ authority: "EPSG", code: "4326", name: "WGS 84", kind: "geographic", dimension: 2, axes: [], datum: null, ellipsoid: null }),
+      contentType: "application/json",
+    }),
+    "/api/coordinates/transform": () => ({
+      status: 200,
+      body: JSON.stringify({ geometry: toBase64(new Uint8Array([4, 5])) }),
+      contentType: "application/json",
+    }),
   });
-
   t.after(() => host.server.close());
   const client = new SpatialClient(host.url);
 
-  const listed = await client.getCapabilities();
-  assert.equal(listed[0]?.id, "fixture.echo@1");
+  const description = await client.describeCrs("EPSG:4326");
+  assert.equal(description.code, "4326");
 
-  const invocation = await client.invoke({ capability: "fixture.sleep@1" });
-  assert.equal(invocation.kind, "job");
-  assert.equal(invocation.job?.jobId, "job-1");
-
-  const finished = await client.waitForJob("job-1", 5);
-  assert.equal(finished.state, "completed");
-
-  const echo = await client.invoke({ capability: "fixture.echo@1" });
-  assert.equal(echo.kind, "completed");
-  assert.equal(echo.ok, true);
-  assert.equal(echo.result, "pong");
-
-  assert.deepEqual(host.requests, [
-    "GET /api/capabilities",
-    "POST /api/invocations",
-    "GET /api/jobs/job-1",
-    "POST /api/invocations",
-  ]);
+  const transformed = await client.transform(new Uint8Array([1]), "EPSG:32632");
+  assert.deepEqual(transformed, new Uint8Array([4, 5]));
 });
 
-test("404s surface as SpatialApiError", async (t) => {
-  const host = await fakeHost({});
+test("catalogue scan and query decode batches", async (t) => {
+  const sfbat = buildSfbat();
+  const host = await fakeHost({
+    "/api/catalogue": () => ({
+      status: 200,
+      body: JSON.stringify({ datasets: [{ id: "demo.points", schema: "demo", table: "points", geometryColumn: "geometry", srid: 4326, estimatedRowCount: 110 }] }),
+      contentType: "application/json",
+    }),
+    "/api/features/scan": () => ({
+      status: 200,
+      body: JSON.stringify({ batches: [toBase64(sfbat)] }),
+      contentType: "application/json",
+    }),
+  });
   t.after(() => host.server.close());
   const client = new SpatialClient(host.url);
 
-  await assert.rejects(() => client.getCapability("spatial.missing@1"), (error: unknown) => {
+  const catalogue = await client.catalogue();
+  assert.equal(catalogue.datasets[0]?.id, "demo.points");
+
+  const batches = await client.scan("demo.points");
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0]?.features[0]?.id, "f1");
+  assert.deepEqual(decodeFeatureBatch(sfbat).features[0]?.id, "f1");
+});
+
+test("host errors throw SpatialApiError with the structured code", async (t) => {
+  const host = await fakeHost({
+    "/api/geometry/buffer": () => ({
+      status: 400,
+      body: JSON.stringify({ code: "invalid.arguments", message: "bad distance" }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  await assert.rejects(() => client.buffer(new Uint8Array([1]), Number.NaN), (error: unknown) => {
     assert.ok(error instanceof SpatialApiError);
-    assert.equal((error as SpatialApiError).status, 404);
+    assert.equal((error as SpatialApiError).status, 400);
+    assert.equal((error as SpatialApiError).code, "invalid.arguments");
     return true;
   });
 });
 
-test("streams decode items and throw CapabilityStreamError on an error line", async (t) => {
-  const ndjson = JSON.stringify("chunk 1") + "\n" + JSON.stringify(encode(new Uint8Array([7, 8]))) + "\n";
-  const failing = JSON.stringify("partial") + "\n" + JSON.stringify({ $error: { kind: "ProviderFailure", code: "provider.failure", message: "boom" } }) + "\n";
+test("transactions and sleep round trip", async (t) => {
   const host = await fakeHost({
-    "/api/resources/stream-1/stream": () => ({ status: 200, body: ndjson, contentType: "application/x-ndjson" }),
-    "/api/resources/stream-2/stream": () => ({ status: 200, body: failing, contentType: "application/x-ndjson" }),
+    "/api/transactions/begin": () => ({ status: 200, body: JSON.stringify({ transaction: "abc" }), contentType: "application/json" }),
+    "/api/transactions/commit": () => ({ status: 200, body: JSON.stringify({ ok: true }), contentType: "application/json" }),
+    "/api/demo/sleep": () => ({ status: 200, body: JSON.stringify({ slept: 50 }), contentType: "application/json" }),
   });
   t.after(() => host.server.close());
   const client = new SpatialClient(host.url);
 
-  const items: unknown[] = [];
-  for await (const item of client.readStream("stream-1")) items.push(item);
-  assert.equal(items[0], "chunk 1");
-  assert.deepEqual(items[1], new Uint8Array([7, 8]));
-
-  await assert.rejects(
-    (async () => {
-      for await (const _ of client.readStream("stream-2")) {
-        // consume
-      }
-    })(),
-    (error: unknown) => {
-      assert.ok(error instanceof CapabilityStreamError);
-      assert.equal((error as CapabilityStreamError).error.code, "provider.failure");
-      return true;
-    },
-  );
+  assert.equal(await client.beginTransaction(), "abc");
+  assert.equal(await client.commitTransaction("abc"), true);
+  assert.equal(await client.sleep(50), 50);
 });
 
-// A tiny hand-built SFBAT batch (magic + version + one String|null schema +
-// one feature) to prove readFeatureBatches decodes over the wire.
-const sfbat = buildSfbat();
+/** A stand-in buffered result (opaque bytes — the client never interprets geometry). */
+function pointBuffer(): Uint8Array {
+  return new Uint8Array([7, 7, 7]);
+}
 
-const plugin = {
-  id: "nts@2",
-  displayName: "NetTopologySuite operations v2",
-  runtime: "dotnet",
-  state: "Active",
-  restartCount: 0,
-  processId: 42,
-  startedAt: "2026-09-01T00:00:00Z",
-  lastHealthyAt: null,
-  lastError: null,
-  capabilities: [],
-};
-
-test("plugin control methods post to the control endpoints", async (t) => {
-  const host = await fakeHost({
-    "/api/plugins/nts%402/route-new-work": () => ({ status: 200, body: JSON.stringify(plugin), contentType: "application/json" }),
-    "/api/plugins/nts%401/drain": () => ({ status: 200, body: JSON.stringify({ ...plugin, id: "nts@1", state: "Stopped" }), contentType: "application/json" }),
-    "/api/plugins/nts%402/rollback": () => ({ status: 200, body: JSON.stringify(plugin), contentType: "application/json" }),
-  });
-  t.after(() => host.server.close());
-  const client = new SpatialClient(host.url);
-
-  const routed = await client.routeNewWork("nts@2");
-  const drained = await client.drainPlugin("nts@1");
-  const rolledBack = await client.rollbackPlugin("nts@2");
-
-  assert.equal(routed.id, "nts@2");
-  assert.equal(drained.state, "Stopped");
-  assert.equal(rolledBack.id, "nts@2");
-  assert.deepEqual(host.requests, [
-    "POST /api/plugins/nts%402/route-new-work",
-    "POST /api/plugins/nts%401/drain",
-    "POST /api/plugins/nts%402/rollback",
-  ]);
-});
-
-test("readFeatureBatches decodes canonical batches from the wire", async (t) => {
-  const line = JSON.stringify(encode(sfbat));
-  const host = await fakeHost({
-    "/api/resources/scan-1/stream": () => ({ status: 200, body: line + "\n", contentType: "application/x-ndjson" }),
-  });
-  t.after(() => host.server.close());
-  const client = new SpatialClient(host.url);
-
-  const batches = [];
-  for await (const batch of client.readFeatureBatches("scan-1")) batches.push(batch);
-  assert.equal(batches.length, 1);
-  const batch = batches[0]!;
-  assert.equal(batch.features[0]?.id, "f1");
-  const attribute = batch.features[0]?.attributes[0];
-  assert.equal(attribute?.kind, "String");
-  assert.equal(attribute?.kind === "String" ? attribute.value : null, "alice");
-});
+function toBase64(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("base64");
+}
 
 /** Builds the SFBAT v1 bytes for {"name": String} with one feature "f1" name="alice". */
 function buildSfbat(): Uint8Array {
@@ -273,7 +183,3 @@ function concat(chunks: Uint8Array[]): Uint8Array {
   }
   return result;
 }
-
-after(() => {
-  // keep node --test from complaining about open handles
-});

@@ -1,0 +1,103 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "municipalitycode",
+        "defaultValue": null,
+        "editable": true,
+        "name": "municipalitycode",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Kommune",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "instAge",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "instAge",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Antal_pat",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Antal_pat",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_icu",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_icu",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_newadm",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_newadm",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Dagsdato",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "Dagsdato",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "andel_newadm",
+        "defaultValue": null,
+        "editable": true,
+        "name": "andel_newadm",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 19,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "sygdomstilf_alder_inst_kom_7dag",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 7006,
+  "status": 200
+}

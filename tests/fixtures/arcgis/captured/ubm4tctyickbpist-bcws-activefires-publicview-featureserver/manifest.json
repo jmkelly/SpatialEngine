@@ -1,0 +1,37 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "ubm4tctyickbpist-bcws-activefires-publicview-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 1381,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPoint",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 1381,
+      "maxRecordCount": 1000,
+      "metadata": "layer-0.json",
+      "name": "BCWS_ActiveFires_Points",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 3857
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "ubm4tctyickbpist-bcws-activefires-publicview-featureserver",
+  "url": "https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/BCWS_ActiveFires_PublicView/FeatureServer"
+}

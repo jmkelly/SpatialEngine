@@ -3,151 +3,161 @@
 // The snapshot lives at scripts/openapi.snapshot.json; scripts/check-generated.mjs fails
 // when this file has drifted from it.
 
-export interface CapabilityDetailDto {
-  id: string;
-  purpose: string;
-  inputSchema: string;
-  outputSchema: string;
-  errors: ErrorVariantDto[];
-  requiredPermissions: string[];
-  traits: string[];
-  providers: ProviderOverviewDto[];
+export type AxisOrientation = "east" | "north" | "west" | "south" | "up" | "down" | "other";
+
+export interface BboxDto {
+  minX: number | string;
+  minY: number | string;
+  maxX: number | string;
+  maxY: number | string;
 }
 
-export interface CapabilityErrorDto {
-  kind: string;
+export interface BeginTransactionResponse {
+  transaction: string;
+}
+
+export interface BufferRequest {
+  geometry: string;
+  distance: number | string;
+  quadrantSegments?: null | number | string;
+}
+
+export interface CatalogueResponse {
+  datasets: DatasetSummary[];
+}
+
+export interface CreateDatasetRequest {
+  dataset: string;
+  batch: string;
+  srid: number | string;
+}
+
+export interface CreateDatasetResponse {
+  dataset: string;
+}
+
+export interface CrsAxis {
+  name: string;
+  orientation: AxisOrientation;
+  unitName: string;
+}
+
+export interface CrsDescription {
+  authority: string;
+  code: string;
+  name: string;
+  kind: CrsKind;
+  dimension: number | string;
+  axes: CrsAxis[];
+  datum: null | string;
+  ellipsoid: CrsEllipsoid | null;
+}
+
+export interface CrsEllipsoid {
+  name: string;
+  semiMajorAxis: number | string;
+  semiMinorAxis: number | string;
+  unitName: string;
+}
+
+export type CrsKind = "geographic" | "projected" | "geocentric" | "vertical" | "compound" | "other";
+
+export interface DatasetDescription {
+  id: string;
+  schemaName: string;
+  table: string;
+  geometryColumn: string;
+  srid: number | string;
+  geometryType: string;
+  estimatedRowCount: number | string;
+  idColumns: string[];
+  schema: FeatureSchema;
+}
+
+export interface DatasetSummary {
+  id: string;
+  schema: string;
+  table: string;
+  geometryColumn: string;
+  srid: number | string;
+  estimatedRowCount: number | string;
+}
+
+export interface DescribeRequest {
+  crs: string;
+}
+
+export interface ErrorResponse {
   code: string;
   message: string;
 }
 
-export interface CapabilitySummaryDto {
-  id: string;
-  purpose: string;
-  inputSchema: string;
-  outputSchema: string;
-  traits: string[];
-  requiredPermissions: string[];
-  providers: string[];
+export interface FeatureBatchesResponse {
+  batches: string[];
 }
 
-export interface ErrorVariantDto {
-  code: string;
-  description: string;
+export interface FeatureQueryRequest {
+  dataset: string;
+  bbox?: BboxDto | null;
+  filter?: null | string;
 }
 
-export interface InvocationRequest {
-  capability: string;
-  permissions?: string[] | null;
-  deadline?: string | null;
-  provider?: string | null;
-  resource?: string | null;
-  wait?: boolean | null;
-  arguments?: { [key: string]: unknown } | null;
+export type FeatureSchema = unknown;
+
+export interface FeatureWriteRequest {
+  dataset: string;
+  batch: string;
+  transaction?: null | string;
 }
 
-export interface InvocationResponse {
-  kind: string;
-  capability: string;
+export interface FeatureWriteResponse {
+  appended: number | string;
+}
+
+export interface GeometryResponse {
+  geometry: string;
+}
+
+export interface IntersectionRequest {
+  left: string;
+  right: string;
+}
+
+export interface ScanRequest {
+  dataset: string;
+}
+
+export interface SimplifyRequest {
+  geometry: string;
+  tolerance: number | string;
+}
+
+export interface SleepRequest {
+  milliseconds: number | string;
+}
+
+export interface SleepResponse {
+  slept: number | string;
+}
+
+export interface TransactionRequest {
+  transaction: string;
+}
+
+export interface TransactionResponse {
   ok: boolean;
-  result: JsonNode | null;
-  error: CapabilityErrorDto | null;
-  provenance: ProvenanceDto | null;
-  job: JobStartedDto | null;
 }
 
-export interface JobEventDto {
-  kind: JobEventKind;
-  timestamp: string;
-  progress: unknown | null;
-  message: string | null;
-  resource: ResourceDto | null;
-  note: string | null;
-  error: CapabilityErrorDto | null;
+export interface TransformRequest {
+  geometry: string;
+  source: null | string;
+  target: string;
 }
 
-export type JobEventKind = "created" | "started" | "progress" | "note" | "resource" | "completed" | "failed" | "cancelled" | "timedOut";
-
-export interface JobEventsResponse {
-  id: string;
-  state: JobState;
-  events: JobEventDto[];
+export interface ValidateRequest {
+  geometry: string;
 }
 
-export interface JobResponse {
-  id: string;
-  capability: string;
-  state: JobState;
-  createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  deadline: string | null;
-  provider: string | null;
-  step: string | null;
-  errorCode: string | null;
+export interface ValidateResponse {
+  valid: boolean;
 }
-
-export interface JobStartedDto {
-  jobId: string;
-  state: JobState;
-  location: string;
-}
-
-export type JobState = "pending" | "running" | "completed" | "failed" | "cancelled" | "timedOut";
-
-export type JsonNode = unknown;
-
-export interface PluginCapabilityDto {
-  id: string;
-  purpose: string;
-  inputSchema: string;
-  outputSchema: string;
-  traits: string[];
-  permissions: string[];
-  errors: ErrorVariantDto[];
-}
-
-export interface PluginDto {
-  id: string;
-  displayName: string;
-  runtime: string;
-  state: string;
-  restartCount: unknown;
-  processId: number | null;
-  startedAt: string | null;
-  lastHealthyAt: string | null;
-  lastError: string | null;
-  capabilities: PluginCapabilityDto[];
-}
-
-export interface ProblemDetails {
-  type?: string | null;
-  title?: string | null;
-  status?: number | null;
-  detail?: string | null;
-  instance?: string | null;
-}
-
-export interface ProvenanceDto {
-  capability: string;
-  provider: string | null;
-  step: string | null;
-  startedAt: string;
-  durationMs: unknown;
-  deadline: string | null;
-  jobId: string | null;
-}
-
-export interface ProviderOverviewDto {
-  id: string;
-  health: string;
-}
-
-export interface ResourceDto {
-  id: string;
-  kind: string;
-  owner: string;
-  createdAt: string;
-  state: ResourceState;
-}
-
-export type ResourceState = "open" | "leased" | "closed";

@@ -1,0 +1,52 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "reportagegrp",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "reportagegrp",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "antal_indl",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_indl",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 4,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "indl_alder",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 5970,
+  "status": 200
+}

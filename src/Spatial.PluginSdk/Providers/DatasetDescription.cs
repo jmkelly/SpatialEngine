@@ -8,13 +8,9 @@ namespace Spatial.PluginSdk.Providers;
 /// column with its SRID and geometry type, a row-count estimate, the columns
 /// that form the feature identity, and the feature schema (fields in column
 /// order — geometry fields included as <see cref="AttributeKind.Geometry"/>).
-/// The wire form is the <c>dataset.description</c> JSON document produced by
-/// <see cref="DatasetMetadataJson.WriteDescription"/> — the single item of the
-/// <c>spatial.dataset.describe@1</c> stream (ADR-0028). The schema fields use
+/// Served as JSON by <c>GET /api/datasets/{id}</c> (ADR-0033). The schema fields use
 /// only core field vocabulary (<see cref="FieldDefinition"/>), so clients
-/// never see provider-specific types. The schema binds <see cref="IFeatureSchema"/>
-/// (the model's contract face, ADR-0029) so contract code never depends on the
-/// concrete implementation.
+/// never see provider-specific types.
 /// </summary>
 public sealed record DatasetDescription(
     string Id,
@@ -25,7 +21,7 @@ public sealed record DatasetDescription(
     string GeometryType,
     long EstimatedRowCount,
     IReadOnlyList<string> IdColumns,
-    IFeatureSchema Schema)
+    FeatureSchema Schema)
 {
     public override string ToString() => $"{Id}: {Schema}";
 }

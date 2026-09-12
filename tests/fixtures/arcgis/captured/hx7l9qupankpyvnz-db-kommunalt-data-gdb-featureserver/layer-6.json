@@ -1,0 +1,53 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "newlyadmdate",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "newlyadmdate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "antal_indlaeggelser",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_indlaeggelser",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 6,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "nyindlaeggelser",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6002,
+  "status": 200
+}

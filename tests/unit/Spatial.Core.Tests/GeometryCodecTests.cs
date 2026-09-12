@@ -136,6 +136,8 @@ public class GeometryCodecTests
     public void Decode_rejects_invalid_crs_presence_and_content()
     {
         AssertFailed(Payload([0x00], [0x01], [0x02]), "CRS presence byte");
+        // Input ends right where the CRS presence byte belongs.
+        AssertFailed(Payload([0x00], [0x01]), "expected a CRS presence byte");
         // Authority is the empty string.
         AssertFailed(Payload([0x00], [0x01], [0x01], Int32(0), Int32(3), Str("EPS")), "non-empty");
         // Authority is not valid UTF-8.

@@ -1,0 +1,78 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 174.88600000000008,
+      "xmin": -157.49833699999996,
+      "ymax": 64.96310000000005,
+      "ymin": -41.45449999999994
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 139.83838281198476,
+      "xmin": 78.30552120121371,
+      "ymax": 75.47239999796358,
+      "ymin": 51.41604922901945
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Deaths",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Cases",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Cases_country",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "<br><br><span style='color:red'>On March 10, 2023, the Johns Hopkins Coronavirus Resource Center ceased its collecting and reporting of global COVID-19 data.</span><br><br>For updated cases, deaths, and vaccine data please visit the following sources:<br><br>Global: World Health Organization (WHO) <a href='https://www.who.int/' target='_blank'>https://www.who.int/</a><br>U.S.: U.S. Centers for Disease Control and Prevention (CDC) <a href='https://www.cdc.gov/coronavirus/2019-ncov/index.html' target='_blank'>https://www.cdc.gov/coronavirus/2019-ncov/index.html</a><br><br>For more information, visit the Johns Hopkins Coronavirus Resource Center. <a href='https://coronavirus.jhu.edu/' target='_blank'>https://coronavirus.jhu.edu/</a>",
+    "serviceItemId": "c0b356e20b30490c8b8b4c7bb9554e7c",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 4355,
+  "status": 200
+}

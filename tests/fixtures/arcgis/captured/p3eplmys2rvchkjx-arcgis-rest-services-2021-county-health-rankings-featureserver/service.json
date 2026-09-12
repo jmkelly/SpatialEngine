@@ -1,0 +1,78 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20012847.179396365,
+      "xmin": -19942592.3656,
+      "ymax": 11537129.289331129,
+      "ymin": 2023666.942024747
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": -6029422.946197866,
+      "xmin": -17550909.23547204,
+      "ymax": 10209759.177081067,
+      "ymin": 1624682.817563543
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 100000000,
+        "minScale": 0,
+        "name": "Nation",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 50000000,
+        "minScale": 100000000,
+        "name": "State",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 50000000,
+        "name": "County",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "County Health Rankings 2021",
+    "serviceItemId": "c736859b2e0849878023c58f31f77c30",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3552,
+  "status": 200
+}

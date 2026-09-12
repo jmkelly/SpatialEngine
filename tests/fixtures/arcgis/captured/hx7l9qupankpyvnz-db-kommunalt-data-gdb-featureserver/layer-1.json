@@ -1,0 +1,216 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 1691291.7872,
+      "xmin": 898658.7278000005,
+      "ymax": 7915519.374499999,
+      "ymin": 7276759.6523
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "REGIONKODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2000000000,
+        "name": "REGIONKODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONNAVN",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2000000000,
+        "name": "REGIONNAVN",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "KOMKODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2000000000,
+        "name": "KOMKODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "KOMNAVN",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2000000000,
+        "name": "KOMNAVN",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "KOMCODE",
+        "defaultValue": null,
+        "editable": true,
+        "name": "KOMCODE",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "c_kom",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2000000000,
+        "name": "c_kom",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "Kommune",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "antal_patienter",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_patienter",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incidens",
+        "defaultValue": null,
+        "editable": true,
+        "name": "incidens",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_patienter_7dage",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_patienter_7dage",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incidens_7dage",
+        "defaultValue": null,
+        "editable": true,
+        "name": "incidens_7dage",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "antal_testede_personer",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_testede_personer",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "test_incidens",
+        "defaultValue": null,
+        "editable": true,
+        "name": "test_incidens",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_testede_personer_7dage",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_testede_personer_7dage",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "test_incidens_7dage",
+        "defaultValue": null,
+        "editable": true,
+        "name": "test_incidens_7dage",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "antal_bor",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_bor",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "antal_pat_7dg_yesterday",
+        "defaultValue": null,
+        "editable": true,
+        "name": "antal_pat_7dg_yesterday",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "pospro",
+        "defaultValue": null,
+        "editable": true,
+        "name": "pospro",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": true,
+    "id": 1,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Kommuner_med_data",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 11587,
+  "status": 200
+}

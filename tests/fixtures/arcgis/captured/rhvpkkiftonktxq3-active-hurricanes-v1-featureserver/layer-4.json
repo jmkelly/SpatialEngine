@@ -1,0 +1,170 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "NHC, Esri",
+    "description": "The cone represents the probable track of the center of a tropical cyclone, and is formed by enclosing the area swept out by a set of circles along the forecast track (at 12, 24, 36 hours, etc). The size of each circle is set so that two-thirds of historical official forecast errors over a 5-year sample fall within the circle. ",
+    "displayField": "STORMNAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180,
+      "xmin": -180,
+      "ymax": 90,
+      "ymin": -90
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMNAME",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMTYPE",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ADVDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Advisory Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "ADVISNUM",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "editable": true,
+        "name": "STORMNUM",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Forecast Period",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FCSTPRD",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "BASIN",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Unique Identifier (BASIN+STORMNUM+FCSTPRD)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "UID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maximum Storm Surge Number",
+        "defaultValue": null,
+        "editable": true,
+        "name": "MAX_SS",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Maximum Wind Gust",
+        "defaultValue": null,
+        "editable": true,
+        "name": "MAX_GUST",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Maximum Wind Speed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "MAX_WIND",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Maximum Arrival Date Label",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "MAX_LABEL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 4,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Forecast Error Cone and Danger Area",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 13509,
+  "status": 200
+}

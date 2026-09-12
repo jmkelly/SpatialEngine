@@ -1,0 +1,117 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "CELL_NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.773845956,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148035.89868674,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20037506.646438494,
+      "xmin": -19963297.055816513,
+      "ymax": 11575439.976522379,
+      "ymin": 1484497.6003438048
+    },
+    "fields": [
+      {
+        "alias": "Shape",
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "Shape_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CELL_ID",
+        "name": "CELL_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_NAME",
+        "length": 120,
+        "name": "CELL_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PRIMARY_STATE",
+        "length": 50,
+        "name": "PRIMARY_STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_MAPCODE",
+        "length": 8,
+        "name": "CELL_MAPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell_Type",
+        "name": "CELL_TYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cell_AllWater",
+        "name": "CELL_ALLWATER",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_DESCRIPTION",
+        "length": 240,
+        "name": "CELL_DESCRIPTION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_DIACRITIC",
+        "length": 100,
+        "name": "CELL_DIACRITIC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 9,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "15 Minute (1:63K) Index",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 5648,
+  "status": 200
+}

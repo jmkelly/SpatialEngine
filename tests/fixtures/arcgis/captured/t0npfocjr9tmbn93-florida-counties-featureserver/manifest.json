@@ -1,0 +1,34 @@
+{
+  "catalog": "explicit",
+  "currentVersion": 12,
+  "directory": "t0npfocjr9tmbn93-florida-counties-featureserver",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 67,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeGlobalID",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 67,
+      "maxRecordCount": 1000,
+      "metadata": "layer-0.json",
+      "name": "Florida Counties",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 3087
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "t0npfocjr9tmbn93-florida-counties-featureserver",
+  "url": "https://services1.arcgis.com/T0NPfOCJr9tmBN93/arcgis/rest/services/Florida_Counties/FeatureServer"
+}

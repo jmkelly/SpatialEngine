@@ -1,0 +1,154 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "county_name": "Waldo",
+          "fcode": 20500,
+          "gaz_featureclass": "Crossing",
+          "gaz_id": 568708,
+          "gaz_name": "Islesboro Ferry",
+          "incounty_id": 2313656,
+          "isunknowncoords": 2,
+          "objectid_1": 2299343,
+          "state_alpha": "ME"
+        },
+        "geometry": {
+          "points": [
+            [
+              -7678512.9596,
+              5509061.906199999
+            ],
+            [
+              -7681110.478399999,
+              5509018.7108
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "county_name": "Cochise",
+          "fcode": 20500,
+          "gaz_featureclass": "Crossing",
+          "gaz_id": 3074,
+          "gaz_name": "Cochise Overpass",
+          "incounty_id": 1047272,
+          "isunknowncoords": 2,
+          "objectid_1": 1270,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "points": [
+            [
+              -12235164.8512,
+              3780799.8581999987
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "county_name": "Yavapai",
+          "fcode": 20500,
+          "gaz_featureclass": "Crossing",
+          "gaz_id": 3581,
+          "gaz_name": "Crookton Overpass",
+          "incounty_id": 486641,
+          "isunknowncoords": 2,
+          "objectid_1": 1599,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "points": [
+            [
+              -12549345.6127,
+              4203438.773699999
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "incounty_id": "incounty_id",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2706,
+  "status": 200
+}

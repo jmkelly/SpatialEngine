@@ -1,0 +1,273 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "BASIN": "EP",
+          "ENDDTG": 1787767200000,
+          "OBJECTID": 9,
+          "SS": 0,
+          "STARTDTG": 1787680800000,
+          "STORMID": "ep122026",
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMTYPE": "Low",
+          "Shape__Length": 1.685653873915268
+        },
+        "geometry": {
+          "paths": [
+            [
+              [
+                -136.699999999255,
+                10.1000000014901
+              ],
+              [
+                -136.39999999851,
+                10.1999999992549
+              ],
+              [
+                -136,
+                10.3000000007451
+              ],
+              [
+                -135.5,
+                10.3999999985099
+              ],
+              [
+                -135.10000000149,
+                10.6000000014901
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "BASIN": "EP",
+          "ENDDTG": 1787853600000,
+          "OBJECTID": 10,
+          "SS": 0,
+          "STARTDTG": 1787767200000,
+          "STORMID": "ep122026",
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMTYPE": "Tropical Depression",
+          "Shape__Length": 1.3067377527595248
+        },
+        "geometry": {
+          "paths": [
+            [
+              [
+                -135.10000000149,
+                10.6000000014901
+              ],
+              [
+                -135,
+                10.8000000007451
+              ],
+              [
+                -134.800000000745,
+                10.8999999985099
+              ],
+              [
+                -134.39999999851,
+                11
+              ],
+              [
+                -134,
+                11.1999999992549
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "BASIN": "EP",
+          "ENDDTG": 1788264000000,
+          "OBJECTID": 11,
+          "SS": 0,
+          "STARTDTG": 1787853600000,
+          "STORMID": "ep122026",
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMTYPE": "Tropical Storm",
+          "Shape__Length": 18.268265813221237
+        },
+        "geometry": {
+          "paths": [
+            [
+              [
+                -134,
+                11.1999999992549
+              ],
+              [
+                -133.60000000149,
+                11.3000000007451
+              ],
+              [
+                -133,
+                11.6000000014901
+              ],
+              [
+                -132.699999999255,
+                12.3000000007451
+              ],
+              [
+                -133.10000000149,
+                12.3999999985099
+              ],
+              [
+                -133.800000000745,
+                12.3999999985099
+              ],
+              [
+                -134.5,
+                12.6000000014901
+              ],
+              [
+                -135.300000000745,
+                12.8999999985099
+              ],
+              [
+                -136.39999999851,
+                13.1000000014901
+              ],
+              [
+                -137.60000000149,
+                13.1999999992549
+              ],
+              [
+                -138.60000000149,
+                13.1999999992549
+              ],
+              [
+                -139.800000000745,
+                13.3000000007451
+              ],
+              [
+                -141.300000000745,
+                13.3000000007451
+              ],
+              [
+                -142.800000000745,
+                13.1999999992549
+              ],
+              [
+                -143.699999999255,
+                13
+              ],
+              [
+                -145.199999999255,
+                12.8000000007451
+              ],
+              [
+                -146,
+                12.8000000007451
+              ],
+              [
+                -147,
+                12.8999999985099
+              ],
+              [
+                -148.10000000149,
+                13
+              ],
+              [
+                -148.89999999851,
+                13.3000000007451
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "name": "STORMNUM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "length": 25,
+        "name": "STORMTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Saffir-Simpson Scale",
+        "defaultValue": null,
+        "name": "SS",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STORMNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Start Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "STARTDTG",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ENDDTG",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Storm ID",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STORMID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "length": 20,
+        "name": "BASIN",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryProperties": {
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriDecimalDegrees"
+    },
+    "geometryType": "esriGeometryPolyline",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 5807,
+  "status": 200
+}

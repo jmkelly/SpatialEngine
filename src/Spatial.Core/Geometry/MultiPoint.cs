@@ -12,12 +12,13 @@ public sealed class MultiPoint : GeometryCollectionBase<Point>, IMultiPoint, IEq
 
     public override GeometryType Type => GeometryType.MultiPoint;
 
-    public bool Equals(MultiPoint? other) =>
-        other is not null
-        && Nullable.Equals(CoordinateReference, other.CoordinateReference)
-        && Points.SequenceEqual(other.Points);
+    public bool Equals(MultiPoint? other) => other is not null && ContentEquals(other);
 
-    public override bool Equals(object? obj) => obj is MultiPoint other && Equals(other);
+    public override bool Equals(object? obj) => obj is MultiPoint other && ContentEquals(other);
+
+    private bool ContentEquals(MultiPoint other) =>
+        Nullable.Equals(CoordinateReference, other.CoordinateReference)
+        && Points.SequenceEqual(other.Points);
 
     public override int GetHashCode()
     {

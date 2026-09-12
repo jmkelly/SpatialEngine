@@ -1,0 +1,101 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "GeoSYS",
+    "description": "MT_Districts",
+    "displayField": "District_Name",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 32633,
+        "wkid": 32633
+      },
+      "xmax": 461761.1226000003,
+      "xmin": 426497.8202,
+      "ymax": 3993351.3191,
+      "ymin": 3962566.2334
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Link5",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "Link5",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "District_Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "District_Name",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Cases",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Cases",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 2,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "MT_Districts",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 32633,
+      "wkid": 32633
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 9123,
+  "status": 200
+}

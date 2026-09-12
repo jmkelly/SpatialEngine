@@ -1,0 +1,158 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "NOSAUKUMS",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3059,
+        "wkid": 3059
+      },
+      "xmax": 762534.0948000002,
+      "xmin": 312827.1002000002,
+      "ymax": 438865.2819999993,
+      "ymin": 172932.0610000007
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "VEIDS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "VEIDS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOSAUKUMS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "NOSAUKUMS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LABEL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "LABEL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "skaits",
+        "defaultValue": null,
+        "editable": true,
+        "name": "skaits",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Uz_100_000",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Uz_100_000",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "No_1_skait",
+        "defaultValue": null,
+        "editable": true,
+        "name": "No_1_skait",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Skaits_kop",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Skaits_kop",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "No_1_kop",
+        "defaultValue": null,
+        "editable": true,
+        "name": "No_1_kop",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Re\u0123. sk. uz 100 tk.",
+        "defaultValue": null,
+        "editable": true,
+        "name": "F100000_kop",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Top",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Graf",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Administrativas_teritorijas_2021",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3059,
+      "wkid": 3059
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 11771,
+  "status": 200
+}

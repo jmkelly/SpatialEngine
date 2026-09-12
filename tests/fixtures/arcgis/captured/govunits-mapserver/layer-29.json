@@ -1,0 +1,155 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "Boundaries of National Park System lands, including National Parks, defined by the National Park Service.",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.705511045,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148036.0563282,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20037505.700299997,
+      "xmin": -20037507.0672,
+      "ymax": 11521044.629099999,
+      "ymin": -1733737.8192000017
+    },
+    "fields": [
+      {
+        "alias": "BoundaryType",
+        "name": "boundarytype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Permanent_Identifier",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_FeatureID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_DatasetID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_DataDesc",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Source_Originator",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LoadDate",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Name",
+        "length": 120,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AreaSqKm",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "FType",
+        "name": "ftype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AdminType",
+        "name": "admintype",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "OwnerOrManagingAgency",
+        "name": "ownerormanagingagency",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "shape_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "shape_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 29,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "National Park",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 23901,
+  "status": 200
+}

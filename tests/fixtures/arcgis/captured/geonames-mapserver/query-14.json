@@ -1,0 +1,170 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "county_name": "Lincoln",
+          "fcode": 15032,
+          "gaz_featureclass": "Island",
+          "gaz_id": 334193,
+          "gaz_name": "Price Island (historical)",
+          "incounty_id": 340297,
+          "isunknowncoords": 2,
+          "objectid_1": 101210,
+          "state_alpha": "GA"
+        },
+        "geometry": {
+          "points": [
+            [
+              -9156103.9909,
+              3995226.1274000034
+            ],
+            [
+              -9155980.3038,
+              3995226.1274000034
+            ],
+            [
+              -9155980.3038,
+              3995337.7053000033
+            ],
+            [
+              -9156042.153,
+              3995337.7053000033
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 8,
+          "county_name": "Gila",
+          "fcode": 15050,
+          "gaz_featureclass": "Valley",
+          "gaz_id": 36268,
+          "gaz_name": "Willow Spring Gulch (historical)",
+          "incounty_id": 8244,
+          "isunknowncoords": 2,
+          "objectid_1": 14228,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "points": [
+            [
+              -12345407.1688,
+              3950119.1599999964
+            ],
+            [
+              -12346940.6731,
+              3951890.1761000007
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 9,
+          "county_name": "Greenlee",
+          "fcode": 15050,
+          "gaz_featureclass": "Valley",
+          "gaz_id": 34795,
+          "gaz_name": "Standard Gulch (historical)",
+          "incounty_id": 9424,
+          "isunknowncoords": 2,
+          "objectid_1": 15278,
+          "state_alpha": "AZ"
+        },
+        "geometry": {
+          "points": [
+            [
+              -12174094.4278,
+              3908446.1625000015
+            ],
+            [
+              -12171952.584800001,
+              3910394.3564999998
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "incounty_id": "incounty_id",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2939,
+  "status": 200
+}

@@ -1,0 +1,295 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "ADVDATE": 1789123200000,
+          "ADVISNUM": " ",
+          "BASIN": "EP",
+          "DATELBL": "12:00 AM Fri",
+          "DVLBL": "S",
+          "FCSTPRD": 72,
+          "FLDATELBL": "2026-09-11 12:00 AM Fri UTC",
+          "GUST": 0,
+          "IDVLBL": "S",
+          "ITCDVLP": "Tropical Storm",
+          "LAT": 29,
+          "LON": -169.5,
+          "MAXWIND": 45,
+          "MSLP": 0,
+          "OBJECTID": 14,
+          "SSNUM": 0,
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMSRC": " ",
+          "STORMTYPE": " ",
+          "TAU": 0,
+          "TCDIR": 0,
+          "TCDVLP": "Tropical Storm",
+          "TCSPD": 0,
+          "TIMEZONE": "UTC",
+          "VALIDTIME": "11/0000"
+        },
+        "geometry": {
+          "x": -169.5,
+          "y": 29
+        }
+      },
+      {
+        "attributes": {
+          "ADVDATE": 1789123200000,
+          "ADVISNUM": " ",
+          "BASIN": "EP",
+          "DATELBL": "12:00 PM Fri",
+          "DVLBL": "S",
+          "FCSTPRD": 72,
+          "FLDATELBL": "2026-09-11 12:00 PM Fri UTC",
+          "GUST": 0,
+          "IDVLBL": "S",
+          "ITCDVLP": "Tropical Storm",
+          "LAT": 29.2,
+          "LON": -171.3,
+          "MAXWIND": 40,
+          "MSLP": 9999,
+          "OBJECTID": 15,
+          "SSNUM": 0,
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMSRC": " ",
+          "STORMTYPE": " ",
+          "TAU": 0,
+          "TCDIR": 9999,
+          "TCDVLP": "Tropical Storm",
+          "TCSPD": 9999,
+          "TIMEZONE": "UTC",
+          "VALIDTIME": "11/1200"
+        },
+        "geometry": {
+          "x": -171.30000000074506,
+          "y": 29.199999999254942
+        }
+      },
+      {
+        "attributes": {
+          "ADVDATE": 1789123200000,
+          "ADVISNUM": " ",
+          "BASIN": "EP",
+          "DATELBL": "12:00 AM Sat",
+          "DVLBL": "S",
+          "FCSTPRD": 72,
+          "FLDATELBL": "2026-09-12 12:00 AM Sat UTC",
+          "GUST": 0,
+          "IDVLBL": "S",
+          "ITCDVLP": "Tropical Storm",
+          "LAT": 30.6,
+          "LON": -172,
+          "MAXWIND": 40,
+          "MSLP": 9999,
+          "OBJECTID": 16,
+          "SSNUM": 0,
+          "STORMNAME": "Lowell",
+          "STORMNUM": 12,
+          "STORMSRC": " ",
+          "STORMTYPE": " ",
+          "TAU": 0,
+          "TCDIR": 9999,
+          "TCDVLP": "Tropical Storm",
+          "TCSPD": 9999,
+          "TIMEZONE": "UTC",
+          "VALIDTIME": "12/0000"
+        },
+        "geometry": {
+          "x": -172,
+          "y": 30.600000001490116
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STORMNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "length": 20,
+        "name": "STORMTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ADVDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Advisory Number",
+        "defaultValue": null,
+        "length": 20,
+        "name": "ADVISNUM",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "name": "STORMNUM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Forecast Period",
+        "defaultValue": null,
+        "name": "FCSTPRD",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "length": 20,
+        "name": "BASIN",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "defaultValue": null,
+        "name": "LAT",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "defaultValue": null,
+        "name": "LON",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Valid Time",
+        "defaultValue": null,
+        "length": 20,
+        "name": "VALIDTIME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TAU Value",
+        "defaultValue": null,
+        "name": "TAU",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Max Wind Speed",
+        "defaultValue": null,
+        "name": "MAXWIND",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Max Gust Speed",
+        "defaultValue": null,
+        "name": "GUST",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mean Sea Level Pressure",
+        "defaultValue": null,
+        "name": "MSLP",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tropical Cyclone Development",
+        "defaultValue": null,
+        "length": 25,
+        "name": "TCDVLP",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Development Label",
+        "defaultValue": null,
+        "length": 20,
+        "name": "DVLBL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Saffir-Simpson Scale",
+        "defaultValue": null,
+        "name": "SSNUM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tropical Cyclone Direction",
+        "defaultValue": null,
+        "name": "TCDIR",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tropical Cyclone Speed",
+        "defaultValue": null,
+        "name": "TCSPD",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Date Label",
+        "defaultValue": null,
+        "length": 20,
+        "name": "DATELBL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Full Date Label",
+        "defaultValue": null,
+        "length": 30,
+        "name": "FLDATELBL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Time Zone",
+        "defaultValue": null,
+        "length": 20,
+        "name": "TIMEZONE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Source",
+        "defaultValue": null,
+        "length": 22,
+        "name": "STORMSRC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "International Tropical Cyclone Development",
+        "defaultValue": null,
+        "length": 40,
+        "name": "ITCDVLP",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "International Development Label",
+        "defaultValue": null,
+        "length": 20,
+        "name": "IDVLBL",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 9387,
+  "status": 200
+}

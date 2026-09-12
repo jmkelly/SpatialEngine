@@ -1,0 +1,306 @@
+{
+  "body": {
+    "displayFieldName": "label",
+    "features": [
+      {
+        "attributes": {
+          "end_date": 1790208000000,
+          "end_dt2": null,
+          "idp_filedate": 1789065913000,
+          "idp_ingestdate": 1789065930000,
+          "idp_source": "Prcp_D8_14_Clip",
+          "idp_subset": "PRCP_D8_14",
+          "issue_time_dt": null,
+          "label": "Flooding Possible",
+          "objectid": 87940,
+          "st_area(shape)": 559487066805.8143,
+          "st_perimeter(shape)": 2744028.2149780462,
+          "start_date": 1789689600000,
+          "start_dt2": null,
+          "valid_time_dt": null,
+          "validendtime_dt": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -107.64833193725036,
+                32.687425484172735
+              ],
+              [
+                -108.10537673809736,
+                32.536879533468465
+              ],
+              [
+                -108.51275244271872,
+                32.476471390137924
+              ],
+              [
+                -109.03000488961439,
+                32.43126944629253
+              ],
+              [
+                -109.52059320987016,
+                32.357901233589835
+              ],
+              [
+                -110.02594045678191,
+                32.28057447351792
+              ],
+              [
+                -110.41356706369957,
+                32.255671711816554
+              ],
+              [
+                -110.7167929207302,
+                32.34486049523995
+              ],
+              [
+                -111.00734566283772,
+                32.58935981887108
+              ],
+              [
+                -111.22650210548896,
+                32.91098311205347
+              ],
+              [
+                -111.49469136046355,
+                33.2899856991667
+              ],
+              [
+                -111.9776032226803,
+                33.560919297303016
+              ],
+              [
+                -112.5270264509412,
+                33.75850500128509
+              ],
+              [
+                -112.81926246341465,
+                33.9524430721561
+              ],
+              [
+                -112.97815941285225,
+                34.20186803160158
+              ],
+              [
+                -113.06521120163553,
+                34.737509375155014
+              ],
+              [
+                -112.94251682796686,
+                35.19681820831696
+              ],
+              [
+                -112.69866945760462,
+                35.86810241574848
+              ],
+              [
+                -112.5022167219322,
+                36.51432792538264
+              ],
+              [
+                -112.29175827810491,
+                36.975219343847435
+              ],
+              [
+                -111.95580083495192,
+                37.53616059283342
+              ],
+              [
+                -111.71310607676108,
+                37.91389161698642
+              ],
+              [
+                -111.42251194118357,
+                38.25573990162845
+              ],
+              [
+                -111.19685923363888,
+                38.528699379288334
+              ],
+              [
+                -111.05908746796953,
+                38.770818027893974
+              ],
+              [
+                -110.75719288274898,
+                38.99845021983294
+              ],
+              [
+                -110.42494635847513,
+                39.05723327813295
+              ],
+              [
+                -109.9739050633506,
+                39.08822185024259
+              ],
+              [
+                -109.40380509659947,
+                39.06589931694272
+              ],
+              [
+                -109.15304638847854,
+                39.00493522589297
+              ],
+              [
+                -108.80949026611877,
+                38.895218905176115
+              ],
+              [
+                -108.40283476511522,
+                38.71822767172312
+              ],
+              [
+                -108.10018364032194,
+                38.56858366965657
+              ],
+              [
+                -107.6926569459693,
+                38.38696769640294
+              ],
+              [
+                -107.31946620907358,
+                38.174120066051245
+              ],
+              [
+                -106.86814621163217,
+                37.979231016663526
+              ],
+              [
+                -106.49735718532723,
+                37.71026844522052
+              ],
+              [
+                -106.1778030699921,
+                37.36382424487673
+              ],
+              [
+                -105.98743368320291,
+                37.004993235205646
+              ],
+              [
+                -105.88915788691568,
+                36.42936312538795
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "end_date": "End Date",
+      "end_dt2": "End Date2",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "idp_source": "GIS Source",
+      "idp_subset": "GIS Subset",
+      "issue_time_dt": "issue_time_dt",
+      "label": "Hazards",
+      "objectid": "Object Id",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "start_date": "Start Date",
+      "start_dt2": "Start Date2",
+      "valid_time_dt": "valid_time_dt",
+      "validendtime_dt": "validendtime_dt"
+    },
+    "fields": [
+      {
+        "alias": "Object Id",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Hazards",
+        "length": 254,
+        "name": "label",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Start Date",
+        "length": 8,
+        "name": "start_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date",
+        "length": 8,
+        "name": "end_date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Start Date2",
+        "length": 8,
+        "name": "start_dt2",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "End Date2",
+        "length": 8,
+        "name": "end_dt2",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Source",
+        "length": 50,
+        "name": "idp_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Subset",
+        "length": 64,
+        "name": "idp_subset",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "issue_time_dt",
+        "length": 8,
+        "name": "issue_time_dt",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "valid_time_dt",
+        "length": 8,
+        "name": "valid_time_dt",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "validendtime_dt",
+        "length": 8,
+        "name": "validendtime_dt",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4299,
+  "status": 200
+}

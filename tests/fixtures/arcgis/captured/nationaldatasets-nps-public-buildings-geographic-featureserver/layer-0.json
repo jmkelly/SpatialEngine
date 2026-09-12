@@ -1,0 +1,435 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "Building data are contributed, reviewed, and maintained by individual park units and regional GIS programs across the National Park Service. The National Geospatial Program coordinates service\u2011wide data standards, quality assurance, and publication of this public dataset.\nFor more information about NPS geospatial data, visit the NPS Integrated Resource Management Applications (IRMA) Data Store or the NPS public geospatial resources.",
+    "description": "The National Park Service public Buildings dataset provides geographic representations of publicly identifiable structures across NPS units. These polygon features depict building footprints associated with visitor services and publicly recognizable facilities, including visitor centers, museums, restrooms, administrative buildings with public visibility, contact stations, and other structures commonly used for mapping, interpretation, trip planning, and general public information.This dataset is derived from the authoritative internal NPS Buildings dataset maintained by park units and regional GIS programs. Only features appropriate for public distribution are included; sensitive, restricted, internal\u2011use, or operationally controlled buildings have been removed. All spatial features are stored in NAD83 and undergo review prior to release.The dataset supports a broad range of public uses, including digital mapping applications, recreation planning tools, research, accessible trip resources, and cartographic products. It provides a consistent, nationwide representation of publicly identifiable building footprints across the National Park Service.",
+    "displayField": "BLDGNAME",
+    "extent": {
+      "mmax": -9.999e+35,
+      "mmin": -9.999e+35,
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 145.72460891800006,
+      "xmin": -170.69710169699997,
+      "ymax": 67.92464543700004,
+      "ymin": -14.283979517999967,
+      "zmax": 0,
+      "zmin": 0
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "BLDGNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "BLDGNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGALTNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "BLDGALTNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPLABEL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "MAPLABEL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGSTATUS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "BLDGSTATUS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "BLDGCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "BLDGTYPE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "BLDGTYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACOWNER",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "FACOWNER",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACOCCUPANT",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "FACOCCUPANT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACMAINTAIN",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "FACMAINTAIN",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACUSE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "FACUSE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASONAL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "SEASONAL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASDESC",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "SEASDESC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISEXTANT",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "ISEXTANT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POLYGONTYPE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "POLYGONTYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PUBLICDISPLAY",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "PUBLICDISPLAY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "DATAACCESS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "DATAACCESS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "UNITCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "UNITNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "GROUPCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "GROUPNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 4,
+        "name": "REGIONCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "CREATEDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "EDITDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "EDITDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "MAPMETHOD",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "MAPMETHOD",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPSOURCE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "MAPSOURCE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCEDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "SOURCEDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "XYACCURACY",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "XYACCURACY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACLOCID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "FACLOCID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACASSETID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "FACASSETID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CRID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 38,
+        "name": "CRID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ASMISID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "ASMISID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CLIID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "CLIID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LCSID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "LCSID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIREBLDGID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "FIREBLDGID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PARKBLDGID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "PARKBLDGID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATUREID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "FEATUREID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOMETRYID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 38,
+        "name": "GEOMETRYID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOTES",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "NOTES",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape.STArea()",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape.STLength()",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": true,
+    "hasZ": true,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Buildings",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": -100000,
+      "latestWkid": 6318,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 104145,
+      "xyTolerance": 8.983152841195215e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 14804,
+  "status": 200
+}

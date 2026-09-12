@@ -1,0 +1,243 @@
+{
+  "body": {
+    "displayFieldName": "name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "airport_name": "OAKLAND INTL",
+          "beacon": "B",
+          "country": "US",
+          "elev": "2",
+          "icao": "KOAK",
+          "id": "OAK",
+          "idp_filedate": 1747624942000,
+          "idp_ingestdate": 1762053742000,
+          "magdec": "14E",
+          "name": "OAKLAND_INTL",
+          "numrwy": "4",
+          "objectid": 2266,
+          "owner": "P",
+          "regional": "LARGE",
+          "rwylen": "L",
+          "rwytype": "A",
+          "services": "S",
+          "state": "CA",
+          "tower": "T",
+          "type": "ARP"
+        },
+        "geometry": {
+          "x": -122.22119999999995,
+          "y": 37.7213
+        }
+      },
+      {
+        "attributes": {
+          "airport_name": "Denver International Airport",
+          "beacon": "B",
+          "country": "US",
+          "elev": "1656",
+          "icao": "KDEN",
+          "id": "DEN",
+          "idp_filedate": 1747624942000,
+          "idp_ingestdate": 1762053742000,
+          "magdec": "08E",
+          "name": "Denver International Airport",
+          "numrwy": "6",
+          "objectid": 2735,
+          "owner": "P",
+          "regional": "LARGE",
+          "rwylen": "L",
+          "rwytype": "C",
+          "services": "S",
+          "state": "CO",
+          "tower": "T",
+          "type": "ARP"
+        },
+        "geometry": {
+          "x": -104.67320000000001,
+          "y": 39.861699999999985
+        }
+      },
+      {
+        "attributes": {
+          "airport_name": "Washington Dulles International Airport",
+          "beacon": "B",
+          "country": "US",
+          "elev": "95",
+          "icao": "KIAD",
+          "id": "IAD",
+          "idp_filedate": 1747624942000,
+          "idp_ingestdate": 1762053742000,
+          "magdec": "10W",
+          "name": "Washington Dulles International Airport",
+          "numrwy": "4",
+          "objectid": 3177,
+          "owner": "P",
+          "regional": "LARGE",
+          "rwylen": "L",
+          "rwytype": "C",
+          "services": "S",
+          "state": "VA",
+          "tower": "T",
+          "type": "ARP"
+        },
+        "geometry": {
+          "x": -77.45990000000002,
+          "y": 38.947500000000005
+        }
+      }
+    ],
+    "fieldAliases": {
+      "airport_name": "AIRPORT NAME",
+      "beacon": "Beacon",
+      "country": "Country",
+      "elev": "Elev",
+      "icao": "Icao",
+      "id": "Id",
+      "idp_filedate": "idp_filedate",
+      "idp_ingestdate": "idp_ingestdate",
+      "magdec": "MagDec",
+      "name": "Name",
+      "numrwy": "NumRwy",
+      "objectid": "OBJECTID",
+      "owner": "Owner",
+      "regional": "Regional",
+      "rwylen": "RwyLen",
+      "rwytype": "RwyType",
+      "services": "Services",
+      "state": "State",
+      "tower": "Tower",
+      "type": "Type"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Id",
+        "length": 4,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icao",
+        "length": 4,
+        "name": "icao",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "length": 50,
+        "name": "name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State",
+        "length": 2,
+        "name": "state",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country",
+        "length": 2,
+        "name": "country",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Type",
+        "length": 3,
+        "name": "type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Elev",
+        "length": 5,
+        "name": "elev",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MagDec",
+        "length": 4,
+        "name": "magdec",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Owner",
+        "length": 1,
+        "name": "owner",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NumRwy",
+        "length": 2,
+        "name": "numrwy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "RwyLen",
+        "length": 1,
+        "name": "rwylen",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "RwyType",
+        "length": 1,
+        "name": "rwytype",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Services",
+        "length": 1,
+        "name": "services",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Tower",
+        "length": 1,
+        "name": "tower",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Beacon",
+        "length": 1,
+        "name": "beacon",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Regional",
+        "length": 255,
+        "name": "regional",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "AIRPORT NAME",
+        "length": 255,
+        "name": "airport_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "idp_ingestdate",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "idp_filedate",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4271,
+  "status": 200
+}

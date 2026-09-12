@@ -1,0 +1,166 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.067161843,
+      "xmin": -20037507.067161843,
+      "ymax": 12808319.154019522,
+      "ymin": -1694388.8232823536
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 22041257.773878027,
+      "xmin": -22041257.773878027,
+      "ymax": 27744433.60441329,
+      "ymin": 5593517.831660248
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 24999999.999999996,
+        "name": "Public Forecast Zones",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 24999999.999999996,
+        "name": "Fire Forecast Zones",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 24999999.999999996,
+        "name": "US Counties",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 4,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "US States and Territories",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 5,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Coastal and Offshore Marine Zones",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 6,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Events Ordered by Size and Severity",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 8,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Extreme Events",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 9,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Severe Events",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 10,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Moderate Events",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 11,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Minor Events",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 12,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Other Events",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 10000,
+    "serviceDescription": "",
+    "serviceItemId": "a6134ae01aad44c499d12feec782b386",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 4911,
+  "status": 200
+}

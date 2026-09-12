@@ -1,0 +1,67 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 19660245.4753,
+      "xmin": -18362108.8182,
+      "ymax": 11374615.999200001,
+      "ymin": -5311398.0320999995
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 21465832.03118,
+      "xmin": -21438336.11698,
+      "ymax": 21395953.02414649,
+      "ymin": 596012.3059185222
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 25000000,
+        "name": "MODIS Thermal (Last 48 hours)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPoint",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 25000000,
+        "name": "MODIS Thermal (Last 7 days)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 32000,
+    "serviceDescription": "",
+    "serviceItemId": "b8f4033069f141729ffb298b7418b653",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3154,
+  "status": 200
+}

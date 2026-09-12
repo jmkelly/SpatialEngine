@@ -1,0 +1,65 @@
+{
+  "body": {
+    "capabilities": "Map,Tilemap",
+    "copyrightText": "Esri, HERE, Garmin, (c) OpenStreetMap contributors, and the GIS user community",
+    "currentVersion": 11.5,
+    "description": "<DIV STYLE=\"text-align:Left;font-size:12pt\"><P><SPAN>This map draws attention to your thematic content by providing a neutral background with minimal colors, labels, and features. Only key information is represented to provide geographic context, allowing your data to come to the foreground. This dark gray map supports bright colors, creating a visually compelling map graphic which helps your reader see the patterns intended. This map was developed by Esri using HERE data, Garmin basemap layers, OpenStreetMap contributors, Esri basemap data, and select data from the GIS user community. Worldwide coverage is provided from Level 0 (1:591M scale) through Level 10 (1:577k scale). In North America, Central and South America, Africa, India, Australia &amp; New Zealand, Pacific Islands, and select countries in the Middle East from Level 11 (1:288k scale) through Level 16 (1:9k scale). For more information on this map, visit us online at https://goto.arcgisonline.com/maps/World_Dark_Gray_Base</SPAN></P></DIV>",
+    "fullExtent": {
+      "spatialReference": {
+        "cs": "pcs",
+        "wkid": 102100
+      },
+      "xmax": 20037507.067161843,
+      "xmin": -20037507.067161843,
+      "ymax": 20034863.616507012,
+      "ymin": -19990709.43504232
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "cs": "pcs",
+        "wkid": 102100
+      },
+      "xmax": 20037507.067161843,
+      "xmin": -20037507.067161843,
+      "ymax": 23328666.329414517,
+      "ymin": -23284512.14794976
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Dark_Gray_Canvas_Base",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "Layers",
+    "maxRecordCount": 2000,
+    "serviceDescription": "<div style='text-align:Left;font-size:12pt'><p><span>This map draws attention to your thematic content by providing a neutral background with minimal colors, labels, and features. Only key information is represented to provide geographic context, allowing your data to come to the foreground. This dark gray map supports bright colors, creating a visually compelling map graphic which helps your reader see the patterns intended. This map was developed by Esri using HERE data, Garmin basemap layers, OpenStreetMap contributors, Esri basemap data, and select data from the GIS user community. Worldwide coverage is provided from Level 0 (1:591M scale) through Level 10 (1:577k scale). In North America, Central and South America, Africa, India, Australia &amp; New Zealand, Pacific Islands, and select countries in the Middle East from Level 11 (1:288k scale) through Level 16 (1:9k scale). For more information on this map, visit us online at https://goto.arcgisonline.com/maps/World_Dark_Gray_Base</span></p></div>",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -20037700,
+      "falseY": -30241100,
+      "falseZ": -100000,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 10000,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 8306,
+  "status": 200
+}

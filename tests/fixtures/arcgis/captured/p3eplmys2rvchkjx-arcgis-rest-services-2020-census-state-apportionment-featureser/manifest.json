@@ -1,0 +1,35 @@
+{
+  "catalog": "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services",
+  "currentVersion": 12,
+  "directory": "p3eplmys2rvchkjx-arcgis-rest-services-2020-census-state-apportionment-featureser",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 52,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeSmallInteger",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 52,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "States 2020 Apportionment - U.S. House of Representatives Seats",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 3857
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "p3eplmys2rvchkjx-arcgis-rest-services-2020-census-state-apportionment-featureser",
+  "url": "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/2020_Census_State_Apportionment/FeatureServer"
+}

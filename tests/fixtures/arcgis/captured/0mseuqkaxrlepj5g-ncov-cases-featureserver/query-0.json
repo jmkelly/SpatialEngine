@@ -1,0 +1,170 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Active": 0,
+          "Admin2": null,
+          "Combined_Key": "Afghanistan",
+          "Confirmed": 209484,
+          "Country_Region": "Afghanistan",
+          "Deaths": 7896,
+          "FIPS": null,
+          "Last_Update": 1678454462000,
+          "Lat": 33.93911,
+          "Long_": 67.709953,
+          "OBJECTID": 1,
+          "Province_State": null,
+          "Recovered": 0
+        },
+        "geometry": {
+          "x": 67.70995300000004,
+          "y": 33.93911000000003
+        }
+      },
+      {
+        "attributes": {
+          "Active": 0,
+          "Admin2": null,
+          "Combined_Key": "Albania",
+          "Confirmed": 334457,
+          "Country_Region": "Albania",
+          "Deaths": 3598,
+          "FIPS": null,
+          "Last_Update": 1678454462000,
+          "Lat": 41.1533,
+          "Long_": 20.1683,
+          "OBJECTID": 2,
+          "Province_State": null,
+          "Recovered": 0
+        },
+        "geometry": {
+          "x": 20.168300000000045,
+          "y": 41.15330000000006
+        }
+      },
+      {
+        "attributes": {
+          "Active": 0,
+          "Admin2": null,
+          "Combined_Key": "Algeria",
+          "Confirmed": 271496,
+          "Country_Region": "Algeria",
+          "Deaths": 6881,
+          "FIPS": null,
+          "Last_Update": 1678454462000,
+          "Lat": 28.0339,
+          "Long_": 1.6596,
+          "OBJECTID": 3,
+          "Province_State": null,
+          "Recovered": 0
+        },
+        "geometry": {
+          "x": 1.6596000000000686,
+          "y": 28.033900000000074
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Province/State",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Province_State",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country/Region",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Country_Region",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last Update",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Last_Update",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "name": "Lat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "name": "Long_",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "Recovered",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "Deaths",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Active",
+        "defaultValue": null,
+        "name": "Active",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "County",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Admin2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIPS",
+        "defaultValue": null,
+        "length": 5,
+        "name": "FIPS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Combined_Key",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Combined_Key",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3521,
+  "status": 200
+}

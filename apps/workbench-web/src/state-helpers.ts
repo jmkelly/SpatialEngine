@@ -1,58 +1,31 @@
-import { fromBase64, type InvocationResponse } from "@spatial/client";
 import { decodeSgeom, type DecodedGeometry } from "./sgeom.ts";
 import type { RunOutcome } from "./run-outcome.ts";
 
 /**
  * Pure helpers shared by the workbench state and its unit tests (kept free of
- * JSX so Node can type-strip them directly): response-to-outcome mapping,
- * resource token extraction, wire geometry attachment and wire decode.
+ * JSX so Node can type-strip them directly): base64 bytes handling and
+ * SGEOM-to-GeoJSON decode.
  */
 
-/** Records the first geometry attribute of a batch feature as its wire <c>{$geometry}</c> tag. */
-export function attachGeometryWire(
-  target: Record<string, unknown>,
+/** Records a feature's geometry bytes (base64 SGEOM) for operation arguments. */
+export function attachGeometryBytes(
+  target: Record<string, string>,
   featureId: string,
   feature: { attributes: { kind: string; value?: unknown }[] },
 ): void {
   for (const attribute of feature.attributes) {
     if (attribute?.kind === "Geometry" && attribute.value instanceof Uint8Array) {
-      target[featureId] = { $geometry: toBase64(attribute.value) };
+      target[featureId] = toBase64(attribute.value);
       return;
     }
   }
 }
 
-/** Maps a completed invocation response to a run outcome. */
-export function outcomeFromResponse(response: InvocationResponse): RunOutcome {
-  return {
-    capability: response.capability,
-    provider: response.provenance?.provider ?? null,
-    ok: response.ok,
-    error: response.error?.message ?? (response.ok ? null : "invocation failed"),
-    result: response.result,
-    jobId: null,
-    step: response.provenance?.step ?? null,
-    finishedAt: new Date().toISOString(),
-  };
-}
-
-/** Reads the resource token from a <c>{$resource}</c>-tagged result, or null. */
-export function resourceTokenFrom(response: { result: unknown }): string | null {
-  const result = response.result;
-  if (typeof result !== "object" || result === null) return null;
-  const tagged = result as Record<string, unknown>;
-  if (typeof tagged.$resource !== "object" || tagged.$resource === null) return null;
-  const resource = tagged.$resource as Record<string, unknown>;
-  return typeof resource.token === "string" ? resource.token : null;
-}
-
-/** Decodes a wire geometry result (<c>{$geometry}</c> tag) to GeoJSON, or null. */
-export function geometryFromWire(result: unknown): DecodedGeometry | null {
-  if (typeof result !== "object" || result === null) return null;
-  const tagged = result as Record<string, unknown>;
-  if (typeof tagged.$geometry !== "string") return null;
+/** Decodes base64 SGEOM bytes to GeoJSON, or null. */
+export function geometryFromBase64(base64: string | null): DecodedGeometry | null {
+  if (base64 === null) return null;
   try {
-    return decodeSgeom(fromBase64(tagged.$geometry));
+    return decodeSgeom(fromBase64(base64));
   } catch {
     return null;
   }
@@ -62,11 +35,31 @@ export function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function failure(message: string, jobId: string | null = null): RunOutcome {
-  return { capability: "", provider: null, ok: false, error: message, result: null, jobId, step: null, finishedAt: new Date().toISOString() };
+/**
+ * Drops transient operation results from the map's result layer while keeping
+ * persisted saved results. Operation previews are tagged `kind: "operation"`
+ * by `applyResultToMap`; saved results are tagged `kind: "saved"`. Features
+ * without a kind are kept (the safe default). Pure so node can test it.
+ */
+export function withoutOperationResults(collection: GeoJSON.FeatureCollection): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: collection.features.filter((feature) => feature.properties?.kind !== "operation"),
+  };
 }
 
-function toBase64(bytes: Uint8Array): string {
+export function failure(op: string, message: string): RunOutcome {
+  return { op, ok: false, error: message, geometryBase64: null, summary: null, finishedAt: new Date().toISOString() };
+}
+
+export function fromBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+export function toBase64(bytes: Uint8Array): string {
   let binary = "";
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {

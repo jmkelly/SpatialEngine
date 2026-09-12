@@ -1,81 +1,93 @@
-# Capability Contract Catalog (distilled)
+# Service Contract Catalog (distilled)
 
-The versioned contracts shipped in `Spatial.PluginSdk`. Implements
-ADR-0026/0027/0028. Shared error variant
-`invalid.arguments` covers bad arguments **and** inputs the algorithm cannot
-process; anything else is a provider failure. Argument names are stable.
+The typed contracts in `Spatial.PluginSdk`. Implements ADR-0033
+(replaces ADR-0026/0027/0028 capability contracts). Shared error codes:
+`invalid.arguments`, `not.found`, `store.unavailable` (see `runtime.md`).
 
-## Geometry operations (`Spatial.PluginSdk.Operations`, provider `nts@1`)
+## Geometry operations (`IGeometryOperations`, NTS)
 
-| Contract | Input | Output | Behaviour |
+| Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
-| `spatial.geometry.buffer@1` | geometry, distance, optional quadrantSegments | geometry | OGC buffer; negative erodes |
-| `spatial.geometry.intersection@1` | left, right | geometry | disjoint inputs succeed with empty result |
-| `spatial.geometry.validate@1` | geometry | bool | invalid geometry = successful `false`, never a failure |
-| `spatial.geometry.simplify@1` | geometry, tolerance | geometry | Douglas-Peucker; zero returns unchanged |
+| `Buffer` | geometry, distance, optional quadrantSegments (default 8) | geometry | OGC buffer; negative erodes |
+| `Intersection` | left, right | geometry | disjoint inputs succeed with empty result |
+| `Validate` | geometry | bool | invalid geometry = successful `false`, never a failure |
+| `Simplify` | geometry, tolerance | geometry | Douglas-Peucker; zero returns unchanged |
 
-All four: **inline, cancellable, pure** (never job-routed by default).
-Geometry crosses the wire as `{"$geometry":"<SGEOM base64>"}` — never JSON
-geometry. NTS adapter notes: open rings closed before processing (core does
-not require closure); algorithms are planar (computed results are XY; simplify
+All four: **pure, cancellable** (`CancellationToken`, honoured before the
+algorithm runs). Geometry crosses as Base64 SGEOM — never JSON geometry.
+NTS adapter notes: open rings closed before processing (core does not
+require closure); algorithms are planar (computed results are XY; simplify
 preserves Z); result carries input CRS (intersection: left's); validation
 pre-checks OGC ring rules, then NTS `IsValidOp`.
 
-## Transformations (`Spatial.PluginSdk.Transformations`, provider `projnet@1`)
+## Geometry measures, processing and relations (`IGeometryMeasures`, `IGeometryProcessing`, `IGeometryRelations`, NTS)
 
-| Contract | Input | Output | Behaviour |
+Added by ADR-0036 so the GeoServices adapter maps protocol verbs without
+holding algorithms. All verbs are pure, planar and cancellable.
+
+| Interface | Method | Behaviour |
+| --- | --- | --- |
+| `IGeometryMeasures` | `Area`, `Length` | planar; 0 for shapes of the wrong dimension |
+| `IGeometryMeasures` | `Distance` | planar minimum distance |
+| `IGeometryMeasures` | `LabelPoint` | an interior point |
+| `IGeometryProcessing` | `Union`, `Difference` | set operations |
+| `IGeometryProcessing` | `ConvexHull` | hull of all inputs |
+| `IGeometryProcessing` | `Repair` | topological MakeValid (NTS `GeometryFixer`); **not** Douglas-Peucker |
+| `IGeometryProcessing` | `Densify` | segment length cap |
+| `IGeometryRelations` | `Relate` | DE-9IM intersection pattern |
+
+## Transformations (`ICrsDirectory`, `ICoordinateTransforms`, ProjNet)
+
+| Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
-| `spatial.crs.describe@1` | crs identity string (`EPSG:4326`) | structured `CrsDescription` | name, family, axes (name/orientation/unit), datum, ellipsoid |
-| `spatial.coordinate.transform@1` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
+| `Describe` | crs identity string (`EPSG:4326`) | structured `CrsDescription` | name, family, axes (name/orientation/unit), datum, ellipsoid |
+| `Transform` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
 
 - **Axis order: x-first for every CRS** (x = longitude/easting). Describe
-  reports declared axes; the adapter performs no swaps — axis-order tests pin
+  reports declared axes; the service performs no swaps — axis-order tests pin
   this. Z/M pass through untouched; empty geometries keep type and layout.
 - Omitted `source` defaults to the geometry's own CRS (then required).
-- Curated EPSG catalogue (12 CRSs, built programmatically — ProjNet's WKT
-  reader mis-classifies Pseudo-Mercator). Accuracy documented: modern datums
-  zero-shift (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
-- CRS descriptions cross the wire in the `{"$crs":…}` tag.
+- Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
+  (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
 
-## Data providers (`Spatial.PluginSdk.Providers`, `postgis@1`, `demo@1`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDemoJobs`)
 
-| Contract | Input | Output | Permission | Behaviour |
-| --- | --- | --- | --- | --- |
-| `spatial.catalogue.list@1` | optional LIKE `pattern` | bounded stream of JSON metadata items | — | one item per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |
-| `spatial.dataset.describe@1` | dataset id | bounded stream, one JSON item | — | fields in column order, geometry column + SRID/type, row estimate, identity columns |
-| `spatial.dataset.create@1` | dataset id, **canonical batch bytes**, optional SRID | dataset id | `spatial.dataset.create` | table from batch schema; geometry column at SRID |
-| `spatial.feature.scan@1` | dataset id | bounded stream of canonical batches | `spatial.feature.read` | streams every feature |
-| `spatial.feature.query@1` | dataset id, optional bbox (all-or-none, x-first), optional filter | bounded stream of canonical batches | `spatial.feature.read` | bbox + parameterised attribute filtering |
-| `spatial.feature.write@1` | dataset id, batch, optional transaction handle | appended count | `spatial.feature.write` | single-transaction append |
-| `spatial.transaction.begin@1` / `commit@1` / `rollback@1` | — / handle / handle | handle / bool / bool | — | begin returns a runtime-owned handle; inactive handle = `invalid.arguments` |
+| Method | Input | Behaviour |
+| --- | --- | --- |
+| `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |
+| `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns) |
+| `CreateAsync` | dataset id, **sample batch**, SRID | table from batch schema; geometry column at SRID |
+| `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
+| `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering |
+| `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
+| `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive capability, implemented by PostGIS only (ADR-0037) |
+| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity capability, implemented by PostGIS only (ADR-0038) |
+| `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
+| `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
-**Interchange rules for all providers:**
-- Feature data is **canonical binary both directions** (`FeatureBatchCodec` v1
-  bytes; one stream item per batch) — identical on in-process and worker paths.
-- Metadata is small **JSON text items** (the sanctioned JSON exception),
-  written by the shared `DatasetMetadataJson` — never feature/geometry payloads.
-- No new inline codec tags; streams ride `$resource` handles with
-  `$bytes`/string items.
+**Interchange rules:**
+- Feature data is **canonical `FeatureBatch` pages** (ADR-0020); on HTTP as
+  Base64 SFBAT strings.
+- Metadata is **JSON DTOs** — never feature/geometry payloads.
 - Dataset identifiers: strict `schema.table` grammar (`[a-z_][a-z0-9_]*` per
   part; `public` default), validated, never concatenated raw into SQL;
   filter literals are always bound parameters.
 
-**PostGIS adapter specifics:** EWKB ↔ core geometry is the plugin's only
+**PostGIS specifics:** EWKB ↔ core geometry is the store's only
 `Spatial.Core.Geometry` surface (SRID flag ↔ `EPSG:<srid>`; SRID 0 = unknown
 CRS); schema discovery via `geometry_columns` + `information_schema` +
 `pg_class` + primary keys; writes via `ST_GeomFromEWKB(@p, srid)`; commands
-run with the invocation token (DB-command cancellation); cancelled
-scan/query fails the stream with `operation.cancelled`.
+run with the caller's token (DB-command cancellation). Editing (ADR-0037)
+adds `UPDATE`/`DELETE`/`INSERT … RETURNING` built from discovered identities
+and back to the per-feature `FeatureEditOutcome`; it is available only when
+the table has a primary key. Read-by-identity (ADR-0038) adds a targeted
+`SELECT … WHERE <identity> = @p…` (one bound parameter per identity value,
+`LIMIT 1` for a single lookup) so GeoServices edit merges no longer scan the
+dataset; a table without a primary key returns an empty result.
 
-## Conformance (applies to every provider of every contract)
+**Demo specifics:** read-only procedural datasets (110-point grid + 8
+cities, EPSG:4326); bbox queries only (attribute filters rejected);
+writes/creation/editing rejected.
 
-- The shared suite `tests/conformance/Spatial.Conformance.Tests` runs each
-  contract's fixtures: success, empty input, unsupported input, cancellation,
-  diagnostics — plus provenance assertions (capability, provider, step,
-  duration) on every outcome.
-- Geometry-carrying fixtures live **with the conformance suite** (tests/
-  namespace), not in the SDK — `Spatial.Core.Geometry` fan-in discipline.
-- The same invoker delegate drives the in-process provider and the packaged
-  worker; both must agree on every result shape.
-- Store-backed PostGIS behaviour lives in the containerised integration suite
-  (`tests/integration/Spatial.PostGIS.Tests`, Testcontainers).
+**ArcGIS REST specifics:** read-only remote provider; writes, creation and
+editing rejected.

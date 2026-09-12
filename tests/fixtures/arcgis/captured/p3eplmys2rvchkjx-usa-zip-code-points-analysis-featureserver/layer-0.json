@@ -1,0 +1,110 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 16220415.980433559,
+      "xmin": -19676855.901795156,
+      "ymax": 11502174.960318293,
+      "ymin": -1605588.0929166959
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": "",
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "ZIP Code",
+        "defaultValue": "",
+        "editable": true,
+        "length": 10,
+        "name": "ZIP_CODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Post Office Name",
+        "defaultValue": "",
+        "editable": true,
+        "length": 100,
+        "name": "PO_NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State Abbreviation",
+        "defaultValue": "",
+        "editable": true,
+        "length": 2,
+        "name": "STATE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ZIP Code Type",
+        "defaultValue": "",
+        "editable": true,
+        "length": 50,
+        "name": "ZIP_TYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "2023 Total Population",
+        "defaultValue": "",
+        "editable": true,
+        "name": "POPULATION",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "People per square mile",
+        "defaultValue": "",
+        "editable": true,
+        "name": "POP_SQMI",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Area in square miles",
+        "defaultValue": "",
+        "editable": true,
+        "name": "SQMI",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "zip_usa",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 13911,
+  "status": 200
+}

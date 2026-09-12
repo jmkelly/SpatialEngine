@@ -33,6 +33,16 @@ public sealed class GeometryAdapterTests
     }
 
     [Fact]
+    public void Point_with_z_and_m_round_trips()
+    {
+        var point = GeometryFactory.CreatePoint(1.5, -2.25, 9.5, 99.0, Crs);
+        var back = Assert.IsType<Point>(GeometryAdapter.ToCore(GeometryAdapter.ToNts(point), Crs));
+        Assert.Equal(CoordinateLayout.Xyzm, back.Layout);
+        Assert.Equal(point.Coordinate, back.Coordinate);
+        Assert.Equal(Crs, back.CoordinateReference);
+    }
+
+    [Fact]
     public void Empty_point_round_trips()
     {
         var point = GeometryFactory.CreateEmptyPoint(Crs);
@@ -58,6 +68,21 @@ public sealed class GeometryAdapterTests
         var back = Assert.IsType<LineString>(GeometryAdapter.ToCore(GeometryAdapter.ToNts(line), Crs));
         Assert.Equal(line, back);
         Assert.Equal(CoordinateLayout.Xyz, back.Layout);
+    }
+
+    [Fact]
+    public void Line_string_with_z_and_m_round_trips()
+    {
+        var line = GeometryFactory.CreateLineString(
+            [new Coordinate(0, 0, 1, 10), new Coordinate(1, 3, 2, 20), new Coordinate(2, -1, 3, 30)], Crs);
+        var back = Assert.IsType<LineString>(GeometryAdapter.ToCore(GeometryAdapter.ToNts(line), Crs));
+        Assert.Equal(CoordinateLayout.Xyzm, back.Layout);
+        Assert.Equal(line.Sequence.Count, back.Sequence.Count);
+        for (var i = 0; i < line.Sequence.Count; i++)
+        {
+            Assert.Equal(line.Sequence.GetCoordinate(i), back.Sequence.GetCoordinate(i));
+        }
+        Assert.Equal(Crs, back.CoordinateReference);
     }
 
     [Fact]
@@ -156,5 +181,23 @@ public sealed class GeometryAdapterTests
         var line = GeometryFactory.CreateLineString([new Coordinate(0, 0), new Coordinate(1, 1)], Crs);
         var back = Assert.IsType<LineString>(GeometryAdapter.ToCore(GeometryAdapter.ToNts(line), Crs));
         Assert.Equal(Crs, back.CoordinateReference);
+    }
+
+    [Fact]
+    public void Unknown_core_geometry_type_throws()
+    {
+        var unknown = new UnknownGeometry();
+        var exception = Assert.Throws<ArgumentException>(() => GeometryAdapter.ToNts(unknown));
+        Assert.Contains("Cannot convert core geometry type", exception.Message);
+    }
+
+    private sealed class UnknownGeometry : IGeometry
+    {
+        public GeometryType Type => unchecked((GeometryType)255);
+        public CoordinateLayout Layout => CoordinateLayout.Xy;
+        public CoordinateReference? CoordinateReference => null;
+        public bool IsEmpty => true;
+        public int CoordinateCount => 0;
+        public Envelope? Envelope => null;
     }
 }

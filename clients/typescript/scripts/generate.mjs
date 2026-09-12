@@ -60,6 +60,10 @@ function emit(name, schema) {
 
 function emitPropertyType(propSchema) {
   if (propSchema.$ref) return refName(propSchema.$ref);
+  if (Array.isArray(propSchema.type)) {
+    const alts = propSchema.type.map((t) => (t === "integer" || t === "number" ? "number" : t === "null" ? "null" : t === "string" ? "string" : t === "boolean" ? "boolean" : "unknown"));
+    return [...new Set(alts)].join(" | ");
+  }
   if (Array.isArray(propSchema.type) && propSchema.type.includes("null")) {
     return `${emitPropertyType({ ...propSchema, type: propSchema.type.find((t) => t !== "null") })} | null`;
   }
@@ -72,7 +76,7 @@ function emitPropertyType(propSchema) {
   }
   if (propSchema.type === "array") return `${emitPropertyType(propSchema.items ?? {})}[]`;
   if (propSchema.type === "object") return "{ [key: string]: unknown }";
-  if (propSchema.type === "integer") return "number";
+  if (propSchema.type === "integer" || propSchema.type === "number") return "number";
   if (propSchema.type === "string") return "string";
   if (propSchema.type === "boolean") return "boolean";
   if (propSchema.type === "null") return "null";

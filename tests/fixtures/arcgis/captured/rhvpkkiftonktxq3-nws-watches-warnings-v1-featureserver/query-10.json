@@ -1,0 +1,772 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Affected": "Sledge Island to Wales out to 15 NM",
+          "AreaIds": "PKZ806",
+          "Category": "Met",
+          "Certainty": "Likely",
+          "DamageThreat": null,
+          "Description": "Northwestern Alaska Coastal Waters out 100 NM\n\nWind forecasts reflect the predominant speed and direction\nexpected. Sea forecasts represent the average of the highest one-\nthird of the combined wind-wave and swell height.\n\n.TODAY...S winds 35 kt. Seas 12 f\u2026",
+          "End_": 1789131600000,
+          "Event": "Gale Warning",
+          "HrsSinceUpdated": 25,
+          "HrsUntilEffective": -26,
+          "HrsUntilExpiration": 0,
+          "Instruction": null,
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.6e747702367ad46ecd40855a93306f423e82a1ee.006.1",
+          "OBJECTID": 2356726,
+          "Severity": "Moderate",
+          "Shape__Area": 30862078476.203125,
+          "Shape__Length": 1471430.5612278807,
+          "Start": 1789038000000,
+          "Summary": "Gale Warning issued September 10 at 3:46AM AKDT until September 11 at 5:00AM AKDT by NWS Fairbanks AK",
+          "Uid": "6e747702367ad46ecd40855a93306f423e82a1ee.006.1",
+          "Updated": 1789040760000,
+          "Urgency": "Expected"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -18520255.7175755,
+                9688905.33814841
+              ],
+              [
+                -18520136.5023045,
+                9689233.2289107
+              ],
+              [
+                -18519659.5728705,
+                9689624.34973628
+              ],
+              [
+                -18520255.7175755,
+                9688905.33814841
+              ]
+            ],
+            [
+              [
+                -18520255.7175755,
+                9688905.33814841
+              ],
+              [
+                -18520688.5562535,
+                9687714.9829838
+              ],
+              [
+                -18520430.0696129,
+                9687124.93615541
+              ],
+              [
+                -18521026.5777759,
+                9687641.81597437
+              ],
+              [
+                -18520475.1540066,
+                9688314.38855428
+              ],
+              [
+                -18521087.7274647,
+                9688105.22026841
+              ],
+              [
+                -18523656.6650535,
+                9690391.68499874
+              ],
+              [
+                -18522718.8963047,
+                9690836.18423353
+              ],
+              [
+                -18523014.0176331,
+                9691788.26362763
+              ],
+              [
+                -18522494.1686355,
+                9692620.94806372
+              ],
+              [
+                -18521079.2344554,
+                9692753.149647
+              ],
+              [
+                -18519113.9535221,
+                9691093.69302143
+              ],
+              [
+                -18520374.3151346,
+                9689635.89123096
+              ],
+              [
+                -18520651.1870796,
+                9688428.40195698
+              ],
+              [
+                -18520255.7175755,
+                9688905.33814841
+              ]
+            ],
+            [
+              [
+                -18550473.8564404,
+                9694848.33161091
+              ],
+              [
+                -18550666.1131047,
+                9694822.51524951
+              ],
+              [
+                -18550883.3762454,
+                9694909.22784816
+              ],
+              [
+                -18550473.8564404,
+                9694848.33161091
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Affected": "South Side of Saint Lawrence Island out to 15 NM",
+          "AreaIds": "PKZ816",
+          "Category": "Met",
+          "Certainty": "Likely",
+          "DamageThreat": null,
+          "Description": "Northwestern Alaska Coastal Waters out 100 NM\n\nWind forecasts reflect the predominant speed and direction\nexpected. Sea forecasts represent the average of the highest one-\nthird of the combined wind-wave and swell height.\n\n.TODAY...S winds 35 kt. Seas 16 f\u2026",
+          "End_": 1789131600000,
+          "Event": "Gale Warning",
+          "HrsSinceUpdated": 25,
+          "HrsUntilEffective": -26,
+          "HrsUntilExpiration": 0,
+          "Instruction": null,
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.6e747702367ad46ecd40855a93306f423e82a1ee.011.1",
+          "OBJECTID": 2356727,
+          "Severity": "Moderate",
+          "Shape__Area": 36414397536.125,
+          "Shape__Length": 1332123.8529380127,
+          "Start": 1789038000000,
+          "Summary": "Gale Warning issued September 10 at 3:46AM AKDT until September 11 at 5:00AM AKDT by NWS Fairbanks AK",
+          "Uid": "6e747702367ad46ecd40855a93306f423e82a1ee.011.1",
+          "Updated": 1789040760000,
+          "Urgency": "Expected"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -19112448.7419003,
+                9188308.04807296
+              ],
+              [
+                -19110811.2908561,
+                9187686.86409488
+              ],
+              [
+                -19109895.8277503,
+                9188121.28935457
+              ],
+              [
+                -19108178.0566879,
+                9186577.18321745
+              ],
+              [
+                -19106617.445926,
+                9186307.3848989
+              ],
+              [
+                -19105824.4286941,
+                9184968.15346294
+              ],
+              [
+                -19103984.5401502,
+                9185126.45977093
+              ],
+              [
+                -19102693.6783331,
+                9183580.45539404
+              ],
+              [
+                -19100426.526214,
+                9183458.53347586
+              ],
+              [
+                -19099940.2468334,
+                9184455.87455669
+              ],
+              [
+                -19100440.127452,
+                9184948.05554402
+              ],
+              [
+                -19099597.1050596,
+                9185665.9177632
+              ],
+              [
+                -19099165.659879,
+                9184815.03415084
+              ],
+              [
+                -19099440.1445776,
+                9184032.7804864
+              ],
+              [
+                -19098370.739863,
+                9183334.41103477
+              ],
+              [
+                -19097692.998194,
+                9179084.85869772
+              ],
+              [
+                -19096488.6903979,
+                9178741.56147783
+              ],
+              [
+                -19092471.7670929,
+                9180759.19530301
+              ],
+              [
+                -19088558.998311,
+                9178519.54709633
+              ],
+              [
+                -19087336.1406803,
+                9175906.21792894
+              ],
+              [
+                -19084364.0790364,
+                9175926.7686816
+              ],
+              [
+                -19076691.500019,
+                9181858.3224789
+              ],
+              [
+                -19072712.2235186,
+                9182966.55491409
+              ],
+              [
+                -19070438.9122034,
+                9182388.46974757
+              ],
+              [
+                -19070985.9005589,
+                9184108.53321585
+              ],
+              [
+                -19070826.6938722,
+                9184856.74606567
+              ],
+              [
+                -19066469.8717529,
+                9189012.26227845
+              ],
+              [
+                -19066294.365555,
+                9189816.72790135
+              ],
+              [
+                -19067405.2503609,
+                9190677.75597412
+              ],
+              [
+                -19067722.888728,
+                9192756.39678467
+              ],
+              [
+                -19066822.6304175,
+                9194424.29527399
+              ],
+              [
+                -19065605.5871151,
+                9195378.42070798
+              ],
+              [
+                -19061636.802588,
+                9197420.85791873
+              ],
+              [
+                -19053645.532455,
+                9199651.21119142
+              ],
+              [
+                -19050278.2602362,
+                9203344.69139761
+              ],
+              [
+                -19046864.0729745,
+                9204834.72412561
+              ],
+              [
+                -19036773.5051524,
+                9205128.05199298
+              ],
+              [
+                -19027111.0462659,
+                9204198.8122806
+              ],
+              [
+                -19020650.6580229,
+                9202549.16703681
+              ],
+              [
+                -18986534.8744647,
+                9187828.89822233
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Affected": "Dall Point to Kwikpak Pass out to 15 NM",
+          "AreaIds": "PKZ802",
+          "Category": "Met",
+          "Certainty": "Likely",
+          "DamageThreat": null,
+          "Description": "Northwestern Alaska Coastal Waters out 100 NM\n\nWind forecasts reflect the predominant speed and direction\nexpected. Sea forecasts represent the average of the highest one-\nthird of the combined wind-wave and swell height.\n\n.TONIGHT...S winds 35 kt. Seas 8 \u2026",
+          "End_": 1789174800000,
+          "Event": "Gale Warning",
+          "HrsSinceUpdated": 13,
+          "HrsUntilEffective": -14,
+          "HrsUntilExpiration": 12,
+          "Instruction": null,
+          "Link": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.762ddecad303e983887de4a045ed0b0b7a7c29d4.002.1",
+          "OBJECTID": 2357309,
+          "Severity": "Moderate",
+          "Shape__Area": 31022554291.828125,
+          "Shape__Length": 1732803.6818730629,
+          "Start": 1789081200000,
+          "Summary": "Gale Warning issued September 10 at 3:49PM AKDT until September 11 at 5:00PM AKDT by NWS Fairbanks AK",
+          "Uid": "762ddecad303e983887de4a045ed0b0b7a7c29d4.002.1",
+          "Updated": 1789084140000,
+          "Urgency": "Expected"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -18328049.7293748,
+                9118658.59820713
+              ],
+              [
+                -18327351.9430729,
+                9118160.52700001
+              ],
+              [
+                -18322969.0040652,
+                9120400.47370611
+              ],
+              [
+                -18321060.3390004,
+                9114517.98823709
+              ],
+              [
+                -18322738.7804414,
+                9114266.93738315
+              ],
+              [
+                -18325631.4516961,
+                9111546.01745793
+              ],
+              [
+                -18321942.3451445,
+                9108891.56959944
+              ],
+              [
+                -18322731.2949849,
+                9106894.15776966
+              ],
+              [
+                -18324117.7398356,
+                9106832.24195436
+              ],
+              [
+                -18323351.9296439,
+                9105844.74807146
+              ],
+              [
+                -18324817.8219907,
+                9106767.80590789
+              ],
+              [
+                -18328536.08423,
+                9106300.64075388
+              ],
+              [
+                -18328949.6361383,
+                9107496.8670407
+              ],
+              [
+                -18330775.8323848,
+                9107015.06371435
+              ],
+              [
+                -18333518.0544571,
+                9104927.42537076
+              ],
+              [
+                -18336193.8872549,
+                9101786.4961071
+              ],
+              [
+                -18337271.9618653,
+                9097415.41978037
+              ],
+              [
+                -18338622.1866934,
+                9095141.73503763
+              ],
+              [
+                -18338693.6905419,
+                9094205.34279018
+              ],
+              [
+                -18344139.4041866,
+                9085938.12482019
+              ],
+              [
+                -18344286.2337044,
+                9084640.95182555
+              ],
+              [
+                -18346758.0829975,
+                9077359.16702591
+              ],
+              [
+                -18346621.0597249,
+                9076100.14595366
+              ],
+              [
+                -18347599.4536313,
+                9072801.76695322
+              ],
+              [
+                -18348937.3513842,
+                9064849.65479488
+              ],
+              [
+                -18349494.9839981,
+                9064093.59870417
+              ],
+              [
+                -18349343.9165473,
+                9063272.1235158
+              ],
+              [
+                -18350608.3575738,
+                9062196.55727546
+              ],
+              [
+                -18351461.7767614,
+                9059750.58272815
+              ],
+              [
+                -18351420.9225083,
+                9058466.01086
+              ],
+              [
+                -18350906.6290212,
+                9058091.72909256
+              ],
+              [
+                -18351117.0202985,
+                9056721.76057959
+              ],
+              [
+                -18350399.6774998,
+                9053444.03017674
+              ],
+              [
+                -18348069.9660533,
+                9051949.68824441
+              ],
+              [
+                -18342807.3541579,
+                9051150.36393513
+              ],
+              [
+                -18337254.9758469,
+                9049396.08096425
+              ],
+              [
+                -18342318.329416,
+                9047246.39167909
+              ],
+              [
+                -18343296.7135262,
+                9043944.82909161
+              ],
+              [
+                -18342911.9985981,
+                9043415.39971783
+              ],
+              [
+                -18343354.8235249,
+                9042901.22867747
+              ]
+            ],
+            [
+              [
+                -18354109.7334889,
+                9050835.48965379
+              ],
+              [
+                -18353860.1064327,
+                9050168.69512509
+              ],
+              [
+                -18351721.5353386,
+                9050501.83054154
+              ],
+              [
+                -18351139.3374073,
+                9051118.20302106
+              ],
+              [
+                -18351166.5149478,
+                9051756.44062549
+              ],
+              [
+                -18353717.725353,
+                9053387.46714874
+              ],
+              [
+                -18354109.7334889,
+                9050835.48965379
+              ]
+            ],
+            [
+              [
+                -18350361.3781403,
+                9050234.79730675
+              ],
+              [
+                -18354057.0792585,
+                9047559.96124594
+              ],
+              [
+                -18353906.0188208,
+                9046668.42151601
+              ],
+              [
+                -18353282.9713119,
+                9045081.44591442
+              ],
+              [
+                -18352492.3726072,
+                9044691.02510001
+              ],
+              [
+                -18347833.8605302,
+                9042919.99769272
+              ],
+              [
+                -18345907.6473948,
+                9043071.24987195
+              ],
+              [
+                -18343990.1855299,
+                9043612.43962394
+              ],
+              [
+                -18343296.05073,
+                9044684.89129844
+              ],
+              [
+                -18343023.4235084,
+                9046971.50654791
+              ],
+              [
+                -18340830.5301726,
+                9048178.5840832
+              ],
+              [
+                -18341842.1029645,
+                9048860.83937116
+              ],
+              [
+                -18350361.3781403,
+                9050234.79730675
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Subject Type",
+        "defaultValue": null,
+        "length": 45,
+        "name": "Event",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Severity Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Severity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Summary Overview",
+        "defaultValue": null,
+        "length": 512,
+        "name": "Summary",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Details",
+        "defaultValue": null,
+        "length": 256,
+        "name": "Link",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Urgency Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Urgency",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Certainty Level",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Certainty",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Topic Category",
+        "defaultValue": null,
+        "length": 15,
+        "name": "Category",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Updated (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Updated",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Effective (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Start",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Expiration (stored in UTC)",
+        "defaultValue": null,
+        "length": 8,
+        "name": "End_",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Unique ID",
+        "defaultValue": null,
+        "length": 50,
+        "name": "Uid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Areas Affected",
+        "defaultValue": null,
+        "length": 1024,
+        "name": "Affected",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Area Ids Affected",
+        "defaultValue": null,
+        "length": 768,
+        "name": "AreaIds",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Detailed Description",
+        "defaultValue": null,
+        "length": 5120,
+        "name": "Description",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Authoritative Instruction",
+        "defaultValue": null,
+        "length": 2048,
+        "name": "Instruction",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hours Since Update",
+        "defaultValue": null,
+        "name": "HrsSinceUpdated",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Effective",
+        "defaultValue": null,
+        "name": "HrsUntilEffective",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Hours Until Expiration",
+        "defaultValue": null,
+        "name": "HrsUntilExpiration",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Observed Threat Damage Level",
+        "defaultValue": null,
+        "length": 25,
+        "name": "DamageThreat",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 55753,
+  "status": 200
+}

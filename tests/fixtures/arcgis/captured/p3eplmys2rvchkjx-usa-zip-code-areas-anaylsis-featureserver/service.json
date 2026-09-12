@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20012847.179425254,
+      "xmin": -19942590.665807378,
+      "ymax": 11537127.311200451,
+      "ymin": 1486500.944415731
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20012847.179425254,
+      "xmin": -19942590.665807378,
+      "ymax": 11537127.311200451,
+      "ymin": 1486500.944415731
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 0,
+        "maxScale": 9027,
+        "minScale": 0,
+        "name": "zip_poly",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 2000,
+    "serviceDescription": "",
+    "serviceItemId": "d6f7ee6129e241cc9b6f75978e47128b",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3158,
+  "status": 200
+}

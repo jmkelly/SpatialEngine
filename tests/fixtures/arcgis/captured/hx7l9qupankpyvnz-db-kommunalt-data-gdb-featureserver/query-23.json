@@ -1,0 +1,142 @@
+{
+  "body": {
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 1,
+          "date_diff": 1679356800000,
+          "date_today": 1679443200000,
+          "deaths_diff": 0,
+          "deaths_today": 8340,
+          "firstinfections_diff": 160,
+          "firstinfections_today": 3177143,
+          "newadmissions_diff": 82,
+          "newadmissions_today": 71806,
+          "reinfections_diff": 119,
+          "reinfections_today": 229490,
+          "tests_AG_diff": 5,
+          "tests_AG_today": 61465164,
+          "tests_PCR_diff": 1648,
+          "tests_PCR_today": 67760246,
+          "totalinfections_diff": 279,
+          "totalinfections_today": 3406633
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "date_today",
+        "defaultValue": null,
+        "length": 8,
+        "name": "date_today",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "date_diff",
+        "defaultValue": null,
+        "length": 8,
+        "name": "date_diff",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "tests_PCR_today",
+        "defaultValue": null,
+        "name": "tests_PCR_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tests_AG_today",
+        "defaultValue": null,
+        "name": "tests_AG_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "totalinfections_today",
+        "defaultValue": null,
+        "name": "totalinfections_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "firstinfections_today",
+        "defaultValue": null,
+        "name": "firstinfections_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "reinfections_today",
+        "defaultValue": null,
+        "name": "reinfections_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "deaths_today",
+        "defaultValue": null,
+        "name": "deaths_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "newadmissions_today",
+        "defaultValue": null,
+        "name": "newadmissions_today",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tests_PCR_diff",
+        "defaultValue": null,
+        "name": "tests_PCR_diff",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tests_AG_diff",
+        "defaultValue": null,
+        "name": "tests_AG_diff",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "totalinfections_diff",
+        "defaultValue": null,
+        "name": "totalinfections_diff",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "firstinfections_diff",
+        "defaultValue": null,
+        "name": "firstinfections_diff",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "reinfections_diff",
+        "defaultValue": null,
+        "name": "reinfections_diff",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "deaths_diff",
+        "defaultValue": null,
+        "name": "deaths_diff",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "newadmissions_diff",
+        "defaultValue": null,
+        "name": "newadmissions_diff",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3011,
+  "status": 200
+}

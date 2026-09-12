@@ -1,0 +1,129 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "dn",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 10000,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -8476979.2239,
+      "xmin": -13690070.9778,
+      "ymax": 6313466.687200002,
+      "ymin": 2878201.3737000003
+    },
+    "fields": [
+      {
+        "alias": "objectid",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "DN",
+        "name": "dn",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "VALID",
+        "length": 80,
+        "name": "valid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EXPIRE",
+        "length": 80,
+        "name": "expire",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISSUE",
+        "length": 80,
+        "name": "issue",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LABEL",
+        "length": 80,
+        "name": "label",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LABEL2",
+        "length": 80,
+        "name": "label2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "stroke",
+        "length": 80,
+        "name": "stroke",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fill",
+        "length": 80,
+        "name": "fill",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "idp_source",
+        "length": 50,
+        "name": "idp_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "idp_filedate",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "idp_ingestdate",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 8,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Day 3 Winds and Low Humidity",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 8157,
+  "status": 200
+}

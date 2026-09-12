@@ -1,52 +1,18 @@
 using System.Globalization;
-using Spatial.PluginSdk.Capabilities;
-using Spatial.Provider.PostGIS.Configuration;
-using Spatial.Provider.PostGIS.Geometry;
+using Spatial.Core.Features;
+using Spatial.PluginSdk;
 
 namespace Spatial.Provider.PostGIS.Core;
 
 /// <summary>
-/// Uniform failure mapping and redaction for the PostGIS provider (plan §19,
-/// ADR-0028): input problems (dataset/filter/batch/target errors the caller
-/// can fix, write-side CRS conflicts) are <c>invalid.arguments</c>; malformed
-/// stored geometry and database/storage failures are <c>provider.failure</c>.
-/// Every message passes through the configuration's redaction first, so a
-/// connection string or password can never appear in a diagnostic. The
-/// no-configuration state is a separate actionable
-/// <c>provider.unavailable</c> (architecture/distilled/host-and-clients.md).
+/// Pure row-identity and date helpers for the PostGIS store (ADR-0033).
+/// Failure mapping lives in <see cref="PostgisStore"/> via
+/// <see cref="Spatial.PluginSdk.SpatialException"/>; every message passes
+/// through the configuration's redaction there, so a connection string or
+/// password can never appear in a diagnostic.
 /// </summary>
 internal static class PostgisDiagnostics
 {
-    /// <summary>Maps a completed exception to a provider-failure error with the secret scrubbed.</summary>
-    public static CapabilityError ProviderFailure(PostgisConnectionConfiguration configuration, CapabilityId capability, Exception exception)
-    {
-        var detail = configuration.Redact(exception.Message);
-        return CapabilityError.ProviderFailure(
-            $"{capability} failed against {configuration.RedactedKey}: {detail}");
-    }
-
-    /// <summary>Builds the no-connection-configuration error (actionable, secret-free).</summary>
-    public static CapabilityError Unavailable(CapabilityId capability) =>
-        CapabilityError.ProviderUnavailable(
-            $"{capability} cannot run: the provider has no connection configuration. "
-            + $"Set {PostgisConnectionConfiguration.EnvironmentVariable} in the provider's launch environment.");
-
-    /// <summary>Fails a streaming capability: cancellation fails the stream, everything else is a redacted provider failure.</summary>
-    public static ICapabilityError StreamFailure(CapabilityId capability, Exception exception, PostgisConnectionConfiguration configuration)
-    {
-        if (exception is OperationCanceledException)
-        {
-            return CapabilityError.Cancelled(capability);
-        }
-
-        return CapabilityError.ProviderFailure(
-            $"{capability} failed while streaming: {configuration.Redact(exception.Message)}");
-    }
-
-    /// <summary>Builds an invalid.arguments error naming the offending value.</summary>
-    public static CapabilityError InvalidArgument(CapabilityId capability, string detail) =>
-        CapabilityError.InvalidArguments($"{capability} rejected the input: {detail}");
-
     /// <summary>Renders a stored geometry id (primary key values joined with '|', else a row ordinal).</summary>
     public static string FeatureIdentity(IReadOnlyList<int> identityIndexes, IReadOnlyList<object?> values, long ordinal)
     {
@@ -62,6 +28,44 @@ internal static class PostgisDiagnostics
         }
 
         return string.Join('|', parts);
+    }
+
+    /// <summary>
+    /// Reverses <see cref="FeatureIdentity"/> for an edit: splits a composite
+    /// id on '|' and converts each part to its identity column's type
+    /// (ADR-0037). A malformed id yields a typed invalid-argument failure.
+    /// </summary>
+    public static object?[] ParseFeatureIdentity(
+        IReadOnlyList<AttributeKind> identityKinds,
+        FeatureId id)
+    {
+        var parts = id.Value.Split('|');
+        if (parts.Length != identityKinds.Count)
+        {
+            throw SpatialException.BadArguments(
+                $"Feature id '{id.Value}' does not match the dataset's {identityKinds.Count} identity column(s).");
+        }
+
+        var values = new object?[parts.Length];
+        for (var i = 0; i < parts.Length; i++)
+        {
+            values[i] = ParseIdentityPart(identityKinds[i], parts[i]);
+        }
+
+        return values;
+    }
+
+    private static object? ParseIdentityPart(AttributeKind kind, string value)
+    {
+        return kind switch
+        {
+            AttributeKind.Int64 => long.Parse(value, CultureInfo.InvariantCulture),
+            AttributeKind.Double => double.Parse(value, CultureInfo.InvariantCulture),
+            AttributeKind.Boolean => bool.Parse(value),
+            AttributeKind.Guid => Guid.Parse(value),
+            AttributeKind.DateTimeOffset => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture),
+            _ => value,
+        };
     }
 
     /// <summary>Reads a date-only or timestamp value into a <see cref="DateTimeOffset"/> (UTC unless the value says otherwise).</summary>

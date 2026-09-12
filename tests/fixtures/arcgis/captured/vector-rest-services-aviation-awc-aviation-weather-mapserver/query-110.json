@@ -1,0 +1,331 @@
+{
+  "body": {
+    "displayFieldName": "id",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "base": "320",
+          "dueto": " ",
+          "forecast": "3",
+          "hazard": "TURB-HI",
+          "id": null,
+          "idp_filedate": 1789126043000,
+          "idp_ingestdate": 1789126055000,
+          "issuetime": "2026/09/11 08:45:00+00",
+          "objectid": 1,
+          "product": "TANGO",
+          "receipttim": "2026/09/11 08:35:48.677+00",
+          "severity": "MOD",
+          "st_area(shape)": 14.665215159946428,
+          "st_perimeter(shape)": 23.088563509822496,
+          "top": "410",
+          "validtime": "2026/09/11 12:00:00+00"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -85.35369999995493,
+                41.08519999988022
+              ],
+              [
+                -83.78739999961022,
+                40.97929999959547
+              ],
+              [
+                -82.88679999982003,
+                40.72059999999016
+              ],
+              [
+                -83.0400999997151,
+                40.25440000025998
+              ],
+              [
+                -83.15400000019974,
+                40.15239999996015
+              ],
+              [
+                -83.62719999987996,
+                39.92560000014004
+              ],
+              [
+                -85.55340000010983,
+                39.64359999984026
+              ],
+              [
+                -87.28540000020973,
+                39.59189999978531
+              ],
+              [
+                -89.29670000020474,
+                39.287399999710374
+              ],
+              [
+                -91.16819999963019,
+                38.89149999982527
+              ],
+              [
+                -92.25619999983002,
+                38.375899999985165
+              ],
+              [
+                -93.27509999976508,
+                38.226399999960165
+              ],
+              [
+                -93.61069999960517,
+                38.733000000249945
+              ],
+              [
+                -92.39009999991498,
+                40.02469999980531
+              ],
+              [
+                -91.31699999975007,
+                40.43249999987523
+              ],
+              [
+                -88.6693999997101,
+                40.97420000003012
+              ],
+              [
+                -85.35369999995493,
+                41.08519999988022
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "base": " ",
+          "dueto": "MTNS OBSC BY CLDS PCPN BR",
+          "forecast": "3",
+          "hazard": "MT_OBSC",
+          "id": null,
+          "idp_filedate": 1789126043000,
+          "idp_ingestdate": 1789126055000,
+          "issuetime": "2026/09/11 11:16:00+00",
+          "objectid": 2,
+          "product": "SIERRA",
+          "receipttim": "2026/09/11 11:16:28.115+00",
+          "severity": " ",
+          "st_area(shape)": 2.052542159350454,
+          "st_perimeter(shape)": 5.795955316146223,
+          "top": " ",
+          "validtime": "2026/09/11 12:00:00+00"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -83.69059999988997,
+                35.28849999997516
+              ],
+              [
+                -83.01540000010982,
+                34.3035000003249
+              ],
+              [
+                -84.44889999983502,
+                33.54520000037985
+              ],
+              [
+                -85.11179999987002,
+                34.8975000003249
+              ],
+              [
+                -83.69059999988997,
+                35.28849999997516
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "base": " ",
+          "dueto": "MTNS OBSC BY CLDS BR",
+          "forecast": "3",
+          "hazard": "MT_OBSC",
+          "id": null,
+          "idp_filedate": 1789126043000,
+          "idp_ingestdate": 1789126055000,
+          "issuetime": "2026/09/11 11:16:00+00",
+          "objectid": 3,
+          "product": "SIERRA",
+          "receipttim": "2026/09/11 11:16:28.115+00",
+          "severity": " ",
+          "st_area(shape)": 17.25052046963598,
+          "st_perimeter(shape)": 20.377884914617006,
+          "top": " ",
+          "validtime": "2026/09/11 12:00:00+00"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -117.15469999960521,
+                46.16909999996517
+              ],
+              [
+                -116.02350000012478,
+                45.20489999993521
+              ],
+              [
+                -117.2319000001848,
+                44.23250000037484
+              ],
+              [
+                -119.57590000028472,
+                43.730900000434815
+              ],
+              [
+                -124.50739999971012,
+                42.504699999705394
+              ],
+              [
+                -124.11500000024972,
+                45.257299999895224
+              ],
+              [
+                -121.61249999967515,
+                45.773500000424804
+              ],
+              [
+                -120.082699999905,
+                45.58800000039986
+              ],
+              [
+                -117.15469999960521,
+                46.16909999996517
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "base": "Base Altitude of Hazard In Feet",
+      "dueto": "Additional Information",
+      "forecast": "Forecast",
+      "hazard": "Hazard",
+      "id": "ID",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "issuetime": "Issue Time",
+      "objectid": "OBJECTID",
+      "product": "Product",
+      "receipttim": "Receipt Time",
+      "severity": "Severity",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "top": "Top Altitude of Hazard In Feet",
+      "validtime": "Valid Time"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Hazard",
+        "length": 80,
+        "name": "hazard",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Product",
+        "length": 80,
+        "name": "product",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Additional Information",
+        "length": 80,
+        "name": "dueto",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast",
+        "length": 80,
+        "name": "forecast",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Severity",
+        "length": 80,
+        "name": "severity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Top Altitude of Hazard In Feet",
+        "length": 80,
+        "name": "top",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Base Altitude of Hazard In Feet",
+        "length": 80,
+        "name": "base",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 80,
+        "name": "issuetime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time",
+        "length": 80,
+        "name": "validtime",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Receipt Time",
+        "length": 80,
+        "name": "receipttim",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "ID",
+        "length": 80,
+        "name": "id",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 6175,
+  "status": 200
+}

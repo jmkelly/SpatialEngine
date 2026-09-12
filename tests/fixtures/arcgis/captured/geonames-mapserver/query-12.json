@@ -1,0 +1,150 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 2,
+          "county_name": "Shelby",
+          "fcode": 61500,
+          "gaz_featureclass": "Populated Place",
+          "gaz_id": 2014008,
+          "gaz_name": "Westminster (historical)",
+          "incounty_id": 57,
+          "isunknowncoords": 2,
+          "objectid_1": 673651,
+          "state_alpha": "IL"
+        },
+        "geometry": {
+          "points": [
+            [
+              -9906237.9749,
+              4773337.406900004
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 3,
+          "county_name": "San Germ\u00e1n",
+          "fcode": 61500,
+          "gaz_featureclass": "Populated Place",
+          "gaz_id": 1991360,
+          "gaz_name": "Filial Amor (historical)",
+          "incounty_id": 706,
+          "isunknowncoords": 2,
+          "objectid_1": 654373,
+          "state_alpha": "PR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -7467918.732000001,
+              2049837.8374999985
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 4,
+          "county_name": "San Juan",
+          "fcode": 67300,
+          "gaz_featureclass": "Military",
+          "gaz_id": 1991371,
+          "gaz_name": "Fuerte de San Agustin (historical)",
+          "incounty_id": 708,
+          "isunknowncoords": 2,
+          "objectid_1": 2233685,
+          "state_alpha": "PR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -7360586.7509,
+              2092172.7635999992
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "incounty_id": "incounty_id",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2766,
+  "status": 200
+}

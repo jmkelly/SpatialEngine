@@ -1,0 +1,93 @@
+{
+  "body": {
+    "capabilities": "Query,Sync",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "COUNTY",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3087,
+        "wkid": 3087
+      },
+      "xmax": 807844.6573431905,
+      "xmin": 31764.28621699667,
+      "ymax": 783237.532805305,
+      "ymin": 52204.98677073978
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "COUNTY",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "COUNTY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COUNTY_ID",
+        "defaultValue": null,
+        "editable": true,
+        "name": "COUNTY_ID",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "FIPS",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FIPS",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "URLx",
+        "defaultValue": null,
+        "editable": true,
+        "length": 150,
+        "name": "URLx",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": "NEWID() WITH VALUES",
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Florida Counties",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3087,
+      "wkid": 3087
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 8834,
+  "status": 200
+}

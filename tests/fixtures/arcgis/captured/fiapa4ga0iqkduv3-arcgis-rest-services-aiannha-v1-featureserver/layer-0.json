@@ -1,0 +1,280 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "NAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": -7462359.728799999,
+      "xmin": -19395861.462,
+      "ymax": 11519605.0709,
+      "ymin": 2144423.926300004
+    },
+    "fields": [
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area Census Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 4,
+        "name": "AIANNH",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area FIPS Class Codes and Definitions Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "AIANNHCC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area Reservation/Statistical Area or Off-Reservation Trust Land Component Indicator",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "AIANNHCOMP",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area State-FIPS Code 1",
+        "defaultValue": null,
+        "editable": true,
+        "length": 29,
+        "name": "AIANNHFP1",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area State-FIPS Code 2",
+        "defaultValue": null,
+        "editable": true,
+        "length": 29,
+        "name": "AIANNHFP2",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area State-FIPS Code 3",
+        "defaultValue": null,
+        "editable": true,
+        "length": 29,
+        "name": "AIANNHFP3",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area National Standard Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "AIANNHNS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Land Area (Square Meters)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "AREALAND",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Water Area (Square Meters)",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "AREAWATER",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Base Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "BASENAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Centroid Latitude",
+        "defaultValue": null,
+        "editable": true,
+        "length": 11,
+        "name": "CENTLAT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Centroid Longitude",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "CENTLON",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "American Indian/Alaska Native/Native Hawaiian Area Federal-State Flag",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "FSRFLG",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Functional Status",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "FUNCSTAT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geographic Identifier",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "GEOID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Decennial Housing Count",
+        "defaultValue": null,
+        "editable": true,
+        "name": "HU100",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Internal Point Latitude",
+        "defaultValue": null,
+        "editable": true,
+        "length": 11,
+        "name": "INTPTLAT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Internal Point Longitude",
+        "defaultValue": null,
+        "editable": true,
+        "length": 12,
+        "name": "INTPTLON",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Legal/Statistical Area Description Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "LSADC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAF/TIGER Feature Class Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "MTFCC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Area Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "NAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "MAF/TIGER Object Identifier",
+        "defaultValue": null,
+        "editable": true,
+        "length": 22,
+        "name": "ObjID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Decennial Population Count",
+        "defaultValue": null,
+        "editable": true,
+        "name": "POP100",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Urban/Rural Flag",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1,
+        "name": "UR",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "American_Indian_Alaska_Native_and_Native_Hawaiian_Areas",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 21282,
+  "status": 200
+}

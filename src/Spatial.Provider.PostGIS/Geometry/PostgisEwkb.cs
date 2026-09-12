@@ -66,10 +66,10 @@ internal static class PostgisEwkb
     private static IGeometry Decode(byte[] bytes, Func<int, CoordinateReference?> crs)
     {
         var cursor = new Reader(bytes);
-        return ReadGeometry(cursor, crs);
+        return ReadGeometryValue(cursor, crs);
     }
 
-    private static IGeometry ReadGeometry(Reader cursor, Func<int, CoordinateReference?> crs)
+    private static IGeometry ReadGeometryValue(Reader cursor, Func<int, CoordinateReference?> crs)
     {
         var endian = cursor.ReadByte();
         var type = cursor.ReadUInt32(endian);
@@ -120,24 +120,24 @@ internal static class PostgisEwkb
             return GeometryFactory.CreateEmptyPoint(crs, LayoutOf(flags));
         }
 
-        return CreatePoint(cursor, endian, flags, x, y, crs);
+        return ReadOrdinatedPoint(cursor, endian, flags, crs, x, y);
     }
 
-    /// <summary>The ordinate-aware point builders, keyed by the present Z/M flags (one read per present ordinate).</summary>
-    private static readonly Dictionary<(bool HasZ, bool HasM), Func<double, double, double, double, CoordinateReference?, Point>> PointBuilders = new()
+    private static Point ReadOrdinatedPoint(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs, double x, double y)
     {
-        [(false, false)] = (x, y, _, _, crs) => GeometryFactory.CreatePoint(x, y, crs),
-        [(true, false)] = (x, y, z, _, crs) => GeometryFactory.CreatePoint(x, y, z, crs),
-        [(false, true)] = (x, y, _, m, crs) => GeometryFactory.CreatePoint(new Coordinate(x, y, M: m), crs),
-        [(true, true)] = (x, y, z, m, crs) => GeometryFactory.CreatePoint(x, y, z, m, crs),
-    };
+        double? z = null;
+        double? m = null;
+        if (flags.HasZ)
+        {
+            z = cursor.ReadDouble(endian);
+        }
 
-    /// <summary>Reads the ordinates the flags declare and builds the matching point layout.</summary>
-    private static Point CreatePoint(Reader cursor, byte endian, LayoutFlags flags, double x, double y, CoordinateReference? crs)
-    {
-        var z = flags.HasZ ? cursor.ReadDouble(endian) : double.NaN;
-        var m = flags.HasM ? cursor.ReadDouble(endian) : double.NaN;
-        return PointBuilders[(flags.HasZ, flags.HasM)](x, y, z, m, crs);
+        if (flags.HasM)
+        {
+            m = cursor.ReadDouble(endian);
+        }
+
+        return GeometryFactory.CreatePoint(new Coordinate(x, y, z, m), crs);
     }
 
     private static LineString ReadLineString(Reader cursor, byte endian, LayoutFlags flags, CoordinateReference? crs)
@@ -208,7 +208,7 @@ internal static class PostgisEwkb
         var parts = new IGeometry[count];
         for (var i = 0; i < count; i++)
         {
-            parts[i] = ReadGeometry(cursor, srid => null);
+            parts[i] = ReadGeometryValue(cursor, srid => null);
         }
 
         return GeometryFactory.CreateGeometryCollection(parts, crs);
@@ -218,7 +218,7 @@ internal static class PostgisEwkb
     private static T ReadAsType<T>(Reader cursor, GeometryType expected, CoordinateReference? crs)
         where T : IGeometry
     {
-        var part = ReadGeometry(cursor, srid => null);
+        var part = ReadGeometryValue(cursor, srid => null);
         if (part.Type != expected)
         {
             throw Format(cursor, $"expected a {expected} child, found {part.Type}");

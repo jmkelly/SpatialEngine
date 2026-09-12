@@ -1,0 +1,56 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": -67.62813523999995,
+      "xmin": -159.85618309999998,
+      "ymax": 65.50815459000006,
+      "ymin": 19.601211570000032
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": -46.52445168084532,
+      "xmin": -136.82499685210448,
+      "ymax": 68.3868833600282,
+      "ymin": 23.29609729954437
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Cases",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "<br><br><span style='color:red'>On March 10, 2023, the Johns Hopkins Coronavirus Resource Center ceased its collecting and reporting of global COVID-19 data.</span><br><br>For updated cases, deaths, and vaccine data please visit the following sources:<br><br>Global: World Health Organization (WHO) <a href='https://www.who.int/' target='_blank'>https://www.who.int/</a><br>U.S.: U.S. Centers for Disease Control and Prevention (CDC) <a href='https://www.cdc.gov/coronavirus/2019-ncov/index.html' target='_blank'>https://www.cdc.gov/coronavirus/2019-ncov/index.html</a><br><br>For more information, visit the Johns Hopkins Coronavirus Resource Center. <a href='https://coronavirus.jhu.edu/' target='_blank'>https://coronavirus.jhu.edu/</a>",
+    "serviceItemId": "628578697fb24d8ea4c32fa0c5ae1843",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 3802,
+  "status": 200
+}

@@ -1,0 +1,200 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "Nosaukums",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 102440,
+        "wkid": 102440
+      },
+      "xmax": 762513.8753000005,
+      "xmin": 312943.5003000004,
+      "ymax": 6438879.999800001,
+      "ymin": 6172854.436399999
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID_1",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Tips",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "Tips",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Nosaukums",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "Nosaukums",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Nos_pilns",
+        "defaultValue": null,
+        "editable": true,
+        "length": 40,
+        "name": "Nos_pilns",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ATVK",
+        "defaultValue": null,
+        "editable": true,
+        "length": 15,
+        "name": "ATVK",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Plan_reg",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "Plan_reg",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Covid_sasl",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Covid_sasl",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Apak\u0161\u0113j\u0101 v\u0113rt\u012bba",
+        "defaultValue": null,
+        "editable": true,
+        "name": "apaks_vertiba",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Relat\u012bvais skaits_1",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Relat_sk_apaks",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Relat\u012bvais skaits_2",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Relat_sk_augs",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Skaits uz 100 000 iedz.",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Novadu_radit",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Akt\u012bvie gad\u012bjumi apak\u0161",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Apaks_vert_aktiv_g",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "14 D gad\u012bjumu skaits",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Augs_vert_akt_gad",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "14D saslimst\u012bba uz 100 tk.",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Cetrp_D_100_relat",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "14D relat 2",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Cetr_2",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "14D 100",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Cetr_D_100",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "novadi_2009_pol_stat",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 102440,
+      "wkid": 102440
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 14612,
+  "status": 200
+}

@@ -1,0 +1,42 @@
+{
+  "body": {
+    "capabilities": "Map,Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22031622.795485,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144170266.2027535,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -7592454.504799999,
+      "xmin": -19405339.151,
+      "ymax": 10387819.3328,
+      "ymin": 3010760.7014000006
+    },
+    "fields": [],
+    "geometryType": null,
+    "hasAttachments": false,
+    "id": 9,
+    "isDataVersioned": false,
+    "name": "Cultural Points (expand for more)",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": false,
+    "supportsStatistics": false,
+    "type": "Group Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2252,
+  "status": 200
+}

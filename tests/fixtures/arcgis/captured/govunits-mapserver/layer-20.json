@@ -1,0 +1,44 @@
+{
+  "body": {
+    "capabilities": "Map,Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.705511045,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148036.0563282,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20037505.700299997,
+      "xmin": -20037507.0672,
+      "ymax": 11554348.247299999,
+      "ymin": -1733737.8192000017
+    },
+    "fields": [],
+    "geometryType": null,
+    "hasAttachments": false,
+    "id": 20,
+    "isDataVersioned": false,
+    "name": "Features",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": false,
+    "supportsStatistics": false,
+    "type": "Group Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 3249,
+  "status": 200
+}

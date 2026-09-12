@@ -1,0 +1,397 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "GeoSYS",
+    "description": "MT_Country",
+    "displayField": "Name",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 32633,
+        "wkid": 32633
+      },
+      "xmax": 461751.51580000017,
+      "xmin": 426477.33690000046,
+      "ymax": 3993346.3572,
+      "ymin": 3960420.665300001
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "Name",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Code",
+        "defaultValue": null,
+        "editable": true,
+        "length": 255,
+        "name": "Code",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Confirmed",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Recovered",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Deaths",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Swabs",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Swabs",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "Date",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Population",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Population",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "editable": false,
+        "length": 38,
+        "name": "GlobalID",
+        "nullable": false,
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "CreationDate",
+        "defaultValue": null,
+        "editable": false,
+        "length": 8,
+        "name": "CreationDate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Creator",
+        "defaultValue": null,
+        "editable": false,
+        "length": 128,
+        "name": "Creator",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EditDate",
+        "defaultValue": null,
+        "editable": false,
+        "length": 8,
+        "name": "EditDate",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Editor",
+        "defaultValue": null,
+        "editable": false,
+        "length": 128,
+        "name": "Editor",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Male",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Male",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Female",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Female",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Unknown",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Unknown",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_0_4",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_0_4",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_5_10",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_5_10",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_11_14",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_11_14",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_15_19",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_15_19",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_20_24",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_20_24",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_25_29",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_25_29",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_30_34",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_30_34",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_35_39",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_35_39",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_40_44",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_40_44",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_45_49",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_45_49",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_50_54",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_50_54",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_55_59",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_55_59",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_60_64",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_60_64",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_65_69",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_65_69",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_70_74",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_70_74",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_75_79",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_75_79",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_80_84",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_80_84",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_85_90",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_85_90",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Imported",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Imported",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Linked to Travellers",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LinkedToTravellers",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Local Transmission",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LocalTrasmission",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Unknown Source",
+        "defaultValue": null,
+        "editable": true,
+        "name": "UnknownSource",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_90_94",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_90_94",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_95_100",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Age_95_100",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "GlobalID",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": true,
+    "id": 3,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "MT_Country",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 32633,
+      "wkid": 32633
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 16195,
+  "status": 200
+}

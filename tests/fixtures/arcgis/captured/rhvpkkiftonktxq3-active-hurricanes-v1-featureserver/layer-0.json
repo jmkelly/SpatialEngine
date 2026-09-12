@@ -1,0 +1,265 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "NHC, Esri",
+    "description": "Forecast points represent the official NHC forecast locations of the center of a tropical cyclone.",
+    "displayField": "STORMNAME",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180,
+      "xmin": -180,
+      "ymax": 90,
+      "ymin": -90
+    },
+    "fields": [
+      {
+        "alias": "Object ID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Storm Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMNAME",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Type",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "STORMTYPE",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Advisory Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "ADVDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Advisory Number",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "ADVISNUM",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Number",
+        "defaultValue": null,
+        "editable": true,
+        "name": "STORMNUM",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Forecast Period",
+        "defaultValue": null,
+        "editable": true,
+        "name": "FCSTPRD",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Ocean Basin",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "BASIN",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LAT",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "defaultValue": null,
+        "editable": true,
+        "name": "LON",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Valid Time",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "VALIDTIME",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "TAU Value",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TAU",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Max Wind Speed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "MAXWIND",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Max Gust Speed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "GUST",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Mean Sea Level Pressure",
+        "defaultValue": null,
+        "editable": true,
+        "name": "MSLP",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tropical Cyclone Development",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "TCDVLP",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Development Label",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "DVLBL",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Saffir-Simpson Scale",
+        "defaultValue": null,
+        "editable": true,
+        "name": "SSNUM",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tropical Cyclone Direction",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TCDIR",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Tropical Cyclone Speed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "TCSPD",
+        "nullable": false,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Date Label",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "DATELBL",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Full Date Label",
+        "defaultValue": null,
+        "editable": true,
+        "length": 30,
+        "name": "FLDATELBL",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Time Zone",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "TIMEZONE",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Storm Source",
+        "defaultValue": null,
+        "editable": true,
+        "length": 22,
+        "name": "STORMSRC",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "International Tropical Cyclone Development",
+        "defaultValue": null,
+        "editable": true,
+        "length": 40,
+        "name": "ITCDVLP",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "International Development Label",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "IDVLBL",
+        "nullable": false,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Forecast Position",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 22257,
+  "status": 200
+}

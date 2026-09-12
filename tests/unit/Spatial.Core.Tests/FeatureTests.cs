@@ -109,6 +109,8 @@ public class FeatureTests
 
         Assert.Equal(a, b);
         Assert.Equal(a.GetHashCode(), b.GetHashCode());
+        Assert.True(a.Equals((object)b));
+        Assert.False(a.Equals((object)"not a feature"));
         Assert.NotEqual(a, new Feature(
             new FeatureId("f2"),
             Schema,

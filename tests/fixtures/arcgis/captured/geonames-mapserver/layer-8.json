@@ -1,0 +1,109 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "feature_name",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22031622.795485,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144170266.2027535,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20035653.014200002,
+      "xmin": -20028419.1855,
+      "ymax": -6964522.005600002,
+      "ymin": -27654657.5539
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "feature_name",
+        "length": 120,
+        "name": "feature_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "elevation_m",
+        "name": "elevation_m",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "elevation_ft",
+        "name": "elevation_ft",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "gaz_decisiondate",
+        "length": 1073741822,
+        "name": "gaz_decisiondate",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "description",
+        "length": 3000,
+        "name": "description",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "shape",
+        "name": "shape",
+        "type": "esriFieldTypeGeometry"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "hasAttachments": false,
+    "hasZ": true,
+    "id": 8,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Antarctica",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 5292,
+  "status": 200
+}

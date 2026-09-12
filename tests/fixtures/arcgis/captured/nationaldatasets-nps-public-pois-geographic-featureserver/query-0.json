@@ -1,0 +1,377 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "ACCESSNOTES": null,
+          "ALTLANG": null,
+          "ALTLANGNAME": null,
+          "CREATEDATE": -2209161600000,
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1747345659000,
+          "FACASSETID": "",
+          "FACLOCID": "",
+          "FEATUREID": null,
+          "GEOMETRYID": "CB272681-309C-49A4-BFB8-A351FD201121",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "IMLOCID": null,
+          "ISEXTANT": "True",
+          "MAINTAINER": "National Park Service",
+          "MAPLABEL": "JL 35",
+          "MAPMETHOD": "",
+          "MAPSOURCE": null,
+          "NOTES": " ",
+          "OBJECTID": 1,
+          "OBSERVABLE": "Unknown",
+          "OPENTOPUBLIC": "Yes",
+          "ORIGINATOR": null,
+          "POIALTNAME": "35",
+          "POINAME": "Jenny Lake Campground Site 35",
+          "POINTTYPE": "Center point",
+          "POISTATUS": "Existing",
+          "POITYPE": "Campsite",
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "IMR",
+          "SEASDESC": "",
+          "SEASONAL": "",
+          "SOURCEDATE": -2209161600000,
+          "UNITCODE": "GRTE",
+          "UNITNAME": "Grand Teton National Park",
+          "UNITTYPE": null,
+          "XYACCURACY": ""
+        },
+        "geometry": {
+          "x": -110.71853731899995,
+          "y": 43.75529230500007
+        }
+      },
+      {
+        "attributes": {
+          "ACCESSNOTES": null,
+          "ALTLANG": null,
+          "ALTLANGNAME": null,
+          "CREATEDATE": 1743436850000,
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1765306225000,
+          "FACASSETID": null,
+          "FACLOCID": null,
+          "FEATUREID": null,
+          "GEOMETRYID": "{852D576F-2276-44F9-B337-A430E09F1AC0}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "IMLOCID": null,
+          "ISEXTANT": "Unknown",
+          "MAINTAINER": "Unknown",
+          "MAPLABEL": " ",
+          "MAPMETHOD": "Unknown",
+          "MAPSOURCE": "Unknown",
+          "NOTES": "{\"bridge\": \"yes\", \"source\": \"nps:points_of_interest\", \"nps:fcat\": \"Bridge\", \"nps:unit_code\": \"tapr\", \"nps:description\": \"Bridge\"}",
+          "OBJECTID": 2,
+          "OBSERVABLE": "Unknown",
+          "OPENTOPUBLIC": "Unknown",
+          "ORIGINATOR": null,
+          "POIALTNAME": null,
+          "POINAME": null,
+          "POINTTYPE": "Arbitrary point",
+          "POISTATUS": null,
+          "POITYPE": "Bridge",
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "MWR",
+          "SEASDESC": null,
+          "SEASONAL": "Unknown",
+          "SOURCEDATE": null,
+          "UNITCODE": "tapr",
+          "UNITNAME": null,
+          "UNITTYPE": null,
+          "XYACCURACY": "Unknown"
+        },
+        "geometry": {
+          "x": -96.55685395999996,
+          "y": 38.40665129700005
+        }
+      },
+      {
+        "attributes": {
+          "ACCESSNOTES": null,
+          "ALTLANG": null,
+          "ALTLANGNAME": null,
+          "CREATEDATE": 1445990400000,
+          "DATAACCESS": "Unrestricted",
+          "EDITDATE": 1777397488000,
+          "FACASSETID": null,
+          "FACLOCID": null,
+          "FEATUREID": null,
+          "GEOMETRYID": "{479d93da-fed5-4e29-9034-683458841fc0}",
+          "GROUPCODE": null,
+          "GROUPNAME": null,
+          "IMLOCID": null,
+          "ISEXTANT": "Unknown",
+          "MAINTAINER": "Unknown",
+          "MAPLABEL": " ",
+          "MAPMETHOD": "Unknown",
+          "MAPSOURCE": "Unknown",
+          "NOTES": "{\"amenity\": \"ranger_station\", \"nps:source_system\": \"BOHA_Ranger_Stations\"}",
+          "OBJECTID": 3,
+          "OBSERVABLE": "Unknown",
+          "OPENTOPUBLIC": "Unknown",
+          "ORIGINATOR": null,
+          "POIALTNAME": null,
+          "POINAME": null,
+          "POINTTYPE": "Arbitrary point",
+          "POISTATUS": null,
+          "POITYPE": "Ranger Station",
+          "PUBLICDISPLAY": "Public Map Display",
+          "REGIONCODE": "NER",
+          "SEASDESC": null,
+          "SEASONAL": "Unknown",
+          "SOURCEDATE": null,
+          "UNITCODE": "BOHA",
+          "UNITNAME": "Boston Harbor Islands National Recreation Area",
+          "UNITTYPE": "National Recreation Area",
+          "XYACCURACY": "Unknown"
+        },
+        "geometry": {
+          "x": -70.92623208799995,
+          "y": 42.32751988700005
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "POINAME",
+        "length": 254,
+        "name": "POINAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POIALTNAME",
+        "length": 254,
+        "name": "POIALTNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPLABEL",
+        "length": 100,
+        "name": "MAPLABEL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POITYPE",
+        "length": 100,
+        "name": "POITYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POISTATUS",
+        "length": 50,
+        "name": "POISTATUS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PUBLICDISPLAY",
+        "length": 50,
+        "name": "PUBLICDISPLAY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "DATAACCESS",
+        "length": 50,
+        "name": "DATAACCESS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACCESSNOTES",
+        "length": 1073741822,
+        "name": "ACCESSNOTES",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ORIGINATOR",
+        "length": 1073741822,
+        "name": "ORIGINATOR",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITCODE",
+        "length": 10,
+        "name": "UNITCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITNAME",
+        "length": 254,
+        "name": "UNITNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITTYPE",
+        "length": 254,
+        "name": "UNITTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPCODE",
+        "length": 10,
+        "name": "GROUPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPNAME",
+        "length": 254,
+        "name": "GROUPNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONCODE",
+        "length": 4,
+        "name": "REGIONCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEDATE",
+        "length": 8,
+        "name": "CREATEDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "EDITDATE",
+        "length": 8,
+        "name": "EDITDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "POINTTYPE",
+        "length": 50,
+        "name": "POINTTYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPMETHOD",
+        "length": 1073741822,
+        "name": "MAPMETHOD",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPSOURCE",
+        "length": 1073741822,
+        "name": "MAPSOURCE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCEDATE",
+        "length": 8,
+        "name": "SOURCEDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "XYACCURACY",
+        "length": 50,
+        "name": "XYACCURACY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOMETRYID",
+        "length": 38,
+        "name": "GEOMETRYID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATUREID",
+        "length": 50,
+        "name": "FEATUREID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACLOCID",
+        "length": 10,
+        "name": "FACLOCID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACASSETID",
+        "length": 10,
+        "name": "FACASSETID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMLOCID",
+        "length": 25,
+        "name": "IMLOCID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OBSERVABLE",
+        "length": 20,
+        "name": "OBSERVABLE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISEXTANT",
+        "length": 20,
+        "name": "ISEXTANT",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OPENTOPUBLIC",
+        "length": 50,
+        "name": "OPENTOPUBLIC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ALTLANGNAME",
+        "length": 254,
+        "name": "ALTLANGNAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ALTLANG",
+        "length": 10,
+        "name": "ALTLANG",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASONAL",
+        "length": 20,
+        "name": "SEASONAL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASDESC",
+        "length": 1073741822,
+        "name": "SEASDESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAINTAINER",
+        "length": 50,
+        "name": "MAINTAINER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOTES",
+        "length": 1073741822,
+        "name": "NOTES",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "hasM": false,
+    "hasZ": false,
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 6318,
+      "wkid": 104145
+    }
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 7979,
+  "status": 200
+}

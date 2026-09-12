@@ -1,0 +1,150 @@
+{
+  "body": {
+    "displayFieldName": "gaz_name",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 32,
+          "county_name": "Russell",
+          "fcode": 39004,
+          "gaz_featureclass": "Lake",
+          "gaz_id": 1465232,
+          "gaz_name": "Copper Lake (historical)",
+          "incounty_id": 1861635,
+          "isunknowncoords": 2,
+          "objectid_1": 1533474,
+          "state_alpha": "VA"
+        },
+        "geometry": {
+          "points": [
+            [
+              -9147843.7457,
+              4420794.350199997
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 60,
+          "county_name": "Mississippi",
+          "fcode": 39000,
+          "gaz_featureclass": "Lake",
+          "gaz_id": 61959,
+          "gaz_name": "Browns Lake (historical)",
+          "incounty_id": 6034,
+          "isunknowncoords": 2,
+          "objectid_1": 2161369,
+          "state_alpha": "AR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -10048389.0201,
+              4246112.834600002
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 90,
+          "county_name": "Desha",
+          "fcode": 46600,
+          "gaz_featureclass": "Swamp",
+          "gaz_id": 63773,
+          "gaz_name": "Belle Anderson Brake (historical)",
+          "incounty_id": 7957,
+          "isunknowncoords": 2,
+          "objectid_1": 946321,
+          "state_alpha": "AR"
+        },
+        "geometry": {
+          "points": [
+            [
+              -10187263.0933,
+              3999574.900799997
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "county_name": "county_name",
+      "fcode": "fcode",
+      "gaz_featureclass": "gaz_featureclass",
+      "gaz_id": "gaz_id",
+      "gaz_name": "gaz_name",
+      "incounty_id": "incounty_id",
+      "isunknowncoords": "isunknowncoords",
+      "objectid_1": "objectid_1",
+      "state_alpha": "state_alpha"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "gaz_id",
+        "name": "gaz_id",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "gaz_name",
+        "length": 120,
+        "name": "gaz_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "gaz_featureclass",
+        "length": 50,
+        "name": "gaz_featureclass",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fcode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "state_alpha",
+        "length": 1073741822,
+        "name": "state_alpha",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "county_name",
+        "length": 100,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "objectid_1",
+        "name": "objectid_1",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "isunknowncoords",
+        "name": "isunknowncoords",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "incounty_id",
+        "name": "incounty_id",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryMultipoint",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2704,
+  "status": 200
+}

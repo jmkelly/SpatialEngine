@@ -1,0 +1,630 @@
+{
+  "body": {
+    "features": [
+      {
+        "attributes": {
+          "Age_0_4": 11,
+          "Age_11_14": 4,
+          "Age_15_19": 28,
+          "Age_20_24": 76,
+          "Age_25_29": 91,
+          "Age_30_34": 113,
+          "Age_35_39": 51,
+          "Age_40_44": 49,
+          "Age_45_49": 42,
+          "Age_50_54": 44,
+          "Age_55_59": 48,
+          "Age_5_10": 7,
+          "Age_60_64": 39,
+          "Age_65_69": 18,
+          "Age_70_74": 22,
+          "Age_75_79": 9,
+          "Age_80_84": 10,
+          "Age_85_90": 9,
+          "Age_90_94": 1,
+          "Age_95_100": 4,
+          "Code": null,
+          "Confirmed": 1,
+          "CreationDate": 1626782842795,
+          "Creator": "nuni.fragale",
+          "Date": 1583535600000,
+          "Deaths": null,
+          "EditDate": 1626782842795,
+          "Editor": "nuni.fragale",
+          "Female": 268,
+          "GlobalID": "51660355-4d9d-4040-98ea-f7e584adcb20",
+          "Imported": 87,
+          "LinkedToTravellers": 237,
+          "LocalTrasmission": 96,
+          "Male": 406,
+          "Name": null,
+          "OBJECTID": 1,
+          "Population": 493559,
+          "Recovered": null,
+          "Shape__Area": 315746960.39416504,
+          "Shape__Length": 269214.513551962,
+          "Swabs": null,
+          "Unknown": null,
+          "UnknownSource": 28
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                446379.8523,
+                3960463.6882
+              ],
+              [
+                446425.1532,
+                3960441.7348
+              ],
+              [
+                446434.4726,
+                3960434.0151
+              ],
+              [
+                446438.122,
+                3960426.128
+              ],
+              [
+                446445.5118,
+                3960425.3775
+              ],
+              [
+                446446.1508,
+                3960422.3486
+              ],
+              [
+                446441.0467,
+                3960420.6653
+              ],
+              [
+                446437.9486,
+                3960424.6166
+              ],
+              [
+                446429.5864,
+                3960427.5913
+              ],
+              [
+                446425.3873,
+                3960426.1042
+              ],
+              [
+                446410.7897,
+                3960430.5284
+              ],
+              [
+                446408.1376,
+                3960426.7128
+              ],
+              [
+                446391.0565,
+                3960428.0262
+              ],
+              [
+                446383.0739,
+                3960425.8562
+              ],
+              [
+                446379.2517,
+                3960432.3327
+              ],
+              [
+                446372.9202,
+                3960431.4635
+              ],
+              [
+                446364.9749,
+                3960435.4442
+              ],
+              [
+                446346.8261,
+                3960450.3766
+              ],
+              [
+                446344.1504,
+                3960456.2412
+              ],
+              [
+                446357.0482,
+                3960456.0622
+              ],
+              [
+                446354.79,
+                3960463.0333
+              ],
+              [
+                446366.6119,
+                3960461.5501
+              ],
+              [
+                446370.6582,
+                3960464.9539
+              ],
+              [
+                446379.8523,
+                3960463.6882
+              ]
+            ],
+            [
+              [
+                446289.8017,
+                3960476.4348
+              ],
+              [
+                446286.4137,
+                3960473.2287
+              ],
+              [
+                446280.8473,
+                3960476.59
+              ],
+              [
+                446279.8075,
+                3960481.2346
+              ],
+              [
+                446284.2439,
+                3960481.2077
+              ],
+              [
+                446289.8017,
+                3960476.4348
+              ]
+            ],
+            [
+              [
+                446699.9306,
+                3960611.8963
+              ],
+              [
+                446703.7663,
+                3960607.6382
+              ],
+              [
+                446728.1819,
+                3960610.1129
+              ],
+              [
+                446730.6977,
+                3960604.9553
+              ],
+              [
+                446736.4952,
+                3960612.6846
+              ],
+              [
+                446750.7324,
+                3960603.0198
+              ],
+              [
+                446762.3156,
+                3960602.8493
+              ],
+              [
+                446763.5091,
+                3960596.3888
+              ],
+              [
+                446765.3959,
+                3960609.5866
+              ],
+              [
+                446771.9525,
+                3960606.9255
+              ],
+              [
+                446775.0507,
+                3960602.9744
+              ],
+              [
+                446776.4061,
+                3960596.1096
+              ],
+              [
+                446780.793,
+                3960601.5282
+              ],
+              [
+                446786.589,
+                3960595.3426
+              ],
+              [
+                446781.781,
+                3960588.2123
+              ],
+              [
+                446788.5304,
+                3960590.2892
+              ],
+              [
+                446798.0964,
+                3960582.5684
+              ],
+              [
+                446803.953,
+                3960586.4657
+              ],
+              [
+                446802.011,
+                3960591.4182
+              ],
+              [
+                446806.6165,
+                3960592.1972
+              ],
+              [
+                446811.6121,
+                3960589.5455
+              ],
+              [
+                446813.5608,
+                3960585.7022
+              ],
+              [
+                446805.0408,
+                3960576.0734
+              ],
+              [
+                446811.6016,
+                3960574.1181
+              ],
+              [
+                446822.377,
+                3960562.5584
+              ],
+              [
+                446830.8587,
+                3960552.1216
+              ],
+              [
+                446830.8997,
+                3960545.2647
+              ],
+              [
+                446824.2873,
+                3960538.6494
+              ],
+              [
+                446825.0828,
+                3960534.3088
+              ],
+              [
+                446822.4224,
+                3960529.0815
+              ],
+              [
+                446816.0107,
+                3960528.515
+              ],
+              [
+                446810.8553,
+                3960518.261
+              ],
+              [
+                446801.9825,
+                3960518.3143
+              ],
+              [
+                446802.7762,
+                3960513.6712
+              ],
+              [
+                446795.4745,
+                3960501.7159
+              ],
+              [
+                446786.5492,
+                3960506.7104
+              ],
+              [
+                446781.7925,
+                3960494.4373
+              ],
+              [
+                446775.9631,
+                3960495.0774
+              ],
+              [
+                446775.0321,
+                3960490.5455
+              ],
+              [
+                446769.448,
+                3960490.9824
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Name",
+        "defaultValue": null,
+        "length": 255,
+        "name": "Name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Code",
+        "defaultValue": null,
+        "length": 255,
+        "name": "Code",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "Confirmed",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "Recovered",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "Deaths",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Swabs",
+        "defaultValue": null,
+        "name": "Swabs",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "Date",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Population",
+        "defaultValue": null,
+        "name": "Population",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "CreationDate",
+        "defaultValue": null,
+        "length": 8,
+        "name": "CreationDate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Creator",
+        "defaultValue": null,
+        "length": 128,
+        "name": "Creator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EditDate",
+        "defaultValue": null,
+        "length": 8,
+        "name": "EditDate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Editor",
+        "defaultValue": null,
+        "length": 128,
+        "name": "Editor",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Male",
+        "defaultValue": null,
+        "name": "Male",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Female",
+        "defaultValue": null,
+        "name": "Female",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Unknown",
+        "defaultValue": null,
+        "name": "Unknown",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_0_4",
+        "defaultValue": null,
+        "name": "Age_0_4",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_5_10",
+        "defaultValue": null,
+        "name": "Age_5_10",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_11_14",
+        "defaultValue": null,
+        "name": "Age_11_14",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_15_19",
+        "defaultValue": null,
+        "name": "Age_15_19",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_20_24",
+        "defaultValue": null,
+        "name": "Age_20_24",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_25_29",
+        "defaultValue": null,
+        "name": "Age_25_29",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_30_34",
+        "defaultValue": null,
+        "name": "Age_30_34",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_35_39",
+        "defaultValue": null,
+        "name": "Age_35_39",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_40_44",
+        "defaultValue": null,
+        "name": "Age_40_44",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_45_49",
+        "defaultValue": null,
+        "name": "Age_45_49",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_50_54",
+        "defaultValue": null,
+        "name": "Age_50_54",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_55_59",
+        "defaultValue": null,
+        "name": "Age_55_59",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_60_64",
+        "defaultValue": null,
+        "name": "Age_60_64",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_65_69",
+        "defaultValue": null,
+        "name": "Age_65_69",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_70_74",
+        "defaultValue": null,
+        "name": "Age_70_74",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_75_79",
+        "defaultValue": null,
+        "name": "Age_75_79",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_80_84",
+        "defaultValue": null,
+        "name": "Age_80_84",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_85_90",
+        "defaultValue": null,
+        "name": "Age_85_90",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Imported",
+        "defaultValue": null,
+        "name": "Imported",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Linked to Travellers",
+        "defaultValue": null,
+        "name": "LinkedToTravellers",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Local Transmission",
+        "defaultValue": null,
+        "name": "LocalTrasmission",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Unknown Source",
+        "defaultValue": null,
+        "name": "UnknownSource",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_90_94",
+        "defaultValue": null,
+        "name": "Age_90_94",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Age_95_100",
+        "defaultValue": null,
+        "name": "Age_95_100",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 32633,
+      "wkid": 32633
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 411815,
+  "status": 200
+}

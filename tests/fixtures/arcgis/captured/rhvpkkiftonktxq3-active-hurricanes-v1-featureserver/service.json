@@ -1,0 +1,166 @@
+{
+  "body": {
+    "allowGeometryUpdates": true,
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "currentVersion": 12,
+    "description": "",
+    "fullExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 180,
+      "xmin": -180,
+      "ymax": 90,
+      "ymin": -90
+    },
+    "hasVersionedData": false,
+    "initialExtent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 126.62589539983838,
+      "xmin": 26.46766836177074,
+      "ymax": 191.36695470201136,
+      "ymin": -80.92632412771624
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Forecast Position",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPoint",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Observed Position",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolyline",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Forecast Track",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolyline",
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Observed Track",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 4,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Forecast Error Cone and Danger Area",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolyline",
+        "id": 5,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Watches and Warnings",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 7,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Tropical Storm Force (34kts)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 8,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Strong Tropical Storm (50kts)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 9,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Hurricane Force (64kts+)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 10,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Raw 1/10th Degree Data (All)",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": false,
+        "geometryType": "esriGeometryPolygon",
+        "id": 11,
+        "maxScale": 0,
+        "minScale": 40000000.00000001,
+        "name": "Observed Wind Swath",
+        "parentLayerId": -1,
+        "subLayerIds": null,
+        "type": "Feature Layer"
+      }
+    ],
+    "maxRecordCount": 1000,
+    "serviceDescription": "",
+    "serviceItemId": "248e7b5827a34b248647afb012c58787",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON",
+    "tables": [],
+    "units": "esriDecimalDegrees"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 4855,
+  "status": 200
+}

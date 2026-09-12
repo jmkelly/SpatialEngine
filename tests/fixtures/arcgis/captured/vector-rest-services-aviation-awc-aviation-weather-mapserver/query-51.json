@@ -1,0 +1,525 @@
+{
+  "body": {
+    "displayFieldName": "raw_text",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "altim_in_hg": null,
+          "bulletin_time": 1789124400000,
+          "change_indicator": null,
+          "cloud_base2_ft_agl": null,
+          "cloud_base3_ft_agl": null,
+          "cloud_base4_ft_agl": null,
+          "cloud_base_ft_agl": 3000,
+          "cloud_coverage2": null,
+          "cloud_coverage3": null,
+          "cloud_coverage4": null,
+          "cloud_type": null,
+          "elevation_m": 136.0,
+          "fcst_time_from": 1789128000000,
+          "fcst_time_to": 1789142400000,
+          "forecast_type": "BASE",
+          "icing_intensity": null,
+          "icing_max_alt_ft_agl": null,
+          "icing_min_alt_ft_agl": null,
+          "idp_filedate": "9/11/2026 12:02:28 PM",
+          "idp_ingestdate": "9/11/2026 12:03:05 PM",
+          "issue_time": 1789126860000,
+          "latitude": 44.8781,
+          "longitude": -63.5136,
+          "max_or_min_temp_c": null,
+          "not_decoded": null,
+          "objectid": 1,
+          "priority": 4,
+          "probability": null,
+          "raw_text": "TAF CYHZ 111141Z 1112/1212 29015G25KT P6SM FEW030 FM111600 29012G22KT P6SM FEW030 FM112000 29012G22KT P6SM BKN050 BECMG 1122/1124 29008KT FM120200 30008KT P6SM FEW050 BECMG 1210/1212 31008G18KT RMK NXT FCST BY 111500Z",
+          "remarks": "RMK NXT FCST BY 111500Z",
+          "sfc_temp_c": null,
+          "sky_cover": "FEW",
+          "station_id": "CYHZ",
+          "taf_decoded": null,
+          "time_becoming": null,
+          "turbulence_intensity": null,
+          "turbulence_max_alt_ft_agl": null,
+          "turbulence_min_alt_ft_agl": null,
+          "valid_time": null,
+          "valid_time_from": 1789128000000,
+          "valid_time_to": 1789214400000,
+          "vert_vis_ft": null,
+          "visibility_statute_mi": "6+",
+          "wind_gust_kt": 25,
+          "wind_shear_dir_degrees": null,
+          "wind_shear_hgt_ft_agl": null,
+          "wind_shear_speed_kt": null,
+          "wind_speed_kt": 15,
+          "winddir": 290,
+          "wx_string": null
+        },
+        "geometry": {
+          "x": -63.51359999999994,
+          "y": 44.878100000000074
+        }
+      },
+      {
+        "attributes": {
+          "altim_in_hg": null,
+          "bulletin_time": 1789124400000,
+          "change_indicator": "FM",
+          "cloud_base2_ft_agl": null,
+          "cloud_base3_ft_agl": null,
+          "cloud_base4_ft_agl": null,
+          "cloud_base_ft_agl": 3000,
+          "cloud_coverage2": null,
+          "cloud_coverage3": null,
+          "cloud_coverage4": null,
+          "cloud_type": null,
+          "elevation_m": 136.0,
+          "fcst_time_from": 1789142400000,
+          "fcst_time_to": 1789156800000,
+          "forecast_type": "FM",
+          "icing_intensity": null,
+          "icing_max_alt_ft_agl": null,
+          "icing_min_alt_ft_agl": null,
+          "idp_filedate": "9/11/2026 12:02:28 PM",
+          "idp_ingestdate": "9/11/2026 12:03:05 PM",
+          "issue_time": 1789126860000,
+          "latitude": 44.8781,
+          "longitude": -63.5136,
+          "max_or_min_temp_c": null,
+          "not_decoded": null,
+          "objectid": 2,
+          "priority": 4,
+          "probability": null,
+          "raw_text": "TAF CYHZ 111141Z 1112/1212 29015G25KT P6SM FEW030 FM111600 29012G22KT P6SM FEW030 FM112000 29012G22KT P6SM BKN050 BECMG 1122/1124 29008KT FM120200 30008KT P6SM FEW050 BECMG 1210/1212 31008G18KT RMK NXT FCST BY 111500Z",
+          "remarks": "RMK NXT FCST BY 111500Z",
+          "sfc_temp_c": null,
+          "sky_cover": "FEW",
+          "station_id": "CYHZ",
+          "taf_decoded": null,
+          "time_becoming": null,
+          "turbulence_intensity": null,
+          "turbulence_max_alt_ft_agl": null,
+          "turbulence_min_alt_ft_agl": null,
+          "valid_time": null,
+          "valid_time_from": 1789128000000,
+          "valid_time_to": 1789214400000,
+          "vert_vis_ft": null,
+          "visibility_statute_mi": "6+",
+          "wind_gust_kt": 22,
+          "wind_shear_dir_degrees": null,
+          "wind_shear_hgt_ft_agl": null,
+          "wind_shear_speed_kt": null,
+          "wind_speed_kt": 12,
+          "winddir": 290,
+          "wx_string": null
+        },
+        "geometry": {
+          "x": -63.51359999999994,
+          "y": 44.878100000000074
+        }
+      },
+      {
+        "attributes": {
+          "altim_in_hg": null,
+          "bulletin_time": 1789124400000,
+          "change_indicator": "FM",
+          "cloud_base2_ft_agl": null,
+          "cloud_base3_ft_agl": null,
+          "cloud_base4_ft_agl": null,
+          "cloud_base_ft_agl": 5000,
+          "cloud_coverage2": null,
+          "cloud_coverage3": null,
+          "cloud_coverage4": null,
+          "cloud_type": null,
+          "elevation_m": 136.0,
+          "fcst_time_from": 1789156800000,
+          "fcst_time_to": 1789164000000,
+          "forecast_type": "FM",
+          "icing_intensity": null,
+          "icing_max_alt_ft_agl": null,
+          "icing_min_alt_ft_agl": null,
+          "idp_filedate": "9/11/2026 12:02:28 PM",
+          "idp_ingestdate": "9/11/2026 12:03:05 PM",
+          "issue_time": 1789126860000,
+          "latitude": 44.8781,
+          "longitude": -63.5136,
+          "max_or_min_temp_c": null,
+          "not_decoded": null,
+          "objectid": 3,
+          "priority": 4,
+          "probability": null,
+          "raw_text": "TAF CYHZ 111141Z 1112/1212 29015G25KT P6SM FEW030 FM111600 29012G22KT P6SM FEW030 FM112000 29012G22KT P6SM BKN050 BECMG 1122/1124 29008KT FM120200 30008KT P6SM FEW050 BECMG 1210/1212 31008G18KT RMK NXT FCST BY 111500Z",
+          "remarks": "RMK NXT FCST BY 111500Z",
+          "sfc_temp_c": null,
+          "sky_cover": "BKN",
+          "station_id": "CYHZ",
+          "taf_decoded": null,
+          "time_becoming": null,
+          "turbulence_intensity": null,
+          "turbulence_max_alt_ft_agl": null,
+          "turbulence_min_alt_ft_agl": null,
+          "valid_time": null,
+          "valid_time_from": 1789128000000,
+          "valid_time_to": 1789214400000,
+          "vert_vis_ft": null,
+          "visibility_statute_mi": "6+",
+          "wind_gust_kt": 22,
+          "wind_shear_dir_degrees": null,
+          "wind_shear_hgt_ft_agl": null,
+          "wind_shear_speed_kt": null,
+          "wind_speed_kt": 12,
+          "winddir": 290,
+          "wx_string": null
+        },
+        "geometry": {
+          "x": -63.51359999999994,
+          "y": 44.878100000000074
+        }
+      }
+    ],
+    "fieldAliases": {
+      "altim_in_hg": "Altimeter  In Hg",
+      "bulletin_time": "Bulletin Time",
+      "change_indicator": "Change Indicator",
+      "cloud_base2_ft_agl": "Cloud Base2 Feet AGL",
+      "cloud_base3_ft_agl": "Cloud Base3 Feet AGL",
+      "cloud_base4_ft_agl": "Cloud Base4 Feet AGL",
+      "cloud_base_ft_agl": "Cloud Base Feet AGL",
+      "cloud_coverage2": "Cloud Coverage 2 ",
+      "cloud_coverage3": "Cloud Coverage 3",
+      "cloud_coverage4": "Cloud Coverage 4",
+      "cloud_type": "Coud Type",
+      "elevation_m": "Elevation Meters",
+      "fcst_time_from": "Forecast Time From",
+      "fcst_time_to": "Forecast Time To",
+      "forecast_type": "Forecast Type",
+      "icing_intensity": "Icing Intensity",
+      "icing_max_alt_ft_agl": "Icing Maximum Altitude In  Feet AGL",
+      "icing_min_alt_ft_agl": "Icing  Minimum Altitude In  Feet AGL",
+      "idp_filedate": "GIS File Date",
+      "idp_ingestdate": "GIS Ingest Date",
+      "issue_time": "Issue Time",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "max_or_min_temp_c": "Maximum or Minimum Temperature Celsius",
+      "not_decoded": "Not Decoded",
+      "objectid": "OBJECT ID",
+      "priority": "Priority",
+      "probability": "Probability",
+      "raw_text": "Raw Observation",
+      "remarks": "Remarks",
+      "sfc_temp_c": "Surface Temperature Celsius",
+      "sky_cover": "Sky Cover",
+      "station_id": "Station ID",
+      "taf_decoded": "Decoded TAF",
+      "time_becoming": "Time Becoming",
+      "turbulence_intensity": "Turbulence Intensity",
+      "turbulence_max_alt_ft_agl": "Turbulence Maximum Altitude In  Feet AGL",
+      "turbulence_min_alt_ft_agl": "Turbulence Minimum Altitude In  Feet AGL",
+      "valid_time": "Valid Time ",
+      "valid_time_from": "Valid Time From",
+      "valid_time_to": "Valid Time To",
+      "vert_vis_ft": "Vertical Visibity in Feet",
+      "visibility_statute_mi": "Visibility Statute Mile",
+      "wind_gust_kt": "Wnd Gust In Knots",
+      "wind_shear_dir_degrees": "Wind Shear Direction Degrees",
+      "wind_shear_hgt_ft_agl": "Wind Shear Height In Feet AGL",
+      "wind_shear_speed_kt": "Wind Shear Speed In Knots",
+      "wind_speed_kt": "Wind Speed In Knots",
+      "winddir": "Wind Direction",
+      "wx_string": "Weather"
+    },
+    "fields": [
+      {
+        "alias": "OBJECT ID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Raw Observation",
+        "length": 8000,
+        "name": "raw_text",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Station ID",
+        "length": 8000,
+        "name": "station_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Issue Time",
+        "length": 8,
+        "name": "issue_time",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Bulletin Time",
+        "length": 8,
+        "name": "bulletin_time",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Valid Time From",
+        "length": 8,
+        "name": "valid_time_from",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Valid Time To",
+        "length": 8,
+        "name": "valid_time_to",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Remarks",
+        "length": 8000,
+        "name": "remarks",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Latitude",
+        "name": "latitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Longitude",
+        "name": "longitude",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Elevation Meters",
+        "name": "elevation_m",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Forecast Time From",
+        "length": 8,
+        "name": "fcst_time_from",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Forecast Time To",
+        "length": 8,
+        "name": "fcst_time_to",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Change Indicator",
+        "length": 8000,
+        "name": "change_indicator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Time Becoming",
+        "length": 8,
+        "name": "time_becoming",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Probability",
+        "name": "probability",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Direction",
+        "name": "winddir",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Wind Speed In Knots",
+        "name": "wind_speed_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wnd Gust In Knots",
+        "name": "wind_gust_kt",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Wind Shear Height In Feet AGL",
+        "length": 8000,
+        "name": "wind_shear_hgt_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Wind Shear Direction Degrees",
+        "length": 8000,
+        "name": "wind_shear_dir_degrees",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Wind Shear Speed In Knots",
+        "length": 8000,
+        "name": "wind_shear_speed_kt",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Visibility Statute Mile",
+        "length": 8000,
+        "name": "visibility_statute_mi",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Altimeter  In Hg",
+        "name": "altim_in_hg",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Vertical Visibity in Feet",
+        "name": "vert_vis_ft",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Weather",
+        "length": 8000,
+        "name": "wx_string",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Not Decoded",
+        "length": 8000,
+        "name": "not_decoded",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Sky Cover",
+        "length": 8000,
+        "name": "sky_cover",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base Feet AGL",
+        "name": "cloud_base_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Coud Type",
+        "length": 8000,
+        "name": "cloud_type",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Turbulence Intensity",
+        "name": "turbulence_intensity",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Minimum Altitude In  Feet AGL",
+        "name": "turbulence_min_alt_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Turbulence Maximum Altitude In  Feet AGL",
+        "name": "turbulence_max_alt_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Icing Intensity",
+        "length": 8000,
+        "name": "icing_intensity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing  Minimum Altitude In  Feet AGL",
+        "length": 8000,
+        "name": "icing_min_alt_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Icing Maximum Altitude In  Feet AGL",
+        "length": 8000,
+        "name": "icing_max_alt_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Valid Time ",
+        "length": 8000,
+        "name": "valid_time",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Surface Temperature Celsius",
+        "name": "sfc_temp_c",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Maximum or Minimum Temperature Celsius",
+        "name": "max_or_min_temp_c",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Base2 Feet AGL",
+        "name": "cloud_base2_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Coverage 2 ",
+        "length": 8000,
+        "name": "cloud_coverage2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base3 Feet AGL",
+        "name": "cloud_base3_ft_agl",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cloud Coverage 3",
+        "length": 8000,
+        "name": "cloud_coverage3",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Base4 Feet AGL",
+        "length": 8000,
+        "name": "cloud_base4_ft_agl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cloud Coverage 4",
+        "length": 8000,
+        "name": "cloud_coverage4",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS File Date",
+        "length": 8000,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GIS Ingest Date",
+        "length": 8000,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Priority",
+        "name": "priority",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Decoded TAF",
+        "length": 8000,
+        "name": "taf_decoded",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Forecast Type",
+        "length": 8000,
+        "name": "forecast_type",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 14123,
+  "status": 200
+}

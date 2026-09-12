@@ -1,0 +1,58 @@
+{
+  "catalog": "https://apps.fs.usda.gov/arcx/rest/services",
+  "currentVersion": 11.5,
+  "directory": "arcx-rest-services-edw-edw-activityprojectareas-fsnrcsjointchiefslandscaperestor",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 38,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeGeometry",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 38,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "Joint Chiefs' Landscape Restoration Partnership Projects (2021-2023)",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    },
+    {
+      "count": "count-1.json",
+      "countOnly": 141,
+      "error": "error-1.json",
+      "errorCode": 400,
+      "features": "query-1.json",
+      "fieldTypes": [
+        "esriFieldTypeDouble",
+        "esriFieldTypeGeometry",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolygon",
+      "id": 1,
+      "ids": "ids-1.json",
+      "idsOnly": 141,
+      "maxRecordCount": 2000,
+      "metadata": "layer-1.json",
+      "name": "Actv_ProjectArea_FSNRC",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 4269
+    }
+  ],
+  "serviceType": "MapServer",
+  "slug": "arcx-rest-services-edw-edw-activityprojectareas-fsnrcsjointchiefslandscaperestor",
+  "url": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_ActivityProjectAreas_FSNRCSJointChiefsLandscapeRestoration_01/MapServer"
+}

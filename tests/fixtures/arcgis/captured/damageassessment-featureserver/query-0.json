@@ -1,0 +1,424 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "affil": null,
+          "cellphone": null,
+          "comments": null,
+          "continsur": null,
+          "contloss": null,
+          "deduct": null,
+          "descdamage": null,
+          "earinsur": null,
+          "email": null,
+          "fireinsur": null,
+          "firstname": null,
+          "floodinsur": null,
+          "fulladdr": null,
+          "habitable": "No",
+          "homephone": null,
+          "impactjur": null,
+          "incidentid": "1",
+          "incidentnm": null,
+          "inspdate": 1339113600000,
+          "inspectid": null,
+          "inspector": null,
+          "inspemail": null,
+          "inspphone": null,
+          "lasteditor": null,
+          "lastname": null,
+          "lastupdate": 1339113600000,
+          "numoccup": null,
+          "objectid": 2472382,
+          "parcelid": null,
+          "predisval": 2000.0,
+          "primcause": null,
+          "primres": null,
+          "pstlcity": null,
+          "pstlzip5": null,
+          "rentinsur": null,
+          "represent": null,
+          "siteid": null,
+          "sms": null,
+          "strinsur": null,
+          "strloss": null,
+          "typdamage": "Destroyed",
+          "usngcoord": null,
+          "workphone": null
+        },
+        "geometry": {
+          "x": -9846824.5491,
+          "y": 4687133.0066
+        }
+      },
+      {
+        "attributes": {
+          "affil": null,
+          "cellphone": null,
+          "comments": null,
+          "continsur": null,
+          "contloss": null,
+          "deduct": null,
+          "descdamage": null,
+          "earinsur": null,
+          "email": null,
+          "fireinsur": null,
+          "firstname": null,
+          "floodinsur": null,
+          "fulladdr": null,
+          "habitable": "Yes",
+          "homephone": null,
+          "impactjur": null,
+          "incidentid": "1",
+          "incidentnm": null,
+          "inspdate": 1339113600000,
+          "inspectid": null,
+          "inspector": null,
+          "inspemail": null,
+          "inspphone": null,
+          "lasteditor": null,
+          "lastname": null,
+          "lastupdate": 1339113600000,
+          "numoccup": null,
+          "objectid": 2472383,
+          "parcelid": null,
+          "predisval": 250000.0,
+          "primcause": null,
+          "primres": null,
+          "pstlcity": null,
+          "pstlzip5": null,
+          "rentinsur": null,
+          "represent": null,
+          "siteid": null,
+          "sms": null,
+          "strinsur": null,
+          "strloss": null,
+          "typdamage": "Destroyed",
+          "usngcoord": null,
+          "workphone": null
+        },
+        "geometry": {
+          "x": -9846935.1772,
+          "y": 4687160.978100002
+        }
+      },
+      {
+        "attributes": {
+          "affil": "County",
+          "cellphone": "unknown",
+          "comments": null,
+          "continsur": "Yes",
+          "contloss": 20000.0,
+          "deduct": 600.0,
+          "descdamage": "unknown",
+          "earinsur": "Yes",
+          "email": "test@gmail.com",
+          "fireinsur": "No",
+          "firstname": "Mike",
+          "floodinsur": "Yes",
+          "fulladdr": null,
+          "habitable": "No",
+          "homephone": "999-999-8866",
+          "impactjur": "unknown",
+          "incidentid": "1",
+          "incidentnm": "Trail Derailment",
+          "inspdate": 1339113600000,
+          "inspectid": "2",
+          "inspector": "Sandra Thomas",
+          "inspemail": "SandraThomas@thomasinc.com",
+          "inspphone": "999-999-9999",
+          "lasteditor": "Esri",
+          "lastname": "Parsons",
+          "lastupdate": 1339113600000,
+          "numoccup": 2,
+          "objectid": 2472384,
+          "parcelid": "unknown",
+          "predisval": 250000.0,
+          "primcause": "Other",
+          "primres": "Yes",
+          "pstlcity": "Naperville",
+          "pstlzip5": "60540",
+          "rentinsur": "Yes",
+          "represent": "Owner",
+          "siteid": "8567",
+          "sms": "unknown",
+          "strinsur": "Yes",
+          "strloss": 10000.0,
+          "typdamage": "Destroyed",
+          "usngcoord": "16T DM 04 25",
+          "workphone": "unknown"
+        },
+        "geometry": {
+          "x": -9847007.5231,
+          "y": 4687235.5473000035
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident Number",
+        "length": 30,
+        "name": "incidentid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Incident Name",
+        "length": 255,
+        "name": "incidentnm",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector ID",
+        "length": 10,
+        "name": "inspectid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector",
+        "length": 50,
+        "name": "inspector",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector's Email Address",
+        "length": 100,
+        "name": "inspemail",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspector's Phone Number",
+        "length": 12,
+        "name": "inspphone",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Affiliation",
+        "length": 255,
+        "name": "affil",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Inspection Date Time",
+        "length": 8,
+        "name": "inspdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Contact First Name",
+        "length": 50,
+        "name": "firstname",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Contact Last Name",
+        "length": 50,
+        "name": "lastname",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Full Address",
+        "length": 250,
+        "name": "fulladdr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Postal City",
+        "length": 100,
+        "name": "pstlcity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Postal Zip 5",
+        "length": 5,
+        "name": "pstlzip5",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Site ID",
+        "length": 30,
+        "name": "siteid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Parcel Identification Number",
+        "length": 30,
+        "name": "parcelid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "USNG Coordinate",
+        "length": 50,
+        "name": "usngcoord",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Home Phone",
+        "length": 12,
+        "name": "homephone",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Work Phone",
+        "length": 12,
+        "name": "workphone",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell Phone",
+        "length": 12,
+        "name": "cellphone",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Email",
+        "length": 100,
+        "name": "email",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SMS or Text",
+        "length": 100,
+        "name": "sms",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Owner / Occupant",
+        "length": 30,
+        "name": "represent",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Primary Residence",
+        "length": 5,
+        "name": "primres",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Habitable",
+        "length": 5,
+        "name": "habitable",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Number of Occupants",
+        "name": "numoccup",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Structure Insured",
+        "length": 5,
+        "name": "strinsur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Contents Insured",
+        "length": 5,
+        "name": "continsur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Renter's Insurance",
+        "length": 5,
+        "name": "rentinsur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Earthquake Coverage",
+        "length": 5,
+        "name": "earinsur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Flood Coverage",
+        "length": 5,
+        "name": "floodinsur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Wildland Fire Coverage",
+        "length": 5,
+        "name": "fireinsur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Insurance Deductible",
+        "name": "deduct",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Value Before Damage",
+        "name": "predisval",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Estimated $ Loss Structure",
+        "name": "strloss",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Estimated $ Loss Contents",
+        "name": "contloss",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Extent of Damage",
+        "length": 50,
+        "name": "typdamage",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Primary Cause of Damage",
+        "length": 20,
+        "name": "primcause",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Description of Damage",
+        "length": 255,
+        "name": "descdamage",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Impact to Jurisdiction",
+        "length": 255,
+        "name": "impactjur",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Additional Comments",
+        "length": 255,
+        "name": "comments",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last Update Date",
+        "length": 8,
+        "name": "lastupdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Last Editor",
+        "length": 50,
+        "name": "lasteditor",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "objectid",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 8269,
+  "status": 200
+}

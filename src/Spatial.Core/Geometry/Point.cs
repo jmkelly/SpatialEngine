@@ -18,9 +18,7 @@ public sealed class Point : IPoint, IEquatable<Point>
     {
         _coordinate = coordinate;
         _coordinateReference = coordinateReference;
-        _layout = coordinate is { } value
-            ? CoordinateLayoutExtensions.FromOrdinates(value.Z is not null, value.M is not null)
-            : CoordinateLayout.Xy;
+        _layout = coordinate is { } value ? DeriveLayout(value) : CoordinateLayout.Xy;
     }
 
     internal Point(Coordinate? coordinate, CoordinateReference? coordinateReference, CoordinateLayout layout)
@@ -65,13 +63,14 @@ public sealed class Point : IPoint, IEquatable<Point>
         }
     }
 
-    public bool Equals(Point? other) =>
-        other is not null
-        && _layout == other._layout
+    public bool Equals(Point? other) => other is not null && ContentEquals(other);
+
+    public override bool Equals(object? obj) => obj is Point other && ContentEquals(other);
+
+    private bool ContentEquals(Point other) =>
+        _layout == other._layout
         && Nullable.Equals(_coordinate, other._coordinate)
         && Nullable.Equals(_coordinateReference, other._coordinateReference);
-
-    public override bool Equals(object? obj) => obj is Point other && Equals(other);
 
     public override int GetHashCode() => HashCode.Combine(_coordinate, _coordinateReference, _layout);
 
@@ -79,4 +78,9 @@ public sealed class Point : IPoint, IEquatable<Point>
         _coordinate is { } coordinate
             ? FormattableString.Invariant($"Point ({coordinate.X}, {coordinate.Y})")
             : "Point (empty)";
+
+    private static CoordinateLayout DeriveLayout(Coordinate coordinate) =>
+        coordinate.Z is not null
+            ? coordinate.M is not null ? CoordinateLayout.Xyzm : CoordinateLayout.Xyz
+            : coordinate.M is not null ? CoordinateLayout.Xym : CoordinateLayout.Xy;
 }

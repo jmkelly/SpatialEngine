@@ -1,0 +1,91 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 17141718.263625886,
+      "xmin": 13684940.603090443,
+      "ymax": 5709678.152630003,
+      "ymin": 2758967.5825864854
+    },
+    "fields": [
+      {
+        "alias": "FID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "FID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "KEN",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "KEN",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "P_NUM",
+        "defaultValue": null,
+        "editable": true,
+        "name": "P_NUM",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "H_NUM",
+        "defaultValue": null,
+        "editable": true,
+        "name": "H_NUM",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Area",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "\u5358\u7d14\u5316\u90fd\u9053\u5e9c\u770c",
+    "objectIdField": "FID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 9581,
+  "status": 200
+}

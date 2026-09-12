@@ -1,304 +1,174 @@
 using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json.Nodes;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-using Spatial.PluginSdk.Capabilities;
-using Spatial.PluginSdk.Http;
-using Spatial.Runtime.Capabilities;
+using Spatial.Client;
+using Spatial.Core.Features;
+using Spatial.Core.Features.Codec;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// End-to-end tests of the public host API against a real
-/// <see cref="Spatial.Host.SpatialHostRuntime"/> wired with the in-memory
-/// <see cref="ApiFixtureProvider"/> — the transport-level proof that the
-/// independently executable host serves automated clients (plan §16
-/// Phase 9). The factory drives the real HTTP pipeline; the runtime is the
-/// composition seam (<c>SpatialHostRuntime.For</c>).
+/// The typed host API over the in-process services (ADR-0033): geometry,
+/// transforms, demo catalogue/features/sleep and PostGIS-unconfigured
+/// behaviour, driven through the .NET client SDK against the real host.
 /// </summary>
-public sealed class HostApiTests : IClassFixture<HostApiTestFactory>
+public sealed class HostApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly HostApiTestFactory _factory;
+    private readonly WebApplicationFactory<Program> _factory;
 
-    public HostApiTests(HostApiTestFactory factory)
+    public HostApiTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
     }
 
-    private HttpClient Client => _factory.CreateClient();
-
-    // ---- Capabilities ----
+    private SpatialClient Client => new(_factory.CreateClient());
 
     [Fact]
-    public async Task Capabilities_list_returns_every_registered_capability_with_providers()
+    public async Task Buffer_round_trips_through_the_host()
     {
-        var response = await Client.GetAsync("/api/capabilities");
+        var result = await Client.BufferAsync(GeometryFactory.CreatePoint(0, 0), 1.0);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var summaries = await response.Content.ReadFromJsonAsync<CapabilitySummaryDto[]>(HostApiJson.Options);
-        Assert.NotNull(summaries);
-        var echo = Assert.Single(summaries, summary => summary.Id == "fixture.echo@1");
-        Assert.Equal("fixture@1", Assert.Single(echo.Providers));
-        Assert.Contains("Cancellable", echo.Traits);
-        Assert.Single(summaries, summary => summary.Id == "fixture.jobstream@1");
-        Assert.Single(summaries, summary => summary.Id == "fixture.sleep@1");
+        var envelope = result.Envelope!.Value;
+        Assert.Equal(-1, envelope.MinX, 1e-6);
+        Assert.Equal(1, envelope.MaxX, 1e-6);
     }
 
     [Fact]
-    public async Task Capability_detail_returns_the_full_contract_declaration()
+    public async Task A_nan_distance_is_a_400_invalid_argument()
     {
-        var response = await Client.GetAsync("/api/capabilities/fixture.jobstream@1");
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
+            Client.BufferAsync(GeometryFactory.CreatePoint(0, 0), double.NaN));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var detail = await response.Content.ReadFromJsonAsync<CapabilityDetailDto>(HostApiJson.Options);
-        Assert.NotNull(detail);
-        Assert.Equal("fixture.jobstream@1", detail.Id);
-        Assert.Equal("stream.string", detail.OutputSchema);
-        Assert.Contains("LongRunning", detail.Traits);
-        Assert.Contains("Streaming", detail.Traits);
-        Assert.Single(detail.Providers, provider => provider.Id == "fixture@1");
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
     }
 
     [Fact]
-    public async Task Capability_detail_is_404_for_an_unknown_capability()
+    public async Task Intersection_validate_and_simplify_serve()
     {
-        var response = await Client.GetAsync("/api/capabilities/spatial.does.not.exist@1");
+        var overlap = await Client.IntersectionAsync(
+            GeometryFactory.CreatePolygon(
+                [new Coordinate(0, 0), new Coordinate(2, 0), new Coordinate(2, 2), new Coordinate(0, 2), new Coordinate(0, 0)]),
+            GeometryFactory.CreatePolygon(
+                [new Coordinate(1, 1), new Coordinate(3, 1), new Coordinate(3, 3), new Coordinate(1, 3), new Coordinate(1, 1)]));
+        Assert.Equal(1, overlap.Envelope!.Value.MinX, 1e-6);
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
+        Assert.True(await Client.ValidateAsync(GeometryFactory.CreatePoint(0, 0)));
 
-    // ---- Invocations: inline ----
-
-    [Fact]
-    public async Task Inline_invocation_completes_with_the_wire_encoded_result()
-    {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.echo@1", Arguments: new Dictionary<string, JsonNode?>
-            {
-                ["text"] = "hello world",
-            }),
-            HostApiJson.Options);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.NotNull(body);
-        Assert.Equal("completed", body.Kind);
-        Assert.True(body.Ok);
-        Assert.Equal("hello world", body.Result?.GetValue<string>());
-        Assert.NotNull(body.Provenance);
-        Assert.Equal("fixture.echo@1", body.Provenance.Capability);
-        Assert.Equal("fixture@1", body.Provenance.Provider);
-        Assert.Equal("FirstHealthy", body.Provenance.Step);
+        var simplified = await Client.SimplifyAsync(
+            GeometryFactory.CreateLineString(
+                [new Coordinate(0, 0), new Coordinate(1, 1), new Coordinate(2, 2)]),
+            0.5);
+        Assert.Equal(2, simplified.CoordinateCount);
     }
 
     [Fact]
-    public async Task Inline_invocation_failure_returns_a_structured_error()
+    public async Task Describe_and_transform_serve()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.fail@1"),
-            HostApiJson.Options);
+        var description = await Client.DescribeAsync("EPSG:4326");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.NotNull(body);
-        Assert.Equal("completed", body.Kind);
-        Assert.False(body.Ok);
-        Assert.Equal("provider.failure", body.Error?.Code);
+        Assert.Equal("4326", description.Code);
+
+        var transformed = await Client.TransformAsync(
+            GeometryFactory.CreatePoint(13.405, 52.52, CoordinateReference.Epsg(4326)), null, "EPSG:32632");
+        Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
     }
 
     [Fact]
-    public async Task Inline_invocation_reports_permission_denied()
+    public async Task Demo_catalogue_scan_and_query_serve()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.denied@1", Permissions: new List<string>()),
-            HostApiJson.Options);
+        var datasets = await Client.ListCatalogueAsync();
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.NotNull(body);
-        Assert.False(body.Ok);
-        Assert.Equal("permission.denied", body.Error?.Code);
+        Assert.Contains(datasets, summary => summary.Id == "demo.points");
+
+        var description = await Client.DescribeDatasetAsync("demo.points");
+        Assert.Equal("geometry", description.GeometryColumn);
+
+        var batches = await Client.ScanAsync("demo.points");
+        Assert.Equal(110, batches.SelectMany(batch => batch.Features).Count());
+
+        var window = await Client.QueryAsync("demo.points", new PluginSdk.BoundingBox(-5, -4, -5, -4));
+        Assert.Single(window.SelectMany(batch => batch.Features));
+
+        var missing = await Assert.ThrowsAsync<SpatialClientException>(() => Client.ScanAsync("demo.missing"));
+        Assert.Equal(404, missing.StatusCode);
     }
 
     [Fact]
-    public async Task Inline_invocation_with_permissions_succeeds()
+    public async Task Demo_sleep_completes_and_cancels()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.denied@1", Permissions: new List<string> { "fixture.admin" }),
-            HostApiJson.Options);
+        Assert.Equal(20, await Client.SleepAsync(20));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.True(body?.Ok);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        await Assert.ThrowsAsync<TaskCanceledException>(() => Client.SleepAsync(10_000, cts.Token));
     }
 
     [Fact]
-    public async Task Unresolvable_capability_completes_with_capability_not_found()
+    public async Task Demo_writes_are_rejected_and_postgis_is_unconfigured()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("spatial.missing@9"),
-            HostApiJson.Options);
+        var batch = new FeatureBatch(new FeatureSchema([new FieldDefinition("v", AttributeKind.Double)]), []);
+        var write = await Assert.ThrowsAsync<SpatialClientException>(() => Client.WriteAsync("demo.points", batch, store: "demo"));
+        Assert.Equal(400, write.StatusCode);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.NotNull(body);
-        Assert.False(body.Ok);
-        Assert.Equal("capability.not.found", body.Error?.Code);
-    }
-
-    // ---- Invocations: request validation ----
-
-    [Fact]
-    public async Task Malformed_capability_id_is_a_bad_request()
-    {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("not-a-capability"),
-            HostApiJson.Options);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var catalogue = await Assert.ThrowsAsync<SpatialClientException>(() => Client.ListCatalogueAsync("postgis"));
+        Assert.Equal(503, catalogue.StatusCode);
+        Assert.Equal("store.unavailable", catalogue.Code);
     }
 
     [Fact]
-    public async Task Undecodable_argument_is_a_bad_request()
+    public async Task An_unknown_store_is_a_400()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.echo@1", Arguments: new Dictionary<string, JsonNode?>
-            {
-                ["text"] = new JsonObject { ["$i64"] = "not-a-number" },
-            }),
-            HostApiJson.Options);
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() => Client.ListCatalogueAsync("arcgis"));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
     }
 
     [Fact]
-    public async Task Explicit_unknown_provider_completes_with_provider_unavailable()
+    public async Task Demo_transactions_are_rejected_without_a_store()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.echo@1", Provider: "ghost@9"),
-            HostApiJson.Options);
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() => Client.BeginTransactionAsync("demo"));
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.False(body?.Ok);
-        Assert.Equal("provider.unavailable", body?.Error?.Code);
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
     }
 
     [Fact]
-    public async Task Malformed_provider_id_is_a_bad_request()
+    public async Task Transactions_on_an_unknown_store_are_a_400()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.echo@1", Provider: "not a provider id"),
-            HostApiJson.Options);
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() => Client.BeginTransactionAsync("arcgis"));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
     }
 
     [Fact]
-    public async Task A_live_resource_token_routes_the_invocation()
+    public async Task Transactions_on_unconfigured_postgis_are_unavailable()
     {
-        var mint = await Client.PostAsJsonAsync(
-            "/api/invocations", new InvocationRequest("fixture.mint@1"), HostApiJson.Options);
-        var token = (await mint.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options))!
-            .Result!["$resource"]!["token"]!.GetValue<string>();
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() => Client.BeginTransactionAsync());
 
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.peek@1", Resource: token),
-            HostApiJson.Options);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.True(body?.Ok);
-        Assert.Equal("fixture@1", body?.Provenance?.Provider);
+        Assert.Equal(503, exception.StatusCode);
+        Assert.Equal("store.unavailable", exception.Code);
     }
 
     [Fact]
-    public async Task A_dead_resource_token_is_a_bad_request()
+    public async Task Describing_an_unknown_crs_is_a_400()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.peek@1", Resource: "00000000000000000000000000000000"),
-            HostApiJson.Options);
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() => Client.DescribeAsync("EPSG:999999"));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    // ---- Invocations: jobs and streams ----
-
-    [Fact]
-    public async Task Long_running_invocation_starts_a_job_and_returns_its_location()
-    {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.sleep@1", Arguments: new Dictionary<string, JsonNode?>
-            {
-                ["milliseconds"] = JsonValue.Create(30L),
-            }),
-            HostApiJson.Options);
-
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.NotNull(body);
-        Assert.Equal("job", body.Kind);
-        Assert.NotNull(body.Job);
-        Assert.Equal("/api/jobs/" + body.Job.JobId, response.Headers.Location?.OriginalString);
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
     }
 
     [Fact]
-    public async Task Streaming_invocation_returns_a_resource_handle_to_read()
+    public async Task Feature_batches_decode_as_canonical_bytes()
     {
-        var response = await Client.PostAsJsonAsync(
-            "/api/invocations",
-            new InvocationRequest("fixture.stream@1", Arguments: new Dictionary<string, JsonNode?>
-            {
-                ["chunks"] = JsonValue.Create(3),
-            }),
-            HostApiJson.Options);
+        var batches = await Client.ScanAsync("demo.cities");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<InvocationResponse>(HostApiJson.Options);
-        Assert.NotNull(body);
-        Assert.True(body.Ok);
-        var resource = body.Result?["$resource"];
-        Assert.NotNull(resource);
-        Assert.Equal("fixture.stream", resource["kind"]?.GetValue<string>());
-        var token = resource["token"]!.GetValue<string>();
-        Assert.False(string.IsNullOrWhiteSpace(token));
-
-        var metadata = await Client.GetAsync($"/api/resources/{token}/metadata");
-        Assert.Equal(HttpStatusCode.OK, metadata.StatusCode);
-        var resourceDto = await metadata.Content.ReadFromJsonAsync<ResourceDto>(HostApiJson.Options);
-        Assert.Equal("fixture@1", resourceDto?.Owner);
-    }
-}
-
-/// <summary>
-/// One WebApplicationFactory per test class, wired with the in-memory fixture
-/// runtime. The default (base-class) factory would run the Program-created
-/// runtime with no packages; this override injects the fixture registry
-/// through the composition seam before any request is served.
-/// </summary>
-public sealed class HostApiTestFactory : WebApplicationFactory<Program>
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.ConfigureServices(services =>
-        {
-            var registry = new CapabilityRegistry();
-            registry.Register(new ApiFixtureProvider());
-            services.AddSingleton(Spatial.Host.SpatialHostRuntime.For(new CapabilityRuntime(registry)));
-        });
+        var schema = batches[0].Schema;
+        Assert.Contains(schema.Fields.Select(field => field.Name), name => name == "geometry");
+        var roundTripped = FeatureBatchCodec.Decode(FeatureBatchCodec.Encode(batches[0]));
+        Assert.Equal(batches[0], roundTripped);
     }
 }

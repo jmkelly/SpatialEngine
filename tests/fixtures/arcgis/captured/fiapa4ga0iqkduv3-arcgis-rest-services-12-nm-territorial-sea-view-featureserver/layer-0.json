@@ -1,0 +1,157 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "BOUND_ID",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 3857,
+        "wkid": 102100
+      },
+      "xmax": 20037507.067199998,
+      "xmin": -20037507.0672,
+      "ymax": 11606720.065800004,
+      "ymin": -1661652.6440000013
+    },
+    "fields": [
+      {
+        "alias": "Feature Record Identifier",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Territorial Boundary Identifier",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "BOUND_ID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geographic Region Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "REGION",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Maritime Feature Classification",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "FEAT_TYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Boundary Publication Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "PUB_DATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Date of Baseline Committee Approval",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "APPRV_DATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Legal Authority Reference",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "LEGAL_AUTH",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Agency of Responsibility",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "AOR",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Boundary Notes",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1000,
+        "name": "NOTE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Supporting Documentation Reference",
+        "defaultValue": null,
+        "editable": true,
+        "length": 500,
+        "name": "SUPP_INFO",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Unilateral Claim Indicator",
+        "defaultValue": null,
+        "editable": true,
+        "name": "UNILATERAL",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Boundary Classification Code",
+        "defaultValue": null,
+        "editable": true,
+        "name": "RULEID",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Feature Length Measure",
+        "defaultValue": null,
+        "editable": false,
+        "name": "Shape__Length",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolyline",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "c12NM_Territorial_Sea",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 19818,
+  "status": 200
+}

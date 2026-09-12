@@ -1,0 +1,892 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Comments": null,
+          "ComplexID": null,
+          "ComplexName": null,
+          "CreateDate": 1776098069000,
+          "CreateDateAge": 150,
+          "CurrentDateAge": 145,
+          "DateCurrent": 1776560073000,
+          "FeatureCategory": "Wildfire Daily Fire Perimeter",
+          "GACC": "RMCC",
+          "GISAcres": 1582.4145198563406,
+          "GeometryID": "{5C2F4E91-EACF-4B4E-9B06-E76FD3A4ABE1}",
+          "GlobalID": null,
+          "IMTName": null,
+          "IRWINID": "{66CFAACE-3C03-4CE7-8DF6-4FD6F7A5BB2C}",
+          "IncidentName": "Schwachheim",
+          "IncidentTypeCategory": "WF",
+          "Label": null,
+          "LocalIncidentID": "000467",
+          "MapMethod": "IR Image Interpretation",
+          "OBJECTID": 1,
+          "PolygonDateTime": 1776557820000,
+          "Shape__Area": 0.000648395961661663,
+          "Shape__Length": 0.14997863467486808,
+          "UnitID": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -104.383778782,
+                37.0018415010001
+              ],
+              [
+                -104.3847565,
+                37.001250613
+              ],
+              [
+                -104.384828377,
+                37.0011982660001
+              ],
+              [
+                -104.384852804,
+                37.0011804760001
+              ],
+              [
+                -104.384857853,
+                37.0011767990001
+              ],
+              [
+                -104.385311318,
+                37.000846542
+              ],
+              [
+                -104.385960441,
+                37.000668584
+              ],
+              [
+                -104.386663414,
+                37.0007966790001
+              ],
+              [
+                -104.386983756,
+                37.0010281680001
+              ],
+              [
+                -104.387798812,
+                37.0009864400001
+              ],
+              [
+                -104.388263789,
+                37.001012319
+              ],
+              [
+                -104.388546786,
+                37.001130061
+              ],
+              [
+                -104.388892138,
+                37.0011209730001
+              ],
+              [
+                -104.389177796,
+                37.001313128
+              ],
+              [
+                -104.38983945,
+                37.0016952770001
+              ],
+              [
+                -104.390015221,
+                37.0017967970001
+              ],
+              [
+                -104.390213621,
+                37.001968633
+              ],
+              [
+                -104.390319283,
+                37.002049336
+              ],
+              [
+                -104.39033798,
+                37.002055956
+              ],
+              [
+                -104.390375493,
+                37.0020760250001
+              ],
+              [
+                -104.390409589,
+                37.002093216
+              ],
+              [
+                -104.390448378,
+                37.00211255
+              ],
+              [
+                -104.39048053,
+                37.002128484
+              ],
+              [
+                -104.39051852,
+                37.0021408860001
+              ],
+              [
+                -104.390553728,
+                37.002143075
+              ],
+              [
+                -104.390593953,
+                37.0021576340001
+              ],
+              [
+                -104.390626654,
+                37.00217336
+              ],
+              [
+                -104.390662139,
+                37.002187749
+              ],
+              [
+                -104.390686653,
+                37.002213947
+              ],
+              [
+                -104.390716432,
+                37.00223299
+              ],
+              [
+                -104.390732206,
+                37.002261409
+              ],
+              [
+                -104.390760483,
+                37.002280393
+              ],
+              [
+                -104.390782364,
+                37.002305489
+              ],
+              [
+                -104.390808942,
+                37.0023262890001
+              ],
+              [
+                -104.390847286,
+                37.002336121
+              ],
+              [
+                -104.390877918,
+                37.002355698
+              ],
+              [
+                -104.390905355,
+                37.0023731360001
+              ],
+              [
+                -104.390938846,
+                37.002389034
+              ],
+              [
+                -104.390974793,
+                37.0024003730001
+              ],
+              [
+                -104.391015591,
+                37.0023988350001
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Comments": null,
+          "ComplexID": null,
+          "ComplexName": null,
+          "CreateDate": 1779047093000,
+          "CreateDateAge": 116,
+          "CurrentDateAge": 114,
+          "DateCurrent": 1779239507000,
+          "FeatureCategory": "Wildfire Daily Fire Perimeter",
+          "GACC": "SACC",
+          "GISAcres": 29559.205119663617,
+          "GeometryID": "{451A278B-9F73-4EE4-8CEE-15B349B66D81}",
+          "GlobalID": null,
+          "IMTName": null,
+          "IRWINID": "{6122EACF-706C-45A8-91B4-4F9ECCF25098}",
+          "IncidentName": "Sharpe",
+          "IncidentTypeCategory": "WF",
+          "Label": null,
+          "LocalIncidentID": "260752",
+          "MapMethod": "Mixed Methods",
+          "OBJECTID": 2,
+          "PolygonDateTime": 1779239400000,
+          "Shape__Area": 0.012109649775538855,
+          "Shape__Length": 1.3636462647028103,
+          "UnitID": null
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -102.506203712,
+                37.1147825030001
+              ],
+              [
+                -102.506018879,
+                37.1050586700001
+              ],
+              [
+                -102.500880266,
+                37.105080663
+              ],
+              [
+                -102.500393366,
+                37.109095762
+              ],
+              [
+                -102.499006723,
+                37.1122529890001
+              ],
+              [
+                -102.492877784,
+                37.1124716740001
+              ],
+              [
+                -102.496122788,
+                37.108010021
+              ],
+              [
+                -102.499169449,
+                37.1051580920001
+              ],
+              [
+                -102.49721838,
+                37.1050919400001
+              ],
+              [
+                -102.496889042,
+                37.1040160520001
+              ],
+              [
+                -102.498262586,
+                37.1030999650001
+              ],
+              [
+                -102.498466875,
+                37.102957464
+              ],
+              [
+                -102.499146565,
+                37.101565646
+              ],
+              [
+                -102.500206103,
+                37.0981644980001
+              ],
+              [
+                -102.502148178,
+                37.0970086820001
+              ],
+              [
+                -102.504678678,
+                37.0934720980001
+              ],
+              [
+                -102.505574627,
+                37.092367284
+              ],
+              [
+                -102.507627812,
+                37.0895763070001
+              ],
+              [
+                -102.508786397,
+                37.0878788960001
+              ],
+              [
+                -102.511697155,
+                37.083911062
+              ],
+              [
+                -102.512689019,
+                37.0828084520001
+              ],
+              [
+                -102.515183811,
+                37.0794112180001
+              ],
+              [
+                -102.515869866,
+                37.0785619050001
+              ],
+              [
+                -102.518227,
+                37.0761824630001
+              ],
+              [
+                -102.518851106,
+                37.0750806
+              ],
+              [
+                -102.520370357,
+                37.0732223520001
+              ],
+              [
+                -102.524159191,
+                37.070236101
+              ],
+              [
+                -102.524897153,
+                37.0688466070001
+              ],
+              [
+                -102.525272542,
+                37.068516501
+              ],
+              [
+                -102.525453871,
+                37.0681899680001
+              ],
+              [
+                -102.525517788,
+                37.0679135990001
+              ],
+              [
+                -102.525800317,
+                37.067590683
+              ],
+              [
+                -102.526359979,
+                37.0665146920001
+              ],
+              [
+                -102.52782721,
+                37.0639780180001
+              ],
+              [
+                -102.529088483,
+                37.0628330340001
+              ],
+              [
+                -102.52929117,
+                37.062702851
+              ],
+              [
+                -102.529715939,
+                37.0621123710001
+              ],
+              [
+                -102.530787109,
+                37.061505029
+              ],
+              [
+                -102.531207481,
+                37.06082257
+              ],
+              [
+                -102.533281271,
+                37.0580355800001
+              ]
+            ],
+            [
+              [
+                -102.752315339,
+                36.923880824
+              ],
+              [
+                -102.753142241,
+                36.921596423
+              ],
+              [
+                -102.754386012,
+                36.920357041
+              ],
+              [
+                -102.755837465,
+                36.9203136790001
+              ],
+              [
+                -102.757766558,
+                36.9195871200001
+              ],
+              [
+                -102.759968765,
+                36.9187427410001
+              ],
+              [
+                -102.762555428,
+                36.918367668
+              ],
+              [
+                -102.765484011,
+                36.918706211
+              ],
+              [
+                -102.76706925,
+                36.9179637730001
+              ],
+              [
+                -102.768142417,
+                36.9200000370001
+              ],
+              [
+                -102.769133076,
+                36.9226931480001
+              ],
+              [
+                -102.768645388,
+                36.9240073720001
+              ],
+              [
+                -102.767205103,
+                36.9238379390001
+              ],
+              [
+                -102.766962699,
+                36.9238036620001
+              ],
+              [
+                -102.76414357,
+                36.9243873240001
+              ],
+              [
+                -102.762014426,
+                36.9261370250001
+              ],
+              [
+                -102.759980078,
+                36.9278869820001
+              ],
+              [
+                -102.759113031,
+                36.92892621
+              ],
+              [
+                -102.757537978,
+                36.9293963810001
+              ],
+              [
+                -102.754256524,
+                36.9291552080001
+              ],
+              [
+                -102.752125478,
+                36.9281098710001
+              ],
+              [
+                -102.751693007,
+                36.9260638800001
+              ],
+              [
+                -102.752315339,
+                36.923880824
+              ]
+            ],
+            [
+              [
+                -102.69289365,
+                36.994719764
+              ],
+              [
+                -102.694914465,
+                36.994505422
+              ],
+              [
+                -102.689683619,
+                36.9974104770001
+              ],
+              [
+                -102.684968699,
+                36.9989878210001
+              ],
+              [
+                -102.688760442,
+                36.996521972
+              ],
+              [
+                -102.69289365,
+                36.994719764
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "Comments": null,
+          "ComplexID": null,
+          "ComplexName": null,
+          "CreateDate": 1781280758000,
+          "CreateDateAge": 90,
+          "CurrentDateAge": 45,
+          "DateCurrent": 1785175795000,
+          "FeatureCategory": "Wildfire Daily Fire Perimeter",
+          "GACC": "AICC",
+          "GISAcres": 4525.98,
+          "GeometryID": "{19A34403-9452-4294-803D-B99A14120A3C}",
+          "GlobalID": null,
+          "IMTName": null,
+          "IRWINID": "{2B964609-CD9A-49CA-9CFD-7F619752086E}",
+          "IncidentName": "Kilolitna",
+          "IncidentTypeCategory": "WF",
+          "Label": null,
+          "LocalIncidentID": "000177",
+          "MapMethod": "Image Interpretation",
+          "OBJECTID": 3,
+          "PolygonDateTime": 1781905334000,
+          "Shape__Area": 0.0036230982877896167,
+          "Shape__Length": 0.7064933803290249,
+          "UnitID": "AKKAR"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -151.895800778,
+                66.021495014
+              ],
+              [
+                -151.896408393,
+                66.0213737920001
+              ],
+              [
+                -151.897585983,
+                66.0211459020001
+              ],
+              [
+                -151.89800655,
+                66.0212940310001
+              ],
+              [
+                -151.898118702,
+                66.0216358640001
+              ],
+              [
+                -151.897585983,
+                66.0219321150001
+              ],
+              [
+                -151.897389717,
+                66.0223309100001
+              ],
+              [
+                -151.896885037,
+                66.022581577
+              ],
+              [
+                -151.896765745,
+                66.022596886
+              ],
+              [
+                -151.896352317,
+                66.0226499400001
+              ],
+              [
+                -151.895763523,
+                66.022866423
+              ],
+              [
+                -151.895062577,
+                66.0231854470001
+              ],
+              [
+                -151.894902328,
+                66.0233222000001
+              ],
+              [
+                -151.89450182,
+                66.0236639760001
+              ],
+              [
+                -151.894305554,
+                66.023926024
+              ],
+              [
+                -151.894331813,
+                66.0251957500001
+              ],
+              [
+                -151.89446756,
+                66.025333646
+              ],
+              [
+                -151.896312698,
+                66.0256894510001
+              ],
+              [
+                -151.897219629,
+                66.025511549
+              ],
+              [
+                -151.89856439,
+                66.0258927680001
+              ],
+              [
+                -151.899846606,
+                66.026108789
+              ],
+              [
+                -151.899846606,
+                66.026312101
+              ],
+              [
+                -151.901160093,
+                66.0268839070001
+              ],
+              [
+                -151.901066273,
+                66.027366757
+              ],
+              [
+                -151.900816084,
+                66.028078307
+              ],
+              [
+                -151.900722263,
+                66.028586546
+              ],
+              [
+                -151.900378256,
+                66.0287898380001
+              ],
+              [
+                -151.899596417,
+                66.02842137
+              ],
+              [
+                -151.898970947,
+                66.02793854
+              ],
+              [
+                -151.898595665,
+                66.0277479470001
+              ],
+              [
+                -151.897407272,
+                66.0276844160001
+              ],
+              [
+                -151.897219628,
+                66.0281291320001
+              ],
+              [
+                -151.896875621,
+                66.0284340760001
+              ],
+              [
+                -151.896437792,
+                66.0287136040001
+              ],
+              [
+                -151.895311943,
+                66.0287898380001
+              ],
+              [
+                -151.894248645,
+                66.028561134
+              ],
+              [
+                -151.893372987,
+                66.0282434860001
+              ],
+              [
+                -151.893060249,
+                66.0280656020001
+              ],
+              [
+                -151.892653696,
+                66.0280147770001
+              ],
+              [
+                -151.892810063,
+                66.028472193
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident Name",
+        "defaultValue": null,
+        "length": 50,
+        "name": "IncidentName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Feature Category",
+        "defaultValue": null,
+        "length": 50,
+        "name": "FeatureCategory",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Map Method",
+        "defaultValue": null,
+        "length": 25,
+        "name": "MapMethod",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Comments",
+        "defaultValue": null,
+        "length": 255,
+        "name": "Comments",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Calculated Acres",
+        "defaultValue": null,
+        "name": "GISAcres",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Label",
+        "defaultValue": null,
+        "length": 100,
+        "name": "Label",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Create Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "CreateDate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Date Current",
+        "defaultValue": null,
+        "length": 8,
+        "name": "DateCurrent",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Polygon Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "PolygonDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Complex Name",
+        "defaultValue": null,
+        "length": 50,
+        "name": "ComplexName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Complex ID",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "ComplexID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geographic Area Coordination Center",
+        "defaultValue": null,
+        "length": 5,
+        "name": "GACC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMT Name",
+        "defaultValue": null,
+        "length": 25,
+        "name": "IMTName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Unit ID",
+        "defaultValue": null,
+        "length": 12,
+        "name": "UnitID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Local Incident ID",
+        "defaultValue": null,
+        "length": 10,
+        "name": "LocalIncidentID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IRWIN ID",
+        "defaultValue": null,
+        "length": 50,
+        "name": "IRWINID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geometry ID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GeometryID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Global ID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Days Since Current Date",
+        "defaultValue": null,
+        "name": "CurrentDateAge",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Days Since Create Date",
+        "defaultValue": null,
+        "name": "CreateDateAge",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "IncidentTypeCategory",
+        "defaultValue": null,
+        "length": 2,
+        "name": "IncidentTypeCategory",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Shape__Area",
+        "defaultValue": null,
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape__Length",
+        "defaultValue": null,
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriDecimalDegrees"
+    },
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 414944,
+  "status": 200
+}

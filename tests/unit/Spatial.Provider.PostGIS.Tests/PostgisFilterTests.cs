@@ -50,6 +50,10 @@ public sealed class PostgisFilterTests
         Assert.Equal(2.5, Build("score > 2.5").Parameters[0]);
         Assert.Equal(-3L, Build("population < -3").Parameters[0]);
         Assert.Equal(1.5e3, Build("score <= 1.5e3").Parameters[0]);
+        Assert.Equal(100000.0, Build("population > 1E5").Parameters[0]);
+        Assert.Equal(100000.0, Build("population > 1e+5").Parameters[0]);
+        Assert.Equal(0.00001, Build("population > 1e-5").Parameters[0]);
+        Assert.Equal(10000000000.0, Build("population > 1e10").Parameters[0]);
     }
 
     [Fact]
@@ -80,6 +84,8 @@ public sealed class PostgisFilterTests
     [InlineData("population")]
     [InlineData("population <>'")]
     [InlineData("population > 1 AND")]
+    [InlineData("population > 1 OR")]
+    [InlineData("population > 1e+")]
     [InlineData("(population > 1")]
     [InlineData("population > 1)")]
     [InlineData("population > 1e")]
@@ -91,6 +97,16 @@ public sealed class PostgisFilterTests
 
         Assert.False(result);
         Assert.False(string.IsNullOrWhiteSpace(error));
+    }
+
+    [Fact]
+    public void A_malformed_exponent_reports_an_invalid_number()
+    {
+        // 1e999 overflows to infinity, so the lexer classifies it InvalidNumber.
+        var result = PostgisFilterParser.TryParse("population > 1e999", out _, out var error);
+
+        Assert.False(result);
+        Assert.Contains("not a valid filter number", error);
     }
 
     [Theory]

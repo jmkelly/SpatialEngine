@@ -1,0 +1,131 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Confirmed": 4903,
+          "Country_Region": "Mainland China",
+          "Deaths": 162,
+          "Last_Update": "1/30/2020 11:00",
+          "Lat": 30.97564,
+          "Long_": 112.2707,
+          "OBJECTID": 1,
+          "Province_State": "Hubei",
+          "Recovered": 90
+        },
+        "geometry": {
+          "x": 112.27070000000003,
+          "y": 30.975640000000055
+        }
+      },
+      {
+        "attributes": {
+          "Confirmed": 428,
+          "Country_Region": "Mainland China",
+          "Deaths": null,
+          "Last_Update": "1/30/2020 11:00",
+          "Lat": 29.18251,
+          "Long_": 120.0985,
+          "OBJECTID": 2,
+          "Province_State": "Zhejiang",
+          "Recovered": 4
+        },
+        "geometry": {
+          "x": 120.09850000000006,
+          "y": 29.182510000000036
+        }
+      },
+      {
+        "attributes": {
+          "Confirmed": 354,
+          "Country_Region": "Mainland China",
+          "Deaths": null,
+          "Last_Update": "1/30/2020 11:00",
+          "Lat": 23.33841,
+          "Long_": 113.422,
+          "OBJECTID": 3,
+          "Province_State": "Guangdong",
+          "Recovered": 10
+        },
+        "geometry": {
+          "x": 113.42200000000003,
+          "y": 23.338410000000067
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Province/State",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Province_State",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Country/Region",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Country_Region",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Last Update",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Last_Update",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "name": "Lat",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "name": "Long_",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "name": "Confirmed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Deaths",
+        "defaultValue": null,
+        "name": "Deaths",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Recovered",
+        "defaultValue": null,
+        "name": "Recovered",
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 2738,
+  "status": 200
+}

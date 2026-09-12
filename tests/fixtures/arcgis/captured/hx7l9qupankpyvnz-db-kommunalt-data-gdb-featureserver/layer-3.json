@@ -1,0 +1,61 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "dateofdeath_final",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "dateofdeath_final",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "tot_antal_dod",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tot_antal_dod",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "cum_tot_antal_dod",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cum_tot_antal_dod",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 3,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "dod_pr_dag_kum",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6177,
+  "status": 200
+}

@@ -1,0 +1,168 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "ACQ_DATE": 1788504000000,
+          "BRIGHTNESS": 310.91,
+          "BRIGHT_T31": 283.69,
+          "CONFIDENCE": 56,
+          "DAYNIGHT": "D",
+          "DAY_OF_ACQ": 7,
+          "FRP": 11.95,
+          "HOURS_OLD": 173,
+          "OBJECTID": 1,
+          "SATELLITE": "T",
+          "SCAN": 1.1,
+          "TRACK": 1.04,
+          "VERSION": "6.1NRT"
+        },
+        "geometry": {
+          "x": 2670071.4576000012,
+          "y": -3174051.3117000014
+        }
+      },
+      {
+        "attributes": {
+          "ACQ_DATE": 1788502320000,
+          "BRIGHTNESS": 300.13,
+          "BRIGHT_T31": 284.53,
+          "CONFIDENCE": 29,
+          "DAYNIGHT": "D",
+          "DAY_OF_ACQ": 7,
+          "FRP": 18.81,
+          "HOURS_OLD": 173,
+          "OBJECTID": 2,
+          "SATELLITE": "T",
+          "SCAN": 2.5,
+          "TRACK": 1.52,
+          "VERSION": "6.1NRT"
+        },
+        "geometry": {
+          "x": 8900925.033,
+          "y": 10605077.4577
+        }
+      },
+      {
+        "attributes": {
+          "ACQ_DATE": 1788499740000,
+          "BRIGHTNESS": 300.26,
+          "BRIGHT_T31": 285.38,
+          "CONFIDENCE": 29,
+          "DAYNIGHT": "D",
+          "DAY_OF_ACQ": 7,
+          "FRP": 21.7,
+          "HOURS_OLD": 174,
+          "OBJECTID": 3,
+          "SATELLITE": "A",
+          "SCAN": 4.57,
+          "TRACK": 1.96,
+          "VERSION": "6.1NRT"
+        },
+        "geometry": {
+          "x": 14061099.953699999,
+          "y": 6360692.972499996
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Brightness (K)",
+        "defaultValue": null,
+        "name": "BRIGHTNESS",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Scan Resolution",
+        "defaultValue": null,
+        "name": "SCAN",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Track Resolution",
+        "defaultValue": null,
+        "name": "TRACK",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Satellite (Aqua or Terra)",
+        "defaultValue": null,
+        "length": 1,
+        "name": "SATELLITE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Confidence (%)",
+        "defaultValue": null,
+        "name": "CONFIDENCE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Source Version",
+        "defaultValue": null,
+        "length": 6,
+        "name": "VERSION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Brightness T31 (K)",
+        "defaultValue": null,
+        "name": "BRIGHT_T31",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Fire Radiative Power (MW)",
+        "defaultValue": null,
+        "name": "FRP",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Acquisition date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ACQ_DATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Solar Zenith Angle Ascending (Day) or Descending (Night)",
+        "defaultValue": null,
+        "length": 1,
+        "name": "DAYNIGHT",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Hours since Acquisition Date/Time",
+        "defaultValue": null,
+        "name": "HOURS_OLD",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Relative Days Since Acquisition Date",
+        "defaultValue": null,
+        "name": "DAY_OF_ACQ",
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6122,
+  "status": 200
+}

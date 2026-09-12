@@ -1,0 +1,226 @@
+{
+  "body": {
+    "displayFieldName": "CELL_NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 53715,
+          "CELL_MAPCODE": "45119-E1",
+          "CELL_NAME": "Echo",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D31CDEFB-D397-11DE-9C20-00144F233E68}",
+          "OBJECTID": 1,
+          "PRIMARY_STATE": "Oregon",
+          "SHAPE_Area": 1107460201.38446,
+          "SHAPE_Length": 135247.6152490745
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -13247020.948407944,
+                5700583.659277424
+              ],
+              [
+                -13274850.825972725,
+                5700583.655339144
+              ],
+              [
+                -13274850.831648476,
+                5740377.585398905
+              ],
+              [
+                -13247020.954083698,
+                5740377.589337178
+              ],
+              [
+                -13247020.948407944,
+                5700583.659277424
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 53717,
+          "CELL_MAPCODE": "44122-C1",
+          "CELL_NAME": "Echo Mountain",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D31EBA6F-D397-11DE-9C20-00144F233E68}",
+          "OBJECTID": 2,
+          "PRIMARY_STATE": "Oregon",
+          "SHAPE_Area": 1083558755.8125768,
+          "SHAPE_Length": 133529.93320962542
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -13580979.449069057,
+                5504212.968232378
+              ],
+              [
+                -13608809.32617051,
+                5504212.9644099325
+              ],
+              [
+                -13608809.331498768,
+                5543148.053855374
+              ],
+              [
+                -13580979.454397315,
+                5543148.0577936545
+              ],
+              [
+                -13580979.449069057,
+                5504212.968232378
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "CELL_ALLWATER": 2,
+          "CELL_DESCRIPTION": null,
+          "CELL_DIACRITIC": null,
+          "CELL_ID": 51515,
+          "CELL_MAPCODE": "31098-G7",
+          "CELL_NAME": "Blanket",
+          "CELL_TYPE": 1,
+          "GLOBALID": "{D31EDB1E-D397-11DE-9C20-00144F233E68}",
+          "OBJECTID": 3,
+          "PRIMARY_STATE": "Texas",
+          "SHAPE_Area": 912036383.1583571,
+          "SHAPE_Length": 121203.44078207405
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10992800.601101205,
+                3730539.5092707723
+              ],
+              [
+                -11020630.480635123,
+                3730539.5079966187
+              ],
+              [
+                -11020630.482256766,
+                3763311.3487958238
+              ],
+              [
+                -10992800.602722848,
+                3763311.350185804
+              ],
+              [
+                -10992800.601101205,
+                3730539.5092707723
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "CELL_ALLWATER": "Cell_AllWater",
+      "CELL_DESCRIPTION": "CELL_DESCRIPTION",
+      "CELL_DIACRITIC": "CELL_DIACRITIC",
+      "CELL_ID": "CELL_ID",
+      "CELL_MAPCODE": "CELL_MAPCODE",
+      "CELL_NAME": "CELL_NAME",
+      "CELL_TYPE": "Cell_Type",
+      "GLOBALID": "GLOBALID",
+      "OBJECTID": "OBJECTID",
+      "PRIMARY_STATE": "PRIMARY_STATE",
+      "SHAPE_Area": "Shape_Area",
+      "SHAPE_Length": "Shape_Length"
+    },
+    "fields": [
+      {
+        "alias": "Shape_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Shape_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "CELL_ID",
+        "name": "CELL_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_NAME",
+        "length": 120,
+        "name": "CELL_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PRIMARY_STATE",
+        "length": 50,
+        "name": "PRIMARY_STATE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_MAPCODE",
+        "length": 8,
+        "name": "CELL_MAPCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cell_Type",
+        "name": "CELL_TYPE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cell_AllWater",
+        "name": "CELL_ALLWATER",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "CELL_DESCRIPTION",
+        "length": 240,
+        "name": "CELL_DESCRIPTION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CELL_DIACRITIC",
+        "length": 100,
+        "name": "CELL_DIACRITIC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 4243,
+  "status": 200
+}

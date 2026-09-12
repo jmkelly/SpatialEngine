@@ -1,0 +1,157 @@
+{
+  "body": {
+    "displayFieldName": "dn",
+    "features": [
+      {
+        "attributes": {
+          "dn": 0,
+          "expire": "202609161200",
+          "fill": " ",
+          "idp_filedate": 1789074920000,
+          "idp_ingestdate": 1789075025000,
+          "idp_source": "day6fw_drytprob",
+          "issue": "202609102046",
+          "label": "Probability Too Low",
+          "label2": " ",
+          "objectid": 1,
+          "st_area(shape)": 64050.14561772441,
+          "st_perimeter(shape)": 1020.6501999981701,
+          "stroke": " ",
+          "valid": "202609151200"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10914653.4333,
+                4764160.1592999995
+              ],
+              [
+                -10914430.7943,
+                4764160.1592999995
+              ],
+              [
+                -10914430.7943,
+                4763872.473200001
+              ],
+              [
+                -10914653.4333,
+                4763872.473200001
+              ],
+              [
+                -10914653.4333,
+                4764160.1592999995
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "dn": "DN",
+      "expire": "EXPIRE",
+      "fill": "fill",
+      "idp_filedate": "idp_filedate",
+      "idp_ingestdate": "idp_ingestdate",
+      "idp_source": "idp_source",
+      "issue": "ISSUE",
+      "label": "LABEL",
+      "label2": "LABEL2",
+      "objectid": "objectid",
+      "st_area(shape)": "st_area(shape)",
+      "st_perimeter(shape)": "st_perimeter(shape)",
+      "stroke": "stroke",
+      "valid": "VALID"
+    },
+    "fields": [
+      {
+        "alias": "objectid",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "DN",
+        "name": "dn",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "VALID",
+        "length": 80,
+        "name": "valid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "EXPIRE",
+        "length": 80,
+        "name": "expire",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISSUE",
+        "length": 80,
+        "name": "issue",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LABEL",
+        "length": 80,
+        "name": "label",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LABEL2",
+        "length": 80,
+        "name": "label2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "stroke",
+        "length": 80,
+        "name": "stroke",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "fill",
+        "length": 80,
+        "name": "fill",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "idp_source",
+        "length": 50,
+        "name": "idp_source",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "idp_filedate",
+        "length": 8,
+        "name": "idp_filedate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "idp_ingestdate",
+        "length": 8,
+        "name": "idp_ingestdate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "st_area(shape)",
+        "name": "st_area(shape)",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "st_perimeter(shape)",
+        "name": "st_perimeter(shape)",
+        "type": "esriFieldTypeDouble"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 2101,
+  "status": 200
+}

@@ -1,0 +1,401 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "Points of Interest (POI) data are contributed, reviewed, and maintained by individual park units and regional GIS programs across the National Park Service. The National Geospatial Program coordinates service\u2011wide data standards, quality assurance, and publication of this public dataset.\nFor more information about NPS geospatial data, visit the NPS Integrated Resource Management Applications (IRMA) Data Store or the NPS public geospatial resources.",
+    "description": "The National Park Service public Points of Interest (POI) dataset provides geographic locations of publicly accessible and visitor\u2011facing features across NPS units nationwide. POIs include recreation sites, visitor centers, trailheads, overlooks, interpretive exhibits, public\u2011use facilities, and other locations commonly used for trip planning, navigation, interpretation, and map display.This dataset is derived from the authoritative internal POI dataset maintained by park units and aggregated through regional and national workflows. Only features appropriate for public sharing are included; POIs associated with internal operations, sensitive resources, restricted facilities, or non\u2011public infrastructure are excluded. All spatial features are stored in NAD83 and undergo quality review before being published as part of the national public geospatial data portfolio.The public POI dataset supports a wide variety of external uses, including digital mapping applications, research, recreation planning, accessible trip resources, cartographic products, and public web services. It provides a consistent, nationwide representation of visitor\u2011relevant point locations across the National Park Service.",
+    "displayField": "POINAME",
+    "extent": {
+      "mmax": -9.999e+35,
+      "mmin": -9.999e+35,
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -400,
+        "falseY": -400,
+        "falseZ": -100000,
+        "latestWkid": 6318,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "wkid": 104145,
+        "xyTolerance": 8.983152841195215e-09,
+        "xyUnits": 999999999.9999999,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 145.72530260300005,
+      "xmin": -170.71302683799996,
+      "ymax": 68.14305600000006,
+      "ymin": -14.285511887999974,
+      "zmax": 0,
+      "zmin": 0
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "POINAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "POINAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POIALTNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "POIALTNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPLABEL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "MAPLABEL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POITYPE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 100,
+        "name": "POITYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POISTATUS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "POISTATUS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "PUBLICDISPLAY",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "PUBLICDISPLAY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "DATAACCESS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "DATAACCESS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ACCESSNOTES",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "ACCESSNOTES",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ORIGINATOR",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "ORIGINATOR",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "UNITCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "UNITNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "UNITTYPE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "UNITTYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "GROUPCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GROUPNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "GROUPNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "REGIONCODE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 4,
+        "name": "REGIONCODE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "CREATEDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "CREATEDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "EDITDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "EDITDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "POINTTYPE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "POINTTYPE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPMETHOD",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "MAPMETHOD",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAPSOURCE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "MAPSOURCE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCEDATE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "SOURCEDATE",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "XYACCURACY",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "XYACCURACY",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GEOMETRYID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 38,
+        "name": "GEOMETRYID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FEATUREID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "FEATUREID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACLOCID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "FACLOCID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FACASSETID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "FACASSETID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IMLOCID",
+        "defaultValue": null,
+        "editable": true,
+        "length": 25,
+        "name": "IMLOCID",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OBSERVABLE",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "OBSERVABLE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ISEXTANT",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "ISEXTANT",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OPENTOPUBLIC",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "OPENTOPUBLIC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ALTLANGNAME",
+        "defaultValue": null,
+        "editable": true,
+        "length": 254,
+        "name": "ALTLANGNAME",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "ALTLANG",
+        "defaultValue": null,
+        "editable": true,
+        "length": 10,
+        "name": "ALTLANG",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASONAL",
+        "defaultValue": null,
+        "editable": true,
+        "length": 20,
+        "name": "SEASONAL",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SEASDESC",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "SEASDESC",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "MAINTAINER",
+        "defaultValue": null,
+        "editable": true,
+        "length": 50,
+        "name": "MAINTAINER",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "NOTES",
+        "defaultValue": null,
+        "editable": true,
+        "length": 1073741822,
+        "name": "NOTES",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": true,
+    "hasZ": true,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "Points of Interest",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -400,
+      "falseY": -400,
+      "falseZ": -100000,
+      "latestWkid": 6318,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "wkid": 104145,
+      "xyTolerance": 8.983152841195215e-09,
+      "xyUnits": 999999999.9999999,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain; charset=UTF-8",
+  "rawLength": 74901,
+  "status": 200
+}

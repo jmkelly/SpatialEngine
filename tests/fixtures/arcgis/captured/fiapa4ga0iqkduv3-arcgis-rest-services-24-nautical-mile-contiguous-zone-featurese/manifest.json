@@ -1,0 +1,35 @@
+{
+  "catalog": "https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services",
+  "currentVersion": 12,
+  "directory": "fiapa4ga0iqkduv3-arcgis-rest-services-24-nautical-mile-contiguous-zone-featurese",
+  "layers": [
+    {
+      "count": "count-0.json",
+      "countOnly": 63,
+      "error": "error-0.json",
+      "errorCode": 400,
+      "features": "query-0.json",
+      "fieldTypes": [
+        "esriFieldTypeDate",
+        "esriFieldTypeDouble",
+        "esriFieldTypeInteger",
+        "esriFieldTypeOID",
+        "esriFieldTypeString"
+      ],
+      "geometryType": "esriGeometryPolyline",
+      "id": 0,
+      "ids": "ids-0.json",
+      "idsOnly": 63,
+      "maxRecordCount": 2000,
+      "metadata": "layer-0.json",
+      "name": "24NM_Contiguous_Zone",
+      "queryExceeded": true,
+      "queryFeatureCount": 5,
+      "queryHasGeometry": true,
+      "srid": 3857
+    }
+  ],
+  "serviceType": "FeatureServer",
+  "slug": "fiapa4ga0iqkduv3-arcgis-rest-services-24-nautical-mile-contiguous-zone-featurese",
+  "url": "https://services2.arcgis.com/FiaPA4ga0iQKduv3/ArcGIS/rest/services/24_Nautical_Mile_Contiguous_Zone/FeatureServer"
+}

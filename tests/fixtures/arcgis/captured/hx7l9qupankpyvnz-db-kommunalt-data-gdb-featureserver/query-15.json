@@ -1,0 +1,87 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "Kommune": "Holb\u00e6k",
+          "OBJECTID": 1,
+          "c_kom": 316,
+          "test": 1,
+          "test_method": "PCR",
+          "uge": "2020-U05"
+        }
+      },
+      {
+        "attributes": {
+          "Kommune": "Vejle",
+          "OBJECTID": 2,
+          "c_kom": 630,
+          "test": 1,
+          "test_method": "PCR",
+          "uge": "2020-U07"
+        }
+      },
+      {
+        "attributes": {
+          "Kommune": null,
+          "OBJECTID": 3,
+          "c_kom": null,
+          "test": 1,
+          "test_method": "PCR",
+          "uge": "2020-U08"
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "uge",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "uge",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "c_kom",
+        "defaultValue": null,
+        "name": "c_kom",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Kommune",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "Kommune",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "test",
+        "defaultValue": null,
+        "name": "test",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "test_method",
+        "defaultValue": null,
+        "length": 8000,
+        "name": "test_method",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 1491,
+  "status": 200
+}

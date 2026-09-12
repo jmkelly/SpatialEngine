@@ -5,7 +5,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== format check =="
-dotnet format SpatialEngine.slnx --verify-no-changes --no-restore
+# No --no-restore: a clean checkout has no project.assets.json yet, and the
+# format check loads every project through MSBuild before the build step runs.
+dotnet format SpatialEngine.slnx --verify-no-changes
 
 echo "== build =="
 dotnet build SpatialEngine.slnx

@@ -1,0 +1,525 @@
+{
+  "body": {
+    "capabilities": "Query,Extract",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "FIPS",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 179.7784650000001,
+      "xmin": -179.14734,
+      "ymax": 71.39048206400008,
+      "ymin": 18.910786938000054
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "County FIPS",
+        "defaultValue": null,
+        "editable": true,
+        "length": 5,
+        "name": "FIPS",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "State",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2,
+        "name": "STATE",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Name",
+        "defaultValue": null,
+        "editable": true,
+        "length": 2147483647,
+        "name": "county",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "County Ranked (Yes=1, No=0)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "county_ranked",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of years of potential life lost for deaths under 75 over 3 years",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Aggregate population under age 75 over 3 years reporting for premature death",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death flag (0 = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_aian",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (American Indian/Alaska Native) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_aian_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_asian",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (Asian/Pacific Islander) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_asian_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (Black)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_black",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (Black) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_black_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (Hispanic)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_hispanic",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (Hispanic) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_hispanic_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Premature death (White)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_white",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Premature death flag (White) (. = No Flag, 1=Unreliable, 2=Suppressed)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v001_race_white_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Poor or fair health",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v002_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Respondents reporting poor or fair health",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v002_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of adult respondents reporting for health",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v002_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Poor physical health days",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v036_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Average number of poor mental health days",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v042_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of mentally unhealthy days",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v042_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of respondents reporting for mental health",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v042_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Low birthweight",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of low birthweight live births",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of live births (for low birthweight)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Low birthweight unreliable indicator (Unreliable = Numerator < 20 or relative standard error > 20%)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_flag",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Low birthweight (American Indian/Alaska Native)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_race_aian",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Asian/Pacific Islander)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_race_asian",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Black)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_race_black",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (Hispanic)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_race_hispanic",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Low birthweight (White)",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v037_race_white",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% Adult smoking",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v009_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Adult respondents reporting as current smokers",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v009_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of adult respondents reporting for smoking",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v009_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Adult obesity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v011_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of respondents age 18 and older reporting a BMI 30+",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v011_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of respondents age 18 and older reporting for obesity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v011_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Food environment index",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v133_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "% of adults age 18 and over reporting no leisure-time physical activity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v070_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Adults age 18 and over reporting no leisure-time physical activity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v070_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Adults age 18 and over",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v070_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% of population with adequate access to locations for physical activity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v132_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Total 2010 household population living in census blocks with adequate access to at least one location for physical activity",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v132_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Resident county population",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v132_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% Excessive drinking",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v049_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of adults reporting excessive drinking",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v049_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of adult respondents reporting for excessive drinking",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v049_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "% of driving deaths with alcohol involvement",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v134_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Total number of motor vehicle crash deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v134_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total number of alcohol-impaired motor vehicle crash deaths",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v134_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Sexually transmitted infections per 100,000",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v045_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Number of sexually transmitted infections",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v045_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total population reporting for sexually transmitted infections",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v045_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Teen births per 1,000",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v014_rawvalue",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Females age 15-19 who had a birth",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v014_numerator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Total females age 15-19",
+        "defaultValue": null,
+        "editable": true,
+        "name": "v014_denominator",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 2,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "County",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 181821,
+  "status": 200
+}

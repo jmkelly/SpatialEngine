@@ -1,0 +1,259 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CURRENT_SIZE": 6,
+          "FEATURE_CODE": "JA70003000",
+          "FIRE_CAUSE": "Lightning",
+          "FIRE_CENTRE": 6,
+          "FIRE_ID": 1236,
+          "FIRE_NUMBER": "N21236",
+          "FIRE_OF_NOTE_IND": "N",
+          "FIRE_OUT_DATE": 1785976117000,
+          "FIRE_STATUS": "Out",
+          "FIRE_TYPE": "Fire",
+          "FIRE_URL": "https://wildfiresituation.nrs.gov.bc.ca/incidents?fireYear=2026&incidentNumber=N21236",
+          "FIRE_YEAR": 2026,
+          "GEOGRAPHIC_DESCRIPTION": "Coffee Pot",
+          "GlobalID": "d9bbae48-01d7-44a0-b1a2-e039804dc57d",
+          "IGNITION_DATE": 1784958247000,
+          "INCIDENT_NAME": "N21236",
+          "LATITUDE": 50.3124,
+          "LONGITUDE": -116.0104,
+          "OBJECTID": 1,
+          "RESPONSE_TYPE_DESC": "Full",
+          "WAS_FIRE_OF_NOTE_IND": "N",
+          "ZONE": 2
+        },
+        "geometry": {
+          "x": -12914220.547185652,
+          "y": 6500551.865896183
+        }
+      },
+      {
+        "attributes": {
+          "CURRENT_SIZE": 0.3,
+          "FEATURE_CODE": "JA70003000",
+          "FIRE_CAUSE": "Person",
+          "FIRE_CENTRE": 7,
+          "FIRE_ID": 89,
+          "FIRE_NUMBER": "C10089",
+          "FIRE_OF_NOTE_IND": "N",
+          "FIRE_OUT_DATE": 1777058425000,
+          "FIRE_STATUS": "Out",
+          "FIRE_TYPE": "Fire",
+          "FIRE_URL": "https://wildfiresituation.nrs.gov.bc.ca/incidents?fireYear=2026&incidentNumber=C10089",
+          "FIRE_YEAR": 2026,
+          "GEOGRAPHIC_DESCRIPTION": "NW of Quanstrom Lake",
+          "GlobalID": "52586fa9-5c20-4c19-a4c1-d9031ae8e59e",
+          "IGNITION_DATE": 1776790800000,
+          "INCIDENT_NAME": "C10089",
+          "LATITUDE": 52.9808,
+          "LONGITUDE": -122.9962,
+          "OBJECTID": 2,
+          "RESPONSE_TYPE_DESC": "Full",
+          "WAS_FIRE_OF_NOTE_IND": "N",
+          "ZONE": 1
+        },
+        "geometry": {
+          "x": -13691876.245857295,
+          "y": 6979447.229443469
+        }
+      },
+      {
+        "attributes": {
+          "CURRENT_SIZE": 0.15,
+          "FEATURE_CODE": "JA70003000",
+          "FIRE_CAUSE": "Person",
+          "FIRE_CENTRE": 6,
+          "FIRE_ID": 118,
+          "FIRE_NUMBER": "N60118",
+          "FIRE_OF_NOTE_IND": "N",
+          "FIRE_OUT_DATE": 1777932036000,
+          "FIRE_STATUS": "Out",
+          "FIRE_TYPE": "Fire",
+          "FIRE_URL": "https://wildfiresituation.nrs.gov.bc.ca/incidents?fireYear=2026&incidentNumber=N60118",
+          "FIRE_YEAR": 2026,
+          "GEOGRAPHIC_DESCRIPTION": "May Creek",
+          "GlobalID": "2cf4a704-9528-428b-ad52-270589d79694",
+          "IGNITION_DATE": 1776986074000,
+          "INCIDENT_NAME": "N60118",
+          "LATITUDE": 49.0351,
+          "LONGITUDE": -118.5603,
+          "OBJECTID": 3,
+          "RESPONSE_TYPE_DESC": "Full",
+          "WAS_FIRE_OF_NOTE_IND": "N",
+          "ZONE": 6
+        },
+        "geometry": {
+          "x": -13198072.224265615,
+          "y": 6280824.832918807
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "Fire Year",
+        "defaultValue": null,
+        "name": "FIRE_YEAR",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Ignition Date",
+        "defaultValue": null,
+        "length": 8,
+        "name": "IGNITION_DATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Stage of Control",
+        "defaultValue": null,
+        "length": 30,
+        "name": "FIRE_STATUS",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Fire Centre",
+        "defaultValue": null,
+        "name": "FIRE_CENTRE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Zone",
+        "defaultValue": null,
+        "name": "ZONE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Fire ID",
+        "defaultValue": null,
+        "name": "FIRE_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "LATITUDE",
+        "defaultValue": null,
+        "name": "LATITUDE",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "LONGITUDE",
+        "defaultValue": null,
+        "name": "LONGITUDE",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Estimated Size (HA)",
+        "defaultValue": null,
+        "name": "CURRENT_SIZE",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "FEATURE_CODE",
+        "defaultValue": null,
+        "length": 10,
+        "name": "FEATURE_CODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "GlobalID",
+        "defaultValue": null,
+        "length": 38,
+        "name": "GlobalID",
+        "type": "esriFieldTypeGlobalID"
+      },
+      {
+        "alias": "RESPONSE_TYPE_DESC",
+        "defaultValue": null,
+        "length": 200,
+        "name": "RESPONSE_TYPE_DESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIRE_OUT_DATE",
+        "defaultValue": null,
+        "length": 8,
+        "name": "FIRE_OUT_DATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "INCIDENT_NAME",
+        "defaultValue": null,
+        "length": 100,
+        "name": "INCIDENT_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Fire Number",
+        "defaultValue": null,
+        "length": 25,
+        "name": "FIRE_NUMBER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Suspected Cause",
+        "defaultValue": null,
+        "length": 10,
+        "name": "FIRE_CAUSE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Fire Type",
+        "defaultValue": null,
+        "length": 200,
+        "name": "FIRE_TYPE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Approximate Location",
+        "defaultValue": null,
+        "length": 2000,
+        "name": "GEOGRAPHIC_DESCRIPTION",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIRE_URL",
+        "defaultValue": null,
+        "length": 255,
+        "name": "FIRE_URL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "FIRE_OF_NOTE_IND",
+        "defaultValue": null,
+        "length": 1,
+        "name": "FIRE_OF_NOTE_IND",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "WAS_FIRE_OF_NOTE_IND",
+        "defaultValue": null,
+        "length": 1,
+        "name": "WAS_FIRE_OF_NOTE_IND",
+        "type": "esriFieldTypeString"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "GlobalID",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 6778,
+  "status": 200
+}

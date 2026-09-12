@@ -1,0 +1,167 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "",
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "date_today",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "date_today",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "date_diff",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "date_diff",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "tests_PCR_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tests_PCR_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tests_AG_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tests_AG_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "totalinfections_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "totalinfections_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "firstinfections_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "firstinfections_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "reinfections_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "reinfections_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "deaths_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "deaths_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "newadmissions_today",
+        "defaultValue": null,
+        "editable": true,
+        "name": "newadmissions_today",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tests_PCR_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tests_PCR_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "tests_AG_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "tests_AG_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "totalinfections_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "totalinfections_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "firstinfections_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "firstinfections_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "reinfections_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "reinfections_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "deaths_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "deaths_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "newadmissions_diff",
+        "defaultValue": null,
+        "editable": true,
+        "name": "newadmissions_diff",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      }
+    ],
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 23,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "key_figures_mun",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Table"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 8483,
+  "status": 200
+}

@@ -1,0 +1,233 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "U. S. Geological Survey - National Geospatial Program. Data Refreshed July, 2026.",
+    "currentVersion": 11.3,
+    "description": "The USGS Map Indices service from The National Map (TNM) consists of 1x1 Degree, 30x60 Minute (100K), 15 Minute (63K), 7.5 Minute (24K), and 3.75 Minute grid polygons used in The National Map viewer for reference and to download data. At 1:24,000-scale (24K), the standard map size is 7.5 minutes of latitude by 7.5 minutes of longitude. At 1:100,000-scale (100K), the standard map size is 30 minutes of latitude by 60 minutes of longitude. The National Map viewer allows free download of public domain USGS map indices data in Esri File Geodatabase format. See https://apps.nationalmap.gov/help/ for assistance with The National Map viewer, download client, services, or metadata.",
+    "fullExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.773845956,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148035.89868674,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20037507.067139223,
+      "xmin": -20037507.067132372,
+      "ymax": 11753184.659535341,
+      "ymin": -14783146.959592918
+    },
+    "initialExtent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.773845956,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148035.89868674,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": -6225977.039051687,
+      "xmin": -14564894.654503988,
+      "ymax": 7022774.909157366,
+      "ymin": 2265242.772994556
+    },
+    "layers": [
+      {
+        "defaultVisibility": true,
+        "id": 0,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Labels",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 1,
+        "maxScale": 0,
+        "minScale": 9000000,
+        "name": "1x1 Degree labels",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 2,
+        "maxScale": 0,
+        "minScale": 5000000,
+        "name": "30x60 Minute (1:100K) labels",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 3,
+        "maxScale": 0,
+        "minScale": 2000000,
+        "name": "15 Minute (1:63K) labels",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 4,
+        "maxScale": 0,
+        "minScale": 1000000,
+        "name": "7.5 Minute (1:24K) labels",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 5,
+        "maxScale": 0,
+        "minScale": 500000,
+        "name": "3.75 Minute labels",
+        "parentLayerId": 0,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "id": 6,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "Features",
+        "parentLayerId": -1,
+        "subLayerIds": [
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "supportsDynamicLegends": false,
+        "type": "Group Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 7,
+        "maxScale": 0,
+        "minScale": 0,
+        "name": "1x1 Degree Index",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 8,
+        "maxScale": 0,
+        "minScale": 20000000,
+        "name": "30x60 Minute (1:100K) Index",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 9,
+        "maxScale": 0,
+        "minScale": 4000000,
+        "name": "15 Minute (1:63K) Index",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 10,
+        "maxScale": 0,
+        "minScale": 1000000,
+        "name": "7.5 Minute (1:24K) Index",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      },
+      {
+        "defaultVisibility": true,
+        "geometryType": "esriGeometryPolygon",
+        "id": 11,
+        "maxScale": 0,
+        "minScale": 500000,
+        "name": "3.75 Minute Index",
+        "parentLayerId": 6,
+        "subLayerIds": null,
+        "supportsDynamicLegends": true,
+        "type": "Feature Layer"
+      }
+    ],
+    "mapName": "map_indices",
+    "maxRecordCount": 2000,
+    "serviceDescription": "The USGS Map Indices service from The National Map (TNM) consists of 1x1 Degree, 30x60 Minute (100K), 15 Minute (63K), 7.5 Minute (24K), and 3.75 Minute grid polygons used in The National Map viewer for reference and to download data. At 1:24,000-scale (24K), the standard map size is 7.5 minutes of latitude by 7.5 minutes of longitude. At 1:100,000-scale (100K), the standard map size is 30 minutes of latitude by 60 minutes of longitude. The National Map viewer allows free download of public domain USGS map indices data in Esri File Geodatabase format. See https://apps.nationalmap.gov/help/ for assistance with The National Map viewer, download client, services, or metadata.",
+    "spatialReference": {
+      "falseM": -100000,
+      "falseX": -22041257.773845956,
+      "falseY": -30241100,
+      "falseZ": -100000,
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "mTolerance": 0.001,
+      "mUnits": 10000,
+      "vcsWkid": 5703,
+      "wkid": 102100,
+      "xyTolerance": 0.001,
+      "xyUnits": 144148035.89868674,
+      "zTolerance": 0.001,
+      "zUnits": 10000
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "tables": [],
+    "units": "esriMeters"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 7191,
+  "status": 200
+}

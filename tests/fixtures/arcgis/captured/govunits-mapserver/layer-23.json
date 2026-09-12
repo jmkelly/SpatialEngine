@@ -1,0 +1,176 @@
+{
+  "body": {
+    "capabilities": "Map,Query,Data",
+    "copyrightText": "",
+    "description": "Primary legal divisions of states. In most states these are called counties, but other states use parish, borough, independent city, municipality, and municipio.",
+    "displayField": "COUNTY_NAME",
+    "extent": {
+      "spatialReference": {
+        "falseM": -100000,
+        "falseX": -22041257.705511045,
+        "falseY": -30241100,
+        "falseZ": -100000,
+        "latestVcsWkid": 5703,
+        "latestWkid": 3857,
+        "mTolerance": 0.001,
+        "mUnits": 10000,
+        "vcsWkid": 5703,
+        "wkid": 102100,
+        "xyTolerance": 0.001,
+        "xyUnits": 144148036.0563282,
+        "zTolerance": 0.001,
+        "zUnits": 10000
+      },
+      "xmax": 20021886.4032,
+      "xmin": -19951914.9256,
+      "ymax": 11554348.247299997,
+      "ymin": -1643352.0163999982
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Shape",
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "PERMANENT_IDENTIFIER",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "SOURCE_FEATUREID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "SOURCE_DATASETID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "SOURCE_DATADESC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "SOURCE_ORIGINATOR",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "DATA_SECURITY",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "DISTRIBUTION_POLICY",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "LOADDATE",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FCode",
+        "name": "FCODE",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "STATE_FIPSCODE",
+        "length": 2,
+        "name": "STATE_FIPSCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATE_NAME",
+        "length": 120,
+        "name": "STATE_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COUNTY_FIPSCODE",
+        "length": 3,
+        "name": "COUNTY_FIPSCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COUNTY_NAME",
+        "length": 120,
+        "name": "COUNTY_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STCO_FIPSCODE",
+        "length": 5,
+        "name": "STCO_FIPSCODE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POPULATION",
+        "name": "POPULATION",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "AREASQKM",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "GNIS_ID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "GNIS_NAME",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "GLOBALID",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "hasAttachments": false,
+    "id": 23,
+    "isDataVersioned": false,
+    "maxRecordCount": 2000,
+    "name": "County or Equivalent",
+    "relationships": [],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 9087,
+  "status": 200
+}

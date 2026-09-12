@@ -1,0 +1,393 @@
+{
+  "body": {
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "CalculatedAcres": null,
+          "ContainmentDateTime": null,
+          "ControlDateTime": null,
+          "DailyAcres": 7093,
+          "DiscoveryAcres": 1500,
+          "Fatalities": null,
+          "FinalAcres": null,
+          "FireCause": "Natural",
+          "FireCauseGeneral": null,
+          "FireDiscoveryAge": 119,
+          "FireDiscoveryDateTime": 1778788800000,
+          "FireMgmtComplexity": null,
+          "FireOutDateTime": null,
+          "GACC": "SWCC",
+          "GlobalID": "1debeafd-9463-4b5e-b0f2-96f332f15e15",
+          "ICS209ReportDateTime": 1780094889000,
+          "IncidentManagementOrganization": "Type 4 IC",
+          "IncidentName": "Mimms",
+          "IncidentTypeCategory": "WF",
+          "IncidentTypeKind": "FI",
+          "Injuries": null,
+          "IrwinID": "df424a1d-f6d6-4095-8786-dd329a7fb229",
+          "IsValid": 1,
+          "ModifiedOnAge": 8,
+          "ModifiedOnDateTime": 1788378003000,
+          "OBJECTID": 78,
+          "OtherStructuresDestroyed": null,
+          "POOCounty": "Quay",
+          "POOState": "US-NM",
+          "PercentContained": 100,
+          "PredominantFuelGroup": null,
+          "PredominantFuelModel": null,
+          "PrimaryFuelModel": "Tall Grass (2.5 feet)",
+          "ResidencesDestroyed": 0,
+          "TotalIncidentPersonnel": 64,
+          "UniqueFireIdentifier": "2026-NMN4S-000189"
+        },
+        "geometry": {
+          "x": -103.93456599999996,
+          "y": 34.81839700000006
+        }
+      },
+      {
+        "attributes": {
+          "CalculatedAcres": null,
+          "ContainmentDateTime": null,
+          "ControlDateTime": null,
+          "DailyAcres": 30144,
+          "DiscoveryAcres": 50,
+          "Fatalities": null,
+          "FinalAcres": null,
+          "FireCause": "Undetermined",
+          "FireCauseGeneral": null,
+          "FireDiscoveryAge": 119,
+          "FireDiscoveryDateTime": 1778804049000,
+          "FireMgmtComplexity": null,
+          "FireOutDateTime": null,
+          "GACC": "SWCC",
+          "GlobalID": "6f6d1865-7456-42f2-8229-21ea9cd4cc3d",
+          "ICS209ReportDateTime": 1780095097000,
+          "IncidentManagementOrganization": "Type 4 IC",
+          "IncidentName": "Line",
+          "IncidentTypeCategory": "WF",
+          "IncidentTypeKind": "FI",
+          "Injuries": null,
+          "IrwinID": "bc32a0d5-e4e8-4553-b174-837c26c6e1ff",
+          "IsValid": 1,
+          "ModifiedOnAge": 8,
+          "ModifiedOnDateTime": 1788365235000,
+          "OBJECTID": 79,
+          "OtherStructuresDestroyed": null,
+          "POOCounty": "Quay",
+          "POOState": "US-NM",
+          "PercentContained": 100,
+          "PredominantFuelGroup": null,
+          "PredominantFuelModel": null,
+          "PrimaryFuelModel": "Tall Grass (2.5 feet)",
+          "ResidencesDestroyed": null,
+          "TotalIncidentPersonnel": 48,
+          "UniqueFireIdentifier": "2026-NMN4S-000191"
+        },
+        "geometry": {
+          "x": -103.12739999999997,
+          "y": 35.45840000000004
+        }
+      },
+      {
+        "attributes": {
+          "CalculatedAcres": null,
+          "ContainmentDateTime": null,
+          "ControlDateTime": null,
+          "DailyAcres": 0.25,
+          "DiscoveryAcres": 0.25,
+          "Fatalities": null,
+          "FinalAcres": null,
+          "FireCause": "Human",
+          "FireCauseGeneral": null,
+          "FireDiscoveryAge": 117,
+          "FireDiscoveryDateTime": 1778973675000,
+          "FireMgmtComplexity": null,
+          "FireOutDateTime": null,
+          "GACC": "SWCC",
+          "GlobalID": "f3e93a9a-61ef-47ba-b304-893c3fff2da4",
+          "ICS209ReportDateTime": null,
+          "IncidentManagementOrganization": null,
+          "IncidentName": "Battery",
+          "IncidentTypeCategory": "WF",
+          "IncidentTypeKind": "FI",
+          "Injuries": null,
+          "IrwinID": "ab5632da-99e3-49ca-b4b8-dbeb897ab2c5",
+          "IsValid": 1,
+          "ModifiedOnAge": 1,
+          "ModifiedOnDateTime": 1788983415000,
+          "OBJECTID": 80,
+          "OtherStructuresDestroyed": null,
+          "POOCounty": "San Miguel",
+          "POOState": "US-NM",
+          "PercentContained": null,
+          "PredominantFuelGroup": null,
+          "PredominantFuelModel": null,
+          "PrimaryFuelModel": null,
+          "ResidencesDestroyed": null,
+          "TotalIncidentPersonnel": null,
+          "UniqueFireIdentifier": "2026-NMN4S-000200"
+        },
+        "geometry": {
+          "x": -105.20511499999998,
+          "y": 35.41188000000005
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Incident Name",
+        "defaultValue": null,
+        "length": 50,
+        "name": "IncidentName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Incident Type Category",
+        "defaultValue": null,
+        "length": 50,
+        "name": "IncidentTypeCategory",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Unique Fire Identifier",
+        "defaultValue": null,
+        "length": 22,
+        "name": "UniqueFireIdentifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Daily Acres",
+        "defaultValue": null,
+        "name": "DailyAcres",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Calculated Acres",
+        "defaultValue": null,
+        "name": "CalculatedAcres",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Percent Contained",
+        "defaultValue": null,
+        "name": "PercentContained",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "ICS209 Report Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ICS209ReportDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Fire Discovery Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "FireDiscoveryDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Discovery Acres",
+        "defaultValue": null,
+        "name": "DiscoveryAcres",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Point of Orgin County",
+        "defaultValue": null,
+        "length": 100,
+        "name": "POOCounty",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Point of Orgin State",
+        "defaultValue": null,
+        "length": 6,
+        "name": "POOState",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cause",
+        "defaultValue": null,
+        "length": 15,
+        "name": "FireCause",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Cause General",
+        "defaultValue": null,
+        "length": 100,
+        "name": "FireCauseGeneral",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Geographic Area Coordination Center",
+        "defaultValue": null,
+        "length": 50,
+        "name": "GACC",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Total Incident Personnel",
+        "defaultValue": null,
+        "name": "TotalIncidentPersonnel",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Incident Mgmt Organization",
+        "defaultValue": null,
+        "length": 255,
+        "name": "IncidentManagementOrganization",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Mgmt Complexity",
+        "defaultValue": null,
+        "length": 25,
+        "name": "FireMgmtComplexity",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Residences Destroyed",
+        "defaultValue": null,
+        "name": "ResidencesDestroyed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Other Structures Destroyed",
+        "defaultValue": null,
+        "name": "OtherStructuresDestroyed",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Injuries",
+        "defaultValue": null,
+        "name": "Injuries",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Fatalities",
+        "defaultValue": null,
+        "name": "Fatalities",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Predominant Fuel Group",
+        "defaultValue": null,
+        "length": 100,
+        "name": "PredominantFuelGroup",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Predominant Fuel Model",
+        "defaultValue": null,
+        "length": 50,
+        "name": "PredominantFuelModel",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Primary Fuel Model",
+        "defaultValue": null,
+        "length": 30,
+        "name": "PrimaryFuelModel",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Containment Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ContainmentDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Control Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ControlDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Final Acres",
+        "defaultValue": null,
+        "name": "FinalAcres",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Is Valid",
+        "defaultValue": null,
+        "name": "IsValid",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Fire Out Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "FireOutDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Modified On Date Time",
+        "defaultValue": null,
+        "length": 8,
+        "name": "ModifiedOnDateTime",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Incident Type Kind",
+        "defaultValue": null,
+        "length": 2,
+        "name": "IncidentTypeKind",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "IRWIN ID",
+        "defaultValue": null,
+        "length": 40,
+        "name": "IrwinID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Global ID",
+        "defaultValue": null,
+        "length": 40,
+        "name": "GlobalID",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Days Since Modified On Date",
+        "defaultValue": null,
+        "name": "ModifiedOnAge",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Days Since Fire Discovery Date",
+        "defaultValue": null,
+        "name": "FireDiscoveryAge",
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "uniqueIdField": {
+      "isSystemMaintained": true,
+      "name": "OBJECTID"
+    }
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 10846,
+  "status": 200
+}

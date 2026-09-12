@@ -101,9 +101,13 @@ public sealed class FeatureSchema : IFeatureSchema, IEquatable<FeatureSchema>
         return true;
     }
 
-    public bool Equals(FeatureSchema? other)
+    public bool Equals(FeatureSchema? other) => other is not null && ContentEquals(other);
+
+    public override bool Equals(object? obj) => obj is FeatureSchema other && ContentEquals(other);
+
+    private bool ContentEquals(FeatureSchema other)
     {
-        if (other is null || other._fields.Length != _fields.Length)
+        if (other._fields.Length != _fields.Length)
         {
             return false;
         }
@@ -118,8 +122,6 @@ public sealed class FeatureSchema : IFeatureSchema, IEquatable<FeatureSchema>
 
         return true;
     }
-
-    public override bool Equals(object? obj) => obj is FeatureSchema other && Equals(other);
 
     public override int GetHashCode()
     {

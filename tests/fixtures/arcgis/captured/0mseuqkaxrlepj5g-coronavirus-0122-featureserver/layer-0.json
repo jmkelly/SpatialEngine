@@ -1,0 +1,134 @@
+{
+  "body": {
+    "capabilities": "Query",
+    "copyrightText": "",
+    "description": "",
+    "displayField": "cases_0121_csv_Province",
+    "extent": {
+      "spatialReference": {
+        "latestWkid": 4326,
+        "wkid": 4326
+      },
+      "xmax": 139.65030000000002,
+      "xmin": -122.33209999999995,
+      "ymax": 47.86200000000008,
+      "ymin": 13.756300000000069
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "defaultValue": null,
+        "editable": false,
+        "name": "OBJECTID",
+        "nullable": false,
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Province",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "cases_0121_csv_Province",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Date",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8,
+        "name": "cases_0121_csv_Date",
+        "nullable": true,
+        "precision": 1,
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "Confirmed",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cases_0121_csv_Confirmed",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Suspected",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cases_0121_csv_Suspected",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Cured",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cases_0121_csv_Cured",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Demised",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cases_0121_csv_Demised",
+        "nullable": true,
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "Location",
+        "defaultValue": null,
+        "editable": true,
+        "length": 8000,
+        "name": "cor_latlong_csv_Location",
+        "nullable": true,
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Lat",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cor_latlong_csv_Lat",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Long",
+        "defaultValue": null,
+        "editable": true,
+        "name": "cor_latlong_csv_Long",
+        "nullable": true,
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "Cfm_Susp",
+        "defaultValue": null,
+        "editable": true,
+        "name": "Cfm_Susp",
+        "nullable": true,
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPoint",
+    "globalIdField": "",
+    "hasAttachments": false,
+    "hasM": false,
+    "hasZ": false,
+    "id": 0,
+    "isDataVersioned": false,
+    "maxRecordCount": 1000,
+    "name": "Confirmed Cases",
+    "objectIdField": "OBJECTID",
+    "relationships": [],
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    },
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportsAdvancedQueries": true,
+    "supportsStatistics": true,
+    "type": "Feature Layer"
+  },
+  "contentType": "application/json; charset=utf-8",
+  "rawLength": 10056,
+  "status": 200
+}

@@ -1,0 +1,745 @@
+{
+  "body": {
+    "displayFieldName": "COUNTY_NAME",
+    "exceededTransferLimit": true,
+    "features": [
+      {
+        "attributes": {
+          "areasqkm": 2669.33685332,
+          "county_fipscode": "075",
+          "county_name": "Kiowa",
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61200,
+          "globalid": "{488DC944-FB0C-49D7-B038-588F5A757484}",
+          "gnis_id": "1101825",
+          "gnis_name": "Kiowa County",
+          "loaddate": 1758585600000,
+          "objectid": 40199,
+          "permanent_identifier": "7c186f48-23ab-4f5d-938c-daa81a685f5a",
+          "population": 8509,
+          "shape_Area": 3979256805.2214093,
+          "shape_Length": 381436.13888481184,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Current County and Equivalent",
+          "source_datasetid": "44c18b8f-65d5-4d88-907e-37c222501829",
+          "source_featureid": "40075",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_fipscode": "40",
+          "state_name": "Oklahoma",
+          "stco_fipscode": "40075"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -11015627.4721,
+                4179715.755099997
+              ],
+              [
+                -11014956.3267,
+                4179720.3822000027
+              ],
+              [
+                -11014804.2642,
+                4179717.3882
+              ],
+              [
+                -11014654.7621,
+                4179716.4355999976
+              ],
+              [
+                -11014437.0211,
+                4179715.2107999995
+              ],
+              [
+                -11014348.2995,
+                4179714.802500002
+              ],
+              [
+                -11013849.4767,
+                4179712.0807000026
+              ],
+              [
+                -11013673.3692,
+                4179718.0687000006
+              ],
+              [
+                -11013508.6164,
+                4179719.2934999987
+              ],
+              [
+                -11013242.674,
+                4179714.394299999
+              ],
+              [
+                -11012977.2883,
+                4179711.4003000036
+              ],
+              [
+                -11012690.6405,
+                4179709.7673000023
+              ],
+              [
+                -11012486.5919,
+                4179709.222900003
+              ],
+              [
+                -11012246.253,
+                4179709.6312000006
+              ],
+              [
+                -11012016.0443,
+                4179710.039499998
+              ],
+              [
+                -11011746.5397,
+                4179709.0869000033
+              ],
+              [
+                -11011481.4879,
+                4179710.583899997
+              ],
+              [
+                -11011348.0158,
+                4179710.039499998
+              ],
+              [
+                -11011142.9653,
+                4179710.992200002
+              ],
+              [
+                -11010929.3431,
+                4179710.719999999
+              ],
+              [
+                -11010815.2406,
+                4179710.8561000004
+              ],
+              [
+                -11010667.7423,
+                4179711.1283000037
+              ],
+              [
+                -11010614.3089,
+                4179711.264399998
+              ],
+              [
+                -11010484.2877,
+                4179711.4004999995
+              ],
+              [
+                -11010401.3546,
+                4179711.9448999986
+              ],
+              [
+                -11010342.3553,
+                4179712.353100002
+              ],
+              [
+                -11010160.6818,
+                4179710.7201000005
+              ],
+              [
+                -11010009.0647,
+                4179712.0810000002
+              ],
+              [
+                -11009972.1066,
+                4179712.4892999977
+              ],
+              [
+                -11009829.7289,
+                4179711.536600001
+              ],
+              [
+                -11009778.2993,
+                4179711.9448999986
+              ],
+              [
+                -11009583.4901,
+                4179713.5780000016
+              ],
+              [
+                -11009270.9049,
+                4179711.672799997
+              ],
+              [
+                -11008421.4257,
+                4179711.672799997
+              ],
+              [
+                -11008368.8829,
+                4179711.672799997
+              ],
+              [
+                -11008164.2776,
+                4179712.3532999977
+              ],
+              [
+                -11007943.0857,
+                4179710.3118999973
+              ],
+              [
+                -11007808.3891,
+                4179710.5841000006
+              ],
+              [
+                -11007731.69,
+                4179710.720200002
+              ],
+              [
+                -11007613.5799,
+                4179710.992399998
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "areasqkm": 1489.66290224,
+          "county_fipscode": "079",
+          "county_name": "Lake",
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61200,
+          "globalid": "{AFE7F245-48C8-4B72-9522-4327CDF56E9A}",
+          "gnis_id": "1265776",
+          "gnis_name": "Lake County",
+          "loaddate": 1758585600000,
+          "objectid": 40200,
+          "permanent_identifier": "d997401a-5f99-46c2-80c1-814640ec1d32",
+          "population": 11059,
+          "shape_Area": 2881707818.3819823,
+          "shape_Length": 214483.80298101692,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Current County and Equivalent",
+          "source_datasetid": "44c18b8f-65d5-4d88-907e-37c222501829",
+          "source_featureid": "46079",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_fipscode": "46",
+          "state_name": "South Dakota",
+          "stco_fipscode": "46079"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -10785619.8516,
+                5455435.562100001
+              ],
+              [
+                -10785619.6289,
+                5455414.384199999
+              ],
+              [
+                -10785619.4063,
+                5455393.051700003
+              ],
+              [
+                -10785619.1837,
+                5455371.873800002
+              ],
+              [
+                -10785619.295,
+                5455350.696000002
+              ],
+              [
+                -10785619.295,
+                5455329.518200003
+              ],
+              [
+                -10785619.4063,
+                5455308.340499997
+              ],
+              [
+                -10785619.4063,
+                5455287.162799999
+              ],
+              [
+                -10785619.295,
+                5455265.985200003
+              ],
+              [
+                -10785619.0723,
+                5455244.653099999
+              ],
+              [
+                -10785619.295,
+                5455223.4755000025
+              ],
+              [
+                -10785619.4063,
+                5455202.298100002
+              ],
+              [
+                -10785619.5176,
+                5455181.1206
+              ],
+              [
+                -10785619.5176,
+                5455159.943300001
+              ],
+              [
+                -10785619.0723,
+                5455138.765900001
+              ],
+              [
+                -10785619.8515,
+                5455117.588600002
+              ],
+              [
+                -10785620.0742,
+                5455096.411399998
+              ],
+              [
+                -10785619.9629,
+                5455075.079700001
+              ],
+              [
+                -10785620.5195,
+                5455053.902500004
+              ],
+              [
+                -10785620.7421,
+                5455032.725400001
+              ],
+              [
+                -10785620.5195,
+                5455011.5484
+              ],
+              [
+                -10785620.5195,
+                5454990.371399999
+              ],
+              [
+                -10785620.7421,
+                5454969.194499999
+              ],
+              [
+                -10785620.4081,
+                5454948.0176
+              ],
+              [
+                -10785620.5194,
+                5454926.6862
+              ],
+              [
+                -10785620.7421,
+                5454905.509400003
+              ],
+              [
+                -10785620.7421,
+                5454884.3325999975
+              ],
+              [
+                -10785616.9572,
+                5454248.589299999
+              ],
+              [
+                -10785616.1779,
+                5454227.414099999
+              ],
+              [
+                -10785615.6213,
+                5454206.238899998
+              ],
+              [
+                -10785615.6213,
+                5454180.736000001
+              ],
+              [
+                -10785615.8439,
+                5454104.382299997
+              ],
+              [
+                -10785616.0666,
+                5454098.045299999
+              ],
+              [
+                -10785616.4005,
+                5454091.708300002
+              ],
+              [
+                -10785616.5119,
+                5454085.371299997
+              ],
+              [
+                -10785616.8458,
+                5454079.0342999995
+              ],
+              [
+                -10785616.8458,
+                5454072.697300002
+              ],
+              [
+                -10785616.8458,
+                5454066.360299997
+              ],
+              [
+                -10785616.7345,
+                5454059.868699998
+              ],
+              [
+                -10785616.7345,
+                5454053.531800002
+              ]
+            ]
+          ]
+        }
+      },
+      {
+        "attributes": {
+          "areasqkm": 1110.33665367,
+          "county_fipscode": "033",
+          "county_name": "Caswell",
+          "data_security": 5,
+          "distribution_policy": "E4",
+          "fcode": 61200,
+          "globalid": "{245AEA51-5DEC-48C3-B1F5-193D76F63EE4}",
+          "gnis_id": "1008542",
+          "gnis_name": "Caswell County",
+          "loaddate": 1758585600000,
+          "objectid": 40201,
+          "permanent_identifier": "a05da475-92a7-4cbb-bee6-674ba9eeb7b0",
+          "population": 22736,
+          "shape_Area": 1717006121.8126283,
+          "shape_Length": 165726.07619197224,
+          "source_datadesc": "2025 TIGER/Line Shapefile, Current County and Equivalent",
+          "source_datasetid": "44c18b8f-65d5-4d88-907e-37c222501829",
+          "source_featureid": "37033",
+          "source_originator": "U.S. Department of Commerce, U.S. Census Bureau, Geography Division",
+          "state_fipscode": "37",
+          "state_name": "North Carolina",
+          "stco_fipscode": "37033"
+        },
+        "geometry": {
+          "rings": [
+            [
+              [
+                -8810206.3048,
+                4361640.801100001
+              ],
+              [
+                -8810208.7538,
+                4361587.9406
+              ],
+              [
+                -8810213.7632,
+                4361473.7795
+              ],
+              [
+                -8810225.4517,
+                4361207.546599999
+              ],
+              [
+                -8810235.6931,
+                4360975.912699997
+              ],
+              [
+                -8810248.6061,
+                4360681.880500004
+              ],
+              [
+                -8810253.9495,
+                4360560.949199997
+              ],
+              [
+                -8810267.4191,
+                4360256.689599998
+              ],
+              [
+                -8810282.4472,
+                4359914.390600003
+              ],
+              [
+                -8810295.9169,
+                4359610.149400003
+              ],
+              [
+                -8810307.6054,
+                4359343.8244
+              ],
+              [
+                -8810327.7542,
+                4358887.559199996
+              ],
+              [
+                -8810336.1032,
+                4358697.339100003
+              ],
+              [
+                -8810342.7823,
+                4358545.303800002
+              ],
+              [
+                -8810351.1313,
+                4358355.0898
+              ],
+              [
+                -8810357.9218,
+                4358203.0594
+              ],
+              [
+                -8810364.601,
+                4358050.892800003
+              ],
+              [
+                -8810371.2801,
+                4357898.728299998
+              ],
+              [
+                -8810379.6291,
+                4357708.664099999
+              ],
+              [
+                -8810386.4196,
+                4357556.504500002
+              ],
+              [
+                -8810396.4383,
+                4357328.407399997
+              ],
+              [
+                -8810406.4571,
+                4357100.315200001
+              ],
+              [
+                -8810416.4758,
+                4356872.089500003
+              ],
+              [
+                -8810424.9361,
+                4356682.043399997
+              ],
+              [
+                -8810433.3964,
+                4356489.787699997
+              ],
+              [
+                -8810441.634,
+                4356301.822999999
+              ],
+              [
+                -8810448.3132,
+                4356149.683300003
+              ],
+              [
+                -8810455.1036,
+                4355997.684100002
+              ],
+              [
+                -8810465.1224,
+                4355769.481799997
+              ],
+              [
+                -8810474.4732,
+                4355556.220799997
+              ],
+              [
+                -8810478.4807,
+                4355465.357900001
+              ],
+              [
+                -8810484.0467,
+                4355340.059699997
+              ],
+              [
+                -8810486.8297,
+                4355275.3367
+              ],
+              [
+                -8810491.839,
+                4355161.242600001
+              ],
+              [
+                -8810495.6239,
+                4355078.680799998
+              ],
+              [
+                -8810500.7446,
+                4354952.280699998
+              ],
+              [
+                -8810504.3068,
+                4354869.582199998
+              ],
+              [
+                -8810506.5332,
+                4354816.340099998
+              ],
+              [
+                -8810511.2086,
+                4354705.569899999
+              ],
+              [
+                -8810516.4406,
+                4354582.631399997
+              ]
+            ]
+          ]
+        }
+      }
+    ],
+    "fieldAliases": {
+      "areasqkm": "AREASQKM",
+      "county_fipscode": "COUNTY_FIPSCODE",
+      "county_name": "COUNTY_NAME",
+      "data_security": "Data_Security",
+      "distribution_policy": "Distribution_Policy",
+      "fcode": "FCode",
+      "globalid": "GLOBALID",
+      "gnis_id": "GNIS_ID",
+      "gnis_name": "GNIS_NAME",
+      "loaddate": "LOADDATE",
+      "objectid": "OBJECTID",
+      "permanent_identifier": "PERMANENT_IDENTIFIER",
+      "population": "POPULATION",
+      "shape_Area": "SHAPE_Area",
+      "shape_Length": "SHAPE_Length",
+      "source_datadesc": "SOURCE_DATADESC",
+      "source_datasetid": "SOURCE_DATASETID",
+      "source_featureid": "SOURCE_FEATUREID",
+      "source_originator": "SOURCE_ORIGINATOR",
+      "state_fipscode": "STATE_FIPSCODE",
+      "state_name": "STATE_NAME",
+      "stco_fipscode": "STCO_FIPSCODE"
+    },
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "objectid",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "PERMANENT_IDENTIFIER",
+        "length": 40,
+        "name": "permanent_identifier",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_FEATUREID",
+        "length": 40,
+        "name": "source_featureid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATASETID",
+        "length": 40,
+        "name": "source_datasetid",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_DATADESC",
+        "length": 100,
+        "name": "source_datadesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SOURCE_ORIGINATOR",
+        "length": 130,
+        "name": "source_originator",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Data_Security",
+        "name": "data_security",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "alias": "Distribution_Policy",
+        "length": 4,
+        "name": "distribution_policy",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "LOADDATE",
+        "length": 8,
+        "name": "loaddate",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "alias": "FCode",
+        "name": "fcode",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "STATE_FIPSCODE",
+        "length": 2,
+        "name": "state_fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STATE_NAME",
+        "length": 120,
+        "name": "state_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COUNTY_FIPSCODE",
+        "length": 3,
+        "name": "county_fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "COUNTY_NAME",
+        "length": 120,
+        "name": "county_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "STCO_FIPSCODE",
+        "length": 5,
+        "name": "stco_fipscode",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "POPULATION",
+        "name": "population",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "alias": "AREASQKM",
+        "name": "areasqkm",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GNIS_ID",
+        "length": 10,
+        "name": "gnis_id",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "GNIS_NAME",
+        "length": 120,
+        "name": "gnis_name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "SHAPE_Length",
+        "name": "shape_Length",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "SHAPE_Area",
+        "name": "shape_Area",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "alias": "GLOBALID",
+        "length": 38,
+        "name": "globalid",
+        "type": "esriFieldTypeGlobalID"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "latestVcsWkid": 5703,
+      "latestWkid": 3857,
+      "vcsWkid": 5703,
+      "wkid": 102100
+    }
+  },
+  "contentType": "text/plain;charset=UTF-8",
+  "rawLength": 967834,
+  "status": 200
+}

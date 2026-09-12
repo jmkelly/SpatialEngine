@@ -1,5 +1,5 @@
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Capabilities;
+using Spatial.PluginSdk;
 using Spatial.PluginSdk.Transformations;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 
@@ -19,11 +19,11 @@ public sealed class ProjNetToleranceTests
         var empty = GeometryFactory.CreateEmptyPoint(CoordinateReference.Epsg(4326), CoordinateLayout.Xyz);
 
         var result = await TransformAsync(
-            TransformationArguments.Geometry, empty,
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:32632");
+            "geometry", empty,
+            "source", "EPSG:4326",
+            "target", "EPSG:32632");
 
-        var transformed = Assert.IsType<Point>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var transformed = Assert.IsType<Point>(result);
         Assert.True(transformed.IsEmpty);
         Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
         Assert.Equal(CoordinateLayout.Xyz, transformed.Layout);
@@ -35,11 +35,11 @@ public sealed class ProjNetToleranceTests
         var point = GeometryFactory.CreatePoint(13.405, 52.52, 100.0, 42.0, CoordinateReference.Epsg(4326));
 
         var result = await TransformAsync(
-            TransformationArguments.Geometry, point,
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:32632");
+            "geometry", point,
+            "source", "EPSG:4326",
+            "target", "EPSG:32632");
 
-        var transformed = Assert.IsType<Point>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var transformed = Assert.IsType<Point>(result);
         Assert.Equal(100.0, transformed.Z!.Value);
         Assert.Equal(42.0, transformed.M!.Value);
         Assert.Equal(CoordinateLayout.Xyzm, transformed.Layout);
@@ -73,10 +73,10 @@ public sealed class ProjNetToleranceTests
         foreach (var input in inputs)
         {
             var result = await TransformAsync(
-                TransformationArguments.Geometry, input,
-                TransformationArguments.Source, "EPSG:4326",
-                TransformationArguments.Target, "EPSG:32632");
-            var transformed = (IGeometry)Assert.IsType<CapabilitySuccess>(result).Value!;
+                "geometry", input,
+                "source", "EPSG:4326",
+                "target", "EPSG:32632");
+            var transformed = result;
             Assert.Same(input.GetType(), transformed.GetType());
             Assert.False(transformed.IsEmpty);
             Assert.Equal(input.CoordinateCount, transformed.CoordinateCount);
@@ -94,10 +94,10 @@ public sealed class ProjNetToleranceTests
         foreach (var input in new IGeometry[] { emptyLine, emptyMultiPoint, emptyCollection })
         {
             var result = await TransformAsync(
-                TransformationArguments.Geometry, input,
-                TransformationArguments.Source, "EPSG:4326",
-                TransformationArguments.Target, "EPSG:32632");
-            var transformed = (IGeometry)Assert.IsType<CapabilitySuccess>(result).Value!;
+                "geometry", input,
+                "source", "EPSG:4326",
+                "target", "EPSG:32632");
+            var transformed = result;
             Assert.Same(input.GetType(), transformed.GetType());
             Assert.True(transformed.IsEmpty);
             Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
@@ -117,11 +117,11 @@ public sealed class ProjNetToleranceTests
         ], CoordinateReference.Epsg(4326));
 
         var result = await TransformAsync(
-            TransformationArguments.Geometry, polygon,
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:32632");
+            "geometry", polygon,
+            "source", "EPSG:4326",
+            "target", "EPSG:32632");
 
-        var transformed = Assert.IsType<Polygon>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var transformed = Assert.IsType<Polygon>(result);
         Assert.Equal(5, transformed.ExteriorRing.CoordinateCount);
         Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
         Assert.False(transformed.IsEmpty);
@@ -136,11 +136,11 @@ public sealed class ProjNetToleranceTests
         var polygon = new Polygon(empty, null, CoordinateReference.Epsg(4326));
 
         var result = await TransformAsync(
-            TransformationArguments.Geometry, polygon,
-            TransformationArguments.Source, "EPSG:4326",
-            TransformationArguments.Target, "EPSG:32632");
+            "geometry", polygon,
+            "source", "EPSG:4326",
+            "target", "EPSG:32632");
 
-        var transformed = Assert.IsType<Polygon>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var transformed = Assert.IsType<Polygon>(result);
         Assert.True(transformed.IsEmpty);
         Assert.Equal(CoordinateReference.Epsg(32632), transformed.CoordinateReference);
         Assert.Equal(CoordinateLayout.Xyz, transformed.ExteriorRing.Layout);
@@ -152,30 +152,21 @@ public sealed class ProjNetToleranceTests
         var point = GeometryFactory.CreatePoint(13.405, 52.52, CoordinateReference.Epsg(4326));
 
         var result = await TransformAsync(
-            TransformationArguments.Geometry, point,
-            TransformationArguments.Target, "EPSG:32632");
+            "geometry", point,
+            "target", "EPSG:32632");
 
-        var transformed = Assert.IsType<Point>(Assert.IsType<CapabilitySuccess>(result).Value);
+        var transformed = Assert.IsType<Point>(result);
         AssertClose(ControlPoints.BerlinUtm32.X, transformed.X!.Value, 0.01);
     }
 
     [Fact]
-    public async Task Describe_round_trips_through_the_descriptor_examples()
+    public async Task Describe_serves_known_codes_and_rejects_unknown_ones()
     {
-        // The describe contract's embedded examples are geometry-free and live
-        // with the contract (ADR-0027); every one must be served as declared.
-        foreach (var example in CrsDescribeContract.Descriptor.Examples)
-        {
-            var result = await DescribeAsync(example.Arguments!.SelectMany(pair => new object?[] { pair.Key, pair.Value }).ToArray());
-            if (example.Name == "unknown-crs" || example.Name == "missing-crs")
-            {
-                Assert.Equal(CapabilityErrorKind.InvalidArguments, Assert.IsType<CapabilityFailure>(result).Error.Kind);
-            }
-            else
-            {
-                Assert.IsType<CrsDescription>(Assert.IsType<CapabilitySuccess>(result).Value);
-            }
-        }
+        var description = await DescribeAsync("crs", "EPSG:4326");
+        Assert.Equal("4326", description.Code);
+
+        await Assert.ThrowsAsync<SpatialException>(() => DescribeAsync("crs", "EPSG:999999"));
+        await Assert.ThrowsAsync<SpatialException>(() => DescribeAsync());
     }
 
     private static void AssertClose(double expected, double actual, double tolerance)
