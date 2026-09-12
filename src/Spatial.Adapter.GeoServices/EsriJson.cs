@@ -56,16 +56,25 @@ internal static class EsriFormat
 /// <summary>Maps engine and interop failures onto the Esri error envelope (spec §2.0.3).</summary>
 internal static class EsriErrorMapper
 {
-    public static IResult Map(Exception exception) => exception switch
+    public static IResult Map(Exception exception)
     {
-        EsriInteropException interop =>
-            Envelope(interop.Code, interop.Message, HttpFor(interop.Code)),
-        SpatialException spatial =>
-            EngineFailure(spatial),
-        OperationCanceledException =>
-            Envelope(EsriErrorCodes.RequestCancelled, "The request was cancelled.", StatusCodes.Status499ClientClosedRequest),
-        _ => Envelope(EsriErrorCodes.ServerError, "The operation failed.", StatusCodes.Status500InternalServerError),
-    };
+        if (exception is EsriInteropException interop)
+        {
+            return Envelope(interop.Code, interop.Message, HttpFor(interop.Code));
+        }
+
+        if (exception is SpatialException spatial)
+        {
+            return EngineFailure(spatial);
+        }
+
+        if (exception is OperationCanceledException)
+        {
+            return Envelope(EsriErrorCodes.RequestCancelled, "The request was cancelled.", StatusCodes.Status499ClientClosedRequest);
+        }
+
+        return Envelope(EsriErrorCodes.ServerError, "The operation failed.", StatusCodes.Status500InternalServerError);
+    }
 
     private static IResult EngineFailure(SpatialException spatial)
     {
@@ -105,14 +114,27 @@ internal static class EsriErrorMapper
         _ => EsriErrorCodes.ServerError,
     };
 
-    private static int HttpFor(int esriCode) => esriCode switch
+    private static int HttpFor(int esriCode)
     {
-        EsriErrorCodes.InvalidParameters => StatusCodes.Status400BadRequest,
-        EsriErrorCodes.NotFound => StatusCodes.Status404NotFound,
-        EsriErrorCodes.ServiceUnavailable => StatusCodes.Status503ServiceUnavailable,
-        EsriErrorCodes.RequestCancelled => StatusCodes.Status499ClientClosedRequest,
-        _ => StatusCodes.Status500InternalServerError,
-    };
+        if (esriCode == EsriErrorCodes.InvalidParameters)
+        {
+            return StatusCodes.Status400BadRequest;
+        }
+
+        if (esriCode == EsriErrorCodes.NotFound)
+        {
+            return StatusCodes.Status404NotFound;
+        }
+
+        if (esriCode == EsriErrorCodes.ServiceUnavailable)
+        {
+            return StatusCodes.Status503ServiceUnavailable;
+        }
+
+        return esriCode == EsriErrorCodes.RequestCancelled
+            ? StatusCodes.Status499ClientClosedRequest
+            : StatusCodes.Status500InternalServerError;
+    }
 }
 
 /// <summary>The Esri error envelope root.</summary>

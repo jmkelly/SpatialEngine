@@ -36,7 +36,7 @@ public static class EsriGeometryCodec
 
         var crs = EsriSpatialReference.DecodeFrom(element) ?? fallback;
         var flags = GeometryFlags.From(element);
-        if (element.TryGetProperty("x", out _) && element.TryGetProperty("y", out _))
+        if (IsPoint(element))
         {
             return DecodePoint(element, crs, flags);
         }
@@ -138,6 +138,9 @@ public static class EsriGeometryCodec
         EsriSpatialReference.Write(writer, geometry.CoordinateReference);
         writer.WriteEndObject();
     }
+
+    private static bool IsPoint(JsonElement element) =>
+        element.TryGetProperty("x", out _) && element.TryGetProperty("y", out _);
 
     private static Point DecodePoint(JsonElement element, CoordinateReference? crs, GeometryFlags flags)
     {
@@ -331,14 +334,23 @@ public static class EsriGeometryCodec
         }
 
         var values = element.EnumerateArray().Select(Number).ToArray();
-        return values.Length switch
+        if (values.Length == 2)
         {
-            2 => new Coordinate(values[0], values[1]),
-            3 => CoordinateFrom3(values, flags),
-            4 => new Coordinate(values[0], values[1], values[2], values[3]),
-            _ => throw EsriInteropException.Invalid(
-                $"An Esri coordinate array must hold 2, 3 or 4 numbers (x, y, z, m); got {values.Length}."),
-        };
+            return new Coordinate(values[0], values[1]);
+        }
+
+        if (values.Length == 3)
+        {
+            return CoordinateFrom3(values, flags);
+        }
+
+        if (values.Length == 4)
+        {
+            return new Coordinate(values[0], values[1], values[2], values[3]);
+        }
+
+        throw EsriInteropException.Invalid(
+            $"An Esri coordinate array must hold 2, 3 or 4 numbers (x, y, z, m); got {values.Length}.");
     }
 
     private static Coordinate CoordinateFrom3(double[] values, GeometryFlags flags)

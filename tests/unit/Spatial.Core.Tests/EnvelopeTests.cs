@@ -31,6 +31,7 @@ public class EnvelopeTests
     [InlineData(0, double.NaN, 1, 1)]
     [InlineData(0, 0, double.PositiveInfinity, 1)]
     [InlineData(double.NegativeInfinity, 0, 1, 1)]
+    [InlineData(0, 0, 1, double.NaN)]
     public void Non_finite_bounds_throw(double minX, double minY, double maxX, double maxY) =>
         Assert.Throws<ArgumentException>(() => new Envelope(minX, minY, maxX, maxY));
 

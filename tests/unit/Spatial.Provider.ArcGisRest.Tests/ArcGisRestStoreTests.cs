@@ -275,6 +275,7 @@ public sealed class ArcGisRestStoreTests
     [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","objectIdField":"FID","spatialReference":{"wkid":4326},"fields":[{"name":"FID","type":"esriFieldTypeOID"}]}""", "FID")]
     [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326},"fields":[{"name":"OID","type":"esriFieldTypeOID"}]}""", "OID")]
     [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326},"fields":[]}""", "OBJECTID")]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326},"fields":[{"name":"OBJ","type":"esriFieldTypeString"},{"name":"OID","type":"esriFieldTypeOID"}]}""", "OID")]
     [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","spatialReference":{"wkid":4326}}""", "OBJECTID")]
     public async Task Object_id_field_resolves_from_metadata(string metadata, string expectedIdField)
     {
@@ -284,6 +285,31 @@ public sealed class ArcGisRestStoreTests
         var description = await store.DescribeAsync("arcgis.l0");
 
         Assert.Equal(expectedIdField, Assert.Single(description.IdColumns));
+    }
+
+    [Theory]
+    [InlineData(400, SpatialException.InvalidArguments)]
+    [InlineData(404, SpatialException.NotFound)]
+    [InlineData(500, SpatialException.StoreUnavailable)]
+    public async Task Remote_error_codes_map_to_typed_failures(int code, string expectedCode)
+    {
+        var handler = Handler(_ => Json("""{"error":{"code":""" + code + ""","message":"boom"}}""", HttpStatusCode.BadRequest));
+        var store = Store(handler);
+
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => store.ScanAsync("arcgis.l0"));
+
+        Assert.Equal(expectedCode, exception.Code);
+    }
+
+    [Fact]
+    public async Task An_error_envelope_without_code_or_message_uses_defaults()
+    {
+        var handler = Handler(_ => Json("""{"error":{}}""", HttpStatusCode.BadRequest));
+        var store = Store(handler);
+
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => store.ScanAsync("arcgis.l0"));
+
+        Assert.Equal(SpatialException.StoreUnavailable, exception.Code);
     }
 
     private static ArcGisRestStore Store(HttpMessageHandler handler) =>

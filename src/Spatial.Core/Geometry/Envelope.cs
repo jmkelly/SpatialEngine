@@ -33,7 +33,7 @@ public readonly struct Envelope : IEquatable<Envelope>
 
     private static void ThrowIfInvalid(double minX, double minY, double maxX, double maxY)
     {
-        if (!double.IsFinite(minX) || !double.IsFinite(minY) || !double.IsFinite(maxX) || !double.IsFinite(maxY))
+        if (!BoundsAreFinite(minX, minY, maxX, maxY))
         {
             throw new ArgumentException(
                 FormattableString.Invariant($"Envelope bounds must be finite, got ({minX}, {minY}) to ({maxX}, {maxY})."));
@@ -45,6 +45,9 @@ public readonly struct Envelope : IEquatable<Envelope>
                 FormattableString.Invariant($"Invalid envelope: minimum ({minX}, {minY}) exceeds maximum ({maxX}, {maxY})."));
         }
     }
+
+    private static bool BoundsAreFinite(double minX, double minY, double maxX, double maxY) =>
+        double.IsFinite(minX) && double.IsFinite(minY) && double.IsFinite(maxX) && double.IsFinite(maxY);
 
     private Envelope(bool empty)
     {

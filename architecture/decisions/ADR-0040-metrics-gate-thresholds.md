@@ -95,9 +95,19 @@ gating the guard-less raw LCOM4 metric:
   the tool's `low-cohesion` (LCOM4 ≥ 8, instance state, WMC ≥ 20, < 4
   interfaces) or `god-class` diagnoses. This is deliberate: the raw metric
   cannot express the statelessness guard this codebase needs.
-- The gate stays **red**. AGENTS.md's list of facades awaiting a cohesive
-  per-area split (`FeatureService`, `SpatialClient`, `PostgisStore`) is now
-  exactly what the gate reports, instead of noise.
+- The gate stayed **red** at ADR time. AGENTS.md's list of facades
+  awaiting a cohesive per-area split (`FeatureService`, `SpatialClient`,
+  `PostgisStore`) was exactly what the gate reported, instead of noise.
+- **Resolution (2026-09-12):** those splits landed and the metrics gate is
+  now green (0 high, 0 moderate). `FeatureService` became a thin facade
+  over `FeatureQueryEngine` / `FeatureEditEngine` / `FeatureGeometry`;
+  `SpatialClient` shed HTTP plumbing into `SpatialClientTransport`;
+  `PostgisStore` moved its stateless write leaves to
+  `PostgisWriteOperations` and its query predicate to `PostgisPredicate`
+  (the isolated static helpers were the LCOM4 components, not the
+  instance methods); `EsriFilterClause`'s comparison primitives moved to
+  `EsriFilterLogic`. The remaining findings are low-only (hubs and
+  long-parameter-list) and do not gate.
 - If `codemetrics` later adds the `FieldCount >= 1` guard to the raw
   `lcom4`/`coupling` rules, this ADR should be revisited and the LCOM4 rule
   re-enabled at the tool's high band.

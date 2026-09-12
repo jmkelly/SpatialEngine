@@ -7,7 +7,6 @@ using Spatial.Provider.PostGIS.Configuration;
 using Spatial.Provider.PostGIS.Core;
 using Spatial.Provider.PostGIS.Data;
 using CoreBoundingBox = Spatial.PluginSdk.BoundingBox;
-using FilterBoundingBox = Spatial.Provider.PostGIS.Core.BoundingBox;
 
 namespace Spatial.Provider.PostGIS;
 
@@ -149,7 +148,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         {
             var description = await DescribeInternalAsync(name, cancellationToken);
             var parameters = new List<object?>();
-            var predicate = BuildPredicate(description, bbox, filter, parameters);
+            var predicate = PostgisPredicate.Build(description, bbox, filter, parameters);
             return await ReadBatchesAsync(
                 PostgisQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
         }
@@ -225,10 +224,10 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         try
         {
             var description = await DescribeInternalAsync(name, cancellationToken);
-            CheckWritable(description, batch);
+            PostgisWriteOperations.CheckWritable(description, batch);
             if (_transactions.TryGetValue(transaction ?? string.Empty, out var entry))
             {
-                return await WriteOnAsync(entry.Connection, entry.Transaction, name, description, batch, cancellationToken);
+                return await PostgisWriteOperations.WriteOnAsync(entry.Connection, entry.Transaction, name, description, batch, cancellationToken);
             }
 
             if (transaction is not null)
@@ -238,7 +237,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
 
             await using var connection = await _store.Value.OpenConnectionAsync(cancellationToken);
             await using var txn = await connection.BeginTransactionAsync(cancellationToken);
-            var count = await WriteOnAsync(connection, txn, name, description, batch, cancellationToken);
+            var count = await PostgisWriteOperations.WriteOnAsync(connection, txn, name, description, batch, cancellationToken);
             await txn.CommitAsync(cancellationToken);
             return count;
         }
@@ -392,49 +391,6 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         return batches;
     }
 
-    internal static void CheckWritable(DatasetDescription description, FeatureBatch batch)
-    {
-        foreach (var field in batch.Schema.Fields)
-        {
-            var index = description.Schema.IndexOf(field.Name);
-            if (index < 0)
-            {
-                throw SpatialException.BadArguments(
-                    $"The batch field '{field.Name}' is not a column of dataset '{description.Id}'.");
-            }
-
-            if (description.Schema[index].Kind != field.Kind)
-            {
-                throw SpatialException.BadArguments(
-                    $"The batch field '{field.Name}' is {field.Kind} but the dataset column is {description.Schema[index].Kind}.");
-            }
-        }
-    }
-
-    private static async Task<int> WriteOnAsync(
-        NpgsqlConnection connection, NpgsqlTransaction transaction, PostgisDatasetName name,
-        DatasetDescription description, FeatureBatch batch, CancellationToken token)
-    {
-        var sql = PostgisQueries.Insert(name, batch.Schema, description.Srid);
-        var count = 0;
-        foreach (var feature in batch.Features)
-        {
-            var values = PostgisRowMapper.Parameters(batch.Schema, feature, description.Srid);
-            await using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = sql;
-            for (var i = 0; i < values.Length; i++)
-            {
-                command.Parameters.AddWithValue($"p{i}", values[i] ?? DBNull.Value);
-            }
-
-            await command.ExecuteNonQueryAsync(token);
-            count++;
-        }
-
-        return count;
-    }
-
     /// <summary>Opens the connection a store-side edit runs on: the transaction handle's connection, or a fresh autocommit one (ADR-0037).</summary>
     internal async Task<PostgisEditSession> OpenEditSessionAsync(string? transaction, CancellationToken cancellationToken)
     {
@@ -450,34 +406,6 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
 
         var connection = await _store.Value.OpenConnectionAsync(cancellationToken);
         return new PostgisEditSession(connection, transaction: null, ownsConnection: true);
-    }
-
-    private static string? BuildPredicate(
-        DatasetDescription description, CoreBoundingBox? bbox, string? filter, List<object?> parameters)
-    {
-        string? predicate = null;
-        if (bbox is not null)
-        {
-            var bounds = new FilterBoundingBox(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY);
-            predicate = PostgisFilterSql.BoundingBox(bounds, description.GeometryColumn, description.Srid, parameters);
-        }
-
-        if (filter is not null)
-        {
-            if (!PostgisFilterParser.TryParse(filter, out var expression, out var parseError))
-            {
-                throw SpatialException.BadArguments($"The filter cannot be parsed: {parseError}");
-            }
-
-            if (!PostgisFilterSql.TryBuild(expression, description.Schema, parameters, out var sql, out var buildError))
-            {
-                throw SpatialException.BadArguments($"The filter is not supported: {buildError}");
-            }
-
-            predicate = predicate is null ? sql : $"({predicate}) AND ({sql})";
-        }
-
-        return predicate;
     }
 
     internal static PostgisDatasetName ParseDataset(string dataset)

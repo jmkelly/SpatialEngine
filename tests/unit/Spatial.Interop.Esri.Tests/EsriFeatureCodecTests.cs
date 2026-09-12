@@ -146,4 +146,26 @@ public sealed class EsriFeatureCodecTests
         Assert.Equal(date, EsriAttributeCodec.Read(element, new FieldDefinition("when", AttributeKind.DateTimeOffset)).DateTimeOffsetValue);
         Assert.Equal(guid, EsriAttributeCodec.Read(element, new FieldDefinition("id", AttributeKind.Guid)).GuidValue);
     }
+
+    [Fact]
+    public void The_geometry_field_defaults_to_the_schemas_geometry_column()
+    {
+        var element = JsonDocument.Parse(
+            """{"attributes":{"OBJECTID":7,"name":"Amsterdam","population":900000},"geometry":{"x":4.9041,"y":52.3676}}""").RootElement;
+
+        var feature = EsriFeatureCodec.Decode(element, Schema, "OBJECTID", geometryField: null, CoordinateReference.Epsg(4326));
+
+        Assert.Equal(4.9041, feature["geometry"].GeometryValue.Envelope!.Value.MinX, 4);
+    }
+
+    [Fact]
+    public void A_schema_without_geometry_decodes_no_geometry()
+    {
+        var schema = new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]);
+        var element = JsonDocument.Parse("""{"attributes":{"OBJECTID":7,"name":"Amsterdam"}}""").RootElement;
+
+        var feature = EsriFeatureCodec.Decode(element, schema, "OBJECTID", geometryField: null, fallback: null);
+
+        Assert.Equal("Amsterdam", feature["name"].StringValue);
+    }
 }

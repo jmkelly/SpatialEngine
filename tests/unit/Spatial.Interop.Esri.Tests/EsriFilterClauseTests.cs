@@ -210,6 +210,8 @@ public sealed class EsriFilterClauseTests
     [InlineData("'a' = 'b'", false)]
     [InlineData("TRUE = TRUE", true)]
     [InlineData("FALSE = TRUE", false)]
+    [InlineData("TRUE <> FALSE", true)]
+    [InlineData("TRUE = 1", false)]
     public void Constant_predicates_are_evaluated_without_a_field(string text, bool expected)
     {
         // The Esri match-all / match-none idioms reference no column, so they

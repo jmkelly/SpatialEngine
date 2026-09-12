@@ -9,7 +9,7 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// </summary>
 public sealed class AttributeValueComparerTests
 {
-    private static readonly FeatureService.AttributeValueComparer Comparer = FeatureService.AttributeValueComparer.Instance;
+    private static readonly FeatureQueryEngine.AttributeValueComparer Comparer = FeatureQueryEngine.AttributeValueComparer.Instance;
 
     private static int Compare(AttributeValue left, AttributeValue right) => Comparer.Compare(left, right);
 

@@ -86,7 +86,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
         try
         {
             var description = await _store.DescribeInternalAsync(name, cancellationToken);
-            PostgisStore.CheckWritable(description, batch);
+            PostgisWriteOperations.CheckWritable(description, batch);
             if (description.IdColumns.Count == 0)
             {
                 return batch.Features

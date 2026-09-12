@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text;
-using System.Text.RegularExpressions;
 using Spatial.Core.Features;
 
 namespace Spatial.Interop.Esri;
@@ -106,7 +105,7 @@ public sealed class EsriFilterClause
 
     private sealed record IsNullNode(string Field, bool Negated) : Node
     {
-        public override bool Evaluate(IFeature feature) => Attribute(feature, Field).IsNull != Negated;
+        public override bool Evaluate(IFeature feature) => EsriFilterLogic.FieldValue(feature, Field).IsNull != Negated;
 
         public override string Render() => $"{Field} IS {(Negated ? "NOT " : string.Empty)}NULL";
     }
@@ -127,263 +126,18 @@ public sealed class EsriFilterClause
     {
         public override bool Evaluate(IFeature feature)
         {
-            var attribute = Attribute(feature, Field);
+            var attribute = EsriFilterLogic.FieldValue(feature, Field);
             if (attribute.IsNull)
             {
                 return false;
             }
 
             return Operator == ComparisonOperator.Like
-                ? MatchesLike(attribute, Value)
-                : Compare(attribute, Operator, Value);
+                ? EsriFilterLogic.MatchesLike(attribute, Value)
+                : EsriFilterLogic.Compare(attribute, Operator, Value);
         }
 
-        public override string Render() => $"{Field} {OperatorText(Operator)} {Value.Render()}";
-    }
-
-    private static string OperatorText(ComparisonOperator comparisonOperator) => comparisonOperator switch
-    {
-        ComparisonOperator.Equals => "=",
-        ComparisonOperator.NotEquals => "<>",
-        ComparisonOperator.LessThan => "<",
-        ComparisonOperator.LessOrEqual => "<=",
-        ComparisonOperator.GreaterThan => ">",
-        ComparisonOperator.GreaterOrEqual => ">=",
-        ComparisonOperator.Like => "LIKE",
-        _ => throw EsriInteropException.Invalid($"Unknown comparison operator {comparisonOperator}."),
-    };
-
-    private static AttributeValue Attribute(IFeature feature, string field)
-    {
-        var index = feature.Schema.IndexOf(field);
-        if (index < 0)
-        {
-            throw EsriInteropException.Invalid($"The where clause names unknown field '{field}'.");
-        }
-
-        return feature[index];
-    }
-
-    private static bool Compare(AttributeValue attribute, ComparisonOperator comparisonOperator, Literal literal)
-    {
-        if (literal.Kind == LiteralKind.Null)
-        {
-            return false;
-        }
-
-        return CompareByKind(attribute, comparisonOperator, literal);
-    }
-
-    private static bool CompareByKind(AttributeValue attribute, ComparisonOperator comparisonOperator, Literal literal)
-    {
-        switch (attribute.Kind)
-        {
-            case AttributeKind.Int64:
-                return CompareNumber(attribute.Int64Value, literal, comparisonOperator);
-            case AttributeKind.Double:
-                return CompareNumber(attribute.DoubleValue, literal, comparisonOperator);
-            case AttributeKind.String:
-                return CompareStrings(attribute.StringValue, literal, comparisonOperator);
-            case AttributeKind.Boolean:
-                return CompareBoolean(attribute.BooleanValue, literal, comparisonOperator);
-            case AttributeKind.DateTimeOffset:
-                return CompareNumber(attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds(), literal, comparisonOperator);
-            case AttributeKind.Guid:
-                return CompareGuid(attribute.GuidValue, literal, comparisonOperator);
-            default:
-                return false;
-        }
-    }
-
-    private static readonly Func<double, double, bool>[] NumberComparisonPredicates =
-    [
-        (l, r) => l == r,
-        (l, r) => l != r,
-        (l, r) => l < r,
-        (l, r) => l <= r,
-        (l, r) => l > r,
-        (l, r) => l >= r,
-        (_, _) => false,
-    ];
-
-    private static bool CompareNumber(double left, Literal literal, ComparisonOperator comparisonOperator)
-    {
-        if (literal.Kind is not (LiteralKind.Integer or LiteralKind.Decimal))
-        {
-            return false;
-        }
-
-        return ApplyNumberComparison(left, literal.Number, comparisonOperator);
-    }
-
-    private static bool ApplyNumberComparison(double left, double right, ComparisonOperator op)
-    {
-        var index = (int)op;
-        if ((uint)index >= (uint)NumberComparisonPredicates.Length)
-            return false;
-        return NumberComparisonPredicates[index](left, right);
-    }
-
-    private static bool CompareStrings(string left, Literal literal, ComparisonOperator comparisonOperator)
-    {
-        if (literal.Kind != LiteralKind.String)
-        {
-            return false;
-        }
-
-        var comparison = StringComparer.Ordinal.Compare(left, literal.Text);
-        return SatisfiesComparison(comparison, comparisonOperator);
-    }
-
-    private static readonly Func<int, bool>[] ComparisonPredicates =
-    [
-        c => c == 0,
-        c => c != 0,
-        c => c < 0,
-        c => c <= 0,
-        c => c > 0,
-        c => c >= 0,
-        _ => false,
-    ];
-
-    private static bool SatisfiesComparison(int comparison, ComparisonOperator op)
-    {
-        var index = (int)op;
-        if ((uint)index >= (uint)ComparisonPredicates.Length)
-            return false;
-        return ComparisonPredicates[index](comparison);
-    }
-
-    private static bool CompareBoolean(bool left, Literal literal, ComparisonOperator comparisonOperator)
-    {
-        if (literal.Kind != LiteralKind.Boolean)
-        {
-            return false;
-        }
-
-        return comparisonOperator switch
-        {
-            ComparisonOperator.Equals => left == literal.Boolean,
-            ComparisonOperator.NotEquals => left != literal.Boolean,
-            _ => false,
-        };
-    }
-
-    private static bool CompareGuid(Guid left, Literal literal, ComparisonOperator comparisonOperator)
-    {
-        if (literal.Kind != LiteralKind.String || !Guid.TryParse(literal.Text, out var right))
-        {
-            return false;
-        }
-
-        return comparisonOperator switch
-        {
-            ComparisonOperator.Equals => left == right,
-            ComparisonOperator.NotEquals => left != right,
-            _ => false,
-        };
-    }
-
-    /// <summary>Evaluates a literal-to-literal comparison (no field involved).</summary>
-    private static bool EvaluateConstant(Literal left, ComparisonOperator comparisonOperator, Literal right)
-    {
-        if (left.Kind is LiteralKind.Null || right.Kind is LiteralKind.Null)
-        {
-            return false;
-        }
-
-        if (left.Kind == LiteralKind.Boolean || right.Kind == LiteralKind.Boolean)
-        {
-            if (left.Kind != LiteralKind.Boolean || right.Kind != LiteralKind.Boolean)
-            {
-                return false;
-            }
-
-            return comparisonOperator switch
-            {
-                ComparisonOperator.Equals => left.Boolean == right.Boolean,
-                ComparisonOperator.NotEquals => left.Boolean != right.Boolean,
-                _ => false,
-            };
-        }
-
-        if (left.Kind == LiteralKind.String && right.Kind == LiteralKind.String)
-        {
-            return comparisonOperator == ComparisonOperator.Like
-                ? Regex.IsMatch(left.Text ?? string.Empty, ToRegex(right.Text ?? string.Empty), RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1))
-                : SatisfiesComparison(StringComparer.Ordinal.Compare(left.Text, right.Text), comparisonOperator);
-        }
-
-        if (IsNumeric(left) && IsNumeric(right))
-        {
-            return ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
-        }
-
-        return false;
-    }
-
-    private static bool IsNumeric(Literal literal) => literal.Kind is LiteralKind.Integer or LiteralKind.Decimal;
-
-    private static bool MatchesLike(AttributeValue attribute, Literal literal)
-    {
-        if (attribute.Kind != AttributeKind.String || literal.Kind != LiteralKind.String)
-        {
-            throw EsriInteropException.Invalid("LIKE compares string fields to string patterns.");
-        }
-
-        return Regex.IsMatch(
-            attribute.StringValue,
-            ToRegex(literal.Text!),
-            RegexOptions.CultureInvariant,
-            TimeSpan.FromSeconds(1));
-    }
-
-    private static string ToRegex(string pattern)
-    {
-        var builder = new StringBuilder("^");
-        foreach (var character in pattern)
-        {
-            builder.Append(character switch
-            {
-                '%' => ".*",
-                '_' => ".",
-                _ => Regex.Escape(character.ToString()),
-            });
-        }
-
-        return builder.Append('$').ToString();
-    }
-
-    private enum ComparisonOperator
-    {
-        Equals,
-        NotEquals,
-        LessThan,
-        LessOrEqual,
-        GreaterThan,
-        GreaterOrEqual,
-        Like,
-    }
-
-    private enum LiteralKind
-    {
-        String,
-        Integer,
-        Decimal,
-        Boolean,
-        Null,
-    }
-
-    private readonly record struct Literal(LiteralKind Kind, string? Text, double Number, bool Boolean)
-    {
-        public string Render() => Kind switch
-        {
-            LiteralKind.String => "'" + (Text ?? string.Empty).Replace("'", "''", StringComparison.Ordinal) + "'",
-            LiteralKind.Integer => ((long)Number).ToString(CultureInfo.InvariantCulture),
-            LiteralKind.Decimal => Number.ToString("R", CultureInfo.InvariantCulture),
-            LiteralKind.Boolean => Boolean ? "TRUE" : "FALSE",
-            _ => "NULL",
-        };
+        public override string Render() => $"{Field} {EsriFilterLogic.OperatorText(Operator)} {Value.Render()}";
     }
 
     private enum TokenKind
@@ -722,8 +476,8 @@ public sealed class EsriFilterClause
             }
 
             expression = new ConstantNode(
-                EvaluateConstant(left, comparisonOperator, right),
-                $"{left.Render()} {OperatorText(comparisonOperator)} {right.Render()}");
+                EsriFilterLogic.EvaluateConstant(left, comparisonOperator, right),
+                $"{left.Render()} {EsriFilterLogic.OperatorText(comparisonOperator)} {right.Render()}");
             return true;
         }
 

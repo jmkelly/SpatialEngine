@@ -89,4 +89,12 @@ public sealed class EsriErrorMapperTests
         Assert.Equal(EsriErrorCodes.ServerError, EsriErrorMapper.EditCodeFor(new InvalidOperationException("x")));
         Assert.Equal(EsriErrorCodes.InvalidParameters, EsriErrorMapper.EditCodeFor(new EsriInteropException(EsriErrorCodes.InvalidParameters, "x")));
     }
+
+    [Fact]
+    public async Task A_cancelled_interop_code_maps_to_the_client_closed_status()
+    {
+        var (status, _) = await ExecuteAsync(EsriErrorMapper.Map(new EsriInteropException(EsriErrorCodes.RequestCancelled, "x")));
+
+        Assert.Equal(StatusCodes.Status499ClientClosedRequest, status);
+    }
 }

@@ -104,14 +104,15 @@ internal static class ArcGisRestMapper
         var message = error.TryGetProperty("message", out var messageElement) && messageElement.ValueKind == JsonValueKind.String
             ? messageElement.GetString()
             : "The ArcGIS REST service reported an error.";
-        return code switch
+        if (code == 400)
         {
-            400 => SpatialException.BadArguments($"The ArcGIS REST service rejected the request: {message}"),
-            404 => SpatialException.Missing($"The ArcGIS REST service could not find the resource: {message}"),
-            _ => SpatialException.Unavailable($"The ArcGIS REST service failed ({code}): {message}"),
-        };
-    }
+            return SpatialException.BadArguments($"The ArcGIS REST service rejected the request: {message}");
+        }
 
+        return code == 404
+            ? SpatialException.Missing($"The ArcGIS REST service could not find the resource: {message}")
+            : SpatialException.Unavailable($"The ArcGIS REST service failed ({code}): {message}");
+    }
     public static string? RenderWhere(string? filter)
     {
         if (string.IsNullOrWhiteSpace(filter))
@@ -215,22 +216,32 @@ internal static class ArcGisRestMapper
     private static bool TryReadOidName(JsonElement field, out string? name)
     {
         name = null;
-        if (!field.TryGetProperty("type", out var type)
-            || type.ValueKind != JsonValueKind.String
-            || type.GetString() != EsriFieldType.Oid)
-        {
-            return false;
-        }
-
-        if (!field.TryGetProperty("name", out var nameElement)
-            || nameElement.ValueKind != JsonValueKind.String
-            || nameElement.GetString() is not { Length: > 0 } oid)
+        if (!HasFieldType(field, EsriFieldType.Oid) || !TryReadName(field, out var oid))
         {
             return false;
         }
 
         name = oid;
         return true;
+    }
+
+    /// <summary>True when the field metadata declares the given Esri field type.</summary>
+    private static bool HasFieldType(JsonElement field, string expectedType) =>
+        field.TryGetProperty("type", out var type)
+        && type.ValueKind == JsonValueKind.String
+        && type.GetString() == expectedType;
+
+    /// <summary>Reads a non-empty string property, or reports the field has none.</summary>
+    private static bool TryReadName(JsonElement field, out string? name)
+    {
+        name = null;
+        if (!field.TryGetProperty("name", out var nameElement) || nameElement.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        name = nameElement.GetString();
+        return !string.IsNullOrEmpty(name);
     }
 
     private static FeatureSchema Schema(JsonElement metadata)

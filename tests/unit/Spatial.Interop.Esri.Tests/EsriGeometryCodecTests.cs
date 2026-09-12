@@ -172,4 +172,54 @@ public sealed class EsriGeometryCodecTests
     {
         Assert.False(EsriGeometryCodec.TryParseSimple(text, out _));
     }
+
+    [Fact]
+    public void A_three_element_coordinate_array_uses_the_hasZ_flag_for_z()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2,3]],"hasZ":true}"""));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Equal(3, point.Z);
+        Assert.Null(point.M);
+    }
+
+    [Fact]
+    public void A_three_element_coordinate_array_uses_the_hasM_flag_for_m()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2,3]],"hasM":true}"""));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Null(point.Z);
+        Assert.Equal(3, point.M);
+    }
+
+    [Fact]
+    public void A_four_element_coordinate_array_is_xyzm()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2,3,4]]}"""));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Equal(3, point.Z);
+        Assert.Equal(4, point.M);
+    }
+
+    [Theory]
+    [InlineData("5")]
+    [InlineData("\"text\"")]
+    public void A_non_object_geometry_is_rejected(string json)
+    {
+        Assert.Throws<EsriInteropException>(() => Decode(json));
+    }
+
+    [Fact]
+    public void A_coordinate_array_of_the_wrong_length_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"points":[[1]]}"""));
+    }
+
+    [Fact]
+    public void A_partial_point_object_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"x":1}"""));
+    }
 }

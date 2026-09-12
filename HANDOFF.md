@@ -81,6 +81,10 @@ compatibility claim is now proven against a real Esri client. Completed:
    fixtures are copied into `Spatial.Provider.ArcGisRest.Tests` and run by
    `eng/verify.sh`.
 
-`eng/verify.sh` is green. The quality-loop queues are gitignored; the
-`codemetrics` gate was already red at `HEAD` (pre-existing facade
-coupling/LCOM4 findings), so treat the AGENTS baseline note as stale.
+`eng/verify.sh` is green, and so are all four quality-loop gates
+(warnings, coverage, CRAP, metrics) after the 2026-09-12 facade/CRAP
+cleanup: `FeatureService` split into query/edit/geometry engines,
+`SpatialClient` into client + transport, `PostgisStore`'s stateless leaves
+into `PostgisWriteOperations`/`PostgisPredicate`, and `EsriFilterClause`'s
+comparison primitives into `EsriFilterLogic`. The quality-loop queues are
+gitignored; re-run the audits before trusting the AGENTS baseline numbers.

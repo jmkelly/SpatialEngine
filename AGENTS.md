@@ -55,43 +55,49 @@ truth: `architecture/decisions/` (ADRs) and
   Repo policy lives here: `.dependably`, `coverage-policy.json`.
   Queue/report artifacts are gitignored — never commit them.
 
-## Quality gates (remeasured 2026-09-12 after the GeoServices proof; loop supports .slnx + all 9 test projects)
+## Quality gates (remeasured 2026-09-12 after the facade + CRAP cleanup; loop supports .slnx + all 9 test projects)
 
-Last full measurement: warnings 0, coverage 84.8% branches authored
-(95.5% lines), **CRAP red (15/1058 methods ≥ 10)**, **metrics red
-(3 high + 1 moderate after the ADR-0040 recalibration)**. The earlier "1 high" metrics baseline was
-stale (pre-refactor report); the queue is the source of truth.
+Last full measurement: **all four deterministic gates green** — warnings 0,
+coverage 86.1% branches authored (95.7% lines), **CRAP 0/1077 methods ≥ 10**,
+**metrics 0 high / 0 moderate** (14 low: 5 hubs + 9 long-parameter-lists,
+none gate). The queue is the source of truth.
 
 - Warnings: green (zero build warnings, `--no-incremental`).
 - Metrics (`.dependably`, ADR-0040: MI ≥ 20, cyclomatic ≤ 15,
   cognitive ≤ 15, nesting ≤ 4, coupling ≤ 40, LCOM4 via the tool's
-  guard-aware diagnoses, `failOn: moderate`): **red — 3 high, 1
-  moderate, 10 low**. The recalibrated gate fails on `FeatureService`
-  in-repo coupling 51, `FeatureService.EditsAsync` cognitive 17,
-  `SpatialClient` god-class (high) and `PostgisStore` god-class
-  (moderate); the 4 hubs and 6 long-parameter-lists are reported but do
-  not gate. The raw `lcom4` rule is off because LCOM4 is meaningless for
-  stateless types; a stateful class is flagged through `low-cohesion` /
-  `god-class` instead (ADR-0040). Facade splits must stay cohesive per
-  API area; see SKILL.md anti-gaming rules before refactoring or
-  grandfathering. Dependably 0.1.2 `exceptions` only suppress metric
-  rules, not `god-class`/`hub` diagnoses — the facades stay visible until
-  a cohesive per-area split lands.
+  guard-aware diagnoses, `failOn: moderate`): **green — 0 high, 0
+  moderate, 14 low**. The recalibrated gate's genuine findings were
+  cleared by cohesive per-area splits: `FeatureService`'s coupling 51 and
+  `EditsAsync` cognitive 17 became `FeatureQueryEngine` /
+  `FeatureEditEngine` / `FeatureGeometry` off a thin facade;
+  `SpatialClient`'s god-class shed HTTP plumbing into
+  `SpatialClientTransport`; `PostgisStore`'s moderate god-class moved its
+  stateless write leaves to `PostgisWriteOperations` and its query
+  predicate to `PostgisPredicate` (LCOM4 4 → 1); `EsriFilterClause`'s
+  comparison primitives moved to `EsriFilterLogic`. The remaining 5 hubs
+  and 9 long-parameter-lists are reported but do not gate. The raw
+  `lcom4` rule is off because LCOM4 is meaningless for stateless types; a
+  stateful class is flagged through `low-cohesion` / `god-class` instead
+  (ADR-0040). Facade splits must stay cohesive per API area; see
+  SKILL.md anti-gaming rules before refactoring or grandfathering.
+  Dependably 0.1.2 `exceptions` only suppress metric rules, not
+  `god-class`/`hub` diagnoses.
 - CRAP (`scripts/dotnet/audit.py`: solution-wide `dotnet test`, merged coverage):
   the merge canonicalizes coverlet's per-run-relative filenames (suffix
-  unification, skill `coverage_merge.py`). **Red — 15 of 1058 methods
-  ≥ 10.** Three are complexity-bound and cannot pass on coverage alone
-  (minimum CRAP = cyclomatic): `EsriFilterClause.EvaluateConstant`
-  (cx 14), `FeatureService.EditsAsync` (cx 12),
-  `FeatureService.UpdateRangeAsync` (cx 10); the rest (cx 4–9, low
-  coverage) could pass with tests: `CompareSameKind`/`CompareByKind`,
-  `EsriErrorMapper.Map`, `EsriFeatureCodec.ResolveGeometryField`,
-  `Envelope.ThrowIfInvalid`, `EsriGeometryCodec.ReadCoordinate`.
-  crap4dotnet's own UNMATCHED (15) / ORPHANED (408, 29%) warnings flag
-  expression-bodied `switch` members, async state machines and
-  accessors it cannot pair — not all 0% flags are truly uncovered.
-- Coverage (`coverage-policy.json` floor 70% branches): green — 84.8%
-  branches (95.5% lines) on authored code (was 48.8% phantom before the
+  unification, skill `coverage_merge.py`). **Green — 0 of 1077 methods
+  ≥ 10.** The complexity-bound methods were reduced (`FeatureEditEngine`
+  `RunAsync`/`UpdateRangeAsync` via extracted helpers,
+  `EsriFilterClause`'s comparisons via table dispatch,
+  `EsriGeometryCodec.Decode` via `IsPoint`); the low-coverage ones gained
+  focused tests (`Envelope.ThrowIfInvalid`, `EsriErrorMapper`, the
+  `EsriGeometryCodec` coordinate/`Decode` paths,
+  `EsriFeatureCodec.ResolveGeometryField`,
+  `ArcGisRestMapper.MapError`/`TryReadOidName`). Note coverlet measures
+  branch coverage and reports `switch` arms poorly, so crap4dotnet's
+  `UNMATCHED`/`ORPHANED` warnings still appear — prefer table dispatch or
+  if-chains over wide `switch` expressions.
+- Coverage (`coverage-policy.json` floor 70% branches): green — 86.1%
+  branches (95.7% lines) on authored code (was 48.8% phantom before the
   merge fix; the stale 09-11 report claimed 91.2%). The queue lists
   genuinely untested authored methods worst-first; Docker-only
   `PostgisStore` live paths cover only in CI.
