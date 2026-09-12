@@ -93,6 +93,7 @@ shape is noted in brackets.
 | 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
 | 0041 | Ingest and publications are protocol-neutral SDK capabilities; Esri admin is a gated projection. |
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
+| 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 
 ## How to change the architecture
 

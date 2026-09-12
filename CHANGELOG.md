@@ -11,6 +11,14 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Structured logging to Seq** (ADR-0045): `Spatial.Host` logs through
+  Serilog — console always, Seq when `Spatial:Logging:Seq:Url`
+  (`SPATIAL_SEQ_URL`) is set — with one structured event per request
+  (`UseSerilogRequestLogging`, server errors at `Warning`), a startup
+  summary and actionable configuration warnings. The Aspire AppHost runs a
+  Seq container (`Aspire.Hosting.Seq`) and injects its endpoint; the host
+  still runs with no Seq (ADR-0018). Diagnostics carry configuration
+  *state* only, never a connection string or token.
 - **Raster rendering pipeline** (ADR-0044, plan R0–R3): the core-typed
   `IMapRenderer`/`IRasterOperations` contracts and DTOs in
   `Spatial.PluginSdk`, the `Spatial.Rendering.Skia` vector rasterizer

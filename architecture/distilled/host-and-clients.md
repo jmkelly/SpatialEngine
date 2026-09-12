@@ -104,6 +104,23 @@ defaults to `memory` so the database-free upload path works out of the box.
 | `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` | Ingest caps and the format allowlist (ADR-0041 §6) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |
+| `Spatial:Logging:Seq:Url` | Seq server URL (ADR-0045); empty/unset leaves the host console-only |
+| `SPATIAL_SEQ_URL` | Env fallback for the Seq URL — injected by the Aspire development profile |
+| `Spatial:Logging:Seq:ApiKey` | Optional Seq API key for an authenticated Seq instance |
+| `SPATIAL_SEQ_API_KEY` | Env fallback for the Seq API key |
+
+## Observability (ADR-0045)
+
+Serilog is the host's logging provider: `Logging:LogLevel` sets the minimum
+levels, the console sink is always on, and the Seq sink is added only when
+`Spatial:Logging:Seq:Url` (or `SPATIAL_SEQ_URL`) is configured. Every request
+is one structured event (`UseSerilogRequestLogging`; 5xx at `Warning`, else
+`Information`), startup records one summary event and actionable
+config warnings, and `service.name = Spatial.Host` stamps every event.
+Diagnostics carry configuration *state* only — never a connection string or
+token. In the Aspire development profile `AddSeq` runs the Seq container and
+injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
+(ADR-0018).
 
 ## Clients
 

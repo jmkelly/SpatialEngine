@@ -83,14 +83,15 @@ Spatial__WebRoot="$(pwd)/apps/workbench-web/dist" \
 ```
 
 **3. Bring a real store.** With Docker available, the Aspire AppHost starts
-PostGIS, injects the connection string and runs the Vite dev server:
+PostGIS, the Seq log server and the Vite dev server:
 
 ```bash
 dotnet run --project src/Spatial.AppHost
 ```
 
-The Aspire dashboard prints the workbench and host endpoints. Prefer to skip
-Docker? Serve the built workbench from the host as above.
+The Aspire dashboard prints the workbench, host and Seq endpoints; host logs
+stream to the Seq UI (ADR-0045). Prefer to skip Docker? Serve the built
+workbench from the host as above.
 
 ### Verify the whole thing
 

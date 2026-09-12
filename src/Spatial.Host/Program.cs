@@ -1,5 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.FileProviders;
+using Serilog;
+using Serilog.Events;
 using Spatial.Adapter.GeoServices;
 using Spatial.Host;
 using Spatial.Host.Api;
@@ -21,6 +23,7 @@ HostComposition.ConfigureServices(builder);
 
 var app = builder.Build();
 HostComposition.ConfigurePipeline(app, builder.Configuration);
+StartupLogging.Log(app);
 
 app.Run();
 
@@ -37,9 +40,12 @@ internal sealed record ReadyResponse(string Status, IReadOnlyList<string> Stores
 /// </summary>
 internal static class HostComposition
 {
-    /// <summary>Registers the in-process spatial services and configuration.</summary>
+    /// <summary>Registers the in-process spatial services, configuration and logging.</summary>
     public static void ConfigureServices(WebApplicationBuilder builder)
     {
+        // Structured logging is installed first so composition itself is observable (ADR-0045).
+        LoggingSetup.Configure(builder);
+
         // One JSON contract across the API: camelCase everywhere (ADR-0033).
         builder.Services.ConfigureHttpJsonOptions(options =>
         {
@@ -59,9 +65,19 @@ internal static class HostComposition
         RenderingServices.Configure(builder);
     }
 
-    /// <summary>Builds the request pipeline: workbench, routing, health, API and GeoServices.</summary>
+    /// <summary>Builds the request pipeline: request logging, workbench, routing, health, API and GeoServices.</summary>
     public static void ConfigurePipeline(WebApplication app, IConfiguration configuration)
     {
+        // One structured event per request (ADR-0045); server errors are warnings.
+        app.UseSerilogRequestLogging(options =>
+        {
+            options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+            options.GetLevel = (context, _, exception) =>
+                exception is not null || context.Response.StatusCode >= StatusCodes.Status500InternalServerError
+                    ? LogEventLevel.Warning
+                    : LogEventLevel.Information;
+        });
+
         // The browser workbench: when <c>Spatial:WebRoot</c> points at the built
         // React application, the host serves it as static content — same origin, no
         // CORS, no desktop shell. The static middleware runs BEFORE routing so
