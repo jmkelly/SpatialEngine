@@ -37,8 +37,7 @@ Service operations has an analogue** (append-only, different shape).
 Two directions must not be confused:
 
 - **Consuming** ArcGIS REST (engine as a data provider) — low friction,
-  already anticipated by `implementation-plan.md` §5 (ArcGIS REST listed as
-  a provider plugin). This is the natural fit.
+  already anticipated as a provider in ADR-0035. This is the natural fit.
 - **Serving** GeoServices (engine answers ArcGIS clients) — a facade
   commitment that collides with ADR-0020 and the query-security model, and
   needs a large verb expansion. Needs its own ADR.
@@ -138,7 +137,7 @@ and date encoding differ.
 | Map Service (§4): export, identify, find, tiles, layer query, image | — | Out of scope by design — headless, no rendering/tiling (`core.md`, principles 1–2). The workbench already **consumes** Esri basemap tiles (`MapScreen.tsx`: `.../MapServer/tile/{z}/{y}/{x}`), a consumed-GeoServices precedent |
 | Geocode Service (§5) | — | Absent |
 | GP Service (§6): tasks, `submitJob`, job polling, results | — | Absent; no job model (ADR-0033 removed jobs) |
-| Image Service (§8): export, raster functions, download | — | Explicitly out of scope (`implementation-plan.md` §4.2: raster analytics) |
+| Image Service (§8): export, raster functions, download | — | Explicitly out of scope (ADR-0035: no raster pipeline) |
 | Geometry objects (§10) | point/polyline/polygon/envelope, Z/M absent | Superset — engine also has multipoint, multi-\*, geometry collection, Z/M |
 | Symbol/renderer/label/domain objects (§12–15) | Map-render oriented | Absent (client-side MapLibre concern) |
 
@@ -213,11 +212,9 @@ Ordered by dependency:
   fields, geometry fields and malformed entries fail `invalid.arguments`
   (HTTP 400).
 
-## 8. Note on repo doc drift (unrelated but relevant)
+## 8. Documentation baseline
 
-`implementation-plan.md` Phases 9–10 still describe the superseded
-capability/job/worker API (`/api/capabilities`, `/api/invocations`,
-`/api/jobs/*`, `nts@2`), while `AGENTS.md`, `architecture/distilled/*` and
-the host source describe ADR-0033 (typed per-route POST API, no job
-model). Any GeoServices planning should target the distilled/ADR-0033
-surface, not the stale plan phases.
+The retired `implementation-plan.md` (worker plugins, jobs, capability
+envelopes) has been removed. Target `architecture/decisions/` and
+`architecture/distilled/*` for all GeoServices work — ADR-0033's typed
+per-route POST API with no job model.

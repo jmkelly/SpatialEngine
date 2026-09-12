@@ -9,8 +9,8 @@ implemented in-process by the `Spatial.Operations.*`,
 by the independently executable host with Microsoft DI (ADR-0033).
 
 The first delivered frontend is a browser-hosted React + MapLibre workbench.
-A thin Tauri 2 shell packages the unchanged web client afterwards; it
-contains no spatial logic.
+The engine also meets the Esri ecosystem at the GeoServices REST boundary
+(ADR-0035): it serves GeoServices and consumes ArcGIS REST as a provider.
 
 **Key idea:** geometry is core, verbs are services, and interfaces outlive
 implementations.
@@ -23,7 +23,7 @@ a service/dataset catalogue, the demo dataset browser with map rendering
 and coordinate-based selection, typed operation forms (buffer, scan, query,
 sleep with cancellation…), result preview with browser-side persistence,
 clearing of unsaved map previews, and runtime health. `eng/workbench-e2e.sh` builds the app, runs the real host
-and drives the workbench with Playwright (no Tauri, no Docker); `demo`
+and drives the workbench with Playwright (no Docker); `demo`
 provides the Docker-free datasets and the cancellable sleep; the geometry
 adapter (`src/sgeom.ts`) decodes canonical SGEOM bytes straight from the
 host to the map.
@@ -100,13 +100,13 @@ identity column; the demo and ArcGIS REST stores stay read-only.
 | `src/Spatial.AppHost` | Aspire AppHost for the local development profile (ADR-0034) |
 | `tests/` | unit / architecture / integration suites |
 | `architecture/` | Plan, principles, ADR register, boundary docs, ADRs and reference specs (incl. GeoServices) |
-| `clients/ apps/` | SDKs and web/desktop apps |
+| `clients/ apps/` | SDKs and web apps |
 | `eng/` | Build, format, test, verify scripts |
 
 ## Requirements
 
 - .NET SDK 10.0.400 (pinned in `global.json`)
-- Node 26 (`.node-version`) — needed from Milestone 1 onward
+- Node 26 (`.node-version`) — needed for the workbench
 
 ## Quickstart
 
@@ -134,14 +134,12 @@ dotnet run --project src/Spatial.Host
 
 ## Reading order for new contributors
 
-1. `architecture/implementation-plan.md` — the full plan (source of truth)
+1. `architecture/decisions/` — architecture decision records (the source of truth)
 2. `architecture/principles.md` — the twenty principles
-3. `architecture/decisions/` — architecture decision records (ADR-0035 is current)
-4. `architecture/geoservices-implementation-plan.md` — Esri GeoServices REST track (ADR-0035, ADR-0037)
-5. `AGENTS.md` — boundaries and guidance for development agents
+3. `architecture/geoservices-implementation-plan.md` — Esri GeoServices REST track (ADR-0035, ADR-0037)
+4. `AGENTS.md` — boundaries and guidance for development agents
 
-## Planned milestones
+## Delivered milestone
 
 - **Milestone 1** — browser workbench: PostGIS → core geometry → geometry
   service → rendered, inspectable, persistable result.
-- **Milestone 2** — Tauri 2 desktop packaging of the unchanged web client.

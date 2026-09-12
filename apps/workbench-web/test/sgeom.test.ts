@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { decodeSgeom, batchToGeoJson, featureGeometry, SgeomFormatError } from "../src/sgeom.ts";
 
 /**
- * The SGEOM decoder (Phase 10) pinned against the canonical binary layout of
+ * The SGEOM decoder pinned against the canonical binary layout of
  * the .NET GeometryCodec (ADR-0020): hand-built vectors for point, line and
  * polygon nodes with and without CRS, plus malformed-input rejection.
  */

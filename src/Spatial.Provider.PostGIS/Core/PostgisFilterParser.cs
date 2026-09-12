@@ -18,7 +18,7 @@ namespace Spatial.Provider.PostGIS.Core;
 ///
 /// The grammar is deliberately tiny and closed: unknown columns are rejected
 /// later by the schema resolution (PostgisFilterSql), and every literal is a
-/// parameter — this is the parameterised-filtering guarantee of plan §11.
+/// parameter — this is the parameterised-filtering guarantee of ADR-0028.
 /// </summary>
 internal static class PostgisFilterParser
 {

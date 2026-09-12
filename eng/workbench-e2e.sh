@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# End-to-end browser verification of the workbench (ADR-0033, plan §18 "web
-# tests — run the browser workbench independently using Playwright; Tauri
-# must not be needed"): build the workbench, run the real Spatial.Host
-# serving the app from Spatial:WebRoot (same origin, no Docker, no Tauri),
-# and drive it from Playwright in a real browser.
+# End-to-end browser verification of the workbench (ADR-0033): build the
+# workbench, run the real Spatial.Host serving the app from Spatial:WebRoot
+# (same origin, no Docker), and drive it from Playwright in a real browser.
 # Requires: .NET 10, node >= 22.6, and a built solution.
 set -euo pipefail
 cd "$(dirname "$0")/.."

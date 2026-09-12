@@ -1,6 +1,6 @@
 # ADR-0019: Tauri may bundle Spatial.Host as an optional sidecar
 
-Status: Accepted
+Status: Superseded by ADR-0039 (desktop packaging abandoned).
 
 ## Context
 

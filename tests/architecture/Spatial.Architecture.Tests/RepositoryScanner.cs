@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Xml.Linq;
 
 namespace Spatial.Architecture.Tests;
@@ -17,12 +16,9 @@ public sealed record ProjectInfo(
     IReadOnlyList<PackageReference> Packages,
     IReadOnlyList<string> ProjectReferences);
 
-public sealed record WebClientInfo(string RelativePath, IReadOnlyList<string> DependencyIds);
-
 public sealed record RepositoryInfo(
     string Root,
     IReadOnlyList<ProjectInfo> Projects,
-    IReadOnlyList<WebClientInfo> WebClients,
     IReadOnlyList<string> SolutionProjects);
 
 public static class RepositoryScanner
@@ -38,29 +34,9 @@ public static class RepositoryScanner
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
 
-        var webClients = new List<WebClientInfo>();
-        foreach (var area in new[] { "apps", "clients" })
-        {
-            var dir = Path.Combine(root, area);
-            if (!Directory.Exists(dir))
-            {
-                continue;
-            }
-
-            foreach (var manifest in Directory.EnumerateFiles(dir, "package.json", SearchOption.AllDirectories))
-            {
-                if (manifest.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                webClients.Add(LoadWebClient(manifest, root));
-            }
-        }
-
         var solutionProjects = LoadSolutionProjects(root);
 
-        return new RepositoryInfo(root, projects, webClients, solutionProjects);
+        return new RepositoryInfo(root, projects, solutionProjects);
     }
 
     /// <summary>Locates the repository root by walking up from the test output directory.</summary>
@@ -111,21 +87,6 @@ public static class RepositoryScanner
             Path.GetRelativePath(FindRepositoryRoot(), path),
             packages,
             references);
-    }
-
-    private static WebClientInfo LoadWebClient(string path, string root)
-    {
-        using var document = JsonDocument.Parse(File.ReadAllText(path));
-        var dependencies = new List<string>();
-        foreach (var section in new[] { "dependencies", "devDependencies" })
-        {
-            if (document.RootElement.TryGetProperty(section, out var property))
-            {
-                dependencies.AddRange(property.EnumerateObject().Select(p => p.Name));
-            }
-        }
-
-        return new WebClientInfo(Path.GetRelativePath(root, path), dependencies);
     }
 
     private static List<string> LoadSolutionProjects(string root)

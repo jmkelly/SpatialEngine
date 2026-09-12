@@ -1,4 +1,4 @@
-// Spatial Engine local development composition (ADR-0034, plan §2.5): the
+// Spatial Engine local development composition (ADR-0034): the
 // PostGIS container, the host and the Vite workbench in one Aspire
 // application. Connection strings and service URLs are injected here; the
 // engine reads them from configuration/environment, never from the repo.

@@ -1,5 +1,5 @@
 /**
- * Coordinate-based selection matching (Phase 10): the feature whose
+ * Coordinate-based selection matching: the feature whose
  * representative coordinate is nearest the clicked lng/lat (within a
  * click tolerance in screen pixels). Pure projection math — deliberately
  * rendering-independent, because pixel-query selection (readPixels) is

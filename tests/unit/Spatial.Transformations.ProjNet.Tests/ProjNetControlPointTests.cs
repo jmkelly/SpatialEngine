@@ -6,8 +6,8 @@ using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// Control-point verification of the transformation adapter (plan §16 Phase 7
-/// "control-point tests"): known real-world coordinates transformed between
+/// Control-point verification of the transformation adapter (ADR-0027): known
+/// real-world coordinates transformed between
 /// catalogue CRSs must land on authoritative values from an independent
 /// reference implementation (PROJ 9 via pyproj, always_xy). Pairs without a
 /// datum shift (WGS84/ETRS89/NAD83 families) are asserted to centimetre

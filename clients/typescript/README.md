@@ -2,7 +2,7 @@
 
 The TypeScript SDK for the Spatial Engine typed host API (ADR-0033).
 Talked to by the browser workbench; browser and Node compatible,
-zero runtime dependencies, no Tauri.
+zero runtime dependencies.
 
 ## Layout
 

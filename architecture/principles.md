@@ -1,16 +1,16 @@
 # Architecture Principles
 
 Read this when proposing, reviewing or challenging any architectural change.
-The implementation plan (implementation-plan.md) is the source of truth; the
-ADRs below it record decisions and their status.
+The ADRs in `architecture/decisions/` are the source of truth; they record
+decisions and their status.
 
 ## The twenty principles
 
 1. Geometry is core. Spatial algorithms are not.
 2. The engine is headless. Every UI is a client.
-3. The browser workbench is the first frontend.
-4. Tauri is packaging and native integration, not the application architecture.
-5. The .NET host runs independently of Tauri.
+3. The browser workbench is the frontend.
+4. Packaging is not architecture: the host ships standalone.
+5. The .NET host runs independently of every client.
 6. Contracts outlive implementations.
 7. Plugins depend on contracts, never on other plugin implementations.
 8. No plugin-specific geometry object crosses a capability boundary.
@@ -23,9 +23,9 @@ ADRs below it record decisions and their status.
 15. Optimised provider pushdown is optional and preserves contract semantics.
 16. Every derived result records provenance.
 17. The kernel remains small, stable and independently testable.
-18. Use Rust only where profiling or platform integration justifies it.
+18. Add another language only where profiling or platform integration justifies it.
 19. Do not introduce Native AOT until compatibility is demonstrated.
-20. Desktop and browser behaviour must be covered by the same conformance tests.
+20. The host and every client are covered by the same conformance tests.
 
 ## How to change the architecture
 

@@ -3,7 +3,7 @@ using Npgsql;
 namespace Spatial.Provider.PostGIS.Configuration;
 
 /// <summary>
-/// The provider's connection configuration (plan §19, ADR-0028,
+/// The provider's connection configuration (ADR-0028,
 /// architecture/distilled/host-and-clients.md): a host-managed connection string that reaches the
 /// host configuration (<c>SPATIAL_POSTGIS_CONNECTION</c>),
 /// never through invocations or the web client. The configuration is the

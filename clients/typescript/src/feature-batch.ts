@@ -2,7 +2,7 @@
  * The canonical feature-batch binary interchange (ADR-0020, format "SFBAT"
  * v1) decoded in TypeScript: the byte-for-byte mirror of the .NET
  * FeatureBatchCodec so browser clients can read scan/query streams. Geometry
- * attributes stay as raw canonical bytes (SGEOM) — Phase 10's renderers
+ * attributes stay as raw canonical bytes (SGEOM) — the map's renderers
  * decode them. Every count and length is bounds-checked before allocation;
  * malformed input throws FeatureBatchFormatError with a byte-accurate
  * message.

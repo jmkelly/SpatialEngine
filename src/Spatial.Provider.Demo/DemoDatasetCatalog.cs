@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Demo;
 
 /// <summary>
-/// The demo provider's in-memory dataset catalog (Phase 10, ADR-0031): two
+/// The demo provider's in-memory dataset catalog (ADR-0031): two
 /// procedurally generated point datasets plus the GeoNames world-cities
 /// snapshot (see <see cref="WorldCities"/>), served by <c>demo@1</c> so the
 /// browser workbench can browse, map and select real features without a

@@ -4,7 +4,7 @@
 > `architecture/decisions/ADR-0033-in-process-interfaces.md`. **The worker
 > plugin model is retired** — services are in-process interfaces composed by
 > DI; ADRs 0002/0003/0006–0008/0013/0022–0028/0030/0031 are superseded
-> history. Phase 11 (Tauri 2 Desktop Packaging) is next.
+> history. The GeoServices REST track is the active work.
 
 ## Repository state
 
@@ -54,22 +54,21 @@
 - **Style/quality traps still apply** (CA1859/CA1826/CA1068/CA1305/CA1861,
   `Results<…>` typed results, format before commit).
 
-## Next up — Phase 11: Tauri 2 Desktop Packaging
+## Next up — GeoServices REST
 
-From the plan (§16 Phase 11, Milestone 2): thin Tauri shell packaging the
-**unchanged** workbench `dist`, optional `Spatial.Host` sidecar supervision,
-remote-host mode, a narrow desktop file adapter, Windows-first tests.
+The GeoServices track (ADR-0035/0036/0037/0038,
+`architecture/geoservices-implementation-plan.md`) is implemented, but its
+compatibility claim is unproven. Remaining work, in order:
 
-1. Build with `npm run build` in `apps/workbench-web` and ship `dist/` as
-   `Spatial:WebRoot` static content. The host's `GET /` serves the app when
-   WebRoot is set — the desktop window just points at it.
-2. Host sidecar: `Spatial.Host` is framework-dependent; ship the runtime or
-   use `dotnet publish` framework-dependent + `--urls http://127.0.0.1:<port>`.
-   Remote-host mode = `VITE_SPATIAL_HOST_URL` pointing at a remote host URL.
-3. PostGIS in the sidecar needs `Spatial:Postgis:ConnectionString` (or
-   `SPATIAL_POSTGIS_CONNECTION`); the demo store needs nothing.
-4. PostGIS container tests still skip without Docker — the workbench's real
-   dataset browser runs against the demo store in CI.
-5. ADR-0016/0017/0019 rules stand: the shell contains no spatial logic, no
-   `@tauri-apps/*` deps may enter `apps/workbench-web` (architecture test
-   scans every `package.json` under apps/ and clients/).
+1. **Real-client proof.** Point an unmodified Esri client (ArcGIS Maps SDK
+   for JS) at `Spatial:GeoServices:Root` and pin the round trip; today's
+   tests use the engine's own HTTP client against recorded fixtures.
+2. **Close the recorded-corpus gaps** (`research/arcgis/README.md`):
+   `esriGeometryEnvelope`, `esriFieldTypeGUID`, SRIDs outside the curated
+   `WkidMap`, and non-spatial group/table layers advertised as datasets.
+3. **Decide the five unfinished Geometry Service operations** (`offset`,
+   `cut`, `reshape`, `trimExtend`, `autoComplete`): implement or record as
+   non-goals.
+4. Wire the `research/arcgis` corpus into CI as a provider regression gate.
+
+`eng/verify.sh` is the gate; the quality-loop queues are gitignored.

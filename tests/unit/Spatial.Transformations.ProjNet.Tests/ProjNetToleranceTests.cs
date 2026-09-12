@@ -6,7 +6,7 @@ using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// Tolerance and fidelity tests (plan §16 Phase 7): the adapter preserves
+/// Tolerance and fidelity tests (ADR-0027): the adapter preserves
 /// what the planar transform does not touch — empty shapes with their
 /// layouts, Z and M ordinates, multi-part structure — stamps the target CRS
 /// and never disturbs coordinates it does not transform.

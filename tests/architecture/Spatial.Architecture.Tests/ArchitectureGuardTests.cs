@@ -169,22 +169,6 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// Tauri is a desktop shell, not part of the web client. The browser
-    /// workbench and generated SDK run without Tauri APIs.
-    /// </summary>
-    [Fact]
-    public void Web_clients_do_not_depend_on_tauri()
-    {
-        var violations = Repository.Value.WebClients
-            .SelectMany(client => client.DependencyIds
-                .Where(id => id.StartsWith("@tauri-apps/", StringComparison.Ordinal))
-                .Select(id => $"{client.RelativePath} depends on {id}; the web client must run without Tauri."))
-            .ToList();
-
-        Assert.Empty(violations);
-    }
-
-    /// <summary>
     /// Every project under /src and /tests is in the solution, and every
     /// solution project lives under /src or /tests.
     /// </summary>

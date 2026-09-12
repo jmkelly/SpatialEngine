@@ -22,10 +22,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 /**
- * The workbench browser suite (ADR-0033, plan §18 web tests): catalogue,
+ * The workbench browser suite (ADR-0033): catalogue,
  * map and selection, operation forms, sleep cancellation, result preview
  * and persistence, runtime health — all through a real browser against the
- * real host; no Tauri.
+ * real host.
  *
  * Every test opens `/?basemap=none`: the basemap raster is presentation
  * only, and the suite stays deterministic without network tiles.

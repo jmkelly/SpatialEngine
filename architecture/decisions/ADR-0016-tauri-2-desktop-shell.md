@@ -1,6 +1,6 @@
 # ADR-0016: Tauri 2 is the first desktop shell
 
-Status: Accepted
+Status: Superseded by ADR-0039 (desktop packaging abandoned).
 
 ## Context
 

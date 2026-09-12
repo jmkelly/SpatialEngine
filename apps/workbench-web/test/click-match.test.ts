@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { lngSpanPixels, mercatorY, nearestFeatureId, representativeCoordinate } from "../src/click-match.ts";
 
 /**
- * Coordinate-based click selection (Phase 10): matching is pure projection
+ * Coordinate-based click selection: matching is pure projection
  * math, so the unit tests pin the grid geometry without a renderer.
  */
 

@@ -3,8 +3,8 @@ using Spatial.Core.Features;
 namespace Spatial.PluginSdk.Providers;
 
 /// <summary>
-/// The full schema description of one spatial dataset (plan §11 "schema
-/// description", §13.2 "inspect schemas and CRS"): identity, the geometry
+/// The full schema description of one spatial dataset (ADR-0028): identity,
+/// the geometry
 /// column with its SRID and geometry type, a row-count estimate, the columns
 /// that form the feature identity, and the feature schema (fields in column
 /// order — geometry fields included as <see cref="AttributeKind.Geometry"/>).

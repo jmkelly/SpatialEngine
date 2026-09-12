@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end verification of the independently executable host through the
 # TypeScript SDK (ADR-0033): run the real Spatial.Host process and drive it
-# from Node with the browser-compatible SDK over real HTTP — no Docker, no
-# Tauri.
+# from Node with the browser-compatible SDK over real HTTP — no Docker.
 # Requires: .NET 10, node >= 22.6, and a built solution.
 set -euo pipefail
 cd "$(dirname "$0")/.."

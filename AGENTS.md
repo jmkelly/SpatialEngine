@@ -5,23 +5,22 @@ Headless, extensible spatial engine: a small .NET 10 core owns spatial
 (algorithms, stores, transformations), implemented in-process by the
 `Spatial.Operations.*`, `Spatial.Transformations.*` and
 `Spatial.Provider.*` projects and composed by `Spatial.Host` with
-Microsoft DI (ADR-0033). The browser workbench ships first; Tauri packages
-it later. Source of truth: `architecture/implementation-plan.md`;
-decisions: `architecture/decisions/`.
+Microsoft DI (ADR-0033). The browser workbench is the delivered client and
+Esri GeoServices REST (serve/consume/edit) is the interop surface. Source of
+truth: `architecture/decisions/` (ADRs) and
+`architecture/geoservices-implementation-plan.md`.
 
 ## Boundaries (hard walls — enforced by tests/architecture)
 
 - Geometry values live in `Spatial.Core`; spatial algorithms ship in
   implementation projects. The core stays structural: inspection,
   traversal, encoding, envelopes.
-- Public contracts carry only core types. NTS, Npgsql, EF, renderer and
-  Rust/Tauri types stay inside their owning implementation, never crossing
-  a boundary.
+- Public contracts carry only core types. NTS, Npgsql, EF and renderer
+  types stay inside their owning implementation, never crossing a boundary.
 - `Spatial.PluginSdk` holds interfaces over core types only; it takes no
   packages and references nothing but `Spatial.Core`.
 - `Spatial.Host` links Core, SDK and implementations and runs standalone
-  with no desktop shell. The browser workbench runs without Tauri; the
-  Tauri shell (Milestone 2) contains no spatial logic.
+  with no desktop shell; the browser workbench talks to it directly.
 - The host is JIT-compiled. Native AOT requires an approved ADR plus measured
   benefit and compatibility evidence.
 - Long-running behaviour is a cancellable `Task` with structured
@@ -78,7 +77,7 @@ decisions: `architecture/decisions/`.
 - Stryker: per-test-project runs (~11 min each × 9); run only when cheap
   gates are green.
 
-## Definition of done (plan §22)
+## Definition of done
 
 Implemented behaviour with typed contracts; success, failure and
 cancellation tested; no prohibited dependency; actionable diagnostics;

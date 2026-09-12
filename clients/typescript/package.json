@@ -1,7 +1,7 @@
 {
   "name": "@spatial/client",
   "version": "0.1.0",
-  "description": "TypeScript SDK for the Spatial Engine public host API (plan \u00a712, Epic H). Talks only the public HTTP contracts; no Tauri or renderer dependencies.",
+  "description": "TypeScript SDK for the Spatial Engine public host API. Talks only the public HTTP contracts; no renderer dependencies.",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",

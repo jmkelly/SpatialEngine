@@ -1,7 +1,7 @@
 import type { Feature, FeatureBatch } from "@spatial/client";
 
 /**
- * The browser's MapLibre geometry adapter (Phase 10): decodes canonical
+ * The browser's MapLibre geometry adapter: decodes canonical
  * SGEOM interchange bytes (ADR-0020) into GeoJSON geometry so the map can
  * render feature geometry attributes that cross the wire as raw canonical
  * bytes. The mirror of the .NET GeometryCodec layout — header, recursive

@@ -1,6 +1,6 @@
 # ADR-0015: Browser delivery is completed before desktop packaging
 
-Status: Accepted
+Status: Superseded by ADR-0039 (desktop packaging abandoned).
 
 ## Context
 

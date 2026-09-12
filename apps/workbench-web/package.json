@@ -2,7 +2,7 @@
   "name": "@spatial/workbench-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Browser workbench (Phase 10, Milestone 1): React + TypeScript + MapLibre against the independently executable spatial host. Talks only to the public host API through the generated TypeScript SDK; no Tauri dependencies.",
+  "description": "Browser workbench: React + TypeScript + MapLibre against the independently executable spatial host. Talks only to the public host API through the generated TypeScript SDK.",
   "type": "module",
   "scripts": {
     "dev": "vite",

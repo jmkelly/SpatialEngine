@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Spatial.Core.Geometry;
 
 /// <summary>A heterogeneous collection of geometries.</summary>
-[SuppressMessage("Naming", "CA1711", Justification = "'GeometryCollection' is the OGC simple-feature term for this core type (plan §7); no reserved suffix conflict is intended.")]
+[SuppressMessage("Naming", "CA1711", Justification = "'GeometryCollection' is the OGC simple-feature term for this core type (ADR-0001); no reserved suffix conflict is intended.")]
 public sealed class GeometryCollection : GeometryCollectionBase<IGeometry>, IGeometryParts, IEquatable<GeometryCollection>
 {
     public GeometryCollection(IEnumerable<IGeometry> geometries, CoordinateReference? coordinateReference = null)

@@ -1,6 +1,6 @@
 # ADR-0017: Tauri contains no spatial business logic
 
-Status: Accepted
+Status: Superseded by ADR-0039 (desktop packaging abandoned).
 
 ## Context
 

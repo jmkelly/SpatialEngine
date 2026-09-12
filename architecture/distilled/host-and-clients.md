@@ -88,15 +88,10 @@ The `store` query selects `demo` (default, always available) or `postgis`
   host API through the TS SDK; engine-neutral app state; no spatial logic.
   Only client-side spatial code: `src/sgeom.ts` (SGEOM → GeoJSON, byte-exact
   codec mirror) and `src/click-match.ts` (pure projection math, no pixel reads).
-- Must run in a normal browser with zero Tauri dependency — Playwright
-  (`eng/workbench-e2e.sh`); `package.json` must never include `@tauri-apps/*`
-  (architecture test).
+- Must run in a normal browser — Playwright (`eng/workbench-e2e.sh`).
 - Persistence: results/recent runs in localStorage; geometry stored as the
   host-produced SGEOM base64, never re-encoded client-side.
 - MapLibre worker pinned: `public/maplibre-gl-worker.mjs` via `setWorkerUrl`.
-- Tauri shell: packages React assets, window/lifecycle/sidecar/narrow
-  adapters. **No geometry, operations, provider logic or project-domain
-  behaviour in the shell.** Desktop conformance mirrors browser conformance.
 
 ## Deployment profiles
 
@@ -104,10 +99,9 @@ The `store` query selects `demo` (default, always available) or `postgis`
 | --- | --- |
 | Browser/server | React assets + ASP.NET Core host + external PostGIS; services in-process |
 | Local development | PostGIS container; hot reload; demo store for Docker-free work |
-| Desktop | Tauri 2 + React production assets + self-contained host sidecar or configured remote host |
 
 Invariants: one public API/contract set/TS SDK/React app in every profile;
-host independently executable; browser tests never require Tauri.
+host independently executable; browser tests run against the host directly.
 
 ## Security model
 

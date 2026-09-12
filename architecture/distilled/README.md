@@ -2,9 +2,9 @@
 
 The condensed architecture documentation for this repo. Kept deliberately
 small for fast LLM/human consumption. **Precedence when documents disagree:**
-`architecture/decisions/` (ADRs) and `architecture/implementation-plan.md`
-beat these digests; fix a digest instead of diverging from an ADR. The ADRs
-are dated decision records — their prose reflects the state at decision time.
+`architecture/decisions/` (ADRs) beat these digests; fix a digest instead of
+diverging from an ADR. The ADRs are dated decision records — their prose
+reflects the state at decision time.
 
 ## Route by task
 
@@ -25,9 +25,9 @@ shape is noted in brackets.
 
 1. Geometry is core; spatial algorithms are not.
 2. Headless engine — every UI is a client.
-3. Browser workbench is the first frontend.
-4. Tauri is packaging, not architecture.
-5. The .NET host runs independently of Tauri.
+3. The browser workbench is the frontend.
+4. Packaging is not architecture; the host ships standalone.
+5. The .NET host runs independently of every client.
 6. Contracts outlive implementations. [Interfaces in `Spatial.PluginSdk`.]
 7. Implementations depend on contracts, never on each other.
 8. No implementation-specific geometry object crosses a service boundary.
@@ -40,9 +40,9 @@ shape is noted in brackets.
 15. Provider pushdown is optional and must preserve contract semantics.
 16. Every derived result records its service. [No provenance envelopes.]
 17. Kernel stays small, stable, independently testable.
-18. Rust only where profiling or platform integration justifies it.
+18. Another language only where profiling or platform integration justifies it.
 19. No Native AOT until compatibility is demonstrated.
-20. Desktop and browser behaviour share the same conformance tests.
+20. The host and every client share the same conformance tests.
 
 ## ADR register (one line each; full records in `../decisions/`)
 
@@ -62,11 +62,11 @@ shape is noted in brackets.
 | 0012 | Host is JIT-compiled initially. |
 | 0013 | ~~Language-neutral worker boundaries~~ — superseded by 0033. |
 | 0014 | React + TypeScript + MapLibre frontend; talks only to the public host API. |
-| 0015 | Browser milestone completes before any Tauri work. |
-| 0016 | Tauri 2 is the desktop shell; narrow native integration, WebView2 first. |
-| 0017 | Tauri contains no spatial logic; native adapters are narrow capabilities. |
+| 0015 | ~~Browser milestone completes before any Tauri work~~ — superseded by 0039. |
+| 0016 | ~~Tauri 2 is the desktop shell~~ — superseded by 0039. |
+| 0017 | ~~Tauri contains no spatial logic~~ — superseded by 0039. |
 | 0018 | `Spatial.Host` is independently executable; API identical for every client. |
-| 0019 | Tauri may bundle Spatial.Host as an optional sidecar; remote-host mode stays supported. |
+| 0019 | ~~Tauri may bundle Spatial.Host as an optional sidecar~~ — superseded by 0039. |
 | 0020 | Canonical binary interchange is the required wire format; JSON only for debugging/metadata. |
 | 0021 | Native AOT only with measured benefit + compatibility evidence; main host stays JIT. |
 | 0022 | ~~Runtime-owned resource handles~~ — superseded by 0033 (store-owned handles). |
@@ -85,6 +85,8 @@ shape is noted in brackets.
 | 0035 | GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider. |
 | 0036 | Geometry measurement, processing and relation verbs are separate SDK interfaces. |
 | 0037 | Feature editing is a gated, per-feature `IFeatureEditStore` capability. |
+| 0038 | Read-by-identity is an additive store capability (`IFeatureLookup`). |
+| 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
 
 ## How to change the architecture
 
@@ -92,12 +94,14 @@ shape is noted in brackets.
 2. New service → interface + implementation + tests, together.
 3. New package in a platform project → ADR required before the architecture-test allowlist accepts it.
 4. Enforcement lives in `tests/architecture/Spatial.Architecture.Tests`; every rule names the principle/ADR it implements.
-5. Public changes update contracts, SDKs, tests, ADRs **and the relevant distilled doc** together (plan §20/§22).
+5. Public changes update contracts, SDKs, tests, ADRs **and the relevant distilled doc** together.
 
 ## Documentation health notes
 
 - ADRs 0002/0003/0006–0008/0013/0022–0028/0030/0031 describe the retired
   worker-plugin model; they are kept as history and marked superseded
   above. Read them for rationale, not for current structure.
+- ADRs 0015–0017/0019 describe the abandoned Tauri desktop shell (ADR-0039);
+  kept as history, not for current structure.
 - Byte-level wire specs: `GeometryCodec`/`FeatureBatchCodec` source is the
   authoritative format spec; `core.md` carries the essentials.

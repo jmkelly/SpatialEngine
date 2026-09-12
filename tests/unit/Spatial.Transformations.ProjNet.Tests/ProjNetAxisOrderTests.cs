@@ -6,7 +6,7 @@ using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// Axis-order tests (plan §16 Phase 7): the engine's coordinate convention is
+/// Axis-order tests (ADR-0027): the engine's coordinate convention is
 /// x-first for every CRS — x is longitude for geographic, easting for
 /// projected — exactly the order ProjNet 2.1's math transforms consume and
 /// produce, so the adapter needs no axis swaps. These tests pin that

@@ -2,7 +2,7 @@
   "name": "@spatial/workbench-e2e",
   "version": "0.1.0",
   "private": true,
-  "description": "Playwright browser tests for the Phase 10 browser workbench (plan §18 'web tests — run the browser workbench independently using Playwright; Tauri must not be needed'). Driven by eng/workbench-e2e.sh against the real host serving the built workbench.",
+  "description": "Playwright browser tests for the browser workbench. Driven by eng/workbench-e2e.sh against the real host serving the built workbench.",
   "type": "module",
   "scripts": {
     "test": "playwright test"
