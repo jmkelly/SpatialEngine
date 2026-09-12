@@ -1,148 +1,148 @@
 # Spatial Engine
 
-A headless, extensible spatial engine. A small, stable .NET 10 core owns the
-spatial **value model** (coordinates, geometries, CRS identity, features).
-Service **interfaces** in `Spatial.PluginSdk` own the **verbs** — operations
-(buffer, intersection, …), data stores (PostGIS first), transformations —
-implemented in-process by the `Spatial.Operations.*`,
-`Spatial.Transformations.*` and `Spatial.Provider.*` projects and composed
-by the independently executable host with Microsoft DI (ADR-0033).
+**Spatial infrastructure you can build on — not another GIS monolith.**
 
-The first delivered frontend is a browser-hosted React + MapLibre workbench.
-The engine also meets the Esri ecosystem at the GeoServices REST boundary
-(ADR-0035): it serves GeoServices and consumes ArcGIS REST as a provider.
+Spatial Engine gives you a small, dependable server that owns spatial
+*values* and performs spatial *work*: buffer, intersect, validate, simplify,
+measure, transform between CRSs, and read/write real feature data. It ships
+with a browser workbench so you can see results on a map immediately, two
+typed SDKs so you can script it in minutes, and an Esri GeoServices REST
+boundary so the tools you already use can talk to it.
 
-**Key idea:** geometry is core, verbs are services, and interfaces outlive
-implementations.
+No desktop install. No plugin zoo. No vendor lock-in on your geometry.
 
-## Status
+- **Start without a database.** A Docker-free demo store makes the engine
+  usable the moment it starts.
+- **Grow into your data.** Point it at PostGIS, or consume a remote ArcGIS
+  REST service as if it were local.
+- **Build clients your way.** One typed HTTP API, an OpenAPI document, a
+  TypeScript SDK and a .NET SDK.
+- **Extend without forking.** Implement a service interface, compose it with
+  DI, never touch the core.
 
-In-process services (ADR-0033). `apps/workbench-web` serves the React 19 +
-TypeScript + MapLibre workbench from the host itself (`Spatial:WebRoot`):
-a service/dataset catalogue, the demo dataset browser with map rendering
-and coordinate-based selection, typed operation forms (buffer, scan, query,
-sleep with cancellation…), result preview with browser-side persistence,
-clearing of unsaved map previews, and runtime health. `eng/workbench-e2e.sh` builds the app, runs the real host
-and drives the workbench with Playwright (no Docker); `demo`
-provides the Docker-free datasets and the cancellable sleep; the geometry
-adapter (`src/sgeom.ts`) decodes canonical SGEOM bytes straight from the
-host to the map.
+---
 
-The independently executable host serves the typed HTTP API
-(`architecture/distilled/host-and-clients.md`): `POST /api/geometry/*`,
-`POST /api/crs/describe`, `POST /api/coordinates/transform`,
-`GET /api/catalogue`, `GET /api/datasets/{id}`, `POST /api/datasets`,
-`POST /api/features/scan|query|write`, `POST /api/transactions/*`,
-`POST /api/demo/sleep`, health, and the OpenAPI description at
-`/openapi/v1.json`. Geometries cross as Base64 SGEOM, batches as Base64
-SFBAT; failures are structured `SpatialException` codes
-(`invalid.arguments` → 400, `not.found` → 404, `store.unavailable` → 503).
-Two SDKs ship: `clients/typescript` (`@spatial/client`: fetch-based, wire
-types generated from the OpenAPI snapshot, the canonical SFBAT
-feature-batch decoder, drift checked in `npm test`) and
-`clients/dotnet/Spatial.Client` (.NET typed client with unit and real-host
-integration tests). `eng/e2e-web.sh` runs the real host process and drives
-it from the TypeScript SDK over real HTTP.
+## Why Spatial Engine
 
-The PostGIS store (`Spatial.Provider.PostGIS`) implements catalogue,
-dataset, feature scan/query/write and transactions on Npgsql 10: schema
-discovery, streaming reads collected to canonical batches, bounding-box
-and parameterised attribute filtering, single-transaction appends,
-result-table creation and commit/rollback over store-owned handles.
-Secrets stay host-managed (`Spatial:Postgis:ConnectionString` /
-`SPATIAL_POSTGIS_CONNECTION`, never in request bodies). Covered by unit
-tests plus a containerised integration suite (Testcontainers PostGIS) that
-also proves cancellation and secret redaction.
+**Geometry is treated as a value, not a row in someone's SDK.** The
+`Spatial.Core` type model — coordinates, geometries, CRS identity, features —
+is dependency-free and immutable. Every service boundary speaks in those
+types only.
 
-The CRS service (`Spatial.Transformations.ProjNet`) implements description
-and transformation on ProjNet 2.1 with a curated embedded EPSG catalogue.
-The engine's x-first coordinate convention is ProjNet's own math-transform
-order, so no axis swaps are needed. Results keep Z/M and layout and are
-stamped with the target CRS.
+**Spatial algorithms are services, not the core.** Buffering, intersection,
+validity, simplification, measurement, set/construction and DE-9IM relations
+live behind small SDK interfaces and are implemented on battle-tested
+libraries (NetTopologySuite, ProjNet). Swap or add an implementation without
+disturbing the value model.
 
-The geometry service (`Spatial.Operations.NetTopologySuite`) implements
-buffer, intersection, OGC validity (an invalid geometry is a successful
-`false`) and Douglas-Peucker simplification, with the input CRS identity
-carried onto results. It also implements the measurement, set/construction
-and DE-9IM relation verbs (ADR-0036). Adapters never expose
-NetTopologySuite types (ADR-0005).
+**Your existing GIS keeps working.** The engine serves the Esri GeoServices
+REST shape — catalog, Geometry Service, FeatureServer, gated editing — and
+consumes remote ArcGIS REST as a provider. The compatibility claim is proven
+against the official ArcGIS REST JS client.
 
-The Esri GeoServices REST boundary (ADR-0035) is served by
-`Spatial.Adapter.GeoServices` at `Spatial:GeoServices:Root`
-(`/arcgis/rest/services` by default): a catalog, a Geometry Service
-(`project`, `generalize`, `buffer`, `intersect`, `simplify`-as-repair,
-`union`, `difference`, `convexHull`, `densify`, `relation`, measures) and a
-FeatureServer over the keyed stores (query, the feature resource, and gated
-editing), all `f=json` on GET or POST. The shared
-`Spatial.Interop.Esri` project owns the Esri wire codec, the curated
-WKID ↔ EPSG map, the Esri error model, the closed `where` filter grammar
-and the per-feature edit results. `Spatial.Provider.ArcGisRest` consumes a
-configured remote ArcGIS REST service through
-`IDataCatalogue`/`IFeatureStore` with pagination and `where` pushdown.
-Feature editing (`addFeatures`/`updateFeatures`/`deleteFeatures`/
-`applyEdits`, ADR-0037) is served for layers whose store implements the
-additive `IFeatureEditStore` capability and whose dataset has an integer
-identity column; the demo and ArcGIS REST stores stay read-only.
+**Your data and secrets stay under your control.** PostGIS is a first-class
+store with catalogue, scan/query/write, transactions and gated editing.
+Connection strings flow from host configuration to options only — never
+through request bodies, logs or error messages.
 
-## Repository layout
+**Long work is cancellable, not a parked job.** Every call is a cancellable
+`Task`; the client disconnecting cancels the server work. Failures are
+structured codes (`invalid.arguments`, `not.found`, `store.unavailable`)
+that map to real HTTP statuses.
 
-| Path | Purpose |
-| --- | --- |
-| `src/Spatial.Core` | Spatial value model (no dependencies, no algorithms) |
-| `src/Spatial.PluginSdk` | Service interfaces, DTOs, error codes, HTTP shapes |
-| `src/Spatial.Operations.NetTopologySuite` | Geometry operations (buffer, intersection, validate, simplify) plus measures/processing/relations (ADR-0036) |
-| `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
-| `src/Spatial.Interop.Esri` | Shared Esri JSON codec, WKID map, error model and filter grammar (ADR-0035) |
-| `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade (catalog, Geometry Service, FeatureServer query + editing) |
-| `src/Spatial.Provider.ArcGisRest` | ArcGIS REST consuming provider (ADR-0035) |
-| `src/Spatial.Provider.PostGIS` | Data store: catalogue, dataset, feature scan/query/write, transactions and editing (ADR-0037) |
-| `src/Spatial.Provider.Demo` | Docker-free demo store + cancellable sleep |
-| `src/Spatial.Host` | Independently executable ASP.NET Core host (typed routes, DI composition) |
-| `src/Spatial.AppHost` | Aspire AppHost for the local development profile (ADR-0034) |
-| `tests/` | unit / architecture / integration suites |
-| `architecture/` | Plan, principles, ADR register, boundary docs, ADRs and reference specs (incl. GeoServices) |
-| `clients/ apps/` | SDKs and web apps |
-| `eng/` | Build, format, test, verify scripts |
+**It is genuinely inspectable.** `eng/verify.sh` gates format, build and the
+full test suite; quality gates enforce zero warnings, branch coverage,
+complexity and CRAP thresholds; and two end-to-end suites drive a real host
+from the JavaScript SDK and from a real browser.
 
-## Requirements
+---
 
-- .NET SDK 10.0.400 (pinned in `global.json`)
-- Node 26 (`.node-version`) — needed for the workbench
+## See it in five minutes
 
-## Quickstart
+You need .NET SDK 10.0.400 (pinned in `global.json`). Node 26 is only needed
+for the browser workbench.
+
+**1. Run the engine.** The demo store is always available, so nothing else
+is required:
 
 ```bash
-./eng/verify.sh          # format check + build + full test run
-./eng/e2e-web.sh         # real host + TypeScript SDK over HTTP
-./eng/workbench-e2e.sh   # real host + built workbench + Playwright
+dotnet run --project src/Spatial.Host
+# → http://localhost:5201
+curl -s http://localhost:5201/health/ready
+curl -s http://localhost:5201/api/catalogue
 ```
 
-CI (`.github/workflows/ci.yml`) runs all three plus the JavaScript suites
-(typecheck, generated-types drift, unit) on every push and pull request.
+**2. Open the workbench.** Build the React app once and let the host serve it
+from the same origin:
 
-### Local development (Aspire)
+```bash
+cd apps/workbench-web && npm ci && npm run build && cd ../..
+Spatial__WebRoot="$(pwd)/apps/workbench-web/dist" \
+  dotnet run --project src/Spatial.Host
+# → open http://localhost:5201
+```
 
-`src/Spatial.AppHost` (ADR-0034) composes the whole local profile — a
-PostGIS container, `Spatial.Host` with its connection string injected, and
-the Vite workbench dev server:
+**3. Bring a real store.** With Docker available, the Aspire AppHost starts
+PostGIS, injects the connection string and runs the Vite dev server:
 
 ```bash
 dotnet run --project src/Spatial.AppHost
 ```
 
-Requires Docker and Node ≥ 22.6. The Aspire dashboard prints the workbench
-and host endpoints. Without Docker, serve the built workbench from the
-host directly:
+The Aspire dashboard prints the workbench and host endpoints. Prefer to skip
+Docker? Serve the built workbench from the host as above.
+
+### Verify the whole thing
 
 ```bash
-dotnet run --project src/Spatial.Host
+./eng/verify.sh          # format check + build + full test run
+./eng/e2e-web.sh         # real host, driven by the TypeScript SDK over HTTP
+./eng/workbench-e2e.sh   # real host + built workbench + Playwright
 ```
 
-## Deployment
+CI runs all three plus the JavaScript typecheck, generated-types drift check
+and unit suites on every push and pull request.
 
-The engine ships as the independently executable host with the browser
-workbench served from `Spatial:WebRoot` (ADR-0039). `Dockerfile` builds both
-into one image that listens on port 8080 as a non-root user:
+---
+
+## What you get out of the box
+
+**A browser workbench** (`apps/workbench-web`, React 19 + TypeScript +
+MapLibre) that a first-time user can operate without documentation:
+
+- browse the service and dataset catalogue, with a live runtime health view;
+- render features from the demo or PostGIS store on a map and select them by
+  coordinate;
+- run typed operation forms — buffer, scan, query, cancellable sleep — and
+  preview results without leaving the page;
+- keep unsaved previews in the browser, and clear them when you are done.
+
+**A headless engine** with a typed HTTP surface: geometry operations, CRS
+description and coordinate transformation, catalogue and dataset endpoints,
+feature scan/query/write, transactions, health checks and an OpenAPI document
+at `/openapi/v1.json`. Geometries cross as canonical Base64 SGEOM;
+feature batches as Base64 SFBAT — not lossy JSON.
+
+**Two SDKs that stay honest:** `clients/typescript` (`@spatial/client`, wire
+types generated from the OpenAPI snapshot and drift-checked in `npm test`)
+and `clients/dotnet/Spatial.Client` (one typed method per route, core
+geometry values in and out).
+
+**An Esri boundary you can point at:** GeoServices REST at
+`/arcgis/rest/services` by default — a catalog, a Geometry Service
+(`project`, `generalize`, `buffer`, `intersect`, `simplify`, `union`,
+`difference`, `convexHull`, `densify`, `relation`, measures) and a
+FeatureServer over your keyed stores, with editing gated per layer. In the
+other direction, `Spatial.Provider.ArcGisRest` reads a configured remote
+ArcGIS REST service through the same store interfaces, with pagination and
+`where` pushdown.
+
+---
+
+## Ship it
+
+The engine packages as one container: the host plus the built workbench,
+listening on port 8080 as a non-root user.
 
 ```bash
 docker build -t spatial-engine:0.1.0 .
@@ -152,20 +152,59 @@ docker run --rm -p 8080:8080 \
 ```
 
 The demo store and the GeoServices FeatureServer are always available; the
-PostGIS store is keyed `postgis` and advertised once
-`Spatial:Postgis:ConnectionString` / `SPATIAL_POSTGIS_CONNECTION` is set.
-Secrets flow host config → options only and never appear in request bodies.
-See `RELEASING.md` for the version/tag checklist and `CHANGELOG.md` for
-what shipped.
+PostGIS store is advertised once its connection string is configured. See
+`RELEASING.md` for the version/tag checklist and `CHANGELOG.md` for what
+shipped.
 
-## Reading order for new contributors
+---
 
-1. `architecture/decisions/` — architecture decision records (the source of truth)
-2. `architecture/principles.md` — the twenty principles
-3. `architecture/geoservices-implementation-plan.md` — Esri GeoServices REST track (ADR-0035, ADR-0037)
-4. `AGENTS.md` — boundaries and guidance for development agents
+## Under the hood
 
-## Delivered milestone
+### Repository layout
 
-- **Milestone 1** — browser workbench: PostGIS → core geometry → geometry
-  service → rendered, inspectable, persistable result.
+| Path | Purpose |
+| --- | --- |
+| `src/Spatial.Core` | Spatial value model (no dependencies, no algorithms) |
+| `src/Spatial.PluginSdk` | Service interfaces, DTOs, error codes, HTTP shapes |
+| `src/Spatial.Operations.NetTopologySuite` | Geometry verbs: operations, measures, processing, relations |
+| `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
+| `src/Spatial.Interop.Esri` | Shared Esri JSON codec, WKID map, error model, filter grammar |
+| `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade |
+| `src/Spatial.Provider.ArcGisRest` | ArcGIS REST consuming provider |
+| `src/Spatial.Provider.PostGIS` | PostGIS store: catalogue, features, transactions, editing |
+| `src/Spatial.Provider.Demo` | Docker-free demo store and cancellable sleep |
+| `src/Spatial.Host` | Independently executable ASP.NET Core host (DI composition) |
+| `src/Spatial.AppHost` | Aspire AppHost for the local development profile |
+| `clients/`, `apps/` | SDKs and the browser workbench |
+| `tests/` | Unit, architecture and integration suites |
+| `architecture/` | Principles, ADRs, boundary docs and reference specs |
+| `eng/` | Build, format, test and verify scripts |
+
+### The shape of the design
+
+A small stable core owns spatial values. Interfaces in `Spatial.PluginSdk`
+own the verbs. Implementations live in their own projects, depend on
+contracts and never on each other, and are composed by the host with
+Microsoft DI. Third-party types — NTS, Npgsql, EF, renderer — never cross a
+public boundary. The architecture tests enforce these walls, and every rule
+names the principle or ADR it implements.
+
+### Reading order for contributors
+
+1. `architecture/decisions/` — the ADR register, the source of truth.
+2. `architecture/principles.md` — the twenty principles.
+3. `architecture/geoservices-implementation-plan.md` — the Esri track.
+4. `architecture/distilled/` — condensed docs routed by task.
+5. `AGENTS.md` — boundaries and guidance for development agents.
+
+---
+
+## Requirements
+
+- .NET SDK 10.0.400 (pinned in `global.json`)
+- Node 26 (`.node-version`) for the workbench
+- Docker, optionally, for PostGIS and the Aspire development profile
+
+## License
+
+MIT — see `LICENSE`.
