@@ -12,11 +12,11 @@ namespace Spatial.Rendering.Skia.Pipeline;
 /// </summary>
 internal static class GeometryPipeline
 {
-    /// <summary>Transforms the viewport bounds into <paramref name="source"/> by transforming its corners.</summary>
+    /// <summary>Transforms the viewport bounds from <paramref name="from"/> into <paramref name="to"/> by transforming its corners.</summary>
     public static Envelope TransformEnvelope(
-        ICoordinateTransforms transforms, Envelope bounds, string target, string source, CancellationToken cancellationToken)
+        ICoordinateTransforms transforms, Envelope bounds, string from, string to, CancellationToken cancellationToken)
     {
-        if (bounds.IsEmpty || string.Equals(target, source, StringComparison.OrdinalIgnoreCase))
+        if (bounds.IsEmpty || string.Equals(from, to, StringComparison.OrdinalIgnoreCase))
         {
             return bounds;
         }
@@ -29,7 +29,7 @@ internal static class GeometryPipeline
             new Coordinate(bounds.MinX, bounds.MaxY),
             new Coordinate(bounds.MinX, bounds.MinY),
         ]);
-        return transforms.Transform(ring, source, target, cancellationToken).Envelope ?? bounds;
+        return transforms.Transform(ring, from, to, cancellationToken).Envelope ?? bounds;
     }
 
     /// <summary>Places a source-CRS geometry into the viewport CRS (a no-op when they already agree).</summary>

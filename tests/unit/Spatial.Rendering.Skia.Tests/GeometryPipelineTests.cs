@@ -23,11 +23,16 @@ public sealed class GeometryPipelineTests
     }
 
     [Fact]
-    public void TransformEnvelope_TransformsTheCorners()
+    public void TransformEnvelope_TransformsTheCornersFromTheViewportIntoTheDataset()
     {
+        var transforms = new OffsetTransforms(5, -5);
+
         var result = GeometryPipeline.TransformEnvelope(
-            new OffsetTransforms(5, -5), new Envelope(-10, -10, 10, 10), "EPSG:3857", "EPSG:4326", CancellationToken.None);
+            transforms, new Envelope(-10, -10, 10, 10), "EPSG:3857", "EPSG:4326", CancellationToken.None);
+
         Assert.Equal(new Envelope(-5, -15, 15, 5), result);
+        Assert.Equal("EPSG:3857", transforms.LastSource);
+        Assert.Equal("EPSG:4326", transforms.LastTarget);
     }
 
     [Fact]

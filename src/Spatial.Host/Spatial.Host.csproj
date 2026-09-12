@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Spatial.Provider.ArcGisRest\Spatial.Provider.ArcGisRest.csproj" />
     <ProjectReference Include="..\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
     <ProjectReference Include="..\Spatial.Imagery.Vips\Spatial.Imagery.Vips.csproj" />
+    <ProjectReference Include="..\Spatial.Tiling.WebMercator\Spatial.Tiling.WebMercator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -19,7 +19,7 @@ reflects the state at decision time.
 | Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041 |
 | MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
-| Raster rendering / imagery (R0–R3) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044 |
+| Raster rendering / imagery / tiles (R0–R4) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044, 0046 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -95,6 +95,7 @@ shape is noted in brackets.
 | 0041 | Ingest and publications are protocol-neutral SDK capabilities; Esri admin is a gated projection. |
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
+| 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
 
 ## How to change the architecture
 

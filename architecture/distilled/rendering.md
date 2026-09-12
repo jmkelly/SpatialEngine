@@ -22,6 +22,8 @@ sit in the root `Spatial.PluginSdk` namespace; the wire DTOs in
 | `RasterLayer`, `RasterBufferLayer`, `RasterSourceLayer` | the composite stack entries |
 | `MapLayerSource(Dataset, Features, Catalogue, Filter)` | a resolved keyed store + catalogue |
 | `RasterFormat`, `RasterPixelFormat`, `RasterBlend` | png/jpeg/webp/tiff, rgba8888/rgb888, blend modes |
+| `ITileScheme` + `TileCoordinate`/`TileLevel` | pluggable tiling: address → projected extent + LODs (ADR-0046) |
+| `ITileCache` + `TileCacheKey` | content-addressed tile cache; ownership is the implementation's (ADR-0046) |
 
 The renderer receives **resolved** services in the request (no DI/service
 location), so it is unit-testable with fakes; `Spatial.Host` resolves each
@@ -33,6 +35,7 @@ layer's keyed store and catalogue at the edge.
 | --- | --- | --- |
 | `Spatial.Rendering.Skia` | `IMapRenderer` | SkiaSharp 4.152.0 (+ Linux native assets) |
 | `Spatial.Imagery.Vips` | `IRasterOperations` | NetVips 3.2.0 + NetVips.Native 8.18.6 |
+| `Spatial.Tiling.WebMercator` | `ITileScheme` (EPSG:3857 XYZ) | none |
 
 Neither references the other (ADR-0033); `Spatial.Host` wires them. Skia plus
 native types are contained in their owning assembly.
@@ -51,6 +54,13 @@ Pipeline stages (all in `Spatial.Rendering.Skia` unless noted):
    an imagery pipeline the vector-only path encodes PNG/JPEG with Skia.
 7. `MapRenderer` is a thin facade; `SceneBuilder` builds the scene;
    `ZoomEstimator` maps viewport resolution to a zoom for style windows.
+
+Tiles (ADR-0046) sit on top: `TileService` (host) resolves an `ITileScheme`
+by id, checks `ITileCache`, derives the tile viewport from `ITileScheme.Bounds`
+and calls `IMapRenderer` per tile; a batch runs an ordered tile list through
+bounded parallelism. The initial cache is the host's `InMemoryTileCache`
+(LRU, byte + entry bounds); the version in `TileCacheKey` is a SHA-256 of the
+style/layer/imagery/encoding request.
 
 ## Style document (documented MapLibre subset)
 
@@ -74,11 +84,17 @@ Supported layers: `background`, `fill`, `line`, `circle`. Per-layer keys:
 | --- | --- |
 | `POST /api/render` | image bytes (`Content-Type` by format) + `X-Raster-Width/Height/Format` |
 | `GET /api/render/capabilities` | advertised formats, pixel cap, imagery source names |
+| `POST /api/render/tiles/{z}/{x}/{y}.{format}` | one cache-aware tile (binary) + `X-Tile-Cached` |
+| `POST /api/render/tiles/batch` | ordered tile list (Base64) with cache dispositions |
+| `GET /api/render/tiles/capabilities` | schemes, LODs, default scheme, batch cap |
+| `DELETE /api/render/cache` | explicit tile-cache invalidation |
 
 ```jsonc
 "Spatial": {
   "Rendering": { "Formats": ["png","jpeg","webp"], "MaxPixels": 16777216, "MaxLayers": 32 },
-  "Imagery":   { "Sources": [ { "name": "basemap", "path": "/data/basemap.tif" } ] }
+  "Imagery":   { "Sources": [ { "name": "basemap", "path": "/data/basemap.tif" } ] },
+  "Tiles":     { "DefaultScheme": "webmercator", "MaxTilesPerBatch": 64, "Concurrency": 0,
+                 "Cache": { "MaxBytes": 67108864, "MaxEntries": 4096 } }
 }
 ```
 
@@ -97,8 +113,12 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   TypeScript `render` / `renderCapabilities` (binary via `arrayBuffer`).
 - `Spatial.Imagery.Vips` un-premultiplies the vector buffer so every layer in
   the libvips chain is straight (non-premultiplied) before compositing.
+- Tiles: Web-Mercator LOD math, cache get/set/eviction/invalidation, the tile
+  version fingerprint, `TileService` order/batch-cap/cancellation, and the
+  HTTP tile routes (hit/miss, formats, schemes, batch).
 
 ## Not implemented (per the plan)
 
-R4 tiles + content-addressed cache, R5 publication resolution and the
-GeoServices `export`/`tile` seam, R6 labels/symbols, R7 GPU backend.
+R5 publication resolution and the GeoServices `export`/`tile` seam, R6
+labels/symbols, R7 GPU backend, and a persistent/shared tile cache (the
+`ITileCache` contract is ready for it).

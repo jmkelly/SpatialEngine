@@ -19,7 +19,10 @@ Microsoft DI — keyed services where two stores serve one contract:
   read-only.
 - `IGeometryOperations`, `IGeometryMeasures`, `IGeometryProcessing`,
   `IGeometryRelations`, `ICrsDirectory`, `ICoordinateTransforms`,
-  `IDemoJobs` as singletons.
+  `IDemoJobs`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and
+  `ITileCache` as singletons (ADR-0044/ADR-0046). `ITileScheme` and
+  `ITileCache` are the pluggable tiling seams: new projections/cache owners
+  are additional registrations, not host changes.
 - `Spatial.Adapter.GeoServices` is mounted by the host at
   `Spatial:GeoServices:Root` (ADR-0035).
 
@@ -37,8 +40,10 @@ In order of preference for new implementations:
 - `Spatial.Interop.Esri` — the shared Esri wire codec: Core only, no NTS,
   ASP.NET or HttpClient (ADR-0035).
 - Implementations (`Spatial.Operations.*`, `Spatial.Transformations.*`,
-  `Spatial.Provider.*`) — reference Core + SDK only; third-party packages
-  (NTS, ProjNET, Npgsql) stay inside the owning implementation (ADR-0005).
+  `Spatial.Provider.*`, `Spatial.Rendering.*`, `Spatial.Imagery.*`,
+  `Spatial.Tiling.*`) — reference Core + SDK only; third-party packages
+  (NTS, ProjNET, Npgsql, SkiaSharp, NetVips) stay inside the owning
+  implementation (ADR-0005).
 - Boundary projects (`Spatial.Adapter.GeoServices`,
   `Spatial.Provider.ArcGisRest`) additionally reference only
   `Spatial.Interop.Esri`; the adapter owns ASP.NET Core, the provider owns

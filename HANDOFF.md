@@ -29,8 +29,8 @@
 
 ## Raster rendering — status
 
-ADR-0044 (accepted) is implemented through R3 of
-`architecture/rendering-implementation-plan.md`:
+ADR-0044 (accepted) is implemented through R4 of
+`architecture/rendering-implementation-plan.md` (R4 under ADR-0046):
 
 - **Contracts** in the root `Spatial.PluginSdk` namespace (per the ADR, not
   the plan's earlier `.Rendering` suggestion — that namespace tripped the
@@ -47,8 +47,17 @@ ADR-0044 (accepted) is implemented through R3 of
 - **Host**: `POST /api/render` (+ `X-Raster-Width/Height/Format` headers) and
   `GET /api/render/capabilities`; `.NET` `SpatialClient.RenderAsync` and TS
   `SpatialClient.render`. `eng/e2e-web.sh` covers the live render route.
-- **Not done**: R4 tiles/cache, R5 GeoServices `export`/`tile` seam, R6
-  labels/symbols, R7 GPU.
+- **Tiles (R4, ADR-0046)**: core-typed `ITileScheme`/`ITileCache` and
+  `TileCoordinate`/`TileLevel`/`TileCacheKey` in the SDK;
+  `Spatial.Tiling.WebMercator` (EPSG:3857 XYZ) as the first scheme; the
+  host's `InMemoryTileCache` (LRU, byte + entry bounds) and `TileService`
+  (cache-aware single tile + bounded-parallel ordered batch). Routes
+  `POST /api/render/tiles/{z}/{x}/{y}.{format}`, `POST /api/render/tiles/batch`,
+  `GET /api/render/tiles/capabilities`, `DELETE /api/render/cache`;
+  `SpatialClient.Tiles.*` and TS `renderTile`/`renderTiles`.
+  `eng/e2e-web.sh` covers the live tile route.
+- **Not done**: R5 GeoServices `export`/`tile` seam, R6 labels/symbols, R7
+  GPU, and a persistent/shared tile cache.
 
 **CRAP gate caveat:** the `crap4dotnet` audit globs every `*.csproj` under
 whatever solution it is given, ignoring solution membership. The throwaway

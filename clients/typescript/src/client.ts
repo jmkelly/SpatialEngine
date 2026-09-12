@@ -13,6 +13,10 @@ import type {
   RenderCapabilitiesResponse,
   RenderRequest,
   SleepResponse,
+  TileBatchRequest,
+  TileBatchResponse,
+  TileCapabilitiesResponse,
+  TileRenderRequest,
   TransactionResponse,
   ValidateResponse,
 } from "./generated-types.ts";
@@ -212,25 +216,28 @@ export class SpatialClient {
 
   /** Renders a styled vector/imagery request to encoded image bytes. */
   async render(request: RenderRequest, signal?: AbortSignal): Promise<RasterImage> {
-    const response = await this.fetchFn(`${this.baseUrl}/api/render`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(request),
-      signal,
-    });
-    if (!response.ok) {
-      throw await this.fail(response);
-    }
+    return this.postForImage("/api/render", request, signal);
+  }
 
-    const contentType = response.headers.get("content-type") ?? "application/octet-stream";
-    const mediaType = contentType.split(";")[0]?.trim() || "application/octet-stream";
-    return {
-      bytes: new Uint8Array(await response.arrayBuffer()),
-      mediaType,
-      width: Number(response.headers.get("x-raster-width") ?? 0),
-      height: Number(response.headers.get("x-raster-height") ?? 0),
-      format: formatOf(mediaType),
-    };
+  /** Renders one cache-aware tile; the request's format selects the path suffix. */
+  async renderTile(
+    z: number,
+    x: number,
+    y: number,
+    request: TileRenderRequest,
+    signal?: AbortSignal,
+  ): Promise<RasterImage> {
+    return this.postForImage(`/api/render/tiles/${z}/${x}/${y}.${request.format ?? "png"}`, request, signal);
+  }
+
+  /** Renders an ordered tile batch with server-side bounded parallelism. */
+  async renderTiles(request: TileBatchRequest, signal?: AbortSignal): Promise<TileBatchResponse> {
+    return this.post<TileBatchResponse>("/api/render/tiles/batch", request, signal);
+  }
+
+  /** Describes the registered tiling schemes, their levels of detail and the batch cap. */
+  async tileCapabilities(signal?: AbortSignal): Promise<TileCapabilitiesResponse> {
+    return this.get<TileCapabilitiesResponse>("/api/render/tiles/capabilities", signal);
   }
 
   // ---- publications & ingest (ADR-0041) ----
@@ -291,6 +298,28 @@ export class SpatialClient {
   }
 
   // ---- transport ----
+
+  private async postForImage(path: string, body: unknown, signal?: AbortSignal): Promise<RasterImage> {
+    const response = await this.fetchFn(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!response.ok) {
+      throw await this.fail(response);
+    }
+
+    const contentType = response.headers.get("content-type") ?? "application/octet-stream";
+    const mediaType = contentType.split(";")[0]?.trim() || "application/octet-stream";
+    return {
+      bytes: new Uint8Array(await response.arrayBuffer()),
+      mediaType,
+      width: Number(response.headers.get("x-raster-width") ?? 0),
+      height: Number(response.headers.get("x-raster-height") ?? 0),
+      format: formatOf(mediaType),
+    };
+  }
 
   private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
     const response = await this.fetchFn(`${this.baseUrl}${path}`, { signal });

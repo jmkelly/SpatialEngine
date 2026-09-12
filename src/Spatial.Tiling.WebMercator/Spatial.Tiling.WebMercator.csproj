@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Web-Mercator (EPSG:3857) tiling scheme (ADR-0045): the default
+    implementation of the SDK's ITileScheme. It references Core + the SDK
+    contracts only and is composed by Spatial.Host. A second projection is a
+    sibling implementation of the same contract, never a change here.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Tiling.WebMercator.Tests" />
+  </ItemGroup>
+
+</Project>

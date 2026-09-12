@@ -20,10 +20,14 @@ public sealed class SpatialClient
 {
     private readonly SpatialClientTransport _transport;
 
+    /// <summary>The tile surface (ADR-0046), split so this type's fan-out stays deliberate (ADR-0040).</summary>
+    public SpatialTileClient Tiles { get; }
+
     /// <summary>Creates a client over an existing <see cref="HttpClient"/> whose base address is the host.</summary>
     public SpatialClient(HttpClient http)
     {
         _transport = new SpatialClientTransport(http);
+        Tiles = new SpatialTileClient(_transport);
     }
 
     /// <summary>Creates a client talking to the host at <paramref name="baseAddress"/>.</summary>

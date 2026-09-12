@@ -10,6 +10,9 @@ namespace Spatial.Host.Api;
 /// capability description. The host maps the primitive wire DTO to core-typed
 /// contracts, validates the advertised format, resolves each layer's keyed
 /// store and catalogue at the edge, and passes them to the renderer.
+///
+/// The mapping helpers are <c>internal</c> because the tile routes reuse them,
+/// so the export and tile interpretation cannot drift.
 /// </summary>
 internal static class RenderEndpoints
 {
@@ -27,53 +30,7 @@ internal static class RenderEndpoints
             .Produces<RenderCapabilitiesResponse>();
     }
 
-    private static async Task<IResult> Render(
-        RenderRequest request,
-        HttpContext context,
-        IServiceProvider services,
-        IMapRenderer renderer,
-        RenderingOptions options,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            ValidateFormat(request.Format, options);
-            var mapRequest = new MapRenderRequest(
-                ToViewport(request.Viewport),
-                request.Style.GetRawText(),
-                ResolveLayers(request.Layers, services),
-                ToImagery(request.Imagery),
-                request.Format,
-                request.Quality,
-                request.Background,
-                request.Transparent,
-                request.Scale);
-            var image = await renderer.RenderAsync(mapRequest, cancellationToken);
-            WriteMetadataHeaders(context, image);
-            return Results.Bytes(image.Content, image.MediaType);
-        }
-        catch (Exception exception)
-        {
-            return ErrorMapper.Map(exception);
-        }
-    }
-
-    private static void WriteMetadataHeaders(HttpContext context, RasterImage image)
-    {
-        context.Response.Headers["X-Raster-Width"] = image.Width.ToString(CultureInfo.InvariantCulture);
-        context.Response.Headers["X-Raster-Height"] = image.Height.ToString(CultureInfo.InvariantCulture);
-        context.Response.Headers["X-Raster-Format"] = image.Format.ToString();
-    }
-
-    private static IResult Capabilities(RenderingOptions options, ImageryOptions imagery) =>
-        Results.Ok(new RenderCapabilitiesResponse(
-            options.Formats,
-            PixelFormats,
-            BlendModes,
-            options.MaxPixels,
-            [.. imagery.Sources.Select(source => new ImagerySourceDto(source.Name))]));
-
-    private static void ValidateFormat(RasterFormat format, RenderingOptions options)
+    internal static void ValidateFormat(RasterFormat format, RenderingOptions options)
     {
         foreach (var advertised in options.Formats)
         {
@@ -86,7 +43,7 @@ internal static class RenderEndpoints
         throw SpatialException.BadArguments($"Format '{format}' is not configured; see /api/render/capabilities.");
     }
 
-    private static RasterViewport ToViewport(ViewportDto dto)
+    internal static RasterViewport ToViewport(ViewportDto dto)
     {
         try
         {
@@ -98,7 +55,7 @@ internal static class RenderEndpoints
         }
     }
 
-    private static List<MapLayerSource> ResolveLayers(IReadOnlyList<RenderLayerDto> layers, IServiceProvider services)
+    internal static List<MapLayerSource> ResolveLayers(IReadOnlyList<RenderLayerDto> layers, IServiceProvider services)
     {
         var resolved = new List<MapLayerSource>(layers.Count);
         foreach (var layer in layers)
@@ -114,7 +71,7 @@ internal static class RenderEndpoints
         return resolved;
     }
 
-    private static List<RasterSourceLayer> ToImagery(IReadOnlyList<RenderImageryDto>? imagery)
+    internal static List<RasterSourceLayer> ToImagery(IReadOnlyList<RenderImageryDto>? imagery)
     {
         var layers = new List<RasterSourceLayer>();
         if (imagery is null)
@@ -129,4 +86,53 @@ internal static class RenderEndpoints
 
         return layers;
     }
+
+    internal static MapRenderRequest ToMapRequest(RenderRequest request, RasterViewport viewport, IServiceProvider services) =>
+        new(
+            viewport,
+            request.Style.GetRawText(),
+            ResolveLayers(request.Layers, services),
+            ToImagery(request.Imagery),
+            request.Format,
+            request.Quality,
+            request.Background,
+            request.Transparent,
+            request.Scale);
+
+    internal static void WriteMetadataHeaders(HttpContext context, RasterImage image)
+    {
+        context.Response.Headers["X-Raster-Width"] = image.Width.ToString(CultureInfo.InvariantCulture);
+        context.Response.Headers["X-Raster-Height"] = image.Height.ToString(CultureInfo.InvariantCulture);
+        context.Response.Headers["X-Raster-Format"] = image.Format.ToString();
+    }
+
+    private static async Task<IResult> Render(
+        RenderRequest request,
+        HttpContext context,
+        IServiceProvider services,
+        IMapRenderer renderer,
+        RenderingOptions options,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            ValidateFormat(request.Format, options);
+            var mapRequest = ToMapRequest(request, ToViewport(request.Viewport), services);
+            var image = await renderer.RenderAsync(mapRequest, cancellationToken);
+            WriteMetadataHeaders(context, image);
+            return Results.Bytes(image.Content, image.MediaType);
+        }
+        catch (Exception exception)
+        {
+            return ErrorMapper.Map(exception);
+        }
+    }
+
+    private static IResult Capabilities(RenderingOptions options, ImageryOptions imagery) =>
+        Results.Ok(new RenderCapabilitiesResponse(
+            options.Formats,
+            PixelFormats,
+            BlendModes,
+            options.MaxPixels,
+            [.. imagery.Sources.Select(source => new ImagerySourceDto(source.Name))]));
 }

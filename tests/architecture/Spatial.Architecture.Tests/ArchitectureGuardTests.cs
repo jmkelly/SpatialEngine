@@ -109,6 +109,7 @@ public sealed class ArchitectureGuardTests
             "Spatial.Provider.ArcGisRest",
             "Spatial.Rendering.Skia",
             "Spatial.Imagery.Vips",
+            "Spatial.Tiling.WebMercator",
         };
         var host = PlatformProject("Spatial.Host");
         var violations = host.ProjectReferences
@@ -224,6 +225,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Provider.ArcGisRest",
         "Spatial.Rendering.Skia",
         "Spatial.Imagery.Vips",
+        "Spatial.Tiling.WebMercator",
         "Spatial.Host",
     ];
 
@@ -239,6 +241,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Provider.ArcGisRest",
         "Spatial.Rendering.Skia",
         "Spatial.Imagery.Vips",
+        "Spatial.Tiling.WebMercator",
     ];
 
     /// <summary>ADR-0035 boundary projects may also reference the shared Esri codec.</summary>

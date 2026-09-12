@@ -24,6 +24,9 @@ implementations and the host — never the reverse.
 - `IDatasetIngest` + `IngestRequest`/`IngestOutcome`/`IngestIdentity` —
   atomic bulk create-and-load with an identity mode (ADR-0041).
 - `IDemoJobs` — the demo cancellable sleep with progress.
+- `ITileScheme` + `TileCoordinate`/`TileLevel` and `ITileCache` +
+  `TileCacheKey` — pluggable tiling schemes and a content-addressed tile
+  cache (ADR-0046); Web-Mercator and the in-memory cache are implementations.
 - `Providers/DatasetSummary`, `Providers/DatasetDescription` — catalogue DTOs.
 - `Transformations/CrsDescription` (+ axes, ellipsoid, kind, identity) —
   CRS metadata DTOs.

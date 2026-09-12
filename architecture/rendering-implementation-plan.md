@@ -1,8 +1,9 @@
 # Raster Rendering Implementation Plan
 
-> **Status:** R0–R3 implemented (contracts, Skia vector render, NetVips
-> imagery, MapLibre-subset style document, host route and clients); R4–R7
-> (tiles/cache, GeoServices export seam, labels/symbols, GPU) remain.
+> **Status:** R0–R4 implemented (contracts, Skia vector render, NetVips
+> imagery, MapLibre-subset style document, host routes and clients, tiles +
+> content-addressed cache); R5–R7 (GeoServices export seam, labels/symbols,
+> GPU) remain.
 > Companion to
 > `architecture/decisions/ADR-0044-raster-rendering-pipeline.md` (the gating
 > decision) and the research at `research/rendering/README.md` (candidate
@@ -222,8 +223,10 @@ Routes (typed host API, `Spatial.Host/Api`):
 | --- | --- | --- |
 | `POST /api/render` | R1 | image bytes (`Content-Type` by format) |
 | `GET /api/render/capabilities` | R1 | formats, pixel cap, configured imagery sources |
-| `GET /api/render/tiles/{z}/{x}/{y}.{format}` | R4 | one tile, cache-aware |
-| `POST /api/render/batch` | R4 | ordered tile list, bounded parallelism |
+| `POST /api/render/tiles/{z}/{x}/{y}.{format}` | R4 | one tile, cache-aware (`X-Tile-Cached`) |
+| `POST /api/render/tiles/batch` | R4 | ordered tile list, bounded parallelism |
+| `GET /api/render/tiles/capabilities` | R4 | registered schemes, LODs, batch cap |
+| `DELETE /api/render/cache` | R4 | explicit cache invalidation |
 
 Failures map through `ErrorMapper`: `invalid.arguments` → 400,
 `not.found` → 404, `store.unavailable` → 503, cancellation → 499. Clients:
@@ -277,10 +280,17 @@ and `clients/dotnet`; TS wire types regenerate from OpenAPI.
 
 ### R4 — Tiles and cache
 
+- **Implemented** per ADR-0046. `TileCoordinate` + `ITileScheme` (pluggable
+  projections) in the SDK; `Spatial.Tiling.WebMercator` is the first scheme;
+  `ITileCache` with a content-addressed `TileCacheKey`, the initial
+  `InMemoryTileCache` (LRU, byte + entry bounds) and `TileService` (single +
+  bounded-parallel batch) in the host; the tile routes above.
 - **Deliverable:** `TileCoordinate`, Web-Mercator LOD math, parallel tile
   batch, content-addressed cache with eviction, tile route.
-- **Proof:** LOD math against the spec's tiling scheme; tile determinism;
-  cache hit/miss/invalidations; bounded-parallelism and cancellation.
+- **Proof (built):** LOD math against the spec's tiling scheme (unit); tile
+  determinism; cache hit/miss/eviction/invalidation; bounded-parallelism and
+  cancellation. The plan's `GET` tile route was revised to `POST` because the
+  style/layer document needs a body (ADR-0046).
 
 ### R5 — Publication and GeoServices seam (gated)
 
@@ -412,10 +422,13 @@ Open questions to settle at implementation time:
 - **Store resolution shape:** request carries resolved `IFeatureStore` +
   `IDataCatalogue` (proposed, testable) versus passing `IServiceProvider`
   (adapter style). Decide in R1 and record it.
-- **Cache ownership:** host filesystem versus object store / PostGIS (shared
-  with the map-service plan M3).
+- **Cache ownership:** settled in ADR-0046 — the interface owns the decision;
+  the first implementation is a host-memory LRU cache, and a filesystem /
+  object-store / PostGIS implementation is another registration (shared with
+  the map-service plan M3).
 - **Style storage:** inline request body versus named styles from
-  `Spatial:Rendering:StyleRoot` (leaning: both, named preferred).
+  `Spatial:Rendering:StyleRoot` (leaning: both, named preferred). Still open;
+  the tile route carries the document in the body until named styles land.
 - **Imagery breadth:** NetVips covers COG/GeoTIFF read and warp; the
   GDAL-vs-managed decision belongs to the image-service plan I0.
 - **Format set:** which of WebP/TIFF/JPEG the host advertises, gated on the

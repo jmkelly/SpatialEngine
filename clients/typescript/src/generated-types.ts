@@ -199,6 +199,65 @@ export interface SleepResponse {
   slept: number | string;
 }
 
+export interface TileBatchRequest {
+  request: TileRenderRequest;
+  tiles: TileDto[];
+}
+
+export interface TileBatchResponse {
+  tiles: TileResultDto[];
+}
+
+export interface TileCapabilitiesResponse {
+  defaultScheme: string;
+  maxTilesPerBatch: number | string;
+  schemes: TileSchemeDto[];
+}
+
+export interface TileDto {
+  z: number | string;
+  x: number | string;
+  y: number | string;
+}
+
+export interface TileLevelDto {
+  zoom: number | string;
+  resolution: number | string;
+  scaleDenominator: number | string;
+}
+
+export interface TileRenderRequest {
+  style: JsonElement;
+  layers: RenderLayerDto[];
+  imagery?: null | RenderImageryDto[];
+  scheme?: null | string;
+  format?: RasterFormat;
+  quality?: number | string;
+  background?: null | string;
+  transparent?: boolean;
+  scale?: number | string;
+}
+
+export interface TileResultDto {
+  z: number | string;
+  x: number | string;
+  y: number | string;
+  cached: boolean;
+  contentType: string;
+  width: number | string;
+  height: number | string;
+  content: string;
+}
+
+export interface TileSchemeDto {
+  id: string;
+  crs: string;
+  tileSize: number | string;
+  minZoom: number | string;
+  maxZoom: number | string;
+  levels: TileLevelDto[];
+}
+
 export interface TransactionRequest {
   transaction: string;
 }

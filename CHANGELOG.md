@@ -28,6 +28,18 @@ this file together, then tag the release (`RELEASING.md`).
   deletes existing services, preserving their stable layer ids. No host
   contract, SDK or ADR change; per-layer style stays a client-side authoring
   aid until the MapServer render model lands.
+- **Tiles and a pluggable tile cache** (ADR-0046, plan R4): the core-typed
+  `ITileScheme`/`ITileCache` contracts in `Spatial.PluginSdk`
+  (`TileCoordinate`, `TileLevel`, `TileCacheKey`) with the
+  `Spatial.Tiling.WebMercator` (EPSG:3857 XYZ) scheme as the first
+  implementation, a host-local in-memory LRU `ITileCache` (configurable byte
+  and entry bounds), and `TileService` (cache-aware single tile plus an
+  ordered, bounded-parallel batch). The host serves
+  `POST /api/render/tiles/{z}/{x}/{y}.{format}`,
+  `POST /api/render/tiles/batch`, `GET /api/render/tiles/capabilities` and
+  `DELETE /api/render/cache`; the .NET client exposes
+  `SpatialClient.Tiles.RenderAsync`/`CapabilitiesAsync` and the TypeScript
+  client `renderTile`/`renderTiles`/`tileCapabilities`.
 - **Raster rendering pipeline** (ADR-0044, plan R0–R3): the core-typed
   `IMapRenderer`/`IRasterOperations` contracts and DTOs in
   `Spatial.PluginSdk`, the `Spatial.Rendering.Skia` vector rasterizer
@@ -37,8 +49,8 @@ this file together, then tag the release (`RELEASING.md`).
   (read/normalise/compose/encode). The host serves `POST /api/render` and
   `GET /api/render/capabilities`, configured by `Spatial:Rendering` and
   `Spatial:Imagery`; the .NET and TypeScript clients expose `RenderAsync` /
-  `render`. Tiles, the GeoServices `export` seam, labels and a GPU backend
-  remain (R4–R7).
+  `render`. The GeoServices `export` seam, labels and a GPU backend
+  remain (R5–R7).
 - **Ingest codec** (ADR-0041): `Spatial.Interop.Ingest` decodes GeoJSON,
   newline-delimited GeoJSON and CSV uploads into canonical `FeatureBatch`
   pages with inferred schemas (`DatasetDecoder.Decode`). Core-only; no host
@@ -54,6 +66,11 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **Viewport bbox pushdown direction fixed** (plan R4):
+  `GeometryPipeline.TransformEnvelope` transformed viewport bounds the wrong
+  way (`dataset CRS → viewport CRS` instead of `viewport CRS → dataset CRS`),
+  which only surfaced for a world-covering Web-Mercator tile against a
+  geographic dataset. The direction is corrected and pinned by a unit test.
 - **Quality metrics gate recalibrated** (ADR-0040): `.dependably` now uses
   published thresholds (cyclomatic ≤ 15, cognitive ≤ 15, nesting ≤ 4, MI
   ≥ 20, in-repo coupling ≤ 40), disables the raw LCOM4 rule (it is

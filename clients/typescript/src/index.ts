@@ -8,6 +8,8 @@ export type {
   ImagerySourceDto, IntersectionRequest, JsonElement, Publication, PublicationKind,
   PublicationLayer, RasterBlend, RasterFormat, RenderCapabilitiesResponse, RenderImageryDto,
   RenderLayerDto, RenderRequest, ScanRequest, SimplifyRequest, SleepRequest, SleepResponse,
+  TileBatchRequest, TileBatchResponse, TileCapabilitiesResponse, TileDto, TileLevelDto,
+  TileRenderRequest, TileResultDto, TileSchemeDto,
   TransactionRequest, TransactionResponse, TransformRequest, ValidateRequest, ValidateResponse,
   ViewportDto,
 } from "./generated-types.ts";

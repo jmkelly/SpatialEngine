@@ -206,6 +206,48 @@ public sealed class SpatialClientTests
         Assert.Equal("basemap", Assert.Single(capabilities.ImagerySources).Name);
     }
 
+    [Fact]
+    public async Task RenderTile_posts_to_the_tile_route_and_reads_the_image()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => Image([9, 9], "image/png", 256, 256)));
+        using var style = JsonDocument.Parse("""{"version":8,"layers":[]}""");
+        var request = new TileRenderRequest(style.RootElement.Clone(), [new RenderLayerDto("demo.cities", "demo")]);
+
+        var image = await stub.Client.Tiles.RenderAsync(3, 1, 2, request);
+
+        Assert.Equal(256, image.Width);
+        Assert.Equal("/api/render/tiles/3/1/2.png", Assert.Single(stub.Handler.Exchanges).Request.RequestUri?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task RenderTiles_reads_the_ordered_batch()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"tiles":[{"z":0,"x":0,"y":0,"cached":false,"contentType":"image/png","width":256,"height":256,"content":"AQID"}]}""")));
+        using var style = JsonDocument.Parse("""{"version":8,"layers":[]}""");
+        var request = new TileBatchRequest(new TileRenderRequest(style.RootElement.Clone(), []), [new TileDto(0, 0, 0)]);
+
+        var response = await stub.Client.Tiles.RenderAsync(request);
+
+        var tile = Assert.Single(response.Tiles);
+        Assert.False(tile.Cached);
+        Assert.Equal([1, 2, 3], Convert.FromBase64String(tile.Content));
+        Assert.Equal("/api/render/tiles/batch", Assert.Single(stub.Handler.Exchanges).Request.RequestUri?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task Tile_capabilities_are_read_from_the_host()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"defaultScheme":"webmercator","maxTilesPerBatch":64,"schemes":[{"id":"webmercator","crs":"EPSG:3857","tileSize":256,"minZoom":0,"maxZoom":23,"levels":[{"zoom":0,"resolution":1,"scaleDenominator":2}]}]}""")));
+
+        var capabilities = await stub.Client.Tiles.CapabilitiesAsync();
+
+        Assert.Equal("webmercator", capabilities.DefaultScheme);
+        Assert.Equal(64, capabilities.MaxTilesPerBatch);
+        Assert.Equal("EPSG:3857", Assert.Single(capabilities.Schemes).Crs);
+    }
+
     private static HttpResponseMessage Image(byte[] bytes, string mediaType, int width, int height)
     {
         var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };

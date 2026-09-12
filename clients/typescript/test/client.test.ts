@@ -236,6 +236,51 @@ test("render maps host failures to SpatialApiError", async (t) => {
   );
 });
 
+test("tiles render, batch and describe the scheme", async (t) => {
+  const host = await fakeHost({
+    "/api/render/tiles/3/1/2.png": () => ({
+      status: 200,
+      body: Uint8Array.of(0x89, 0x50, 0x4e, 0x47),
+      contentType: "image/png",
+      headers: { "x-raster-width": "256", "x-raster-height": "256" },
+    }),
+    "/api/render/tiles/batch": () => ({
+      status: 200,
+      body: JSON.stringify({ tiles: [{ z: 0, x: 0, y: 0, cached: false, contentType: "image/png", width: 256, height: 256, content: "AQID" }] }),
+      contentType: "application/json",
+    }),
+    "/api/render/tiles/capabilities": () => ({
+      status: 200,
+      body: JSON.stringify({
+        defaultScheme: "webmercator",
+        maxTilesPerBatch: 64,
+        schemes: [{ id: "webmercator", crs: "EPSG:3857", tileSize: 256, minZoom: 0, maxZoom: 23, levels: [{ zoom: 0, resolution: 1, scaleDenominator: 2 }] }],
+      }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+  const request = { style: { version: 8, layers: [] }, layers: [{ dataset: "demo.cities", store: "demo" }] };
+
+  const image = await client.renderTile(3, 1, 2, request);
+  assert.equal(image.mediaType, "image/png");
+  assert.equal(image.width, 256);
+  assert.equal(image.height, 256);
+
+  const batch = await client.renderTiles({ request, tiles: [{ z: 0, x: 0, y: 0 }] });
+  assert.equal(batch.tiles[0]?.cached, false);
+  assert.equal(Buffer.from(batch.tiles[0]?.content ?? "", "base64").toString("hex"), "010203");
+
+  const capabilities = await client.tileCapabilities();
+  assert.equal(capabilities.defaultScheme, "webmercator");
+  assert.equal(capabilities.maxTilesPerBatch, 64);
+  assert.deepEqual(
+    host.requests,
+    ["POST /api/render/tiles/3/1/2.png", "POST /api/render/tiles/batch", "GET /api/render/tiles/capabilities"],
+  );
+});
+
 test("publications and ingest hit the admin routes", async (t) => {
   const publication = { name: "parks", kind: "feature" as const, store: "memory", layers: [{ dataset: "public.parks", layerId: 0 }] };
   const host = await fakeHost({

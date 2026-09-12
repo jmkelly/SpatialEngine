@@ -65,6 +65,39 @@ test("the live host renders a styled raster and advertises its capabilities", { 
   assert.equal(image.bytes[0], 0x89, "a PNG signature");
 });
 
+test("the live host renders a cache-aware tile and an ordered batch", { skip: !ENABLED ? "set SPATIAL_HOST_URL to a running host" : false }, async () => {
+  const client = new SpatialClient(HOST!);
+
+  const capabilities = await client.tileCapabilities();
+  assert.equal(capabilities.defaultScheme, "webmercator");
+  const scheme = capabilities.schemes.find((candidate) => candidate.id === "webmercator");
+  assert.ok(scheme, "the Web-Mercator scheme is advertised");
+  assert.equal(scheme.crs, "EPSG:3857");
+  assert.equal(scheme.tileSize, 256);
+
+  const request = {
+    style: {
+      version: 8,
+      layers: [
+        { id: "cities", type: "circle", "source-layer": "demo.cities", paint: { "circle-color": "#ffd166", "circle-radius": 6 } },
+      ],
+    },
+    layers: [{ dataset: "demo.cities", store: "demo" }],
+    format: "png" as const,
+  };
+
+  const first = await client.renderTile(2, 1, 1, request);
+  assert.equal(first.mediaType, "image/png");
+  assert.equal(first.width, 256);
+  assert.equal(first.height, 256);
+  assert.equal(first.bytes[0], 0x89, "a PNG signature");
+
+  const batch = await client.renderTiles({ request, tiles: [{ z: 2, x: 0, y: 1 }, { z: 2, x: 1, y: 1 }] });
+  assert.equal(batch.tiles.length, 2);
+  assert.deepEqual(batch.tiles.map((tile) => [tile.z, tile.x, tile.y]), [[2, 0, 1], [2, 1, 1]]);
+  assert.ok(batch.tiles.every((tile) => tile.contentType === "image/png"));
+});
+
 /**
  * The canonical SGEOM encoding of an XY point at the origin: magic +
  * version + layout(0=Xy) + type(1=Point) + crs(0=none) + present(1) + x(0.0)

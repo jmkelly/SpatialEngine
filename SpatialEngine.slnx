@@ -15,6 +15,7 @@
     <Project Path="src/Spatial.Provider.ArcGisRest/Spatial.Provider.ArcGisRest.csproj" />
     <Project Path="src/Spatial.Imagery.Vips/Spatial.Imagery.Vips.csproj" />
     <Project Path="src/Spatial.Rendering.Skia/Spatial.Rendering.Skia.csproj" />
+    <Project Path="src/Spatial.Tiling.WebMercator/Spatial.Tiling.WebMercator.csproj" />
     <Project Path="src/Spatial.Transformations.ProjNet/Spatial.Transformations.ProjNet.csproj" />
   </Folder>
   <Folder Name="/tests/" />
@@ -31,6 +32,7 @@
     <Project Path="tests/unit/Spatial.Provider.Publications.Tests/Spatial.Provider.Publications.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.ArcGisRest.Tests/Spatial.Provider.ArcGisRest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Rendering.Skia.Tests/Spatial.Rendering.Skia.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Tiling.WebMercator.Tests/Spatial.Tiling.WebMercator.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Imagery.Vips.Tests/Spatial.Imagery.Vips.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Transformations.ProjNet.Tests/Spatial.Transformations.ProjNet.Tests.csproj" />
   </Folder>
