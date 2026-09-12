@@ -129,6 +129,23 @@ export interface IntersectionRequest {
 
 export type JsonElement = unknown;
 
+export interface Publication {
+  name: string;
+  kind: PublicationKind;
+  store: string;
+  layers: PublicationLayer[];
+  description?: null | string;
+  copyright?: null | string;
+}
+
+export type PublicationKind = "feature" | "map" | "image";
+
+export interface PublicationLayer {
+  dataset: string;
+  layerId: number | string;
+  name?: null | string;
+}
+
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";
 
 export type RasterFormat = "png" | "jpeg" | "webp" | "tiff";

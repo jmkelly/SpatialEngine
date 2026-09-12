@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The publication registry (ADR-0041 §2): the phase-one
+    IPublicationRegistry over declared (config-seeded, immutable) entries and
+    runtime entries persisted to a versioned JSON file written atomically.
+    References Core and SDK only — the file keeps the database-free profile
+    working and does not couple metadata to feature storage. A PostGIS-backed
+    registry for multi-instance deployments is a later option.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Provider.Publications</AssemblyName>
+    <RootNamespace>Spatial.Provider.Publications</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Provider.Publications.Tests" />
+    <InternalsVisibleTo Include="Spatial.Host.Tests" />
+  </ItemGroup>
+
+</Project>

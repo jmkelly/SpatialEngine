@@ -15,12 +15,15 @@ internal sealed class PostgisTestContext : IAsyncDisposable
     {
         Store = store;
         Editor = new PostgisEditStore(store);
+        Ingest = new PostgisIngestStore(store);
         ConnectionString = connectionString;
     }
 
     public PostgisStore Store { get; }
 
     public PostgisEditStore Editor { get; }
+
+    public PostgisIngestStore Ingest { get; }
 
     public string ConnectionString { get; }
 

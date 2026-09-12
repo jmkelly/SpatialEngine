@@ -8,6 +8,7 @@ import type {
   FeatureBatchesResponse,
   FeatureWriteResponse,
   GeometryResponse,
+  Publication,
   RasterFormat,
   RenderCapabilitiesResponse,
   RenderRequest,
@@ -24,6 +25,15 @@ export interface RasterImage {
   width: number;
   height: number;
   format: RasterFormat;
+}
+
+/** The result of a neutral ingest (ADR-0041); the publication is present when `publish` was requested. */
+export interface IngestResult {
+  dataset: string;
+  features: number;
+  srid: number;
+  identityField?: null | string;
+  publication?: null | Publication;
 }
 
 /**
@@ -223,6 +233,63 @@ export class SpatialClient {
     };
   }
 
+  // ---- publications & ingest (ADR-0041) ----
+
+  /** Lists every publication (declared first, then runtime by name). */
+  async listPublications(signal?: AbortSignal): Promise<Publication[]> {
+    return this.get<Publication[]>("/api/publications", signal);
+  }
+
+  /** Gets one publication by name. */
+  async getPublication(name: string, signal?: AbortSignal): Promise<Publication> {
+    return this.get<Publication>(`/api/publications/${encodeURIComponent(name)}`, signal);
+  }
+
+  /** Creates or replaces a runtime publication (requires the admin token). */
+  async putPublication(publication: Publication, adminToken?: string): Promise<Publication> {
+    return this.send<Publication>("PUT", `/api/publications/${encodeURIComponent(publication.name)}`, {
+      body: JSON.stringify(publication),
+      headers: { "content-type": "application/json", ...authorization(adminToken) },
+    });
+  }
+
+  /** Deletes a runtime publication and reports whether it existed (requires the admin token). */
+  async deletePublication(name: string, adminToken?: string): Promise<boolean> {
+    return this.send<boolean>("DELETE", `/api/publications/${encodeURIComponent(name)}`, {
+      headers: authorization(adminToken),
+    });
+  }
+
+  /**
+   * Uploads a GeoJSON/NDJSON/CSV blob and loads it atomically into a dataset,
+   * optionally registering a publication in the same call (requires the admin
+   * token). The browser/tool path uses multipart; the body is opaque bytes.
+   */
+  async ingest(
+    content: Blob,
+    fileName: string,
+    options: { dataset: string; srid: number; format?: string; store?: string; identity?: string; identityField?: string; publish?: string },
+    adminToken?: string,
+    signal?: AbortSignal,
+  ): Promise<IngestResult> {
+    const query = new URLSearchParams({
+      dataset: options.dataset,
+      srid: String(options.srid),
+      format: options.format ?? "geojson",
+      store: options.store ?? "memory",
+    });
+    if (options.identity) query.set("identity", options.identity);
+    if (options.identityField) query.set("identityField", options.identityField);
+    if (options.publish) query.set("publish", options.publish);
+    const form = new FormData();
+    form.append("file", content, fileName);
+    return this.send<IngestResult>("POST", `/api/ingest?${query.toString()}`, {
+      body: form,
+      headers: authorization(adminToken),
+      signal,
+    });
+  }
+
   // ---- transport ----
 
   private async get<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -236,6 +303,20 @@ export class SpatialClient {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
       signal,
+    });
+    return this.read<T>(response);
+  }
+
+  private async send<T>(
+    method: string,
+    path: string,
+    init: { body?: BodyInit; headers?: Record<string, string>; signal?: AbortSignal },
+  ): Promise<T> {
+    const response = await this.fetchFn(`${this.baseUrl}${path}`, {
+      method,
+      body: init.body,
+      headers: init.headers,
+      signal: init.signal,
     });
     return this.read<T>(response);
   }
@@ -274,6 +355,10 @@ function toBase64(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary);
+}
+
+function authorization(token?: string): Record<string, string> {
+  return token ? { authorization: `Bearer ${token}` } : {};
 }
 
 function fromBase64(base64: string): Uint8Array {

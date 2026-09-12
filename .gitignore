@@ -25,6 +25,9 @@ coverage/
 *.local.json
 appsettings.Local.json
 
+# --- Runtime publication registry (written by the host, ADR-0041) ---
+data/
+
 # --- Aspire (generated on first `dotnet run` of src/Spatial.AppHost) ---
 aspire.config.json
 .aspire/

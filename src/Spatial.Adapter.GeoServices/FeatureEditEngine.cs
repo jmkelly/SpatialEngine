@@ -119,7 +119,7 @@ internal static class FeatureEditEngine
         {
             try
             {
-                features.Add(BuildAdd(adds[i], dataset.Schema, layerCrs));
+                features.Add(BuildAdd(adds[i], dataset, layerCrs));
                 positions.Add(i);
             }
             catch (Exception exception) when (IsFeatureFailure(exception))
@@ -376,21 +376,44 @@ internal static class FeatureEditEngine
         return index;
     }
 
-    private static Feature BuildAdd(JsonElement element, FeatureSchema schema, CoordinateReference? layerCrs)
+    private static Feature BuildAdd(JsonElement element, DatasetDescription dataset, CoordinateReference? layerCrs)
     {
+        var schema = dataset.Schema;
         var attributes = Property(element, "attributes");
         var geometry = Property(element, "geometry");
         var geometryIndex = FeatureGeometry.Index(schema);
         var values = new AttributeValue[schema.Count];
+        var unassigned = false;
         for (var i = 0; i < schema.Count; i++)
         {
-            values[i] = i == geometryIndex
-                ? ReadGeometry(geometry, layerCrs)
-                : EsriAttributeCodec.Read(attributes, schema[i]);
+            if (i == geometryIndex)
+            {
+                values[i] = ReadGeometry(geometry, layerCrs);
+                continue;
+            }
+
+            var isIdentity = dataset.IdColumns.Contains(schema[i].Name, StringComparer.Ordinal);
+            if (isIdentity && !HasValue(attributes, schema[i].Name))
+            {
+                // The client omitted OBJECTID: a placeholder the store replaces with
+                // its assigned identity (ADR-0043).
+                values[i] = AttributeValue.FromInt64(0);
+                unassigned = true;
+                continue;
+            }
+
+            values[i] = EsriAttributeCodec.Read(attributes, schema[i]);
         }
 
-        return new Feature(new FeatureId(Placeholder()), schema, values);
+        var id = unassigned ? FeatureId.Unassigned : new FeatureId(Placeholder());
+        return new Feature(id, schema, values);
     }
+
+    /// <summary>Whether the Esri attributes carry a non-null value for the named field.</summary>
+    private static bool HasValue(JsonElement attributes, string name) =>
+        attributes.ValueKind == JsonValueKind.Object
+        && attributes.TryGetProperty(name, out var value)
+        && value.ValueKind != JsonValueKind.Null;
 
     private static Feature BuildUpdate(JsonElement element, Feature existing, FeatureSchema schema, CoordinateReference? layerCrs)
     {

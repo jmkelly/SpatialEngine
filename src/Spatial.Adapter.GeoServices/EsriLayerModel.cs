@@ -44,8 +44,8 @@ internal static class EsriLayerModel
     }
 
     /// <summary>Builds the layer reference for the <c>FeatureServer</c> root.</summary>
-    public static EsriLayerRef Reference(int id, DatasetSummary dataset) =>
-        new(id, dataset.Table, "Feature Layer");
+    public static EsriLayerRef Reference(int id, string name) =>
+        new(id, name, "Feature Layer");
 
     /// <summary>Builds the full layer metadata (spec §9.1).</summary>
     public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable) =>

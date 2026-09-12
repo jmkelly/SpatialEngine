@@ -98,10 +98,13 @@ public sealed class ArchitectureGuardTests
         {
             "Spatial.Core",
             "Spatial.PluginSdk",
+            "Spatial.Interop.Ingest",
             "Spatial.Operations.NetTopologySuite",
             "Spatial.Transformations.ProjNet",
             "Spatial.Provider.Demo",
+            "Spatial.Provider.Memory",
             "Spatial.Provider.PostGIS",
+            "Spatial.Provider.Publications",
             "Spatial.Adapter.GeoServices",
             "Spatial.Provider.ArcGisRest",
             "Spatial.Rendering.Skia",
@@ -214,7 +217,9 @@ public sealed class ArchitectureGuardTests
         "Spatial.Operations.NetTopologySuite",
         "Spatial.Transformations.ProjNet",
         "Spatial.Provider.Demo",
+        "Spatial.Provider.Memory",
         "Spatial.Provider.PostGIS",
+        "Spatial.Provider.Publications",
         "Spatial.Adapter.GeoServices",
         "Spatial.Provider.ArcGisRest",
         "Spatial.Rendering.Skia",
@@ -227,7 +232,9 @@ public sealed class ArchitectureGuardTests
         "Spatial.Operations.NetTopologySuite",
         "Spatial.Transformations.ProjNet",
         "Spatial.Provider.Demo",
+        "Spatial.Provider.Memory",
         "Spatial.Provider.PostGIS",
+        "Spatial.Provider.Publications",
         "Spatial.Adapter.GeoServices",
         "Spatial.Provider.ArcGisRest",
         "Spatial.Rendering.Skia",
@@ -237,7 +244,8 @@ public sealed class ArchitectureGuardTests
     /// <summary>ADR-0035 boundary projects may also reference the shared Esri codec.</summary>
     private static string[] AllowedBoundaryReferences(string projectName) => projectName switch
     {
-        "Spatial.Adapter.GeoServices" or "Spatial.Provider.ArcGisRest" => ["Spatial.Interop.Esri"],
+        "Spatial.Adapter.GeoServices" => ["Spatial.Interop.Esri", "Spatial.Interop.Ingest"],
+        "Spatial.Provider.ArcGisRest" => ["Spatial.Interop.Esri"],
         _ => [],
     };
 

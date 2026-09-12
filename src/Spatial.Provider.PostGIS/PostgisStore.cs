@@ -391,6 +391,10 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         return batches;
     }
 
+    /// <summary>Opens a pooled connection for the ingest capability (ADR-0041); the caller owns the transaction and lifecycle.</summary>
+    internal Task<NpgsqlConnection> OpenIngestConnectionAsync(CancellationToken cancellationToken) =>
+        _store.Value.OpenConnectionAsync(cancellationToken);
+
     /// <summary>Opens the connection a store-side edit runs on: the transaction handle's connection, or a fresh autocommit one (ADR-0037).</summary>
     internal async Task<PostgisEditSession> OpenEditSessionAsync(string? transaction, CancellationToken cancellationToken)
     {

@@ -190,4 +190,68 @@ public sealed class SpatialClient
         var response = await _transport.PostAsync<SleepResponse>("/api/demo/sleep", new SleepRequest(milliseconds), cancellationToken);
         return response.Slept;
     }
+
+    // ---- publications & ingest (ADR-0041) ----
+
+    /// <summary>Lists every publication (declared first, then runtime by name).</summary>
+    public Task<IReadOnlyList<Publication>> ListPublicationsAsync(CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<IReadOnlyList<Publication>>(HttpMethod.Get, "/api/publications", null, null, cancellationToken);
+
+    /// <summary>Gets one publication by name.</summary>
+    public Task<Publication> GetPublicationAsync(string name, CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<Publication>(HttpMethod.Get, $"/api/publications/{Uri.EscapeDataString(name)}", null, null, cancellationToken);
+
+    /// <summary>Creates or replaces a runtime publication (requires the admin token).</summary>
+    public Task<Publication> PutPublicationAsync(
+        Publication publication, string? adminToken = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(publication);
+        return _transport.SendAsync<Publication>(
+            HttpMethod.Put,
+            $"/api/publications/{Uri.EscapeDataString(publication.Name)}",
+            SpatialClientTransport.Json(publication),
+            adminToken,
+            cancellationToken);
+    }
+
+    /// <summary>Deletes a runtime publication and reports whether it existed (requires the admin token).</summary>
+    public async Task<bool> DeletePublicationAsync(
+        string name, string? adminToken = null, CancellationToken cancellationToken = default)
+    {
+        return await _transport.SendAsync<bool>(
+            HttpMethod.Delete, $"/api/publications/{Uri.EscapeDataString(name)}", null, adminToken, cancellationToken);
+    }
+
+    /// <summary>
+    /// Uploads a GeoJSON/NDJSON/CSV stream and loads it atomically into a
+    /// dataset, optionally registering a publication in the same call
+    /// (requires the admin token).
+    /// </summary>
+    public async Task<IngestOutcome> IngestAsync(
+        Stream content,
+        IngestUpload upload,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(upload);
+        var query = new Dictionary<string, string?>
+        {
+            ["store"] = upload.Store,
+            ["dataset"] = upload.Dataset,
+            ["srid"] = upload.Srid.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["format"] = upload.Format,
+            ["identity"] = upload.Identity,
+            ["identityField"] = upload.IdentityField,
+            ["publish"] = upload.Publish,
+        };
+        var queryString = string.Join('&', query
+            .Where(pair => !string.IsNullOrEmpty(pair.Value))
+            .Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value!)}"));
+
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new StreamContent(content), "file", upload.FileName);
+        return await _transport.SendAsync<IngestOutcome>(
+            HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken, cancellationToken);
+    }
 }

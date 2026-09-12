@@ -160,3 +160,30 @@ test("runtime health reports the host and its stores", async ({ page }) => {
   await expect(page.getByTestId("health")).toContainText("ready");
   await expect(page.getByTestId("health")).toContainText("demo");
 });
+
+test("a GeoJSON upload is ingested and published as a feature service", async ({ page }) => {
+  await page.goto("/?basemap=none");
+  await openTab(page, "Data");
+
+  await page.getByTestId("admin-token").fill("workbench-e2e-token");
+  const geojson = JSON.stringify({
+    type: "FeatureCollection",
+    features: [
+      { type: "Feature", geometry: { type: "Point", coordinates: [13.4, 52.5] }, properties: { name: "Berlin", population: 3664000 } },
+      { type: "Feature", geometry: { type: "Point", coordinates: [2.35, 48.85] }, properties: { name: "Paris", population: 2150000 } },
+    ],
+  });
+  await page.getByTestId("upload-file").setInputFiles({
+    name: "cities.geojson",
+    mimeType: "application/geo+json",
+    buffer: Buffer.from(geojson),
+  });
+  await page.getByTestId("dataset").fill("public.e2e_cities");
+  await page.getByTestId("publish").fill("e2e_cities");
+
+  await page.getByTestId("upload").click();
+
+  await expect(page.getByTestId("ingest-result")).toContainText("public.e2e_cities", { timeout: 30_000 });
+  await expect(page.getByTestId("ingest-result")).toContainText("2 feature(s)");
+  await expect(page.getByTestId("publications")).toContainText("e2e_cities");
+});

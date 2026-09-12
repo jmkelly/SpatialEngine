@@ -28,6 +28,12 @@ public static class EsriErrorCodes
     /// <summary>Request cancelled by the client.</summary>
     public const int RequestCancelled = 499;
 
+    /// <summary>An admin token is required (Esri admin projection, ADR-0041 §6).</summary>
+    public const int TokenRequired = 498;
+
+    /// <summary>The supplied admin token is not valid.</summary>
+    public const int InvalidToken = 497;
+
     /// <summary>An unclassified server-side failure.</summary>
     public const int ServerError = 500;
 }

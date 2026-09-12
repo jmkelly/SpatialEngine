@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.FileProviders;
 using Spatial.Adapter.GeoServices;
+using Spatial.Host;
 using Spatial.Host.Api;
 using Spatial.Imagery.Vips;
 using Spatial.Operations.NetTopologySuite;
@@ -9,7 +10,9 @@ using Spatial.PluginSdk.Http;
 using Spatial.PluginSdk.Providers;
 using Spatial.Provider.ArcGisRest;
 using Spatial.Provider.Demo;
+using Spatial.Provider.Memory;
 using Spatial.Provider.PostGIS;
+using Spatial.Provider.Publications;
 using Spatial.Rendering.Skia;
 using Spatial.Transformations.ProjNet;
 
@@ -50,78 +53,10 @@ internal static class HostComposition
 
         builder.Services.AddOpenApi();
 
-        // In-process spatial services (ADR-0033): interfaces resolved by DI, no
-        // worker processes. The demo store is always available; the PostGIS store
-        // reads its connection string from host configuration.
-        var postgisOptions = builder.Configuration.GetSection("Spatial:Postgis").Get<PostgisOptions>()
-            ?? PostgisOptions.FromEnvironment();
-        if (string.IsNullOrWhiteSpace(postgisOptions.ConnectionString))
-        {
-            postgisOptions = PostgisOptions.FromEnvironment();
-        }
-
-        builder.Services.AddSingleton(postgisOptions);
-        builder.Services.AddSingleton<IGeometryOperations, NtsGeometryOperations>();
-        builder.Services.AddSingleton<NtsGeometryMeasures>();
-        builder.Services.AddSingleton<IGeometryMeasures>(services => services.GetRequiredService<NtsGeometryMeasures>());
-        builder.Services.AddSingleton<NtsGeometryProcessing>();
-        builder.Services.AddSingleton<IGeometryProcessing>(services => services.GetRequiredService<NtsGeometryProcessing>());
-        builder.Services.AddSingleton<NtsGeometryRelations>();
-        builder.Services.AddSingleton<IGeometryRelations>(services => services.GetRequiredService<NtsGeometryRelations>());
-        builder.Services.AddSingleton<ProjNetTransforms>();
-        builder.Services.AddSingleton<ICrsDirectory>(services => services.GetRequiredService<ProjNetTransforms>());
-        builder.Services.AddSingleton<ICoordinateTransforms>(services => services.GetRequiredService<ProjNetTransforms>());
-        builder.Services.AddSingleton<DemoStore>();
-        builder.Services.AddKeyedSingleton<IDataCatalogue, DemoStore>("demo");
-        builder.Services.AddKeyedSingleton<IFeatureStore, DemoStore>("demo");
-        builder.Services.AddSingleton<IDemoJobs>(services => services.GetRequiredService<DemoStore>());
-        builder.Services.AddSingleton<PostgisStore>();
-        builder.Services.AddSingleton<PostgisEditStore>();
-        builder.Services.AddKeyedSingleton<IDataCatalogue, PostgisStore>("postgis");
-        builder.Services.AddKeyedSingleton<IFeatureStore, PostgisStore>("postgis");
-        builder.Services.AddKeyedSingleton<IFeatureEditStore>("postgis", (services, _) => services.GetRequiredService<PostgisEditStore>());
-        builder.Services.AddKeyedSingleton<IFeatureLookup>("postgis", (services, _) => services.GetRequiredService<PostgisStore>());
-        builder.Services.AddKeyedSingleton<ITransactionStore, PostgisStore>("postgis");
-
-        ConfigureRemoteServices(builder);
-        ConfigureRendering(builder);
-    }
-
-    /// <summary>Registers the vector renderer and the imagery pipeline (ADR-0044).</summary>
-    private static void ConfigureRendering(WebApplicationBuilder builder)
-    {
-        var renderingOptions = builder.Configuration.GetSection("Spatial:Rendering").Get<RenderingOptions>()
-            ?? new RenderingOptions();
-        var imageryOptions = builder.Configuration.GetSection("Spatial:Imagery").Get<ImageryOptions>()
-            ?? new ImageryOptions();
-        builder.Services.AddSingleton(renderingOptions);
-        builder.Services.AddSingleton(imageryOptions);
-        builder.Services.AddSingleton<IRasterOperations>(new VipsRasterOperations(imageryOptions.ToSourceMap()));
-        builder.Services.AddSingleton<IMapRenderer>(services => new MapRenderer(
-            services.GetRequiredService<ICoordinateTransforms>(),
-            services.GetRequiredService<IGeometryOperations>(),
-            services.GetRequiredService<IRasterOperations>(),
-            new RenderLimits(renderingOptions.MaxPixels, renderingOptions.MaxLayers)));
-    }
-
-    /// <summary>Registers the ArcGIS REST consuming provider's keyed stores (ADR-0035).</summary>
-    private static void ConfigureRemoteServices(WebApplicationBuilder builder)
-    {
-        var arcGisOptions = builder.Configuration.GetSection("Spatial:ArcGisRest").Get<ArcGisRestOptions>()
-            ?? new ArcGisRestOptions();
-        if (arcGisOptions.Services.Count == 0)
-        {
-            return;
-        }
-
-        builder.Services.AddSingleton(new HttpClient());
-        foreach (var remote in arcGisOptions.Services)
-        {
-            builder.Services.AddKeyedSingleton<IDataCatalogue>(remote.Name, (services, _) =>
-                new ArcGisRestStore(services.GetRequiredService<HttpClient>(), remote, arcGisOptions.Token));
-            builder.Services.AddKeyedSingleton<IFeatureStore>(remote.Name, (services, _) =>
-                new ArcGisRestStore(services.GetRequiredService<HttpClient>(), remote, arcGisOptions.Token));
-        }
+        EngineServices.Configure(builder);
+        StoreServices.Configure(builder);
+        PublicationServices.Configure(builder);
+        RenderingServices.Configure(builder);
     }
 
     /// <summary>Builds the request pipeline: workbench, routing, health, API and GeoServices.</summary>
@@ -146,15 +81,25 @@ internal static class HostComposition
 
         app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
 
-        app.MapGet("/health/ready", () => Results.Ok(new ReadyResponse("ready", ["demo", "postgis"])));
+        app.MapGet("/health/ready", () => Results.Ok(new ReadyResponse("ready", ["demo", "memory", "postgis"])));
 
-        app.MapSpatialApi();
+        var adminOptions = AdminOptions.FromConfiguration(configuration);
+        var ingestOptions = IngestOptions.FromConfiguration(configuration);
+        app.MapSpatialApi(adminOptions, ingestOptions);
 
         // The Esri GeoServices boundary adapter (ADR-0035): mounted at
         // Spatial:GeoServices:Root, independent of the engine's own typed API.
         var geoServicesOptions = configuration.GetSection("Spatial:GeoServices").Get<GeoServicesOptions>()
             ?? new GeoServicesOptions();
-        GeoServicesEndpoints.Map(app, geoServicesOptions);
+        var publications = app.Services.GetRequiredService<IPublicationRegistry>();
+        GeoServicesEndpoints.Map(app, geoServicesOptions, publications);
+        EsriAdminEndpoints.Map(app, new EsriAdminOptions
+        {
+            Root = configuration["Spatial:GeoServices:AdminRoot"] ?? "/arcgis/admin",
+            Token = adminOptions.Token,
+            MaxBytes = ingestOptions.MaxBytes,
+            BatchSize = ingestOptions.BatchSize,
+        }, publications);
     }
 }
 

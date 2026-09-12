@@ -1,8 +1,11 @@
 # Publishing & Ingest Implementation Plan
 
-> **Status:** proposed — no code yet. Companion to
+> **Status:** implemented (P0–P6 plus P4-sub, covered by unit, host and
+> containerised PostGIS tests); P7 (clients & workbench UI) remains. Companion
+> to
 > `architecture/decisions/ADR-0041-ingest-and-publications-are-protocol-neutral.md`
-> (the gating decision; **written**), ADR-0035, ADR-0037, ADR-0038 and the
+> (the gating decision; **accepted**), ADR-0042, ADR-0043, ADR-0035, ADR-0037,
+> ADR-0038 and the
 > `architecture/distilled/*` digests. Read
 > `architecture/references/geoservices-compatibility.md` first — it is the
 > gap analysis this plan builds on.
@@ -313,7 +316,7 @@ real) and its gate.
   (mapped to `invalid.arguments` at the host); the interop architecture
   guard pins `Spatial.Core`-only references.
 
-### P2 — Store ingest
+### P2 — Store ingest — **delivered**
 
 - **Deliverable:** `PostgisIngestStore` (one transaction: `CREATE TABLE`
   with the identity option, batched inserts, rollback on failure).
@@ -327,14 +330,14 @@ real) and its gate.
   P2b gets unit tests plus a host HTTP test that the `memory` store is
   always available and non-durable by design.
 
-### P3 — Publication registry
+### P3 — Publication registry — **delivered**
 
 - **Deliverable:** `Spatial.Provider.Publications` (declared + persisted,
   atomic write, name-collision rejection).
 - **Proof:** unit tests for CRUD, atomic replace, restart persistence,
   collision, and corrupt-file diagnostics.
 
-### P4 — Neutral host admin API
+### P4 — Neutral host admin API — **delivered**
 
 - **Deliverable:** `/api/publications` CRUD and `/api/ingest`; admin token
   gate; limits; OpenAPI; SDK wire types.
@@ -347,7 +350,7 @@ real) and its gate.
   explicit mode on `AddAsync`, or a sibling method) because `FeatureId` is
   currently a non-empty string and `Feature` has no unassigned state.
 
-### P5 — GeoServices serves the registry
+### P5 — GeoServices serves the registry — **delivered**
 
 - **Deliverable:** replace the static `GeoServicesCatalog` snapshot with an
   async resolver over `IPublicationRegistry` + config; the catalog
@@ -359,7 +362,7 @@ real) and its gate.
   ArcGIS REST JS e2e (`clients/typescript/test/geoservices-e2e.test.ts`)
   against a runtime-created service.
 
-### P6 — Esri admin projection
+### P6 — Esri admin projection — **delivered**
 
 - **Deliverable:** `/arcgis/admin` route group (token-gated) with the
   §4.5 matrix; uploads staging with TTL and size caps; Esri error
@@ -409,9 +412,9 @@ real) and its gate.
 
 | ADR | Decision | Blocked phases | Status |
 | --- | --- | --- | --- |
-| **ADR-0041** | Ingest and publications are protocol-neutral additive SDK capabilities; upload bodies are foreign-format ingress (ADR-0020 clarification); identity modes; Esri admin is a gated projection targeting the current admin API, not the v1.0 spec | P0 (all) | written |
-| **ADR-0042** | An ephemeral writable in-memory provider implements the writable faces, enabling database-free ingest/publish | P2b | required |
-| **ADR-0043** | `IFeatureEditStore` may omit identity on insert | P4-sub | required |
+| **ADR-0041** | Ingest and publications are protocol-neutral additive SDK capabilities; upload bodies are foreign-format ingress (ADR-0020 clarification); identity modes; Esri admin is a gated projection targeting the current admin API, not the v1.0 spec | P0 (all) | accepted |
+| **ADR-0042** | An ephemeral writable in-memory provider implements the writable faces, enabling database-free ingest/publish | P2b | accepted |
+| **ADR-0043** | `IFeatureEditStore` may omit identity on insert | P4-sub | accepted |
 | Map/Image ADRs | see `map-service-plan.md` / `image-service-plan.md` | P5 for non-Feature kinds | later |
 
 Numbering after 0041 is provisional (0040 was the last issued ADR before

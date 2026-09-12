@@ -235,3 +235,47 @@ test("render maps host failures to SpatialApiError", async (t) => {
     (error: unknown) => error instanceof SpatialApiError && error.status === 400 && error.code === "invalid.arguments",
   );
 });
+
+test("publications and ingest hit the admin routes", async (t) => {
+  const publication = { name: "parks", kind: "feature" as const, store: "memory", layers: [{ dataset: "public.parks", layerId: 0 }] };
+  const host = await fakeHost({
+    "/api/publications": () => ({
+      status: 200,
+      body: JSON.stringify([publication]),
+      contentType: "application/json",
+    }),
+    "/api/publications/parks": (req) =>
+      req.method === "DELETE"
+        ? { status: 200, body: JSON.stringify(true), contentType: "application/json" }
+        : { status: 200, body: JSON.stringify(publication), contentType: "application/json" },
+    "/api/ingest": () => ({
+      status: 200,
+      body: JSON.stringify({ dataset: "public.parks", features: 2, srid: 4326, identityField: "id", publication }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  assert.equal((await client.listPublications()).length, 1);
+  assert.equal((await client.getPublication("parks")).name, "parks");
+  assert.equal((await client.putPublication(publication, "secret")).name, "parks");
+  assert.equal(await client.deletePublication("parks", "secret"), true);
+
+  const result = await client.ingest(
+    new Blob(["{}"], { type: "application/geo+json" }),
+    "parks.geojson",
+    { dataset: "public.parks", srid: 4326, publish: "parks" },
+    "secret",
+  );
+  assert.equal(result.features, 2);
+  assert.equal(result.publication?.name, "parks");
+
+  assert.deepEqual(host.requests, [
+    "GET /api/publications",
+    "GET /api/publications/parks",
+    "PUT /api/publications/parks",
+    "DELETE /api/publications/parks",
+    "POST /api/ingest",
+  ]);
+});

@@ -131,6 +131,16 @@ internal static class EsriErrorMapper
             return StatusCodes.Status503ServiceUnavailable;
         }
 
+        if (esriCode == EsriErrorCodes.TokenRequired)
+        {
+            return StatusCodes.Status401Unauthorized;
+        }
+
+        if (esriCode == EsriErrorCodes.InvalidToken)
+        {
+            return StatusCodes.Status403Forbidden;
+        }
+
         return esriCode == EsriErrorCodes.RequestCancelled
             ? StatusCodes.Status499ClientClosedRequest
             : StatusCodes.Status500InternalServerError;

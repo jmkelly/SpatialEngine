@@ -47,9 +47,13 @@ public sealed record IngestOutcome(
     string Dataset,
     long Features,
     int Srid,
-    string? IdentityField = null)
+    string? IdentityField = null,
+    Publication? Publication = null)
 {
-    public override string ToString() => $"{Dataset}: {Features} feature(s)";
+    public override string ToString() =>
+        Publication is null
+            ? $"{Dataset}: {Features} feature(s)"
+            : $"{Dataset}: {Features} feature(s), published as {Publication.Name}";
 }
 
 /// <summary>

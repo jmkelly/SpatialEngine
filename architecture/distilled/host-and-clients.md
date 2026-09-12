@@ -34,6 +34,11 @@ POST   /api/transactions/begin?store=   # -> {transaction}
 POST   /api/transactions/commit?store=  # {transaction} -> {ok}
 POST   /api/transactions/rollback?store=# {transaction} -> {ok}
 POST   /api/demo/sleep                  # {milliseconds} -> {slept}
+GET    /api/publications               # Publication[]
+PUT    /api/publications/{name}        # create/replace -> Publication
+DELETE /api/publications/{name}        # -> {deleted}
+POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=
+                                       # raw/multipart upload -> IngestResult
 GET    /openapi/v1.json
 GET|POST /arcgis/rest/services                                # GeoServices catalog (ADR-0035)
 GET|POST /arcgis/rest/services/Geometry/GeometryServer         # Geometry Service
@@ -46,7 +51,24 @@ POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/addFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/updateFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/deleteFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/applyEdits
+GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
+GET|POST /arcgis/admin/services/{name}.{type}
+POST   /arcgis/admin/services/{name}.{type}/createService
+POST   /arcgis/admin/services/{name}.{type}/deleteService
+POST   /arcgis/admin/uploads
+POST   /arcgis/admin/uploads/{id}/publish
 ```
+
+Publications are the neutral service model (ADR-0041): a publication is a
+named, ordered projection of datasets from one keyed store onto a protocol
+surface, with persisted stable layer ids. `GET /api/publications` and
+`GET /api/publications/{name}` are always available; `PUT`/`DELETE` and
+`POST /api/ingest` are mounted only when `Spatial:Admin:Token`
+(`SPATIAL_ADMIN_TOKEN`) is configured, and then require it
+(`Authorization: Bearer …` or `?token=`). The Esri admin projection at
+`Spatial:GeoServices:AdminRoot` (default `/arcgis/admin`) is the same
+capability behind a token-gated Esri error envelope; without a configured
+token it returns an actionable unavailable error.
 
 The GeoServices routes are the Esri boundary adapter (ADR-0035): `f=json`
 only, Esri JSON over HTTP, no core changes. Resources are requestable with
@@ -61,8 +83,9 @@ store's `ITransactionStore`. The engine API above is unchanged. Track C
 consumes a remote ArcGIS REST service as a keyed
 `IDataCatalogue`/`IFeatureStore` (`Spatial.Provider.ArcGisRest`).
 
-The `store` query selects `demo` (default, always available) or `postgis`
-(needs configuration).
+The `store` query selects `demo` (default, always available), `memory`
+(writable, ephemeral, ADR-0042) or `postgis` (needs configuration). Ingest
+defaults to `memory` so the database-free upload path works out of the box.
 
 ## Configuration
 
@@ -72,7 +95,13 @@ The `store` query selects `demo` (default, always available) or `postgis`
 | `SPATIAL_POSTGIS_CONNECTION` | Env fallback for the connection string — the **only** secret channel |
 | `Spatial:WebRoot` | Built workbench directory; when set, `GET /` serves it |
 | `Spatial:GeoServices:Root` | GeoServices URL prefix (default `/arcgis/rest/services`) |
-| `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only) |
+| `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only); projected to declared publications at composition |
+| `Spatial:GeoServices:AdminRoot` | Esri admin projection prefix (default `/arcgis/admin`) |
+| `Spatial:Admin:Token` | Admin token for the mutation routes; empty disables them |
+| `SPATIAL_ADMIN_TOKEN` | Env fallback for the admin token — a secret channel alongside the connection string |
+| `Spatial:Publications:Path` | Runtime publication JSON file (default `./data/publications.json`) |
+| `Spatial:Publications:Declared` | Config-seeded immutable publications (`{name, store, kind, layers[]}`) |
+| `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` | Ingest caps and the format allowlist (ADR-0041 §6) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |
 

@@ -48,13 +48,23 @@ internal sealed class PostgisDataStore : IAsyncDisposable
     }
 
     /// <summary>Runs one non-query statement (insert/commit-side work) and returns its row count.</summary>
+    public static Task<int> ExecuteNonQueryAsync(
+        NpgsqlConnection connection,
+        string sql,
+        IReadOnlyList<object?> parameters,
+        CancellationToken cancellationToken) =>
+        ExecuteNonQueryAsync(connection, transaction: null, sql, parameters, cancellationToken);
+
+    /// <summary>Runs one non-query statement on an explicit transaction (ingest DDL/inserts, ADR-0041).</summary>
     public static async Task<int> ExecuteNonQueryAsync(
         NpgsqlConnection connection,
+        NpgsqlTransaction? transaction,
         string sql,
         IReadOnlyList<object?> parameters,
         CancellationToken cancellationToken)
     {
         await using var command = BuildCommand(connection, sql, parameters);
+        command.Transaction = transaction;
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 

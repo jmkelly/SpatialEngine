@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
@@ -71,6 +72,23 @@ internal sealed class SpatialClientTransport
         "image/tiff" => RasterFormat.Tiff,
         _ => RasterFormat.Png,
     };
+
+    /// <summary>Sends one request, optionally with a bearer admin token, and reads the typed body.</summary>
+    public async Task<T> SendAsync<T>(HttpMethod method, string url, HttpContent? content, string? token, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, url) { Content = content };
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        using var response = await _http.SendAsync(request, cancellationToken);
+        return await ReadAsync<T>(response, cancellationToken);
+    }
+
+    /// <summary>Serialises a body with the shared camelCase wire options.</summary>
+    public static HttpContent Json(object body) =>
+        JsonContent.Create(body, options: HostApiJson.Options);
 
     public static string Encode(IGeometry geometry) =>
         Convert.ToBase64String(GeometryCodec.Encode(geometry));

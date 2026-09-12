@@ -15,6 +15,39 @@ namespace Spatial.Provider.PostGIS;
 /// </summary>
 internal static class PostgisWriteOperations
 {
+    /// <summary>
+    /// Chooses the statement and bound values for one edit. An add whose
+    /// identity is <see cref="FeatureId.Unassigned"/> omits the identity
+    /// columns so the database assigns them (ADR-0043); every other add and
+    /// update binds the full schema. Stateless, so it lives with the write
+    /// leaves rather than on the editing capability (ADR-0040).
+    /// </summary>
+    public static (string Sql, object?[] Values) PlanFeature(
+        PostgisDatasetName name, DatasetDescription description, Feature feature, bool update)
+    {
+        if (update)
+        {
+            return (
+                PostgisQueries.Update(name, description.Schema, description.Srid, description.IdColumns),
+                PostgisRowMapper.Parameters(description.Schema, feature, description.Srid));
+        }
+
+        if (!feature.Id.Equals(FeatureId.Unassigned))
+        {
+            return (
+                PostgisQueries.InsertReturning(name, description.Schema, description.Srid, description.IdColumns),
+                PostgisRowMapper.Parameters(description.Schema, feature, description.Srid));
+        }
+
+        var indexes = Enumerable.Range(0, description.Schema.Count)
+            .Where(index => !description.IdColumns.Contains(description.Schema[index].Name, StringComparer.Ordinal))
+            .ToArray();
+        var all = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid);
+        return (
+            PostgisQueries.InsertWithoutIdentity(name, description.Schema, description.Srid, description.IdColumns),
+            indexes.Select(index => all[index]).ToArray());
+    }
+
     /// <summary>Rejects a batch whose schema does not describe the dataset columns.</summary>
     public static void CheckWritable(DatasetDescription description, FeatureBatch batch)
     {

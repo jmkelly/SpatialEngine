@@ -78,6 +78,22 @@ internal static class PostgisQueries
             : insert + " RETURNING " + string.Join(", ", identityColumns.Select(column => $"\"{column}\""));
     }
 
+    /// <summary>
+    /// Insert that omits the identity columns so the database assigns them
+    /// (ADR-0043), returning the assigned values. Used when the client did not
+    /// supply an <c>OBJECTID</c>.
+    /// </summary>
+    public static string InsertWithoutIdentity(
+        PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
+    {
+        var columns = schema.Fields.Where(field => !identityColumns.Contains(field.Name, StringComparer.Ordinal)).ToArray();
+        var names = string.Join(", ", columns.Select(field => $"\"{field.Name}\""));
+        var values = string.Join(", ", columns.Select((field, i) =>
+            field.Kind == AttributeKind.Geometry ? $"ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})" : $"@p{i}"));
+        var returning = string.Join(", ", identityColumns.Select(column => $"\"{column}\""));
+        return $"INSERT INTO {dataset.QuoteQualified()} ({names}) VALUES ({values}) RETURNING {returning}";
+    }
+
     /// <summary>Updates one feature in place, targeting its identity columns (ADR-0037).</summary>
     public static string Update(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
     {

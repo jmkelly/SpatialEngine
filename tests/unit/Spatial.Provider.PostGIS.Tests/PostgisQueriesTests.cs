@@ -104,6 +104,16 @@ public sealed class PostgisQueriesTests
     }
 
     [Fact]
+    public void Insert_without_identity_omits_the_key_and_returns_it()
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
+
+        Assert.Equal(
+            "INSERT INTO \"public\".\"places\" (\"name\", \"geom\") VALUES (@p0, ST_SetSRID(ST_GeomFromEWKB(@p1), 4326)) RETURNING \"id\"",
+            PostgisQueries.InsertWithoutIdentity(dataset, Schema, 4326, ["id"]));
+    }
+
+    [Fact]
     public void Update_sets_every_field_and_targets_the_identity_parameter()
     {
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));

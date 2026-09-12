@@ -189,26 +189,14 @@ internal static class StoreEndpoints
     }
 
     internal static IDataCatalogue ResolveCatalogue(IServiceProvider services, string store) =>
-        store switch
-        {
-            Demo => services.GetRequiredKeyedService<IDataCatalogue>(Demo),
-            Postgis => services.GetRequiredKeyedService<IDataCatalogue>(Postgis),
-            _ => throw SpatialException.BadArguments($"Unknown store '{store}'; expected 'demo' or 'postgis'."),
-        };
+        services.GetKeyedService<IDataCatalogue>(store)
+        ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
 
     internal static IFeatureStore ResolveFeatures(IServiceProvider services, string store) =>
-        store switch
-        {
-            Demo => services.GetRequiredKeyedService<IFeatureStore>(Demo),
-            Postgis => services.GetRequiredKeyedService<IFeatureStore>(Postgis),
-            _ => throw SpatialException.BadArguments($"Unknown store '{store}'; expected 'demo' or 'postgis'."),
-        };
+        services.GetKeyedService<IFeatureStore>(store)
+        ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
 
     private static ITransactionStore ResolveTransactions(IServiceProvider services, string store) =>
-        store switch
-        {
-            Postgis => services.GetRequiredKeyedService<ITransactionStore>(Postgis),
-            Demo => throw SpatialException.BadArguments("The demo store has no transactions."),
-            _ => throw SpatialException.BadArguments($"Unknown store '{store}'; expected 'demo' or 'postgis'."),
-        };
+        services.GetKeyedService<ITransactionStore>(store)
+        ?? throw SpatialException.BadArguments($"Store '{store}' does not provide transactions.");
 }

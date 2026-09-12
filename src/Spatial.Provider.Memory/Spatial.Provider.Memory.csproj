@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The ephemeral writable in-memory provider (ADR-0042): an in-process,
+    dictionary-backed implementation of the writable engine faces
+    (IDataCatalogue, IFeatureStore, IFeatureLookup, IFeatureEditStore,
+    ITransactionStore, IDatasetIngest) keyed `memory`, so ingest and publish
+    work with no external database. Non-durable by design: state lives only
+    for the process lifetime. References Core and SDK only, takes no
+    packages, like the other providers.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Provider.Memory</AssemblyName>
+    <RootNamespace>Spatial.Provider.Memory</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Provider.Memory.Tests" />
+    <InternalsVisibleTo Include="Spatial.Host.Tests" />
+  </ItemGroup>
+
+</Project>

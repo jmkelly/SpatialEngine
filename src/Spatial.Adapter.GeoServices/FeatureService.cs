@@ -27,9 +27,9 @@ internal static class FeatureService
     private const double CurrentVersion = 10.0;
 
     /// <summary>Builds the <c>FeatureServer</c> root (spec §9.0).</summary>
-    public static EsriFeatureServerRoot Root(IReadOnlyList<DatasetSummary> datasets, bool editable)
+    public static EsriFeatureServerRoot Root(IReadOnlyList<PublishedLayer> layers, bool editable)
     {
-        var layers = datasets.Select((dataset, index) => EsriLayerModel.Reference(index, dataset)).ToArray();
+        var references = layers.Select(layer => EsriLayerModel.Reference(layer.Id, layer.Name)).ToArray();
         return new EsriFeatureServerRoot(
             CurrentVersion,
             "SpatialEngine Feature Service",
@@ -37,7 +37,7 @@ internal static class FeatureService
             "JSON",
             editable ? EsriLayerModel.EditableCapabilities : EsriLayerModel.ReadOnlyCapabilities,
             EsriLayerModel.MaxRecordCount,
-            layers,
+            references,
             []);
     }
 

@@ -123,10 +123,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
     {
         try
         {
-            var sql = update
-                ? PostgisQueries.Update(name, description.Schema, description.Srid, description.IdColumns)
-                : PostgisQueries.InsertReturning(name, description.Schema, description.Srid, description.IdColumns);
-            var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid);
+            var (sql, values) = PostgisWriteOperations.PlanFeature(name, description, feature, update);
             await using var command = session.Connection.CreateCommand();
             command.Transaction = session.Transaction;
             command.CommandText = sql;

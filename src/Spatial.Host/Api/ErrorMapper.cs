@@ -7,6 +7,14 @@ namespace Spatial.Host.Api;
 /// <summary>Maps <see cref="ErrorResponse"/> from service failures (ADR-0033).</summary>
 internal static class ErrorMapper
 {
+    /// <summary>A 401 response for a mutation that carried no admin token.</summary>
+    public static IResult Unauthorized(string message) =>
+        Results.Json(new ErrorResponse("unauthorized", message), statusCode: StatusCodes.Status401Unauthorized);
+
+    /// <summary>A 403 response for a mutation that carried a wrong admin token.</summary>
+    public static IResult Forbidden(string message) =>
+        Results.Json(new ErrorResponse("forbidden", message), statusCode: StatusCodes.Status403Forbidden);
+
     public static IResult Map(Exception exception) =>
         exception switch
         {

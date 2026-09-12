@@ -53,7 +53,8 @@ mkdir -p "$WEB_ROOT"
 cp -r apps/workbench-web/dist/* "$WEB_ROOT/"
 
 echo "== start the host serving the workbench =="
-Spatial__WebRoot="$WEB_ROOT" \
+SPATIAL_ADMIN_TOKEN="workbench-e2e-token" \
+  Spatial__WebRoot="$WEB_ROOT" \
   ASPNETCORE_URLS="$WORKBENCH_URL" \
   dotnet run --project src/Spatial.Host --no-build --no-launch-profile --urls "$WORKBENCH_URL" >"$HOST_LOG" 2>&1 &
 PID=$!

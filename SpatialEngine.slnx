@@ -9,7 +9,9 @@
     <Project Path="src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
     <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
     <Project Path="src/Spatial.Provider.Demo/Spatial.Provider.Demo.csproj" />
+    <Project Path="src/Spatial.Provider.Memory/Spatial.Provider.Memory.csproj" />
     <Project Path="src/Spatial.Provider.PostGIS/Spatial.Provider.PostGIS.csproj" />
+    <Project Path="src/Spatial.Provider.Publications/Spatial.Provider.Publications.csproj" />
     <Project Path="src/Spatial.Provider.ArcGisRest/Spatial.Provider.ArcGisRest.csproj" />
     <Project Path="src/Spatial.Imagery.Vips/Spatial.Imagery.Vips.csproj" />
     <Project Path="src/Spatial.Rendering.Skia/Spatial.Rendering.Skia.csproj" />
@@ -24,7 +26,9 @@
     <Project Path="tests/unit/Spatial.Client.Tests/Spatial.Client.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.Demo.Tests/Spatial.Provider.Demo.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Provider.Memory.Tests/Spatial.Provider.Memory.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.PostGIS.Tests/Spatial.Provider.PostGIS.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Provider.Publications.Tests/Spatial.Provider.Publications.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.ArcGisRest.Tests/Spatial.Provider.ArcGisRest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Rendering.Skia.Tests/Spatial.Rendering.Skia.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Imagery.Vips.Tests/Spatial.Imagery.Vips.Tests.csproj" />

@@ -22,6 +22,7 @@
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
     <ProjectReference Include="..\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
+    <ProjectReference Include="..\Spatial.Interop.Ingest\Spatial.Interop.Ingest.csproj" />
   </ItemGroup>
 
   <ItemGroup>
