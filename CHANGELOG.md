@@ -91,6 +91,15 @@ this file together, then tag the release (`RELEASING.md`).
   produced 21 of the 22 CRAP gate findings; only the known
   `PostgisEwkb.WritePoint` coverage-matching artifact remains (see HANDOFF.md).
 
+### Fixed
+
+- **Composer crashed when served over plain HTTP**: adding an existing
+  service (or any composer layer) called `crypto.randomUUID`, which browsers
+  only expose in secure contexts, so on a LAN HTTP origin it threw
+  `crypto.randomUUID is not a function`. Identifiers now go through a shared
+  `newId` helper that falls back to `crypto.getRandomValues` when the native
+  helper is absent.
+
 ## [0.1.0] - 2026-09-12
 
 First tagged release: the independently executable .NET 10 host, the browser

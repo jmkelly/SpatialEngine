@@ -10,6 +10,7 @@ import {
   type SavedRun,
 } from "./persistence.ts";
 import { createClient } from "./api.ts";
+import { newId } from "./ids.ts";
 import { attachGeometryBytes, describe, failure, fromBase64, geometryFromBase64, toBase64, withoutOperationResults } from "./state-helpers.ts";
 import type { RunOutcome } from "./run-outcome.ts";
 
@@ -128,7 +129,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
       try {
         const outcome = await execute(client, op, values, selectedGeometryBase64, abort.signal);
         setRecentOutcome(outcome);
-        setSavedRuns(recordRun({ id: crypto.randomUUID(), op, ok: outcome.ok, startedAt, detail: outcome.summary ?? outcome.error }));
+        setSavedRuns(recordRun({ id: newId(), op, ok: outcome.ok, startedAt, detail: outcome.summary ?? outcome.error }));
         applyResultToMap(outcome, setResultGeojson);
         return outcome;
       } catch (err) {
@@ -154,7 +155,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
   const persistResult = useCallback((outcome: RunOutcome, name: string, note: string) => {
     const saved: SavedResult = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name,
       op: outcome.op,
       savedAt: new Date().toISOString(),

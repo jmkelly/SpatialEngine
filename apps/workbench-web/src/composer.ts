@@ -1,5 +1,6 @@
 import type { LayerSpecification } from "maplibre-gl";
 import type { Publication, PublicationKind, PublicationLayer } from "@spatial/client";
+import { newId } from "./ids.ts";
 
 /**
  * The composer's pure model (`architecture/map-composer-plan.md`): the
@@ -222,9 +223,9 @@ export function fromPublication(publication: Publication): ComposerDraft {
   };
 }
 
-/** Generates a stable client id (browser and Node both provide `crypto.randomUUID`). */
+/** Generates a stable client id; see {@link newId} for insecure-context handling. */
 export function newLayerId(): string {
-  return crypto.randomUUID();
+  return newId();
 }
 
 function toLayerId(value: number | string): number | null {
