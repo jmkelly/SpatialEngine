@@ -4,7 +4,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// WFS 2.0.0 capabilities shaping (ADR-0052 §3): service identification, the
+/// WFS 2.0.0 capabilities shaping (ADR-0053 §3): service identification, the
 /// operations metadata and one feature type per feature layer with its CRS,
 /// GeoJSON output format and WGS84 bounding box.
 /// </summary>

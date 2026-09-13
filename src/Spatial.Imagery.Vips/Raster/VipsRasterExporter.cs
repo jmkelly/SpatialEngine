@@ -38,9 +38,10 @@ internal sealed class VipsRasterExporter
             owned.Add(source);
             EnsurePixelType(source, request.PixelType);
 
-            var window = RasterEnvelopes.Window(
+            var fullWindow = RasterEnvelopes.Window(
                 descriptor.Extent, descriptor.PixelSizeX, descriptor.PixelSizeY, source.Width, source.Height, sourceBounds);
-            var cropped = source.ExtractArea(window.Left, window.Top, window.Width, window.Height);
+            var (working, window) = Working(descriptor, source, fullWindow, request, owned);
+            var cropped = working.ExtractArea(window.Left, window.Top, window.Width, window.Height);
             owned.Add(cropped);
             var scaled = cropped.Resize(
                 (double)request.Viewport.Width / window.Width,
@@ -65,6 +66,38 @@ internal sealed class VipsRasterExporter
                 image.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// Picks the full-resolution image or the coarsest internal overview that
+    /// still covers the requested output, and the pixel window to read from
+    /// it. Falls back to full resolution when the overview is (unusually)
+    /// coarser than assumed, so an export never upscales from an overview.
+    /// </summary>
+    private static (Image Image, (int Left, int Top, int Width, int Height) Window) Working(
+        RasterDatasetDescriptor descriptor,
+        Image source,
+        (int Left, int Top, int Width, int Height) fullWindow,
+        RasterExportRequest request,
+        List<Image> owned)
+    {
+        var level = RasterPyramid.Select(
+            VipsRasterStructure.PyramidLevels(source),
+            fullWindow.Width,
+            fullWindow.Height,
+            request.Viewport.Width,
+            request.Viewport.Height);
+        if (level == 0)
+        {
+            return (source, fullWindow);
+        }
+
+        var overview = VipsRasterFiles.OpenOverview(descriptor.Path, level);
+        owned.Add(overview);
+        var window = RasterPyramid.ScaleWindow(fullWindow, source.Width, source.Height, overview.Width, overview.Height);
+        return window.Width >= request.Viewport.Width && window.Height >= request.Viewport.Height
+            ? (overview, window)
+            : (source, fullWindow);
     }
 
     private Envelope ValidateViewport(

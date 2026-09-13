@@ -38,7 +38,7 @@ const EmptyCollection: GeoJSON.FeatureCollection = { type: "FeatureCollection", 
  * styled layers, preview them on MapLibre, choose the services the map
  * exposes, and publish. The screen talks only to the public host API through
  * the TS SDK; per-layer style is authoring state persisted with the map
- * (ADR-0047), and the service set is persisted on the map (ADR-0052).
+ * (ADR-0047), and the service set is persisted on the map (ADR-0053).
  */
 export function ComposerScreen() {
   const client = useMemo(() => createClient(), []);
@@ -396,7 +396,7 @@ export function ComposerScreen() {
                   </label>
                 ))}
               </div>
-              <small>Each enabled service is an independent projection of this map (ADR-0052).</small>
+              <small>Each enabled service is an independent projection of this map (ADR-0053).</small>
             </fieldset>
 
             <label className="field">
@@ -691,7 +691,7 @@ function messageOf(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
 }
 
-/** The six services a map may expose, in toggle order (ADR-0052). */
+/** The six services a map may expose, in toggle order (ADR-0053). */
 const AllServices: MapService[] = ["feature", "map", "tiles", "wms", "wfs", "image"];
 
 /** Human labels for the service toggles and endpoint rows. */
@@ -706,7 +706,7 @@ const ServiceLabels: Record<MapService, string> = {
 
 /**
  * The copyable public URL for one enabled service, so a map can be consumed
- * without leaving the workbench. Mirrors the ADR-0052 projection table: the
+ * without leaving the workbench. Mirrors the ADR-0053 projection table: the
  * GeoServices servers, the neutral tile template and the OGC capabilities
  * routes. The tiles URL keeps the `{z}/{x}/{y}` template literal so it can be
  * pasted straight into a client.

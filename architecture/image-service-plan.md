@@ -1,12 +1,13 @@
 # Image Service (ImageServer) Implementation Plan
 
-> **Status:** I0–I2 implemented (ADR-0051). The raster boundary is fixed
+> **Status:** I0–I3 implemented (ADR-0051). The raster boundary is fixed
 > (provider-owned rasters; encoded images + core-typed metadata cross a
 > contract), the NetVips path is chosen over GDAL pending measured demand,
 > and the GeoServices ImageServer serves root metadata, raster info, catalog
-> listing/item, identify and `exportImage` over a `PublicationKind.Image`
-> publication. I3 (catalog `query`/`download`/file resources) and I4 (cache
-> and limits) remain. Read
+> listing/item/query, identify, `exportImage`, and the catalog file surface
+> (`download`, Raster Image/Thumbnail/File) over a `PublicationKind.Image`
+> publication. **I4 — COG and tiled GeoTIFF support** is implemented; I5
+> (cache and limits beyond the download caps) remains. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
 > `architecture/distilled/host-and-clients.md` first.
 >
@@ -15,7 +16,9 @@
 > engine path: the existing NetVips `IRasterOperations`/imagery implementation
 > is extended with a core-typed `IRasterCatalogue` face in
 > `Spatial.Imagery.Vips`; only encoded image bytes, core metadata and core
-> geometry footprints cross contracts. GDAL is a measured-demand follow-up.
+> geometry footprints cross contracts. GDAL is a measured-demand follow-up;
+> tiled and internally-overviewed (pyramidal) TIFFs — including COG — are
+> already inside libvips and are scheduled as I4 without it.
 
 ## 1. What the spec requires (v1.0 §8)
 
@@ -59,7 +62,9 @@ contract as raster values — only encoded images and metadata do. This is
 the same shape ADR-0035 used for Esri JSON and is the only option that
 keeps the core a geometry/feature value model. The engine choice (managed
 COG reader vs GDAL) is settled **inside** the I0 ADR, with measured demand
-as ADR-0021 requires.
+as ADR-0021 requires. The managed reader is NetVips' `tiffload`, which
+already handles the tiled/pyramidal structure a COG adds; phase I4 turns
+that into block/pyramid metadata, overview-aware export and COG writing.
 
 **Engine choice (part of the same ADR):** a managed COG/GeoTIFF reader plus
 a warp/sample implementation, or GDAL (native packages, container
@@ -111,20 +116,103 @@ demands for AOT.
   CRS transform correctness and pixel-type rejection (provider unit tests +
   host HTTP tests).
 
-### I3 — Catalog operations
+### I3 — Catalog operations — **delivered**
 - **Deliverable:** `query` over the image catalog (reuse the safe `where`
   subset), `download` raw rasters, raster thumbnail/image/file resources.
-- **Proof:** catalog query fixtures; download size/format caps; range
-  handling if the provider supports it.
+- **Delivered:** the ImageServer catalog `query` reuses the Feature query
+  engine (safe `where`, `objectIds`, geometry, `outFields`,
+  `orderByFields`, paging, ids/count/extent/distinct and `outSR`);
+  `IRasterCatalogue` gains `ListFilesAsync`/`ReadFileAsync` over opaque
+  provider-owned file ids; the adapter serves `download` (with per-request
+  size/file caps, opt-in via `Spatial:GeoServices:AllowRasterDownload`),
+  `file` (range-capable streaming), `{rasterId}/image` and
+  `{rasterId}/thumbnail`. Clipping a download and re-encoding it are typed
+  rejections, not silent passes.
+- **Proof:** provider unit tests (file listing/reading, id validation,
+  per-item export); host HTTP tests (query filter/order/count, bad `where`
+  and `time` rejection, image/thumbnail bytes, download caps, ranged file
+  streaming); `RasterOptions` catalog-config projection tests.
 
-### I4 — Scale, cache and limits
+### I4 — COG and tiled GeoTIFF support — **delivered**
+
+Raster imagery is normally stored as a **tiled GeoTIFF**, and a **Cloud
+Optimized GeoTIFF (COG)** is that plus an internal overview pyramid stored
+before the data. The managed NetVips path already reads and writes both — no
+GDAL, no new package (ADR-0051 option A is unchanged: structure stays
+provider-owned and only core metadata crosses). Before this phase the
+provider read a tiled/pyramidal file as if it were a stripped image and
+hardcoded the block and pyramid fields of `RasterInfo` to 0, so the extra
+structure was paid for and then thrown away.
+
+- **Deliverable:**
+  1. **Read the structure.** `VipsRasterReader.ReadInfo` reads
+     `tile-width`/`tile-height` and `n-subifds` from the file and fills
+     `RasterInfo.BlockWidth`/`BlockHeight`/`FirstPyramidLevel`/
+     `MaxPyramidLevel` (absent fields stay 0 for striped rasters);
+     `VipsRasterFiles.Open` opens with random access so a tiled raster is
+     read by tile, not streamed.
+  2. **Use the overviews.** `RasterPyramid.Select` picks the coarsest
+     overview whose resolution still covers the requested output, and
+     `VipsRasterExporter` opens it (`Image.Tiffload(path, subifd: level - 1)`)
+     and maps the window onto it before cropping and resampling, so an
+     `exportImage` or tile from a large COG reads a fraction of the pixels.
+     It never upscales: if an overview turns out coarser than assumed, the
+     exporter falls back to full resolution. Selection and mapping are pure
+     helpers, unit-tested independently.
+  3. **Write COG-style output.** The concrete
+     `VipsRasterCatalogue.WriteCogAsync` rewrites a configured raster with
+     `Tiffsave(tile: true, tileWidth: 256, tileHeight: 256, pyramid: true,
+     subifd: true, compression: Deflate, predictor: Horizontal, bigtiff:
+     false)` so an uploaded stripped GeoTIFF can be published as a COG. It is
+     deliberately not on the `IRasterCatalogue` contract and becomes an
+     ingest/seed verb when a raster ingest path lands.
+  4. **Honest metadata.** The ImageServer root derives
+     `minPixelSize`/`maxPixelSize` from the pyramid factor and raster info
+     reports the real block/pyramid numbers instead of 0.
+- **Research findings** (verified on this machine against the pinned NetVips
+  3.2.0 / libvips 8.18.6):
+  - `Image.Tiffload(filename, subifd: i, access: Enums.Access.Random)`
+    selects an internal overview and random access;
+    `Image.Tiffsave(..., tile, tileWidth, tileHeight, pyramid, subifd,
+    compression, predictor, bigtiff)` writes the COG-style file.
+  - A generated 4096² tiled+pyramidal TIFF reports `n-subifds=4`,
+    `tile-width=256`, `tile-height=256`; `subifd` 0–3 are
+    2048²/1024²/512²/256², a 256² crop took ~80 ms (ranged, not a full
+    decode), and `Image.Thumbnail` selected an overview automatically.
+  - A striped TIFF exposes neither field, so the new metadata is a no-op
+    for the current fixtures; `NetVips.Image.Get` throws on a missing
+    field, so presence is checked via `GetFields()`.
+  - A local path is opened directly. Remote/HTTP COG range reads need a
+    custom `VipsSource` (and an HTTP client libvips does not bundle) and
+    stay a separate decision; georeferencing is still descriptor-supplied
+    because libvips does not expose the GeoTIFF GeoKey tags.
+- **Non-goals for this phase:** HTTP COG range reading, on-the-fly
+  mosaicking, GeoKey parsing, and a GDAL backend (the ADR-0051
+  measured-demand triggers are unchanged). Writing a COG is a repackaging
+  step to serve existing imagery, not raster analytics.
+- **Delivered:** `VipsRasterStructure` reads `tile-width`/`tile-height`/
+  `n-subifds`; `VipsRasterReader.ReadInfo` fills the `RasterInfo` block and
+  pyramid fields; `VipsRasterFiles.Open` uses random access;
+  `RasterPyramid.Select`/`ScaleWindow` choose and map the overview;
+  `VipsRasterExporter` reads the chosen overview before cropping and
+  resampling; `VipsRasterCog` writes a tiled pyramidal file and
+  `VipsRasterCatalogue.WriteCogAsync` exposes it; `ImageService` derives the
+  service `minPixelSize`/`maxPixelSize` from the pyramid depth and reports
+  the real block/pyramid raster-info values.
+- **Proof:** provider tests (structure on tiled vs striped fixtures, level
+  selection and window mapping, full-resolution and downscaled exports,
+  offset overview window, COG round-trip); adapter tests (pyramid raster
+  info and pixel-size bounds); the host root reports the pyramid pixel-size
+  bounds end to end.
+
+### I5 — Scale, cache and limits
 - **Deliverable:** tile/export caching policy, request size caps,
   concurrency limits, cancellation over HTTP (client disconnect cancels
-  raster work); optional pre-tiled/COG mosaicking.
+  raster work); optional pre-tiled/COG mosaicking (now buildable on I4).
 - **Proof:** cancellation and cap tests; load-shape check that export does
   not park a request.
 
-### I5 — (Explicit non-goal) raster analytics
+### I6 — (Explicit non-goal) raster analytics
 Raster functions, statistics computation beyond stored metadata, on-the-fly
 mosaicking, and multidimensional/time-aware imagery are recorded as
 non-goals unless a separate ADR adopts them.
@@ -134,6 +222,8 @@ non-goals unless a separate ADR adopts them.
 Raster analytics and raster-function chains; spectral indices; server-side
 time-series; elevation/point-cloud services; editing imagery. The engine
 serves *existing* imagery; it does not become a raster processing engine.
+Repackaging a stored raster as a tiled, internally-overviewed COG so it can
+be served efficiently (I4) is a storage concern, not analytics.
 
 ## 6. Risks
 
@@ -145,9 +235,15 @@ serves *existing* imagery; it does not become a raster processing engine.
   (stored vs computed).
 - The raster catalog is a feature-like dataset with a raster per row;
   decide whether the catalog is `PublicationKind.Image` metadata or a
-  normal dataset plus a raster locator column, before I3.
+  normal dataset plus a raster locator column, before I3. **Resolved:** the
+  catalog stays `PublicationKind.Image` provider metadata with a core
+  `FeatureSchema` (ADR-0051 §3); `query` reuses the feature query engine
+  over it rather than promoting it to a store dataset.
 - `download` exposes raw data — authorization and size limits are
-  mandatory, not optional.
+  mandatory, not optional. **Resolved:** raw download is opt-in
+  (`Spatial:GeoServices:AllowRasterDownload`), bounded by per-request
+  size/file caps, and serves only provider-vetted opaque file ids — never a
+  caller-supplied path.
 
 ## 7. References
 

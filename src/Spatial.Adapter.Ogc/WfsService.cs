@@ -8,7 +8,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// The OGC Web Feature Service 2.0.0 projection (ADR-0052 §3):
+/// The OGC Web Feature Service 2.0.0 projection (ADR-0053 §3):
 /// GetCapabilities, DescribeFeatureType and GetFeature over a map's feature
 /// layers. GetFeature returns GeoJSON (<c>application/geo+json</c>); GML is an
 /// explicit non-goal and is rejected with a typed <c>InvalidParameterValue</c>

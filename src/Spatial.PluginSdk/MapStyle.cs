@@ -6,7 +6,7 @@ namespace Spatial.PluginSdk;
 
 /// <summary>
 /// Assembles a MapLibre style document (ADR-0044) from a map's persisted
-/// per-layer fragments (ADR-0047/ADR-0052): each layer's <c>Style</c> array
+/// per-layer fragments (ADR-0047/ADR-0053): each layer's <c>Style</c> array
 /// is copied in draw order, gains a unique <c>id</c>, and is keyed onto its
 /// dataset with <c>source-layer</c>. A layer with no persisted style falls
 /// back to a neutral symbol covering every geometry family, so a map still

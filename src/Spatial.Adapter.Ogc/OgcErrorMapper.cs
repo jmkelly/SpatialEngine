@@ -6,7 +6,7 @@ namespace Spatial.Adapter.Ogc;
 
 /// <summary>
 /// Maps engine and adapter failures onto the OGC <c>ServiceExceptionReport</c>
-/// envelope (ADR-0052 §3): engine <c>SpatialException</c> codes become the
+/// envelope (ADR-0053 §3): engine <c>SpatialException</c> codes become the
 /// matching OGC exception code and HTTP status, so an invalid request, an
 /// unknown layer and an unavailable store are distinguishable on the wire.
 /// The exception kinds and engine codes dispatch through small helpers

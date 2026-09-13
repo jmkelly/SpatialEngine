@@ -33,7 +33,7 @@ public sealed record RenderRequest(
     double Scale = 1.0);
 
 /// <summary>
-/// The <c>POST /api/maps/{name}/render</c> body (ADR-0052 §4, evolving
+/// The <c>POST /api/maps/{name}/render</c> body (ADR-0053 §4, evolving
 /// ADR-0047): the same viewport and encoding inputs as
 /// <see cref="RenderRequest"/> without a style or layer list, because both
 /// come from the named map's persisted layers and their style fragments.

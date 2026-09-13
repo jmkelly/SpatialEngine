@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The map render route (ADR-0052): a named map renders its feature layers
+/// The map render route (ADR-0053): a named map renders its feature layers
 /// with the per-layer styles persisted on it, so a style authored headlessly
 /// (PUT) takes effect without a client-side style document.
 /// </summary>

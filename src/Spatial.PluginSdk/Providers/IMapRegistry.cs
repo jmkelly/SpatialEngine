@@ -1,7 +1,7 @@
 namespace Spatial.PluginSdk.Providers;
 
 /// <summary>
-/// A protocol surface a <see cref="Map"/> can expose (ADR-0052). A map
+/// A protocol surface a <see cref="Map"/> can expose (ADR-0053). A map
 /// declares any subset: <see cref="Feature"/> and <see cref="Map"/> are the
 /// Esri GeoServices FeatureServer and MapServer (ADR-0035/ADR-0048),
 /// <see cref="Tiles"/> is the neutral tile route over the render/tile
@@ -32,7 +32,7 @@ public enum MapService
 
 /// <summary>
 /// Whether a <see cref="MapLayer"/> names a vector feature dataset or a
-/// raster dataset (ADR-0052). Feature layers feed Feature/Map/Tiles/WMS/WFS;
+/// raster dataset (ADR-0053). Feature layers feed Feature/Map/Tiles/WMS/WFS;
 /// image layers feed the Image service.
 /// </summary>
 public enum MapLayerKind
@@ -51,7 +51,7 @@ public enum MapLayerKind
 /// <see cref="Name"/> optionally overrides the published layer name.
 /// <see cref="LayerId"/> is assigned once and persisted: ids are append-only,
 /// never reused and never renumbered, so adding or removing a layer cannot
-/// renumber the others (ADR-0041/ADR-0052).
+/// renumber the others (ADR-0041/ADR-0053).
 ///
 /// <para><see cref="Style"/> is the layer's persisted draw recipe in the
 /// engine's MapLibre style dialect (ADR-0044/ADR-0047): a JSON array of
@@ -79,7 +79,7 @@ public sealed record MapLayer(
 }
 
 /// <summary>
-/// The engine's neutral unit of authoring and exposure (ADR-0052): a named,
+/// The engine's neutral unit of authoring and exposure (ADR-0053): a named,
 /// ordered set of styled layers from one keyed store, plus the set of
 /// services the map exposes. It carries no protocol or provider type, so an
 /// adapter maps a map to its wire shape and the registry implementation never
@@ -107,7 +107,7 @@ public sealed record Map(
 }
 
 /// <summary>
-/// Read/write access to the engine's maps (ADR-0052), replacing the
+/// Read/write access to the engine's maps (ADR-0053), replacing the
 /// per-protocol publication registry (ADR-0041). The registry is the single
 /// source every serving adapter resolves a service name through, so a map
 /// created at runtime is immediately visible without a restart. It is

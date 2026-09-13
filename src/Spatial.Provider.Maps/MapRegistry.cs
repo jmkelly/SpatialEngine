@@ -6,12 +6,12 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Maps;
 
 /// <summary>
-/// The map registry (ADR-0052 §2, evolving ADR-0041 §2): declared,
+/// The map registry (ADR-0053 §2, evolving ADR-0041 §2): declared,
 /// config-seeded maps are immutable through the API; runtime maps live in a
 /// versioned JSON file written atomically (temp file + replace) under a
 /// single-writer lock. A whole-store declared map resolves its layers once
 /// from the backing store's dataset list and caches them, so its layer ids
-/// stay stable for the process lifetime. A pre-ADR-0052 publications file is
+/// stay stable for the process lifetime. A pre-ADR-0053 publications file is
 /// read once and migrated. A name collision with a declared entry is
 /// <c>invalid.arguments</c>, a missing runtime name is <c>not.found</c> and a
 /// corrupt file is <c>store.unavailable</c>.
@@ -207,7 +207,7 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
         return loaded;
     }
 
-    /// <summary>Reads a pre-ADR-0052 publications file and projects each record onto a map.</summary>
+    /// <summary>Reads a pre-ADR-0053 publications file and projects each record onto a map.</summary>
     private static async Task<Dictionary<string, Map>> ReadLegacyAsync(string path, CancellationToken cancellationToken)
     {
         string text;
@@ -340,13 +340,13 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
     }
 }
 
-/// <summary>The versioned on-disk map document (ADR-0052 §2).</summary>
+/// <summary>The versioned on-disk map document (ADR-0053 §2).</summary>
 internal sealed record MapFile(int Version, IReadOnlyList<Map> Maps);
 
-/// <summary>The pre-ADR-0052 publications document, read only for migration.</summary>
+/// <summary>The pre-ADR-0053 publications document, read only for migration.</summary>
 internal sealed record LegacyPublicationFile(int Version, IReadOnlyList<LegacyPublication> Publications);
 
-/// <summary>One pre-ADR-0052 publication record.</summary>
+/// <summary>One pre-ADR-0053 publication record.</summary>
 internal sealed record LegacyPublication(
     string Name,
     string? Kind,
@@ -355,5 +355,5 @@ internal sealed record LegacyPublication(
     string? Description = null,
     string? Copyright = null);
 
-/// <summary>One pre-ADR-0052 publication layer.</summary>
+/// <summary>One pre-ADR-0053 publication layer.</summary>
 internal sealed record LegacyPublicationLayer(string Dataset, int LayerId, string? Name = null, string? Style = null);

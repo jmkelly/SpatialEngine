@@ -183,7 +183,7 @@ public sealed class SpatialClient
         return await _transport.PostForImageAsync("/api/render", request, cancellationToken);
     }
 
-    /// <summary>Renders a map's datasets using its persisted layer styles (ADR-0052).</summary>
+    /// <summary>Renders a map's datasets using its persisted layer styles (ADR-0053).</summary>
     public async Task<RasterImage> RenderMapAsync(
         string name, MapRenderRequestDto request, CancellationToken cancellationToken = default)
     {
@@ -204,7 +204,7 @@ public sealed class SpatialClient
         return response.Slept;
     }
 
-    // ---- maps & ingest (ADR-0052) ----
+    // ---- maps & ingest (ADR-0053) ----
 
     /// <summary>Lists every map (declared first, then runtime by name).</summary>
     public Task<IReadOnlyList<Map>> ListMapsAsync(CancellationToken cancellationToken = default) =>

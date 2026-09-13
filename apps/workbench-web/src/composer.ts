@@ -10,7 +10,7 @@ import { newId } from "./ids.ts";
  * mapping without a renderer.
  *
  * Per-layer style and kind are authored in browser state and persisted with
- * the map as a MapLibre style fragment and a layer kind (ADR-0047/ADR-0052),
+ * the map as a MapLibre style fragment and a layer kind (ADR-0047/ADR-0053),
  * so a publish/load round-trip restores them instead of resetting them. Each
  * layer belongs to the map; style is never global and never shared.
  */
@@ -35,7 +35,7 @@ export interface ComposerLayer {
   dataset: string;
   name: string;
   geometry: GeometryKind;
-  /** Feature layers feed Feature/Map/Tiles/WMS/WFS; image layers feed Image (ADR-0052). */
+  /** Feature layers feed Feature/Map/Tiles/WMS/WFS; image layers feed Image (ADR-0053). */
   kind: MapLayerKind;
   style: LayerStyle;
   featureCount: number;
@@ -48,7 +48,7 @@ export interface ComposerDraft {
   name: string;
   store: string;
   layers: ComposerLayer[];
-  /** The exposure set; a map may expose any subset of the six services (ADR-0052). */
+  /** The exposure set; a map may expose any subset of the six services (ADR-0053). */
   services: MapService[];
 }
 
@@ -267,7 +267,7 @@ export function sourceId(layerId: string): string {
  * Maps the ordered layer list onto the host's map layers. Order is
  * preserved; `layerId` is the loaded stable id or `-1`, the registry's
  * "assign the next free id" sentinel, so appended layers never renumber
- * existing ones (ADR-0041). Each layer's `kind` is persisted (ADR-0052).
+ * existing ones (ADR-0041). Each layer's `kind` is persisted (ADR-0053).
  */
 export function toMapLayers(layers: readonly ComposerLayer[]): MapLayer[] {
   return layers.map((layer) => ({

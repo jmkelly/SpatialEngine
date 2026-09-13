@@ -5,12 +5,12 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The map render route (ADR-0052 §4, evolving ADR-0047): renders a named
+/// The map render route (ADR-0053 §4, evolving ADR-0047): renders a named
 /// map's feature layers using the per-layer styles persisted with it, so a
 /// persisted style takes effect headlessly (no workbench, no inline style
 /// document). The host resolves the map and each layer's keyed store at the
 /// edge and passes a composed <see cref="MapRenderRequest"/> to the renderer;
-/// the renderer never sees a map (ADR-0005/ADR-0033). The pre-ADR-0052
+/// the renderer never sees a map (ADR-0005/ADR-0033). The pre-ADR-0053
 /// <c>/api/publications/{name}/render</c> route is a deprecated alias.
 /// </summary>
 internal static class MapRenderEndpoints

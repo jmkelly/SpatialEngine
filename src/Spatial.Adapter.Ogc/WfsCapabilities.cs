@@ -6,7 +6,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Writes the WFS 2.0.0 capabilities document (ADR-0052 §3): service
+/// Writes the WFS 2.0.0 capabilities document (ADR-0053 §3): service
 /// identification, the operations metadata and one feature type per feature
 /// layer with its default CRS, GeoJSON output format and WGS84 bounding box.
 /// </summary>

@@ -7,7 +7,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Writes the WMS 1.3.0 capabilities document (ADR-0052 §3): service
+/// Writes the WMS 1.3.0 capabilities document (ADR-0053 §3): service
 /// metadata, the request verbs with their formats, and one queryable layer
 /// per feature layer carrying EPSG:4326/CRS:84/EPSG:3857 bounding boxes.
 /// </summary>

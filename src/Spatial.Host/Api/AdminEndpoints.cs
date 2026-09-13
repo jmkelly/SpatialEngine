@@ -8,7 +8,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The neutral admin surface (ADR-0052 §4, evolving ADR-0041 §5): map CRUD and
+/// The neutral admin surface (ADR-0053 §4, evolving ADR-0041 §5): map CRUD and
 /// the single ingest request. Mutation routes require the configured admin
 /// token (env <c>SPATIAL_ADMIN_TOKEN</c>) compared in constant time; when no
 /// token is configured they are not mounted at all, while the read routes stay
@@ -18,7 +18,7 @@ namespace Spatial.Host.Api;
 /// registers the uploaded dataset as a one-layer Feature map in the same call
 /// and reports the partial state safely retryably.
 ///
-/// <para>The pre-ADR-0052 <c>/api/publications</c> routes remain as
+/// <para>The pre-ADR-0053 <c>/api/publications</c> routes remain as
 /// deprecated aliases for one release.</para>
 /// </summary>
 internal static class AdminEndpoints
@@ -31,7 +31,7 @@ internal static class AdminEndpoints
         app.MapGet("/api/maps", ListMaps).Produces<IReadOnlyList<Map>>();
         app.MapGet("/api/maps/{name}", GetMap).Produces<Map>();
 
-        // Deprecated aliases (ADR-0052 §4): removed in the next release.
+        // Deprecated aliases (ADR-0053 §4): removed in the next release.
         app.MapGet("/api/publications", ListMaps).Produces<IReadOnlyList<Map>>();
         app.MapGet("/api/publications/{name}", GetMap).Produces<Map>();
 

@@ -5,7 +5,7 @@ using Spatial.Provider.Maps;
 namespace Spatial.Provider.Maps.Tests;
 
 /// <summary>
-/// The map registry (ADR-0052 §2): declared immutability, whole-store
+/// The map registry (ADR-0053 §2): declared immutability, whole-store
 /// expansion, runtime persistence, atomic replace, collisions, corrupt-file
 /// diagnostics and legacy publication migration. The file lives under a
 /// per-test temporary directory.

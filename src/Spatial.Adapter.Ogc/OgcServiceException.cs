@@ -6,7 +6,7 @@ namespace Spatial.Adapter.Ogc;
 /// A typed OGC failure carrying the <c>ServiceException</c> code and HTTP
 /// status the report is served with. The OGC protocol vocabulary (exception
 /// codes) stays inside this adapter and never crosses a contract
-/// (ADR-0052 §3).
+/// (ADR-0053 §3).
 /// </summary>
 internal sealed class OgcServiceException : Exception
 {

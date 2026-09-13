@@ -3,7 +3,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Layer selection shared by WMS and WFS (ADR-0052 §3): only feature layers
+/// Layer selection shared by WMS and WFS (ADR-0053 §3): only feature layers
 /// feed the OGC projections, and a requested name resolves against the
 /// layer's published name (its <see cref="MapLayer.Name"/> or dataset).
 /// </summary>

@@ -99,6 +99,7 @@ workbench from the host as above.
 ./eng/verify.sh          # format check + build + full test run
 ./eng/e2e-web.sh         # real host, driven by the TypeScript SDK over HTTP
 ./eng/workbench-e2e.sh   # real host + built workbench + Playwright
+./eng/cli-e2e.sh         # real host driven by the Spatial CLI
 ```
 
 ### Seed it with real data
@@ -115,7 +116,38 @@ SPATIAL_ADMIN_TOKEN=seed-admin-token ./eng/seed.sh
 See [`tools/seed/README.md`](tools/seed/README.md) for the datasets and
 maps, and `--only`/`--force`/`--list` options.
 
-CI runs all three verification scripts plus the JavaScript typecheck,
+### Drive it from the CLI
+
+`Spatial.Cli` is a self-contained, dependency-free command-line client of the
+public host API (ADR-0052) built for scripts and LLMs: add datasets, compose
+styled maps out of layers, keep the workspace in a declarative
+`spatial.json`, and export the FeatureServer/MapServer/ImageServer endpoints a
+service projects to.
+
+```bash
+# list what a running host advertises
+dotnet run --project clients/dotnet/Spatial.Cli -- dataset list
+
+# add a dataset from a file, then publish a styled map service from it
+dotnet run --project clients/dotnet/Spatial.Cli -- \
+  dataset add --file places.geojson --dataset public.places --srid 4326
+dotnet run --project clients/dotnet/Spatial.Cli -- \
+  map create --name WorldPlaces --kind map --layer public.places=Places
+dotnet run --project clients/dotnet/Spatial.Cli -- \
+  map set-style --map WorldPlaces --dataset public.places --geometry point --color '#ffd54f'
+dotnet run --project clients/dotnet/Spatial.Cli -- \
+  map export WorldPlaces --format url
+
+# or replay a whole workspace declaratively
+SPATIAL_ADMIN_TOKEN=my-token dotnet run --project clients/dotnet/Spatial.Cli -- project apply
+```
+
+Use `--json` for a stable `{ok, command, data}` envelope and `--help` for the
+descriptive flag reference. See
+[`architecture/distilled/cli.md`](architecture/distilled/cli.md) for the
+project-file schema and the full command surface.
+
+CI runs the four verification scripts plus the JavaScript typecheck,
 generated-types drift check and unit suites on every push and pull request.
 
 ---

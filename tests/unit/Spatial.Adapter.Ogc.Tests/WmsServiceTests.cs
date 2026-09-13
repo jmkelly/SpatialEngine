@@ -3,7 +3,7 @@ using Spatial.Core.Features;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// WMS text/parameter helpers (ADR-0052 §3): attribute formatting for
+/// WMS text/parameter helpers (ADR-0053 §3): attribute formatting for
 /// GetFeatureInfo text and BGCOLOR normalisation. Every attribute kind and
 /// colour form is exercised so the dispatch table is fully covered.
 /// </summary>

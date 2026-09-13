@@ -3,9 +3,9 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Maps;
 
 /// <summary>
-/// Host configuration for the map registry (ADR-0052 §2):
+/// Host configuration for the map registry (ADR-0053 §2):
 /// <c>Spatial:Maps:Path</c> is the runtime JSON file,
-/// <c>Spatial:Maps:LegacyPath</c> is an optional pre-ADR-0052
+/// <c>Spatial:Maps:LegacyPath</c> is an optional pre-ADR-0053
 /// <c>publications.json</c> read once and migrated, and
 /// <c>Spatial:Maps:Declared</c> seeds immutable, configuration-owned maps
 /// (including the legacy <c>Spatial:GeoServices:Services</c> entries projected
@@ -17,7 +17,7 @@ public sealed class MapsOptions
     public string Path { get; set; } = "./data/maps.json";
 
     /// <summary>
-    /// A pre-ADR-0052 publications file to migrate on first read. Empty
+    /// A pre-ADR-0053 publications file to migrate on first read. Empty
     /// disables migration; the legacy file is never rewritten.
     /// </summary>
     public string? LegacyPath { get; set; }
@@ -64,7 +64,7 @@ public sealed class DeclaredLayerOptions
     /// </summary>
     public string? Style { get; set; }
 
-    /// <summary><c>Feature</c> (default) or <c>Image</c> (ADR-0052).</summary>
+    /// <summary><c>Feature</c> (default) or <c>Image</c> (ADR-0053).</summary>
     public string Kind { get; set; } = nameof(MapLayerKind.Feature);
 
     /// <summary>Optional per-layer store override; empty uses the map store.</summary>

@@ -69,9 +69,13 @@ GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Merca
 GET|POST /arcgis/rest/services/{service}/ImageServer                 # ImageServer root (spec §8, ADR-0051)
 GET|POST /arcgis/rest/services/{service}/ImageServer/exportImage    # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/ImageServer/identify       # pixel values + catalog items
-GET|POST /arcgis/rest/services/{service}/ImageServer/query          # raster catalog listing
+GET|POST /arcgis/rest/services/{service}/ImageServer/query          # raster catalog query (safe where subset)
+GET|POST /arcgis/rest/services/{service}/ImageServer/download       # raw file ids (opt-in, size-capped)
+GET|POST /arcgis/rest/services/{service}/ImageServer/file           # raw file bytes (range-capable)
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}     # raster catalog item
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/info # raster info
+GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/image # one item's exported image (spec §8.2)
+GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/thumbnail # one item's thumbnail (spec §8.3)
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService
@@ -80,7 +84,7 @@ POST   /arcgis/admin/uploads
 POST   /arcgis/admin/uploads/{id}/publish
 ```
 
-Maps are the neutral authoring and exposure model (ADR-0052): a named,
+Maps are the neutral authoring and exposure model (ADR-0053): a named,
 ordered set of styled layers from one keyed store plus the set of services it
 exposes (Feature, Map, Tiles, Wms, Wfs, Image), with persisted stable layer
 ids. `GET /api/maps` and
@@ -95,7 +99,7 @@ token it returns an actionable unavailable error.
 A map exposes a service only when its `Services` set contains it; the
 GeoServices catalog advertises `FeatureServer`/`MapServer`/`ImageServer` per
 enabled service, and the OGC tile/WMS/WFS routes resolve the same map. The
-pre-ADR-0052 `/api/publications` routes remain as deprecated aliases for one
+pre-ADR-0053 `/api/publications` routes remain as deprecated aliases for one
 release.
 
 The GeoServices routes are the Esri boundary adapter (ADR-0035): `f=json`
@@ -128,7 +132,7 @@ defaults to `memory` so the database-free upload path works out of the box.
 | `Spatial:Admin:Token` | Admin token for the mutation routes; empty disables them |
 | `SPATIAL_ADMIN_TOKEN` | Env fallback for the admin token — a secret channel alongside the connection string |
 | `Spatial:Maps:Path` | Runtime map JSON file (default `./data/maps.json`) |
-| `Spatial:Maps:LegacyPath` | Pre-ADR-0052 publications JSON read once for migration (default `./data/publications.json`) |
+| `Spatial:Maps:LegacyPath` | Pre-ADR-0053 publications JSON read once for migration (default `./data/publications.json`) |
 | `Spatial:Maps:Declared` | Config-seeded immutable maps (`{name, store, services[], layers[]}`) |
 | `Spatial:Ogc:Root` | OGC WMS/WFS URL prefix (default `/ogc`) |
 | `Spatial:Ogc:ServiceTitle` | Capabilities title shared by WMS and WFS |
@@ -165,6 +169,9 @@ injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
 - `eng/seed.sh` (over `tools/seed/`) fetches real public data, ingests it
   (including a server-side reprojection) and publishes styled feature and map
   services through the neutral admin API — an on-demand realistic dataset.
+- `clients/dotnet/Spatial.Cli` is a dependency-free console client of the same
+  public API (ADR-0052): datasets, maps/layers/styles and a declarative
+  `spatial.json` project file, with GeoServices endpoint output. See `cli.md`.
 
 ## Frontend boundary
 

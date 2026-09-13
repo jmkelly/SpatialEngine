@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
-/// The shared map style composer (ADR-0047/ADR-0048/ADR-0052): persisted
+/// The shared map style composer (ADR-0047/ADR-0048/ADR-0053): persisted
 /// fragments gain a unique <c>id</c> and their dataset as
 /// <c>source-layer</c>; a layer with no style falls back to the neutral
 /// symbol so a MapServer always has something to draw.

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The OGC WMS/WFS boundary adapter (ADR-0052 §3): maps that expose the Wms
+/// The OGC WMS/WFS boundary adapter (ADR-0053 §3): maps that expose the Wms
 /// or Wfs service answer capabilities, render/query and report failures as
 /// <c>ServiceExceptionReport</c>; maps that do not, or unknown names, are
 /// 404.

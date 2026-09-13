@@ -220,7 +220,7 @@ export class SpatialClient {
     return this.postForImage("/api/render", request, signal);
   }
 
-  /** Renders a map's datasets using its persisted layer styles (ADR-0047/ADR-0052). */
+  /** Renders a map's datasets using its persisted layer styles (ADR-0047/ADR-0053). */
   async renderMap(name: string, request: MapRenderRequestDto, signal?: AbortSignal): Promise<RasterImage> {
     return this.postForImage(`/api/maps/${encodeURIComponent(name)}/render`, request, signal);
   }
@@ -246,7 +246,7 @@ export class SpatialClient {
     return this.get<TileCapabilitiesResponse>("/api/render/tiles/capabilities", signal);
   }
 
-  // ---- maps & ingest (ADR-0041/ADR-0052) ----
+  // ---- maps & ingest (ADR-0041/ADR-0053) ----
 
   /** Lists every map (declared first, then runtime by name). */
   async listMaps(signal?: AbortSignal): Promise<Map[]> {

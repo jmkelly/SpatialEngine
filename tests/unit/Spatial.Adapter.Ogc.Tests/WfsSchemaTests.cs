@@ -4,7 +4,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// WFS <c>DescribeFeatureType</c> shaping (ADR-0052 §3): the XSD carries the
+/// WFS <c>DescribeFeatureType</c> shaping (ADR-0053 §3): the XSD carries the
 /// dataset's fields with kind-mapped XML Schema types and a GML geometry
 /// property.
 /// </summary>

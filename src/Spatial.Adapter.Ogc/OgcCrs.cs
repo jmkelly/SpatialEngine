@@ -1,7 +1,7 @@
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// OGC CRS identity handling (ADR-0052 §3): the engine's contract is x-first
+/// OGC CRS identity handling (ADR-0053 §3): the engine's contract is x-first
 /// for every CRS, but WMS 1.3.0 declares EPSG:4326 with latitude first, so a
 /// request bbox for that CRS must be swapped. The adapter accepts the simple
 /// <c>EPSG:4326</c>/<c>CRS:84</c>/<c>EPSG:3857</c> identities plus the common

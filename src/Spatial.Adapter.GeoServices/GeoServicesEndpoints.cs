@@ -71,7 +71,7 @@ public static partial class GeoServicesEndpoints
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
         MapServerEndpoints.MapMapServer(group, catalog, registry);
-        ImageServerEndpoints.MapImageServer(group, catalog, registry);
+        ImageServerEndpoints.MapImageServer(group, catalog, registry, options);
     }
 
     private static async Task<IResult> Catalog(GeoServicesCatalog catalog, IMapRegistry registry, HttpContext context, CancellationToken cancellationToken)
@@ -262,7 +262,7 @@ public static partial class GeoServicesEndpoints
     /// Resolves one GeoServices server (Feature, Map or Image): a
     /// config-declared service exposes its whole store (sorted, index-assigned
     /// layers), a runtime map exposes the persisted explicit layers that feed
-    /// the requested service (ADR-0052). A map that does not expose the
+    /// the requested service (ADR-0053). A map that does not expose the
     /// service, or an unknown name, is not-found.
     /// </summary>
     internal static async Task<ResolvedService> ResolveServiceAsync(

@@ -6,7 +6,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// The core-typed GeoJSON writer (ADR-0052 §3): the primary geometry column
+/// The core-typed GeoJSON writer (ADR-0053 §3): the primary geometry column
 /// becomes the feature geometry, the remaining attributes become properties,
 /// and every simple-feature geometry maps to its coordinate nesting. Every
 /// attribute kind and geometry family is exercised so the dispatch tables are

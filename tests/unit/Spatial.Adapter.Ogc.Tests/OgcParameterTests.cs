@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// OGC request parameter parsing (ADR-0052 §3): query and form bodies merge
+/// OGC request parameter parsing (ADR-0053 §3): query and form bodies merge
 /// case-insensitively, missing required values raise the typed report, bbox
 /// ordinates parse x-first, and the supported CRS identities carry their axis
 /// order.

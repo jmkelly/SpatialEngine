@@ -5,7 +5,7 @@ using System.Xml.Linq;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// OGC XML serialisation (ADR-0052 §3): the service-configured namespaces,
+/// OGC XML serialisation (ADR-0053 §3): the service-configured namespaces,
 /// the capabilities documents and the <c>ServiceExceptionReport</c> failure
 /// envelope. XML is generated here and never enters a contract.
 /// </summary>

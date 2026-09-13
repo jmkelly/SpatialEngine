@@ -4,7 +4,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Resolves the render inputs for an OGC <c>GetMap</c> (ADR-0052 §3): the
+/// Resolves the render inputs for an OGC <c>GetMap</c> (ADR-0053 §3): the
 /// selected layers become <see cref="MapLayerSource"/> entries with their
 /// keyed store and catalogue, so the renderer receives resolved services and
 /// never locates a store itself.

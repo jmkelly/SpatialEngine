@@ -5,7 +5,7 @@ using Spatial.PluginSdk;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// The OGC failure mapping (ADR-0052 §3): every exception kind and every
+/// The OGC failure mapping (ADR-0053 §3): every exception kind and every
 /// engine <c>SpatialException</c> code produces the matching
 /// <c>ServiceExceptionReport</c> status and code.
 /// </summary>

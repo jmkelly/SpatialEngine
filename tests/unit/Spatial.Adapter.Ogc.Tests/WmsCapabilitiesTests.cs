@@ -4,7 +4,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// WMS 1.3.0 capabilities shaping (ADR-0052 §3): service metadata, the
+/// WMS 1.3.0 capabilities shaping (ADR-0053 §3): service metadata, the
 /// request verbs, and one queryable layer per feature layer with its CRS list
 /// and geographic/mercator bounding boxes.
 /// </summary>

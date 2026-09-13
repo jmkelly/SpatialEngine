@@ -4,7 +4,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Host;
 
 /// <summary>
-/// Registers and mounts the OGC WMS/WFS boundary adapter (ADR-0052 §3). The
+/// Registers and mounts the OGC WMS/WFS boundary adapter (ADR-0053 §3). The
 /// options come from <c>Spatial:Ogc</c>; the routes are mounted after the
 /// engine API so the OGC group is independent of the host's own routes.
 /// </summary>

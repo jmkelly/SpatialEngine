@@ -10,7 +10,7 @@ namespace Spatial.Adapter.Ogc.Tests;
 /// Shared fixtures for the OGC unit tests: an in-memory feature store and
 /// catalogue, an identity transform service, a one-map registry and the
 /// resolver built over them. No host and no real store is involved, so the
-/// XML/GeoJSON shaping is exercised in isolation (ADR-0052 §3).
+/// XML/GeoJSON shaping is exercised in isolation (ADR-0053 §3).
 /// </summary>
 internal static class OgcFixtures
 {

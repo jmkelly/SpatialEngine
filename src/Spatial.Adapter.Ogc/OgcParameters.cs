@@ -4,7 +4,7 @@ namespace Spatial.Adapter.Ogc;
 
 /// <summary>
 /// The merged, case-insensitive request parameters of one OGC operation
-/// (ADR-0052 §3): query-string values plus, for a form POST, the
+/// (ADR-0053 §3): query-string values plus, for a form POST, the
 /// <c>application/x-www-form-urlencoded</c> body. OGC parameter names are
 /// case-insensitive, so lookups normalise the key; the last source wins when
 /// a name appears in both.

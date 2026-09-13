@@ -3,7 +3,7 @@ using System.Xml.Linq;
 namespace Spatial.Adapter.Ogc.Tests;
 
 /// <summary>
-/// The OGC failure envelope (ADR-0052 §3): the exception report is well-formed
+/// The OGC failure envelope (ADR-0053 §3): the exception report is well-formed
 /// XML carrying the OGC code the adapter selected.
 /// </summary>
 public sealed class OgcXmlTests

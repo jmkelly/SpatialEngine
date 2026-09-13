@@ -204,6 +204,7 @@ internal sealed record EsriFeatureQuery(
 
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
+        Reject(parameters, "time", "temporal queries are not supported.");
         Reject(parameters, "outStatistics", "attribute statistics are not supported.");
         Reject(parameters, "groupByFieldsForStatistics", "statistics grouping is not supported.");
         Reject(parameters, "returnZ", "Z output is not supported.");

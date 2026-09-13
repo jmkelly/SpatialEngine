@@ -6,7 +6,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Maps;
 
 /// <summary>
-/// Pure validation and normalisation of a <see cref="Map"/> (ADR-0052 §2).
+/// Pure validation and normalisation of a <see cref="Map"/> (ADR-0053 §2).
 /// Map names are flat and identifier-shaped (folder syntax is rejected); a
 /// feature layer's dataset uses the strict <c>schema.table</c> grammar, an
 /// image layer names a raster dataset; layer ids are unique and non-negative.

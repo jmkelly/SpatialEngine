@@ -6,7 +6,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// A minimal, core-typed GeoJSON writer (ADR-0052 §3): the engine has no
+/// A minimal, core-typed GeoJSON writer (ADR-0053 §3): the engine has no
 /// GeoJSON encoder, so WFS writes GeoJSON features and geometry coordinates
 /// here directly from <see cref="IGeometry"/> values. No third-party type
 /// crosses the boundary; the primary geometry column becomes the feature's

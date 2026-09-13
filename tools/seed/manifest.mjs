@@ -8,7 +8,7 @@
 // that CRS and transformed to `srid` by the ProjNet service before it is
 // stored. `identity: "auto"` makes the dataset editable/lookup-able.
 //
-// Services are maps (ADR-0052). A map exposing `map` is served as a
+// Services are maps (ADR-0053). A map exposing `map` is served as a
 // MapServer (ADR-0048); one exposing `feature` is a queryable/editable
 // FeatureServer. Each layer's `style` is a compact draw recipe
 // ({ color, opacity, lineWidth, radius, visible }) and `geometry` is its

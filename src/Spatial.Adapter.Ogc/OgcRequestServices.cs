@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// The in-process services one OGC request resolves against (ADR-0052 §3):
+/// The in-process services one OGC request resolves against (ADR-0053 §3):
 /// the map registry, the raster renderer and the coordinate transforms. The
 /// keyed stores are resolved lazily per layer store, so a mixed map reads
 /// each layer from its own store.

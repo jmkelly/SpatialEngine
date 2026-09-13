@@ -7,7 +7,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Mounts the OGC WMS/WFS route group (ADR-0052 §3): <c>/{name}/wms</c> and
+/// Mounts the OGC WMS/WFS route group (ADR-0053 §3): <c>/{name}/wms</c> and
 /// <c>/{name}/wfs</c> under the configured root, each accepting GET and a
 /// form POST. Every handler resolves the map, dispatches the operation and
 /// maps any failure to the OGC <c>ServiceExceptionReport</c> envelope.

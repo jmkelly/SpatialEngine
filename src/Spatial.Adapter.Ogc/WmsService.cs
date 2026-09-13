@@ -9,7 +9,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// The OGC Web Map Service 1.3.0 projection (ADR-0052 §3): GetCapabilities,
+/// The OGC Web Map Service 1.3.0 projection (ADR-0053 §3): GetCapabilities,
 /// GetMap and GetFeatureInfo over a map's feature layers. GetMap renders the
 /// map's persisted style through <see cref="IMapRenderer"/> in the requested
 /// CRS/bbox/size; GetFeatureInfo queries the selected layers through

@@ -8,7 +8,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The map tile route (ADR-0052 §3, ADR-0046): <c>GET /api/maps/{name}/tiles/
+/// The map tile route (ADR-0053 §3, ADR-0046): <c>GET /api/maps/{name}/tiles/
 /// {z}/{x}/{y}.{format}</c> renders a map's feature layers, composed from its
 /// persisted per-layer styles, through the shared <see cref="TileService"/>.
 /// The path format is authoritative; the query options mirror the other tile

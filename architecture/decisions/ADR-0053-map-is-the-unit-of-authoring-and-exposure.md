@@ -4,7 +4,7 @@ date: 2026-09-17
 deciders: maintainer + agent
 ---
 
-# ADR-0052: A Map is the unit of authoring and exposure; services are projections
+# ADR-0053: A Map is the unit of authoring and exposure; services are projections
 
 ## Context
 

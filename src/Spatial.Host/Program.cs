@@ -118,7 +118,7 @@ internal static class HostComposition
             BatchSize = ingestOptions.BatchSize,
         }, maps);
 
-        // The OGC WMS/WFS boundary adapter (ADR-0052 §3): mounted at
+        // The OGC WMS/WFS boundary adapter (ADR-0053 §3): mounted at
         // Spatial:Ogc:Root, projecting the same maps read-only.
         OgcServices.Map(app);
     }

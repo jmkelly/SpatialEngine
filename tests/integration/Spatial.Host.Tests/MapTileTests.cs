@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The neutral map tile route (ADR-0052 §3): a map whose Tiles service is
+/// The neutral map tile route (ADR-0053 §3): a map whose Tiles service is
 /// enabled renders its persisted-style feature layers through the shared tile
 /// pipeline; a map without the service is not-found.
 /// </summary>

@@ -6,7 +6,7 @@ using Spatial.PluginSdk;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Core-typed geometry helpers for the OGC projections (ADR-0052 §3):
+/// Core-typed geometry helpers for the OGC projections (ADR-0053 §3):
 /// bbox parsing, dataset extents and envelope reprojection. Everything is
 /// structural — reading envelopes and delegating transforms to
 /// <see cref="ICoordinateTransforms"/> — so no spatial algorithm lives here.

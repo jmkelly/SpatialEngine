@@ -39,7 +39,7 @@ source or a service.
 | `public.earthquakes` | USGS feed | magnitude 2.5+, past 7 days |
 | `public.world_places_mercator` | Natural Earth 1:110m | **reprojected 4326 → 3857 on ingest** |
 
-**Maps** (`PUT /api/maps/{name}`, ADR-0052):
+**Maps** (`PUT /api/maps/{name}`, ADR-0053):
 
 - Feature maps (`services: ["feature"]`): `WorldCountries`, `WorldPlaces`,
   `UnitedStates`, `SeismicActivity`, `WorldPlacesMercator`.

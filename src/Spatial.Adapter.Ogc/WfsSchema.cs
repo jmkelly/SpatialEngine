@@ -4,7 +4,7 @@ using Spatial.Core.Features;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Builds the WFS <c>DescribeFeatureType</c> XML Schema (ADR-0052 §3) from the
+/// Builds the WFS <c>DescribeFeatureType</c> XML Schema (ADR-0053 §3) from the
 /// dataset descriptions: one complex type per feature layer with an element
 /// per field (kind-mapped, nullability preserved) and a GML geometry property.
 /// </summary>
