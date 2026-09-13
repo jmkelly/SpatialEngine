@@ -8,7 +8,7 @@
 > publication. I3 (catalog `query`/`download`/file resources) and I4 (cache
 > and limits) remain. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
-> `publishing-and-ingest-plan.md` first.
+> `architecture/distilled/host-and-clients.md` first.
 >
 > **Blocking decision (resolved):** the engine had no raster concept
 > (ADR-0035 listed image as out of scope). ADR-0051 fixes the boundary and the
@@ -38,10 +38,10 @@ service has an accessible catalog.
 - The engine is headless and its contracts carry canonical geometry/feature
   values only. There is no `Raster` type, no band model, no nodata/mask
   concept, no raster read path, and no image encoding.
-- `PublicationKind.Image` in `publishing-and-ingest-plan.md` is the natural
+- `PublicationKind.Image` (ADR-0041) is the natural
   carrier: an ImageServer is a named raster source (single raster or
   catalog) plus metadata, exposed by a publication.
-- The `map-service-plan.md` M0 data-only pattern applies here too: a
+- The MapServer data-only pattern applies here too: a
   metadata-only ImageServer root is cheap and useful for discovery before
   any pixels are produced.
 
@@ -151,7 +151,7 @@ serves *existing* imagery; it does not become a raster processing engine.
 
 ## 7. References
 
-- `architecture/publishing-and-ingest-plan.md` (Publication/registry/admin)
-- `architecture/map-service-plan.md` (M0 data-only pattern; shared render path)
+- `architecture/distilled/contracts.md` (Publication/registry/admin)
+- `architecture/distilled/host-and-clients.md` (M0 data-only pattern; shared render path)
 - `architecture/references/geoservices-compatibility.md` §4
 - ADR-0001/0032 (core values), ADR-0021 (native/AOT evidence), ADR-0035, principles 1–2

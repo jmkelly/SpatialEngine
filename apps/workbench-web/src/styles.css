@@ -164,7 +164,7 @@ table.grid th { color: var(--muted); font-weight: 600; text-transform: uppercase
 
 .recent-control { margin-top: 18px; }
 .recent-control h3 { margin-top: 8px; }
-/* Map composer (architecture/map-composer-plan.md) */
+/* Map composer */
 
 .composer-screen { display: flex; flex-direction: column; height: 100%; padding: 12px 16px; max-width: none; }
 .composer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 8px; }

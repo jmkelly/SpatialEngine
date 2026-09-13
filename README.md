@@ -211,9 +211,8 @@ names the principle or ADR it implements.
 
 1. `architecture/decisions/` — the ADR register, the source of truth.
 2. `architecture/principles.md` — the twenty principles.
-3. `architecture/geoservices-implementation-plan.md` — the Esri track.
-4. `architecture/distilled/` — condensed docs routed by task.
-5. `AGENTS.md` — boundaries and guidance for development agents.
+3. `architecture/distilled/` — condensed docs routed by task.
+4. `AGENTS.md` — boundaries and guidance for development agents.
 
 ---
 

@@ -11,7 +11,7 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
-- **Map labels and sprite symbols** (ADR-0049, plan R6): the Skia
+- **Map labels and sprite symbols** (ADR-0049): the Skia
   renderer's MapLibre subset gains `symbol` layers — `SkiaSharp.HarfBuzz`
   text shaping, a deterministic label placement/collision pass, and
   `Svg.Skia` sprite icons. Fonts are an embedded, pinned `NotoSans` resource
@@ -64,7 +64,7 @@ this file together, then tag the release (`RELEASING.md`).
   Seq container (`Aspire.Hosting.Seq`) and injects its endpoint; the host
   still runs with no Seq (ADR-0018). Diagnostics carry configuration
   *state* only, never a connection string or token.
-- **Map composer** (`architecture/map-composer-plan.md`): a workbench
+- **Map composer**: a workbench
   screen that composes engine datasets into an ordered, styled MapLibre
   preview — add catalogue datasets or upload GeoJSON/NDJSON/CSV inline,
   reorder layers by drag and drop, style them, and publish the composition
@@ -73,7 +73,7 @@ this file together, then tag the release (`RELEASING.md`).
   deletes existing services, preserving their stable layer ids. Per-layer
   style is persisted with the publication as a MapLibre fragment (ADR-0047);
   the composer round-trips it on publish and load.
-- **Tiles and a pluggable tile cache** (ADR-0046, plan R4): the core-typed
+- **Tiles and a pluggable tile cache** (ADR-0046): the core-typed
   `ITileScheme`/`ITileCache` contracts in `Spatial.PluginSdk`
   (`TileCoordinate`, `TileLevel`, `TileCacheKey`) with the
   `Spatial.Tiling.WebMercator` (EPSG:3857 XYZ) scheme as the first
@@ -85,7 +85,7 @@ this file together, then tag the release (`RELEASING.md`).
   `DELETE /api/render/cache`; the .NET client exposes
   `SpatialClient.Tiles.RenderAsync`/`CapabilitiesAsync` and the TypeScript
   client `renderTile`/`renderTiles`/`tileCapabilities`.
-- **Raster rendering pipeline** (ADR-0044, plan R0–R3): the core-typed
+- **Raster rendering pipeline** (ADR-0044): the core-typed
   `IMapRenderer`/`IRasterOperations` contracts and DTOs in
   `Spatial.PluginSdk`, the `Spatial.Rendering.Skia` vector rasterizer
   (MapLibre-subset `background`/`fill`/`line`/`circle`, attribute filters,
@@ -94,8 +94,7 @@ this file together, then tag the release (`RELEASING.md`).
   (read/normalise/compose/encode). The host serves `POST /api/render` and
   `GET /api/render/capabilities`, configured by `Spatial:Rendering` and
   `Spatial:Imagery`; the .NET and TypeScript clients expose `RenderAsync` /
-  `render`. The GeoServices `export` seam, labels and a GPU backend
-  remain (R5–R7).
+  `render`.
 - **Ingest codec** (ADR-0041): `Spatial.Interop.Ingest` decodes GeoJSON,
   newline-delimited GeoJSON and CSV uploads into canonical `FeatureBatch`
   pages with inferred schemas (`DatasetDecoder.Decode`). Core-only; no host
@@ -106,8 +105,7 @@ this file together, then tag the release (`RELEASING.md`).
   and the additive `IDatasetIngest`
   (`IngestRequest`/`IngestOutcome`/`IngestIdentity`) atomic bulk
   create-and-load capability. Contracts only — implementations, the host
-  admin API and the Esri admin projection land in later phases of
-  `architecture/publishing-and-ingest-plan.md`.
+  admin API and the Esri admin projection land in later phases (ADR-0041).
 
 ### Changed
 
@@ -119,7 +117,7 @@ this file together, then tag the release (`RELEASING.md`).
   `Program.cs` de-top-levelled off the CRAP `Program.<Main>$` entry, and
   real unit tests added. `crap4dotnet` CRAP, authored branch coverage,
   `.dependably` metrics and the warnings gate are all green.
-- **Viewport bbox pushdown direction fixed** (plan R4):
+- **Viewport bbox pushdown direction fixed** (ADR-0046):
   `GeometryPipeline.TransformEnvelope` transformed viewport bounds the wrong
   way (`dataset CRS → viewport CRS` instead of `viewport CRS → dataset CRS`),
   which only surfaced for a world-covering Web-Mercator tile against a

@@ -33,7 +33,7 @@ if (typeof window !== "undefined") {
 const EmptyCollection: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /**
- * The map composer (`architecture/map-composer-plan.md`): add catalogue
+ * The map composer: add catalogue
  * datasets or uploaded files as ordered, styled layers, preview them on
  * MapLibre, and publish the composition as a feature or map service. The
  * screen talks only to the public host API through the TS SDK; per-layer

@@ -29,11 +29,11 @@
 
 ## Raster rendering — status
 
-ADR-0044 (accepted) is implemented through R4 of
-`architecture/rendering-implementation-plan.md` (R4 under ADR-0046):
+ADR-0044 (accepted) is implemented through R6 (tiles are R4 under
+ADR-0046; labels/symbols are R6 under ADR-0049):
 
 - **Contracts** in the root `Spatial.PluginSdk` namespace (per the ADR, not
-  the plan's earlier `.Rendering` suggestion — that namespace tripped the
+  the superseded `.Rendering` suggestion — that namespace tripped the
   metrics `architectural-rigidity` zone-of-pain diagnosis): `IMapRenderer`,
   `IRasterOperations` and the core-typed DTOs. HTTP DTOs in `.Http`.
 - **`Spatial.Rendering.Skia`** implements `IMapRenderer`: `StyleCompiler`
@@ -56,8 +56,9 @@ ADR-0044 (accepted) is implemented through R4 of
   `GET /api/render/tiles/capabilities`, `DELETE /api/render/cache`;
   `SpatialClient.Tiles.*` and TS `renderTile`/`renderTiles`.
   `eng/e2e-web.sh` covers the live tile route.
-- **Not done**: R5 GeoServices `export`/`tile` seam, R6 labels/symbols, R7
-  GPU, and a persistent/shared tile cache.
+- **Not done**: a persistent/shared tile cache. R5 (the GeoServices
+  `export`/`tile` seam, ADR-0048) and R6 (labels/symbols, ADR-0049) have
+  since landed; a GPU backend (R7) is not planned.
 
 **CRAP gate caveat:** the `crap4dotnet` audit globs every `*.csproj` under
 whatever solution it is given, ignoring solution membership. The throwaway
@@ -108,8 +109,7 @@ method for it.
 
 ## GeoServices REST — status
 
-The GeoServices track (ADR-0035/0036/0037/0038,
-`architecture/geoservices-implementation-plan.md`) is implemented and its
+The GeoServices track (ADR-0035/0036/0037/0038) is implemented and its
 compatibility claim is now proven against a real Esri client. Completed:
 
 1. **Real-client proof.** `clients/typescript/test/geoservices-e2e.test.ts`

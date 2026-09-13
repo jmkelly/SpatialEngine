@@ -1,10 +1,9 @@
 # GeoServices REST Spec v1.0 ↔ SpatialEngine compatibility review
 
 > **Status:** baseline review completed 2026-09-11. The follow-on
-> decisions and delivery plan live in
-> `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`
-> (proposed) and `architecture/geoservices-implementation-plan.md`.
-> This document remains the gap analysis those build on.
+> decisions live in
+> `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`.
+> This document remains the gap analysis that decision builds on.
 
 Sources: `architecture/references/geoservices-rest-spec.pdf` (Esri, Sept
 2010, 221 pp, Open Web Foundation Agreement) and the current ArcGIS REST

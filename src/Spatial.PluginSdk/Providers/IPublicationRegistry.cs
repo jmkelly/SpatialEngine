@@ -5,8 +5,7 @@ namespace Spatial.PluginSdk.Providers;
 /// (ADR-0041). The kind selects which adapter projects the publication's
 /// datasets: <see cref="Feature"/> is the Esri GeoServices <c>FeatureServer</c>
 /// (ADR-0035), while <see cref="Map"/> and <see cref="Image"/> are the
-/// planned MapServer / ImageServer projections
-/// (<c>map-service-plan.md</c>, <c>image-service-plan.md</c>).
+/// MapServer / ImageServer projections (ADR-0048, ADR-0051).
 /// </summary>
 public enum PublicationKind
 {

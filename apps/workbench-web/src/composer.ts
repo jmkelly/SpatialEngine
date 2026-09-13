@@ -3,7 +3,7 @@ import type { Publication, PublicationKind, PublicationLayer } from "@spatial/cl
 import { newId } from "./ids.ts";
 
 /**
- * The composer's pure model (`architecture/map-composer-plan.md`): the
+ * The composer's pure model: the
  * ordered layer list, the MapLibre style for each layer, and the mapping to
  * and from the host's neutral `Publication` contract. Deliberately free of
  * React and of the SDK transport so Node can type-strip it and the unit

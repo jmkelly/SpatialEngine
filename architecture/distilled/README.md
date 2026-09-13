@@ -15,11 +15,11 @@ reflects the state at decision time.
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
 | Which services exist + their contracts | `contracts.md` | 0033 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
-| Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
-| Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
-| Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041 |
-| MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed), 0048, 0051 |
-| Raster rendering / imagery / tiles / labels (R0–R6) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044, 0046, 0049 |
+| Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048 |
+| Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0037, 0038 |
+| Map composer (layers, styling, drag/drop, upload) | `host-and-clients.md` | 0014, 0041, 0047 |
+| MapServer / ImageServer | `host-and-clients.md`, `../image-service-plan.md` | 0035, 0048, 0050, 0051 |
+| Raster rendering / imagery / tiles / labels | `rendering.md`, `../../research/rendering/README.md` | 0044, 0046, 0049 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -117,5 +117,9 @@ shape is noted in brackets.
   above. Read them for rationale, not for current structure.
 - ADRs 0015–0017/0019 describe the abandoned Tauri desktop shell (ADR-0039);
   kept as history, not for current structure.
+- Delivery plans are removed once their track is implemented (the GeoServices,
+  publishing/ingest, MapServer, composer and rendering plans are retired);
+  older ADRs may still name them as dated records. `image-service-plan.md`
+  stays while I3/I4 are open.
 - Byte-level wire specs: `GeometryCodec`/`FeatureBatchCodec` source is the
   authoritative format spec; `core.md` carries the essentials.

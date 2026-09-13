@@ -7,8 +7,8 @@ namespace Spatial.Rendering.Skia.Tests;
 /// <summary>
 /// A fixed-extent symbol render pinned against a committed golden image. On
 /// the CI Linux image the PNG bytes must match exactly; on other platforms a
-/// bounded per-pixel tolerance is allowed (rendering-implementation-plan.md
-/// §9). Set <c>SPATIAL_GOLDEN_UPDATE=1</c> to regenerate the golden.
+/// bounded per-pixel tolerance is allowed (ADR-0049). Set
+/// <c>SPATIAL_GOLDEN_UPDATE=1</c> to regenerate the golden.
 /// </summary>
 public sealed class SymbolGoldenTests
 {

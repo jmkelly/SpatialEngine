@@ -3,7 +3,7 @@ import { createClient } from "../api.ts";
 import type { IngestResult, Publication } from "@spatial/client";
 
 /**
- * The Data screen (publishing-and-ingest-plan.md P7): upload a GeoJSON,
+ * The Data screen: upload a GeoJSON,
  * NDJSON or CSV file and load it into a dataset — optionally publishing it as
  * a feature service in the same call — then list the publications the host
  * serves. The admin token is host configuration and is only held in the

@@ -1,8 +1,8 @@
 # Raster Rendering
 
-The condensed form of ADR-0044 (and ADR-0049 for labels/symbols) and
-`../rendering-implementation-plan.md` (R0–R6): turn the engine's vector
-outputs into styled raster output over a NetVips imagery pipeline. Read the
+The condensed form of ADR-0044 (and ADR-0049 for labels/symbols): turn the
+engine's vector outputs into styled raster output over a NetVips imagery
+pipeline. Read the
 ADR for the decision and the research at
 `../../research/rendering/README.md` for the measured baseline and the
 libvips traps; this is the as-built shape.
@@ -145,10 +145,10 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   `tests/fixtures/rendering/golden/` compared exactly on CI and with a
   bounded tolerance elsewhere.
 
-## Not implemented (per the plan)
+## Not implemented
 
-R7 GPU backend, and a persistent/shared tile cache (the `ITileCache`
-contract is ready for it). The GeoServices MapServer (`export`/`tile`,
+A persistent/shared tile cache (the `ITileCache` contract is ready for it);
+a GPU backend is not planned. The GeoServices MapServer (`export`/`tile`,
 ADR-0048) is implemented; a neutral `/api/publications/{name}/tiles` route is
 not. Within the symbol subset, line placement, expressions, sprite sheets and
 text transforms are not claimed.
