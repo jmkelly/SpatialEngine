@@ -134,7 +134,7 @@ and date encoding differ.
 
 | Service | Spec | Engine |
 | --- | --- | --- |
-| Map Service (§4): export, identify, find, tiles, layer query, image | — | Out of scope by design — headless, no rendering/tiling (`core.md`, principles 1–2). The workbench already **consumes** Esri basemap tiles (`MapScreen.tsx`: `.../MapServer/tile/{z}/{y}/{x}`), a consumed-GeoServices precedent |
+| Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a simple `drawingInfo`. The image (§4.7) resource and rich renderers (class breaks, unique value, labels) remain absent |
 | Geocode Service (§5) | — | Absent |
 | GP Service (§6): tasks, `submitJob`, job polling, results | — | Absent; no job model (ADR-0033 removed jobs) |
 | Image Service (§8): export, raster functions, download | — | Explicitly out of scope (ADR-0035: no raster pipeline) |

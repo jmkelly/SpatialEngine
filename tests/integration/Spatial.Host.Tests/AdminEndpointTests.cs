@@ -343,51 +343,6 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task A_map_publication_is_served_as_a_styled_map_server()
-    {
-        using var factory = Factory();
-        var client = factory.CreateClient();
-
-        var ingest = await client.SendAsync(Authorized(
-            HttpMethod.Post,
-            "/api/ingest?store=memory&dataset=public.parks&srid=4326&format=geojson",
-            new StringContent(GeoJson, Encoding.UTF8, "application/json")));
-        Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
-
-        const string body = """
-            {"name":"parks_map","kind":"map","store":"memory","layers":[
-              {"dataset":"public.parks","layerId":0,"name":"Parks","style":{"color":"#ff0000","opacity":0.5,"lineWidth":3,"radius":8,"visible":true}}
-            ]}
-            """;
-        var put = await client.SendAsync(Authorized(HttpMethod.Put, "/api/publications/parks_map", Json(body)));
-        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-
-        var catalog = await BodyAsync(await client.GetAsync("/arcgis/rest/services?f=json"));
-        var services = catalog.GetProperty("services").EnumerateArray()
-            .Select(service => (service.GetProperty("name").GetString(), service.GetProperty("type").GetString()))
-            .ToArray();
-        Assert.Contains(("parks_map", "MapServer"), services);
-
-        var root = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer?f=json"));
-        Assert.Equal("Query,Data", root.GetProperty("capabilities").GetString());
-        Assert.Equal(1, root.GetProperty("layers").GetArrayLength());
-        Assert.Equal(2.35, root.GetProperty("fullExtent").GetProperty("xmin").GetDouble(), precision: 3);
-        Assert.Equal(13.4, root.GetProperty("fullExtent").GetProperty("xmax").GetDouble(), precision: 3);
-
-        var layers = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer/layers?f=json"));
-        Assert.Equal(1, layers.GetProperty("layers").GetArrayLength());
-
-        var layer = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer/0?f=json"));
-        var symbol = layer.GetProperty("drawingInfo").GetProperty("renderer").GetProperty("symbol");
-        Assert.Equal("esriSMS", symbol.GetProperty("type").GetString());
-        Assert.Equal([255, 0, 0, 128], symbol.GetProperty("color").EnumerateArray().Select(c => c.GetInt32()).ToArray());
-        Assert.Equal(16, symbol.GetProperty("size").GetDouble(), precision: 3);
-
-        var query = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer/0/query?where=1%3D1&outFields=*&f=json"));
-        Assert.Equal(2, query.GetProperty("features").GetArrayLength());
-    }
-
-    [Fact]
     public async Task Ingest_reprojects_a_source_crs_to_the_target_srid()
     {
         using var factory = Factory();

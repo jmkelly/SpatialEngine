@@ -85,9 +85,9 @@ Two additional gaps fall out of the same work:
   ArcGIS Online/Portal publishing.
 - No changes to `Spatial.Core`, the canonical codecs, or the existing SDK
   contracts. All additions are additive capabilities (ADR-0036/0037/0038
-  precedent). ADR-0047 adds one optional `LayerStyle` field to
-  `PublicationLayer` and serves `PublicationKind.Map` as a data-only
-  MapServer; both are additive to this plan.
+  precedent). ADR-0047 adds one optional `string? Style` (a persisted
+  MapLibre fragment) to `PublicationLayer` and ADR-0048 serves
+  `PublicationKind.Map` as a MapServer; both are additive to this plan.
 
 ## 3. Where it sits (boundaries)
 
@@ -120,7 +120,7 @@ ordered layer list = stable layer ids.
 public enum PublicationKind { Feature, Map, Image }          // Image/Map are later plans
 
 public sealed record PublicationLayer(
-    string Dataset, int LayerId, string? Name = null, LayerStyle? Style = null);  // Style: ADR-0047
+    string Dataset, int LayerId, string? Name = null, string? Style = null);  // Style: ADR-0047
 
 public sealed record Publication(
     string Name,
@@ -421,7 +421,8 @@ real) and its gate.
 | ADR | Decision | Blocked phases | Status |
 | --- | --- | --- | --- |
 | **ADR-0041** | Ingest and publications are protocol-neutral additive SDK capabilities; upload bodies are foreign-format ingress (ADR-0020 clarification); identity modes; Esri admin is a gated projection targeting the current admin API, not the v1.0 spec | P0 (all) | accepted |
-| **ADR-0047** | Publication layers carry an optional render style; MapServer M0 serves Map publications with `drawingInfo`; the ingest route reprojects `sourceSrid` through the transform service | follow-on | accepted |
+| **ADR-0047** | Publication layers persist an optional MapLibre style fragment; the ingest route reprojects `sourceSrid` through the transform service | follow-on | accepted |
+| **ADR-0048** | `PublicationKind.Map` is served as a MapServer projection (root, layer, query, identify, find, render) | follow-on | accepted |
 | **ADR-0042** | An ephemeral writable in-memory provider implements the writable faces, enabling database-free ingest/publish | P2b | accepted |
 | **ADR-0043** | `IFeatureEditStore` may omit identity on insert | P4-sub | accepted |
 | Map/Image ADRs | see `map-service-plan.md` / `image-service-plan.md` | P5 for non-Feature kinds | later |

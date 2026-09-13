@@ -9,6 +9,7 @@ import type {
   FeatureWriteResponse,
   GeometryResponse,
   Publication,
+  PublicationRenderRequest,
   RasterFormat,
   RenderCapabilitiesResponse,
   RenderRequest,
@@ -217,6 +218,11 @@ export class SpatialClient {
   /** Renders a styled vector/imagery request to encoded image bytes. */
   async render(request: RenderRequest, signal?: AbortSignal): Promise<RasterImage> {
     return this.postForImage("/api/render", request, signal);
+  }
+
+  /** Renders a publication's datasets using its persisted layer styles (ADR-0047). */
+  async renderPublication(name: string, request: PublicationRenderRequest, signal?: AbortSignal): Promise<RasterImage> {
+    return this.postForImage(`/api/publications/${encodeURIComponent(name)}/render`, request, signal);
   }
 
   /** Renders one cache-aware tile; the request's format selects the path suffix. */

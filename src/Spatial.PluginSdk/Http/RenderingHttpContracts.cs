@@ -32,6 +32,21 @@ public sealed record RenderRequest(
     bool Transparent = true,
     double Scale = 1.0);
 
+/// <summary>
+/// The <c>POST /api/publications/{name}/render</c> body (ADR-0047): the same
+/// viewport and encoding inputs as <see cref="RenderRequest"/> without a style
+/// or layer list, because both come from the named publication's persisted
+/// layers and their style fragments.
+/// </summary>
+public sealed record PublicationRenderRequest(
+    ViewportDto Viewport,
+    IReadOnlyList<RenderImageryDto>? Imagery = null,
+    RasterFormat Format = RasterFormat.Png,
+    int Quality = 90,
+    string? Background = null,
+    bool Transparent = true,
+    double Scale = 1.0);
+
 /// <summary>A configured imagery source the host can read (path stays server-side).</summary>
 public sealed record ImagerySourceDto(string Name);
 

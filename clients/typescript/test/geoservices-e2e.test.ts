@@ -104,3 +104,50 @@ test("an unmodified Esri client runs a Geometry Service operation", { skip }, as
   assert.equal(geometry.spatialReference.wkid, 32632);
   assert.ok(geometry.x > 100_000, "Berlin projects into UTM 32N easting");
 });
+
+const MAP_SERVICE = `${ROOT}/world/MapServer`;
+const MAP_LAYER = `${MAP_SERVICE}/0`;
+
+test("an unmodified Esri client discovers a MapServer and its drawingInfo", { skip }, async () => {
+  const service = await request(MAP_SERVICE, { params: { f: "json" } });
+  assert.ok(String(service.capabilities).includes("Map"), "the service advertises the Map capability");
+  assert.equal(service.singleFusedMapCache, true);
+  assert.ok(service.tileInfo.lods.length > 0, "the service advertises tile LODs");
+  const names = service.layers.map((layer: { name: string }) => layer.name);
+  assert.ok(names.includes("Cities"), `expected a 'Cities' layer, got ${names.join(", ")}`);
+
+  const layer = await request(MAP_LAYER, { params: { f: "json" } });
+  assert.equal(layer.geometryType, "esriGeometryPoint");
+  assert.equal(layer.drawingInfo.renderer.type, "simple");
+  assert.equal(layer.drawingInfo.renderer.symbol.type, "esriSMS");
+});
+
+test("an unmodified Esri client queries a MapServer layer", { skip }, async () => {
+  const count = (await queryFeatures({ url: MAP_LAYER, returnCountOnly: true })) as unknown as { count: number };
+  assert.ok(count.count > 0);
+});
+
+test("an unmodified Esri client identifies and renders a MapServer", { skip }, async () => {
+  const identify = await request(`${MAP_SERVICE}/identify`, {
+    params: {
+      geometry: JSON.stringify({ x: 13.405, y: 52.52, spatialReference: { wkid: 4326 } }),
+      geometryType: "esriGeometryPoint",
+      sr: "4326",
+      tolerance: 5,
+      layers: "all",
+      mapExtent: "-20,20,40,70",
+      imageDisplay: "400,300,96",
+      f: "json",
+    },
+  });
+  assert.ok(identify.results.length >= 1, "identify finds the city under the point");
+  assert.equal(identify.results[0].value, "Berlin");
+
+  const exported = await fetch(
+    `${MAP_SERVICE}/export?f=image&bbox=${encodeURIComponent("-20,20,40,70")}&bboxSR=4326&imageSR=4326&size=200,150&format=png`,
+  );
+  assert.equal(exported.headers.get("content-type"), "image/png");
+
+  const tile = await fetch(`${MAP_SERVICE}/tile/0/0/0?f=image`);
+  assert.equal(tile.headers.get("content-type"), "image/png");
+});

@@ -69,7 +69,7 @@ internal static class EsriLayerModel
     public static Spatial.Core.Geometry.CoordinateReference? LayerCoordinateReference(int srid) =>
         srid > 0 ? Spatial.Core.Geometry.CoordinateReference.Epsg(srid) : null;
 
-    private static List<EsriField> Fields(DatasetDescription dataset, bool editable)
+    internal static List<EsriField> Fields(DatasetDescription dataset, bool editable)
     {
         var fields = new List<EsriField>
         {
@@ -87,9 +87,6 @@ internal static class EsriLayerModel
 
         return fields;
     }
-
-    /// <summary>The dataset's fields as a read-only Esri field list (map services never edit).</summary>
-    public static IReadOnlyList<EsriField> FieldsOf(DatasetDescription dataset) => Fields(dataset, editable: false);
 }
 
 /// <summary>The <c>FeatureServer</c> root shape (spec §9.0).</summary>

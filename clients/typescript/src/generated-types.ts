@@ -129,14 +129,6 @@ export interface IntersectionRequest {
 
 export type JsonElement = unknown;
 
-export interface LayerStyle {
-  color: string;
-  opacity?: number | string;
-  lineWidth?: number | string;
-  radius?: number | string;
-  visible?: boolean;
-}
-
 export interface Publication {
   name: string;
   kind: PublicationKind;
@@ -152,7 +144,17 @@ export interface PublicationLayer {
   dataset: string;
   layerId: number | string;
   name?: null | string;
-  style?: LayerStyle | null;
+  style?: null | string;
+}
+
+export interface PublicationRenderRequest {
+  viewport: ViewportDto;
+  imagery?: null | RenderImageryDto[];
+  format?: RasterFormat;
+  quality?: number | string;
+  background?: null | string;
+  transparent?: boolean;
+  scale?: number | string;
 }
 
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";

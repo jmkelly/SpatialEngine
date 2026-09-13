@@ -9,9 +9,9 @@ import { newId } from "./ids.ts";
  * React and of the SDK transport so Node can type-strip it and the unit
  * tests pin the mapping without a renderer.
  *
- * Per-layer style is an authoring aid held only in browser state for the
- * MVP; the published publication carries ordered layers (and stable ids)
- * only, matching what the data-only MapServer can honour.
+ * Per-layer style is authored in browser state and persisted with the
+ * publication as a MapLibre style fragment on each layer (ADR-0047), so a
+ * publish/load round-trip restores it instead of resetting it.
  */
 
 /** The geometry family a layer's features share; `mixed` draws every symbol kind. */
@@ -184,6 +184,73 @@ export function layerSpecs(layer: ComposerLayer, sourceId: string): LayerSpecifi
   return specs;
 }
 
+/** The MapLibre paint/layout a persisted style fragment carries per layer. */
+interface PersistedSpec {
+  type?: string;
+  layout?: { visibility?: string };
+  paint?: Record<string, string | number>;
+}
+
+/**
+ * The layer's persisted style (ADR-0047): the same MapLibre draw recipe as
+ * the preview, stripped of `id`/`source` so the host injects them (plus
+ * `source-layer`) when it assembles a render document.
+ */
+export function persistedStyle(layer: ComposerLayer): string {
+  const fragments = layerSpecs(layer, "").map((spec) => {
+    const fragment: Record<string, unknown> = { ...(spec as Record<string, unknown>) };
+    delete fragment["id"];
+    delete fragment["source"];
+    return fragment;
+  });
+  return JSON.stringify(fragments);
+}
+
+/**
+ * Rebuilds a composer {@link LayerStyle} from a persisted style fragment,
+ * falling back to `fallback` for an absent or unparseable value. Missing
+ * paint fields keep the fallback value, so a fragment authored elsewhere
+ * still edits sensibly.
+ */
+export function styleFromPersisted(value: string | null | undefined, fallback: LayerStyle): LayerStyle {
+  const specs = parsePersistedSpecs(value);
+  const first = specs[0];
+  if (first === undefined) return fallback;
+
+  const paintOf = (type: string): Record<string, string | number> =>
+    specs.find((spec) => spec.type === type)?.paint ?? {};
+  const fill = paintOf("fill");
+  const line = paintOf("line");
+  const circle = paintOf("circle");
+
+  return {
+    color: firstString(line["line-color"], fill["fill-color"], circle["circle-color"]) ?? fallback.color,
+    opacity: firstNumber(fill["fill-opacity"], line["line-opacity"], circle["circle-opacity"]) ?? fallback.opacity,
+    lineWidth: firstNumber(line["line-width"]) ?? fallback.lineWidth,
+    radius: firstNumber(circle["circle-radius"]) ?? fallback.radius,
+    visible: (first.layout?.visibility ?? "visible") !== "none",
+  };
+}
+
+function parsePersistedSpecs(value: string | null | undefined): PersistedSpec[] {
+  if (value === null || value === undefined || value === "") return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((spec): spec is PersistedSpec => typeof spec === "object" && spec !== null);
+  } catch {
+    return [];
+  }
+}
+
+function firstString(...values: Array<string | number | undefined>): string | undefined {
+  return values.find((value): value is string => typeof value === "string");
+}
+
+function firstNumber(...values: Array<string | number | undefined>): number | undefined {
+  return values.find((value): value is number => typeof value === "number");
+}
+
 /** The GeoJSON source id behind a composer layer. */
 export function sourceId(layerId: string): string {
   return `composer-src-${layerId}`;
@@ -196,7 +263,12 @@ export function sourceId(layerId: string): string {
  * existing ones (ADR-0041).
  */
 export function toPublicationLayers(layers: readonly ComposerLayer[]): PublicationLayer[] {
-  return layers.map((layer) => ({ dataset: layer.dataset, layerId: layer.layerId ?? -1, name: layer.name }));
+  return layers.map((layer) => ({
+    dataset: layer.dataset,
+    layerId: layer.layerId ?? -1,
+    name: layer.name,
+    style: persistedStyle(layer),
+  }));
 }
 
 /** Builds the `Publication` body for a draft. */
@@ -216,7 +288,7 @@ export function fromPublication(publication: Publication): ComposerDraft {
       dataset: layer.dataset,
       name: layer.name ?? layer.dataset,
       geometry: "mixed",
-      style: defaultStyle("mixed", index),
+      style: styleFromPersisted(layer.style, defaultStyle("mixed", index)),
       featureCount: 0,
       layerId: toLayerId(layer.layerId),
     })),

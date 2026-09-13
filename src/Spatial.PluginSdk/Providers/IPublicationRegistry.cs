@@ -27,10 +27,17 @@ public enum PublicationKind
 /// published layer name. <see cref="LayerId"/> is assigned once and
 /// persisted: ids are append-only, never reused and never renumbered, so
 /// adding or removing a layer cannot renumber the others (ADR-0041).
-/// <see cref="Style"/> optionally carries the layer's render style
-/// (ADR-0047); a null style means the adapter's default.
+///
+/// <para><see cref="Style"/> is the layer's persisted draw recipe in the
+/// engine's MapLibre style dialect (ADR-0044/ADR-0047): a JSON array of
+/// style-layer objects carrying <c>type</c>/<c>layout</c>/<c>paint</c> (and
+/// optionally <c>filter</c>/<c>minzoom</c>/<c>maxzoom</c>) only. It never
+/// repeats the dataset or an id — the host injects <c>id</c> and
+/// <c>source-layer: <see cref="Dataset"/></c> when it assembles a render
+/// document. <see langword="null"/> or empty means the renderer's default
+/// style.</para>
 /// </summary>
-public sealed record PublicationLayer(string Dataset, int LayerId, string? Name = null, LayerStyle? Style = null)
+public sealed record PublicationLayer(string Dataset, int LayerId, string? Name = null, string? Style = null)
 {
     public override string ToString() => $"{LayerId}: {Dataset}";
 }

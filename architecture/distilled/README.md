@@ -16,9 +16,9 @@ reflects the state at decision time.
 | Which services exist + their contracts | `contracts.md` | 0033 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
-| Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (accepted), 0037, 0038, 0047 |
-| Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041, 0047 |
-| MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (accepted), 0047 |
+| Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
+| Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041 |
+| MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
 | Raster rendering / imagery / tiles (R0–R4) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044, 0046 |
 | Any architectural change | this file + `../principles.md` | — |
 
@@ -96,7 +96,8 @@ shape is noted in brackets.
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
-| 0047 | Publication layers carry an optional core-typed render style; MapServer M0 serves Map publications with `drawingInfo`. |
+| 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
+| 0048 | A MapServer is a projection of a Map publication over the SDK render and tile contracts. |
 
 ## How to change the architecture
 

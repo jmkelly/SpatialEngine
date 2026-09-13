@@ -5,13 +5,15 @@
 //
 // Sources are ingested through the neutral admin API (ADR-0041). `sourceSrid`
 // exercises the engine's server-side reprojection: the file is decoded in
-// that CRS (ADR-0047) and transformed to `srid` by the ProjNet service before
-// it is stored. `identity: "auto"` makes the dataset editable/lookup-able.
+// that CRS and transformed to `srid` by the ProjNet service before it is
+// stored. `identity: "auto"` makes the dataset editable/lookup-able.
 //
 // Services are publications (ADR-0041). A `map` service is served as a
-// MapServer M0 with the layer `style` lowered to `drawingInfo` (ADR-0047);
-// a `feature` service is a queryable/editable FeatureServer. Styles use the
-// neutral LayerStyle shape: { color, opacity, lineWidth, radius, visible }.
+// MapServer (ADR-0048); a `feature` service is a queryable/editable
+// FeatureServer. Each layer's `style` is a compact draw recipe
+// ({ color, opacity, lineWidth, radius, visible }) and `geometry` is its
+// family; `seed.mjs` lowers them to the persisted MapLibre style fragment
+// (ADR-0047) that the host stores and the MapServer projects to drawingInfo.
 
 const naturalEarth = (file) =>
   `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/${file}`;
@@ -94,35 +96,35 @@ export const services = [
     kind: "feature",
     description: "Every country as an editable, queryable feature layer.",
     copyright: "Natural Earth",
-    layers: [{ dataset: "public.world_countries", name: "Countries", style: palette.country }],
+    layers: [{ dataset: "public.world_countries", name: "Countries", geometry: "polygon", style: palette.country }],
   },
   {
     name: "WorldPlaces",
     kind: "feature",
     description: "Populated places, queryable by name and population.",
     copyright: "Natural Earth",
-    layers: [{ dataset: "public.world_places", name: "Places", style: palette.place }],
+    layers: [{ dataset: "public.world_places", name: "Places", geometry: "point", style: palette.place }],
   },
   {
     name: "UnitedStates",
     kind: "feature",
     description: "US states as features.",
     copyright: "Natural Earth",
-    layers: [{ dataset: "public.us_states", name: "States", style: palette.state }],
+    layers: [{ dataset: "public.us_states", name: "States", geometry: "polygon", style: palette.state }],
   },
   {
     name: "SeismicActivity",
     kind: "feature",
     description: "Recent magnitude 2.5+ earthquakes.",
     copyright: "USGS Earthquake Hazards Program",
-    layers: [{ dataset: "public.earthquakes", name: "Earthquakes", style: palette.quake }],
+    layers: [{ dataset: "public.earthquakes", name: "Earthquakes", geometry: "point", style: palette.quake }],
   },
   {
     name: "WorldPlacesMercator",
     kind: "feature",
     description: "Populated places stored in EPSG:3857 (reprojected on ingest).",
     copyright: "Natural Earth",
-    layers: [{ dataset: "public.world_places_mercator", name: "Places (Mercator)", style: palette.mercator }],
+    layers: [{ dataset: "public.world_places_mercator", name: "Places (Mercator)", geometry: "point", style: palette.mercator }],
   },
   {
     name: "WorldReference",
@@ -130,10 +132,10 @@ export const services = [
     description: "A styled reference map: countries, lakes, rivers and places.",
     copyright: "Natural Earth",
     layers: [
-      { dataset: "public.world_countries", name: "Countries", style: palette.country },
-      { dataset: "public.world_lakes", name: "Lakes", style: palette.lake },
-      { dataset: "public.world_rivers", name: "Rivers", style: palette.river },
-      { dataset: "public.world_places", name: "Places", style: palette.place },
+      { dataset: "public.world_countries", name: "Countries", geometry: "polygon", style: palette.country },
+      { dataset: "public.world_lakes", name: "Lakes", geometry: "polygon", style: palette.lake },
+      { dataset: "public.world_rivers", name: "Rivers", geometry: "line", style: palette.river },
+      { dataset: "public.world_places", name: "Places", geometry: "point", style: palette.place },
     ],
   },
   {
@@ -142,8 +144,8 @@ export const services = [
     description: "A second styled map with a different palette for the same data.",
     copyright: "Natural Earth",
     layers: [
-      { dataset: "public.world_countries", name: "Countries", style: { color: "#2e7d32", opacity: 0.4, lineWidth: 1 } },
-      { dataset: "public.us_states", name: "States", style: palette.state },
+      { dataset: "public.world_countries", name: "Countries", geometry: "polygon", style: { color: "#2e7d32", opacity: 0.4, lineWidth: 1 } },
+      { dataset: "public.us_states", name: "States", geometry: "polygon", style: palette.state },
     ],
   },
   {
@@ -151,6 +153,6 @@ export const services = [
     kind: "map",
     description: "A styled map of recent earthquakes.",
     copyright: "USGS Earthquake Hazards Program",
-    layers: [{ dataset: "public.earthquakes", name: "Earthquakes", style: palette.quake }],
+    layers: [{ dataset: "public.earthquakes", name: "Earthquakes", geometry: "point", style: palette.quake }],
   },
 ];

@@ -97,10 +97,12 @@ test("reorderLayers moves an item and tolerates no-op or out-of-range moves", ()
 
 test("toPublication assigns -1 to new layers and preserves list order", () => {
   const layers = [layer("public.a"), layer("public.b", { name: "B layer" })];
-  assert.deepEqual(toPublicationLayers(layers), [
+  const mapped = toPublicationLayers(layers);
+  assert.deepEqual(mapped.map(({ style: _style, ...rest }) => rest), [
     { dataset: "public.a", layerId: -1, name: "public.a" },
     { dataset: "public.b", layerId: -1, name: "B layer" },
   ]);
+  assert.ok(mapped.every((entry) => typeof entry.style === "string" && entry.style.length > 0), "every layer carries a style fragment");
 
   const publication = toPublication({ name: "  cities  ", kind: "map", store: "memory", layers });
   assert.equal(publication.name, "cities", "the name is trimmed for the flat-identifier grammar");
@@ -125,10 +127,41 @@ test("fromPublication preserves order and stable layer ids, then maps back", () 
   assert.deepEqual(draft.layers.map((entry) => entry.layerId), [4, 7]);
   assert.equal(draft.layers[0]!.name, "public.b", "a missing name falls back to the dataset");
 
-  assert.deepEqual(toPublicationLayers(draft.layers), [
+  assert.deepEqual(toPublicationLayers(draft.layers).map(({ style: _style, ...rest }) => rest), [
     { dataset: "public.b", layerId: 4, name: "public.b" },
     { dataset: "public.a", layerId: 7, name: "A" },
   ]);
+});
+
+test("layer style survives a publication round-trip (ADR-0047)", () => {
+  const point = layer("public.a", {
+    geometry: "point",
+    style: { color: "#123456", opacity: 0.4, lineWidth: 2, radius: 11, visible: false },
+  });
+  const [published] = toPublicationLayers([point]);
+  assert.ok(published?.style, "the style fragment is persisted");
+
+  const restored = fromPublication({ name: "svc", kind: "map", store: "memory", layers: [published!] });
+  assert.deepEqual(restored.layers[0]!.style, { color: "#123456", opacity: 0.4, lineWidth: 2, radius: 11, visible: false });
+
+  const line = layer("public.b", {
+    geometry: "line",
+    style: { color: "#abcdef", opacity: 0.8, lineWidth: 5, radius: 5, visible: true },
+  });
+  const [linePublish] = toPublicationLayers([line]);
+  const lineRestored = fromPublication({ name: "svc", kind: "map", store: "memory", layers: [linePublish!] });
+  assert.equal(lineRestored.layers[0]!.style.color, "#abcdef");
+  assert.equal(lineRestored.layers[0]!.style.lineWidth, 5);
+});
+
+test("a layer without a persisted style falls back to the default", () => {
+  const draft = fromPublication({
+    name: "svc",
+    kind: "map",
+    store: "memory",
+    layers: [{ dataset: "public.a", layerId: 0, name: null }],
+  });
+  assert.deepEqual(draft.layers[0]!.style, defaultStyle("mixed", 0));
 });
 
 test("layerSpecs emit one shape per geometry family with the layer's paint", () => {

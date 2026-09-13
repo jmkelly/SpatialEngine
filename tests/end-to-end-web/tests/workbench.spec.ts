@@ -242,6 +242,13 @@ test("the map composer uploads, styles, reorders and publishes layers", async ({
   await expect(page.getByTestId("composer-status")).toContainText("Published composer_e2e", { timeout: 30_000 });
   await expect(page.getByTestId("composer-publications")).toContainText("composer_e2e");
   await expect(page.getByTestId("composer-publications")).toContainText("2 layer(s)");
+
+  // Style persistence (ADR-0047): load the published service back and the
+  // layer that was hidden before publishing stays hidden.
+  await page.getByTestId("composer-load-composer_e2e").click();
+  await expect(page.getByTestId("composer-status")).toContainText("Loaded composer_e2e", { timeout: 30_000 });
+  const reloadedA = page.getByTestId("composer-layer").filter({ hasText: "public.composer_a" });
+  await expect(reloadedA.getByTestId("layer-visibility")).toHaveText("○");
 });
 
 test("the map composer reorders layers by drag and drop", async ({ page }) => {

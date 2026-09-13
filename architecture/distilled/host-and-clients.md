@@ -39,7 +39,7 @@ PUT    /api/publications/{name}        # create/replace -> Publication
 DELETE /api/publications/{name}        # -> {deleted}
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=
                                        # raw/multipart upload -> IngestResult;
-                                       # sourceSrid reprojects via ICoordinateTransforms (ADR-0047)
+                                       # sourceSrid reprojects via ICoordinateTransforms
 GET    /openapi/v1.json
 GET|POST /arcgis/rest/services                                # GeoServices catalog (ADR-0035)
 GET|POST /arcgis/rest/services/Geometry/GeometryServer         # Geometry Service
@@ -52,10 +52,14 @@ POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/addFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/updateFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/deleteFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/applyEdits
-GET|POST /arcgis/rest/services/{service}/MapServer                     # MapServer M0 root (ADR-0047)
-GET|POST /arcgis/rest/services/{service}/MapServer/layers              # All Layers and Tables
-GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}           # layer metadata + drawingInfo
-GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}/query     # reuses the FeatureServer query engine
+GET|POST /arcgis/rest/services/{service}/MapServer                   # MapServer root (spec §4, ADR-0048)
+GET|POST /arcgis/rest/services/{service}/MapServer/layers            # all layers and tables
+GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}         # layer metadata (+ drawingInfo)
+GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}/query   # layer query (FeatureServer engine)
+GET|POST /arcgis/rest/services/{service}/MapServer/identify
+GET|POST /arcgis/rest/services/{service}/MapServer/find
+GET|POST /arcgis/rest/services/{service}/MapServer/export            # f=image bytes or {href}
+GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator tile
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService
@@ -84,11 +88,8 @@ implements `IFeatureEditStore` and whose dataset has an integer identity
 column — the editing operations `addFeatures`/`updateFeatures`/
 `deleteFeatures`/`applyEdits` (ADR-0037). Editing is advertised per layer
 via `capabilities` and field `editable`; `rollbackOnFailure` uses the
-store's `ITransactionStore`. A `PublicationKind.Map` publication is served as
-a data-only MapServer M0 (root, `layers`, layer metadata with `drawingInfo`,
-`query`) and advertises `Query,Data` — never `Map`, because export/tiles are
-not served (ADR-0047). The engine API above is unchanged. Track C consumes a
-remote ArcGIS REST service as a keyed
+store's `ITransactionStore`. The engine API above is unchanged. Track C
+consumes a remote ArcGIS REST service as a keyed
 `IDataCatalogue`/`IFeatureStore` (`Spatial.Provider.ArcGisRest`).
 
 The `store` query selects `demo` (default, always available), `memory`

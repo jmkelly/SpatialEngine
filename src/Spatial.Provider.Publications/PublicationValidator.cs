@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
@@ -16,7 +17,6 @@ internal static class PublicationValidator
 {
     private static readonly Regex NamePattern = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private static readonly Regex DatasetPattern = new(@"^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", RegexOptions.Compiled);
-    private static readonly Regex ColorPattern = new(@"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", RegexOptions.Compiled);
 
     /// <summary>Validates and normalises a publication, assigning any negative layer ids.</summary>
     public static Publication Normalize(Publication publication, int nextLayerId)
@@ -84,30 +84,48 @@ internal static class PublicationValidator
             throw SpatialException.BadArguments($"Publication '{publication.Name}' has a layer with an empty name.");
         }
 
-        if (layer.Style is { } style)
-        {
-            ValidateStyle(publication, dataset, style);
-        }
+        ValidateStyle(publication, layer);
     }
 
-    private static void ValidateStyle(Publication publication, string dataset, LayerStyle style)
+    /// <summary>
+    /// A non-empty layer style must be a JSON array of style-layer objects
+    /// (ADR-0047). The renderer still rejects paint it cannot draw; this only
+    /// pins the persisted shape so a corrupt style never reaches the file.
+    /// </summary>
+    private static void ValidateStyle(Publication publication, PublicationLayer layer)
     {
-        var context = $"Publication '{publication.Name}' layer '{dataset}'";
-        if (!ColorPattern.IsMatch(style.Color ?? string.Empty))
+        if (string.IsNullOrWhiteSpace(layer.Style))
         {
-            throw SpatialException.BadArguments($"{context} has colour '{style.Color}'; expected #rgb or #rrggbb.");
+            return;
         }
 
-        ValidateRange(context, "opacity", style.Opacity, 1);
-        ValidateRange(context, "line width", style.LineWidth, double.PositiveInfinity);
-        ValidateRange(context, "radius", style.Radius, double.PositiveInfinity);
-    }
-
-    private static void ValidateRange(string context, string name, double value, double max)
-    {
-        if (!double.IsFinite(value) || value < 0 || value > max)
+        JsonDocument document;
+        try
         {
-            throw SpatialException.BadArguments($"{context} has {name} {value}; expected a finite value in 0..{max}.");
+            document = JsonDocument.Parse(layer.Style);
+        }
+        catch (JsonException exception)
+        {
+            throw SpatialException.BadArguments(
+                $"Publication '{publication.Name}' layer '{layer.Dataset}' has a style that is not valid JSON: {exception.Message}");
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                throw SpatialException.BadArguments(
+                    $"Publication '{publication.Name}' layer '{layer.Dataset}' style must be an array of style layers.");
+            }
+
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                if (element.ValueKind != JsonValueKind.Object)
+                {
+                    throw SpatialException.BadArguments(
+                        $"Publication '{publication.Name}' layer '{layer.Dataset}' style entries must be JSON objects.");
+                }
+            }
         }
     }
 

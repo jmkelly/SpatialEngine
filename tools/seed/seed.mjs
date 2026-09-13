@@ -5,8 +5,9 @@
 // It is a pure client of the public admin API (ADR-0041): it fetches real
 // data from the internet, ingests it through POST /api/ingest (using the
 // engine's server-side reprojection when a source declares one), and
-// publishes the services through PUT /api/publications/{name}. No geometry or
-// style logic lives here beyond the manifest.
+// publishes the services through PUT /api/publications/{name}. The only
+// style logic here lowers the manifest's compact draw recipe to the persisted
+// MapLibre fragment the host stores (ADR-0047); no geometry logic lives here.
 //
 // Usage:
 //   node tools/seed/seed.mjs [--host=URL] [--token=TOKEN] [--store=memory]
@@ -16,6 +17,10 @@
 // Prefer `eng/seed.sh`, which also starts a host when none is running.
 
 import { sources, services } from "./manifest.mjs";
+
+// Defaults for a manifest layer's compact draw recipe, merged before it is
+// lowered to the persisted MapLibre fragment (ADR-0047).
+const styleDefaults = { color: "#4fc3f7", opacity: 1, lineWidth: 2, radius: 5, visible: true };
 
 const options = parseArgs(process.argv.slice(2));
 const host = (options.host ?? process.env.SPATIAL_SEED_HOST ?? "http://127.0.0.1:5201").replace(/\/$/, "");
@@ -148,7 +153,7 @@ async function seedService(service) {
       // Preserve a published id so re-running never renumbers the layers
       // (ADR-0041); a new layer asks the registry to assign the next free id.
       layerId: existingIds.get(layer.dataset) ?? -1,
-      style: layer.style,
+      style: persistedStyle(layer),
     })),
   };
 
@@ -167,6 +172,51 @@ async function seedService(service) {
 async function getPublication(name) {
   const response = await request(`/api/publications/${encodeURIComponent(name)}`);
   return response.status === 200 ? response.body : null;
+}
+
+/**
+ * Lowers a manifest layer's compact style and geometry to the persisted
+ * MapLibre style fragment (ADR-0047): a JSON array of style-layer objects
+ * carrying only type/layout/paint (the host injects id/source-layer). This
+ * mirrors the workbench composer's `persistedStyle` so seeded and
+ * composer-authored services draw identically.
+ */
+function persistedStyle(layer) {
+  const style = { ...styleDefaults, ...layer.style };
+  const visibility = style.visible === false ? "none" : "visible";
+  const specs = [];
+
+  if (layer.geometry === "polygon" || layer.geometry === "mixed") {
+    specs.push({
+      type: "fill",
+      layout: { visibility },
+      paint: { "fill-color": style.color, "fill-opacity": style.opacity, "fill-outline-color": style.color },
+    });
+  }
+
+  if (layer.geometry === "line" || layer.geometry === "polygon" || layer.geometry === "mixed") {
+    specs.push({
+      type: "line",
+      layout: { visibility },
+      paint: { "line-color": style.color, "line-width": style.lineWidth, "line-opacity": style.opacity },
+    });
+  }
+
+  if (layer.geometry === "point" || layer.geometry === "mixed") {
+    specs.push({
+      type: "circle",
+      layout: { visibility },
+      paint: {
+        "circle-color": style.color,
+        "circle-radius": style.radius,
+        "circle-opacity": style.opacity,
+        "circle-stroke-color": "#0b0f14",
+        "circle-stroke-width": 1,
+      },
+    });
+  }
+
+  return JSON.stringify(specs);
 }
 
 async function verifyServices(selected) {

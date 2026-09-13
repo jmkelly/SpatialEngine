@@ -43,16 +43,17 @@ source or a service.
 
 - Feature services: `WorldCountries`, `WorldPlaces`, `UnitedStates`,
   `SeismicActivity`, `WorldPlacesMercator`.
-- Map services (MapServer M0, ADR-0047): `WorldReference`, `WorldAtlas`,
-  `SeismicMap` — each carrying per-layer `drawingInfo` lowered from the
-  neutral `LayerStyle` in the manifest.
+- Map services (MapServer, ADR-0048): `WorldReference`, `WorldAtlas`,
+  `SeismicMap` — each layer's persisted style (ADR-0047) is lowered to
+  `drawingInfo`.
 
 ## How it works
 
 - `seed.mjs` is a **pure client of the public API**; the only spatial logic is
-  in the manifest's styles. Conversions (e.g. the EPSG:4326 → EPSG:3857
-  reprojection) run **inside the engine** via the ingest `sourceSrid`
-  parameter and the ProjNet transformation service.
+  in the manifest, and the only style logic lowers the manifest's compact
+  draw recipe to the persisted MapLibre fragment (ADR-0047). Conversions (e.g.
+  the EPSG:4326 → EPSG:3857 reprojection) run **inside the engine** via the
+  ingest `sourceSrid` parameter and the ProjNet transformation service.
 - Re-running is safe: an existing dataset is reused (unless `--force`) and an
   existing publication keeps its stable layer ids (ADR-0041).
 - It does not run in `eng/verify.sh`: it depends on the network.
