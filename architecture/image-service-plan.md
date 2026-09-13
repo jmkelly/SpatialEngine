@@ -1,12 +1,12 @@
 # Image Service (ImageServer) Implementation Plan
 
-> **Status:** I0–I2 implemented (ADR-0051). The raster boundary is fixed
+> **Status:** I0–I3 implemented (ADR-0051). The raster boundary is fixed
 > (provider-owned rasters; encoded images + core-typed metadata cross a
 > contract), the NetVips path is chosen over GDAL pending measured demand,
 > and the GeoServices ImageServer serves root metadata, raster info, catalog
-> listing/item, identify and `exportImage` over a `PublicationKind.Image`
-> publication. I3 (catalog `query`/`download`/file resources) and I4 (cache
-> and limits) remain. Read
+> listing/item/query, identify, `exportImage`, and the catalog file surface
+> (`download`, Raster Image/Thumbnail/File) over a `PublicationKind.Image`
+> publication. I4 (cache and limits beyond the download caps) remains. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
 > `architecture/distilled/host-and-clients.md` first.
 >
@@ -111,11 +111,22 @@ demands for AOT.
   CRS transform correctness and pixel-type rejection (provider unit tests +
   host HTTP tests).
 
-### I3 — Catalog operations
+### I3 — Catalog operations — **delivered**
 - **Deliverable:** `query` over the image catalog (reuse the safe `where`
   subset), `download` raw rasters, raster thumbnail/image/file resources.
-- **Proof:** catalog query fixtures; download size/format caps; range
-  handling if the provider supports it.
+- **Delivered:** the ImageServer catalog `query` reuses the Feature query
+  engine (safe `where`, `objectIds`, geometry, `outFields`,
+  `orderByFields`, paging, ids/count/extent/distinct and `outSR`);
+  `IRasterCatalogue` gains `ListFilesAsync`/`ReadFileAsync` over opaque
+  provider-owned file ids; the adapter serves `download` (with per-request
+  size/file caps, opt-in via `Spatial:GeoServices:AllowRasterDownload`),
+  `file` (range-capable streaming), `{rasterId}/image` and
+  `{rasterId}/thumbnail`. Clipping a download and re-encoding it are typed
+  rejections, not silent passes.
+- **Proof:** provider unit tests (file listing/reading, id validation,
+  per-item export); host HTTP tests (query filter/order/count, bad `where`
+  and `time` rejection, image/thumbnail bytes, download caps, ranged file
+  streaming); `RasterOptions` catalog-config projection tests.
 
 ### I4 — Scale, cache and limits
 - **Deliverable:** tile/export caching policy, request size caps,
@@ -145,9 +156,15 @@ serves *existing* imagery; it does not become a raster processing engine.
   (stored vs computed).
 - The raster catalog is a feature-like dataset with a raster per row;
   decide whether the catalog is `PublicationKind.Image` metadata or a
-  normal dataset plus a raster locator column, before I3.
+  normal dataset plus a raster locator column, before I3. **Resolved:** the
+  catalog stays `PublicationKind.Image` provider metadata with a core
+  `FeatureSchema` (ADR-0051 §3); `query` reuses the feature query engine
+  over it rather than promoting it to a store dataset.
 - `download` exposes raw data — authorization and size limits are
-  mandatory, not optional.
+  mandatory, not optional. **Resolved:** raw download is opt-in
+  (`Spatial:GeoServices:AllowRasterDownload`), bounded by per-request
+  size/file caps, and serves only provider-vetted opaque file ids — never a
+  caller-supplied path.
 
 ## 7. References
 

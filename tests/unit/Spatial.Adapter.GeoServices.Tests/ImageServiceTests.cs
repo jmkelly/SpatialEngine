@@ -166,6 +166,44 @@ public sealed class ImageServiceTests
         Assert.Equal(37, feature["OBJECTID"].Int64Value);
     }
 
+    [Fact]
+    public void Download_deduplicates_a_file_shared_by_two_rasters()
+    {
+        var shared = new RasterFile("7~a.tif", "a.tif", "image/tiff", 10);
+        var response = ImageService.Download(
+        [
+            (shared, 7L),
+            (shared, 8L),
+            (new RasterFile("9~b.png", "b.png", "image/png", 20), 9L),
+        ]);
+
+        Assert.Equal(2, response.RasterFiles.Count);
+        Assert.Equal("7~a.tif", response.RasterFiles[0].Id);
+        Assert.Equal(10, response.RasterFiles[0].Size);
+        Assert.Equal([7L, 8L], response.RasterFiles[0].RasterIds);
+        Assert.Equal([9L], response.RasterFiles[1].RasterIds);
+    }
+
+    [Fact]
+    public void Thumbnail_viewport_caps_the_longest_side_and_preserves_the_ratio()
+    {
+        var viewport = ImageService.ThumbnailViewport(Raster() with { Width = 1000, Height = 500 }, 200);
+
+        Assert.Equal(200, viewport.Width);
+        Assert.Equal(100, viewport.Height);
+        Assert.Equal("EPSG:4326", viewport.Crs);
+        Assert.Equal(new Envelope(-180, -90, 180, 90), viewport.Bounds);
+    }
+
+    [Fact]
+    public void Parse_raster_ids_requires_a_non_empty_list()
+    {
+        Assert.Equal([7L, 8L], ImageService.ParseRasterIds("7,8"));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds(null));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds(" "));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds("abc"));
+    }
+
     private static RasterCatalogItem Item()
     {
         var polygon = GeometryFactory.CreatePolygon(

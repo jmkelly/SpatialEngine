@@ -31,28 +31,46 @@ internal static class FeatureQueryEngine
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
         var matches = await MatchAsync(dataset, store, query, queryGeometry, operations, scheme, cancellationToken);
-        matches = ApplyOrderBy(matches, CompileOrderBy(dataset, query));
+        return Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
+    }
+
+    /// <summary>
+    /// Shapes a matched feature set into the spec §9.1.4.3 response: ordering,
+    /// the mutually exclusive result shapes, paging, <c>outSR</c> reprojection
+    /// and the Esri JSON. Shared by the Feature/Map query path and the Image
+    /// Service catalog query (spec §8.0.5, ADR-0051), whose catalog is a
+    /// feature-like table of raster items.
+    /// </summary>
+    internal static IResult Project(
+        DatasetDescription dataset,
+        IReadOnlyList<MatchedFeature> matches,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var ordered = ApplyOrderBy([.. matches], CompileOrderBy(dataset, query));
         if (query.ReturnIdsOnly)
         {
-            return IdsOnly(matches);
+            return IdsOnly(ordered);
         }
 
         if (query.ReturnCountOnly)
         {
-            return EsriJson.Value(new EsriCountResponse(matches.Count));
+            return EsriJson.Value(new EsriCountResponse(ordered.Count));
         }
 
         if (query.ReturnExtentOnly)
         {
-            return ExtentOnly(matches, layerCrs, query.OutSr, transforms, cancellationToken);
+            return ExtentOnly(ordered, layerCrs, query.OutSr, transforms, cancellationToken);
         }
 
         if (query.ReturnDistinctValues)
         {
-            return DistinctValues(dataset, matches, query, layerCrs);
+            return DistinctValues(dataset, ordered, query, layerCrs);
         }
 
-        var page = Page(matches, query);
+        var page = Page(ordered, query);
         var features = page.Items
             .Select(item => TransformFeature(item, query, layerCrs, transforms, cancellationToken))
             .ToArray();
@@ -131,7 +149,7 @@ internal static class FeatureQueryEngine
         return matches;
     }
 
-    private static bool Matches(
+    internal static bool Matches(
         EsriFeatureQuery query,
         Feature feature,
         long objectId,
@@ -168,7 +186,7 @@ internal static class FeatureQueryEngine
         return !operations.Intersection(geometry, queryGeometry, cancellationToken).IsEmpty;
     }
 
-    private static IGeometry? TransformQueryGeometry(
+    internal static IGeometry? TransformQueryGeometry(
         IGeometry? geometry,
         CoordinateReference? layerCrs,
         ICoordinateTransforms transforms,
@@ -510,6 +528,13 @@ internal static class FeatureQueryEngine
         WriteField(writer, EsriLayerModel.ObjectIdField, EsriFieldType.Oid, false, false);
         foreach (var field in dataset.Schema.Fields)
         {
+            // A raster catalog's schema already carries the identity column;
+            // the synthetic OBJECTID above is authoritative, so do not repeat it.
+            if (field.Name == EsriLayerModel.ObjectIdField)
+            {
+                continue;
+            }
+
             WriteField(writer, field.Name, EsriFieldType.FromAttributeKind(field.Kind), field.Nullable, field.Kind != AttributeKind.Geometry);
         }
 
@@ -527,7 +552,7 @@ internal static class FeatureQueryEngine
         writer.WriteEndObject();
     }
 
-    private sealed record MatchedFeature(long ObjectId, Feature Feature);
+    internal sealed record MatchedFeature(long ObjectId, Feature Feature);
 
     /// <summary>One compiled <c>orderByFields</c> key: a schema index and direction.</summary>
     private sealed record OrderKey(int Index, bool Descending);

@@ -71,7 +71,7 @@ public static partial class GeoServicesEndpoints
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
         MapServerEndpoints.MapMapServer(group, catalog, registry);
-        ImageServerEndpoints.MapImageServer(group, catalog, registry);
+        ImageServerEndpoints.MapImageServer(group, catalog, registry, options);
     }
 
     private static async Task<IResult> Catalog(GeoServicesCatalog catalog, IPublicationRegistry registry, HttpContext context, CancellationToken cancellationToken)

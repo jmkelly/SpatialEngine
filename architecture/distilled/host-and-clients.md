@@ -63,9 +63,13 @@ GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Merca
 GET|POST /arcgis/rest/services/{service}/ImageServer                 # ImageServer root (spec §8, ADR-0051)
 GET|POST /arcgis/rest/services/{service}/ImageServer/exportImage    # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/ImageServer/identify       # pixel values + catalog items
-GET|POST /arcgis/rest/services/{service}/ImageServer/query          # raster catalog listing
+GET|POST /arcgis/rest/services/{service}/ImageServer/query          # raster catalog query (safe where subset)
+GET|POST /arcgis/rest/services/{service}/ImageServer/download       # raw file ids (opt-in, size-capped)
+GET|POST /arcgis/rest/services/{service}/ImageServer/file           # raw file bytes (range-capable)
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}     # raster catalog item
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/info # raster info
+GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/image # one item's exported image (spec §8.2)
+GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/thumbnail # one item's thumbnail (spec §8.3)
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService

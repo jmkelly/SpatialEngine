@@ -11,6 +11,16 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **ImageServer catalog operations** (ADR-0051, plan I3): the GeoServices
+  ImageServer now serves the full catalog `query` (the Feature Service safe
+  `where` subset, `objectIds`, geometry, `outFields`, `orderByFields`,
+  paging, ids/count/extent/distinct and `outSR`), the §8.2 Raster Image and
+  §8.3 Thumbnail resources, and the §8.0.7 Download Rasters / §8.5 Raster
+  File surface. `IRasterCatalogue` gains `ListFilesAsync`/`ReadFileAsync`
+  over opaque provider-owned file ids (paths never cross); raw download is
+  opt-in (`Spatial:GeoServices:AllowRasterDownload`), size/file-capped and
+  range-capable. `Spatial:Raster` can now declare catalog attributes and
+  items, so catalogs are configurable end-to-end rather than test-only.
 - **Map labels and sprite symbols** (ADR-0049): the Skia
   renderer's MapLibre subset gains `symbol` layers — `SkiaSharp.HarfBuzz`
   text shaping, a deterministic label placement/collision pass, and
