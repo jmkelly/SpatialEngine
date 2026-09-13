@@ -32,7 +32,12 @@ composition root:
   `Directory.Packages.props`). `AspireUseCliBundle=true` keeps the build
   warning-free; the app is launched with `dotnet run`.
 - **PostGIS container** `postgis/postgis:16-3.4` — the same image the
-  integration-test fixture uses — exposing a `spatial` database.
+  integration-test fixture uses — exposing a `spatial` database created from
+  the image's `template_postgis` template (`CREATE DATABASE "spatial"
+  TEMPLATE template_postgis`). The image loads the `postgis` extension only
+  into its bootstrap database and that template, so creating `spatial` from
+  the template is what gives it a `geometry` type; the integration fixture
+  reaches the same state with an explicit `CREATE EXTENSION postgis`.
 - **`Spatial.Host`** linked by `ProjectReference` and launched by Aspire
   with `SPATIAL_POSTGIS_CONNECTION` injected from the database resource
   (the setting `PostgisOptions` already reads; secrets never live in the
@@ -63,3 +68,16 @@ Boundaries:
   with no Aspire and no desktop shell.
 - Aspire is a development dependency. The browser/server and desktop
   profiles continue to use the host directly.
+- Remote development over a private network (e.g. Tailscale) is opt-in
+  via `SPATIAL_DEV_BIND` (usually `0.0.0.0`): the host and workbench
+  endpoints go proxy-less on pinned ports (`:5199`, `:5273`) so the
+  services are reachable directly at `http://<tailnet-host>:<port>` —
+  the dashboard advertises loopback DCP-proxy URLs that a remote browser
+  cannot use. `VITE_ALLOWED_HOSTS` allow-lists tailnet hostnames for the
+  Vite dev server; the dashboard frontend itself is published with
+  `ASPNETCORE_URLS=https://<tailnet-host>:18888`. Unset, everything binds
+  loopback with Aspire-assigned ports as before.
+- The composition pins `NODE_ENV=development` for the Vite dev server:
+  Aspire launches JS apps with `NODE_ENV=production`, under which
+  plugin-react omits the Fast Refresh preamble and the workbench loads
+  blank (`$RefreshSig$ is not defined`).

@@ -10,8 +10,9 @@ namespace Spatial.Provider.PostGIS.Core;
 /// request against the decoded pages and derives the table definition, the
 /// identity column and the insert schema. Kept free of Npgsql so the identity
 /// rules are unit-testable without a database. Every field name that reaches
-/// generated SQL is a discovered/validated identifier from the ingest schema
-/// and must match the same strict grammar as a dataset identifier.
+/// generated SQL is a discovered value validated by <see cref="PostgisFieldName"/>;
+/// it keeps its case and punctuation and is always emitted as a quoted
+/// identifier.
 /// </summary>
 internal sealed record PostgisIngestPlan(
     PostgisDatasetName Dataset,
@@ -168,17 +169,7 @@ internal sealed record PostgisIngestPlan(
         }
     }
 
-    /// <summary>Rejects any field name that cannot be safely quoted as a PostgreSQL identifier.</summary>
-    private static void CheckIdentifier(PostgisDatasetName dataset, FeatureSchema schema)
-    {
-        foreach (var field in schema.Fields)
-        {
-            if (!PostgisDatasetName.IsValidIdentifier(field.Name))
-            {
-                throw SpatialException.BadArguments(
-                    $"The field name '{field.Name}' of dataset '{dataset}' is not a valid identifier; " +
-                    "use only [a-z0-9_] starting with a lowercase letter or underscore.");
-            }
-        }
-    }
+    /// <summary>Rejects any field name that cannot be carried as a quoted PostgreSQL identifier.</summary>
+    private static void CheckIdentifier(PostgisDatasetName dataset, FeatureSchema schema) =>
+        PostgisFieldName.RequireValid(dataset, schema);
 }

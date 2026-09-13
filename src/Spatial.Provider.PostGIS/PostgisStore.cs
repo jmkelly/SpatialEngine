@@ -19,7 +19,7 @@ namespace Spatial.Provider.PostGIS;
 /// additive read-by-identity face, single features, ADR-0038); writes append
 /// in one transaction; transactions are string handles over open connections
 /// owned here. Unconfigured (no connection string) throws
-/// <c>store.unavailable</c>; bad identifiers/filters throw
+/// <c>store.unavailable</c>; bad identifiers/field names/filters throw
 /// <c>invalid.arguments</c>; diagnostics are redacted (database name only,
 /// never the secret).
 /// </summary>
@@ -93,6 +93,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
     {
         ArgumentNullException.ThrowIfNull(sample);
         var name = ParseDataset(dataset);
+        PostgisFieldName.RequireValid(name, sample.Schema);
         RequireConfigured();
         try
         {

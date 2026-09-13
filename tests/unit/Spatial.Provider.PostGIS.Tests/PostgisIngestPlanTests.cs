@@ -181,18 +181,38 @@ public sealed class PostgisIngestPlanTests
     }
 
     [Fact]
-    public void A_field_name_that_is_not_a_valid_identifier_is_rejected()
+    public void A_field_name_keeps_its_case_and_punctuation_when_quoted()
     {
         var schema = FeatureTests.Schema(
+            ("LABELRANK", AttributeKind.String, true),
+            ("magType", AttributeKind.String, true),
             ("has space", AttributeKind.String, true),
             ("geom", AttributeKind.Geometry, true));
+        var feature = FeatureTests.Feature(
+            "1", schema, "x", "y", "z", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)));
+
+        var plan = PostgisIngestPlan.Create(new IngestRequest("public.upload", 4326), [Batch(schema, feature)]);
+
+        Assert.Contains("\"LABELRANK\" text", plan.CreateTableSql());
+        Assert.Contains("\"magType\" text", plan.CreateTableSql());
+        Assert.Contains("\"has space\" text", plan.CreateTableSql());
+    }
+
+    [Theory]
+    [InlineData("a\"b")]
+    [InlineData("a\0b")]
+    public void A_field_name_that_cannot_be_quoted_is_rejected(string fieldName)
+    {
+        var schema = FeatureTests.Schema(
+            (fieldName, AttributeKind.String, true),
+            ("geom", AttributeKind.Geometry, true));
+        var feature = FeatureTests.Feature(
+            "1", schema, "x", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)));
 
         var failure = Assert.Throws<SpatialException>(() =>
-            PostgisIngestPlan.Create(
-                new IngestRequest("public.upload", 4326),
-                [Batch(schema, FeatureTests.Feature("1", schema, "x", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))))]));
+            PostgisIngestPlan.Create(new IngestRequest("public.upload", 4326), [Batch(schema, feature)]));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
-        Assert.Contains("not a valid identifier", failure.Message);
+        Assert.Contains("cannot be used as a column", failure.Message);
     }
 }

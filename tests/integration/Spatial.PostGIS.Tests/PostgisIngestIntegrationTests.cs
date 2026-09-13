@@ -124,4 +124,34 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
+
+    [SkippableFact]
+    public async Task Ingest_keeps_a_mixed_case_field_name_verbatim()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_case");
+        var schema = Schema(
+            ("LABELRANK", AttributeKind.String),
+            ("magType", AttributeKind.String),
+            ("geom", AttributeKind.Geometry));
+        var pages = new[]
+        {
+            new FeatureBatch(
+                schema,
+                [Feature(schema, "1", "5", "ml", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)))]),
+        };
+
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+
+        var description = await context.Store.DescribeAsync(dataset);
+        Assert.Contains(description.Schema.Fields, field => field.Name == "LABELRANK");
+        var feature = (await context.Store.ScanAsync(dataset)).SelectMany(batch => batch.Features).Single();
+        Assert.Equal("5", feature["LABELRANK"].StringValue);
+        Assert.Equal("ml", feature["magType"].StringValue);
+
+        // The quoted name also resolves as a filter column.
+        var filtered = await context.Store.QueryAsync(dataset, null, "LABELRANK = '5'");
+        Assert.Single(filtered.SelectMany(batch => batch.Features));
+    }
 }

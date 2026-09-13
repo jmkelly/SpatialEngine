@@ -93,6 +93,14 @@ Two structural constraints shape the decision:
    `ST_GeomFromEWKB(@p, srid)`; SRIDs map to `EPSG:<srid>` CRS identities
    (SRID 0 is an unknown CRS).
 
+   Identifier handling splits by trust: a **dataset identifier** is client
+   text and must match a strict lowercase `schema.table` grammar; a **field
+   name** is discovered data and keeps its case and punctuation
+   (`LABELRANK`, `magType`, spaces), emitted as a double-quoted identifier.
+   Only names a quoted identifier cannot carry are refused — empty, a double
+   quote, NUL, or past PostgreSQL's 63-byte limit — so real-world ingests
+   (ADR-0041 §3) load without lossy renaming.
+
 4. **Secrets stay host-managed** (ADR-0018, security-model.md): the
    supervisor hands a provider its connection configuration at launch
    through the **worker process environment** (`SPATIAL_POSTGIS_CONNECTION`),
