@@ -103,3 +103,6 @@ jobs:
 
       - name: Host + built workbench in a real browser
         run: ./eng/workbench-e2e.sh
+
+      - name: Spatial CLI against the real host
+        run: ./eng/cli-e2e.sh

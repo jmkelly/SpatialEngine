@@ -133,6 +133,21 @@ public sealed class CommandTests
         Assert.Contains("store.unavailable", run.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(typeof(HttpRequestException), ExitCodes.Unavailable)]
+    [InlineData(typeof(OperationCanceledException), ExitCodes.Cancelled)]
+    [InlineData(typeof(IOException), ExitCodes.Usage)]
+    [InlineData(typeof(InvalidOperationException), ExitCodes.Failure)]
+    public async Task Gateway_failures_map_to_stable_exit_codes(Type exceptionType, int expected)
+    {
+        var exception = (Exception)Activator.CreateInstance(exceptionType)!;
+        var gateway = new FakeSpatialGateway { Failure = exception };
+
+        var run = await CliHarness.RunAsync(gateway, "dataset", "list");
+
+        Assert.Equal(expected, run.ExitCode);
+    }
+
     [Fact]
     public async Task Help_is_printed_with_no_arguments()
     {

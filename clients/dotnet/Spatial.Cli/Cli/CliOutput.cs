@@ -58,15 +58,6 @@ public sealed class CliOutput
         _console.Out.WriteLine(human ?? data.ToString());
     }
 
-    /// <summary>Writes a plain human line, suppressed by <c>--quiet</c>.</summary>
-    public void Human(string text)
-    {
-        if (!_quiet && !_json)
-        {
-            _console.Out.WriteLine(text);
-        }
-    }
-
     /// <summary>Writes a structured failure to the error stream.</summary>
     public void Error(string command, string code, string message)
     {

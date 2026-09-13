@@ -136,7 +136,15 @@ internal static class MapEditing
             recipe = recipe with { Radius = arguments.RequireDouble("radius") };
         }
 
-        recipe = recipe with { Visible = !arguments.Has("hidden") };
+        if (arguments.Has("hidden"))
+        {
+            recipe = recipe with { Visible = false };
+        }
+        else if (arguments.Has("visible"))
+        {
+            recipe = recipe with { Visible = true };
+        }
+
         return layer with { Style = MapLibreStyleBuilder.Lower(recipe, family) };
     }
 

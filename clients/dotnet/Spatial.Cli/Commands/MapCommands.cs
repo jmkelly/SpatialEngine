@@ -48,6 +48,7 @@ public static class MapCommands
             new("line-width", "NUMBER", "Line width (default 2)"),
             new("radius", "NUMBER", "Point radius (default 5)"),
             new("hidden", "", "Hide the layer", IsFlag: true),
+            new("visible", "", "Show the layer (overrides --hidden)", IsFlag: true),
         ]),
         new("map", "export", "Show a publication and its GeoServices endpoint", "<name>",
         [
@@ -55,19 +56,23 @@ public static class MapCommands
         ]),
     ];
 
-    /// <summary>Runs a <c>map</c> verb.</summary>
-    public static Task<int> RunAsync(CliContext context) => context.Verb switch
+    private static readonly Dictionary<string, Func<CliContext, Task<int>>> Handlers = new(StringComparer.Ordinal)
     {
-        "list" => ListAsync(context),
-        "show" => ShowAsync(context),
-        "export" => ExportAsync(context),
-        "create" => CreateAsync(context),
-        "delete" => DeleteAsync(context),
-        "add-layer" => AddLayerAsync(context),
-        "remove-layer" => RemoveLayerAsync(context),
-        "set-style" => SetStyleAsync(context),
-        _ => throw new CliUsageException($"Unknown command '{context.Command}'."),
+        ["list"] = ListAsync,
+        ["show"] = ShowAsync,
+        ["export"] = ExportAsync,
+        ["create"] = CreateAsync,
+        ["delete"] = DeleteAsync,
+        ["add-layer"] = AddLayerAsync,
+        ["remove-layer"] = RemoveLayerAsync,
+        ["set-style"] = SetStyleAsync,
     };
+
+    /// <summary>Runs a <c>map</c> verb.</summary>
+    public static Task<int> RunAsync(CliContext context) =>
+        Handlers.TryGetValue(context.Verb, out var handler)
+            ? handler(context)
+            : throw new CliUsageException($"Unknown command '{context.Command}'.");
 
     private static async Task<int> ListAsync(CliContext context)
     {

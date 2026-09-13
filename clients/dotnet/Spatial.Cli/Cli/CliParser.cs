@@ -39,6 +39,7 @@ public static class CliParser
         "verbose",
         "dry-run",
         "hidden",
+        "visible",
         "force",
         "no-verify",
         "include-style",

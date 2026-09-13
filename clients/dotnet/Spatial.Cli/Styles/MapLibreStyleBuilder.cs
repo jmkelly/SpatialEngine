@@ -120,17 +120,31 @@ public static class MapLibreStyleBuilder
 
         public bool HasAny => _types.Count > 0;
 
-        public GeometryFamily Family => _types.Contains("fill") && _types.Contains("line") && !_types.Contains("circle")
-            ? GeometryFamily.Polygon
-            : _types.Contains("circle") && (_types.Contains("fill") || _types.Contains("line"))
-                ? GeometryFamily.Mixed
-                : _types.Contains("fill")
-                    ? GeometryFamily.Polygon
-                    : _types.Contains("line")
-                        ? GeometryFamily.Line
-                        : _types.Contains("circle")
-                            ? GeometryFamily.Point
-                            : GeometryFamily.Mixed;
+        public GeometryFamily Family
+        {
+            get
+            {
+                var hasFill = _types.Contains("fill");
+                var hasLine = _types.Contains("line");
+                var hasCircle = _types.Contains("circle");
+                if (hasCircle && (hasFill || hasLine))
+                {
+                    return GeometryFamily.Mixed;
+                }
+
+                if (hasFill)
+                {
+                    return GeometryFamily.Polygon;
+                }
+
+                if (hasLine)
+                {
+                    return GeometryFamily.Line;
+                }
+
+                return hasCircle ? GeometryFamily.Point : GeometryFamily.Mixed;
+            }
+        }
 
         public void Absorb(JsonObject layer)
         {

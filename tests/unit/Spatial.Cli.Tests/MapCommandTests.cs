@@ -328,6 +328,49 @@ public sealed class MapCommandTests
     }
 
     [Fact]
+    public async Task Set_style_visible_restores_a_hidden_layer()
+    {
+        var hidden = MapLibreStyleBuilder.Lower(new DrawRecipe(Visible: false), GeometryFamily.Point);
+        var gateway = new FakeSpatialGateway
+        {
+            PublicationsByName = new Dictionary<string, Publication>(StringComparer.Ordinal)
+            {
+                ["World"] = new Publication("World", PublicationKind.Map, "memory", [new PublicationLayer("public.world", 0, null, hidden)]),
+            },
+        };
+
+        var run = await CliHarness.RunAsync(
+            gateway, "map", "set-style", "--map", "World", "--dataset", "public.world", "--visible", "--token", "secret");
+
+        Assert.Equal(ExitCodes.Success, run.ExitCode);
+        var (publication, _) = Assert.Single(gateway.PutCalls);
+        Assert.True(MapLibreStyleBuilder.TryDescribe(publication.Layers[0].Style, out var recipe, out _));
+        Assert.True(recipe.Visible);
+    }
+
+    [Fact]
+    public async Task Set_style_preserves_visibility_when_unspecified()
+    {
+        var hidden = MapLibreStyleBuilder.Lower(new DrawRecipe(Visible: false), GeometryFamily.Point);
+        var gateway = new FakeSpatialGateway
+        {
+            PublicationsByName = new Dictionary<string, Publication>(StringComparer.Ordinal)
+            {
+                ["World"] = new Publication("World", PublicationKind.Map, "memory", [new PublicationLayer("public.world", 0, null, hidden)]),
+            },
+        };
+
+        var run = await CliHarness.RunAsync(
+            gateway, "map", "set-style", "--map", "World", "--dataset", "public.world", "--color", "#abcdef", "--token", "secret");
+
+        Assert.Equal(ExitCodes.Success, run.ExitCode);
+        var (publication, _) = Assert.Single(gateway.PutCalls);
+        Assert.True(MapLibreStyleBuilder.TryDescribe(publication.Layers[0].Style, out var recipe, out _));
+        Assert.False(recipe.Visible);
+        Assert.Equal("#abcdef", recipe.Color);
+    }
+
+    [Fact]
     public async Task Delete_removes_the_publication()
     {
         var gateway = new FakeSpatialGateway();

@@ -7,7 +7,8 @@ namespace Spatial.Cli;
 /// command, run it through the gateway, and map every failure to a stable
 /// exit code and a structured error. Kept as a static class with a named
 /// method so it is directly testable and the quality gates see a real entry
-/// method.
+/// method. Exception-to-exit-code mapping lives in <see cref="Report"/> so
+/// this type carries only the happy path.
 /// </summary>
 public static class CliApplication
 {
@@ -30,7 +31,6 @@ public static class CliApplication
         var settings = CliSettings.Resolve(parsed);
         var output = new CliOutput(console, settings.Json, settings.Quiet, settings.Verbose);
         var label = $"{parsed.Group} {parsed.Verb}";
-
         if (CliCommandCatalog.Find(parsed.Group, parsed.Verb) is not { } command)
         {
             output.Error(label, "invalid.arguments", $"Unknown command '{label}'.");
@@ -38,6 +38,17 @@ public static class CliApplication
             return ExitCodes.Usage;
         }
 
+        return await ExecuteAsync(command, settings, parsed, output, label, gatewayFactory);
+    }
+
+    private static async Task<int> ExecuteAsync(
+        CliCommandInfo command,
+        CliSettings settings,
+        ParsedCommandLine parsed,
+        CliOutput output,
+        string label,
+        Func<CliSettings, ISpatialGateway>? gatewayFactory)
+    {
         try
         {
             var context = new CliContext(
@@ -52,31 +63,26 @@ public static class CliApplication
                 return await CommandGroups.DispatchAsync(context);
             }
         }
-        catch (CliUsageException exception)
+        catch (Exception exception)
         {
-            output.Error(label, "invalid.arguments", exception.Message);
-            return ExitCodes.Usage;
+            return Report(exception, output, label, settings.Host);
         }
-        catch (SpatialClientException exception)
+    }
+
+    /// <summary>Writes the structured error for a failure and returns its exit code.</summary>
+    private static int Report(Exception exception, CliOutput output, string label, string host)
+    {
+        var (code, message, exitCode) = exception switch
         {
-            output.Error(label, exception.Code, exception.Message);
-            return ExitCodes.ForSpatialCode(exception.Code);
-        }
-        catch (HttpRequestException exception)
-        {
-            output.Error(label, "store.unavailable", $"Could not reach the host at {settings.Host}: {exception.Message}");
-            return ExitCodes.Unavailable;
-        }
-        catch (OperationCanceledException)
-        {
-            output.Error(label, "cancelled", "The operation was cancelled.");
-            return ExitCodes.Cancelled;
-        }
-        catch (IOException exception)
-        {
-            output.Error(label, "invalid.arguments", exception.Message);
-            return ExitCodes.Usage;
-        }
+            CliUsageException usage => ("invalid.arguments", usage.Message, ExitCodes.Usage),
+            SpatialClientException spatial => (spatial.Code, spatial.Message, ExitCodes.ForSpatialCode(spatial.Code)),
+            HttpRequestException http => ("store.unavailable", $"Could not reach the host at {host}: {http.Message}", ExitCodes.Unavailable),
+            OperationCanceledException => ("cancelled", "The operation was cancelled.", ExitCodes.Cancelled),
+            IOException io => ("invalid.arguments", io.Message, ExitCodes.Usage),
+            _ => ("unexpected", exception.Message, ExitCodes.Failure),
+        };
+        output.Error(label, code, message);
+        return exitCode;
     }
 
     private static HttpSpatialGateway DefaultGateway(CliSettings settings) => new(settings);

@@ -99,6 +99,7 @@ workbench from the host as above.
 ./eng/verify.sh          # format check + build + full test run
 ./eng/e2e-web.sh         # real host, driven by the TypeScript SDK over HTTP
 ./eng/workbench-e2e.sh   # real host + built workbench + Playwright
+./eng/cli-e2e.sh         # real host driven by the Spatial CLI
 ```
 
 ### Seed it with real data
@@ -146,7 +147,7 @@ descriptive flag reference. See
 [`architecture/distilled/cli.md`](architecture/distilled/cli.md) for the
 project-file schema and the full command surface.
 
-CI runs all three verification scripts plus the JavaScript typecheck,
+CI runs the four verification scripts plus the JavaScript typecheck,
 generated-types drift check and unit suites on every push and pull request.
 
 ---
