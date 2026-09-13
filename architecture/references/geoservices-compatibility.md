@@ -45,7 +45,7 @@ Two directions must not be confused:
 
 | Dimension | GeoServices v1.0 | SpatialEngine | Compatible |
 | --- | --- | --- | --- |
-| Method | GET with query params (`f=json` required; POST only for edits) | POST JSON bodies, camelCase, OpenAPI | No |
+| Method | GET with query params (`f=json` required; `f=pjson` accepted as a JSON alias; POST only for edits) | POST JSON bodies, camelCase, OpenAPI | No |
 | Service root | `<catalog>/<serviceName>/<Map\|Feature\|Geometry\|…>Server` | `/api/...` route groups; root is an identity doc | No (mappable) |
 | Geometry wire | JSON `{x,y}` / `paths` / `rings` / `points` / `{xmin..}` | Base64 `SGEOM` (ADR-0020) | No |
 | Feature wire | JSON `{geometry, attributes}` inline | Base64 `SFBAT` batch pages | No |

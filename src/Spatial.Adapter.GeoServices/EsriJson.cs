@@ -36,20 +36,25 @@ internal static class EsriJson
     }
 }
 
-/// <summary>The <c>f</c> parameter negotiation: this facade serves JSON only.</summary>
+/// <summary>The <c>f</c> parameter negotiation: this facade serves JSON only, with <c>pjson</c> accepted as a JSON alias.</summary>
 internal static class EsriFormat
 {
     public const string Json = "json";
 
-    /// <summary>Validates the requested format, throwing a typed error for anything but json.</summary>
+    /// <summary>The pretty-printed JSON alias (GDAL ESRIJSON driver, pygeoapi metadata fetch).</summary>
+    public const string PrettyJson = "pjson";
+
+    /// <summary>Validates the requested format, throwing a typed error for anything but json/pjson.</summary>
     public static void Ensure(string? format)
     {
-        if (string.IsNullOrWhiteSpace(format) || string.Equals(format, Json, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(format)
+            || string.Equals(format, Json, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(format, PrettyJson, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
-        throw EsriInteropException.Invalid($"Format '{format}' is not supported; the facade serves f=json only.");
+        throw EsriInteropException.Invalid($"Format '{format}' is not supported; the facade serves f=json (f=pjson is accepted as an alias). Supported query formats: JSON.");
     }
 }
 
