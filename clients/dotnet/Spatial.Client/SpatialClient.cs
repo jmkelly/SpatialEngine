@@ -183,13 +183,13 @@ public sealed class SpatialClient
         return await _transport.PostForImageAsync("/api/render", request, cancellationToken);
     }
 
-    /// <summary>Renders a publication's datasets using its persisted layer styles (ADR-0047).</summary>
-    public async Task<RasterImage> RenderPublicationAsync(
-        string name, PublicationRenderRequest request, CancellationToken cancellationToken = default)
+    /// <summary>Renders a map's datasets using its persisted layer styles (ADR-0052).</summary>
+    public async Task<RasterImage> RenderMapAsync(
+        string name, MapRenderRequestDto request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         return await _transport.PostForImageAsync(
-            $"/api/publications/{Uri.EscapeDataString(name)}/render", request, cancellationToken);
+            $"/api/maps/{Uri.EscapeDataString(name)}/render", request, cancellationToken);
     }
 
     /// <summary>Describes the configured raster formats, pixel cap and imagery sources.</summary>
@@ -204,35 +204,35 @@ public sealed class SpatialClient
         return response.Slept;
     }
 
-    // ---- publications & ingest (ADR-0041) ----
+    // ---- maps & ingest (ADR-0052) ----
 
-    /// <summary>Lists every publication (declared first, then runtime by name).</summary>
-    public Task<IReadOnlyList<Publication>> ListPublicationsAsync(CancellationToken cancellationToken = default) =>
-        _transport.SendAsync<IReadOnlyList<Publication>>(HttpMethod.Get, "/api/publications", null, null, cancellationToken);
+    /// <summary>Lists every map (declared first, then runtime by name).</summary>
+    public Task<IReadOnlyList<Map>> ListMapsAsync(CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<IReadOnlyList<Map>>(HttpMethod.Get, "/api/maps", null, null, cancellationToken);
 
-    /// <summary>Gets one publication by name.</summary>
-    public Task<Publication> GetPublicationAsync(string name, CancellationToken cancellationToken = default) =>
-        _transport.SendAsync<Publication>(HttpMethod.Get, $"/api/publications/{Uri.EscapeDataString(name)}", null, null, cancellationToken);
+    /// <summary>Gets one map by name.</summary>
+    public Task<Map> GetMapAsync(string name, CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<Map>(HttpMethod.Get, $"/api/maps/{Uri.EscapeDataString(name)}", null, null, cancellationToken);
 
-    /// <summary>Creates or replaces a runtime publication (requires the admin token).</summary>
-    public Task<Publication> PutPublicationAsync(
-        Publication publication, string? adminToken = null, CancellationToken cancellationToken = default)
+    /// <summary>Creates or replaces a runtime map (requires the admin token).</summary>
+    public Task<Map> PutMapAsync(
+        Map map, string? adminToken = null, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(publication);
-        return _transport.SendAsync<Publication>(
+        ArgumentNullException.ThrowIfNull(map);
+        return _transport.SendAsync<Map>(
             HttpMethod.Put,
-            $"/api/publications/{Uri.EscapeDataString(publication.Name)}",
-            SpatialClientCodec.Json(publication),
+            $"/api/maps/{Uri.EscapeDataString(map.Name)}",
+            SpatialClientCodec.Json(map),
             adminToken,
             cancellationToken);
     }
 
-    /// <summary>Deletes a runtime publication and reports whether it existed (requires the admin token).</summary>
-    public async Task<bool> DeletePublicationAsync(
+    /// <summary>Deletes a runtime map and reports whether it existed (requires the admin token).</summary>
+    public async Task<bool> DeleteMapAsync(
         string name, string? adminToken = null, CancellationToken cancellationToken = default)
     {
         return await _transport.SendAsync<bool>(
-            HttpMethod.Delete, $"/api/publications/{Uri.EscapeDataString(name)}", null, adminToken, cancellationToken);
+            HttpMethod.Delete, $"/api/maps/{Uri.EscapeDataString(name)}", null, adminToken, cancellationToken);
     }
 
     /// <summary>

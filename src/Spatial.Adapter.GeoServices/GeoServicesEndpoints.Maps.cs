@@ -7,13 +7,13 @@ namespace Spatial.Adapter.GeoServices;
 /// <summary>
 /// The Map Service routes (spec §4, ADR-0048): root, all-layers, layer
 /// metadata, query, identify and find. The MapServer is the GeoServices
-/// projection of a <see cref="PublicationKind.Map"/> publication; its export
+/// projection of a <see cref="MapService.Map"/> publication; its export
 /// and tile routes live in <see cref="MapExportEndpoints"/>, which renders
 /// through the SDK render contract.
 /// </summary>
 internal static class MapServerEndpoints
 {
-    internal static void MapMapServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IPublicationRegistry registry)
+    internal static void MapMapServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
         group.MapMethods("/{service}/MapServer", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
             MapServerRoot(catalog, registry, service, context, services, cancellationToken));
@@ -40,16 +40,16 @@ internal static class MapServerEndpoints
     }
 
     private static async Task<IResult> MapServerRoot(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
-            var infos = await MapService.ReadLayersAsync(Store(services, resolved.Store), Catalogue(services, resolved.Store), layers, cancellationToken);
-            return EsriJson.Value(MapService.Root(infos, MapTileScheme(services), resolved.Description, resolved.Copyright));
+            var infos = await MapServerResources.ReadLayersAsync(Store(services, resolved.Store), Catalogue(services, resolved.Store), layers, cancellationToken);
+            return EsriJson.Value(MapServerResources.Root(infos, MapTileScheme(services), resolved.Description, resolved.Copyright));
         }
         catch (Exception exception)
         {
@@ -58,15 +58,15 @@ internal static class MapServerEndpoints
     }
 
     private static async Task<IResult> MapAllLayers(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
-            return EsriJson.Value(MapService.AllLayers(layers));
+            return EsriJson.Value(MapServerResources.AllLayers(layers));
         }
         catch (Exception exception)
         {
@@ -75,18 +75,18 @@ internal static class MapServerEndpoints
     }
 
     private static async Task<IResult> MapLayer(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, int layerId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
             var layer = layers.FirstOrDefault(candidate => candidate.Id == layerId)
                 ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in service '{service}'.");
-            var info = await MapService.ReadLayerAsync(Store(services, resolved.Store), Catalogue(services, resolved.Store), layer, cancellationToken);
-            return EsriJson.Value(MapService.Layer(info));
+            var info = await MapServerResources.ReadLayerAsync(Store(services, resolved.Store), Catalogue(services, resolved.Store), layer, cancellationToken);
+            return EsriJson.Value(MapServerResources.Layer(info));
         }
         catch (Exception exception)
         {
@@ -102,12 +102,12 @@ internal static class MapServerEndpoints
     /// rather than serving a stub (ADR-0050).
     /// </summary>
     private static async Task<IResult> MapImage(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, int layerId, string imageId,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, string imageId,
         HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
     {
         try
         {
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
             _ = layers.FirstOrDefault(candidate => candidate.Id == layerId)
                 ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in service '{service}'.");
@@ -122,14 +122,14 @@ internal static class MapServerEndpoints
     }
 
     private static async Task<IResult> MapQuery(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, int layerId, HttpContext context, IServiceProvider services,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, HttpContext context, IServiceProvider services,
         IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var description = await GeoServicesEndpoints.DescribeAsync(services, resolved, layerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = Store(services, resolved.Store);
@@ -142,19 +142,19 @@ internal static class MapServerEndpoints
     }
 
     private static async Task<IResult> MapIdentify(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context, IServiceProvider services,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services,
         IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var store = Store(services, resolved.Store);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
-            var infos = await MapService.ReadLayersAsync(store, Catalogue(services, resolved.Store), layers, cancellationToken);
+            var infos = await MapServerResources.ReadLayersAsync(store, Catalogue(services, resolved.Store), layers, cancellationToken);
             return await MapIdentifyEngine.IdentifyAsync(
-                store, infos, parameters, MapService.MapSrid(infos), operations, transforms, cancellationToken);
+                store, infos, parameters, MapServerResources.MapSrid(infos), operations, transforms, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -163,17 +163,17 @@ internal static class MapServerEndpoints
     }
 
     private static async Task<IResult> MapFind(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context, IServiceProvider services,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services,
         ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var store = Store(services, resolved.Store);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
-            var infos = await MapService.ReadLayersAsync(store, Catalogue(services, resolved.Store), layers, cancellationToken);
+            var infos = await MapServerResources.ReadLayersAsync(store, Catalogue(services, resolved.Store), layers, cancellationToken);
             return await MapFindEngine.FindAsync(store, infos, parameters, transforms, cancellationToken);
         }
         catch (Exception exception)
@@ -192,6 +192,6 @@ internal static class MapServerEndpoints
     internal static ITileScheme? MapTileScheme(IServiceProvider services)
     {
         var schemes = services.GetServices<ITileScheme>().ToArray();
-        return schemes.FirstOrDefault(scheme => MapService.SridOf(scheme.Crs) == 3857) ?? schemes.FirstOrDefault();
+        return schemes.FirstOrDefault(scheme => MapServerResources.SridOf(scheme.Crs) == 3857) ?? schemes.FirstOrDefault();
     }
 }

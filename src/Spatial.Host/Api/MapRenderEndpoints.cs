@@ -5,30 +5,32 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The publication render route (ADR-0047): renders a named publication's
-/// datasets using the per-layer styles persisted with it, so a persisted
-/// style takes effect headlessly (no workbench, no inline style document).
-/// The host resolves the publication and each layer's keyed store at the
+/// The map render route (ADR-0052 §4, evolving ADR-0047): renders a named
+/// map's feature layers using the per-layer styles persisted with it, so a
+/// persisted style takes effect headlessly (no workbench, no inline style
+/// document). The host resolves the map and each layer's keyed store at the
 /// edge and passes a composed <see cref="MapRenderRequest"/> to the renderer;
-/// the renderer never sees a publication (ADR-0005/ADR-0033).
+/// the renderer never sees a map (ADR-0005/ADR-0033). The pre-ADR-0052
+/// <c>/api/publications/{name}/render</c> route is a deprecated alias.
 /// </summary>
-internal static class PublicationRenderEndpoints
+internal static class MapRenderEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/publications/{name}/render", Render)
+        app.MapPost("/api/maps/{name}/render", Render)
             .Produces(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable);
+        app.MapPost("/api/publications/{name}/render", Render);
     }
 
     private static async Task<IResult> Render(
         string name,
-        PublicationRenderRequest request,
+        MapRenderRequestDto request,
         HttpContext context,
         IServiceProvider services,
-        IPublicationRegistry registry,
+        IMapRegistry registry,
         IMapRenderer renderer,
         RenderingOptions options,
         CancellationToken cancellationToken)
@@ -36,11 +38,11 @@ internal static class PublicationRenderEndpoints
         try
         {
             RenderEndpoints.ValidateFormat(request.Format, options);
-            var publication = await registry.GetAsync(Uri.UnescapeDataString(name), cancellationToken);
+            var map = await registry.GetAsync(Uri.UnescapeDataString(name), cancellationToken);
             var mapRequest = new MapRenderRequest(
                 RenderEndpoints.ToViewport(request.Viewport),
-                PublicationMapStyle.Compose(publication),
-                ResolveLayers(publication, services),
+                MapStyle.Compose(map),
+                ResolveLayers(map, services),
                 RenderEndpoints.ToImagery(request.Imagery),
                 request.Format,
                 request.Quality,
@@ -57,10 +59,11 @@ internal static class PublicationRenderEndpoints
         }
     }
 
-    private static List<MapLayerSource> ResolveLayers(Publication publication, IServiceProvider services)
+    private static List<MapLayerSource> ResolveLayers(Map map, IServiceProvider services)
     {
-        var layers = publication.Layers
-            .Select(layer => new RenderLayerDto(layer.Dataset, publication.Store))
+        var layers = map.Layers
+            .Where(layer => layer.Kind == MapLayerKind.Feature)
+            .Select(layer => new RenderLayerDto(layer.Dataset, layer.Store ?? map.Store))
             .ToList();
         return RenderEndpoints.ResolveLayers(layers, services);
     }

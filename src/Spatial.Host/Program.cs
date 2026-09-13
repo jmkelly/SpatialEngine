@@ -12,9 +12,9 @@ using Spatial.PluginSdk.Http;
 using Spatial.PluginSdk.Providers;
 using Spatial.Provider.ArcGisRest;
 using Spatial.Provider.Demo;
+using Spatial.Provider.Maps;
 using Spatial.Provider.Memory;
 using Spatial.Provider.PostGIS;
-using Spatial.Provider.Publications;
 using Spatial.Rendering.Skia;
 using Spatial.Transformations.ProjNet;
 
@@ -61,7 +61,7 @@ internal static class HostComposition
 
         EngineServices.Configure(builder);
         StoreServices.Configure(builder);
-        PublicationServices.Configure(builder);
+        MapServices.Configure(builder);
         RenderingServices.Configure(builder);
     }
 
@@ -107,15 +107,15 @@ internal static class HostComposition
         // Spatial:GeoServices:Root, independent of the engine's own typed API.
         var geoServicesOptions = configuration.GetSection("Spatial:GeoServices").Get<GeoServicesOptions>()
             ?? new GeoServicesOptions();
-        var publications = app.Services.GetRequiredService<IPublicationRegistry>();
-        GeoServicesEndpoints.Map(app, geoServicesOptions, publications);
+        var maps = app.Services.GetRequiredService<IMapRegistry>();
+        GeoServicesEndpoints.Map(app, geoServicesOptions, maps);
         EsriAdminEndpoints.Map(app, new EsriAdminOptions
         {
             Root = configuration["Spatial:GeoServices:AdminRoot"] ?? "/arcgis/admin",
             Token = adminOptions.Token,
             MaxBytes = ingestOptions.MaxBytes,
             BatchSize = ingestOptions.BatchSize,
-        }, publications);
+        }, maps);
     }
 }
 

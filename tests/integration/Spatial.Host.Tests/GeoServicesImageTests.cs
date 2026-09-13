@@ -23,6 +23,8 @@ namespace Spatial.Host.Tests;
 /// </summary>
 public sealed class GeoServicesImageTests : IDisposable
 {
+    private static readonly string[] ImageServices = ["image"];
+
     private const string Token = "test-admin-token";
     private const string Root = "/arcgis/rest/services";
     private const string Name = "wsiearth";
@@ -85,11 +87,11 @@ public sealed class GeoServicesImageTests : IDisposable
         var body = JsonSerializer.Serialize(new
         {
             name = service,
-            kind = "image",
             store = "raster",
-            layers = new[] { new { dataset, layerId = 0, name = service } },
+            services = ImageServices,
+            layers = new[] { new { dataset, layerId = 0, name = service, kind = "image" } },
         });
-        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/publications/{service}")
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/maps/{service}")
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         };
@@ -285,7 +287,7 @@ public sealed class GeoServicesImageTests : IDisposable
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Publications:Path", System.IO.Path.Combine(_directory, $"publications-{_dataset}.json"));
+            builder.UseSetting("Spatial:Maps:Path", System.IO.Path.Combine(_directory, $"publications-{_dataset}.json"));
             builder.UseSetting("Spatial:Raster:Sources:0:Name", _dataset);
             builder.UseSetting("Spatial:Raster:Sources:0:Path", _rasterPath);
             builder.UseSetting("Spatial:Raster:Sources:0:Crs", "EPSG:4326");

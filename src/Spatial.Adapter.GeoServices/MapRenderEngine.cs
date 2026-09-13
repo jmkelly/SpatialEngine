@@ -13,7 +13,7 @@ namespace Spatial.Adapter.GeoServices;
 /// The MapServer render bridge (spec §4.0.4/§4.1, ADR-0048): it turns a
 /// publication's selected layers into a <see cref="MapRenderRequest"/> over
 /// the SDK render contract, composing the persisted style with
-/// <see cref="PublicationMapStyle"/> and pushing a supported <c>layerDefs</c>
+/// <see cref="MapStyle.Compose"/> and pushing a supported <c>layerDefs</c>
 /// where clause down as each layer's parameterised store filter (never as
 /// SQL). Tile caching is content-addressed by the service and its style.
 /// </summary>
@@ -30,13 +30,13 @@ internal static class MapRenderEngine
             .ToArray();
     }
 
-    /// <summary>The persisted publication layers behind the resolved serving layers.</summary>
-    public static IReadOnlyList<PublicationLayer> ToPublicationLayers(IReadOnlyList<PublishedLayer> layers) =>
-        [.. layers.Select(layer => new PublicationLayer(layer.Dataset, layer.Id, layer.Name, layer.Style))];
+    /// <summary>The map layers behind the resolved serving layers.</summary>
+    public static IReadOnlyList<MapLayer> ToMapLayers(IReadOnlyList<PublishedLayer> layers) =>
+        [.. layers.Select(layer => new MapLayer(layer.Dataset, layer.Id, layer.Name, layer.Style))];
 
     /// <summary>The MapLibre style document for the selected layers.</summary>
     public static string Style(string name, IReadOnlyList<PublishedLayer> layers) =>
-        PublicationMapStyle.Compose(name, ToPublicationLayers(layers));
+        MapStyle.Compose(name, ToMapLayers(layers));
 
     /// <summary>A content version for the tile cache: the service and its composed style.</summary>
     public static string Version(string service, string style) =>

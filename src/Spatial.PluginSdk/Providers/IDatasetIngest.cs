@@ -48,12 +48,12 @@ public sealed record IngestOutcome(
     long Features,
     int Srid,
     string? IdentityField = null,
-    Publication? Publication = null)
+    Map? Map = null)
 {
     public override string ToString() =>
-        Publication is null
+        Map is null
             ? $"{Dataset}: {Features} feature(s)"
-            : $"{Dataset}: {Features} feature(s), published as {Publication.Name}";
+            : $"{Dataset}: {Features} feature(s), published as {Map.Name}";
 }
 
 /// <summary>

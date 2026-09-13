@@ -10,30 +10,32 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The publication render route (ADR-0047): a named publication renders its
-/// datasets with the per-layer styles persisted on it, so a style authored
-/// headlessly (PUT) takes effect without a client-side style document.
+/// The map render route (ADR-0052): a named map renders its feature layers
+/// with the per-layer styles persisted on it, so a style authored headlessly
+/// (PUT) takes effect without a client-side style document.
 /// </summary>
-public sealed class PublicationRenderTests : IDisposable
+public sealed class MapRenderTests : IDisposable
 {
+    private static readonly string[] MapServices = ["map"];
+
     private const string Token = "test-admin-token";
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-publication-render-").FullName;
+    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-render-").FullName;
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory() => new RenderFactory(Path.Combine(_directory, "publications.json"));
+    private WebApplicationFactory<Program> Factory() => new RenderFactory(Path.Combine(_directory, "maps.json"));
 
-    private static async Task PutPublicationAsync(HttpClient client, string name, string? style)
+    private static async Task PutMapAsync(HttpClient client, string name, string? style)
     {
         var body = JsonSerializer.Serialize(new
         {
             name,
-            kind = "map",
             store = "demo",
+            services = MapServices,
             layers = new[] { new { dataset = "demo.cities", layerId = 0, style } },
         });
-        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/publications/{name}")
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/maps/{name}")
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         };
@@ -43,17 +45,17 @@ public sealed class PublicationRenderTests : IDisposable
     }
 
     private static Task<HttpResponseMessage> RenderAsync(HttpClient client, string name) =>
-        client.PostAsJsonAsync($"/api/publications/{name}/render", new
+        client.PostAsJsonAsync($"/api/maps/{name}/render", new
         {
             viewport = new { minX = -10d, minY = 35d, maxX = 30d, maxY = 60d, width = 400, height = 250, crs = "EPSG:4326" },
         });
 
     [Fact]
-    public async Task Renders_a_publication_with_its_persisted_style()
+    public async Task Renders_a_map_with_its_persisted_style()
     {
         using var factory = Factory();
         using var client = factory.CreateClient();
-        await PutPublicationAsync(
+        await PutMapAsync(
             client,
             "styled",
             """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":30,"circle-opacity":1.0}}]""");
@@ -72,7 +74,7 @@ public sealed class PublicationRenderTests : IDisposable
     {
         using var factory = Factory();
         using var client = factory.CreateClient();
-        await PutPublicationAsync(client, "plain", style: null);
+        await PutMapAsync(client, "plain", style: null);
 
         var response = await RenderAsync(client, "plain");
 
@@ -85,8 +87,8 @@ public sealed class PublicationRenderTests : IDisposable
     {
         using var factory = Factory();
         using var client = factory.CreateClient();
-        await PutPublicationAsync(client, "plain", style: null);
-        await PutPublicationAsync(
+        await PutMapAsync(client, "plain", style: null);
+        await PutMapAsync(
             client,
             "loud",
             """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":40,"circle-opacity":1.0}},{"type":"background","paint":{"background-color":"#000000"}}]""");
@@ -98,7 +100,7 @@ public sealed class PublicationRenderTests : IDisposable
     }
 
     [Fact]
-    public async Task An_unknown_publication_is_not_found()
+    public async Task An_unknown_map_is_not_found()
     {
         using var factory = Factory();
         using var client = factory.CreateClient();
@@ -110,13 +112,13 @@ public sealed class PublicationRenderTests : IDisposable
         Assert.Equal("not.found", body.GetProperty("code").GetString());
     }
 
-    /// <summary>A host with an admin token and a per-test publication file.</summary>
-    private sealed class RenderFactory(string publicationsPath) : WebApplicationFactory<Program>
+    /// <summary>A host with an admin token and a per-test map file.</summary>
+    private sealed class RenderFactory(string mapsPath) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Publications:Path", publicationsPath);
+            builder.UseSetting("Spatial:Maps:Path", mapsPath);
         }
     }
 }

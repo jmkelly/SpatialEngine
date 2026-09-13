@@ -62,7 +62,7 @@ internal static class ImageService
     public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright)
     {
         var info = description.Raster;
-        var srid = MapService.SridOf(info.Crs);
+        var srid = MapServerResources.SridOf(info.Crs);
         var statistics = info.BandStatistics;
         return new EsriImageServerRoot(
             CurrentVersion,
@@ -89,7 +89,7 @@ internal static class ImageService
     /// <summary>Builds the Raster Info resource (spec §8.4.3).</summary>
     public static EsriRasterInfo Info(RasterInfo info)
     {
-        var srid = MapService.SridOf(info.Crs);
+        var srid = MapServerResources.SridOf(info.Crs);
         return new EsriRasterInfo(
             new EsriPoint(info.Extent.MinX, info.Extent.MaxY),
             info.BlockWidth > 0 ? info.BlockWidth : info.Width,
@@ -146,7 +146,7 @@ internal static class ImageService
         double x,
         double y)
     {
-        var srid = MapService.SridOf(description.Raster.Crs);
+        var srid = MapServerResources.SridOf(description.Raster.Crs);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -317,7 +317,7 @@ internal static class ImageService
 
     private static void WriteSpatialReference(Utf8JsonWriter writer, string crs)
     {
-        var srid = MapService.SridOf(crs);
+        var srid = MapServerResources.SridOf(crs);
         if (srid > 0 && WkidMap.TryFromEpsg(srid, out var wkid))
         {
             writer.WriteStartObject();

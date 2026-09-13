@@ -34,9 +34,14 @@ POST   /api/transactions/begin?store=   # -> {transaction}
 POST   /api/transactions/commit?store=  # {transaction} -> {ok}
 POST   /api/transactions/rollback?store=# {transaction} -> {ok}
 POST   /api/demo/sleep                  # {milliseconds} -> {slept}
-GET    /api/publications               # Publication[]
-PUT    /api/publications/{name}        # create/replace -> Publication
-DELETE /api/publications/{name}        # -> {deleted}
+GET    /api/maps                        # Map[]
+GET    /api/maps/{name}                 # Map
+PUT    /api/maps/{name}                 # create/replace -> Map (admin)
+DELETE /api/maps/{name}                 # -> {deleted} (admin)
+POST   /api/maps/{name}/render          # persisted layer styles -> image
+GET    /api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}  # map tile (Tiles service)
+GET    /arcgis/rest/services/{name}/ImageServer  # raster layers (Image service)
+/ogc/wms/{name} | /ogc/wfs/{name}       # OGC WMS/WFS (Wms/Wfs services)
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=
                                        # raw/multipart upload -> IngestResult;
                                        # sourceSrid reprojects via ICoordinateTransforms
@@ -74,16 +79,23 @@ POST   /arcgis/admin/uploads
 POST   /arcgis/admin/uploads/{id}/publish
 ```
 
-Publications are the neutral service model (ADR-0041): a publication is a
-named, ordered projection of datasets from one keyed store onto a protocol
-surface, with persisted stable layer ids. `GET /api/publications` and
-`GET /api/publications/{name}` are always available; `PUT`/`DELETE` and
+Maps are the neutral authoring and exposure model (ADR-0052): a named,
+ordered set of styled layers from one keyed store plus the set of services it
+exposes (Feature, Map, Tiles, Wms, Wfs, Image), with persisted stable layer
+ids. `GET /api/maps` and
+`GET /api/maps/{name}` are always available; `PUT`/`DELETE` and
 `POST /api/ingest` are mounted only when `Spatial:Admin:Token`
 (`SPATIAL_ADMIN_TOKEN`) is configured, and then require it
 (`Authorization: Bearer …` or `?token=`). The Esri admin projection at
 `Spatial:GeoServices:AdminRoot` (default `/arcgis/admin`) is the same
 capability behind a token-gated Esri error envelope; without a configured
 token it returns an actionable unavailable error.
+
+A map exposes a service only when its `Services` set contains it; the
+GeoServices catalog advertises `FeatureServer`/`MapServer`/`ImageServer` per
+enabled service, and the OGC tile/WMS/WFS routes resolve the same map. The
+pre-ADR-0052 `/api/publications` routes remain as deprecated aliases for one
+release.
 
 The GeoServices routes are the Esri boundary adapter (ADR-0035): `f=json`
 only, Esri JSON over HTTP, no core changes. Resources are requestable with
@@ -110,12 +122,13 @@ defaults to `memory` so the database-free upload path works out of the box.
 | `SPATIAL_POSTGIS_CONNECTION` | Env fallback for the connection string — the **only** secret channel |
 | `Spatial:WebRoot` | Built workbench directory; when set, `GET /` serves it |
 | `Spatial:GeoServices:Root` | GeoServices URL prefix (default `/arcgis/rest/services`) |
-| `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only); projected to declared publications at composition |
+| `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only); projected to declared Feature maps at composition |
 | `Spatial:GeoServices:AdminRoot` | Esri admin projection prefix (default `/arcgis/admin`) |
 | `Spatial:Admin:Token` | Admin token for the mutation routes; empty disables them |
 | `SPATIAL_ADMIN_TOKEN` | Env fallback for the admin token — a secret channel alongside the connection string |
-| `Spatial:Publications:Path` | Runtime publication JSON file (default `./data/publications.json`) |
-| `Spatial:Publications:Declared` | Config-seeded immutable publications (`{name, store, kind, layers[]}`) |
+| `Spatial:Maps:Path` | Runtime map JSON file (default `./data/maps.json`) |
+| `Spatial:Maps:LegacyPath` | Pre-ADR-0052 publications JSON read once for migration (default `./data/publications.json`) |
+| `Spatial:Maps:Declared` | Config-seeded immutable maps (`{name, store, services[], layers[]}`) |
 | `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` | Ingest caps and the format allowlist (ADR-0041 §6) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |

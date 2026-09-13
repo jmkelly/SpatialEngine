@@ -2,26 +2,26 @@ using Spatial.Adapter.GeoServices;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 using Spatial.Provider.ArcGisRest;
-using Spatial.Provider.Publications;
+using Spatial.Provider.Maps;
 
 namespace Spatial.Host;
 
 /// <summary>
-/// Registers the publication registry (ADR-0041 §2) and the remote ArcGIS
-/// REST consuming stores (ADR-0035). The registry's declared entries are the
-/// neutral <c>Spatial:Publications:Declared</c> list plus every legacy
-/// <c>Spatial:GeoServices:Services</c> entry projected to a Feature
-/// publication, so the config shape is preserved while every publication has
-/// stable layer ids. Split from the composition root so its fan-out stays
-/// deliberate (ADR-0040).
+/// Registers the map registry (ADR-0052 §2) and the remote ArcGIS REST
+/// consuming stores (ADR-0035). The registry's declared entries are the
+/// neutral <c>Spatial:Maps:Declared</c> list plus every legacy
+/// <c>Spatial:GeoServices:Services</c> entry projected to a Feature-only map,
+/// so the config shape is preserved while every map has stable layer ids. A
+/// pre-ADR-0052 <c>Spatial:Publications:Path</c> is read once and migrated.
+/// Split from the composition root so its fan-out stays deliberate (ADR-0040).
 /// </summary>
-internal static class PublicationServices
+internal static class MapServices
 {
     public static void Configure(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton(BuildOptions(builder.Configuration));
-        builder.Services.AddSingleton<IPublicationRegistry>(services => new PublicationRegistry(
-            services.GetRequiredService<PublicationsOptions>(),
+        builder.Services.AddSingleton<IMapRegistry>(services => new MapRegistry(
+            services.GetRequiredService<MapsOptions>(),
             (store, cancellationToken) =>
             {
                 var catalogue = services.GetKeyedService<IDataCatalogue>(store);
@@ -33,10 +33,22 @@ internal static class PublicationServices
     }
 
     /// <summary>Projects the legacy GeoServices service map plus the neutral declared list into one registry seed.</summary>
-    private static PublicationsOptions BuildOptions(Microsoft.Extensions.Configuration.ConfigurationManager configuration)
+    private static MapsOptions BuildOptions(Microsoft.Extensions.Configuration.ConfigurationManager configuration)
     {
-        var options = configuration.GetSection("Spatial:Publications").Get<PublicationsOptions>()
-            ?? new PublicationsOptions();
+        var options = configuration.GetSection("Spatial:Maps").Get<MapsOptions>()
+            ?? new MapsOptions();
+
+        // A pre-ADR-0052 publications file migrates on first read when the new
+        // path does not exist; the legacy file is never rewritten.
+        if (string.IsNullOrWhiteSpace(options.LegacyPath))
+        {
+            var legacyPath = configuration["Spatial:Publications:Path"];
+            if (!string.IsNullOrWhiteSpace(legacyPath))
+            {
+                options.LegacyPath = legacyPath;
+            }
+        }
+
         var declared = options.Declared.ToList();
         var geoServices = configuration.GetSection("Spatial:GeoServices").Get<GeoServicesOptions>() ?? new GeoServicesOptions();
         foreach (var service in geoServices.Services)
@@ -46,11 +58,11 @@ internal static class PublicationServices
                 continue;
             }
 
-            declared.Add(new DeclaredPublicationOptions
+            declared.Add(new DeclaredMapOptions
             {
                 Name = service.Name,
                 Store = service.Store,
-                Kind = nameof(PublicationKind.Feature),
+                Services = [nameof(MapService.Feature)],
             });
         }
 

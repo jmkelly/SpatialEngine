@@ -12,7 +12,7 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class MapExportEndpoints
 {
-    internal static void MapExportRoutes(RouteGroupBuilder group, GeoServicesCatalog catalog, IPublicationRegistry registry)
+    internal static void MapExportRoutes(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
         group.MapMethods("/{service}/MapServer/export", ["GET", "POST"], (
             string service, HttpContext context, IServiceProvider services, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
@@ -23,13 +23,13 @@ internal static class MapExportEndpoints
     }
 
     private static async Task<IResult> MapExport(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context, IServiceProvider services,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services,
         ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var selected = MapLayerSelection.Select(await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken), parameters.Get("layers"));
             var bbox = MapRenderEngine.ParseBbox(parameters.Get("bbox"));
             var (width, height) = MapRenderEngine.ParseSize(parameters.Get("size"));
@@ -66,12 +66,12 @@ internal static class MapExportEndpoints
     }
 
     private static async Task<IResult> MapTile(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, int z, int y, int x,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int z, int y, int x,
         HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
     {
         try
         {
-            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
             var scheme = MapServerEndpoints.MapTileScheme(services)
                 ?? throw new EsriInteropException(EsriErrorCodes.ServiceUnavailable, "No tiling scheme is configured on this host.");
@@ -123,5 +123,5 @@ internal static class MapExportEndpoints
     }
 
     private static EsriExtent ExportExtent(Envelope bounds, CoordinateReference? crs) =>
-        new(bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY, EsriLayerModel.SpatialReference(MapService.SridOf(crs?.ToString() ?? string.Empty)));
+        new(bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY, EsriLayerModel.SpatialReference(MapServerResources.SridOf(crs?.ToString() ?? string.Empty)));
 }

@@ -9,14 +9,14 @@ namespace Spatial.Adapter.GeoServices;
 /// <summary>
 /// The Image Service routes (spec §8, ADR-0051): root metadata, raster info,
 /// catalog item and listing, identify and <c>exportImage</c>. The ImageServer
-/// is the GeoServices projection of a <see cref="PublicationKind.Image"/>
+/// is the GeoServices projection of a <see cref="MapService.Image"/>
 /// publication whose layer names a dataset in the keyed <c>raster</c> store;
 /// the adapter consumes only the SDK <see cref="IRasterCatalogue"/> contract,
 /// never a NetVips type or a raster file path.
 /// </summary>
 internal static class ImageServerEndpoints
 {
-    internal static void MapImageServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IPublicationRegistry registry)
+    internal static void MapImageServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
         group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
             ImageServerRoot(catalog, registry, service, context, services, cancellationToken));
@@ -36,7 +36,7 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> ImageServerRoot(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
     {
         try
         {
@@ -52,7 +52,7 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> ImageExport(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
         IServiceProvider services, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
@@ -66,7 +66,7 @@ internal static class ImageServerEndpoints
             }
 
             var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
-            var rasterSrid = MapService.SridOf(image.Description.Raster.Crs);
+            var rasterSrid = MapServerResources.SridOf(image.Description.Raster.Crs);
             var bbox = MapRenderEngine.ParseBbox(parameters.Get("bbox"));
             var (width, height) = MapRenderEngine.ParseSize(parameters.Get("size") ?? "400,400");
             var bboxCrs = EsriValueParser.ParseSpatialReference(parameters.Get("bboxSR")) ?? CoordinateReference.Epsg(rasterSrid);
@@ -88,7 +88,7 @@ internal static class ImageServerEndpoints
             }
 
             return EsriJson.Value(ImageService.Export(
-                GeoServicesResponses.ExportHref(context), viewport, MapService.SridOf(imageCrs.ToString())));
+                GeoServicesResponses.ExportHref(context), viewport, MapServerResources.SridOf(imageCrs.ToString())));
         }
         catch (Exception exception)
         {
@@ -97,7 +97,7 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> ImageIdentify(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
         IServiceProvider services, CancellationToken cancellationToken)
     {
         try
@@ -106,7 +106,7 @@ internal static class ImageServerEndpoints
             EsriFormat.Ensure(parameters.Get("f"));
             var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
             var rasterCrs = image.Description.Raster.Crs;
-            var srid = MapService.SridOf(rasterCrs);
+            var srid = MapServerResources.SridOf(rasterCrs);
             var geometry = EsriValueParser.ParseGeometry(parameters.Require("geometry"), CoordinateReference.Epsg(srid));
             var request = new RasterIdentifyRequest(geometry, geometry.CoordinateReference?.ToString() ?? rasterCrs);
             var result = await image.Catalogue.IdentifyAsync(image.Dataset, request, cancellationToken);
@@ -120,7 +120,7 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> ImageQuery(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, HttpContext context,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
         IServiceProvider services, CancellationToken cancellationToken)
     {
         try
@@ -148,7 +148,7 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> RasterItem(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, long rasterId, HttpContext context,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
         IServiceProvider services, CancellationToken cancellationToken)
     {
         try
@@ -168,7 +168,7 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> RasterInfo(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, long rasterId, HttpContext context,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
         IServiceProvider services, CancellationToken cancellationToken)
     {
         try
@@ -188,9 +188,9 @@ internal static class ImageServerEndpoints
 
     /// <summary>Resolves the image publication, its keyed raster catalogue and the described dataset.</summary>
     private static async Task<ImageContext> ResolveImageAsync(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, IServiceProvider services, CancellationToken cancellationToken)
     {
-        var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "ImageServer", PublicationKind.Image, cancellationToken);
+        var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "ImageServer", MapService.Image, cancellationToken);
         if (resolved.Layers is not { Count: > 0 } layers)
         {
             throw EsriInteropException.Invalid(

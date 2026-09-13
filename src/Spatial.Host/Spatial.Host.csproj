@@ -16,7 +16,7 @@
     <ProjectReference Include="..\Spatial.Provider.Demo\Spatial.Provider.Demo.csproj" />
     <ProjectReference Include="..\Spatial.Provider.Memory\Spatial.Provider.Memory.csproj" />
     <ProjectReference Include="..\Spatial.Provider.PostGIS\Spatial.Provider.PostGIS.csproj" />
-    <ProjectReference Include="..\Spatial.Provider.Publications\Spatial.Provider.Publications.csproj" />
+    <ProjectReference Include="..\Spatial.Provider.Maps\Spatial.Provider.Maps.csproj" />
     <ProjectReference Include="..\Spatial.Interop.Ingest\Spatial.Interop.Ingest.csproj" />
     <ProjectReference Include="..\Spatial.Provider.ArcGisRest\Spatial.Provider.ArcGisRest.csproj" />
     <ProjectReference Include="..\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />

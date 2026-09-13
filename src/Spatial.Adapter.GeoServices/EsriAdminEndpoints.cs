@@ -13,7 +13,7 @@ namespace Spatial.Adapter.GeoServices;
 /// The Esri admin projection (ADR-0041 §5): a thin, token-gated mapping of the
 /// ArcGIS REST admin surface onto the neutral publication registry and ingest
 /// capability. It is a projection, not the model — service creation goes
-/// through <see cref="IPublicationRegistry.PutAsync"/> and uploads through
+/// through <see cref="IMapRegistry.PutAsync"/> and uploads through
 /// <see cref="IDatasetIngest"/>. Data-store registration, definitions,
 /// portal items and everything the v1.0 specification does not describe are
 /// rejected. Uploads are staged in memory with a TTL and the configured byte
@@ -22,7 +22,7 @@ namespace Spatial.Adapter.GeoServices;
 public static class EsriAdminEndpoints
 {
     /// <summary>Maps the admin projection at <see cref="EsriAdminOptions.Root"/>.</summary>
-    public static void Map(IEndpointRouteBuilder app, EsriAdminOptions options, IPublicationRegistry registry)
+    public static void Map(IEndpointRouteBuilder app, EsriAdminOptions options, IMapRegistry registry)
     {
         var staging = new EsriUploadStaging(options.UploadTtl);
         var group = app.MapGroup(options.Root);
@@ -54,38 +54,44 @@ public static class EsriAdminEndpoints
         }
     }
 
-    private static async Task<IResult> ListServicesAsync(IPublicationRegistry registry, CancellationToken token)
+    private static async Task<IResult> ListServicesAsync(IMapRegistry registry, CancellationToken token)
     {
         var services = (await registry.ListAsync(token))
-            .Where(publication => publication.Kind == PublicationKind.Feature)
-            .Select(publication => new AdminServiceEntry(publication.Name, "FeatureServer"))
+            .Where(map => map.Exposes(MapService.Feature))
+            .Select(map => new AdminServiceEntry(map.Name, "FeatureServer"))
             .ToArray();
         return EsriJson.Value(new AdminServiceList(services));
     }
 
-    private static async Task<IResult> GetServiceAsync(IPublicationRegistry registry, string service, CancellationToken token)
+    private static async Task<IResult> GetServiceAsync(IMapRegistry registry, string service, CancellationToken token)
     {
         var name = ServiceName(service);
-        var publication = await registry.GetAsync(name, token);
-        var layers = publication.Layers
+        var map = await registry.GetAsync(name, token);
+        if (!map.Exposes(MapService.Feature))
+        {
+            throw EsriInteropException.Invalid($"Map '{name}' does not expose a FeatureServer.");
+        }
+
+        var layers = map.Layers
+            .Where(layer => layer.Kind == MapLayerKind.Feature)
             .Select(layer => new AdminLayer(layer.LayerId, layer.Name ?? layer.Dataset, layer.Dataset))
             .ToArray();
-        return EsriJson.Value(new AdminService(name, "FeatureServer", publication.Store, layers));
+        return EsriJson.Value(new AdminService(name, "FeatureServer", map.Store, layers));
     }
 
     private static async Task<IResult> CreateServiceAsync(
-        IPublicationRegistry registry, string service, HttpContext context, CancellationToken token)
+        IMapRegistry registry, string service, HttpContext context, CancellationToken token)
     {
         var name = ServiceName(service);
         var form = await context.Request.ReadFormAsync(token);
         var store = Form(form, "store", context) ?? throw EsriInteropException.Invalid("A 'store' is required.");
         var dataset = Form(form, "dataset", context) ?? throw EsriInteropException.Invalid("A 'dataset' is required.");
-        var publication = new Publication(name, PublicationKind.Feature, store, [new PublicationLayer(dataset, -1)]);
-        var stored = await registry.PutAsync(publication, token);
+        var map = new Map(name, store, [new MapLayer(dataset, -1)], [MapService.Feature]);
+        var stored = await registry.PutAsync(map, token);
         return EsriJson.Value(new AdminSuccess(true, name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
     }
 
-    private static async Task<IResult> DeleteServiceAsync(IPublicationRegistry registry, string service, CancellationToken token)
+    private static async Task<IResult> DeleteServiceAsync(IMapRegistry registry, string service, CancellationToken token)
     {
         var name = ServiceName(service);
         return EsriJson.Value(new AdminSuccess(await registry.DeleteAsync(name, token), name, []));
@@ -116,15 +122,15 @@ public static class EsriAdminEndpoints
     }
 
     private static async Task<IResult> PublishAsync(
-        IPublicationRegistry registry, EsriUploadStaging staging, string id, HttpContext context, CancellationToken token)
+        IMapRegistry registry, EsriUploadStaging staging, string id, HttpContext context, CancellationToken token)
     {
         var staged = staging.Take(id) ?? throw EsriInteropException.Invalid($"The staged upload '{id}' does not exist or has expired.");
         var form = await context.Request.ReadFormAsync(token);
         var name = Form(form, "name", context)
             ?? Query(context.Request.Query, "name")
             ?? throw EsriInteropException.Invalid("A 'name' is required to publish the upload.");
-        var publication = new Publication(name, PublicationKind.Feature, staged.Store, [new PublicationLayer(staged.Outcome.Dataset, -1)]);
-        var stored = await registry.PutAsync(publication, token);
+        var map = new Map(name, staged.Store, [new MapLayer(staged.Outcome.Dataset, -1)], [MapService.Feature]);
+        var stored = await registry.PutAsync(map, token);
         return EsriJson.Value(new AdminSuccess(true, stored.Name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
     }
 

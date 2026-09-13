@@ -13,7 +13,7 @@ namespace Spatial.Adapter.GeoServices;
 /// simple <c>drawingInfo</c>. No spatial algorithm lives here; the adapter
 /// delegates geometry work to the engine verbs.
 /// </summary>
-internal static class MapService
+internal static class MapServerResources
 {
     public const double CurrentVersion = 10.0;
 
