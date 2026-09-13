@@ -20,67 +20,78 @@ namespace Spatial.Adapter.GeoServices;
 internal static class FeatureEditEngine
 {
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
-    public static async Task<IResult> EditsAsync(
+    public static Task<IResult> EditsAsync(
         EsriEditOperation operation,
         DatasetDescription dataset,
         IFeatureStore store,
         IFeatureEditStore editStore,
         EsriEditRequest request,
         CoordinateReference? layerCrs,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken) =>
+        EditsAsync(new EditInvocation(operation, dataset, store, editStore, request, layerCrs), cancellationToken);
+
+    /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
+    public static async Task<IResult> EditsAsync(EditInvocation invocation, CancellationToken cancellationToken)
     {
-        var scheme = EsriObjectIdScheme.For(dataset);
+        cancellationToken.ThrowIfCancellationRequested();
+        var scheme = EsriObjectIdScheme.For(invocation.Dataset);
         if (!scheme.SupportsEditing)
         {
             throw EsriInteropException.Invalid(
-                $"Layer '{dataset.Id}' has no integer identity column, so it cannot be edited.");
+                $"Layer '{invocation.Dataset.Id}' has no integer identity column, so it cannot be edited.");
         }
 
-        var results = await RunAsync(operation, dataset, store, editStore, scheme, request, layerCrs, cancellationToken);
-        return WriteEdits(operation, results);
+        var results = await RunAsync(invocation.Operation, EditSession.Start(invocation, scheme, cancellationToken), invocation.Request);
+        return WriteEdits(invocation.Operation, results);
     }
 
-    private static async Task<EditResults> RunAsync(
-        EsriEditOperation operation,
-        DatasetDescription dataset,
-        IFeatureStore store,
-        IFeatureEditStore editStore,
-        EsriObjectIdScheme scheme,
-        EsriEditRequest request,
-        CoordinateReference? layerCrs,
-        CancellationToken cancellationToken)
+    private static async Task<EditResults> RunAsync(EsriEditOperation operation, EditSession session, EsriEditRequest request)
     {
-        var transactions = request.RollbackOnFailure ? store as ITransactionStore : null;
-        var handle = transactions is null ? null : await transactions.BeginAsync(cancellationToken);
+        session.ThrowIfCancelled();
+        var transactions = request.RollbackOnFailure ? session.Store as ITransactionStore : null;
+        var handle = transactions is null ? null : await transactions.BeginAsync(session.CancellationToken);
+        var active = handle is null ? session : session.WithTransaction(handle);
         try
         {
             var results = new EditResults();
-            if (operation is EsriEditOperation.Add or EsriEditOperation.Apply)
-            {
-                results.Adds = await AddRangeAsync(dataset, editStore, scheme, request.Adds, layerCrs, handle, cancellationToken);
-            }
-
-            if (operation is EsriEditOperation.Update or EsriEditOperation.Apply)
-            {
-                results.Updates = await UpdateRangeAsync(dataset, store, editStore, scheme, request.Updates, layerCrs, handle, cancellationToken);
-            }
-
-            if (operation is EsriEditOperation.Delete or EsriEditOperation.Apply)
-            {
-                results.Deletes = await DeleteRangeAsync(dataset, store, editStore, scheme, request, handle, cancellationToken);
-            }
-
-            await FinishAsync(transactions, handle, results, cancellationToken);
+            await RunAddsAsync(operation, active, request, results);
+            await RunUpdatesAsync(operation, active, request, results);
+            await RunDeletesAsync(operation, active, request, results);
+            await FinishAsync(transactions, handle, results, session.CancellationToken);
             return results;
         }
         catch
         {
             if (transactions is not null && handle is not null)
             {
-                await SafeRollbackAsync(transactions, handle, cancellationToken);
+                await SafeRollbackAsync(transactions, handle, session.CancellationToken);
             }
 
             throw;
+        }
+    }
+
+    private static async Task RunAddsAsync(EsriEditOperation operation, EditSession session, EsriEditRequest request, EditResults results)
+    {
+        if (operation is EsriEditOperation.Add or EsriEditOperation.Apply)
+        {
+            results.Adds = await AddRangeAsync(session, request.Adds);
+        }
+    }
+
+    private static async Task RunUpdatesAsync(EsriEditOperation operation, EditSession session, EsriEditRequest request, EditResults results)
+    {
+        if (operation is EsriEditOperation.Update or EsriEditOperation.Apply)
+        {
+            results.Updates = await UpdateRangeAsync(session, request.Updates);
+        }
+    }
+
+    private static async Task RunDeletesAsync(EsriEditOperation operation, EditSession session, EsriEditRequest request, EditResults results)
+    {
+        if (operation is EsriEditOperation.Delete or EsriEditOperation.Apply)
+        {
+            results.Deletes = await DeleteRangeAsync(session, request);
         }
     }
 
@@ -103,15 +114,9 @@ internal static class FeatureEditEngine
         }
     }
 
-    private static async Task<List<EsriEditResult>> AddRangeAsync(
-        DatasetDescription dataset,
-        IFeatureEditStore editStore,
-        EsriObjectIdScheme scheme,
-        IReadOnlyList<JsonElement> adds,
-        CoordinateReference? layerCrs,
-        string? transaction,
-        CancellationToken cancellationToken)
+    private static async Task<List<EsriEditResult>> AddRangeAsync(EditSession session, IReadOnlyList<JsonElement> adds)
     {
+        session.ThrowIfCancelled();
         var results = new EsriEditResult?[adds.Count];
         var features = new List<Feature>(adds.Count);
         var positions = new List<int>(adds.Count);
@@ -119,7 +124,7 @@ internal static class FeatureEditEngine
         {
             try
             {
-                features.Add(BuildAdd(adds[i], dataset, layerCrs));
+                features.Add(BuildAdd(adds[i], session));
                 positions.Add(i);
             }
             catch (Exception exception) when (IsFeatureFailure(exception))
@@ -130,105 +135,79 @@ internal static class FeatureEditEngine
 
         if (features.Count > 0)
         {
-            var outcomes = await editStore.AddAsync(
-                dataset.Id, new FeatureBatch((FeatureSchema)dataset.Schema, features), transaction, cancellationToken);
-            ApplyOutcomes(outcomes, positions, results, scheme);
+            var outcomes = await session.EditStore.AddAsync(
+                session.Dataset.Id, new FeatureBatch((FeatureSchema)session.Dataset.Schema, features), session.Transaction, session.CancellationToken);
+            ApplyOutcomes(outcomes, positions, results, session.Scheme);
         }
 
         return Finalise(results);
     }
 
-    private static async Task<List<EsriEditResult>> UpdateRangeAsync(
-        DatasetDescription dataset,
-        IFeatureStore store,
-        IFeatureEditStore editStore,
-        EsriObjectIdScheme scheme,
-        IReadOnlyList<JsonElement> updates,
-        CoordinateReference? layerCrs,
-        string? transaction,
-        CancellationToken cancellationToken)
+    private static async Task<List<EsriEditResult>> UpdateRangeAsync(EditSession session, IReadOnlyList<JsonElement> updates)
     {
+        session.ThrowIfCancelled();
         if (updates.Count == 0)
         {
             return [];
         }
 
-        var results = new EsriEditResult?[updates.Count];
-        var objectIds = new long[updates.Count];
-        var resolved = new bool[updates.Count];
-        var requested = new List<long>(updates.Count);
-        ReadObjectIds(updates, requested, objectIds, resolved, results);
+        var work = new UpdateWorklist(updates);
+        ReadObjectIds(work);
 
-        var existing = await ResolveAsync(dataset, store, scheme, requested, cancellationToken);
-        var features = new List<Feature>(updates.Count);
-        var positions = new List<int>(updates.Count);
-        BuildUpdates(updates, existing, objectIds, resolved, dataset, layerCrs, features, positions, results);
+        work.Existing = await ResolveAsync(session, work.Requested);
+        BuildUpdates(session, work);
 
-        if (features.Count > 0)
+        if (work.Features.Count > 0)
         {
-            var outcomes = await editStore.UpdateAsync(
-                dataset.Id, new FeatureBatch((FeatureSchema)dataset.Schema, features), transaction, cancellationToken);
-            ApplyOutcomes(outcomes, positions, results, scheme);
+            var outcomes = await session.EditStore.UpdateAsync(
+                session.Dataset.Id, new FeatureBatch((FeatureSchema)session.Dataset.Schema, work.Features), session.Transaction, session.CancellationToken);
+            ApplyOutcomes(outcomes, work.Positions, work.Results, session.Scheme);
         }
 
-        return Finalise(results);
+        return Finalise(work.Results);
     }
 
     /// <summary>Reads the requested OBJECTIDs, recording a failure for each malformed entry.</summary>
-    private static void ReadObjectIds(
-        IReadOnlyList<JsonElement> updates,
-        List<long> requested,
-        long[] objectIds,
-        bool[] resolved,
-        EsriEditResult?[] results)
+    private static void ReadObjectIds(UpdateWorklist work)
     {
-        for (var i = 0; i < updates.Count; i++)
+        for (var i = 0; i < work.Updates.Count; i++)
         {
             try
             {
-                objectIds[i] = ReadObjectId(updates[i]);
-                resolved[i] = true;
-                requested.Add(objectIds[i]);
+                work.ObjectIds[i] = ReadObjectId(work.Updates[i]);
+                work.Resolved[i] = true;
+                work.Requested.Add(work.ObjectIds[i]);
             }
             catch (Exception exception) when (IsFeatureFailure(exception))
             {
-                results[i] = ToFailure(exception);
+                work.Results[i] = ToFailure(exception);
             }
         }
     }
 
     /// <summary>Builds the update features, recording a failure for each unresolvable or malformed entry.</summary>
-    private static void BuildUpdates(
-        IReadOnlyList<JsonElement> updates,
-        Dictionary<long, Feature> existing,
-        long[] objectIds,
-        bool[] resolved,
-        DatasetDescription dataset,
-        CoordinateReference? layerCrs,
-        List<Feature> features,
-        List<int> positions,
-        EsriEditResult?[] results)
+    private static void BuildUpdates(EditSession session, UpdateWorklist work)
     {
-        for (var i = 0; i < updates.Count; i++)
+        for (var i = 0; i < work.Updates.Count; i++)
         {
-            if (!resolved[i])
+            if (!work.Resolved[i])
             {
                 continue;
             }
 
             try
             {
-                if (!existing.TryGetValue(objectIds[i], out var feature))
+                if (!work.Existing.TryGetValue(work.ObjectIds[i], out var feature))
                 {
-                    throw EsriInteropException.Invalid($"No feature has OBJECTID {objectIds[i]} in layer '{dataset.Id}'.");
+                    throw EsriInteropException.Invalid($"No feature has OBJECTID {work.ObjectIds[i]} in layer '{session.Dataset.Id}'.");
                 }
 
-                features.Add(BuildUpdate(updates[i], feature, dataset.Schema, layerCrs));
-                positions.Add(i);
+                work.Features.Add(BuildUpdate(work.Updates[i], feature, session));
+                work.Positions.Add(i);
             }
             catch (Exception exception) when (IsFeatureFailure(exception))
             {
-                results[i] = ToFailure(exception);
+                work.Results[i] = ToFailure(exception);
             }
         }
     }
@@ -243,19 +222,13 @@ internal static class FeatureEditEngine
         }
     }
 
-    private static async Task<List<EsriEditResult>> DeleteRangeAsync(
-        DatasetDescription dataset,
-        IFeatureStore store,
-        IFeatureEditStore editStore,
-        EsriObjectIdScheme scheme,
-        EsriEditRequest request,
-        string? transaction,
-        CancellationToken cancellationToken)
+    private static async Task<List<EsriEditResult>> DeleteRangeAsync(EditSession session, EsriEditRequest request)
     {
+        session.ThrowIfCancelled();
         var targetIds = request.Deletes;
         if (request.DeleteWhere is { } where)
         {
-            targetIds = await MatchIdsAsync(dataset, store, scheme, where, cancellationToken);
+            targetIds = await MatchIdsAsync(session, where);
         }
 
         var results = new EsriEditResult?[targetIds.Count];
@@ -264,7 +237,7 @@ internal static class FeatureEditEngine
             return [];
         }
 
-        var existing = await ResolveAsync(dataset, store, scheme, targetIds, cancellationToken);
+        var existing = await ResolveAsync(session, targetIds);
         var ids = new List<FeatureId>(targetIds.Count);
         var positions = new List<int>(targetIds.Count);
         for (var i = 0; i < targetIds.Count; i++)
@@ -277,33 +250,29 @@ internal static class FeatureEditEngine
             else
             {
                 results[i] = ToFailure(EsriInteropException.Invalid(
-                    $"No feature has OBJECTID {targetIds[i]} in layer '{dataset.Id}'."));
+                    $"No feature has OBJECTID {targetIds[i]} in layer '{session.Dataset.Id}'."));
             }
         }
 
         if (ids.Count > 0)
         {
-            var outcomes = await editStore.DeleteAsync(dataset.Id, ids, transaction, cancellationToken);
-            ApplyOutcomes(outcomes, positions, results, scheme);
+            var outcomes = await session.EditStore.DeleteAsync(session.Dataset.Id, ids, session.Transaction, session.CancellationToken);
+            ApplyOutcomes(outcomes, positions, results, session.Scheme);
         }
 
         return Finalise(results);
     }
 
-    private static async Task<List<long>> MatchIdsAsync(
-        DatasetDescription dataset,
-        IFeatureStore store,
-        EsriObjectIdScheme scheme,
-        EsriFilterClause where,
-        CancellationToken cancellationToken)
+    private static async Task<List<long>> MatchIdsAsync(EditSession session, EsriFilterClause where)
     {
-        var batches = await store.ScanAsync(dataset.Id, cancellationToken);
+        var batches = await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken);
         var ids = new List<long>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
+            session.ThrowIfCancelled();
             ordinal++;
-            if (!scheme.TryResolve(feature, ordinal, out var objectId))
+            if (!session.Scheme.TryResolve(feature, ordinal, out var objectId))
             {
                 continue;
             }
@@ -317,19 +286,16 @@ internal static class FeatureEditEngine
         return ids;
     }
 
-    private static async Task<Dictionary<long, Feature>> IndexAsync(
-        DatasetDescription dataset,
-        IFeatureStore store,
-        EsriObjectIdScheme scheme,
-        CancellationToken cancellationToken)
+    private static async Task<Dictionary<long, Feature>> IndexAsync(EditSession session)
     {
-        var batches = await store.ScanAsync(dataset.Id, cancellationToken);
+        var batches = await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken);
         var index = new Dictionary<long, Feature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
+            session.ThrowIfCancelled();
             ordinal++;
-            if (scheme.TryResolve(feature, ordinal, out var objectId))
+            if (session.Scheme.TryResolve(feature, ordinal, out var objectId))
             {
                 index[objectId] = feature;
             }
@@ -344,16 +310,11 @@ internal static class FeatureEditEngine
     /// identities are fetched in one targeted read; otherwise the dataset is
     /// scanned and indexed exactly as before.
     /// </summary>
-    private static async Task<Dictionary<long, Feature>> ResolveAsync(
-        DatasetDescription dataset,
-        IFeatureStore store,
-        EsriObjectIdScheme scheme,
-        IReadOnlyList<long> objectIds,
-        CancellationToken cancellationToken)
+    private static async Task<Dictionary<long, Feature>> ResolveAsync(EditSession session, IReadOnlyList<long> objectIds)
     {
-        if (store is not IFeatureLookup lookup)
+        if (session.Store is not IFeatureLookup lookup)
         {
-            return await IndexAsync(dataset, store, scheme, cancellationToken);
+            return await IndexAsync(session);
         }
 
         var distinct = objectIds.Distinct().ToArray();
@@ -362,7 +323,7 @@ internal static class FeatureEditEngine
             return [];
         }
 
-        var found = await lookup.GetAsync(dataset.Id, distinct.Select(EsriObjectIdScheme.ToFeatureId).ToArray(), cancellationToken);
+        var found = await lookup.GetAsync(session.Dataset.Id, distinct.Select(EsriObjectIdScheme.ToFeatureId).ToArray(), session.CancellationToken);
         var byId = new Dictionary<FeatureId, Feature>(found.Count);
         foreach (var feature in found)
         {
@@ -381,9 +342,9 @@ internal static class FeatureEditEngine
         return index;
     }
 
-    private static Feature BuildAdd(JsonElement element, DatasetDescription dataset, CoordinateReference? layerCrs)
+    private static Feature BuildAdd(JsonElement element, EditSession session)
     {
-        var schema = dataset.Schema;
+        var schema = session.Dataset.Schema;
         var attributes = Property(element, "attributes");
         var geometry = Property(element, "geometry");
         var geometryIndex = FeatureGeometry.Index(schema);
@@ -393,11 +354,11 @@ internal static class FeatureEditEngine
         {
             if (i == geometryIndex)
             {
-                values[i] = ReadGeometry(geometry, layerCrs);
+                values[i] = ReadGeometry(geometry, session.LayerCrs);
                 continue;
             }
 
-            var isIdentity = dataset.IdColumns.Contains(schema[i].Name, StringComparer.Ordinal);
+            var isIdentity = session.Dataset.IdColumns.Contains(schema[i].Name, StringComparer.Ordinal);
             if (isIdentity && !HasValue(attributes, schema[i].Name))
             {
                 // The client omitted OBJECTID: a placeholder the store replaces with
@@ -420,8 +381,9 @@ internal static class FeatureEditEngine
         && attributes.TryGetProperty(name, out var value)
         && value.ValueKind != JsonValueKind.Null;
 
-    private static Feature BuildUpdate(JsonElement element, Feature existing, FeatureSchema schema, CoordinateReference? layerCrs)
+    private static Feature BuildUpdate(JsonElement element, Feature existing, EditSession session)
     {
+        var schema = (FeatureSchema)session.Dataset.Schema;
         var attributes = Property(element, "attributes");
         var geometry = Property(element, "geometry");
         var geometryIndex = FeatureGeometry.Index(schema);
@@ -432,7 +394,7 @@ internal static class FeatureEditEngine
             {
                 if (geometry.ValueKind == JsonValueKind.Object)
                 {
-                    values[i] = AttributeValue.FromGeometry(EsriGeometryCodec.Decode(geometry, layerCrs));
+                    values[i] = AttributeValue.FromGeometry(EsriGeometryCodec.Decode(geometry, session.LayerCrs));
                 }
                 else if (geometry.ValueKind == JsonValueKind.Null)
                 {
@@ -525,6 +487,106 @@ internal static class FeatureEditEngine
         {
             // The original failure is the actionable one; a rollback failure must not mask it.
         }
+    }
+
+    /// <summary>
+    /// One Feature Service edit invocation: which operation runs against
+    /// which layer, store and request. The parameter object keeps the engine
+    /// entry point readable now that the session carries the rest.
+    /// </summary>
+    internal sealed record EditInvocation(
+        EsriEditOperation Operation,
+        DatasetDescription Dataset,
+        IFeatureStore Store,
+        IFeatureEditStore EditStore,
+        EsriEditRequest Request,
+        CoordinateReference? LayerCrs);
+
+    /// <summary>
+    /// The ambient state one edit runs with: the layer, its stores, the
+    /// object-id scheme, the open transaction (when the request asked for
+    /// <c>rollbackOnFailure</c> and the store supports it) and the caller's
+    /// cancellation token. Threading one value instead of seven parameters
+    /// keeps each range builder small enough to read at a glance.
+    /// </summary>
+    private sealed class EditSession
+    {
+        private EditSession(
+            DatasetDescription dataset,
+            IFeatureStore store,
+            IFeatureEditStore editStore,
+            EsriObjectIdScheme scheme,
+            CoordinateReference? layerCrs,
+            string? transaction,
+            CancellationToken cancellationToken)
+        {
+            Dataset = dataset;
+            Store = store;
+            EditStore = editStore;
+            Scheme = scheme;
+            LayerCrs = layerCrs;
+            Transaction = transaction;
+            CancellationToken = cancellationToken;
+        }
+
+        public DatasetDescription Dataset { get; }
+
+        public IFeatureStore Store { get; }
+
+        public IFeatureEditStore EditStore { get; }
+
+        public EsriObjectIdScheme Scheme { get; }
+
+        public CoordinateReference? LayerCrs { get; }
+
+        public string? Transaction { get; }
+
+        public CancellationToken CancellationToken { get; }
+
+        public static EditSession Start(EditInvocation invocation, EsriObjectIdScheme scheme, CancellationToken cancellationToken) =>
+            new(invocation.Dataset, invocation.Store, invocation.EditStore, scheme, invocation.LayerCrs, null, cancellationToken);
+
+        /// <summary>The same session inside the store transaction the batch runs under.</summary>
+        public EditSession WithTransaction(string? handle) =>
+            new(Dataset, Store, EditStore, Scheme, LayerCrs, handle, CancellationToken);
+
+        /// <summary>Aborts the edit promptly when the caller has gone away.</summary>
+        public void ThrowIfCancelled() => CancellationToken.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>
+    /// The mutable accumulator an update batch builds: the requested
+    /// OBJECTIDs, the resolved features and the per-position outputs.
+    /// Grouping them keeps <c>BuildUpdates</c> to two parameters.
+    /// </summary>
+    private sealed class UpdateWorklist
+    {
+        public UpdateWorklist(IReadOnlyList<JsonElement> updates)
+        {
+            Updates = updates;
+            ObjectIds = new long[updates.Count];
+            Resolved = new bool[updates.Count];
+            Requested = new List<long>(updates.Count);
+            Features = new List<Feature>(updates.Count);
+            Positions = new List<int>(updates.Count);
+            Results = new EsriEditResult?[updates.Count];
+        }
+
+        public IReadOnlyList<JsonElement> Updates { get; }
+
+        public long[] ObjectIds { get; }
+
+        public bool[] Resolved { get; }
+
+        public List<long> Requested { get; }
+
+        public Dictionary<long, Feature> Existing { get; set; } = [];
+
+        public List<Feature> Features { get; }
+
+        public List<int> Positions { get; }
+
+        public EsriEditResult?[] Results { get; }
     }
 
     private sealed class EditResults
