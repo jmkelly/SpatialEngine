@@ -50,7 +50,8 @@ internal sealed record EsriMapLayer(
     int ParentLayerId,
     bool DefaultVisibility,
     bool HasAttachments,
-    string HtmlPopupType);
+    string HtmlPopupType,
+    IReadOnlyDictionary<string, EsriDomain>? Domains = null);
 
 /// <summary>The <c>layers</c> resource (spec §4.8): every layer reference.</summary>
 internal sealed record EsriMapLayersResponse(
@@ -79,11 +80,33 @@ internal sealed record EsriPoint(double X, double Y);
 /// <summary>The MapServer <c>export</c> JSON response (spec §4.0.4); the image itself is at <c>href</c>.</summary>
 internal sealed record EsriMapExportResponse(string? Href, int Width, int Height, EsriExtent Extent, double Scale);
 
-/// <summary>One layer's persisted-style projection (spec §12–15): a simple renderer only.</summary>
-internal sealed record EsriDrawingInfo(EsriRenderer Renderer);
+/// <summary>One layer's persisted-style projection (spec §12–15): a renderer and optional label classes.</summary>
+internal sealed record EsriDrawingInfo(EsriRenderer Renderer, IReadOnlyList<EsriLabelClass>? LabelingInfo = null);
 
-/// <summary>An Esri renderer; the facade produces only the <c>simple</c> type.</summary>
-internal sealed record EsriRenderer(string Type, EsriSymbol Symbol);
+/// <summary>
+/// An Esri renderer (spec §15). Only the members the projected renderer type
+/// needs are emitted; the serializer drops nulls. The adapter produces
+/// <c>simple</c>, <c>uniqueValue</c> and <c>classBreaks</c>.
+/// </summary>
+internal sealed record EsriRenderer(
+    string Type,
+    EsriSymbol? Symbol = null,
+    string? Field = null,
+    double? MinValue = null,
+    IReadOnlyList<EsriClassBreakInfo>? ClassBreakInfos = null,
+    string? Field1 = null,
+    string? Field2 = null,
+    string? Field3 = null,
+    string? FieldDelimiter = null,
+    EsriSymbol? DefaultSymbol = null,
+    string? DefaultLabel = null,
+    IReadOnlyList<EsriUniqueValueInfo>? UniqueValueInfos = null);
+
+/// <summary>One class-break entry (spec §15.3).</summary>
+internal sealed record EsriClassBreakInfo(double ClassMaxValue, EsriSymbol Symbol, string? Label = null, string? Description = null);
+
+/// <summary>One unique-value entry (spec §15.2).</summary>
+internal sealed record EsriUniqueValueInfo(string Value, EsriSymbol Symbol, string? Label = null, string? Description = null);
 
 /// <summary>
 /// An Esri simple-fill / simple-line / simple-marker symbol. Only the members
@@ -99,3 +122,39 @@ internal sealed record EsriSymbol(
 
 /// <summary>A symbol outline (Esri simple line symbol) for fill and marker symbols.</summary>
 internal sealed record EsriSymbolOutline(string Type, string Style, IReadOnlyList<int> Color, double Width);
+
+/// <summary>A domain object (spec §13): a coded value set or a numeric range.</summary>
+internal sealed record EsriDomain(
+    string Type,
+    string? Name = null,
+    IReadOnlyList<EsriCodedValue>? CodedValues = null,
+    IReadOnlyList<double>? Range = null);
+
+/// <summary>One name/code pair in a coded-value domain (spec §13.2).</summary>
+internal sealed record EsriCodedValue(string Name, object Code);
+
+/// <summary>One label class (spec §14.2).</summary>
+internal sealed record EsriLabelClass(
+    string LabelPlacement,
+    string LabelExpression,
+    bool UseCodedValues,
+    EsriTextSymbol Symbol,
+    double MinScale,
+    double MaxScale);
+
+/// <summary>A text symbol used by a label class (spec §12.7).</summary>
+internal sealed record EsriTextSymbol(
+    string Type,
+    IReadOnlyList<int>? Color,
+    IReadOnlyList<int>? BackgroundColor,
+    IReadOnlyList<int>? BorderLineColor,
+    string VerticalAlignment,
+    string HorizontalAlignment,
+    bool RightToLeft,
+    double Angle,
+    double XOffset,
+    double YOffset,
+    EsriFont Font);
+
+/// <summary>The font of a text symbol (spec §12.7).</summary>
+internal sealed record EsriFont(string Family, double Size, string Style, string Weight, string Decoration);

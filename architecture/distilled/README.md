@@ -99,6 +99,7 @@ shape is noted in brackets.
 | 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
 | 0048 | A MapServer is a projection of a Map publication over the SDK render and tile contracts. |
 | 0049 | Labels/symbols shape with HarfBuzz over an embedded pinned font and draw embedded SVG sprites; deterministic collision; new Skia.HarfBuzz/Svg.Skia packages are allowlisted. |
+| 0050 | Rich MapServer renderers, labels and domains are an adapter projection of the persisted MapLibre style; §4.7 images are a typed `not.found`. |
 
 ## How to change the architecture
 

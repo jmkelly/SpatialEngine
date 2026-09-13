@@ -134,12 +134,12 @@ and date encoding differ.
 
 | Service | Spec | Engine |
 | --- | --- | --- |
-| Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a simple `drawingInfo`. The image (§4.7) resource and rich renderers (class breaks, unique value, labels) remain absent |
+| Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a `simple`/`uniqueValue`/`classBreaks` `drawingInfo`, `labelingInfo` and `domains` derived from the persisted MapLibre fragment (ADR-0050). The image (§4.7) resource is mounted and returns a typed `not.found`: it exists only for picture marker/fill symbols, which the engine's dialect has no model for |
 | Geocode Service (§5) | — | Absent |
 | GP Service (§6): tasks, `submitJob`, job polling, results | — | Absent; no job model (ADR-0033 removed jobs) |
 | Image Service (§8): export, raster functions, download | — | Explicitly out of scope (ADR-0035: no raster pipeline) |
 | Geometry objects (§10) | point/polyline/polygon/envelope, Z/M absent | Superset — engine also has multipoint, multi-\*, geometry collection, Z/M |
-| Symbol/renderer/label/domain objects (§12–15) | Map-render oriented | Absent (client-side MapLibre concern) |
+| Symbol/renderer/label/domain objects (§12–15) | Map-render oriented | **Projected** from the persisted MapLibre fragment and the catalogue schema (ADR-0050): `esriSFS`/`esriSLS`/`esriSMS` symbols, `simple`/`uniqueValue`/`classBreaks` renderers, the single-field `esriTS` label subset, and coded-value/range domains. Picture symbols (`esriPMS`/`esriPFS`) remain absent — the §4.7 image resource is a typed `not.found` |
 
 ## 5. Architectural fit
 

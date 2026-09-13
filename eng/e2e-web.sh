@@ -36,6 +36,13 @@ Spatial__Publications__Declared__0__Name=world \
   Spatial__Publications__Declared__0__Layers__0__LayerId=0 \
   Spatial__Publications__Declared__0__Layers__0__Name=Cities \
   Spatial__Publications__Declared__0__Layers__0__Style='[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":6,"circle-opacity":1.0}}]' \
+  Spatial__Publications__Declared__1__Name=rich \
+  Spatial__Publications__Declared__1__Store=demo \
+  Spatial__Publications__Declared__1__Kind=Map \
+  Spatial__Publications__Declared__1__Layers__0__Dataset=demo.cities \
+  Spatial__Publications__Declared__1__Layers__0__LayerId=0 \
+  Spatial__Publications__Declared__1__Layers__0__Name=Cities \
+  Spatial__Publications__Declared__1__Layers__0__Style='[{"type":"circle","filter":["all",[">=","population",0],["<","population",1000000]],"paint":{"circle-color":"#ffffcc","circle-radius":4}},{"type":"circle","filter":["all",[">=","population",1000000],["<","population",100000000]],"paint":{"circle-color":"#ff0000","circle-radius":8}},{"type":"symbol","layout":{"text-field":["get","name"],"text-size":11},"paint":{"text-color":"#262626"}}]' \
   ASPNETCORE_URLS="$HOST_URL" \
   dotnet run --project src/Spatial.Host --no-build --no-launch-profile --urls "$HOST_URL" >"$HOST_LOG" 2>&1 &
 PID=$!
