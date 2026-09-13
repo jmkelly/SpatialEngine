@@ -155,6 +155,10 @@ public sealed class PostgisEditStore : IFeatureEditStore
         {
             return FeatureEditOutcome.Failure(feature.Id, SpatialException.InvalidArguments, exception.MessageText);
         }
+        catch (SpatialException exception)
+        {
+            return FeatureEditOutcome.Failure(feature.Id, exception.Code, exception.Message);
+        }
     }
 
     private static async Task<FeatureEditOutcome> DeleteFeatureAsync(

@@ -94,14 +94,20 @@ internal static class PostgisQueries
         return $"INSERT INTO {dataset.QuoteQualified()} ({names}) VALUES ({values}) RETURNING {returning}";
     }
 
-    /// <summary>Updates one feature in place, targeting its identity columns (ADR-0037).</summary>
+    /// <summary>
+    /// Updates one feature in place. The identity predicate binds to parameters
+    /// appended after the SET values (ADR-0037): the row is matched by the
+    /// feature's pre-edit identity (<see cref="FeatureId"/>), never by the new
+    /// attribute values, so re-keying an identity column cannot retarget the
+    /// update onto a different row.
+    /// </summary>
     public static string Update(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
     {
         var sets = string.Join(", ", schema.Fields.Select((field, i) =>
             field.Kind == AttributeKind.Geometry
                 ? $"\"{field.Name}\" = ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})"
                 : $"\"{field.Name}\" = @p{i}"));
-        var predicate = string.Join(" AND ", identityColumns.Select(column => $"\"{column}\" = @p{schema.IndexOf(column)}"));
+        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{schema.Count + i}"));
         return $"UPDATE {dataset.QuoteQualified()} SET {sets} WHERE {predicate}";
     }
 

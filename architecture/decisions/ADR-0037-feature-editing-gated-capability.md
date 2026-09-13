@@ -74,6 +74,11 @@ attachment model).
   read-by-id optimisation (`IFeatureLookup`), so the facade resolves edits
   through one identity-targeted read instead of scanning the whole dataset;
   stores without the capability keep the scan fallback.
+- An update matches its row by the feature's pre-edit identity
+  (`Feature.Id`, bound after the SET parameters), never by the new
+  identity-attribute values, so re-keying an identity column reports a
+  per-feature constraint failure instead of retargeting the update onto a
+  different row (fixed under T-002).
 - Adds to a serial-identity table require the client to supply the identity
   (the engine `Feature` model has no "unassigned" state). A future
   `IFeatureEditStore` revision may add an explicit "omit identity on insert"
