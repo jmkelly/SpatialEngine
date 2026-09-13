@@ -38,15 +38,52 @@ public static class ProjectCommands
         _ => throw new CliUsageException($"Unknown command '{context.Command}'."),
     };
 
-    private static Task<int> InitAsync(CliContext context) =>
-        throw new CliUsageException("'project init' is not implemented yet.");
+    private static Task<int> InitAsync(CliContext context)
+    {
+        var path = context.Settings.ProjectPath;
+        RefuseOverwrite(path, context.Arguments.Has("force"));
+        SpatialProjectFile.Save(path, SpatialProjectFile.Starter());
+        context.Output.Result(context.Command, new { path }, path);
+        return Task.FromResult(ExitCodes.Success);
+    }
 
-    private static Task<int> PlanAsync(CliContext context) =>
-        throw new CliUsageException("'project plan' is not implemented yet.");
+    private static async Task<int> PlanAsync(CliContext context)
+    {
+        var project = SpatialProjectFile.Load(context.Settings.ProjectPath);
+        var plan = await ProjectApplier.PlanAsync(context.Gateway, project, context.Settings, context.Arguments.Has("force"));
+        context.Output.Result(context.Command, plan, ProjectApplier.Describe(plan));
+        return ExitCodes.Success;
+    }
 
-    private static Task<int> ApplyAsync(CliContext context) =>
-        throw new CliUsageException("'project apply' is not implemented yet.");
+    private static async Task<int> ApplyAsync(CliContext context)
+    {
+        var project = SpatialProjectFile.Load(context.Settings.ProjectPath);
+        var force = context.Arguments.Has("force");
+        var plan = context.Settings.DryRun
+            ? await ProjectApplier.PlanAsync(context.Gateway, project, context.Settings, force)
+            : await ProjectApplier.ApplyAsync(context.Gateway, project, context.Settings, force);
+        context.Output.Result(context.Command, plan, ProjectApplier.Describe(plan));
+        return ExitCodes.Success;
+    }
 
-    private static Task<int> ExportAsync(CliContext context) =>
-        throw new CliUsageException("'project export' is not implemented yet.");
+    private static async Task<int> ExportAsync(CliContext context)
+    {
+        var path = context.Settings.ProjectPath;
+        RefuseOverwrite(path, context.Arguments.Has("force"));
+        var project = await ProjectApplier.ExportAsync(context.Gateway, context.Settings);
+        SpatialProjectFile.Save(path, project);
+        context.Output.Result(
+            context.Command,
+            new { path, datasets = project.Datasets.Count, maps = project.Maps.Count },
+            $"Wrote {path} ({project.Datasets.Count} dataset(s), {project.Maps.Count} map(s)).");
+        return ExitCodes.Success;
+    }
+
+    private static void RefuseOverwrite(string path, bool force)
+    {
+        if (File.Exists(path) && !force)
+        {
+            throw new CliUsageException($"Project file '{path}' already exists. Use --force to overwrite.");
+        }
+    }
 }
