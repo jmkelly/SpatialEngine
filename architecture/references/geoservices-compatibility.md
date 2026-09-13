@@ -105,7 +105,7 @@ projection/units.
 | Catalog (§3): folders + `services[{name,type}]` | `GET /api/catalogue`: spatial `DatasetSummary[]` | Different concept |
 | `FeatureServer` root: `layers[]`, `tables[]` (§9.0) | — | **Served** — spatial datasets under `layers`, datasets without a geometry field under `tables` (stable ids from the single id space; table metadata reports `type: Table` and supports the safe query subset) |
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
-| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); the remaining spatial relations stay rejected |
+| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served, only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate) |
 | `queryRelatedRecords` (§9.1.5) | — | Missing (no relationship model) |
 | `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only through the API; the GeoServices facade now maps `addFeatures` onto `IFeatureEditStore.AddAsync` (ADR-0037) |
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
@@ -256,6 +256,59 @@ Ordered by dependency:
   `orderByFields=<objectIdField>` on every paged query for a stable paging
   sequence; the ImageServer operation surface is pinned by reconnaissance tests
   (T-027).
+- T-015 closeout: the full REST JS `queryAllFeatures` loop (read
+  `maxRecordCount` off the layer, page `resultOffset`/`resultRecordCount`
+  with `returnExceededLimitFeatures=true`, stop on
+  `returnedCount < pageSize || !exceededTransferLimit`) is replayed against
+  the 34k world-cities layer and terminates with the exact `returnCountOnly`
+  total in stable `OBJECTID` order with no duplicates — the stopping rule
+  the real client branches on is pinned.
+
+## 7.1. Deliberate non-goals (T-015 closeout audit)
+
+Every catalogue item in `research/arcgis/conformance-sources.md` (T1–T15)
+and every T-015 body candidate is landed above or recorded here. A non-goal
+is rejected by name (never silently ignored) and named here with its reason:
+
+- `f=html` Services Directory (T15): the facade is a JSON API surface by
+  design (ADR-0035); a human-browsable directory is a separate concern.
+  `f=html` (and any non-JSON `f`) is a typed `invalid.arguments` failure
+  naming the supported value.
+- GeoJSON/PBF query output (T2/T-017): the facade serves Esri JSON only;
+  `f=geojson` is honestly rejected naming `supportedQueryFormats`, and the
+  layer truthfully advertises `'JSON'`. pygeoapi's
+  `'geoJSON' in supportedQueryFormats` gate therefore still fails — honestly.
+- `returnZ`/`returnM`: the engine geometry model carries Z/M but the Esri
+  codec serves 2D; Z/M output is explicitly rejected rather than silently
+  dropped.
+- `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
+  predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
+  alternative.
+- `quantizationParameters` responses (T8): quantized output is not served;
+  honestly rejected, while `geometryPrecision` (rounds every ordinate) and
+  `maxAllowableOffset` (accepted, full precision returned) are honoured.
+- Full-text `text`, `sqlFormat`, `resultType`, `gdbVersion`,
+  `historicMoment`, `datumTransformation`, `returnCentroid`,
+  `distance`/`units`, `relationParam`, `returnTrueCurves`,
+  `multipatchOption` (T9/T-024): each is rejected by name — dropping any of
+  them would silently change the result set (`distance`/`units`, `text`,
+  `resultType`) or promise data the engine does not version
+  (`gdbVersion`, `historicMoment`). Raw SQL is never accepted: the facade
+  evaluates only its closed where-grammar.
+- Token 498/499 → `store.unavailable` (T12): by design — the engine taxonomy
+  has no auth-error code and the provider takes a static token; the
+  characterisation test pins the mapping.
+- ImageServer `mosaicRule`/`renderingRule`/`bandIds` (T-015 closeout):
+  honestly rejected on `exportImage` (shared export pipeline, so the Raster
+  Image resource too) and on the catalog query (shared parse path) — each
+  changes which pixels combine, so ignoring them would serve wrong bytes.
+  Download clipping/re-encoding and raster functions remain absent.
+- GP Service, Geocode Service, `queryRelatedRecords`, attachments,
+  `htmlPopup`: no engine model behind them; absent, not emulated.
+- Picture symbols (`esriPMS`/`esriPFS`): the engine's symbol dialect has no
+  model for them; the §4.7 image resource is a typed `not.found`.
+- Geometry Service `offset`, `cut`, `reshape`, `trimExtend`, `autoComplete`:
+  no engine verb; rejected, not advertised (see above).
 
 ## 8. Documentation baseline
 

@@ -150,6 +150,9 @@ public sealed class EsriFeatureQueryTests
     [InlineData("text")]
     [InlineData("returnTrueCurves")]
     [InlineData("multipatchOption")]
+    [InlineData("mosaicRule")]
+    [InlineData("renderingRule")]
+    [InlineData("bandIds")]
     public async Task Unsupported_query_parameters_are_rejected(string name)
     {
         var exception = await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, "x")));

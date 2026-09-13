@@ -60,4 +60,48 @@ public sealed class GeoServicesPagingTests : IClassFixture<WebApplicationFactory
         var error = await GetErrorAsync($"{WorldCities}/query?where=1%3D1&maxRecordCountFactor=0&f=json");
         Assert.Equal(400, error.GetProperty("code").GetInt32());
     }
+
+    /// <summary>
+    /// T-015 closeout: replays the exact <c>queryAllFeatures</c> algorithm
+    /// the real arcgis-rest-js client runs (read <c>maxRecordCount</c> off
+    /// the layer, page with <c>returnExceededLimitFeatures=true</c>, stop
+    /// when <c>returnedCount &lt; pageSize || !exceededTransferLimit</c>).
+    /// The loop must terminate with the full matched set, in stable order.
+    /// </summary>
+    [Fact]
+    public async Task A_query_all_features_loop_terminates_with_the_full_set()
+    {
+        var layer = await GetJsonAsync($"{WorldCities}?f=json");
+        var pageSize = layer.GetProperty("maxRecordCount").GetInt32();
+        Assert.True(pageSize > 0);
+
+        var expected = await GetJsonAsync($"{WorldCities}/query?where=1%3D1&returnCountOnly=true&f=json");
+        var total = expected.GetProperty("count").GetInt32();
+        Assert.True(total > pageSize);
+
+        var collected = new List<long>();
+        var offset = 0;
+        while (true)
+        {
+            var page = await GetJsonAsync(
+                $"{WorldCities}/query?where=1%3D1&outFields=*&orderByFields=OBJECTID" +
+                $"&returnExceededLimitFeatures=true&resultOffset={offset}&resultRecordCount={pageSize}&f=json");
+            var features = page.GetProperty("features").EnumerateArray().ToArray();
+            foreach (var feature in features)
+            {
+                collected.Add(feature.GetProperty("attributes").GetProperty("OBJECTID").GetInt64());
+            }
+
+            var exceeded = !page.TryGetProperty("exceededTransferLimit", out var flag) || flag.GetBoolean();
+            offset += features.Length;
+            if (features.Length < pageSize || !exceeded)
+            {
+                break;
+            }
+        }
+
+        Assert.Equal(total, collected.Count);
+        Assert.Equal(collected.OrderBy(id => id).ToArray(), collected.ToArray());
+        Assert.Equal(collected.Count, collected.Distinct().Count());
+    }
 }
