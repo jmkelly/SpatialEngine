@@ -64,6 +64,9 @@ jobs:
           npm ci --prefix apps/workbench-web
           npm test --prefix apps/workbench-web
 
+      - name: Task queue tool (unit)
+        run: node --test tools/tasks/tasks.test.mjs
+
   e2e:
     name: e2e (host · sdk · browser)
     runs-on: ubuntu-latest

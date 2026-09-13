@@ -66,7 +66,7 @@ refuse to create dependency cycles.
 | Command | Purpose |
 | --- | --- |
 | `add <title>` | Capture. `--body -` reads stdin; `--area`, `--priority 1..5`, `--dep T-N`, `--id`. |
-| `edit <id>` | Change title/body/area/priority; `--dep-add`, `--dep-remove`. |
+| `edit <id>` | Change title/body/area/priority; `--body -` reads stdin; `--dep-add`, `--dep-remove`. |
 | `list` | Open tasks by default; `--status open\|all\|<status>`, `--area`, `--agent`, `--limit`. |
 | `ready` | Actionable tasks only (status `ready` **and** unblocked). |
 | `next [--claim]` | Top of the ready queue; `--claim` takes it atomically. |
@@ -104,6 +104,18 @@ Record the task in the commit trailer so provenance survives without the DB:
 ```
 Task: T-012
 ```
+
+## Tests
+
+`tools/tasks/tasks.test.mjs` is a black-box reproduction suite for the CLI. It
+spawns `tasks.mjs` against a throwaway database and runs in the `web` CI job next
+to the other JavaScript suites:
+
+```bash
+node --test tools/tasks/tasks.test.mjs
+```
+
+Add a failing case there before changing this tool's behaviour (test-first).
 
 ## Concurrency notes
 

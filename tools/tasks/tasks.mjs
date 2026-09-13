@@ -307,6 +307,25 @@ function readBody(inline) {
   }
 }
 
+// Validate an integer CLI argument up front and fail with a clean `tasks:`
+// diagnostic, rather than letting the value reach SQLite (datatype mismatch) or
+// `Date` (RangeError) and surface as an uncaught Node stack trace.
+function intArg(value, name, { min, max } = {}) {
+  const text = String(value);
+  if (!/^-?\d+$/.test(text)) die(`--${name} must be an integer, got '${text}'`);
+  const n = Number(text);
+  if ((min !== undefined && n < min) || (max !== undefined && n > max)) {
+    const range =
+      min !== undefined && max !== undefined
+        ? `${min}..${max}`
+        : min !== undefined
+          ? `>= ${min}`
+          : `<= ${max}`;
+    die(`--${name} must be ${range}, got '${text}'`);
+  }
+  return n;
+}
+
 // ---------------------------------------------------------------------------
 // rendering
 
@@ -389,13 +408,15 @@ Usage: tasks [--db PATH] [--json|--md] <command> [args]
 Capture
   add <title>            Add a task. --body - reads stdin; --area A; --priority N;
                          --dep T-N (repeatable); --id T-N.
-  edit <id>              --title/--body/--area/--priority/--dep-add/--dep-remove.
+  edit <id>              Change a task. --body - reads stdin; --title/--area/
+                         --priority/--dep-add/--dep-remove.
 
 Pick
   list                   Open tasks (--status ready|claimed|review|done|blocked|
                          failed|cancelled|all, --area A, --agent A, --limit N).
   ready                  Unblocked, unclaimed tasks (--area, --limit).
-  next [--claim]         Show the top ready task; with --claim, claim it atomically.
+  next [--claim]         Show the top ready task; with --claim, claim it atomically
+                         (--agent A --lease MIN --worktree P --branch B).
   show <id>              Full task, its dependencies and history.
 
 Progress
@@ -422,10 +443,10 @@ function cmdAdd(db, args) {
   const title = (args.one('title') ?? args.pos.join(' ')).trim();
   if (!title) die('add needs a title');
   const area = args.one('area') ?? '';
-  const priority = Number(args.one('priority') ?? DEFAULT_PRIORITY);
-  if (!Number.isInteger(priority) || priority < 1 || priority > 5) {
-    die('--priority must be an integer 1..5');
-  }
+  const priority =
+    args.one('priority') === undefined
+      ? DEFAULT_PRIORITY
+      : intArg(args.one('priority'), 'priority', { min: 1, max: 5 });
   const body = readBody(args.one('body'));
   const actor = resolveActor(args.one('agent'));
   const deps = uniq(args.many('dep'));
@@ -468,14 +489,12 @@ function cmdEdit(db, args) {
     for (const [flag, col] of [['title', 'title'], ['body', 'body'], ['area', 'area']]) {
       if (args.has(flag)) {
         sets.push(`${col} = ?`);
-        params.push(args.one(flag));
+        params.push(flag === 'body' ? readBody(args.one(flag)) : args.one(flag));
       }
     }
     if (args.has('priority')) {
-      const p = Number(args.one('priority'));
-      if (!Number.isInteger(p) || p < 1 || p > 5) die('--priority must be an integer 1..5');
       sets.push('priority = ?');
-      params.push(p);
+      params.push(intArg(args.one('priority'), 'priority', { min: 1, max: 5 }));
     }
     for (const d of add) {
       if (!getTask(db, d)) die(`--dep-add ${d} does not exist`);
@@ -506,14 +525,18 @@ function cmdList(db, args) {
   if (args.one('area')) where.push('area = ?'), params.push(args.one('area'));
   if (args.one('agent')) where.push('agent = ?'), params.push(args.one('agent'));
   let sql = `SELECT * FROM tasks ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY priority, seq`;
-  if (args.one('limit')) sql += ' LIMIT ?', params.push(Number(args.one('limit')));
+  if (args.one('limit') !== undefined) {
+    sql += ' LIMIT ?';
+    params.push(intArg(args.one('limit'), 'limit', { min: 1 }));
+  }
   const rows = plainAll(db.prepare(sql).all(...params));
   if (wantsJson(args)) emitJson(rows);
   else process.stdout.write(renderTaskList(rows, { md: args.bools.has('md') }) + '\n');
 }
 
 function cmdReady(db, args) {
-  const rows = readyTasks(db, { area: args.one('area'), limit: args.one('limit') ? Number(args.one('limit')) : undefined });
+  const limit = args.one('limit') === undefined ? undefined : intArg(args.one('limit'), 'limit', { min: 1 });
+  const rows = readyTasks(db, { area: args.one('area'), limit });
   if (wantsJson(args)) emitJson(rows);
   else process.stdout.write(renderTaskList(rows, { md: args.bools.has('md') }) + '\n');
 }
@@ -547,7 +570,8 @@ function cmdClaim(db, args) {
   const id = args.pos[0];
   if (!id) die('claim needs a task id');
   const agent = resolveActor(args.one('agent'));
-  const leaseMin = Number(args.one('lease') ?? DEFAULT_LEASE_MIN);
+  const leaseMin =
+    args.one('lease') === undefined ? DEFAULT_LEASE_MIN : intArg(args.one('lease'), 'lease', { min: 1 });
   const res = claimTask(db, id, {
     agent,
     leaseMin,
@@ -569,7 +593,10 @@ function cmdNext(db, args) {
     return;
   }
   const agent = resolveActor(args.one('agent'));
-  const leaseMin = Number(args.one('lease') ?? DEFAULT_LEASE_MIN);
+  const leaseMin =
+    args.one('lease') === undefined ? DEFAULT_LEASE_MIN : intArg(args.one('lease'), 'lease', { min: 1 });
+  const worktree = args.one('worktree');
+  const branch = args.one('branch');
   const res = withTx(db, () => {
     const where = [READY_CLAUSE];
     const params = [];
@@ -581,9 +608,9 @@ function cmdNext(db, args) {
     const id = t.id;
     const at = nowIso();
     db.prepare(
-      `UPDATE tasks SET status='claimed', agent=?, lease_until=?, claimed_at=?, updated=?
+      `UPDATE tasks SET status='claimed', agent=?, lease_until=?, worktree=?, branch=?, claimed_at=?, updated=?
        WHERE id=? AND status='ready'`
-    ).run(agent, leaseIso(leaseMin), at, at, id);
+    ).run(agent, leaseIso(leaseMin), worktree ?? null, branch ?? null, at, at, id);
     recordEvent(db, id, { actor: agent, from: 'ready', to: 'claimed', detail: `lease=${leaseMin}m via next` });
     return { ok: true, id };
   });
@@ -803,9 +830,9 @@ function cmdEvents(db, args) {
     params.push(id);
   }
   sql += ' ORDER BY id DESC';
-  if (args.one('limit')) {
+  if (args.one('limit') !== undefined) {
     sql += ' LIMIT ?';
-    params.push(Number(args.one('limit')));
+    params.push(intArg(args.one('limit'), 'limit', { min: 1 }));
   }
   const rows = plainAll(db.prepare(sql).all(...params));
   if (wantsJson(args)) emitJson(rows);
@@ -841,10 +868,21 @@ function cmdStats(db, args) {
 
 function cmdExport(db, args) {
   const status = args.one('status') ?? 'open';
-  const where = status === 'open' ? `WHERE status IN (${OPEN_STATUSES.map(() => '?').join(',')})` : '';
-  const params = status === 'open' ? OPEN_STATUSES : [];
+  if (status !== 'open' && status !== 'all' && !STATUSES.includes(status)) {
+    die(`--status must be open, all, or one of: ${STATUSES.join(', ')}`);
+  }
+  const params = [];
+  let where = '';
+  if (status === 'open') {
+    where = `WHERE status IN (${OPEN_STATUSES.map(() => '?').join(',')})`;
+    params.push(...OPEN_STATUSES);
+  } else if (status !== 'all') {
+    where = 'WHERE status = ?';
+    params.push(status);
+  }
   const rows = plainAll(db.prepare(`SELECT * FROM tasks ${where} ORDER BY priority, seq`).all(...params));
-  const lines = ['# Task queue', '', `Open: ${rows.length}`, '', renderTaskList(rows, { md: true }), ''];
+  const label = status === 'open' ? 'Open' : status === 'all' ? 'Total' : status;
+  const lines = ['# Task queue', '', `${label}: ${rows.length}`, '', renderTaskList(rows, { md: true }), ''];
   process.stdout.write(lines.join('\n'));
 }
 
