@@ -19,6 +19,17 @@ public sealed class GeoServicesTests : IClassFixture<WebApplicationFactory<Progr
 
     public GeoServicesTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
 
+    [Fact]
+    public async Task The_feature_server_root_lists_layers_and_tables()
+    {
+        // The demo store is all-spatial, so tables is empty; the shape is
+        // what getAllLayersAndTables reads, pinned against regressions.
+        var root = await GetJsonAsync($"{Root}/demo/FeatureServer?f=json");
+
+        Assert.NotEmpty(root.GetProperty("layers").EnumerateArray());
+        Assert.Equal(JsonValueKind.Array, root.GetProperty("tables").ValueKind);
+    }
+
     private async Task<JsonElement> GetJsonAsync(string path)
     {
         var response = await _client.GetAsync(path);

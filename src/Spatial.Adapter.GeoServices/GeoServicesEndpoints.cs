@@ -144,7 +144,8 @@ public static partial class GeoServicesEndpoints
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
             var layers = await ListLayersAsync(stores, resolved, cancellationToken);
-            return EsriJson.Value(FeatureService.Root(layers, IsEditable(stores, resolved.Store)));
+            var (spatial, tables) = await SplitTablesAsync(stores, resolved, layers, cancellationToken);
+            return EsriJson.Value(FeatureService.Root(spatial, tables, IsEditable(stores, resolved.Store)));
         }
         catch (Exception exception)
         {
@@ -162,7 +163,7 @@ public static partial class GeoServicesEndpoints
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
             var description = await DescribeAsync(stores, resolved, layerId, cancellationToken);
             var editable = IsEditable(stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
-            return EsriJson.Value(FeatureService.Layer(layerId, description, editable));
+            return EsriJson.Value(FeatureService.Layer(layerId, description, editable, EsriLayerModel.IsTable(description)));
         }
         catch (Exception exception)
         {
@@ -316,6 +317,28 @@ public static partial class GeoServicesEndpoints
         var catalogue = stores.Catalogue(resolved.Store);
         var datasets = (await catalogue.ListAsync(null, cancellationToken)).OrderBy(dataset => dataset.Id, StringComparer.Ordinal).ToArray();
         return datasets.Select((dataset, index) => new PublishedLayer(index, dataset.Id, dataset.Table)).ToArray();
+    }
+
+    /// <summary>
+    /// Splits published layers into spatial layers and geometry-less tables
+    /// (spec §9.0): each dataset is described once and routed by
+    /// <see cref="EsriLayerModel.IsTable"/>. Ids are preserved from the
+    /// single layer/table id space.
+    /// </summary>
+    internal static async Task<(IReadOnlyList<PublishedLayer> Layers, IReadOnlyList<PublishedLayer> Tables)> SplitTablesAsync(
+        IStoreRegistry stores, ResolvedService resolved, IReadOnlyList<PublishedLayer> layers, CancellationToken cancellationToken)
+    {
+        var catalogue = stores.Catalogue(resolved.Store);
+        var spatial = new List<PublishedLayer>(layers.Count);
+        var tables = new List<PublishedLayer>();
+        foreach (var layer in layers)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var description = await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
+            (EsriLayerModel.IsTable(description) ? tables : spatial).Add(layer);
+        }
+
+        return (spatial, tables);
     }
 
     internal static async Task<DatasetDescription> DescribeAsync(
