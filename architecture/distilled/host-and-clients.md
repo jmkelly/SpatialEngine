@@ -154,6 +154,11 @@ levels, the console sink is always on, and the Seq sink is added only when
 is one structured event (`UseSerilogRequestLogging`; 5xx at `Warning`, else
 `Information`), startup records one summary event and actionable
 config warnings, and `service.name = Spatial.Host` stamps every event.
+The WMS/WFS adapter additionally logs one event per OGC operation with the
+operation and request parameters, and a rejected operation at `Warning` with
+the mapped `ServiceException` code and reason (set
+`Logging:LogLevel:Spatial.Adapter.Ogc` to `Warning` to quiet successful
+operations).
 Diagnostics carry configuration *state* only — never a connection string or
 token. In the Aspire development profile `AddSeq` runs the Seq container and
 injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run

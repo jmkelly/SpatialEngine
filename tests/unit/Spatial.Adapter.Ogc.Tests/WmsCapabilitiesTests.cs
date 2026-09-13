@@ -39,6 +39,29 @@ public sealed class WmsCapabilitiesTests
     }
 
     [Fact]
+    public async Task Capabilities_advertise_bare_dcp_endpoints()
+    {
+        // A client that honours the advertised DCP URI (QGIS does by default)
+        // appends its own service/request; embedding them here duplicates the
+        // parameters and the request is rejected.
+        var map = OgcFixtures.Map(MapService.Wms);
+        var (services, store) = OgcFixtures.Build(map);
+        store.Seed(OgcFixtures.City("Amsterdam", 900_000, 4.9041, 52.3676));
+        var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
+
+        var xml = await WmsCapabilities.BuildAsync(
+            map, [layer], "http://localhost/ogc/world/wms", services, new OgcOptions(), CancellationToken.None);
+        var document = XDocument.Parse(xml);
+
+        var hrefs = document.Descendants(Wms + "Request")
+            .Descendants(Wms + "OnlineResource")
+            .Select(element => element.Attribute(XNamespace.Get("http://www.w3.org/1999/xlink") + "href")!.Value)
+            .Distinct()
+            .ToArray();
+        Assert.Equal(["http://localhost/ogc/world/wms?"], hrefs);
+    }
+
+    [Fact]
     public async Task Capabilities_report_the_layer_extent()
     {
         var map = OgcFixtures.Map(MapService.Wms);

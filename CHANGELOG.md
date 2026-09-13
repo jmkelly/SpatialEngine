@@ -11,6 +11,13 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **OGC failure diagnostics** (ADR-0045). The WMS/WFS adapter now logs one
+  structured event per operation with the `request` operation and the merged
+  request parameters, and logs a rejected operation at `Warning` with the
+  mapped OGC `ServiceException` code, reason and HTTP status. A blank or
+  400-rejected WMS layer in an interop client (for example QGIS) is now
+  diagnosable from the log alone; previously only the path and status
+  appeared.
 - **Maps are the unit of authoring and exposure** (ADR-0053). `Map` replaces
   `Publication` across the engine: a named, ordered set of styled layers from
   one keyed store plus the set of services it exposes — `Feature`, `Map`,
@@ -187,6 +194,21 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **QGIS Feature Service layer 400 ("unknown field 'OBJECTID'")**: the
+  adapter's `orderByFields` validation resolved fields against the dataset
+  schema only, but `OBJECTID` is synthetic (the identity column or scan
+  ordinal, ADR-0037) and is the field clients order by for stable paging.
+  `orderByFields=OBJECTID` now compiles to the resolved object id, and the
+  `where` grammar resolves the same synthetic field (`EsriSyntheticField`),
+  so `where=OBJECTID ...` works too — including `where`-based edits. The
+  FeatureServer now renders in QGIS.
+- **QGIS WMS returned "nothing to show" (HTTP 400)**: the WMS capabilities
+  advertised each DCP `Get` URI with `?service=WMS&request=...` embedded.
+  QGIS honours that URI and appends the operation parameters, so `service`
+  and `request` arrived twice (`SERVICE=WMS,WMS`) and the adapter rejected
+  the request. DCP endpoints are now the bare service URL (`...?`), and a
+  parameter repeated with an identical value is collapsed, so an already
+  added layer works without re-fetching capabilities.
 - **Composer crashed when served over plain HTTP**: adding an existing
   service (or any composer layer) called `crypto.randomUUID`, which browsers
   only expose in secure contexts, so on a LAN HTTP origin it threw

@@ -138,6 +138,13 @@ feature layers:
 - **WFS 2.0.0**: `GetCapabilities` (XML), `DescribeFeatureType` (XSD), and
   `GetFeature` (GeoJSON; GML is a recorded non-goal until measured demand).
 
+Interop: each DCP `Get` is advertised as the bare service endpoint with no
+embedded `service`/`request` KVP (the WMS 1.3.0 example form), and a
+parameter a client repeats with an identical value is collapsed
+(`SERVICE=WMS,WMS` reads as `WMS`). QGIS reuses the advertised `GetMap` URI
+and appends the operation parameters, so embedding them would otherwise
+duplicate `service`/`request` and reject the request.
+
 Both live in one implementation project, `Spatial.Adapter.Ogc`, which may
 reference `Spatial.Core`, `Spatial.PluginSdk` and `Spatial.Interop.Esri`
 (the shared codec), never the GeoServices adapter. OGC XML is generated in

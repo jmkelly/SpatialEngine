@@ -31,6 +31,33 @@ public sealed class EsriFilterClauseTests
     }
 
     [Fact]
+    public void A_synthetic_field_resolves_when_the_schema_lacks_it()
+    {
+        var feature = Feature("Berlin", 3);
+        var synthetic = new EsriSyntheticField("OBJECTID", AttributeValue.FromInt64(42));
+
+        Assert.True(Parse("OBJECTID = 42").Matches(feature, synthetic));
+        Assert.False(Parse("OBJECTID = 7").Matches(feature, synthetic));
+        Assert.True(Parse("OBJECTID IS NOT NULL").Matches(feature, synthetic));
+        // The name is case-insensitive, matching the schema's field lookup.
+        Assert.True(Parse("objectid > 40").Matches(feature, synthetic));
+        // Without the synthetic field the clause is still an unknown-field failure.
+        Assert.Throws<EsriInteropException>(() => Parse("OBJECTID = 42").Matches(feature));
+    }
+
+    [Fact]
+    public void A_synthetic_field_takes_precedence_over_a_same_named_schema_field()
+    {
+        // The facade's synthetic OBJECTID is authoritative: the layer schema
+        // skips a dataset column of that name, so the where clause must too.
+        var feature = Feature("Berlin", 3);
+        var synthetic = new EsriSyntheticField("name", AttributeValue.FromString("Paris"));
+
+        Assert.True(Parse("name = 'Paris'").Matches(feature, synthetic));
+        Assert.False(Parse("name = 'Berlin'").Matches(feature, synthetic));
+    }
+
+    [Fact]
     public void Strings_compare_across_all_ordering_operators()
     {
         var feature = Feature("Berlin", 1);

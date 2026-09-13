@@ -162,13 +162,17 @@ internal static class FeatureQueryEngine
             return false;
         }
 
-        if (query.Where is { } where && !where.Matches(feature))
+        if (query.Where is { } where && !where.Matches(feature, SyntheticObjectId(objectId)))
         {
             return false;
         }
 
         return queryGeometry is null || SpatialMatch(feature, queryGeometry, query.SpatialRel, operations, cancellationToken);
     }
+
+    /// <summary>The synthetic <c>OBJECTID</c> a where clause may reference (ADR-0037).</summary>
+    private static EsriSyntheticField SyntheticObjectId(long objectId) =>
+        new(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId));
 
     private static bool SpatialMatch(Feature feature, IGeometry queryGeometry, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
     {
@@ -202,8 +206,11 @@ internal static class FeatureQueryEngine
 
     /// <summary>
     /// Validates <c>orderByFields</c> against the dataset schema and compiles
-    /// each entry to a schema index plus direction. Unknown fields and geometry
-    /// fields are typed invalid-argument failures (HTTP 400).
+    /// each entry to a key plus direction. <c>OBJECTID</c> is accepted even
+    /// though it is synthetic, because it is the layer's advertised object-id
+    /// field and clients (QGIS) order by it for a stable paged sequence.
+    /// Unknown fields and geometry fields are typed invalid-argument failures
+    /// (HTTP 400).
     /// </summary>
     private static OrderKey[]? CompileOrderBy(DatasetDescription dataset, EsriFeatureQuery query)
     {
@@ -216,6 +223,12 @@ internal static class FeatureQueryEngine
         for (var i = 0; i < fields.Count; i++)
         {
             var field = fields[i];
+            if (string.Equals(field.Name, EsriLayerModel.ObjectIdField, StringComparison.OrdinalIgnoreCase))
+            {
+                keys[i] = new OrderKey(-1, field.Descending, ObjectId: true);
+                continue;
+            }
+
             var index = dataset.Schema.IndexOf(field.Name);
             if (index < 0)
             {
@@ -249,7 +262,9 @@ internal static class FeatureQueryEngine
         IOrderedEnumerable<MatchedFeature>? ordered = null;
         foreach (var key in keys)
         {
-            Func<MatchedFeature, AttributeValue> selector = match => match.Feature[key.Index];
+            Func<MatchedFeature, AttributeValue> selector = key.ObjectId
+                ? match => AttributeValue.FromInt64(match.ObjectId)
+                : match => match.Feature[key.Index];
             ordered = ordered is null
                 ? Order(matches, selector, key.Descending)
                 : ThenOrder(ordered, selector, key.Descending);
@@ -554,8 +569,8 @@ internal static class FeatureQueryEngine
 
     internal sealed record MatchedFeature(long ObjectId, Feature Feature);
 
-    /// <summary>One compiled <c>orderByFields</c> key: a schema index and direction.</summary>
-    private sealed record OrderKey(int Index, bool Descending);
+    /// <summary>One compiled <c>orderByFields</c> key: a schema index and direction, or the synthetic object id.</summary>
+    private sealed record OrderKey(int Index, bool Descending, bool ObjectId = false);
 
     /// <summary>
     /// Orders attribute values of the kinds a schema can declare. Nulls sort

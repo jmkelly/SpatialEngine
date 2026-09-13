@@ -94,7 +94,11 @@ algorithms (principle 1); it only maps protocol to verbs.
 The v1.0 specification is the compatibility baseline. The plan records the
 10.x additions real clients expect (`resultOffset`/`resultRecordCount`,
 `orderByFields`, `returnCountOnly`, `hasZ`/`hasM`, FeatureServer edits) so
-the shape does not preclude them.
+the shape does not preclude them. `orderByFields` accepts the layer's
+advertised `OBJECTID` (ADR-0037) — clients order by it for a stable paged
+sequence — even when it is the synthetic scan ordinal. The `where` grammar
+resolves the same synthetic `OBJECTID` through an `EsriSyntheticField`, so
+queries and `where`-based edits can filter by the advertised object-id field.
 
 **8. The provider reuses the facade as its test fixture.**
 

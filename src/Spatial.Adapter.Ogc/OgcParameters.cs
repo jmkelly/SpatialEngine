@@ -15,6 +15,13 @@ internal sealed class OgcParameters
 
     private OgcParameters(Dictionary<string, string> values) => _values = values;
 
+    /// <summary>
+    /// The merged request parameters, for diagnostics only. OGC request
+    /// parameters carry no secrets (unlike the admin API's query token), so the
+    /// adapter may log them to isolate a failing interop client (ADR-0045).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Values => _values;
+
     /// <summary>Reads the query and, when present, the form body (GET or POST).</summary>
     public static async Task<OgcParameters> ReadAsync(HttpContext context, CancellationToken cancellationToken)
     {
@@ -36,9 +43,35 @@ internal sealed class OgcParameters
         return new OgcParameters(values);
     }
 
-    /// <summary>The trimmed value, or <c>null</c> when absent or blank.</summary>
-    public string? Get(string name) =>
-        _values.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+    /// <summary>
+    /// The trimmed value, or <c>null</c> when absent or blank. A parameter the
+    /// client repeated with the same value (some clients reuse an advertised
+    /// DCP URI that already carries it) is collapsed to that value, so
+    /// <c>SERVICE=WMS,WMS</c> is read as <c>WMS</c>; a genuine list is left
+    /// intact for <see cref="List"/>.
+    /// </summary>
+    public string? Get(string name)
+    {
+        if (!_values.TryGetValue(name, out var value) || string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return CollapseRepeated(value);
+    }
+
+    private static string CollapseRepeated(string value)
+    {
+        if (!value.Contains(','))
+        {
+            return value;
+        }
+
+        var parts = value.Split(',', StringSplitOptions.TrimEntries);
+        return parts.All(part => string.Equals(part, parts[0], StringComparison.OrdinalIgnoreCase))
+            ? parts[0]
+            : value;
+    }
 
     /// <summary>The trimmed value, or an OGC <c>MissingParameterValue</c> failure.</summary>
     public string Required(string name) => Get(name) ?? throw OgcServiceException.Missing(name);

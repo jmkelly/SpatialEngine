@@ -303,7 +303,12 @@ internal static class FeatureEditEngine
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
             ordinal++;
-            if (where.Matches(feature) && scheme.TryResolve(feature, ordinal, out var objectId))
+            if (!scheme.TryResolve(feature, ordinal, out var objectId))
+            {
+                continue;
+            }
+
+            if (where.Matches(feature, new EsriSyntheticField(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId))))
             {
                 ids.Add(objectId);
             }

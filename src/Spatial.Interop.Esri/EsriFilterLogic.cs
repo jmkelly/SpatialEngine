@@ -14,9 +14,18 @@ namespace Spatial.Interop.Esri;
 /// </summary>
 internal static class EsriFilterLogic
 {
-    /// <summary>Resolves a field reference against the feature schema, or fails as invalid arguments.</summary>
-    public static AttributeValue FieldValue(IFeature feature, string field)
+    /// <summary>
+    /// Resolves a field reference against a synthetic field (when its name
+    /// matches) then the feature schema, or fails as invalid arguments.
+    /// </summary>
+    public static AttributeValue FieldValue(IFeature feature, string field, EsriSyntheticField? syntheticField = null)
     {
+        if (syntheticField is { } synthetic
+            && string.Equals(field, synthetic.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return synthetic.Value;
+        }
+
         var index = feature.Schema.IndexOf(field);
         if (index < 0)
         {

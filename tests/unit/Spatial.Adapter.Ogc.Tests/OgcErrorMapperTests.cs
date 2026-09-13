@@ -58,6 +58,21 @@ public sealed class OgcErrorMapperTests
         Assert.Contains("NoApplicableCode", body);
     }
 
+    [Fact]
+    public void Describe_exposes_the_same_decision_as_the_report()
+    {
+        var adapter = OgcErrorMapper.Describe(OgcServiceException.NotDefined("missing"));
+        Assert.Equal("LayerNotDefined", adapter.Code);
+        Assert.Equal(StatusCodes.Status404NotFound, adapter.Status);
+
+        var spatial = OgcErrorMapper.Describe(new SpatialException(SpatialException.InvalidArguments, "boom"));
+        Assert.Equal("InvalidParameterValue", spatial.Code);
+        Assert.Equal(StatusCodes.Status400BadRequest, spatial.Status);
+
+        var cancelled = OgcErrorMapper.Describe(new OperationCanceledException());
+        Assert.Equal(StatusCodes.Status499ClientClosedRequest, cancelled.Status);
+    }
+
     private static async Task<(int Status, string Body)> ExecuteAsync(IResult result)
     {
         var context = new DefaultHttpContext

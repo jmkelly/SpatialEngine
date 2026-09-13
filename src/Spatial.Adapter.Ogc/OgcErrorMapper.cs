@@ -10,42 +10,50 @@ namespace Spatial.Adapter.Ogc;
 /// matching OGC exception code and HTTP status, so an invalid request, an
 /// unknown layer and an unavailable store are distinguishable on the wire.
 /// The exception kinds and engine codes dispatch through small helpers
-/// (ADR-0040).
+/// (ADR-0040). <see cref="Describe"/> exposes the same decision as a value so
+/// the failure log and the report never disagree (ADR-0045).
 /// </summary>
 internal static class OgcErrorMapper
 {
-    private static readonly Dictionary<string, Func<string, IResult>> SpatialReports =
+    private static readonly Dictionary<string, Func<string, OgcFailure>> SpatialReports =
         new(StringComparer.Ordinal)
         {
             [SpatialException.InvalidArguments] = message =>
-                Report("InvalidParameterValue", message, StatusCodes.Status400BadRequest),
+                new OgcFailure("InvalidParameterValue", message, StatusCodes.Status400BadRequest),
             [SpatialException.NotFound] = message =>
-                Report("LayerNotDefined", message, StatusCodes.Status404NotFound),
+                new OgcFailure("LayerNotDefined", message, StatusCodes.Status404NotFound),
             [SpatialException.StoreUnavailable] = message =>
-                Report("NoApplicableCode", message, StatusCodes.Status503ServiceUnavailable),
+                new OgcFailure("NoApplicableCode", message, StatusCodes.Status503ServiceUnavailable),
         };
 
-    public static IResult Map(Exception exception)
-    {
-        if (exception is OgcServiceException ogc)
-        {
-            return Report(ogc.Code, ogc.Message, ogc.Status);
-        }
-
-        return exception is SpatialException spatial ? MapSpatial(spatial) : Fallback(exception);
-    }
-
-    /// <summary>Maps one engine <see cref="SpatialException"/> by its stable code.</summary>
-    internal static IResult MapSpatial(SpatialException exception) =>
-        SpatialReports.TryGetValue(exception.Code, out var report)
-            ? report(exception.Message)
-            : Report("NoApplicableCode", exception.Message, StatusCodes.Status500InternalServerError);
-
-    private static IResult Fallback(Exception exception) =>
+    public static IResult Map(Exception exception) =>
         exception is OperationCanceledException
             ? Results.StatusCode(StatusCodes.Status499ClientClosedRequest)
-            : Report("NoApplicableCode", exception.Message, StatusCodes.Status500InternalServerError);
+            : Report(Describe(exception));
+
+    /// <summary>The OGC code, reason and HTTP status a failure maps to.</summary>
+    internal static OgcFailure Describe(Exception exception) => exception switch
+    {
+        OgcServiceException ogc => new OgcFailure(ogc.Code, ogc.Message, ogc.Status),
+        SpatialException spatial => DescribeSpatial(spatial),
+        OperationCanceledException => new OgcFailure(
+            "ClientClosedRequest", exception.Message, StatusCodes.Status499ClientClosedRequest),
+        _ => new OgcFailure("NoApplicableCode", exception.Message, StatusCodes.Status500InternalServerError),
+    };
+
+    /// <summary>Maps one engine <see cref="SpatialException"/> by its stable code.</summary>
+    internal static IResult MapSpatial(SpatialException exception) => Report(DescribeSpatial(exception));
+
+    private static OgcFailure DescribeSpatial(SpatialException exception) =>
+        SpatialReports.TryGetValue(exception.Code, out var describe)
+            ? describe(exception.Message)
+            : new OgcFailure("NoApplicableCode", exception.Message, StatusCodes.Status500InternalServerError);
+
+    private static IResult Report(OgcFailure failure) => Report(failure.Code, failure.Message, failure.Status);
 
     private static IResult Report(string code, string message, int status) =>
         Results.Text(OgcXml.ServiceExceptionReport(code, message), "application/xml", Encoding.UTF8, status);
 }
+
+/// <summary>The OGC <c>ServiceException</c> a failure maps to (ADR-0053 §3).</summary>
+internal sealed record OgcFailure(string Code, string Message, int Status);

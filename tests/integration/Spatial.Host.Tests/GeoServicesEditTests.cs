@@ -124,6 +124,21 @@ public sealed class GeoServicesEditTests
     }
 
     [Fact]
+    public async Task Delete_features_by_the_synthetic_object_id()
+    {
+        using var context = new EditableContext();
+
+        var result = await context.PostFormAsync(
+            $"{Root}/FeatureServer/0/deleteFeatures",
+            ("where", "OBJECTID = 1"),
+            ("f", "json"));
+
+        var deleted = Assert.Single(result.GetProperty("deleteResults").EnumerateArray());
+        Assert.True(deleted.GetProperty("success").GetBoolean());
+        Assert.Equal(1, deleted.GetProperty("objectId").GetInt64());
+    }
+
+    [Fact]
     public async Task A_failed_feature_fails_alone_without_rollback()
     {
         using var context = new EditableContext();

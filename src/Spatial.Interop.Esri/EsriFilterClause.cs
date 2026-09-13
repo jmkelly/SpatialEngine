@@ -51,10 +51,17 @@ public sealed class EsriFilterClause
     /// Evaluates the clause over a feature. Unknown field names and
     /// incomparable type pairs are typed invalid-argument failures.
     /// </summary>
-    public bool Matches(IFeature feature)
+    public bool Matches(IFeature feature) => Matches(feature, null);
+
+    /// <summary>
+    /// Evaluates the clause over a feature, resolving
+    /// <paramref name="syntheticField"/> (for example a facade's
+    /// <c>OBJECTID</c>) when the feature schema does not carry it.
+    /// </summary>
+    public bool Matches(IFeature feature, EsriSyntheticField? syntheticField)
     {
         ArgumentNullException.ThrowIfNull(feature);
-        return _root.Evaluate(feature);
+        return _root.Evaluate(feature, syntheticField);
     }
 
     /// <summary>Renders the clause as an Esri <c>where</c> string (for the consuming provider).</summary>
@@ -62,18 +69,18 @@ public sealed class EsriFilterClause
 
     private abstract record Node
     {
-        public abstract bool Evaluate(IFeature feature);
+        public abstract bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField);
 
         public abstract string Render();
     }
 
     private sealed record AndNode(IReadOnlyList<Node> Terms) : Node
     {
-        public override bool Evaluate(IFeature feature)
+        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField)
         {
             foreach (var term in Terms)
             {
-                if (!term.Evaluate(feature))
+                if (!term.Evaluate(feature, syntheticField))
                 {
                     return false;
                 }
@@ -87,11 +94,11 @@ public sealed class EsriFilterClause
 
     private sealed record OrNode(IReadOnlyList<Node> Terms) : Node
     {
-        public override bool Evaluate(IFeature feature)
+        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField)
         {
             foreach (var term in Terms)
             {
-                if (term.Evaluate(feature))
+                if (term.Evaluate(feature, syntheticField))
                 {
                     return true;
                 }
@@ -105,7 +112,8 @@ public sealed class EsriFilterClause
 
     private sealed record IsNullNode(string Field, bool Negated) : Node
     {
-        public override bool Evaluate(IFeature feature) => EsriFilterLogic.FieldValue(feature, Field).IsNull != Negated;
+        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField) =>
+            EsriFilterLogic.FieldValue(feature, Field, syntheticField).IsNull != Negated;
 
         public override string Render() => $"{Field} IS {(Negated ? "NOT " : string.Empty)}NULL";
     }
@@ -117,16 +125,16 @@ public sealed class EsriFilterClause
     /// </summary>
     private sealed record ConstantNode(bool Value, string Text) : Node
     {
-        public override bool Evaluate(IFeature feature) => Value;
+        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField) => Value;
 
         public override string Render() => Text;
     }
 
     private sealed record ComparisonNode(string Field, ComparisonOperator Operator, Literal Value) : Node
     {
-        public override bool Evaluate(IFeature feature)
+        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField)
         {
-            var attribute = EsriFilterLogic.FieldValue(feature, Field);
+            var attribute = EsriFilterLogic.FieldValue(feature, Field, syntheticField);
             if (attribute.IsNull)
             {
                 return false;
@@ -569,3 +577,9 @@ public sealed class EsriFilterClause
         }
     }
 }
+
+/// <summary>
+/// One value a where clause may reference that is not in the feature schema,
+/// such as the GeoServices facade's synthetic <c>OBJECTID</c> (ADR-0037).
+/// </summary>
+public readonly record struct EsriSyntheticField(string Name, AttributeValue Value);

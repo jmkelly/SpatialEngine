@@ -82,9 +82,16 @@ internal static class WmsCapabilities
     private static XElement Request(string baseUrl) =>
         new(
             OgcXml.Wms + "Request",
-            Operation("GetCapabilities", $"{baseUrl}?service=WMS&request=GetCapabilities", "application/xml"),
-            Operation("GetMap", $"{baseUrl}?service=WMS&request=GetMap", "image/png", "image/jpeg"),
-            Operation("GetFeatureInfo", $"{baseUrl}?service=WMS&request=GetFeatureInfo", "text/plain", "application/json"));
+            Operation("GetCapabilities", Endpoint(baseUrl), "application/xml"),
+            Operation("GetMap", Endpoint(baseUrl), "image/png", "image/jpeg"),
+            Operation("GetFeatureInfo", Endpoint(baseUrl), "text/plain", "application/json"));
+
+    // A DCP Get advertises the service endpoint, not a ready-made request: the
+    // WMS 1.3.0 examples (and GeoServer) end it with a bare '?'. Clients that
+    // honour the advertised URI (QGIS defaults to doing so) append their own
+    // service/request parameters; repeating them because the URI already
+    // carried them makes the parameter malformed (SERVICE=WMS,WMS).
+    private static string Endpoint(string baseUrl) => $"{baseUrl}?";
 
     private static XElement Operation(string name, string href, params string[] formats) =>
         new(

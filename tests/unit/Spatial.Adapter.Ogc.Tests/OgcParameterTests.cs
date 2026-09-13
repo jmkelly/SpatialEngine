@@ -26,6 +26,23 @@ public sealed class OgcParameterTests
     }
 
     [Fact]
+    public async Task A_repeated_identical_parameter_is_collapsed()
+    {
+        // Some clients (QGIS) reuse an advertised DCP URI that already carries
+        // service/request and append them again; identical repeats are
+        // accepted while a genuine multi-valued list is preserved.
+        var context = new DefaultHttpContext();
+        context.Request.QueryString = new QueryString(
+            "?service=WMS&SERVICE=WMS&request=GetMap&REQUEST=GetMap&layers=a&LAYERS=b");
+
+        var parameters = await OgcParameters.ReadAsync(context, CancellationToken.None);
+
+        Assert.Equal("WMS", parameters.RequiredService("WMS"));
+        Assert.Equal("GetMap", parameters.Required("request"));
+        Assert.Equal(["a", "b"], parameters.List("layers"));
+    }
+
+    [Fact]
     public async Task Form_post_parameters_merge_over_the_query()
     {
         var context = new DefaultHttpContext();

@@ -43,6 +43,13 @@ Aspire Seq container for local development.**
 - **Request logging**: `UseSerilogRequestLogging` logs one structured event
   per HTTP request (method, path, status, elapsed) and raises the level to
   `Warning` for server errors, instead of a log line per framework event.
+- **OGC request diagnostics**: the WMS/WFS adapter logs one structured event
+  per operation carrying the `request` operation and the merged request
+  parameters, and raises a rejected operation to `Warning` with the mapped
+  OGC `ServiceException` code, reason and HTTP status. OGC protocol
+  parameters are the only request data this adds and they carry no secrets,
+  so a blank or rejected interop client (for example QGIS) is diagnosable
+  from the log alone.
 - **Startup logging**: one summary event records the profile, the host
   version, whether the PostGIS store is configured (never the connection
   string), whether admin routes are enabled and whether the Seq sink is
@@ -62,7 +69,10 @@ Boundaries:
   using `Microsoft.Extensions.Logging.Abstractions` if and when they log.
 - Logging never weakens the redaction contract: no connection string, token
   or request body segment is logged. Messages carry configuration *state*
-  (configured/unconfigured), not configuration *values*.
+  (configured/unconfigured), not configuration *values*. The OGC adapter's
+  own diagnostics are the narrow exception: they log the OGC protocol request
+  parameters (never the admin API's query token), which carry no secrets by
+  contract.
 
 ## Consequences
 

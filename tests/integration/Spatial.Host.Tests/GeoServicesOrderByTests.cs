@@ -117,6 +117,35 @@ public sealed class GeoServicesOrderByTests : IClassFixture<WebApplicationFactor
         Assert.Equal(8, result.GetProperty("objectIds").GetArrayLength());
     }
 
+    [Fact]
+    public async Task Order_by_object_id_is_supported()
+    {
+        // OBJECTID is the layer's advertised object-id field, so a client may
+        // order by it even though the adapter synthesises it (identity column
+        // value or scan ordinal). QGIS orders by it to page stably.
+        var descending = await GetJsonAsync(
+            $"{Cities}?outFields=name&orderByFields=" + Uri.EscapeDataString("OBJECTID DESC") + "&f=json");
+        var ids = ObjectIds(descending);
+
+        Assert.Equal(8, ids.Length);
+        for (var i = 1; i < ids.Length; i++)
+        {
+            Assert.True(ids[i - 1] > ids[i], "OBJECTID DESC must strictly decrease");
+        }
+
+        var ascending = await GetJsonAsync($"{Cities}?outFields=name&orderByFields=OBJECTID&f=json");
+        Assert.Equal(ids.Reverse().ToArray(), ObjectIds(ascending));
+    }
+
+    [Fact]
+    public async Task Order_by_object_id_composes_with_paging()
+    {
+        var result = await GetJsonAsync(
+            $"{Cities}?outFields=name&orderByFields=OBJECTID&resultOffset=2&resultRecordCount=3&f=json");
+
+        Assert.Equal([3, 4, 5], ObjectIds(result));
+    }
+
     private async Task<JsonElement> GetJsonAsync(string path)
     {
         var response = await _client.GetAsync(path);
@@ -127,6 +156,11 @@ public sealed class GeoServicesOrderByTests : IClassFixture<WebApplicationFactor
     private static string[] Names(JsonElement result) =>
         result.GetProperty("features").EnumerateArray()
             .Select(feature => feature.GetProperty("attributes").GetProperty("name").GetString()!)
+            .ToArray();
+
+    private static long[] ObjectIds(JsonElement result) =>
+        result.GetProperty("features").EnumerateArray()
+            .Select(feature => feature.GetProperty("attributes").GetProperty("OBJECTID").GetInt64())
             .ToArray();
 
     private static async Task<JsonElement> ErrorAsync(HttpResponseMessage response)

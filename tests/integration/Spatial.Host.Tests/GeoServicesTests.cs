@@ -206,6 +206,42 @@ public sealed class GeoServicesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task A_query_filters_by_the_synthetic_object_id()
+    {
+        // OBJECTID is the layer's advertised object-id field, so it must be
+        // referenceable in where even though the adapter synthesises it.
+        var result = await GetJsonAsync(
+            $"{Root}/demo/FeatureServer/0/query?where=" + Uri.EscapeDataString("OBJECTID = 3") + "&outFields=name&f=json");
+
+        var feature = Assert.Single(result.GetProperty("features").EnumerateArray());
+        Assert.Equal(3, feature.GetProperty("attributes").GetProperty("OBJECTID").GetInt64());
+        Assert.Equal("London", feature.GetProperty("attributes").GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task A_synthetic_object_id_filter_composes_with_order_and_paging()
+    {
+        var result = await GetJsonAsync(
+            $"{Root}/demo/FeatureServer/0/query?where=" + Uri.EscapeDataString("OBJECTID > 5")
+            + "&outFields=name&orderByFields=OBJECTID&f=json");
+
+        Assert.Equal(
+            [6, 7, 8],
+            result.GetProperty("features").EnumerateArray()
+                .Select(feature => feature.GetProperty("attributes").GetProperty("OBJECTID").GetInt64())
+                .ToArray());
+    }
+
+    [Fact]
+    public async Task A_synthetic_object_id_filter_matches_nothing_for_an_absent_id()
+    {
+        var result = await GetJsonAsync(
+            $"{Root}/demo/FeatureServer/0/query?where=" + Uri.EscapeDataString("OBJECTID = 999") + "&f=json");
+
+        Assert.Empty(result.GetProperty("features").EnumerateArray());
+    }
+
+    [Fact]
     public async Task A_query_filters_by_an_envelope_geometry()
     {
         var result = await GetJsonAsync(
