@@ -1,20 +1,19 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 
-namespace Spatial.Host.Api;
+namespace Spatial.PluginSdk;
 
 /// <summary>
-/// Assembles a MapLibre style document (ADR-0044/ADR-0047) from a
-/// publication's persisted per-layer fragments: each layer's <c>Style</c>
-/// array is copied in draw order, gains a unique <c>id</c>, and is keyed onto
-/// its dataset with <c>source-layer</c>. A layer with no persisted style
-/// falls back to a neutral symbol covering every geometry family, so a
-/// publication still renders. The document is the same dialect the workbench
-/// writes, so client and server agree (ADR-0044).
+/// Assembles a MapLibre style document (ADR-0044) from a publication's
+/// persisted per-layer fragments (ADR-0047): each layer's <c>Style</c> array
+/// is copied in draw order, gains a unique <c>id</c>, and is keyed onto its
+/// dataset with <c>source-layer</c>. A layer with no persisted style falls
+/// back to a neutral symbol covering every geometry family, so a publication
+/// still renders. This is the single implementation of the ADR-0047 assembly
+/// rule, shared by the host's render route and the GeoServices MapServer.
 /// </summary>
-internal static class PublicationStyleComposer
+public static class PublicationMapStyle
 {
     /// <summary>
     /// A neutral default symbol for a layer with no persisted style: a fill,
@@ -30,32 +29,43 @@ internal static class PublicationStyleComposer
         ]
         """;
 
+    /// <summary>Composes the MapLibre style document for <paramref name="publication"/>.</summary>
     public static string Compose(Publication publication)
     {
         ArgumentNullException.ThrowIfNull(publication);
-        var layers = new JsonArray();
-        foreach (var layer in publication.Layers)
+        return Compose(publication.Name, publication.Layers);
+    }
+
+    /// <summary>
+    /// Composes a document for a subset of a publication's layers (for example
+    /// a MapServer <c>layers=show:…</c> selection); <paramref name="name"/> only
+    /// labels validation failures.
+    /// </summary>
+    public static string Compose(string name, IReadOnlyList<PublicationLayer> layers)
+    {
+        var composed = new JsonArray();
+        foreach (var layer in layers)
         {
-            var fragments = ReadFragments(publication, layer);
+            var fragments = ReadFragments(name, layer);
             for (var index = 0; index < fragments.Count; index++)
             {
                 if (fragments[index] is not JsonObject)
                 {
                     throw SpatialException.BadArguments(
-                        $"Publication '{publication.Name}' layer '{layer.Dataset}' style entries must be JSON objects.");
+                        $"Publication '{name}' layer '{layer.Dataset}' style entries must be JSON objects.");
                 }
 
                 var fragment = (JsonObject)fragments[index]!.DeepClone();
                 fragment["id"] ??= $"{layer.LayerId}-{index}";
                 fragment["source-layer"] = layer.Dataset;
-                layers.Add(fragment);
+                composed.Add(fragment);
             }
         }
 
-        return new JsonObject { ["layers"] = layers }.ToJsonString();
+        return new JsonObject { ["layers"] = composed }.ToJsonString();
     }
 
-    private static JsonArray ReadFragments(Publication publication, PublicationLayer layer)
+    private static JsonArray ReadFragments(string name, PublicationLayer layer)
     {
         if (string.IsNullOrWhiteSpace(layer.Style))
         {
@@ -70,11 +80,11 @@ internal static class PublicationStyleComposer
         catch (JsonException exception)
         {
             throw SpatialException.BadArguments(
-                $"Publication '{publication.Name}' layer '{layer.Dataset}' has a style that is not valid JSON: {exception.Message}");
+                $"Publication '{name}' layer '{layer.Dataset}' has a style that is not valid JSON: {exception.Message}");
         }
 
         return node as JsonArray
             ?? throw SpatialException.BadArguments(
-                $"Publication '{publication.Name}' layer '{layer.Dataset}' style must be an array of style layers.");
+                $"Publication '{name}' layer '{layer.Dataset}' style must be an array of style layers.");
     }
 }

@@ -16,7 +16,7 @@ namespace Spatial.Adapter.GeoServices;
 /// handler negotiates <c>f=json</c>, reads the merged request parameters and
 /// maps failures to the Esri error envelope.
 /// </summary>
-public static class GeoServicesEndpoints
+public static partial class GeoServicesEndpoints
 {
     /// <summary>Maps the facade at <see cref="GeoServicesOptions.Root"/>.</summary>
     public static void Map(IEndpointRouteBuilder app, GeoServicesOptions options, IPublicationRegistry registry)
@@ -69,6 +69,9 @@ public static class GeoServicesEndpoints
         group.MapPost("/{service}/FeatureServer/{layerId:int}/applyEdits", (
             HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
             FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, services, EsriEditOperation.Apply), cancellationToken));
+
+        // The Map Service projection (spec §4, ADR-0048).
+        MapMapServer(group, catalog, registry);
     }
 
     private static async Task<IResult> Catalog(GeoServicesCatalog catalog, IPublicationRegistry registry, HttpContext context, CancellationToken cancellationToken)
@@ -80,9 +83,15 @@ public static class GeoServicesEndpoints
             var services = new List<EsriServiceEntry> { new(GeoServicesCatalog.GeometryServiceName, "GeometryServer") };
             foreach (var publication in await registry.ListAsync(cancellationToken))
             {
-                if (publication.Kind == PublicationKind.Feature)
+                var type = publication.Kind switch
                 {
-                    services.Add(new EsriServiceEntry(publication.Name, "FeatureServer"));
+                    PublicationKind.Feature => "FeatureServer",
+                    PublicationKind.Map => "MapServer",
+                    _ => null,
+                };
+                if (type is not null)
+                {
+                    services.Add(new EsriServiceEntry(publication.Name, type));
                 }
             }
 
@@ -147,7 +156,7 @@ public static class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(catalog, registry, service, cancellationToken);
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", PublicationKind.Feature, cancellationToken);
             var layers = await ListLayersAsync(services, resolved, cancellationToken);
             return EsriJson.Value(FeatureService.Root(layers, IsEditable(services, resolved.Store)));
         }
@@ -164,7 +173,7 @@ public static class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(catalog, registry, service, cancellationToken);
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", PublicationKind.Feature, cancellationToken);
             var description = await DescribeAsync(services, resolved, layerId, cancellationToken);
             var editable = IsEditable(services, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
             return EsriJson.Value(FeatureService.Layer(layerId, description, editable));
@@ -190,7 +199,7 @@ public static class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(catalog, registry, service, cancellationToken);
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", PublicationKind.Feature, cancellationToken);
             var description = await DescribeAsync(services, resolved, layerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = services.GetRequiredKeyedService<IFeatureStore>(resolved.Store);
@@ -208,7 +217,7 @@ public static class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, cancellationToken);
+            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", PublicationKind.Feature, cancellationToken);
             var description = await DescribeAsync(request.Services, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Services.GetRequiredKeyedService<IFeatureStore>(resolved.Store);
@@ -227,7 +236,7 @@ public static class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EsriEditRequest.RejectUnsupported(parameters);
-            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, cancellationToken);
+            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", PublicationKind.Feature, cancellationToken);
             var description = await DescribeAsync(request.Services, resolved, request.LayerId, cancellationToken);
             var store = request.Services.GetRequiredKeyedService<IFeatureStore>(resolved.Store);
             var editStore = EditStore(request.Services, resolved.Store)
@@ -264,15 +273,20 @@ public static class GeoServicesEndpoints
         services.GetKeyedService<IFeatureEditStore>(store);
 
     /// <summary>
-    /// Resolves one Feature Server: a config-declared service exposes its whole
-    /// store (sorted, index-assigned layers), a runtime publication exposes its
-    /// persisted explicit layers (ADR-0041). A non-Feature publication or an
-    /// unknown name is a GeoServices not-found.
+    /// Resolves one GeoServices server (Feature or Map): a config-declared
+    /// service exposes its whole store (sorted, index-assigned layers), a
+    /// runtime publication exposes its persisted explicit layers (ADR-0041).
+    /// A publication of the wrong kind or an unknown name is not-found.
     /// </summary>
     private static async Task<ResolvedService> ResolveServiceAsync(
-        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog,
+        IPublicationRegistry registry,
+        string service,
+        string serverType,
+        PublicationKind kind,
+        CancellationToken cancellationToken)
     {
-        if (catalog.TryGet(service, out var entry) && entry.Type == "FeatureServer")
+        if (catalog.TryGet(service, out var entry) && entry.Type == serverType)
         {
             return new ResolvedService(entry.Store, null);
         }
@@ -287,12 +301,12 @@ public static class GeoServicesEndpoints
             throw new EsriInteropException(EsriErrorCodes.NotFound, $"Service '{service}' was not found.");
         }
 
-        if (publication.Kind != PublicationKind.Feature)
+        if (publication.Kind != kind)
         {
             throw new EsriInteropException(EsriErrorCodes.NotFound, $"Service '{service}' was not found.");
         }
 
-        return new ResolvedService(publication.Store, publication.Layers);
+        return new ResolvedService(publication.Store, publication.Layers, publication.Description, publication.Copyright);
     }
 
     /// <summary>Lists the published layers: explicit for a runtime publication, whole-store (sorted) for a declared service.</summary>
@@ -303,7 +317,7 @@ public static class GeoServicesEndpoints
         {
             return layers
                 .OrderBy(layer => layer.LayerId)
-                .Select(layer => new PublishedLayer(layer.LayerId, layer.Dataset, layer.Name ?? Table(layer.Dataset)))
+                .Select(layer => new PublishedLayer(layer.LayerId, layer.Dataset, layer.Name ?? Table(layer.Dataset), layer.Style))
                 .ToArray();
         }
 
@@ -330,10 +344,14 @@ public static class GeoServicesEndpoints
 }
 
 /// <summary>One layer resolved for serving (id via the publication or the whole-store order).</summary>
-internal sealed record PublishedLayer(int Id, string Dataset, string Name);
+internal sealed record PublishedLayer(int Id, string Dataset, string Name, string? Style = null);
 
-/// <summary>A resolved Feature Server: its store and its explicit layers (null means whole-store).</summary>
-internal sealed record ResolvedService(string Store, IReadOnlyList<PublicationLayer>? Layers);
+/// <summary>A resolved GeoServices server: its store and its explicit layers (null means whole-store).</summary>
+internal sealed record ResolvedService(
+    string Store,
+    IReadOnlyList<PublicationLayer>? Layers,
+    string? Description = null,
+    string? Copyright = null);
 
 /// <summary>The resolved services of one Feature Service query request.</summary>
 internal sealed record FeatureQueryContext(

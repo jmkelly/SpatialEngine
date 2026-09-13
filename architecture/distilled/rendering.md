@@ -124,7 +124,7 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 
 ## Not implemented (per the plan)
 
-R5's GeoServices `export`/`tile` seam (the neutral
-`POST /api/publications/{name}/render` route is implemented) and publication
-tiles, R6 labels/symbols, R7 GPU backend, and a persistent/shared tile cache
-(the `ITileCache` contract is ready for it).
+R6 labels/symbols, R7 GPU backend, and a persistent/shared tile cache
+(the `ITileCache` contract is ready for it). The GeoServices MapServer
+(`export`/`tile`, ADR-0048) is implemented; a neutral
+`/api/publications/{name}/tiles` route is not.

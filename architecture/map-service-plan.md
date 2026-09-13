@@ -1,13 +1,17 @@
 # Map Service (MapServer) Implementation Plan — scaffold
 
-> **Status:** scaffold, not scheduled. Reuses the publication registry and
-> admin surface from `publishing-and-ingest-plan.md`. Read
+> **Status:** implemented (M0–M4, ADR-0048). The blocker — no renderer —
+> was cleared by ADR-0044 (raster pipeline), ADR-0046 (tiles) and ADR-0047
+> (persisted layer style), so the MapServer now serves metadata, query,
+> identify, find, export and tiles over a `PublicationKind.Map` publication.
+> Reuses the publication registry and admin surface from
+> `publishing-and-ingest-plan.md`. Read
 > `architecture/references/geoservices-compatibility.md` §4 first.
 >
-> **Blocking decision:** MapServer is only useful to ArcGIS clients if it
-> can render (`export`/tiles). The engine is headless by design
-> (principles 1–2), so the renderer is the whole plan. M0 is useful and
-> cheap without one; M2 is the expensive commitment.
+> **Blocking decision (resolved):** MapServer is only useful to ArcGIS
+> clients if it can render (`export`/tiles); the renderer now exists and is
+> reached through the SDK contracts. The remaining non-goal is richer style
+> metadata (class breaks, unique value, labels) — see ADR-0048.
 
 ## 1. What the spec requires (v1.0 §4)
 
@@ -63,48 +67,47 @@ future track and should not be smuggled in as "MapServer".
 ## 4. Phases
 
 ### M0 — Data-only MapServer
-- **Deliverable:** `/{service}/MapServer` root for a `PublicationKind.Map`
-  publication: layers/tables, `spatialReference`, extents, `units`,
-  `copyrightText`, `capabilities: "Map,Query,Data"` (only if `export` is
-  served — otherwise `"Query,Data"`); `All Layers and Tables`;
-  Layer/Table + `query` (reuse the FeatureServer query engine).
-- **Proof:** HTTP tests from the spec's example payloads; ArcGIS REST JS
-  `getService`/`getLayer`/`query` against the host; a test pinning that
-  `export` is **not** advertised when unrendered.
+- **Implemented:** `/{service}/MapServer` root (layers/tables,
+  `spatialReference`, extents, `units`, `copyrightText`,
+  `capabilities: "Map,Query,Data"`, `singleFusedMapCache`, `tileInfo`),
+  `.../layers` (all layers and tables), `.../{layerId}` and
+  `.../{layerId}/query` (the FeatureServer query engine). Map publications
+  are advertised as `MapServer` in the catalog.
+- **Proof (built):** HTTP tests over a runtime Map publication
+  (`GeoServicesMapTests`); capabilities match what is served.
 
 ### M1 — Identify and Find
-- **Deliverable:** `identify` (point/envelope + tolerance + layer ids;
-  returns layer/feature/attributes/geometry) and `find` (search fields,
-  `contains`/`startsWith` search text over layers) built on the safe
-  `where` filter subset and geometry distance/relation verbs.
-- **Proof:** spec examples + edge cases (empty result, multiple layers,
-  unicode search text, missing tolerance).
+- **Implemented:** `identify` (point/envelope + pixel tolerance + layer
+  selection → layer/feature/attributes/geometry) and `find` (search fields,
+  `contains`/`startsWith`) built on the store scan and geometry verbs.
+- **Proof (built):** HTTP tests (a city identified under its point; a text
+  match returns the matched field and value); unit tests for the layer
+  selection parameter.
 
 ### M2 — Export Map (renderer)
-- **Deliverable (only after the render ADR):** `export` returning
-  `{href,width,height,extent,scale, ...}` plus `f=image` streaming;
-  `transparent`, `dpi`, `format`, `imageSR`/`mapSR`, `layers=show:…`,
-  `layerDefs`.
-- **Renderer:** a minimal style model (simple renderer: single symbol per
-  layer, fill/stroke/opacity) over core geometry → raster; no labels or
-  class breaks in this phase.
-- **Proof:** golden-image tests at fixed extent/dpi (tolerance-compared),
-  projection correctness, transparent background.
+- **Implemented:** `export` streams `f=image` bytes (png/jpg/webp/tiff) and
+  returns `{href,width,height,extent,scale}` for `f=json`; `transparent`,
+  `dpi`, `bboxSR`/`imageSR` (with bbox reprojection), `layers=show|hide` and
+  `layerDefs` (the safe filter grammar pushed down to the store, never SQL).
+- **Proof (built):** HTTP tests render a PNG and a JSON href at a fixed
+  extent/size; distinct persisted styles are tested at the publication route.
+- **Renderer:** the persisted per-layer style (ADR-0047) composed by
+  `PublicationMapStyle`, drawn by `IMapRenderer`; no labels or class breaks.
 
 ### M3 — Tiles
-- **Deliverable:** `tile/{z}/{y}/{x}` and `tileInfo`/LODs for a
-  `singleFusedMapCache` publication; cache keyed by service+LOD+tile with a
-  configurable directory and eviction; dynamic rendering fallback for
-  uncached tiles.
-- **Proof:** tile determinism, LOD math against the spec's tiling scheme,
-  cache hit/miss behaviour, cancellation.
+- **Implemented:** `tile/{z}/{y}/{x}` rendered through the registered
+  Web-Mercator `ITileScheme` and content-addressed `ITileCache` (ADR-0046),
+  with `tileInfo`/LODs and `singleFusedMapCache: true` on the root.
+- **Proof (built):** an HTTP test renders tile 0/0/0; `tileInfo` LODs are
+  asserted on the root. Cache ownership is the ADR-0046 in-memory cache.
 
 ### M4 — Style metadata (§12–15)
-- **Deliverable:** `drawingInfo`/renderer/symbol/label/domain JSON for the
-  subset the renderer honours; unrecognised renderer types are rejected
-  rather than silently flattened.
-- **Proof:** round-trip of the spec's example renderers; architecture test
-  that renderer types never enter `Spatial.PluginSdk`.
+- **Implemented:** `drawingInfo` with a `simple` renderer, projected from
+  the persisted MapLibre fragment (fill → `esriSFS`, line → `esriSLS`,
+  circle → `esriSMS`); richer renderer types are not produced (ADR-0048).
+- **Proof (built):** unit tests round-trip the projection and colour
+  parsing; an HTTP test reads a layer's `drawingInfo`. The renderer types
+  stay in the adapter — no renderer type enters `Spatial.PluginSdk`.
 
 ## 5. Non-goals (standing)
 

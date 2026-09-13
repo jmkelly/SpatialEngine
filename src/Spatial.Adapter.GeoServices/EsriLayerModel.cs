@@ -69,7 +69,7 @@ internal static class EsriLayerModel
     public static Spatial.Core.Geometry.CoordinateReference? LayerCoordinateReference(int srid) =>
         srid > 0 ? Spatial.Core.Geometry.CoordinateReference.Epsg(srid) : null;
 
-    private static List<EsriField> Fields(DatasetDescription dataset, bool editable)
+    internal static List<EsriField> Fields(DatasetDescription dataset, bool editable)
     {
         var fields = new List<EsriField>
         {

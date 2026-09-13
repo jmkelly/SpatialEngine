@@ -39,7 +39,7 @@ internal static class PublicationRenderEndpoints
             var publication = await registry.GetAsync(Uri.UnescapeDataString(name), cancellationToken);
             var mapRequest = new MapRenderRequest(
                 RenderEndpoints.ToViewport(request.Viewport),
-                PublicationStyleComposer.Compose(publication),
+                PublicationMapStyle.Compose(publication),
                 ResolveLayers(publication, services),
                 RenderEndpoints.ToImagery(request.Imagery),
                 request.Format,

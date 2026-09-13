@@ -299,7 +299,7 @@ and `clients/dotnet`; TS wire types regenerate from OpenAPI.
 - **Partly implemented:** the neutral host route
   `POST /api/publications/{name}/render` resolves a publication and renders
   its datasets with the persisted per-layer style (ADR-0047); the GeoServices
-  `export`/`tile` projection and publication tiles remain.
+  `export`/`tile` projection is implemented as the MapServer (ADR-0048).
 - **Proof:** spec response shapes; capability strings match what is served;
   golden export at fixed extent/dpi.
 
