@@ -22,7 +22,8 @@ internal sealed record EsriFeatureQuery(
     bool ReturnExtentOnly,
     bool ReturnDistinctValues,
     int? ResultOffset,
-    int? ResultRecordCount)
+    int? ResultRecordCount,
+    EsriTimeExtent? Time)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
@@ -53,7 +54,8 @@ internal sealed record EsriFeatureQuery(
             returnExtentOnly,
             returnDistinctValues,
             ParseNonNegativeInt(parameters.Get("resultOffset"), "resultOffset"),
-            ParseNonNegativeInt(parameters.Get("resultRecordCount"), "resultRecordCount"));
+            ParseNonNegativeInt(parameters.Get("resultRecordCount"), "resultRecordCount"),
+            ParseTime(parameters.Get("time")));
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -152,6 +154,57 @@ internal sealed record EsriFeatureQuery(
         };
     }
 
+    /// <summary>
+    /// Parses the <c>time</c> parameter: an instant (<c>time=ms</c>) or an
+    /// extent (<c>time=start,end</c>) with <c>null</c> infinity bounds. Each
+    /// bound is epoch milliseconds (an ISO-8601 date-time is also accepted).
+    /// An absent or blank value leaves the extent unset.
+    /// </summary>
+    private static EsriTimeExtent? ParseTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var parts = value.Split(',');
+        if (parts.Length == 1)
+        {
+            var instant = ParseTimeBound(parts[0], allowNull: false);
+            return new EsriTimeExtent(instant, instant);
+        }
+
+        if (parts.Length == 2)
+        {
+            return new EsriTimeExtent(ParseTimeBound(parts[0], allowNull: true), ParseTimeBound(parts[1], allowNull: true));
+        }
+
+        throw EsriInteropException.Invalid($"'time' must be an instant or a start,end extent, got '{value}'.");
+    }
+
+    private static long? ParseTimeBound(string? value, bool allowNull)
+    {
+        var text = value?.Trim();
+        if (string.IsNullOrEmpty(text) || string.Equals(text, "null", StringComparison.OrdinalIgnoreCase))
+        {
+            return allowNull
+                ? null
+                : throw EsriInteropException.Invalid("'time' must be epoch milliseconds or an ISO-8601 date-time.");
+        }
+
+        if (long.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var milliseconds))
+        {
+            return milliseconds;
+        }
+
+        if (DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var parsed))
+        {
+            return parsed.ToUnixTimeMilliseconds();
+        }
+
+        throw EsriInteropException.Invalid($"'time' bound '{text}' is not epoch milliseconds, an ISO-8601 date-time or null.");
+    }
+
     private static int? ParseNonNegativeInt(string? value, string name)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -204,7 +257,6 @@ internal sealed record EsriFeatureQuery(
 
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
-        Reject(parameters, "time", "temporal queries are not supported.");
         Reject(parameters, "outStatistics", "attribute statistics are not supported.");
         Reject(parameters, "groupByFieldsForStatistics", "statistics grouping is not supported.");
         Reject(parameters, "returnZ", "Z output is not supported.");
@@ -225,3 +277,10 @@ internal sealed record EsriFeatureQuery(
 /// dataset schema by the service) and its sort direction.
 /// </summary>
 internal sealed record EsriOrderByField(string Name, bool Descending);
+
+/// <summary>
+/// The parsed <c>time</c> parameter (spec §9.1.4): an instant has equal
+/// bounds; an extent carries <c>null</c> for an open (infinite) bound.
+/// Bounds are epoch milliseconds.
+/// </summary>
+internal sealed record EsriTimeExtent(long? StartMs, long? EndMs);

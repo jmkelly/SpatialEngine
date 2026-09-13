@@ -105,7 +105,7 @@ projection/units.
 | Catalog (§3): folders + `services[{name,type}]` | `GET /api/catalogue`: spatial `DatasetSummary[]` | Different concept |
 | `FeatureServer` root: `layers[]`, `tables[]` (§9.0) | — | Missing |
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
-| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar), field projection, `outSR`, paging, ids/count/extent-only and distinct values; `time` and the other 8 spatial relations remain absent |
+| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); the remaining spatial relations stay rejected |
 | `queryRelatedRecords` (§9.1.5) | — | Missing (no relationship model) |
 | `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only through the API; the GeoServices facade now maps `addFeatures` onto `IFeatureEditStore.AddAsync` (ADR-0037) |
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
@@ -224,7 +224,7 @@ Ordered by dependency:
   `f=json` is (GDAL ESRIJSON driver, pygeoapi metadata fetch); `f=geojson`
   on query is honestly rejected with a typed `invalid.arguments` failure
   naming `supportedQueryFormats` — GeoJSON output remains a non-goal.
-- Serving status update: the FeatureServer layer and service root advertise
+- Serving status update: the temporal surface is served. The `time` query parameter accepts an instant (`time=ms`) or an extent (`time=start,end`, either bound `null` for infinity); bounds are epoch milliseconds (ISO-8601 accepted) and filter against the layer's `esriFieldTypeDate` fields — a feature matches when any date value falls inside. Layers without date fields ignore `time`, matching ArcGIS Server's treatment of non-time-aware layers. The `where` grammar additionally accepts `TIMESTAMP '…'` and `CURRENT_TIMESTAMP ± INTERVAL n UNIT` (SECOND/MINUTE/HOUR/DAY/WEEK, plus calendar-approximate MONTH=30d/YEAR=365d) date literals, which render back as `TIMESTAMP` literals.
   truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: false`,
   `supportsAdvancedQueries: true` and `advancedQueryCapabilities`
   (`supportsPagination`/`supportsOrderBy`/`supportsDistinct`/

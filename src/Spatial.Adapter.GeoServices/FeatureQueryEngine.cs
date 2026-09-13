@@ -167,7 +167,41 @@ internal static class FeatureQueryEngine
             return false;
         }
 
+        if (query.Time is { } time && !MatchesTime(feature, time))
+        {
+            return false;
+        }
+
         return queryGeometry is null || SpatialMatch(feature, queryGeometry, query.SpatialRel, operations, cancellationToken);
+    }
+
+    /// <summary>
+    /// Applies the <c>time</c> extent to the feature's date attributes: the
+    /// feature matches when any date value falls inside the (inclusive)
+    /// bounds, where a <c>null</c> bound is infinite. A feature with no date
+    /// values matches unconditionally — ArcGIS Server ignores <c>time</c> on
+    /// layers without time-aware (date) fields.
+    /// </summary>
+    private static bool MatchesTime(Feature feature, EsriTimeExtent time)
+    {
+        var dated = false;
+        foreach (var attribute in feature.Attributes)
+        {
+            if (attribute.Kind != AttributeKind.DateTimeOffset)
+            {
+                continue;
+            }
+
+            dated = true;
+            var milliseconds = attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds();
+            if ((time.StartMs is null || milliseconds >= time.StartMs)
+                && (time.EndMs is null || milliseconds <= time.EndMs))
+            {
+                return true;
+            }
+        }
+
+        return !dated;
     }
 
     /// <summary>The synthetic <c>OBJECTID</c> a where clause may reference (ADR-0037).</summary>

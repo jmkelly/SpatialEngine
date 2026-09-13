@@ -177,6 +177,57 @@ public sealed class EsriFilterClauseTests
         AttributeValue.FromDouble(1.5));
 
     [Fact]
+    public void A_timestamp_literal_compares_against_date_fields()
+    {
+        var feature = RichFeature();
+
+        Assert.True(Parse("when = TIMESTAMP '2023-11-14T22:13:20Z'").Matches(feature));
+        Assert.False(Parse("when = TIMESTAMP '2024-01-01 00:00:00'").Matches(feature));
+        Assert.True(Parse("when >= TIMESTAMP '2023-01-01 00:00:00' AND when < TIMESTAMP '2024-01-01 00:00:00'").Matches(feature));
+        Assert.False(Parse("name = TIMESTAMP '2023-11-14T22:13:20Z'").Matches(Feature("Berlin", 1)));
+    }
+
+    [Fact]
+    public void Current_timestamp_supports_interval_arithmetic()
+    {
+        var feature = Rich(
+            AttributeValue.FromBoolean(true),
+            AttributeValue.FromGuid(KnownGuid),
+            AttributeValue.FromDateTimeOffset(DateTimeOffset.UtcNow),
+            AttributeValue.FromDouble(1.5));
+
+        Assert.True(Parse("when <= CURRENT_TIMESTAMP").Matches(feature));
+        Assert.True(Parse("when > CURRENT_TIMESTAMP - INTERVAL 1 DAY").Matches(feature));
+        Assert.True(Parse("when < CURRENT_TIMESTAMP + INTERVAL 1 DAY").Matches(feature));
+        Assert.False(Parse("when < CURRENT_TIMESTAMP - INTERVAL 1 DAY").Matches(feature));
+    }
+
+    [Fact]
+    public void Timestamp_round_trips_through_where_rendering()
+    {
+        var clause = Parse("when >= TIMESTAMP '2024-01-01 00:00:00'");
+        var feature = Rich(
+            AttributeValue.FromBoolean(true),
+            AttributeValue.FromGuid(KnownGuid),
+            AttributeValue.FromDateTimeOffset(new DateTimeOffset(2024, 6, 1, 0, 0, 0, TimeSpan.Zero)),
+            AttributeValue.FromDouble(1.5));
+
+        Assert.True(EsriFilterClause.TryParse(clause.ToWhere(), out var reparsed, out var error), error);
+        Assert.True(reparsed!.Matches(feature));
+    }
+
+    [Theory]
+    [InlineData("when = TIMESTAMP 'not-a-date'")]
+    [InlineData("when = TIMESTAMP 123")]
+    [InlineData("when = CURRENT_TIMESTAMP INTERVAL 1 DAY")]
+    [InlineData("when > CURRENT_TIMESTAMP - INTERVAL 1 FORTNIGHT")]
+    [InlineData("when > CURRENT_TIMESTAMP + TIMESTAMP '2024-01-01 00:00:00'")]
+    public void Malformed_date_constructs_are_rejected(string text)
+    {
+        Assert.False(EsriFilterClause.TryParse(text, out _, out _));
+    }
+
+    [Fact]
     public void Booleans_and_guids_compare_by_equality_only()
     {
         var feature = RichFeature();

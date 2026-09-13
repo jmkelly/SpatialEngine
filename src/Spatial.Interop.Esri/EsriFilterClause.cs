@@ -169,6 +169,11 @@ public sealed class EsriFilterClause
         Or,
         True,
         False,
+        Timestamp,
+        CurrentTimestamp,
+        Interval,
+        Plus,
+        Minus,
         End,
     }
 
@@ -335,6 +340,10 @@ public sealed class EsriFilterClause
             ['='] = TokenKind.Equals,
             ['<'] = TokenKind.LessThan,
             ['>'] = TokenKind.GreaterThan,
+            // A '-' directly before a digit lexes as a negative number
+            // (see StartsNumber); otherwise it is the interval offset below.
+            ['+'] = TokenKind.Plus,
+            ['-'] = TokenKind.Minus,
         };
 
         private static readonly Dictionary<string, TokenKind> Keywords = new(StringComparer.OrdinalIgnoreCase)
@@ -347,6 +356,9 @@ public sealed class EsriFilterClause
             ["NULL"] = TokenKind.Null,
             ["TRUE"] = TokenKind.True,
             ["FALSE"] = TokenKind.False,
+            ["TIMESTAMP"] = TokenKind.Timestamp,
+            ["CURRENT_TIMESTAMP"] = TokenKind.CurrentTimestamp,
+            ["INTERVAL"] = TokenKind.Interval,
         };
 
         private static char Peek(string text, int index) => index < text.Length ? text[index] : '\0';
@@ -435,7 +447,8 @@ public sealed class EsriFilterClause
 
         private bool TryComparison(out Node expression, out string error)
         {
-            if (Current.Kind is TokenKind.Number or TokenKind.String or TokenKind.True or TokenKind.False or TokenKind.Null)
+            if (Current.Kind is TokenKind.Number or TokenKind.String or TokenKind.True or TokenKind.False or TokenKind.Null
+                or TokenKind.Timestamp or TokenKind.CurrentTimestamp)
             {
                 return TryConstantComparison(out expression, out error);
             }
@@ -569,12 +582,132 @@ public sealed class EsriFilterClause
                     error = string.Empty;
                     _index++;
                     return true;
+                case TokenKind.Timestamp:
+                    return TryTimestampLiteral(out literal, out error);
+                case TokenKind.CurrentTimestamp:
+                    return TryCurrentTimestamp(out literal, out error);
                 default:
                     error = $"expected a literal value at position {Current.Position}, found '{Current.Text}'";
                     literal = default;
                     return false;
             }
         }
+
+        /// <summary>
+        /// Parses a <c>TIMESTAMP '…'</c> date-time literal (the Esri where-syntax
+        /// for comparing date fields) into epoch milliseconds.
+        /// </summary>
+        private bool TryTimestampLiteral(out Literal literal, out string error)
+        {
+            var position = Current.Position;
+            _index++;
+            if (Current.Kind != TokenKind.String)
+            {
+                error = $"expected a quoted date-time after TIMESTAMP at position {position}, found '{Current.Text}'";
+                literal = default;
+                return false;
+            }
+
+            if (!TryParseDateTime(Current.Text, out var milliseconds))
+            {
+                error = $"'{Current.Text}' is not a valid date-time literal at position {Current.Position}";
+                literal = default;
+                return false;
+            }
+
+            literal = new Literal(LiteralKind.DateTime, null, milliseconds, false);
+            error = string.Empty;
+            _index++;
+            return true;
+        }
+
+        /// <summary>
+        /// Parses <c>CURRENT_TIMESTAMP</c> with optional <c>± INTERVAL n UNIT</c>
+        /// offset, evaluated once when parsed.
+        /// </summary>
+        private bool TryCurrentTimestamp(out Literal literal, out string error)
+        {
+            var moment = DateTimeOffset.UtcNow;
+            _index++;
+            if (Current.Kind is TokenKind.Plus or TokenKind.Minus)
+            {
+                var negative = Current.Kind == TokenKind.Minus;
+                _index++;
+                if (!TryInterval(negative, ref moment, out error))
+                {
+                    literal = default;
+                    return false;
+                }
+            }
+
+            literal = new Literal(LiteralKind.DateTime, null, moment.ToUnixTimeMilliseconds(), false);
+            error = string.Empty;
+            return true;
+        }
+
+        private bool TryInterval(bool negative, ref DateTimeOffset moment, out string error)
+        {
+            if (Current.Kind != TokenKind.Interval)
+            {
+                error = $"expected INTERVAL after CURRENT_TIMESTAMP at position {Current.Position}, found '{Current.Text}'";
+                return false;
+            }
+
+            _index++;
+            if (Current.Kind != TokenKind.Number || !double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount))
+            {
+                error = $"expected an INTERVAL amount at position {Current.Position}, found '{Current.Text}'";
+                return false;
+            }
+
+            _index++;
+            if (Current.Kind != TokenKind.Identifier || !IntervalUnits.TryGetValue(Current.Text, out var unit))
+            {
+                error = $"expected an INTERVAL unit (SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, YEAR) at position {Current.Position}, found '{Current.Text}'";
+                return false;
+            }
+
+            _index++;
+            var offset = unit(amount);
+            moment = negative ? moment.Subtract(offset) : moment.Add(offset);
+            error = string.Empty;
+            return true;
+        }
+
+        private static bool TryParseDateTime(string text, out long milliseconds)
+        {
+            if (DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+            {
+                milliseconds = parsed.ToUnixTimeMilliseconds();
+                return true;
+            }
+
+            milliseconds = 0;
+            return false;
+        }
+
+        /// <summary>
+        /// The supported <c>INTERVAL</c> units. Months and years are calendar
+        /// approximations (30 and 365 days); the grammar names them so a
+        /// client request parses, and the approximation is documented here.
+        /// </summary>
+        private static readonly Dictionary<string, Func<double, TimeSpan>> IntervalUnits = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["SECOND"] = TimeSpan.FromSeconds,
+            ["SECONDS"] = TimeSpan.FromSeconds,
+            ["MINUTE"] = TimeSpan.FromMinutes,
+            ["MINUTES"] = TimeSpan.FromMinutes,
+            ["HOUR"] = TimeSpan.FromHours,
+            ["HOURS"] = TimeSpan.FromHours,
+            ["DAY"] = TimeSpan.FromDays,
+            ["DAYS"] = TimeSpan.FromDays,
+            ["WEEK"] = weeks => TimeSpan.FromDays(7 * weeks),
+            ["WEEKS"] = weeks => TimeSpan.FromDays(7 * weeks),
+            ["MONTH"] = months => TimeSpan.FromDays(30 * months),
+            ["MONTHS"] = months => TimeSpan.FromDays(30 * months),
+            ["YEAR"] = years => TimeSpan.FromDays(365 * years),
+            ["YEARS"] = years => TimeSpan.FromDays(365 * years),
+        };
     }
 }
 
