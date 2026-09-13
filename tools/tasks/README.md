@@ -90,9 +90,13 @@ machine output automatically); `--md` or `--table` for humans. Exit codes:
 ## Agent protocol
 
 1. `eng/tasks next --claim --agent <id> --json` — never start unclaimed work.
-2. Work in the task's worktree; run `eng/verify.sh` before handing off.
-3. `eng/tasks submit <id> --commit <sha> --pr <n>`.
-4. The merger lands it on `main`, runs `eng/verify.sh` there, then
+2. **Test-first** for every defect or gap: add a failing reproduction test and
+   watch it fail for the intended reason (red), then fix/implement until it
+   passes (green), then confirm with `eng/verify.sh` on the delivered revision.
+   A test written after the fix does not count.
+3. Work in the task's worktree; run `eng/verify.sh` before handing off.
+4. `eng/tasks submit <id> --commit <sha> --pr <n>`.
+5. The merger lands it on `main`, runs `eng/verify.sh` there, then
    `eng/tasks done <id>`.
 
 Record the task in the commit trailer so provenance survives without the DB:

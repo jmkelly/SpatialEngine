@@ -17,8 +17,9 @@ interop surface.
   `SpatialException` codes (`invalid.arguments`, `not.found`,
   `store.unavailable`).
 - Behaviour changes land contract, SDK, test and ADR updates together, with
-  success, failure and cancellation tested; pin package versions in
-  `Directory.Packages.props`.
+  success, failure and cancellation tested. Test-first: every defect or gap
+  gets a failing reproduction test before the fix, and the fix is confirmed by
+  that test passing. Pin package versions in `Directory.Packages.props`.
 
 ## Commands
 
