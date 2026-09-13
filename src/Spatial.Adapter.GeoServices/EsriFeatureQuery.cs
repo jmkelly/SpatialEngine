@@ -261,6 +261,23 @@ internal sealed record EsriFeatureQuery(
         Reject(parameters, "groupByFieldsForStatistics", "statistics grouping is not supported.");
         Reject(parameters, "returnZ", "Z output is not supported.");
         Reject(parameters, "returnM", "M output is not supported.");
+        // T-024 silent-ignore audit: every served-allowlist parameter the
+        // engine cannot honour is rejected by name, so a client never gets a
+        // silently narrowed query. Dropping any of these would change the
+        // result set (distance/units, text, resultType) or promise data the
+        // engine does not version (gdbVersion, historicMoment).
+        Reject(parameters, "sqlFormat", "raw SQL is never accepted; the facade evaluates its closed where-grammar.");
+        Reject(parameters, "resultType", "only current data is served; tile-version result types are not supported.");
+        Reject(parameters, "gdbVersion", "versioned geodatabase queries are not supported.");
+        Reject(parameters, "historicMoment", "historical queries are not supported.");
+        Reject(parameters, "datumTransformation", "datum transformations are not supported; outSR reprojection uses the registered transforms.");
+        Reject(parameters, "returnCentroid", "centroid output is not supported.");
+        Reject(parameters, "distance", "distance queries are not supported; buffer the geometry client-side instead.");
+        Reject(parameters, "units", "'units' is only meaningful with 'distance', which is not supported.");
+        Reject(parameters, "relationParam", "custom DE-9IM relations are not supported.");
+        Reject(parameters, "text", "full-text search is not supported; use 'where' with LIKE.");
+        Reject(parameters, "returnTrueCurves", "true-curve output is not supported.");
+        Reject(parameters, "multipatchOption", "multipatch options are not supported.");
     }
 
     private static void Reject(EsriRequestParameters parameters, string name, string message)

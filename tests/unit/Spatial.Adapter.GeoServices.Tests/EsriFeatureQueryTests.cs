@@ -140,9 +140,23 @@ public sealed class EsriFeatureQueryTests
     [InlineData("groupByFieldsForStatistics")]
     [InlineData("returnZ")]
     [InlineData("returnM")]
+    [InlineData("sqlFormat")]
+    [InlineData("resultType")]
+    [InlineData("gdbVersion")]
+    [InlineData("historicMoment")]
+    [InlineData("datumTransformation")]
+    [InlineData("returnCentroid")]
+    [InlineData("distance")]
+    [InlineData("units")]
+    [InlineData("relationParam")]
+    [InlineData("text")]
+    [InlineData("returnTrueCurves")]
+    [InlineData("multipatchOption")]
     public async Task Unsupported_query_parameters_are_rejected(string name)
     {
-        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, "x")));
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, "x")));
+
+        Assert.Contains($"'{name}'", exception.Message);
     }
 
     [Fact]
