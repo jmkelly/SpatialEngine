@@ -65,7 +65,7 @@ internal static class WmsService
         RequireDefaultStyles(parameters.List("styles"));
         var layers = OgcLayers.Select(map, parameters.List("layers"));
         var request = new MapRenderRequest(
-            ParseViewport(parameters),
+            ParseViewport(parameters, requireVersion: true),
             MapStyle.Compose(map.Name, layers),
             OgcRender.Sources(services, map, layers),
             null,
@@ -85,7 +85,7 @@ internal static class WmsService
         var names = queryNames.Count > 0 ? queryNames : parameters.List("layers");
         RequireQueryable(map, names);
         var layers = OgcLayers.Select(map, names);
-        var viewport = ParseViewport(parameters);
+        var viewport = ParseViewport(parameters, requireVersion: false);
         var point = ClickPoint(parameters, viewport);
         var matches = new List<(DatasetDescription Dataset, Feature Feature)>();
         foreach (var layer in layers)
@@ -344,10 +344,16 @@ internal static class WmsService
         return builder.ToString();
     }
 
-    private static RasterViewport ParseViewport(OgcParameters parameters)
+    private static RasterViewport ParseViewport(OgcParameters parameters, bool requireVersion)
     {
+        var version = parameters.Get("version");
+        if (requireVersion && version is null)
+        {
+            throw OgcServiceException.Missing("version");
+        }
+
         var crs = parameters.Get("crs") ?? parameters.Get("srs") ?? throw OgcServiceException.Missing("crs");
-        var (identity, yFirst) = OgcCrs.Resolve(crs);
+        var (identity, yFirst) = OgcCrs.Resolve(crs, version);
         var bounds = OgcGeometry.ParseBbox(parameters.Required("bbox"));
         var xFirst = yFirst ? new Envelope(bounds.MinY, bounds.MinX, bounds.MaxY, bounds.MaxX) : bounds;
         RequireNonEmptyExtent(parameters.Get("bbox"), xFirst);

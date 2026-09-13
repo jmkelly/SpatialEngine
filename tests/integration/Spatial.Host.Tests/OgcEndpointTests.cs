@@ -85,7 +85,7 @@ public sealed class OgcEndpointTests : IDisposable
         var client = await MapAsync(factory, "world", "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=true");
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=true");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -182,7 +182,7 @@ public sealed class OgcEndpointTests : IDisposable
         var client = await MapAsync(factory, "world", "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=UnknownFormat");
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=UnknownFormat");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("InvalidFormat", await ReportCodeAsync(response));
@@ -210,7 +210,7 @@ public sealed class OgcEndpointTests : IDisposable
         var client = await MapAsync(factory, "world", "wms");
 
         var response = await client.GetAsync(
-            $"/ogc/world/wms?service=WMS&request=GetMap&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
+            $"/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
@@ -223,7 +223,7 @@ public sealed class OgcEndpointTests : IDisposable
         var client = await MapAsync(factory, "world", "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&layers=cities&styles=bogus&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&styles=bogus&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("StyleNotDefined", await ReportCodeAsync(response));
@@ -240,6 +240,36 @@ public sealed class OgcEndpointTests : IDisposable
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("LayerNotDefined", await ReportCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Wms_111_epsg4326_bbox_stays_x_first()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // The same geography: 1.1.1 lon/lat via SRS versus 1.3.0 lat/lon via CRS.
+        var legacy = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.1.1&request=GetMap&srs=EPSG:4326&bbox=-10,35,30,60&format=image/png&width=200&height=200&styles=&layers=cities");
+        var current = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetMap&crs=EPSG:4326&bbox=35,-10,60,30&format=image/png&width=200&height=200&styles=&layers=cities");
+
+        Assert.Equal(HttpStatusCode.OK, legacy.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, current.StatusCode);
+        Assert.Equal(await current.Content.ReadAsByteArrayAsync(), await legacy.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task Wms_get_map_without_a_version_is_a_typed_report()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("MissingParameterValue", await ReportCodeAsync(response));
     }
 
     [Fact]
