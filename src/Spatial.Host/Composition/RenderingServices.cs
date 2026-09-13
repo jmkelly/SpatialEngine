@@ -45,14 +45,21 @@ internal static class RenderingServices
             new RenderLimits(renderingOptions.MaxPixels, renderingOptions.MaxLayers)));
 
         // Tiles: the scheme is pluggable (a second projection is another
-        // ITileScheme registration); the initial cache owns process memory and
-        // can be replaced without touching the routes (ADR-0046).
+        // ITileScheme registration); the cache is pluggable too — the
+        // file provider persists tiles under a shared directory so they
+        // survive a restart (T-001) — and replacing it touches neither the
+        // routes nor the renderer (ADR-0046).
         builder.Services.AddSingleton<ITileScheme>(new WebMercatorTileScheme());
-        builder.Services.AddSingleton<ITileCache>(new InMemoryTileCache(tileOptions.Cache));
+        builder.Services.AddSingleton<ITileCache>(CreateCache(tileOptions));
         builder.Services.AddSingleton(services => new TileService(
             services.GetRequiredService<IMapRenderer>(),
             services.GetServices<ITileScheme>(),
             services.GetRequiredService<ITileCache>(),
             services.GetRequiredService<TileOptions>()));
     }
+
+    private static ITileCache CreateCache(TileOptions options) =>
+        string.Equals(options.Cache.Provider, "file", StringComparison.OrdinalIgnoreCase)
+            ? new FileTileCache(options.Cache)
+            : new InMemoryTileCache(options.Cache);
 }

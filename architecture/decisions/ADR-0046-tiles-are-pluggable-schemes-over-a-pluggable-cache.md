@@ -123,9 +123,15 @@ Implemented (R4 of `rendering-implementation-plan.md`): the
 HTTP DTOs; `Spatial.Tiling.WebMercator`; the Host's `InMemoryTileCache`,
 `TileFingerprint`, `TileService`, routes and `Spatial:Tiles` configuration;
 and the `.NET` `SpatialClient.Tiles.RenderAsync`/`CapabilitiesAsync` and
-TypeScript `renderTile`/`renderTiles`/`tileCapabilities` clients. Not
-implemented: the GeoServices `export`/`tile` seam (R5), labels/symbols (R6),
-a GPU backend (R7) and a persistent/shared cache.
+TypeScript `renderTile`/`renderTiles`/`tileCapabilities` clients. T-001 adds
+the second `ITileCache`: the Host's `FileTileCache`, selected by
+`Spatial:Tiles:Cache:Provider: file` with a shared `Root` directory, so
+tiles survive a host restart and are shared between hosts on the same
+root (eviction stays LRU within the same byte/entry bounds; storage failures
+are `store.unavailable`). No new seam, package or contract: this fills the
+deferred-ownership slot above, so it amends this ADR in place rather than
+taking a new number. Not implemented: the GeoServices `export`/`tile` seam
+(R5), labels/symbols (R6), a GPU backend (R7).
 
 ## Alternatives
 
