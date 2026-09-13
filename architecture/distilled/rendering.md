@@ -65,6 +65,10 @@ style/layer/imagery/encoding request.
 ## Style document (documented MapLibre subset)
 
 Canonical document is the MapLibre style spec JSON the workbench writes.
+A publication may also persist a per-layer style fragment in the same dialect
+(ADR-0047): each `PublicationLayer.Style` is a JSON array of style-layer
+objects without `id`/`source-layer`, and the host injects those (plus the
+layer's dataset) when it assembles the render document.
 Supported layers: `background`, `fill`, `line`, `circle`. Per-layer keys:
 `minzoom`, `maxzoom`, `layout.visibility`, `filter`, `paint`.
 

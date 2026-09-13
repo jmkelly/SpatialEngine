@@ -22,7 +22,7 @@
 | Query Related Records (§4.2.5) | relationship model (absent, ADR-0035 non-goal) |
 | Feature (§4.3), Attachment Infos/Attachment (§4.4–4.5), HTML Popup (§4.6), Image (§4.7) | attachments/relationships (absent) |
 | All Layers and Tables (§4.8) | publication metadata |
-| `drawingInfo`, renderers, symbols, labels, domains (§12–15) | style model (absent) |
+| `drawingInfo`, renderers, symbols, labels, domains (§12–15) | style model (per-layer style now persisted — ADR-0047; the renderer/`drawingInfo` projection is still absent) |
 
 Map services are read-only (spec §4.0) — no editing concerns.
 

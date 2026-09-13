@@ -2127,6 +2127,12 @@
               "null",
               "string"
             ]
+          },
+          "style": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

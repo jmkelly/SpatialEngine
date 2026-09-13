@@ -144,6 +144,7 @@ export interface PublicationLayer {
   dataset: string;
   layerId: number | string;
   name?: null | string;
+  style?: null | string;
 }
 
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";
