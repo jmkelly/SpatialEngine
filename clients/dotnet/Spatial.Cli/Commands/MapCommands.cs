@@ -122,18 +122,115 @@ public static class MapCommands
         return ExitCodes.Success;
     }
 
-    private static Task<int> CreateAsync(CliContext context) =>
-        throw new CliUsageException("'map create' is not implemented yet.");
+    private static async Task<int> CreateAsync(CliContext context)
+    {
+        var name = context.Arguments.Require("name");
+        var kind = MapEditing.ParseKind(context.Arguments.Require("kind"));
+        var store = context.Arguments.Optional("store") ?? context.Settings.Store;
+        var requests = MapEditing.ParseLayers(context.Arguments.All("layer"));
 
-    private static Task<int> DeleteAsync(CliContext context) =>
-        throw new CliUsageException("'map delete' is not implemented yet.");
+        var existing = await context.Gateway.FindPublicationAsync(name);
+        if (existing is not null && !context.Arguments.Has("force"))
+        {
+            throw new CliUsageException($"Publication '{name}' already exists; pass --force to replace it.");
+        }
 
-    private static Task<int> AddLayerAsync(CliContext context) =>
-        throw new CliUsageException("'map add-layer' is not implemented yet.");
+        var publication = new Publication(
+            name,
+            kind,
+            store,
+            MapEditing.AssignLayers(requests, existing),
+            context.Arguments.Optional("description"),
+            context.Arguments.Optional("copyright"));
+        return await MapEditing.CommitAsync(context, "create", publication, $"Would create publication '{name}'.");
+    }
 
-    private static Task<int> RemoveLayerAsync(CliContext context) =>
-        throw new CliUsageException("'map remove-layer' is not implemented yet.");
+    private static async Task<int> DeleteAsync(CliContext context)
+    {
+        var name = context.Arguments.RequirePositional(0, "a publication name");
+        if (context.Settings.DryRun)
+        {
+            context.Output.Result(context.Command, new { action = "delete", name }, $"Would delete publication '{name}'.");
+            return ExitCodes.Success;
+        }
 
-    private static Task<int> SetStyleAsync(CliContext context) =>
-        throw new CliUsageException("'map set-style' is not implemented yet.");
+        var token = context.Settings.Token ?? throw new CliUsageException(MapEditing.AdminTokenRequired);
+        if (!await context.Gateway.DeletePublicationAsync(name, token))
+        {
+            return MapEditing.NotFound(context, $"No publication '{name}'.");
+        }
+
+        context.Output.Result(context.Command, new { name, deleted = true }, $"Deleted publication '{name}'.");
+        return ExitCodes.Success;
+    }
+
+    private static async Task<int> AddLayerAsync(CliContext context)
+    {
+        var name = context.Arguments.Require("map");
+        var dataset = context.Arguments.Require("dataset");
+        var publication = await context.Gateway.FindPublicationAsync(name);
+        if (publication is null)
+        {
+            return MapEditing.NotFound(context, $"No publication '{name}'.");
+        }
+
+        if (MapEditing.FindLayer(publication, dataset) is not null)
+        {
+            throw new CliUsageException($"Publication '{name}' already has a layer for dataset '{dataset}'.");
+        }
+
+        var layer = new PublicationLayer(dataset, MapEditing.NextLayerId(publication), context.Arguments.Optional("name"));
+        var updated = publication with { Layers = [.. publication.Layers, layer] };
+        return await MapEditing.CommitAsync(context, "add-layer", updated, $"Would add layer '{dataset}' to publication '{name}'.");
+    }
+
+    private static async Task<int> RemoveLayerAsync(CliContext context)
+    {
+        var name = context.Arguments.Require("map");
+        var dataset = context.Arguments.Require("dataset");
+        var publication = await context.Gateway.FindPublicationAsync(name);
+        if (publication is null)
+        {
+            return MapEditing.NotFound(context, $"No publication '{name}'.");
+        }
+
+        if (MapEditing.FindLayer(publication, dataset) is null)
+        {
+            return MapEditing.NotFound(context, $"Publication '{name}' has no layer for dataset '{dataset}'.");
+        }
+
+        var updated = publication with
+        {
+            Layers = publication.Layers
+                .Where(layer => !string.Equals(layer.Dataset, dataset, StringComparison.Ordinal))
+                .ToArray(),
+        };
+        return await MapEditing.CommitAsync(context, "remove-layer", updated, $"Would remove layer '{dataset}' from publication '{name}'.");
+    }
+
+    private static async Task<int> SetStyleAsync(CliContext context)
+    {
+        var name = context.Arguments.Require("map");
+        var dataset = context.Arguments.Require("dataset");
+        var publication = await context.Gateway.FindPublicationAsync(name);
+        if (publication is null)
+        {
+            return MapEditing.NotFound(context, $"No publication '{name}'.");
+        }
+
+        var layer = MapEditing.FindLayer(publication, dataset);
+        if (layer is null)
+        {
+            return MapEditing.NotFound(context, $"Publication '{name}' has no layer for dataset '{dataset}'.");
+        }
+
+        var restyled = MapEditing.Restyle(context.Arguments, layer);
+        var updated = publication with
+        {
+            Layers = publication.Layers
+                .Select(item => string.Equals(item.Dataset, dataset, StringComparison.Ordinal) ? restyled : item)
+                .ToArray(),
+        };
+        return await MapEditing.CommitAsync(context, "set-style", updated, $"Would restyle layer '{dataset}' in publication '{name}'.");
+    }
 }
