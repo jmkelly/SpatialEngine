@@ -64,9 +64,11 @@ Pipeline stages (all in `Spatial.Rendering.Skia` unless noted):
 Tiles (ADR-0046) sit on top: `TileService` (host) resolves an `ITileScheme`
 by id, checks `ITileCache`, derives the tile viewport from `ITileScheme.Bounds`
 and calls `IMapRenderer` per tile; a batch runs an ordered tile list through
-bounded parallelism. The initial cache is the host's `InMemoryTileCache`
-(LRU, byte + entry bounds); the version in `TileCacheKey` is a SHA-256 of the
-style/layer/imagery/encoding request.
+bounded parallelism. The memory cache is the host's `InMemoryTileCache`
+(LRU, byte + entry bounds); `FileTileCache` (T-001, same bounds, LRU by
+file time) persists tiles under a shared directory so they survive a
+restart and are shared between hosts. The version in `TileCacheKey` is a
+SHA-256 of the style/layer/imagery/encoding request.
 
 ## Style document (documented MapLibre subset)
 
@@ -117,9 +119,13 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   "Rendering": { "Formats": ["png","jpeg","webp"], "MaxPixels": 16777216, "MaxLayers": 32 },
   "Imagery":   { "Sources": [ { "name": "basemap", "path": "/data/basemap.tif" } ] },
   "Tiles":     { "DefaultScheme": "webmercator", "MaxTilesPerBatch": 64, "Concurrency": 0,
-                 "Cache": { "MaxBytes": 67108864, "MaxEntries": 4096 } }
+                 "Cache": { "Provider": "memory", "Root": "", "MaxBytes": 67108864, "MaxEntries": 4096 } }
 }
 ```
+
+`Cache.Provider: file` with a shared `Cache.Root` selects the persistent
+tile cache (T-001, ADR-0046): tiles survive a host restart and are shared
+between hosts on the same root; storage failures are `store.unavailable`.
 
 Imagery `Source` is a configured name/path, never a caller-supplied URL
 (SSRF). Failures map through `ErrorMapper`: `invalid.arguments` → 400,
