@@ -7,6 +7,7 @@ using Spatial.Core.Geometry;
 using Spatial.Core.Geometry.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
+using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Client.Tests;
 
@@ -259,6 +260,98 @@ public sealed class SpatialClientTests
         Assert.Equal("webmercator", capabilities.DefaultScheme);
         Assert.Equal(64, capabilities.MaxTilesPerBatch);
         Assert.Equal("EPSG:3857", Assert.Single(capabilities.Schemes).Crs);
+    }
+
+    [Fact]
+    public async Task CreateDataset_posts_batch_and_returns_the_name()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"dataset":"public.t"}""")));
+        var batch = new FeatureBatch(
+            new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]), []);
+
+        var created = await stub.Client.CreateDatasetAsync("public.t", batch, 4326, store: "postgis");
+
+        Assert.Equal("public.t", created);
+        var exchange = Assert.Single(stub.Handler.Exchanges);
+        Assert.Equal(HttpMethod.Post, exchange.Request.Method);
+        Assert.Equal("/api/datasets", exchange.Request.RequestUri?.AbsolutePath);
+        Assert.Contains("store=postgis", exchange.Request.RequestUri?.Query);
+        var body = JsonDocument.Parse(await exchange.Request.Content!.ReadAsStringAsync());
+        Assert.Equal("public.t", body.RootElement.GetProperty("dataset").GetString());
+        Assert.Equal(4326, body.RootElement.GetProperty("srid").GetInt32());
+        var roundTripped = FeatureBatchCodec.Decode(Convert.FromBase64String(body.RootElement.GetProperty("batch").GetString()!));
+        Assert.Equal(batch.Schema, roundTripped.Schema);
+    }
+
+    [Fact]
+    public async Task CreateDataset_maps_a_host_failure_to_a_structured_exception()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"code":"invalid.arguments","message":"bad srid"}""", HttpStatusCode.BadRequest)));
+        var batch = new FeatureBatch(
+            new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]), []);
+
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
+            stub.Client.CreateDatasetAsync("public.t", batch, -1, store: "postgis"));
+
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
+    }
+
+    [Fact]
+    public async Task CreateDataset_honours_cancellation()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"dataset":"public.t"}""")));
+        var batch = new FeatureBatch(
+            new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]), []);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            stub.Client.CreateDatasetAsync("public.t", batch, 4326, cancellationToken: new CancellationToken(canceled: true)));
+    }
+
+    [Fact]
+    public async Task PutMap_puts_the_map_with_the_admin_token()
+    {
+        using var stub = new StubClient(new StubHttpHandler(request =>
+        {
+            Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+            Assert.Equal("secret", request.Headers.Authorization?.Parameter);
+            return StubHttpHandler.Json("""{"name":"cities","store":"demo","layers":[],"services":["feature"]}""");
+        }));
+        var map = new Map("cities", "demo", [], [MapService.Feature]);
+
+        var stored = await stub.Client.PutMapAsync(map, adminToken: "secret");
+
+        Assert.Equal("cities", stored.Name);
+        Assert.Equal("demo", stored.Store);
+        var exchange = Assert.Single(stub.Handler.Exchanges);
+        Assert.Equal(HttpMethod.Put, exchange.Request.Method);
+        Assert.Equal("/api/maps/cities", exchange.Request.RequestUri?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task PutMap_maps_a_host_failure_to_a_structured_exception()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"code":"invalid.arguments","message":"dangling dataset"}""", HttpStatusCode.BadRequest)));
+        var map = new Map("cities", "demo", [], [MapService.Feature]);
+
+        var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
+            stub.Client.PutMapAsync(map, adminToken: "secret"));
+
+        Assert.Equal(400, exception.StatusCode);
+        Assert.Equal("invalid.arguments", exception.Code);
+    }
+
+    [Fact]
+    public async Task PutMap_honours_cancellation()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"name":"cities","store":"demo","layers":[],"services":["feature"]}""")));
+        var map = new Map("cities", "demo", [], [MapService.Feature]);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            stub.Client.PutMapAsync(map, cancellationToken: new CancellationToken(canceled: true)));
     }
 
     private static HttpResponseMessage Image(byte[] bytes, string mediaType, int width, int height)
