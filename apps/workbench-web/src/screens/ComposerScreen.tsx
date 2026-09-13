@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map as MapLibreMap, NavigationControl, LngLatBounds, setWorkerUrl, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { DatasetSummary, FeatureBatch, Publication, PublicationKind } from "@spatial/client";
-import { createClient } from "../api.ts";
+import type { DatasetSummary, FeatureBatch, Map, MapService } from "@spatial/client";
+import { createClient, hostBaseUrl } from "../api.ts";
 import { batchToGeoJson } from "../sgeom.ts";
 import { basemapSource, initialBasemap, rememberBasemap, type Basemap } from "../basemap.ts";
 import { collectionCoordinates } from "../map-geometry.ts";
 import {
   addLayer,
+  defaultServices,
   defaultStyle,
-  fromPublication,
+  fromMap,
   geometryTypesOf,
   inferGeometryKind,
   layerSpecs,
@@ -17,7 +18,7 @@ import {
   removeLayer,
   reorderLayers,
   sourceId,
-  toPublication,
+  toMap,
   updateLayerName,
   updateLayerStyle,
   type ComposerLayer,
@@ -33,15 +34,15 @@ if (typeof window !== "undefined") {
 const EmptyCollection: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 /**
- * The map composer: add catalogue
- * datasets or uploaded files as ordered, styled layers, preview them on
- * MapLibre, and publish the composition as a feature or map service. The
- * screen talks only to the public host API through the TS SDK; per-layer
- * style is authoring state (the published publication carries ordered layers
- * and stable ids only).
+ * The Maps experience: add catalogue datasets or uploaded files as ordered,
+ * styled layers, preview them on MapLibre, choose the services the map
+ * exposes, and publish. The screen talks only to the public host API through
+ * the TS SDK; per-layer style is authoring state persisted with the map
+ * (ADR-0047), and the service set is persisted on the map (ADR-0052).
  */
 export function ComposerScreen() {
   const client = useMemo(() => createClient(), []);
+  const base = useMemo(() => hostBaseUrl(), []);
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const appliedBasemap = useRef<Basemap | null>(null);
@@ -49,11 +50,11 @@ export function ComposerScreen() {
   const [basemap, setBasemap] = useState<Basemap>(initialBasemap);
   const [store, setStore] = useState("demo");
   const [name, setName] = useState("draft_service");
-  const [kind, setKind] = useState<PublicationKind>("feature");
+  const [services, setServices] = useState<MapService[]>(() => [...defaultServices]);
   const [layers, setLayers] = useState<ComposerLayer[]>([]);
   const [features, setFeatures] = useState<Record<string, GeoJSON.FeatureCollection>>({});
   const [catalogue, setCatalogue] = useState<DatasetSummary[]>([]);
-  const [publications, setPublications] = useState<Publication[]>([]);
+  const [maps, setMaps] = useState<Map[]>([]);
   const [selectedDataset, setSelectedDataset] = useState("");
   const [token, setToken] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -142,9 +143,9 @@ export function ComposerScreen() {
     }
   }, [client]);
 
-  const refreshPublications = useCallback(async () => {
+  const refreshMaps = useCallback(async () => {
     try {
-      setPublications(await client.listPublications());
+      setMaps(await client.listMaps());
     } catch (failure) {
       setError(messageOf(failure));
     }
@@ -155,8 +156,8 @@ export function ComposerScreen() {
   }, [store, refreshCatalogue]);
 
   useEffect(() => {
-    void refreshPublications();
-  }, [refreshPublications]);
+    void refreshMaps();
+  }, [refreshMaps]);
 
   const loadDataset = useCallback(async (datasetId: string) => {
     if (datasetId === "") return;
@@ -176,6 +177,7 @@ export function ComposerScreen() {
         dataset: datasetId,
         name: datasetId,
         geometry,
+        kind: "feature",
         style: defaultStyle(geometry, layers.length),
         featureCount: collection.features.length,
         layerId: null,
@@ -231,26 +233,26 @@ export function ComposerScreen() {
     setError(null);
     setStatus(null);
     try {
-      const stored = await client.putPublication(toPublication({ name, kind, store, layers }), token === "" ? undefined : token);
-      setStatus(`Published ${stored.name} (${stored.kind}) with ${stored.layers.length} layer(s).`);
-      await refreshPublications();
+      const stored = await client.putMap(toMap({ name, store, layers, services }), token === "" ? undefined : token);
+      setStatus(`Published ${stored.name} with ${stored.layers.length} layer(s) and ${stored.services.length} service(s).`);
+      await refreshMaps();
     } catch (failure) {
       setError(messageOf(failure));
     } finally {
       setBusy(false);
     }
-  }, [client, kind, layers, name, refreshPublications, store, token]);
+  }, [client, layers, name, refreshMaps, services, store, token]);
 
-  const loadPublication = useCallback(async (publication: Publication) => {
+  const loadMap = useCallback(async (map: Map) => {
     setBusy(true);
     setError(null);
     setStatus(null);
     try {
-      const draft = fromPublication(publication);
+      const draft = fromMap(map);
       const loadedFeatures: Record<string, GeoJSON.FeatureCollection> = {};
       const hydrated = await Promise.all(draft.layers.map(async (layer) => {
         try {
-          const collection = mergeBatches(await client.scan(layer.dataset, publication.store));
+          const collection = mergeBatches(await client.scan(layer.dataset, map.store));
           loadedFeatures[layer.id] = collection;
           return { ...layer, geometry: inferGeometryKind(geometryTypesOf(collection)), featureCount: collection.features.length };
         } catch {
@@ -259,12 +261,12 @@ export function ComposerScreen() {
         }
       }));
 
-      setStore(publication.store);
-      setName(publication.name);
-      setKind(publication.kind);
+      setStore(map.store);
+      setName(map.name);
+      setServices([...map.services]);
       setLayers(hydrated);
       setFeatures(loadedFeatures);
-      setStatus(`Loaded ${publication.name}.`);
+      setStatus(`Loaded ${map.name}.`);
     } catch (failure) {
       setError(messageOf(failure));
     } finally {
@@ -272,18 +274,32 @@ export function ComposerScreen() {
     }
   }, [client]);
 
-  const deletePublication = useCallback(async (publication: Publication) => {
+  const deleteMap = useCallback(async (map: Map) => {
     setBusy(true);
     setError(null);
     try {
-      await client.deletePublication(publication.name, token === "" ? undefined : token);
-      await refreshPublications();
+      await client.deleteMap(map.name, token === "" ? undefined : token);
+      await refreshMaps();
     } catch (failure) {
       setError(messageOf(failure));
     } finally {
       setBusy(false);
     }
-  }, [client, refreshPublications, token]);
+  }, [client, refreshMaps, token]);
+
+  function toggleService(service: MapService) {
+    setServices((current) =>
+      current.includes(service) ? current.filter((value) => value !== service) : [...current, service]);
+  }
+
+  async function copyEndpoint(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus(`Copied ${value}`);
+    } catch {
+      setError("Could not copy to the clipboard.");
+    }
+  }
 
   function changeStore(next: string) {
     setStore(next);
@@ -324,10 +340,11 @@ export function ComposerScreen() {
     <section className="screen composer-screen">
       <div className="composer-header">
         <div>
-          <h2>Map composer</h2>
+          <h2>Maps</h2>
           <p className="muted small">
-            Compose datasets into an ordered, styled map and publish it as a feature or map service.
-            Style is a preview aid; the publication records the ordered layers.
+            Compose datasets into an ordered, styled map, choose the services it exposes, and publish.
+            Styles and the service set are persisted with the map, so the same dataset can be styled
+            independently in each map.
           </p>
         </div>
         <label className="field compact">
@@ -359,19 +376,28 @@ export function ComposerScreen() {
               <small>Required to publish, upload or delete; never stored.</small>
             </label>
 
-            <div className="composer-row">
-              <label className="field">
-                <span>Service name</span>
-                <input data-testid="composer-name" value={name} onChange={(event) => setName(event.target.value)} />
-              </label>
-              <label className="field">
-                <span>Kind</span>
-                <select data-testid="composer-kind" value={kind} onChange={(event) => setKind(event.target.value as PublicationKind)}>
-                  <option value="feature">Feature</option>
-                  <option value="map">Map</option>
-                </select>
-              </label>
-            </div>
+            <label className="field">
+              <span>Map name</span>
+              <input data-testid="composer-name" value={name} onChange={(event) => setName(event.target.value)} />
+            </label>
+
+            <fieldset className="field">
+              <span>Services</span>
+              <div className="service-toggles" data-testid="composer-services">
+                {AllServices.map((service) => (
+                  <label key={service} className="service-toggle">
+                    <input
+                      type="checkbox"
+                      data-testid={`composer-service-${service}`}
+                      checked={services.includes(service)}
+                      onChange={() => toggleService(service)}
+                    />
+                    {ServiceLabels[service]}
+                  </label>
+                ))}
+              </div>
+              <small>Each enabled service is an independent projection of this map (ADR-0052).</small>
+            </fieldset>
 
             <label className="field">
               <span>Store</span>
@@ -380,7 +406,7 @@ export function ComposerScreen() {
                 <option value="memory">memory (ephemeral, writable)</option>
                 <option value="postgis">postgis</option>
               </select>
-              <small>One publication exposes one store; changing it clears the layers.</small>
+              <small>One map reads one store; changing it clears the layers.</small>
             </label>
 
             <div className="form-actions">
@@ -504,19 +530,41 @@ export function ComposerScreen() {
             </div>
           )}
 
-          <h3>Published services</h3>
-          <ul className="capability-list" data-testid="composer-publications">
-            {publications.map((publication) => (
-              <li key={publication.name} className="capability-row">
-                <span className="capability-name">{publication.name}</span>
-                <span className="muted small">{publication.kind} · {publication.store} · {publication.layers.length} layer(s)</span>
+          {name.trim() !== "" && services.length > 0 && (
+            <>
+              <h3>Endpoints</h3>
+              <ul className="capability-list" data-testid="composer-endpoints">
+                {services.map((service) => {
+                  const url = endpointUrl(base, service, name.trim());
+                  return (
+                    <li key={service} className="capability-row">
+                      <span className="capability-name">{ServiceLabels[service]}</span>
+                      <code className="endpoint-url" data-testid={`composer-endpoint-${service}`}>{url}</code>
+                      <span className="composer-pub-actions">
+                        <button className="ghost" data-testid={`composer-copy-${service}`} onClick={() => void copyEndpoint(url)}>copy</button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+
+          <h3>Maps</h3>
+          <ul className="capability-list" data-testid="composer-maps">
+            {maps.map((map) => (
+              <li key={map.name} className="capability-row">
+                <span className="capability-name">{map.name}</span>
+                <span className="muted small">
+                  {map.services.length > 0 ? map.services.join(", ") : "no services"} · {map.store} · {map.layers.length} layer(s)
+                </span>
                 <span className="composer-pub-actions">
-                  <button className="ghost" data-testid={`composer-load-${publication.name}`} onClick={() => void loadPublication(publication)}>load</button>
-                  <button className="ghost danger" onClick={() => void deletePublication(publication)}>delete</button>
+                  <button className="ghost" data-testid={`composer-load-${map.name}`} onClick={() => void loadMap(map)}>load</button>
+                  <button className="ghost danger" onClick={() => void deleteMap(map)}>delete</button>
                 </span>
               </li>
             ))}
-            {publications.length === 0 && <li className="empty">No publications.</li>}
+            {maps.length === 0 && <li className="empty">No maps.</li>}
           </ul>
         </aside>
       </div>
@@ -641,4 +689,43 @@ function datasetFromFileName(fileName: string): string {
 
 function messageOf(failure: unknown): string {
   return failure instanceof Error ? failure.message : String(failure);
+}
+
+/** The six services a map may expose, in toggle order (ADR-0052). */
+const AllServices: MapService[] = ["feature", "map", "tiles", "wms", "wfs", "image"];
+
+/** Human labels for the service toggles and endpoint rows. */
+const ServiceLabels: Record<MapService, string> = {
+  feature: "Feature",
+  map: "Map",
+  tiles: "Tiles",
+  wms: "WMS",
+  wfs: "WFS",
+  image: "Image",
+};
+
+/**
+ * The copyable public URL for one enabled service, so a map can be consumed
+ * without leaving the workbench. Mirrors the ADR-0052 projection table: the
+ * GeoServices servers, the neutral tile template and the OGC capabilities
+ * routes. The tiles URL keeps the `{z}/{x}/{y}` template literal so it can be
+ * pasted straight into a client.
+ */
+function endpointUrl(base: string, service: MapService, name: string): string {
+  const root = base.replace(/\/+$/, "");
+  const encoded = encodeURIComponent(name);
+  switch (service) {
+    case "feature":
+      return `${root}/arcgis/rest/services/${encoded}/FeatureServer`;
+    case "map":
+      return `${root}/arcgis/rest/services/${encoded}/MapServer`;
+    case "image":
+      return `${root}/arcgis/rest/services/${encoded}/ImageServer`;
+    case "tiles":
+      return `${root}/api/maps/${encoded}/tiles/{z}/{x}/{y}.png`;
+    case "wms":
+      return `${root}/ogc/${encoded}/wms?service=WMS&request=GetCapabilities`;
+    case "wfs":
+      return `${root}/ogc/${encoded}/wfs?service=WFS&request=GetCapabilities`;
+  }
 }

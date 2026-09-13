@@ -12,9 +12,9 @@ type Tab = "explore" | "map" | "composer" | "run" | "data" | "runtime";
 const Tabs: { id: Tab; label: string; title: string }[] = [
   { id: "explore", label: "Explore", title: "Service catalogue and datasets" },
   { id: "map", label: "Map", title: "Dataset map with selection and attribute inspection" },
-  { id: "composer", label: "Composer", title: "Compose, style and publish datasets as a service" },
+  { id: "composer", label: "Maps", title: "Compose, style and publish maps with services" },
   { id: "run", label: "Run", title: "Operation forms, cancellation, result preview and persistence" },
-  { id: "data", label: "Data", title: "Upload data and publish feature services" },
+  { id: "data", label: "Data", title: "Upload data and publish feature maps" },
   { id: "runtime", label: "Runtime", title: "Host health and recent runs" },
 ];
 
