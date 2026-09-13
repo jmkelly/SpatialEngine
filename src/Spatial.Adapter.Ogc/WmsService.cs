@@ -12,7 +12,7 @@ namespace Spatial.Adapter.Ogc;
 
 /// <summary>
 /// The OGC Web Map Service 1.3.0 projection (ADR-0053 §3): GetCapabilities,
-/// GetMap and GetFeatureInfo over a map's feature layers. GetMap renders the
+/// GetMap, GetLegendGraphic and GetFeatureInfo over a map's feature layers. GetMap renders the
 /// map's persisted style through <see cref="IMapRenderer"/> in the requested
 /// CRS/bbox/size; GetFeatureInfo queries the selected layers through
 /// <see cref="IFeatureStore.QueryAsync"/> near the clicked pixel. The
@@ -63,6 +63,20 @@ internal static class WmsService
     private static async Task<IResult> GetMapAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
+        var exceptions = ExceptionsMode(parameters);
+        try
+        {
+            return await RenderMapAsync(map, parameters, services, cancellationToken);
+        }
+        catch (Exception exception) when (exception is OgcServiceException or SpatialException && exceptions is not WmsExceptionsMode.Xml)
+        {
+            return await RenderErrorImageAsync(parameters, exceptions, services, cancellationToken);
+        }
+    }
+
+    private static async Task<IResult> RenderMapAsync(
+        Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
+    {
         RequireDefaultStyles(parameters.List("styles"));
         var layers = OgcLayers.Select(map, parameters.List("layers"));
         var request = new MapRenderRequest(
@@ -94,6 +108,97 @@ internal static class WmsService
     /// advertised <c>default</c> only; an unknown layer is
     /// <c>LayerNotDefined</c>.
     /// </summary>
+    /// <summary>
+    /// The GetMap EXCEPTIONS behaviour (research/interop/wms-conformance.md
+    /// G7): XML serves the ServiceExceptionReport (the default); INIMAGE and
+    /// BLANK serve the requested image MIME instead. The error frame carries
+    /// no data — INIMAGE honours the request's transparency and background
+    /// while BLANK is transparent when TRANSPARENT is set — because painting
+    /// exception text would need a text rasterizer the adapter must not own.
+    /// An unknown EXCEPTIONS value stays lenient and serves XML.
+    /// </summary>
+    private enum WmsExceptionsMode
+    {
+        Xml,
+        InImage,
+        Blank,
+    }
+
+    private static WmsExceptionsMode ExceptionsMode(OgcParameters parameters) =>
+        parameters.Get("exceptions")?.Trim().ToUpperInvariant() switch
+        {
+            null or "" or "XML" or "APPLICATION/VND.OGC.SE_XML" or "TEXT/XML" => WmsExceptionsMode.Xml,
+            "INIMAGE" or "APPLICATION/VND.OGC.SE_INIMAGE" => WmsExceptionsMode.InImage,
+            "BLANK" or "APPLICATION/VND.OGC.SE_BLANK" => WmsExceptionsMode.Blank,
+            _ => WmsExceptionsMode.Xml,
+        };
+
+    private static async Task<IResult> RenderErrorImageAsync(
+        OgcParameters parameters, WmsExceptionsMode mode, OgcRequestServices services, CancellationToken cancellationToken)
+    {
+        var transparent = mode == WmsExceptionsMode.Blank
+            ? ParseTransparentDefault(parameters.Get("transparent"), true)
+            : ParseTransparent(parameters.Get("transparent"));
+        // A background-only style: the style compiler rejects a document
+        // with no layers, and painting through the renderer keeps the
+        // adapter free of rasterizer types.
+        var color = transparent ? "rgba(0,0,0,0)" : (OptionalColor(parameters.Get("bgcolor")) ?? "#FFFFFF");
+        var style = $"{{\"layers\":[{{\"id\":\"wms-error\",\"type\":\"background\",\"paint\":{{\"background-color\":\"{color}\"}}}}]}}";
+        var request = new MapRenderRequest(
+            new RasterViewport(
+                new Envelope(0, 0, 1, 1),
+                OptionalSize(parameters.Get("width"), 256),
+                OptionalSize(parameters.Get("height"), 256),
+                "EPSG:4326"),
+            style,
+            Array.Empty<MapLayerSource>(),
+            null,
+            OptionalFormat(parameters.Get("format")),
+            90,
+            null,
+            transparent,
+            1.0);
+        var image = await services.Renderer.RenderAsync(request, cancellationToken);
+        return Results.Bytes(image.Content, image.MediaType);
+    }
+
+    private static bool ParseTransparentDefault(string? value, bool fallback) => value?.ToUpperInvariant() switch
+    {
+        null => fallback,
+        "FALSE" or "0" => false,
+        "TRUE" or "1" => true,
+        _ => fallback,
+    };
+
+    private static string? OptionalColor(string? value)
+    {
+        try
+        {
+            return ParseColor(value);
+        }
+        catch (OgcServiceException)
+        {
+            return null;
+        }
+    }
+
+    private static RasterFormat OptionalFormat(string? format)
+    {
+        try
+        {
+            return ParseFormat(format);
+        }
+        catch (OgcServiceException)
+        {
+            return RasterFormat.Png;
+        }
+    }
+
+    private static int OptionalSize(string? text, int fallback) =>
+        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : fallback;
+
     private static async Task<IResult> GetLegendGraphicAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {

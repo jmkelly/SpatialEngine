@@ -41,7 +41,14 @@ internal static class WmsCapabilities
                 new XElement(
                     OgcXml.Wms + "Capability",
                     Request(baseUrl),
-                    new XElement(OgcXml.Wms + "Exception", new XElement(OgcXml.Wms + "Format", "XML")),
+                    new XElement(
+                        OgcXml.Wms + "Exception",
+                        new XElement(OgcXml.Wms + "Format", "XML"),
+                        new XElement(OgcXml.Wms + "Format", "INIMAGE"),
+                        new XElement(OgcXml.Wms + "Format", "BLANK"),
+                        new XElement(OgcXml.Wms + "Format", "application/vnd.ogc.se_xml"),
+                        new XElement(OgcXml.Wms + "Format", "application/vnd.ogc.se_inimage"),
+                        new XElement(OgcXml.Wms + "Format", "application/vnd.ogc.se_blank")),
                     rootLayer)));
         return OgcXml.Write(document);
     }

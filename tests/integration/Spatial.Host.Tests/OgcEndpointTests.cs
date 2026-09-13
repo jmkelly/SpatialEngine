@@ -283,6 +283,77 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Wms_get_map_inimage_returns_an_image_on_failure()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // CITE getmap:exceptions-inimage-mime and the MapServer EXCEPTIONS=INIMAGE trace.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions=INIMAGE");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal(0x89, bytes[0]);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_inimage_accepts_the_mime_vocabulary()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions="
+            + Uri.EscapeDataString("application/vnd.ogc.se_inimage"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_blank_returns_a_transparent_image()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // CITE getmap:exceptions-blank-transparent.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=64&height=64&format=image/png&transparent=TRUE&exceptions=BLANK");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(await response.Content.ReadAsByteArrayAsync());
+        Assert.NotNull(bitmap);
+        Assert.Equal(64, bitmap.Width);
+        Assert.Equal(64, bitmap.Height);
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                Assert.Equal(0, bitmap.GetPixel(x, y).Alpha);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("XML")]
+    [InlineData("application/vnd.ogc.se_xml")]
+    public async Task Wms_get_map_xml_exceptions_stay_xml(string exceptions)
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions="
+            + Uri.EscapeDataString(exceptions));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("LayerNotDefined", await ReportCodeAsync(response));
+    }
+
+    [Fact]
     public async Task Wms_get_legend_graphic_renders_the_layer_style()
     {
         using var factory = Factory();
