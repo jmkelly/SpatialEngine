@@ -46,8 +46,8 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
 | `map` | `show <name>` | One map with layers + parsed styles |
 | `map` | `create` | Create/replace a map (`--kind feature|map|image`) |
 | `map` | `delete <name>` | Delete a runtime map |
-| `map` | `layer add` / `layer remove` | Add/remove a layer, preserving stable ids |
-| `map` | `style set` | Set one layer's compact draw recipe |
+| `map` | `add-layer` / `remove-layer` | Add/remove a layer, preserving stable ids |
+| `map` | `set-style` | Set one layer's compact draw recipe |
 | `map` | `export <name>` | Map + GeoServices endpoint(s) |
 | `project` | `init` | Write a starter project file |
 | `project` | `plan` | Dry-run an apply; print what would change |

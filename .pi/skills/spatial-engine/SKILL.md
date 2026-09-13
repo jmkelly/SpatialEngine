@@ -1,123 +1,153 @@
 ---
 name: spatial-engine
-description: Compass for working in the Spatial Engine repository (.NET spatial server + browser workbench + Esri GeoServices REST). Use when building, testing or verifying changes here; when deciding where code belongs (Spatial.Core vs Spatial.PluginSdk vs Spatial.Host vs implementation projects); when touching ingest, Esri, rendering, tiles, map composer or the Spatial CLI; when running eng/verify.sh or the quality loop; or when interpreting SpatialException codes and store selection.
+description: Operate the Spatial Engine as a client, through the Spatial CLI and its stores. Use when asked to add, list, describe, style, publish or remove spatial datasets and maps; when running the engine end to end (start host, health, ingest, MapServer); when touching clients/dotnet/Spatial.Cli, a spatial.json project file, store selection (demo, memory, postgis), or a SpatialException exit code. For repo-wide quality gates use the quality-loop skill; to decide where a code change belongs read architecture/distilled/README.md.
 ---
 
 # Spatial Engine
 
-Spatial **values** live in `Spatial.Core`; the **verbs** are `Spatial.PluginSdk`
-interfaces implemented in-process and composed by `Spatial.Host` with DI. The
-browser workbench is the delivered client; Esri GeoServices REST is the interop
-surface.
+Drive the engine through its public surface. The CLI (ADR-0052) is a pure
+client of the host HTTP API: it holds no spatial algorithm and calls no
+provider directly. **Drive it, don't reach in** - when a CLI verb exists, do
+not touch the store, the provider or the HTTP route underneath it.
 
-## Before you change anything
+Two facts shape every session:
 
-Run the environment doctor — it checks the pinned toolchain and prints where a
-task belongs:
+- The CLI is a client, so it needs a **running host** and, for every mutation, an **admin token**.
+- Every failure is a structured `SpatialException` code that becomes the **process exit code**. Branch on the code, never on the message text.
 
-```bash
-.pi/skills/spatial-engine/scripts/doctor.sh
-```
-
-Then route the *task* (not the symptom) through the distilled map. The ADRs in
-`architecture/decisions/` win on conflict; fix a digest instead of diverging.
-
-| Task | Read first |
-| --- | --- |
-| Core geometry / feature types, codecs | `architecture/distilled/core.md` |
-| Service interfaces, composition | `architecture/distilled/runtime.md` |
-| Implementation projects + DI lifecycle | `architecture/distilled/plugins.md` |
-| Which services exist + their contracts | `architecture/distilled/contracts.md` |
-| HTTP API, config, SDKs, frontend, deploy | `architecture/distilled/host-and-clients.md` |
-| Esri GeoServices REST (serve/consume) | `architecture/distilled/host-and-clients.md` + `architecture/references/geoservices-compatibility.md` |
-| Ingest, runtime publishing, Esri admin | `architecture/distilled/contracts.md` |
-| MapServer / ImageServer, raster, tiles, labels | `architecture/distilled/rendering.md` |
-| Spatial CLI, workspace / project file | `architecture/distilled/cli.md` |
-| Any architectural change | `architecture/distilled/README.md` + `architecture/principles.md` |
-
-## Hard walls (a change that breaks one needs an ADR)
-
-- Spatial algorithms live in implementation projects; `Spatial.Core` stays
-  structural — inspection, traversal, encoding, envelopes.
-- Public contracts carry only core types; NTS, Npgsql, EF and renderer types
-  stay inside their owning implementation.
-- `Spatial.PluginSdk` references only `Spatial.Core` and takes no packages.
-- The host is JIT-compiled; a Native AOT change needs an approved ADR first.
-- Long-running work is a cancellable `Task`; failures are structured
-  `SpatialException` codes, never strings.
-- Behaviour changes land contract, SDK, test and ADR updates together, with
-  success, failure and cancellation tested; pin package versions in
-  `Directory.Packages.props`.
-
-## Commands
-
-| Command | What it does |
-| --- | --- |
-| `eng/verify.sh` | **The gate.** format check → build → full tests. Run before declaring done. |
-| `eng/format.sh` | Format the solution (`--check` to verify only). |
-| `eng/build.sh` | `dotnet build SpatialEngine.slnx` (passes through args). |
-| `eng/test.sh` | Run every suite (unit, architecture, integration). |
-| `eng/cli-e2e.sh` | Real host + real CLI over HTTP: ingest → styled map → MapServer. |
-| `eng/e2e-web.sh` | Real host driven by the TypeScript SDK over HTTP. |
-| `eng/workbench-e2e.sh` | Real host + Playwright in a browser. |
-| `eng/seed.sh` | Fetch public data, ingest, publish styled feature/map services. |
-
-`eng/verify.sh` is the definition of done. The e2e scripts need .NET 10 and
-Node ≥ 22.6; `eng/seed.sh` starts and leaves a host running on
-`http://127.0.0.1:5201`.
-
-## Recipe — run the engine and drive it with the CLI
+## 0. Start a host
 
 ```bash
-# 1. Start the independently executable host (demo store is always available).
-SPATIAL_ADMIN_TOKEN=dev-token dotnet run --project src/Spatial.Host --urls http://127.0.0.1:5201 &
-
-# 2. Readiness + catalogue.
+SPATIAL_ADMIN_TOKEN=dev-token \
+  dotnet run --project src/Spatial.Host --urls http://127.0.0.1:5201 &
 curl -s http://127.0.0.1:5201/health/ready
-curl -s http://127.0.0.1:5201/api/catalogue
-
-# 3. Drive it through the public API only (ADR-0052 — the CLI is a client,
-#    it holds no algorithm and calls no provider directly).
-CLI="dotnet run --project clients/dotnet/Spatial.Cli -- --host http://127.0.0.1:5201"
-$CLI host health
-$CLI dataset list --store memory
-$CLI map list --store memory
-$CLI project plan --project spatial.json      # dry-run before apply
-$CLI project apply --project spatial.json --token dev-token
+# {"status":"ready","stores":["demo","memory","postgis"]}
 ```
 
-Global options accept `--host`/`SPATIAL_HOST`, `--token`/`SPATIAL_ADMIN_TOKEN`,
-`--store` (`demo`, `memory`, `postgis`; writes default `memory`), `--project`
-(default `spatial.json`), `--json`, `--dry-run`, `--timeout`.
+`demo` and `memory` are always available; `postgis` appears only when a
+connection is configured. Writes default to `memory`.
 
-Exit codes: `0` ok, `2` invalid arguments, `3` not found, `4` store/host
-unavailable, `5` cancelled, `1` unexpected. Treat these as the contract —
-script against them, don't string-match output.
+Define the client once for the session:
 
-## Failure model
+```bash
+CLI="dotnet run --project clients/dotnet/Spatial.Cli -- --host http://127.0.0.1:5201"
+export SPATIAL_ADMIN_TOKEN=dev-token
+```
 
-Failures surface as structured `SpatialException` codes that map to HTTP
-statuses:
+Need real data? `eng/seed.sh` fetches public data, ingests it and publishes
+styled services, leaving a host on `http://127.0.0.1:5201`.
 
-| Code | Meaning | Typical HTTP |
+## 1. Add
+
+`--dry-run` validates and plans without mutating, so run it first whenever the
+file or the flags are new.
+
+```bash
+$CLI dataset add --file /abs/path/reference.geojson --dataset public.reference \
+  --srid 4326 --token "$SPATIAL_ADMIN_TOKEN" --dry-run
+$CLI dataset add --file /abs/path/reference.geojson --dataset public.reference \
+  --srid 4326 --token "$SPATIAL_ADMIN_TOKEN"
+# public.reference: 4 feature(s) loaded into memory
+```
+
+Exactly one of `--file` or `--url`. Also `--format geojson|ndjson|csv`,
+`--identity none|auto|source` (with `--identity-field`), `--source-srid` to
+have the engine reproject (ADR-0041), and `--publish NAME` to register a
+feature map in the same call.
+
+## 2. Query
+
+```bash
+$CLI dataset list --store memory --pattern 'public.%'
+$CLI dataset describe public.reference --store memory
+```
+
+`describe` reports geometry type, SRID, row estimate, identity field and the
+field list. A dataset that mixes geometry families reports the type of its
+**first feature**, so read the rows before trusting the header.
+
+A published map is queryable over Esri GeoServices REST, the interop surface:
+
+```bash
+curl -s "http://127.0.0.1:5201/arcgis/rest/services/Reference/MapServer/0/query?\
+where=kind%3D%27city%27&outFields=name&returnCountOnly=true&f=json"
+```
+
+Layer `0` is the map's first layer; pass `f=json` to make the response
+format explicit rather than relying on the service default.
+
+## 3. Compose and style a map
+
+`--kind` picks the projection: `feature` becomes a FeatureServer, `map` a
+MapServer, `image` an ImageServer (ADR-0035/0048/0051).
+
+```bash
+$CLI map create --name Reference --kind map --store memory \
+  --layer public.reference=Features --token "$SPATIAL_ADMIN_TOKEN"
+$CLI map set-style --map Reference --dataset public.reference \
+  --geometry mixed --color '#4fc3f7' --opacity 0.85 --token "$SPATIAL_ADMIN_TOKEN"
+$CLI map show Reference
+$CLI map export Reference --format url
+```
+
+The draw recipe lowers to the persisted MapLibre fragment (ADR-0047):
+`--geometry polygon|line|point|mixed`, plus `--color #rrggbb`, `--opacity 0..1`,
+`--line-width`, `--radius`, `--hidden`. A recipe the renderer would reject
+fails as `invalid.arguments` before it reaches the store.
+
+## 4. Remove
+
+```bash
+$CLI map remove-layer --map Reference --dataset public.reference --token "$SPATIAL_ADMIN_TOKEN"
+$CLI map delete Reference --token "$SPATIAL_ADMIN_TOKEN"
+$CLI map show Reference   # error: not.found ... ; exit 3
+```
+
+## Exit codes are the contract
+
+| Code | `SpatialException` | Meaning |
 | --- | --- | --- |
-| `invalid.arguments` | Bad input, unparseable style, unknown project version | 400 |
-| `not.found` | Missing dataset, map or identity | 404 |
-| `store.unavailable` | Store/host down, connection failed | 503 |
+| 0 | none | success |
+| 2 | `invalid.arguments` | bad input, missing token, unparseable style, existing map without `--force` |
+| 3 | `not.found` | no such map or dataset |
+| 4 | `store.unavailable` | host down or connection refused |
+| 5 | none | cancelled |
+| 1 | none | unexpected, or a host error with no mapped code |
 
-Never let a connection string, token or provider exception cross a service
-boundary — connection strings flow from host configuration to options only.
+## Things that surprise you
 
-## Change checklist
+- **`--file` resolves against the process working directory**, not the project file. Pass an absolute path when the working directory is uncertain.
+- **A map must keep at least one layer.** `map remove-layer` on the only layer fails with `invalid.arguments`; delete the map to empty it.
+- **`map add-layer` refuses a dataset the map already exposes.** Remove the layer first, or replace the map with `map create --force`.
+- **`map create` on an existing name fails** unless `--force` is passed; it is create-or-replace, not upsert.
+- **A missing token is exit 2, not 401.** Supply `--token` or `SPATIAL_ADMIN_TOKEN`; the token never appears in output, errors or the project file.
+- **`--json` is the scripting surface**: a stable `{"ok":…,"command":…,"data":…}` envelope, or `{"ok":false,"error":{"code":…}}`.
+- **`project export` flattens every store's maps** into one file, `demo` included.
 
-1. Route the task through the distilled map above and read the governing ADR.
-2. Decide the owning project: core value → `Spatial.Core`; verb → interface in
-   `Spatial.PluginSdk`, implementation in `Spatial.<Kind>.<Tech>`.
-3. Land contract + SDK + tests + ADR together; test success, failure and
-   cancellation.
-4. Pin packages in `Directory.Packages.props`; keep `Spatial.PluginSdk`
-   package-free.
-5. `eng/verify.sh`, then the relevant e2e (`cli-e2e`, `e2e-web`,
-   `workbench-e2e`) when the HTTP surface or a client changed.
-6. Quality gates are part of done: `quality-loop` skill, repo policy
-   `.dependably`, threshold `coverage-policy.json` (branch floor 70%).
+## What the CLI cannot do
+
+`dataset` is `list`, `describe`, `add` and nothing else: there is no dataset
+remove and no dataset update. Data goes in and comes back out through the CLI;
+only maps and layers are removable. A task that needs dataset deletion is a
+**host API change**, so route it through the ADRs in `architecture/decisions/`
+before writing any client code.
+
+## Reference
+
+- `architecture/distilled/cli.md` - canonical command, option and project-file reference
+- `clients/dotnet/Spatial.Cli/README.md` - the client itself
+- `architecture/references/geoservices-compatibility.md` - the REST surface
+- `architecture/distilled/core.md`, `plugins.md`, `rendering.md` - geometry values, implementations, tiles and labels
+
+## Changing the engine, not just driving it
+
+```bash
+.pi/skills/spatial-engine/scripts/doctor.sh   # toolchain, working tree, task routing
+```
+
+Route the task through `architecture/distilled/README.md` (ADRs win on
+conflict), land contract + SDK + test + ADR together, and gate on
+`eng/verify.sh`. After a CLI or HTTP change run `eng/cli-e2e.sh`; after a
+browser-facing change run `eng/e2e-web.sh` or `eng/workbench-e2e.sh`. Quality
+gates are part of done: the quality-loop skill, branch floor in
+`coverage-policy.json`.
