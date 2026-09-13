@@ -12,7 +12,7 @@ namespace Spatial.Adapter.Ogc;
 
 /// <summary>
 /// The OGC Web Map Service 1.3.0 projection (ADR-0053 §3): GetCapabilities,
-/// GetMap and GetFeatureInfo over a map's feature layers. GetMap renders the
+/// GetMap, GetLegendGraphic and GetFeatureInfo over a map's feature layers. GetMap renders the
 /// map's persisted style through <see cref="IMapRenderer"/> in the requested
 /// CRS/bbox/size; GetFeatureInfo queries the selected layers through
 /// <see cref="IFeatureStore.QueryAsync"/> near the clicked pixel. The
@@ -41,6 +41,7 @@ internal static class WmsService
             "GETCAPABILITIES" => await CapabilitiesAsync(map, services, options, context, cancellationToken),
             "GETMAP" => await GetMapAsync(map, parameters, services, cancellationToken),
             "GETFEATUREINFO" => await GetFeatureInfoAsync(map, parameters, services, cancellationToken),
+            "GETLEGENDGRAPHIC" => await GetLegendGraphicAsync(map, parameters, services, cancellationToken),
             _ => throw OgcServiceException.NotSupported($"The WMS operation '{request}' is not supported."),
         };
     }
@@ -62,6 +63,20 @@ internal static class WmsService
     private static async Task<IResult> GetMapAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
+        var exceptions = ExceptionsMode(parameters);
+        try
+        {
+            return await RenderMapAsync(map, parameters, services, cancellationToken);
+        }
+        catch (Exception exception) when (exception is OgcServiceException or SpatialException && exceptions is not WmsExceptionsMode.Xml)
+        {
+            return await RenderErrorImageAsync(parameters, exceptions, services, cancellationToken);
+        }
+    }
+
+    private static async Task<IResult> RenderMapAsync(
+        Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
+    {
         RequireDefaultStyles(parameters.List("styles"));
         var layers = OgcLayers.Select(map, parameters.List("layers"));
         var request = new MapRenderRequest(
@@ -77,6 +92,162 @@ internal static class WmsService
         var image = await services.Renderer.RenderAsync(request, cancellationToken);
         return Results.Bytes(image.Content, image.MediaType);
     }
+
+    /// <summary>
+    /// The fixed legend frame: QGIS's GetLegendGraphic carries no size, so
+    /// the legend renders at this frame unless WIDTH/HEIGHT override it.
+    /// </summary>
+    internal const int LegendWidth = 120;
+    internal const int LegendHeight = 60;
+
+    /// <summary>
+    /// Renders one layer's persisted style over its own extent at legend
+    /// size (research/interop/wms-conformance.md G6): QGIS's layer tree
+    /// requests one PNG per visible layer, so the legend is a small
+    /// single-layer render rather than a symbol swatch. STYLE accepts the
+    /// advertised <c>default</c> only; an unknown layer is
+    /// <c>LayerNotDefined</c>.
+    /// </summary>
+    /// <summary>
+    /// The GetMap EXCEPTIONS behaviour (research/interop/wms-conformance.md
+    /// G7): XML serves the ServiceExceptionReport (the default); INIMAGE and
+    /// BLANK serve the requested image MIME instead. The error frame carries
+    /// no data — INIMAGE honours the request's transparency and background
+    /// while BLANK is transparent when TRANSPARENT is set — because painting
+    /// exception text would need a text rasterizer the adapter must not own.
+    /// An unknown EXCEPTIONS value stays lenient and serves XML.
+    /// </summary>
+    private enum WmsExceptionsMode
+    {
+        Xml,
+        InImage,
+        Blank,
+    }
+
+    private static WmsExceptionsMode ExceptionsMode(OgcParameters parameters) =>
+        parameters.Get("exceptions")?.Trim().ToUpperInvariant() switch
+        {
+            null or "" or "XML" or "APPLICATION/VND.OGC.SE_XML" or "TEXT/XML" => WmsExceptionsMode.Xml,
+            "INIMAGE" or "APPLICATION/VND.OGC.SE_INIMAGE" => WmsExceptionsMode.InImage,
+            "BLANK" or "APPLICATION/VND.OGC.SE_BLANK" => WmsExceptionsMode.Blank,
+            _ => WmsExceptionsMode.Xml,
+        };
+
+    private static async Task<IResult> RenderErrorImageAsync(
+        OgcParameters parameters, WmsExceptionsMode mode, OgcRequestServices services, CancellationToken cancellationToken)
+    {
+        var transparent = mode == WmsExceptionsMode.Blank
+            ? ParseTransparentDefault(parameters.Get("transparent"), true)
+            : ParseTransparent(parameters.Get("transparent"));
+        // A background-only style: the style compiler rejects a document
+        // with no layers, and painting through the renderer keeps the
+        // adapter free of rasterizer types.
+        var color = transparent ? "rgba(0,0,0,0)" : (OptionalColor(parameters.Get("bgcolor")) ?? "#FFFFFF");
+        var style = $"{{\"layers\":[{{\"id\":\"wms-error\",\"type\":\"background\",\"paint\":{{\"background-color\":\"{color}\"}}}}]}}";
+        var request = new MapRenderRequest(
+            new RasterViewport(
+                new Envelope(0, 0, 1, 1),
+                OptionalSize(parameters.Get("width"), 256),
+                OptionalSize(parameters.Get("height"), 256),
+                "EPSG:4326"),
+            style,
+            Array.Empty<MapLayerSource>(),
+            null,
+            OptionalFormat(parameters.Get("format")),
+            90,
+            null,
+            transparent,
+            1.0);
+        var image = await services.Renderer.RenderAsync(request, cancellationToken);
+        return Results.Bytes(image.Content, image.MediaType);
+    }
+
+    private static bool ParseTransparentDefault(string? value, bool fallback) => value?.ToUpperInvariant() switch
+    {
+        null => fallback,
+        "FALSE" or "0" => false,
+        "TRUE" or "1" => true,
+        _ => fallback,
+    };
+
+    private static string? OptionalColor(string? value)
+    {
+        try
+        {
+            return ParseColor(value);
+        }
+        catch (OgcServiceException)
+        {
+            return null;
+        }
+    }
+
+    private static RasterFormat OptionalFormat(string? format)
+    {
+        try
+        {
+            return ParseFormat(format);
+        }
+        catch (OgcServiceException)
+        {
+            return RasterFormat.Png;
+        }
+    }
+
+    private static int OptionalSize(string? text, int fallback) =>
+        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : fallback;
+
+    private static async Task<IResult> GetLegendGraphicAsync(
+        Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
+    {
+        var names = parameters.List("layer");
+        if (names.Count == 0)
+        {
+            throw OgcServiceException.Missing("layer");
+        }
+
+        if (names.Count > 1)
+        {
+            throw OgcServiceException.Invalid("The 'layer' parameter names a single layer.");
+        }
+
+        RequireDefaultStyles(parameters.List("style"));
+        var layer = OgcLayers.Select(map, names).Single();
+        var loaded = await services.LoadAsync(map, layer, cancellationToken);
+        var viewport = await LegendViewportAsync(services, loaded, parameters, cancellationToken);
+        var request = new MapRenderRequest(
+            viewport,
+            MapStyle.Compose(map.Name, new[] { layer }),
+            OgcRender.Sources(services, map, new[] { layer }),
+            null,
+            ParseFormat(parameters.Get("format")),
+            90,
+            ParseColor(parameters.Get("bgcolor")),
+            ParseTransparent(parameters.Get("transparent")),
+            1.0);
+        var image = await services.Renderer.RenderAsync(request, cancellationToken);
+        return Results.Bytes(image.Content, image.MediaType);
+    }
+
+    private static async Task<RasterViewport> LegendViewportAsync(
+        OgcRequestServices services, OgcLayer loaded, OgcParameters parameters, CancellationToken cancellationToken)
+    {
+        var width = LegendSize(parameters.Get("width"), LegendWidth);
+        var height = LegendSize(parameters.Get("height"), LegendHeight);
+        var extent = await OgcGeometry.ExtentAsync(
+            services.Features(loaded.Store), loaded.Layer.Dataset, cancellationToken);
+        if (extent is { } box && !box.IsEmpty && box.Width > 0 && box.Height > 0)
+        {
+            return new RasterViewport(box, width, height, Crs(loaded.Description.Srid));
+        }
+
+        return new RasterViewport(new Envelope(-180, -90, 180, 90), width, height, "EPSG:4326");
+    }
+
+    private static int LegendSize(string? text, int fallback) =>
+        text is null ? fallback : PositiveInt(text, "width");
 
     private static async Task<IResult> GetFeatureInfoAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
@@ -448,15 +619,18 @@ internal static class WmsService
 
     /// <summary>
     /// Rejects a named style: the service serves the persisted default style
-    /// only and advertises no named styles, so any requested name is
-    /// <c>StyleNotDefined</c>. Empty entries (<c>STYLES=</c>) select the
-    /// default and are accepted.
+    /// only (advertised as <c>default</c> in capabilities), so any other
+    /// requested name is <c>StyleNotDefined</c>. Empty entries
+    /// (<c>STYLES=</c>) select the default and are accepted; an all-default
+    /// selection stays lenient on the style count, so a client sending one
+    /// empty STYLES over several layers (QGIS) still renders.
     /// </summary>
     private static void RequireDefaultStyles(IReadOnlyList<string> styles)
     {
         foreach (var style in styles)
         {
-            if (!string.IsNullOrWhiteSpace(style))
+            if (!string.IsNullOrWhiteSpace(style)
+                && !string.Equals(style.Trim(), "default", StringComparison.OrdinalIgnoreCase))
             {
                 throw OgcServiceException.StyleNotDefined(
                     $"Style '{style}' is not defined; this service serves the default style only.");
