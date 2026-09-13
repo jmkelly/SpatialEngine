@@ -112,8 +112,8 @@ internal static class PostgisQueries
         return $"DELETE FROM {dataset.QuoteQualified()} WHERE {predicate}";
     }
 
-    /// <summary>Creates the result table from a defining batch's schema.</summary>
-    public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid)
+    /// <summary>Creates the result table from a defining batch's schema and per-field geometry typmods.</summary>
+    public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> geometryTypes)
     {
         var builder = new StringBuilder($"CREATE TABLE {dataset.QuoteQualified()} (");
         for (var i = 0; i < schema.Count; i++)
@@ -126,7 +126,7 @@ internal static class PostgisQueries
             var field = schema[i];
             if (field.Kind == AttributeKind.Geometry)
             {
-                builder.Append('"').Append(field.Name).Append("\" geometry(Geometry, ").Append(srid).Append(')');
+                builder.Append('"').Append(field.Name).Append("\" geometry(").Append(geometryTypes[i]).Append(", ").Append(srid).Append(')');
             }
             else
             {

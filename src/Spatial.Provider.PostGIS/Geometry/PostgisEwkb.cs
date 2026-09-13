@@ -56,6 +56,31 @@ internal static class PostgisEwkb
         return Encode(geometry, datasetSrid);
     }
 
+    /// <summary>
+    /// The PostGIS typmod name that stores the value's coordinate layout at a
+    /// fixed SRID (ADR-0041): <c>Geometry</c>, <c>GeometryZ</c>, <c>GeometryM</c>
+    /// or <c>GeometryZM</c>. Layout knowledge lives here, on the plugin's single
+    /// <c>Spatial.Core.Geometry</c> surface (ADR-0028).
+    /// </summary>
+    public static string SqlTypeName(AttributeValue value) => value.GeometryValue.Layout switch
+    {
+        CoordinateLayout.Xy => "Geometry",
+        CoordinateLayout.Xyz => "GeometryZ",
+        CoordinateLayout.Xym => "GeometryM",
+        CoordinateLayout.Xyzm => "GeometryZM",
+        _ => throw new ArgumentOutOfRangeException(nameof(value), value.GeometryValue.Layout, "Unknown coordinate layout."),
+    };
+
+    /// <summary>The display name of the value's coordinate layout, for diagnostics.</summary>
+    public static string LayoutName(AttributeValue value) => value.GeometryValue.Layout switch
+    {
+        CoordinateLayout.Xy => "XY",
+        CoordinateLayout.Xyz => "XYZ",
+        CoordinateLayout.Xym => "XYM",
+        CoordinateLayout.Xyzm => "XYZM",
+        _ => value.GeometryValue.Layout.ToString(),
+    };
+
     private static bool Matches(CoordinateReference reference, int srid) =>
         reference.Authority.Equals("EPSG", StringComparison.OrdinalIgnoreCase)
         && int.TryParse(reference.Code, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var code)

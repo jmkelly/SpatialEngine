@@ -94,7 +94,10 @@ public sealed record IngestRequest(
 
 `Auto` gives the new table a database-generated identity primary key, so
 uploaded layers are editable and lookup-able; `Source` uses a named integer
-field; `None` loads a data-only table (query-only). PostGIS implements this
+field; `None` loads a data-only table (query-only). A geometry column is
+declared with the data's coordinate layout (XY, XYZ, XYM or XYZM), so Z and M
+ordinates are preserved rather than refused by a 2D column; a column that
+mixes layouts is `invalid.arguments`. PostGIS implements this
 in `Spatial.Provider.PostGIS` alongside the existing faces. A provider that
 cannot bulk-load simply does not implement the interface, in the
 ADR-0037/0038 style.

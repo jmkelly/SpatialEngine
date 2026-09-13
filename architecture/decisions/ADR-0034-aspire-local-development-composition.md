@@ -32,12 +32,14 @@ composition root:
   `Directory.Packages.props`). `AspireUseCliBundle=true` keeps the build
   warning-free; the app is launched with `dotnet run`.
 - **PostGIS container** `postgis/postgis:16-3.4` — the same image the
-  integration-test fixture uses — exposing a `spatial` database created from
-  the image's `template_postgis` template (`CREATE DATABASE "spatial"
-  TEMPLATE template_postgis`). The image loads the `postgis` extension only
-  into its bootstrap database and that template, so creating `spatial` from
-  the template is what gives it a `geometry` type; the integration fixture
-  reaches the same state with an explicit `CREATE EXTENSION postgis`.
+  integration-test fixture uses — exposing a `spatial` database pinned as the
+  container's bootstrap database (`POSTGRES_DB=spatial`). The image's init
+  scripts load the `postgis` extension into `POSTGRES_DB` *before* the server
+  accepts connections, so the extension is present when the host first
+  connects; creating `spatial` through Aspire's `AddDatabase` instead would
+  run after the server is ready and leave the host briefly pointing at a
+  database without a `geometry` type. The integration fixture reaches the same
+  state with an explicit `CREATE EXTENSION postgis`.
 - **`Spatial.Host`** linked by `ProjectReference` and launched by Aspire
   with `SPATIAL_POSTGIS_CONNECTION` injected from the database resource
   (the setting `PostgisOptions` already reads; secrets never live in the

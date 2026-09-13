@@ -94,12 +94,17 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         ArgumentNullException.ThrowIfNull(sample);
         var name = ParseDataset(dataset);
         PostgisFieldName.RequireValid(name, sample.Schema);
+        if (!PostgisGeometryType.TryResolve(sample.Schema, sample.Features, out var geometryTypes, out var geometryError))
+        {
+            throw SpatialException.BadArguments($"The dataset '{name}' cannot be created: {geometryError}");
+        }
+
         RequireConfigured();
         try
         {
             await using var connection = await _store.Value.OpenConnectionAsync(cancellationToken);
             await PostgisDataStore.ExecuteNonQueryAsync(
-                connection, PostgisQueries.CreateTable(name, sample.Schema, srid), [], cancellationToken);
+                connection, PostgisQueries.CreateTable(name, sample.Schema, srid, geometryTypes), [], cancellationToken);
             return name.Qualified;
         }
         catch (OperationCanceledException)

@@ -18,16 +18,15 @@ var devAllowedHosts = Environment.GetEnvironmentVariable("VITE_ALLOWED_HOSTS");
 // behaves like CI (tests/integration/Spatial.PostGIS.Tests).
 var postgis = builder.AddPostgres("postgis")
     .WithImage("postgis/postgis")
-    .WithImageTag("16-3.4");
+    .WithImageTag("16-3.4")
+    // The application database must be the container's bootstrap database:
+    // the PostGIS image's init scripts load the extension into POSTGRES_DB
+    // before the server accepts connections, whereas Aspire's AddDatabase
+    // creates its database only after the server is ready — a window in which
+    // the host is already up but 'spatial' (or its postgis extension) is not.
+    .WithEnvironment("POSTGRES_DB", "spatial");
 
-var spatialDb = postgis.AddDatabase("spatial")
-    // The postgis image loads its extension into the bootstrap database and
-    // the template_postgis template only; Aspire creates 'spatial' after the
-    // container is ready, so it must be cloned from the template to carry the
-    // postgis extension (the integration-test fixture does the equivalent
-    // with CREATE EXTENSION postgis). Without it, ingesting geometry fails
-    // with 42704 'type "geometry" does not exist'.
-    .WithCreationScript("CREATE DATABASE \"spatial\" TEMPLATE template_postgis");
+var spatialDb = postgis.AddDatabase("spatial");
 
 // Seq is the local structured-log server (ADR-0045); the host is pointed at
 // its HTTP endpoint so Serilog can ship events to it. The container is a
@@ -36,10 +35,13 @@ var seq = builder.AddSeq("seq");
 
 // The host reads SPATIAL_POSTGIS_CONNECTION (PostgisOptions), falling back
 // to Spatial:Postgis:ConnectionString when the environment is unset, and
-// SPATIAL_SEQ_URL for the Seq sink.
+// SPATIAL_SEQ_URL for the Seq sink. WaitFor (not WaitForStart) waits for the
+// server's Npgsql health check, so the host does not accept ingest requests
+// before the 'spatial' database and its postgis extension exist.
 var host = builder.AddProject("spatial-host", "../Spatial.Host/Spatial.Host.csproj")
     .WithEnvironment("SPATIAL_POSTGIS_CONNECTION", spatialDb)
-    .WithEnvironment("SPATIAL_SEQ_URL", seq.GetEndpoint("http"));
+    .WithEnvironment("SPATIAL_SEQ_URL", seq.GetEndpoint("http"))
+    .WaitFor(postgis);
 
 if (!string.IsNullOrWhiteSpace(devBind))
 {

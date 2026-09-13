@@ -101,6 +101,14 @@ Two structural constraints shape the decision:
    quote, NUL, or past PostgreSQL's 63-byte limit — so real-world ingests
    (ADR-0041 §3) load without lossy renaming.
 
+   Geometry columns keep their dimensionality: ingest and create declare each
+   geometry column with the data's own layout — `geometry(Geometry, srid)`,
+   `geometry(GeometryZ, srid)`, `geometry(GeometryM, srid)` or
+   `geometry(GeometryZM, srid)` — so Z and M ordinates survive the EWKB round
+   trip instead of being rejected by a 2D typmod (USGS earthquakes are 3D).
+   A dataset that mixes layouts in one column is `invalid.arguments` rather
+   than a silent truncation or a fabricated ordinate.
+
 4. **Secrets stay host-managed** (ADR-0018, security-model.md): the
    supervisor hands a provider its connection configuration at launch
    through the **worker process environment** (`SPATIAL_POSTGIS_CONNECTION`),

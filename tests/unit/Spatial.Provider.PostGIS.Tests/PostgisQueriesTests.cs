@@ -60,12 +60,27 @@ public sealed class PostgisQueriesTests
             ("flag", AttributeKind.Boolean, false),
             ("score", AttributeKind.Double, false));
 
-        var sql = PostgisQueries.CreateTable(dataset, schema, 3857);
+        var sql = PostgisQueries.CreateTable(dataset, schema, 3857, Enumerable.Repeat(PostgisGeometryType.DefaultTypeName, schema.Count).ToArray());
 
         Assert.Equal(
             "CREATE TABLE \"public\".\"result\" (\"id\" bigint, \"name\" text, \"geom\" geometry(Geometry, 3857), "
             + "\"seen\" timestamptz, \"token\" uuid, \"flag\" boolean, \"score\" double precision)",
             sql);
+    }
+
+    [Theory]
+    [InlineData("Geometry")]
+    [InlineData("GeometryZ")]
+    [InlineData("GeometryM")]
+    [InlineData("GeometryZM")]
+    public void Create_table_carries_the_coordinate_layout_in_the_geometry_typmod(string typmod)
+    {
+        Assert.True(PostgisDatasetName.TryParse("public.result", out var dataset, out _));
+        var schema = FeatureTests.Schema(("geom", AttributeKind.Geometry, false));
+
+        Assert.Equal(
+            $"CREATE TABLE \"public\".\"result\" (\"geom\" geometry({typmod}, 4326))",
+            PostgisQueries.CreateTable(dataset, schema, 4326, [typmod]));
     }
 
     [Fact]

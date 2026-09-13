@@ -154,4 +154,48 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
         var filtered = await context.Store.QueryAsync(dataset, null, "LABELRANK = '5'");
         Assert.Single(filtered.SelectMany(batch => batch.Features));
     }
+
+    [SkippableFact]
+    public async Task Ingest_preserves_the_z_ordinate()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_z");
+        var table = dataset[(dataset.IndexOf('.') + 1)..];
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var pages = new[]
+        {
+            new FeatureBatch(
+                schema,
+                [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, 34.5, CoordinateReference.Epsg(4326)))]),
+        };
+
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+
+        var feature = (await context.Store.ScanAsync(dataset)).SelectMany(batch => batch.Features).Single();
+        var point = Assert.IsType<Point>(feature["geom"].GeometryValue);
+        Assert.Equal(34.5, (double)point.Z!, precision: 12);
+        Assert.Equal(3, await context.CountAsync(
+            $"SELECT coord_dimension FROM geometry_columns WHERE f_table_name = '{table}'"));
+    }
+
+    [SkippableFact]
+    public async Task A_pre_cancelled_ingest_throws_operation_cancelled()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_cancel");
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var pages = new[]
+        {
+            new FeatureBatch(
+                schema,
+                [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)))]),
+        };
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages, cancellation.Token));
+    }
 }

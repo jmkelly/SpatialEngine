@@ -215,4 +215,54 @@ public sealed class PostgisIngestPlanTests
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
         Assert.Contains("cannot be used as a column", failure.Message);
     }
+
+    [Fact]
+    public void An_xyz_ingest_declares_a_z_column()
+    {
+        var schema = FeatureTests.Schema(
+            ("name", AttributeKind.String, true),
+            ("geom", AttributeKind.Geometry, true));
+        var feature = FeatureTests.Feature(
+            "1", schema, "a", GeometryFactory.CreatePoint(1, 2, 3, CoordinateReference.Epsg(4326)));
+
+        var plan = PostgisIngestPlan.Create(new IngestRequest("public.upload", 4326), [Batch(schema, feature)]);
+
+        Assert.Contains("geometry(GeometryZ, 4326)", plan.CreateTableSql());
+    }
+
+    [Theory]
+    [InlineData(CoordinateLayout.Xym, "GeometryM")]
+    [InlineData(CoordinateLayout.Xyzm, "GeometryZM")]
+    public void An_m_ingest_declares_the_matching_column(CoordinateLayout layout, string typmod)
+    {
+        var schema = FeatureTests.Schema(
+            ("name", AttributeKind.String, true),
+            ("geom", AttributeKind.Geometry, true));
+        var geometry = GeometryFactory.CreatePoint(
+            new Coordinate(1, 2, layout.HasZ() ? 3 : null, layout.HasM() ? 4 : null),
+            CoordinateReference.Epsg(4326));
+        var feature = FeatureTests.Feature("1", schema, "a", geometry);
+
+        var plan = PostgisIngestPlan.Create(new IngestRequest("public.upload", 4326), [Batch(schema, feature)]);
+
+        Assert.Contains($"geometry({typmod}, 4326)", plan.CreateTableSql());
+    }
+
+    [Fact]
+    public void An_ingest_that_mixes_coordinate_layouts_is_rejected()
+    {
+        var schema = FeatureTests.Schema(
+            ("name", AttributeKind.String, true),
+            ("geom", AttributeKind.Geometry, true));
+        var xy = FeatureTests.Feature(
+            "1", schema, "a", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)));
+        var xyz = FeatureTests.Feature(
+            "2", schema, "b", GeometryFactory.CreatePoint(1, 2, 3, CoordinateReference.Epsg(4326)));
+
+        var failure = Assert.Throws<SpatialException>(() =>
+            PostgisIngestPlan.Create(new IngestRequest("public.upload", 4326), [Batch(schema, xy, xyz)]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("mixes XY and XYZ", failure.Message);
+    }
 }

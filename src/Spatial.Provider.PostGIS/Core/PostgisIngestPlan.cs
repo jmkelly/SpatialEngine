@@ -20,7 +20,8 @@ internal sealed record PostgisIngestPlan(
     IngestIdentity Identity,
     string? IdentityColumn,
     FeatureSchema Schema,
-    IReadOnlyList<FeatureBatch> Pages)
+    IReadOnlyList<FeatureBatch> Pages,
+    IReadOnlyList<string> GeometryTypes)
 {
     /// <summary>The column name an <see cref="IngestIdentity.Auto"/> table assigns.</summary>
     public const string AutoIdentityColumn = "id";
@@ -38,8 +39,9 @@ internal sealed record PostgisIngestPlan(
         var schema = pages[0].Schema;
         CheckIdentifier(dataset, schema);
         CheckPageSchemas(pages, schema);
+        var geometryTypes = ResolveGeometryTypes(dataset, schema, pages);
         var identityColumn = ResolveIdentity(request, schema, dataset);
-        return new PostgisIngestPlan(dataset, request.Srid, request.Identity, identityColumn, schema, pages);
+        return new PostgisIngestPlan(dataset, request.Srid, request.Identity, identityColumn, schema, pages, geometryTypes);
     }
 
     private static PostgisDatasetName ParseDataset(IngestRequest request)
@@ -63,6 +65,17 @@ internal sealed record PostgisIngestPlan(
         {
             throw SpatialException.BadArguments("An ingest requires at least one feature.");
         }
+    }
+
+    private static string[] ResolveGeometryTypes(
+        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<FeatureBatch> pages)
+    {
+        if (!PostgisGeometryType.TryResolve(schema, pages.SelectMany(page => page.Features), out var typeNames, out var error))
+        {
+            throw SpatialException.BadArguments($"The dataset '{dataset}' cannot be created: {error}");
+        }
+
+        return typeNames;
     }
 
     private static void CheckPageSchemas(IReadOnlyList<FeatureBatch> pages, FeatureSchema schema)
@@ -91,7 +104,7 @@ internal sealed record PostgisIngestPlan(
             builder.Append('"').Append(field.Name).Append('"');
             if (field.Kind == AttributeKind.Geometry)
             {
-                builder.Append(" geometry(Geometry, ").Append(Srid).Append(')');
+                builder.Append(" geometry(").Append(GeometryTypes[i]).Append(", ").Append(Srid).Append(')');
             }
             else
             {
