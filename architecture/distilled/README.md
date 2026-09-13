@@ -19,7 +19,7 @@ reflects the state at decision time.
 | Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041 |
 | MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
-| Raster rendering / imagery / tiles (R0–R4) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044, 0046 |
+| Raster rendering / imagery / tiles / labels (R0–R6) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044, 0046, 0049 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -98,6 +98,7 @@ shape is noted in brackets.
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
 | 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
 | 0048 | A MapServer is a projection of a Map publication over the SDK render and tile contracts. |
+| 0049 | Labels/symbols shape with HarfBuzz over an embedded pinned font and draw embedded SVG sprites; deterministic collision; new Skia.HarfBuzz/Svg.Skia packages are allowlisted. |
 
 ## How to change the architecture
 

@@ -9,8 +9,11 @@
   -->
 
   <ItemGroup>
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
     <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.HarfBuzz" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <PackageReference Include="Svg.Skia" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,7 +22,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The rasterizer split (paths, paints, scene) is pinned by its unit tests. -->
+    <!-- ADR-0049: the pinned font and SVG sprites are the only image/font source. -->
+    <EmbeddedResource Include="Resources\Fonts\NotoSans-Regular.ttf" />
+    <EmbeddedResource Include="Resources\Fonts\OFL.txt" />
+    <EmbeddedResource Include="Resources\Sprites\*.svg" />
+    <None Include="Resources\README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The rasterizer split (paths, paints, scene, labels) is pinned by its unit tests. -->
     <InternalsVisibleTo Include="Spatial.Rendering.Skia.Tests" />
   </ItemGroup>
 

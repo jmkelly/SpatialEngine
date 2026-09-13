@@ -7,6 +7,7 @@ internal enum DrawKind
     Fill,
     Line,
     Circle,
+    Symbol,
 }
 
 internal enum LineCapStyle
@@ -38,6 +39,44 @@ internal sealed record LinePaint(
     LineJoinStyle Join) : PaintRecipe;
 
 internal sealed record CirclePaint(StyleColor Fill, double Radius, StyleColor Stroke, double StrokeWidth) : PaintRecipe;
+
+/// <summary>Where a label's box sits relative to its anchor point (MapLibre's <c>text-anchor</c>).</summary>
+internal enum SymbolAnchor
+{
+    Center,
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+/// <summary>
+/// A compiled symbol recipe: the text template and font request, the label
+/// colour/halo, the anchor/offset/padding, and the optional sprite icon. The
+/// per-feature text and icon are resolved from attributes by the scene builder;
+/// this record is style-only and free of Skia types.
+/// </summary>
+internal sealed record SymbolOptions(
+    string TextField,
+    IReadOnlyList<string> Fonts,
+    double Size,
+    StyleColor Color,
+    StyleColor HaloColor,
+    double HaloWidth,
+    SymbolAnchor Anchor,
+    double OffsetX,
+    double OffsetY,
+    double Padding,
+    bool AllowTextOverlap,
+    string? IconImage,
+    double IconSize,
+    bool AllowIconOverlap);
+
+internal sealed record SymbolPaint(SymbolOptions Options) : PaintRecipe;
 
 /// <summary>One compiled style layer: identity, dataset key, zoom window, predicate and paint.</summary>
 internal sealed record DrawLayer(

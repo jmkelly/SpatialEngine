@@ -7,7 +7,14 @@ using Spatial.Rendering.Skia.Styling;
 namespace Spatial.Rendering.Skia.Drawing;
 
 /// <summary>One draw layer plus the geometries that survived filtering and shaping.</summary>
-internal sealed record SceneLayer(DrawLayer Layer, IReadOnlyList<IGeometry> Geometries);
+internal sealed record SceneLayer(DrawLayer Layer, IReadOnlyList<IGeometry> Geometries)
+{
+    /// <summary>The resolved symbol candidates (empty for non-symbol layers).</summary>
+    public IReadOnlyList<SymbolFeature> Symbols { get; init; } = [];
+}
+
+/// <summary>One symbol candidate: the placed geometry plus the text/icon resolved from its attributes.</summary>
+internal sealed record SymbolFeature(IGeometry Geometry, string? Text, string? Icon);
 
 /// <summary>The ordered draw list and canvas background for one rasterization.</summary>
 internal sealed record RenderScene(IReadOnlyList<SceneLayer> Layers, StyleColor? Background);
@@ -19,7 +26,7 @@ internal sealed record RenderScene(IReadOnlyList<SceneLayer> Layers, StyleColor?
 /// </summary>
 internal static class SkiaVectorRasterizer
 {
-    public static RasterBuffer Render(RenderScene scene, RasterViewport viewport)
+    public static RasterBuffer Render(RenderScene scene, RasterViewport viewport, SpriteRegistry? sprites = null)
     {
         var info = new SKImageInfo(viewport.Width, viewport.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(info)
@@ -27,16 +34,20 @@ internal static class SkiaVectorRasterizer
         var projection = new ViewportProjection(viewport);
         surface.Canvas.Clear(scene.Background is { } background ? SkiaPaintFactory.ToSkia(background) : SKColors.Transparent);
 
+        var hasSymbols = scene.Layers.Any(layer => layer.Layer.Paint is SymbolPaint);
+        using var font = hasSymbols ? new BundledFont() : null;
+        var collision = new List<SKRect>();
         foreach (var layer in scene.Layers)
         {
-            Draw(surface.Canvas, layer, projection);
+            Draw(surface.Canvas, layer, projection, collision, font, sprites ?? SpriteRegistry.Default);
         }
 
         using var image = surface.Snapshot();
         return ReadPixels(image, viewport);
     }
 
-    private static void Draw(SKCanvas canvas, SceneLayer layer, ViewportProjection projection)
+    private static void Draw(
+        SKCanvas canvas, SceneLayer layer, ViewportProjection projection, List<SKRect> collision, BundledFont? font, SpriteRegistry sprites)
     {
         switch (layer.Layer.Paint)
         {
@@ -50,6 +61,10 @@ internal static class SkiaVectorRasterizer
                 break;
             case CirclePaint circle:
                 DrawCircles(canvas, layer.Geometries, circle, projection);
+                break;
+            case SymbolPaint symbol:
+                SkiaSymbolRasterizer.Draw(
+                    new SymbolDrawContext(canvas, symbol.Options, projection, collision, font!, sprites), layer.Symbols);
                 break;
         }
     }
