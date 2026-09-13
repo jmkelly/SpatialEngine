@@ -6,8 +6,8 @@
 > and the GeoServices ImageServer serves root metadata, raster info, catalog
 > listing/item/query, identify, `exportImage`, and the catalog file surface
 > (`download`, Raster Image/Thumbnail/File) over a `PublicationKind.Image`
-> publication. **I4 — COG and tiled GeoTIFF support** and I5 (cache and
-> limits beyond the download caps) remain. Read
+> publication. **I4 — COG and tiled GeoTIFF support** is implemented; I5
+> (cache and limits beyond the download caps) remains. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
 > `architecture/distilled/host-and-clients.md` first.
 >
@@ -133,16 +133,16 @@ demands for AOT.
   and `time` rejection, image/thumbnail bytes, download caps, ranged file
   streaming); `RasterOptions` catalog-config projection tests.
 
-### I4 — COG and tiled GeoTIFF support
+### I4 — COG and tiled GeoTIFF support — **delivered**
 
 Raster imagery is normally stored as a **tiled GeoTIFF**, and a **Cloud
 Optimized GeoTIFF (COG)** is that plus an internal overview pyramid stored
 before the data. The managed NetVips path already reads and writes both — no
 GDAL, no new package (ADR-0051 option A is unchanged: structure stays
-provider-owned and only core metadata crosses). Today the provider reads a
-tiled/pyramidal file as if it were a stripped image and hardcodes the block
-and pyramid fields of `RasterInfo` to 0, so the extra structure is paid for
-and then thrown away.
+provider-owned and only core metadata crosses). Before this phase the
+provider read a tiled/pyramidal file as if it were a stripped image and
+hardcoded the block and pyramid fields of `RasterInfo` to 0, so the extra
+structure was paid for and then thrown away.
 
 - **Deliverable:**
   1. **Read the structure.** `VipsRasterReader.ReadInfo` reads
@@ -151,18 +151,21 @@ and then thrown away.
      `MaxPyramidLevel` (absent fields stay 0 for striped rasters);
      `VipsRasterFiles.Open` opens with random access so a tiled raster is
      read by tile, not streamed.
-  2. **Use the overviews.** `VipsRasterExporter` selects the coarsest
-     pyramid level whose resolution still covers the requested output
-     pixels (`Image.Tiffload(path, subifd: n)`) before it crops and
-     resamples, so an `exportImage` or tile from a large COG reads a
-     fraction of the pixels; whole-image paths use `Image.Thumbnail`,
-     which already picks a level. Level selection is a pure helper so it
-     is unit-testable and never loses detail.
-  3. **Write COG-style output.** A provider verb (used by ingest/seed, not
-     a client request) rewrites a configured raster with
+  2. **Use the overviews.** `RasterPyramid.Select` picks the coarsest
+     overview whose resolution still covers the requested output, and
+     `VipsRasterExporter` opens it (`Image.Tiffload(path, subifd: level - 1)`)
+     and maps the window onto it before cropping and resampling, so an
+     `exportImage` or tile from a large COG reads a fraction of the pixels.
+     It never upscales: if an overview turns out coarser than assumed, the
+     exporter falls back to full resolution. Selection and mapping are pure
+     helpers, unit-tested independently.
+  3. **Write COG-style output.** The concrete
+     `VipsRasterCatalogue.WriteCogAsync` rewrites a configured raster with
      `Tiffsave(tile: true, tileWidth: 256, tileHeight: 256, pyramid: true,
      subifd: true, compression: Deflate, predictor: Horizontal, bigtiff:
-     auto)` so an uploaded stripped GeoTIFF can be published as a COG.
+     false)` so an uploaded stripped GeoTIFF can be published as a COG. It is
+     deliberately not on the `IRasterCatalogue` contract and becomes an
+     ingest/seed verb when a raster ingest path lands.
   4. **Honest metadata.** The ImageServer root derives
      `minPixelSize`/`maxPixelSize` from the pyramid factor and raster info
      reports the real block/pyramid numbers instead of 0.
@@ -187,11 +190,20 @@ and then thrown away.
   mosaicking, GeoKey parsing, and a GDAL backend (the ADR-0051
   measured-demand triggers are unchanged). Writing a COG is a repackaging
   step to serve existing imagery, not raster analytics.
-- **Proof:** provider tests build a striped, a tiled, and a tiled+pyramidal
-  fixture and assert the `RasterInfo` block/pyramid fields, that the chosen
-  subifd is coarser than full resolution for a large downscale (and the
-  pixels still match), and that a thumbnail matches the reference; a
-  round-trip test saves a COG-style file and re-reads its structure.
+- **Delivered:** `VipsRasterStructure` reads `tile-width`/`tile-height`/
+  `n-subifds`; `VipsRasterReader.ReadInfo` fills the `RasterInfo` block and
+  pyramid fields; `VipsRasterFiles.Open` uses random access;
+  `RasterPyramid.Select`/`ScaleWindow` choose and map the overview;
+  `VipsRasterExporter` reads the chosen overview before cropping and
+  resampling; `VipsRasterCog` writes a tiled pyramidal file and
+  `VipsRasterCatalogue.WriteCogAsync` exposes it; `ImageService` derives the
+  service `minPixelSize`/`maxPixelSize` from the pyramid depth and reports
+  the real block/pyramid raster-info values.
+- **Proof:** provider tests (structure on tiled vs striped fixtures, level
+  selection and window mapping, full-resolution and downscaled exports,
+  offset overview window, COG round-trip); adapter tests (pyramid raster
+  info and pixel-size bounds); the host root reports the pyramid pixel-size
+  bounds end to end.
 
 ### I5 — Scale, cache and limits
 - **Deliverable:** tile/export caching policy, request size caps,

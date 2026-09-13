@@ -11,6 +11,16 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **COG and tiled GeoTIFF support** (ADR-0051, plan I4): the NetVips raster
+  catalogue now reads a tiled/pyramidal GeoTIFF's structure (`tile-width`,
+  `tile-height`, `n-subifds`) into `RasterInfo`'s block and pyramid fields,
+  opens tiled rasters for random access, exports a downscale from the
+  coarsest internal overview that still covers the output, and reports the
+  ImageServer `minPixelSize`/`maxPixelSize` from the pyramid depth. A
+  COG-style tiled+pyramidal file can be written through the concrete
+  `VipsRasterCatalogue.WriteCogAsync` storage operation. No new dependency:
+  libvips already covers the format, so the GDAL follow-up trigger is
+  unchanged.
 - **ImageServer catalog operations** (ADR-0051, plan I3): the GeoServices
   ImageServer now serves the full catalog `query` (the Feature Service safe
   `where` subset, `objectIds`, geometry, `outFields`, `orderByFields`,

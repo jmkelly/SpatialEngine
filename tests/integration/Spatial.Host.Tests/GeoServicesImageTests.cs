@@ -78,6 +78,26 @@ public sealed class GeoServicesImageTests : IDisposable
         image.WriteToFile(path);
     }
 
+    private static void WriteTiledPyramid(string path, int width, int height, int tileSize)
+    {
+        var pixels = new byte[width * height];
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = (byte)(i % 256);
+        }
+
+        using var image = Image.NewFromMemory(pixels, width, height, 1, Enums.BandFormat.Uchar);
+        image.Tiffsave(
+            path,
+            compression: Enums.ForeignTiffCompression.Deflate,
+            predictor: Enums.ForeignTiffPredictor.Horizontal,
+            tile: true,
+            tileWidth: tileSize,
+            tileHeight: tileSize,
+            pyramid: true,
+            subifd: true);
+    }
+
     private static async Task<HttpClient> ImageServiceAsync(
         WebApplicationFactory<Program> factory, string service, string dataset)
     {
@@ -134,6 +154,20 @@ public sealed class GeoServicesImageTests : IDisposable
         Assert.False(root.TryGetProperty("objectIdField", out _));
         Assert.False(root.TryGetProperty("fields", out _));
         Assert.Equal(82.707, root.GetProperty("meanValues")[0].GetDouble(), 3);
+    }
+
+    [Fact]
+    public async Task The_root_reports_pyramid_pixel_size_bounds()
+    {
+        var tiledPath = System.IO.Path.Combine(_directory, "tiled.tif");
+        WriteTiledPyramid(tiledPath, width: 64, height: 48, tileSize: 16);
+        await using var tiledFactory = new ImageFactory(_directory, tiledPath, Dataset, catalog: false, width: 64, height: 48);
+        var client = await ImageServiceAsync(tiledFactory, Name, Dataset);
+
+        var root = await BodyAsync(await client.GetAsync($"{Root}/{Name}/ImageServer?f=json"));
+
+        Assert.Equal(1, root.GetProperty("minPixelSize").GetDouble());
+        Assert.Equal(4, root.GetProperty("maxPixelSize").GetDouble());
     }
 
     [Fact]
@@ -388,10 +422,12 @@ public sealed class GeoServicesImageTests : IDisposable
         private readonly bool _catalog;
         private readonly bool _allowDownload;
         private readonly long _maxDownloadBytes;
+        private readonly int _width;
+        private readonly int _height;
 
         public ImageFactory(
             string directory, string rasterPath, string dataset, bool catalog,
-            bool allowDownload = false, long maxDownloadBytes = 0)
+            bool allowDownload = false, long maxDownloadBytes = 0, int width = Width, int height = Height)
         {
             _directory = directory;
             _rasterPath = rasterPath;
@@ -399,6 +435,8 @@ public sealed class GeoServicesImageTests : IDisposable
             _catalog = catalog;
             _allowDownload = allowDownload;
             _maxDownloadBytes = maxDownloadBytes;
+            _width = width;
+            _height = height;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -410,8 +448,8 @@ public sealed class GeoServicesImageTests : IDisposable
             builder.UseSetting("Spatial:Raster:Sources:0:Crs", "EPSG:4326");
             builder.UseSetting("Spatial:Raster:Sources:0:Extent:0", "0");
             builder.UseSetting("Spatial:Raster:Sources:0:Extent:1", "0");
-            builder.UseSetting("Spatial:Raster:Sources:0:Extent:2", Width.ToString(CultureInfo.InvariantCulture));
-            builder.UseSetting("Spatial:Raster:Sources:0:Extent:3", Height.ToString(CultureInfo.InvariantCulture));
+            builder.UseSetting("Spatial:Raster:Sources:0:Extent:2", _width.ToString(CultureInfo.InvariantCulture));
+            builder.UseSetting("Spatial:Raster:Sources:0:Extent:3", _height.ToString(CultureInfo.InvariantCulture));
             builder.UseSetting("Spatial:Raster:Sources:0:PixelSizeX", "1");
             builder.UseSetting("Spatial:Raster:Sources:0:PixelSizeY", "1");
             builder.UseSetting("Spatial:Raster:Sources:0:Statistics:0", "0");

@@ -77,6 +77,22 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         return Task.Run(() => VipsRasterFiles.Read(Resolve(dataset), fileId), cancellationToken);
     }
 
+    /// <summary>
+    /// Rewrites a configured dataset (or one catalog item) as a tiled,
+    /// internally-overviewed TIFF — a COG-style file — at
+    /// <paramref name="destinationPath"/>. This is an offline storage
+    /// operation for ingest/seed tooling: it is on the concrete provider,
+    /// never on the <see cref="IRasterCatalogue"/> contract, and no client
+    /// request reaches it (ADR-0051, plan I4).
+    /// </summary>
+    public Task WriteCogAsync(
+        string dataset, long? rasterId, string destinationPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
+        return Task.Run(() => VipsRasterCog.Write(ExportTarget(Resolve(dataset), rasterId).Path, destinationPath), cancellationToken);
+    }
+
     private RasterDatasetDescription Describe(string dataset, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

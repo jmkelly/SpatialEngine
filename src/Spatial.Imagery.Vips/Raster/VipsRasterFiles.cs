@@ -15,7 +15,11 @@ internal static class VipsRasterFiles
 {
     private const string DatasetPrefix = "dataset";
 
-    /// <summary>Opens a configured raster file, mapping a missing file to a typed <c>not.found</c>.</summary>
+    /// <summary>
+    /// Opens a configured raster file for random access, mapping a missing
+    /// file to a typed <c>not.found</c>. Random access lets a tiled raster be
+    /// read by tile instead of streamed front to back (ADR-0051, plan I4).
+    /// </summary>
     public static Image Open(string path)
     {
         if (!File.Exists(path))
@@ -23,7 +27,24 @@ internal static class VipsRasterFiles
             throw SpatialException.Missing($"Raster file '{path}' does not exist.");
         }
 
-        return Image.NewFromFile(path);
+        return Image.NewFromFile(path, access: Enums.Access.Random);
+    }
+
+    /// <summary>
+    /// Opens one internal overview of a pyramidal TIFF (ADR-0051, plan I4).
+    /// Pyramid level 1 is the first (half-resolution) overview and level n the
+    /// n-th; the full-resolution main image is read with <see cref="Open"/>
+    /// instead. libvips indexes overviews from 0, so level 1 maps to
+    /// <c>subifd: 0</c>.
+    /// </summary>
+    public static Image OpenOverview(string path, int level)
+    {
+        if (!File.Exists(path))
+        {
+            throw SpatialException.Missing($"Raster file '{path}' does not exist.");
+        }
+
+        return Image.Tiffload(path, subifd: level - 1, access: Enums.Access.Random);
     }
 
     /// <summary>Lists the raw files backing the dataset or one catalog item.</summary>

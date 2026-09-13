@@ -79,7 +79,7 @@ band formats, apply nodata transparency, encode PNG/JPEG/TIFF) are inside
 NetVips' capability. Tiled and internally-overviewed (pyramidal) TIFFs, the
 structure a Cloud Optimized GeoTIFF adds, are read with `tiffload(
 subifd: n)`/random access and written with `tiffsave(tile, pyramid,
-subifd)`, so COG support does not need GDAL either (scheduled as plan I4).
+subifd)`, so COG support does not need GDAL either (plan I4, delivered).
 GDAL is **not** adopted now: it would add a native
 package and a Docker/attestation surface without a measured need. Per
 ADR-0021 the decision is demand-driven; adopting GDAL (mosaicking beyond the
@@ -103,7 +103,7 @@ Concretely:
   tags. This is the honest cost of the managed path and the recorded trigger
   for the GDAL follow-up. The tiled/pyramidal *storage* metadata
   (`tile-width`/`tile-height`/`n-subifds`) is exposed and is used for block
-  and pyramid reporting (plan I4); only the georeferencing keys are not.
+  and pyramid reporting (plan I4, delivered); only the georeferencing keys are not.
   Raster width/height/band count/pixel type are read
   from the file (NetVips metadata); extent/CRS/pixel size come from the
   descriptor.
@@ -208,10 +208,10 @@ list/read files); `Spatial.Host` registration from `Spatial:Raster` (single
 rasters and configured catalogs); the `PublicationKind.Image` GeoServices
 ImageServer projection (root, raster info, catalog item/listing/query,
 identify, `exportImage`, Raster Image/Thumbnail and the opt-in Download
-Rasters/Raster File surface). Not implemented: I4 COG/tiled-GeoTIFF
+Rasters/Raster File surface). Also delivered: I4 COG/tiled-GeoTIFF
 structure awareness (block/pyramid metadata, overview-aware export and
-COG-style writing); I5 in-memory export caching beyond the download caps;
-raster functions/statistics computation (I6 non-goal).
+COG-style writing). Not implemented: I5 in-memory export caching beyond the
+download caps; raster functions/statistics computation (I6 non-goal).
 
 ## References
 

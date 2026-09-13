@@ -75,10 +75,10 @@ without any raster value crossing a contract. Implemented by
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
-| `DescribeAsync` | dataset | `RasterDatasetDescription`: core `RasterInfo` (extent, CRS identity, pixel size, dimensions, band count, pixel type, optional stored band statistics) and, when a catalog exists, its integer `ObjectIdField` + core `FeatureSchema` |
+| `DescribeAsync` | dataset | `RasterDatasetDescription`: core `RasterInfo` (extent, CRS identity, pixel size, dimensions, band count, pixel type, block size and pyramid levels from a tiled/pyramidal file, optional stored band statistics) and, when a catalog exists, its integer `ObjectIdField` + core `FeatureSchema` |
 | `ListItemsAsync` | dataset | catalog items: integer identity, core geometry footprint, per-item raster info, attributes in schema order; empty for a single-raster service |
 | `IdentifyAsync` | dataset, `RasterIdentifyRequest` | sampled pixel values at the geometry centroid plus the overlapping catalog items; works without a catalog |
-| `ExportAsync` | dataset, `RasterExportRequest` | warped/encoded `RasterImage` over a `RasterViewport`; resampling kernel, target pixel type, nodata transparency, quality; an optional `RasterId` selects one catalog item |
+| `ExportAsync` | dataset, `RasterExportRequest` | warped/encoded `RasterImage` over a `RasterViewport`; resampling kernel, target pixel type, nodata transparency, quality; an optional `RasterId` selects one catalog item; a downscale reads the coarsest internal overview that still covers the output |
 | `ListFilesAsync` | dataset, optional `rasterId` | opaque `RasterFile` descriptors (`Id`, `Name`, `MediaType`, `Size`) for a catalog item or the whole dataset (spec §8.0.7) |
 | `ReadFileAsync` | dataset, `RasterFile.Id` | raw file bytes (`RasterFileContent`); the provider validates the opaque id against its own files (spec §8.5) |
 
@@ -88,7 +88,12 @@ attributes cross. The identify response adds one scalar sample per band at
 the identified point (spec §8.0.6); it is a value tuple, never a raster/band
 model. Raw download crosses as `RasterFile`/`RasterFileContent` (bytes plus
 media type, name and size), keyed by an opaque provider-owned id; a path,
-file handle, NetVips/GDAL type or GeoTIFF tag never crosses. Pixel-type
+file handle, NetVips/GDAL type or GeoTIFF tag never crosses. A tiled,
+internally-overviewed (pyramidal) GeoTIFF — a COG — is read through
+`tile-width`/`tile-height`/`n-subifds` and exported from the chosen overview;
+`RasterInfo` reports those as block size and pyramid levels. Writing a
+COG-style file is a concrete `VipsRasterCatalogue.WriteCogAsync` storage
+operation, not a contract verb. Pixel-type
 conversion is limited to the real integer/float formats and rejects
 complex/sub-byte types (a colour raster stays 8-bit). Georeferencing is
 descriptor-supplied on the managed NetVips path; GDAL is the measured-demand

@@ -23,6 +23,8 @@ public sealed class ImageServiceTests
         Assert.Equal("ESRI", root.CopyrightText);
         Assert.Null(root.ObjectIdField);
         Assert.Null(root.Fields);
+        Assert.Equal(0, root.MinPixelSize);
+        Assert.Equal(0, root.MaxPixelSize);
         Assert.Equal([0.0, 0.0, 0.0], root.MinValues);
         Assert.Equal([255.0, 254.0, 255.0], root.MaxValues);
         Assert.Equal(30.386, root.PixelSizeX, 3);
@@ -44,6 +46,17 @@ public sealed class ImageServiceTests
     }
 
     [Fact]
+    public void Root_derives_the_pixel_size_bounds_from_the_pyramid()
+    {
+        var description = Description(hasCatalog: false) with { Raster = Raster() with { MaxPyramidLevel = 3 } };
+
+        var root = ImageService.Root(description, null);
+
+        Assert.Equal(30.386, root.MinPixelSize, 3);
+        Assert.Equal(30.386 * 8, root.MaxPixelSize, 3);
+    }
+
+    [Fact]
     public void Info_reports_origin_and_pixel_grid()
     {
         var info = ImageService.Info(Raster());
@@ -54,6 +67,23 @@ public sealed class ImageServiceTests
         Assert.Equal(1, info.BlockHeight);
         Assert.Equal("U8", info.PixelType);
         Assert.Equal(4326, info.Extent!.SpatialReference!.Wkid);
+    }
+
+    [Fact]
+    public void Info_reports_the_pyramid_grid()
+    {
+        var info = ImageService.Info(Raster() with
+        {
+            BlockWidth = 256,
+            BlockHeight = 256,
+            FirstPyramidLevel = 1,
+            MaxPyramidLevel = 4,
+        });
+
+        Assert.Equal(256, info.BlockWidth);
+        Assert.Equal(256, info.BlockHeight);
+        Assert.Equal(1, info.FirstPyramidLevel);
+        Assert.Equal(4, info.MaxPyramidLevel);
     }
 
     [Theory]

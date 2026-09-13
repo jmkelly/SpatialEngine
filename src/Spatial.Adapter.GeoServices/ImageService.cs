@@ -74,8 +74,8 @@ internal static class ImageService
             info.PixelSizeY,
             info.BandCount,
             PixelType(info.PixelType),
-            0,
-            0,
+            MinPixelSize(info),
+            MaxPixelSize(info),
             copyright,
             ServiceDataType(info),
             statistics?.Select(stat => stat.Min).ToArray(),
@@ -85,6 +85,19 @@ internal static class ImageService
             description.HasCatalog ? description.ObjectIdField : null,
             description.HasCatalog && description.CatalogSchema is { } schema ? Fields(schema, description.ObjectIdField!) : null);
     }
+
+    /// <summary>
+    /// The finest (full-resolution) pixel size, or 0 when the raster has no
+    /// pyramid (spec §8.0.3 reports 0.0 for a non-pyramidal service).
+    /// </summary>
+    private static double MinPixelSize(RasterInfo info) => info.MaxPyramidLevel > 0 ? info.PixelSizeX : 0;
+
+    /// <summary>
+    /// The coarsest overview pixel size: the full-resolution size doubled once
+    /// per pyramid level, or 0 when the raster has no pyramid.
+    /// </summary>
+    private static double MaxPixelSize(RasterInfo info) =>
+        info.MaxPyramidLevel > 0 ? info.PixelSizeX * Math.Pow(2, info.MaxPyramidLevel) : 0;
 
     /// <summary>Builds the Raster Info resource (spec §8.4.3).</summary>
     public static EsriRasterInfo Info(RasterInfo info)

@@ -18,7 +18,7 @@ sit in the root `Spatial.PluginSdk` namespace; the wire DTOs in
 | `IMapRenderer.RenderAsync(MapRenderRequest)` | the whole pipeline → `RasterImage` |
 | `IRasterOperations.ReadAsync(RasterReadRequest)` | load/normalise one configured imagery source |
 | `IRasterOperations.CompositeAsync(RasterCompositeRequest)` | blend a bottom-to-top layer stack, encode |
-| `IRasterCatalogue` (ADR-0051) | raster dataset metadata, catalog items/query/identify, warped/encoded export and raw file listing/reading for the ImageServer |
+| `IRasterCatalogue` (ADR-0051) | raster dataset metadata (block/pyramid structure included), catalog items/query/identify, warped/encoded export (overview-aware) and raw file listing/reading for the ImageServer |
 | `RasterViewport(Envelope Bounds, int Width, int Height, string Crs)` | the viewport, x-first |
 | `RasterBuffer` / `RasterImage` | raw (premultiplied RGBA by default) pixels / encoded bytes |
 | `RasterLayer`, `RasterBufferLayer`, `RasterSourceLayer` | the composite stack entries |
