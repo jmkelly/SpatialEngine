@@ -55,7 +55,11 @@ internal static class WmsCapabilities
             new XElement(OgcXml.Wms + "Title", layer.Name),
             CrsElement("EPSG:4326"),
             CrsElement("CRS:84"),
-            CrsElement("EPSG:3857"));
+            CrsElement("EPSG:3857"),
+            new XElement(
+                OgcXml.Wms + "Style",
+                new XElement(OgcXml.Wms + "Name", "default"),
+                new XElement(OgcXml.Wms + "Title", "Default")));
         var extent = await OgcGeometry.ExtentAsync(services.Features(layer.Store), layer.Layer.Dataset, cancellationToken);
         if (extent is { } bounds)
         {

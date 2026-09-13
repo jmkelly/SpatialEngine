@@ -448,15 +448,18 @@ internal static class WmsService
 
     /// <summary>
     /// Rejects a named style: the service serves the persisted default style
-    /// only and advertises no named styles, so any requested name is
-    /// <c>StyleNotDefined</c>. Empty entries (<c>STYLES=</c>) select the
-    /// default and are accepted.
+    /// only (advertised as <c>default</c> in capabilities), so any other
+    /// requested name is <c>StyleNotDefined</c>. Empty entries
+    /// (<c>STYLES=</c>) select the default and are accepted; an all-default
+    /// selection stays lenient on the style count, so a client sending one
+    /// empty STYLES over several layers (QGIS) still renders.
     /// </summary>
     private static void RequireDefaultStyles(IReadOnlyList<string> styles)
     {
         foreach (var style in styles)
         {
-            if (!string.IsNullOrWhiteSpace(style))
+            if (!string.IsNullOrWhiteSpace(style)
+                && !string.Equals(style.Trim(), "default", StringComparison.OrdinalIgnoreCase))
             {
                 throw OgcServiceException.StyleNotDefined(
                     $"Style '{style}' is not defined; this service serves the default style only.");

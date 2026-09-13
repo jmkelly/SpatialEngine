@@ -30,7 +30,17 @@ public sealed class OgcEndpointTests : IDisposable
 
     private WebApplicationFactory<Program> Factory() => new OgcFactory(Path.Combine(_directory, "maps.json"));
 
-    private static async Task<HttpClient> MapAsync(WebApplicationFactory<Program> factory, string name, params string[] services)
+    private static async Task<HttpClient> MapAsync(WebApplicationFactory<Program> factory, string name, params string[] services) =>
+        await PutMapAsync(factory, name, services, new[] { new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style } });
+
+    private static async Task<HttpClient> Map2Async(WebApplicationFactory<Program> factory, string name, params string[] services) =>
+        await PutMapAsync(factory, name, services, new[]
+        {
+            new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style },
+            new { dataset = "demo.points", layerId = 1, name = "towns", style = Style },
+        });
+
+    private static async Task<HttpClient> PutMapAsync(WebApplicationFactory<Program> factory, string name, string[] services, object layers)
     {
         var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
@@ -38,7 +48,7 @@ public sealed class OgcEndpointTests : IDisposable
             name,
             store = "demo",
             services,
-            layers = new[] { new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style } },
+            layers,
         });
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/maps/{name}")
         {
@@ -214,6 +224,62 @@ public sealed class OgcEndpointTests : IDisposable
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
+    }
+
+    [Fact]
+    public async Task Wms_capabilities_advertise_a_default_style_per_layer()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var document = await XmlAsync(response);
+        var layer = document.Descendants(Wms + "Layer")
+            .First(element => element.Element(Wms + "Name")?.Value == "cities");
+        Assert.Equal("default", layer.Element(Wms + "Style")?.Element(Wms + "Name")?.Value);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_accepts_the_advertised_default_style()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&styles=default&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_accepts_an_empty_styles_value()
+    {
+        using var factory = Factory();
+        var client = await Map2Async(factory, "world", "wms");
+
+        // QGIS sends one empty STYLES for an all-default selection even over
+        // several layers; the count is lenient but every layer still renders.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities,towns&styles=&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_rejects_a_styles_count_mismatch()
+    {
+        using var factory = Factory();
+        var client = await Map2Async(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities,towns&styles=s1&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("StyleNotDefined", await ReportCodeAsync(response));
     }
 
     [Fact]
