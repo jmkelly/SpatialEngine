@@ -75,10 +75,12 @@ internal static class MapService
     public static EsriMapLayersResponse AllLayers(IReadOnlyList<PublishedLayer> layers) =>
         new(CurrentVersion, [.. layers.Select(layer => new EsriMapLayerRef(layer.Id, layer.Name, -1, true, null, 0, 0))], []);
 
-    /// <summary>Builds one layer's metadata (spec §4.2), including its projected <c>drawingInfo</c>.</summary>
+    /// <summary>Builds one layer's metadata (spec §4.2), including its projected <c>drawingInfo</c>, labels and domains.</summary>
     public static EsriMapLayer Layer(MapLayerInfo info)
     {
         var dataset = info.Dataset;
+        var drawing = MapStyleProjection.Project(info.Layer.Style, dataset);
+        var domains = MapStyleProjection.Domains(drawing, dataset);
         return new EsriMapLayer(
             CurrentVersion,
             info.Layer.Id,
@@ -87,16 +89,17 @@ internal static class MapService
             EsriLayerModel.GeometryType(dataset.GeometryType),
             EsriLayerModel.ObjectIdField,
             DisplayField(dataset),
-            EsriLayerModel.Fields(dataset, editable: false),
+            EsriLayerModel.Fields(dataset, editable: false, domains),
             EsriLayerModel.ReadOnlyCapabilities,
             EsriLayerModel.MaxRecordCount,
             EsriLayerModel.SpatialReference(dataset.Srid),
             Extent(info.Extent, dataset.Srid),
-            MapStyleProjection.Project(info.Layer.Style),
+            drawing,
             -1,
             true,
             false,
-            "esriServerHTMLPopupTypeNone");
+            "esriServerHTMLPopupTypeNone",
+            domains);
     }
 
     private static EsriMapLayerRef Reference(MapLayerInfo info) =>

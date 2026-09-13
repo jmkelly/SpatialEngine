@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Spatial.Adapter.GeoServices;
+using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Host.Tests;
 
@@ -20,6 +22,30 @@ public sealed class GeoServicesMapTests : IDisposable
     private const string CityStyle =
         """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":6,"circle-opacity":1.0}}]""";
 
+    private const string CountryUniqueValueStyle =
+        """
+        [
+          {"type":"circle","filter":["==","country","Germany"],"paint":{"circle-color":"#ff0000","circle-radius":6}},
+          {"type":"circle","filter":["==","country","France"],"paint":{"circle-color":"#0000ff","circle-radius":6}}
+        ]
+        """;
+
+    private const string PopulationClassBreaksStyle =
+        """
+        [
+          {"type":"circle","filter":["all",[">=","population",0],["<","population",1000000]],"paint":{"circle-color":"#ffffcc","circle-radius":4}},
+          {"type":"circle","filter":["all",[">=","population",1000000],["<","population",100000000]],"paint":{"circle-color":"#ff0000","circle-radius":8}}
+        ]
+        """;
+
+    private const string LabelledStyle =
+        """
+        [
+          {"type":"circle","paint":{"circle-color":"#ff0000","circle-radius":6}},
+          {"type":"symbol","layout":{"text-field":["get","name"],"text-size":11},"paint":{"text-color":"#262626"}}
+        ]
+        """;
+
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-").FullName;
     private readonly WebApplicationFactory<Program> _factory;
 
@@ -31,7 +57,7 @@ public sealed class GeoServicesMapTests : IDisposable
         Directory.Delete(_directory, recursive: true);
     }
 
-    private async Task<HttpClient> MapServiceAsync()
+    private async Task<HttpClient> MapServiceAsync(string style = CityStyle, string dataset = "demo.cities")
     {
         var client = _factory.CreateClient();
         var body = JsonSerializer.Serialize(new
@@ -39,7 +65,7 @@ public sealed class GeoServicesMapTests : IDisposable
             name = "world",
             kind = "map",
             store = "demo",
-            layers = new[] { new { dataset = "demo.cities", layerId = 0, name = "Cities", style = CityStyle } },
+            layers = new[] { new { dataset, layerId = 0, name = "Cities", style } },
         });
         using var request = new HttpRequestMessage(HttpMethod.Put, "/api/publications/world")
         {
@@ -190,6 +216,86 @@ public sealed class GeoServicesMapTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task The_layer_metadata_carries_a_unique_value_renderer_and_coded_domain()
+    {
+        var client = await MapServiceAsync(CountryUniqueValueStyle, dataset: "demo.world_cities");
+
+        var layer = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/0?f=json"));
+
+        var renderer = layer.GetProperty("drawingInfo").GetProperty("renderer");
+        Assert.Equal("uniqueValue", renderer.GetProperty("type").GetString());
+        Assert.Equal("country", renderer.GetProperty("field1").GetString());
+        Assert.Equal(
+            ["Germany", "France"],
+            renderer.GetProperty("uniqueValueInfos").EnumerateArray().Select(info => info.GetProperty("value").GetString()));
+
+        var domain = layer.GetProperty("domains").GetProperty("country");
+        Assert.Equal("codedValue", domain.GetProperty("type").GetString());
+        Assert.Equal(2, domain.GetProperty("codedValues").GetArrayLength());
+        Assert.Equal(
+            "codedValue",
+            layer.GetProperty("fields").EnumerateArray()
+                .Single(field => field.GetProperty("name").GetString() == "country")
+                .GetProperty("domain").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task The_layer_metadata_carries_a_class_breaks_renderer_and_range_domain()
+    {
+        var client = await MapServiceAsync(PopulationClassBreaksStyle);
+
+        var layer = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/0?f=json"));
+
+        var renderer = layer.GetProperty("drawingInfo").GetProperty("renderer");
+        Assert.Equal("classBreaks", renderer.GetProperty("type").GetString());
+        Assert.Equal("population", renderer.GetProperty("field").GetString());
+        Assert.Equal(0, renderer.GetProperty("minValue").GetDouble());
+        Assert.Equal(
+            [1000000, 100000000],
+            renderer.GetProperty("classBreakInfos").EnumerateArray().Select(info => info.GetProperty("classMaxValue").GetDouble()));
+
+        var range = layer.GetProperty("domains").GetProperty("population").GetProperty("range");
+        Assert.Equal(0, range[0].GetDouble());
+        Assert.Equal(100000000, range[1].GetDouble());
+    }
+
+    [Fact]
+    public async Task The_layer_metadata_carries_labeling_info()
+    {
+        var client = await MapServiceAsync(LabelledStyle);
+
+        var layer = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/0?f=json"));
+
+        var label = layer.GetProperty("drawingInfo").GetProperty("labelingInfo")[0];
+        Assert.Equal("[name]", label.GetProperty("labelExpression").GetString());
+        Assert.Equal("esriServerPointLabelPlacementCenterCenter", label.GetProperty("labelPlacement").GetString());
+        Assert.Equal("esriTS", label.GetProperty("symbol").GetProperty("type").GetString());
+        Assert.Equal(11, label.GetProperty("symbol").GetProperty("font").GetProperty("size").GetDouble());
+    }
+
+    [Fact]
+    public async Task The_map_server_image_resource_reports_a_typed_not_found()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/world/MapServer/0/images/1DD4FC53?f=json");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(404, error.GetProperty("error").GetProperty("code").GetInt32());
+        Assert.Contains("picture", error.GetProperty("error").GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Reading_map_layers_honours_cancellation()
+    {
+        var store = new WritableMemoryStore();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => MapService.ReadLayersAsync(
+            store, store, [new PublishedLayer(0, "memory.places", "Places")], new CancellationToken(canceled: true)));
     }
 
     [Fact]

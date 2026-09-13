@@ -22,6 +22,9 @@ public static partial class GeoServicesEndpoints
             MapAllLayers(catalog, registry, service, context, services, cancellationToken));
         group.MapMethods("/{service}/MapServer/{layerId:int}", ["GET", "POST"], (string service, int layerId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
             MapLayer(catalog, registry, service, layerId, context, services, cancellationToken));
+        group.MapMethods("/{service}/MapServer/{layerId:int}/images/{imageId}", ["GET", "POST"], (
+            string service, int layerId, string imageId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
+            MapImage(catalog, registry, service, layerId, imageId, context, services, cancellationToken));
         group.MapMethods("/{service}/MapServer/{layerId:int}/query", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IServiceProvider services,
             IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
@@ -89,6 +92,33 @@ public static partial class GeoServicesEndpoints
                 ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in service '{service}'.");
             var info = await MapService.ReadLayerAsync(Store(services, resolved.Store), Catalogue(services, resolved.Store), layer, cancellationToken);
             return EsriJson.Value(MapService.Layer(info));
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The MapServer image resource (spec §4.7). It exists only for picture
+    /// marker/fill symbols, whose <c>url</c> is the <c>imageId</c>. The engine's
+    /// MapLibre dialect has no picture symbols and stores no symbol images, so
+    /// the resource is genuinely blocked and reports a typed <c>not.found</c>
+    /// rather than serving a stub (ADR-0050).
+    /// </summary>
+    private static async Task<IResult> MapImage(
+        GeoServicesCatalog catalog, IPublicationRegistry registry, string service, int layerId, string imageId,
+        HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "MapServer", PublicationKind.Map, cancellationToken);
+            var layers = await ListLayersAsync(services, resolved, cancellationToken);
+            _ = layers.FirstOrDefault(candidate => candidate.Id == layerId)
+                ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in service '{service}'.");
+            throw new EsriInteropException(
+                EsriErrorCodes.NotFound,
+                $"Image '{imageId}' is not available: MapServer image resources exist only for picture marker/fill symbols (spec §4.7), and the engine's style dialect has no picture symbols.");
         }
         catch (Exception exception)
         {

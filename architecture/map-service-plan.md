@@ -1,17 +1,19 @@
 # Map Service (MapServer) Implementation Plan — scaffold
 
-> **Status:** implemented (M0–M4, ADR-0048). The blocker — no renderer —
-> was cleared by ADR-0044 (raster pipeline), ADR-0046 (tiles) and ADR-0047
-> (persisted layer style), so the MapServer now serves metadata, query,
-> identify, find, export and tiles over a `PublicationKind.Map` publication.
-> Reuses the publication registry and admin surface from
-> `publishing-and-ingest-plan.md`. Read
+> **Status:** implemented (M0–M4, ADR-0048; rich style metadata, labels,
+> domains and the image-resource decision ADR-0050). The blocker — no
+> renderer — was cleared by ADR-0044 (raster pipeline), ADR-0046 (tiles) and
+> ADR-0047 (persisted layer style), so the MapServer now serves metadata,
+> query, identify, find, export, tiles and richer `drawingInfo` over a
+> `PublicationKind.Map` publication. Reuses the publication registry and
+> admin surface from `publishing-and-ingest-plan.md`. Read
 > `architecture/references/geoservices-compatibility.md` §4 first.
 >
 > **Blocking decision (resolved):** MapServer is only useful to ArcGIS
 > clients if it can render (`export`/tiles); the renderer now exists and is
-> reached through the SDK contracts. The remaining non-goal is richer style
-> metadata (class breaks, unique value, labels) — see ADR-0048.
+> reached through the SDK contracts. **Rich style metadata (class breaks,
+> unique value, labels) and domains are no longer a non-goal** — they are
+> projected by the adapter from the persisted MapLibre fragment (ADR-0050).
 
 ## 1. What the spec requires (v1.0 §4)
 
@@ -24,9 +26,10 @@
 | Map Tile (§4.1) | **tile cache or renderer** |
 | Layer/Table (§4.2) + Query (§4.2.4) | same as FeatureServer layer/query |
 | Query Related Records (§4.2.5) | relationship model (absent, ADR-0035 non-goal) |
-| Feature (§4.3), Attachment Infos/Attachment (§4.4–4.5), HTML Popup (§4.6), Image (§4.7) | attachments/relationships (absent) |
+| Feature (§4.3), Attachment Infos/Attachment (§4.4–4.5), HTML Popup (§4.6) | attachments/relationships (absent) |
+| Image (§4.7) | picture symbols (absent); the route returns a typed `not.found` (ADR-0050) |
 | All Layers and Tables (§4.8) | publication metadata |
-| `drawingInfo`, renderers, symbols, labels, domains (§12–15) | style model (per-layer style now persisted — ADR-0047; the renderer/`drawingInfo` projection is still absent) |
+| `drawingInfo`, renderers, symbols, labels, domains (§12–15) | style model (per-layer style persisted — ADR-0047; `simple`/`uniqueValue`/`classBreaks` renderers, labels and domains projected — ADR-0050) |
 
 Map services are read-only (spec §4.0) — no editing concerns.
 
@@ -96,7 +99,10 @@ future track and should not be smuggled in as "MapServer".
 - **Proof (built):** HTTP tests render a PNG and a JSON href at a fixed
   extent/size; distinct persisted styles are tested at the publication route.
 - **Renderer:** the persisted per-layer style (ADR-0047) composed by
-  `PublicationMapStyle`, drawn by `IMapRenderer`; no labels or class breaks.
+  `PublicationMapStyle`, drawn by `IMapRenderer`. The renderer's flat-paint
+  and filter subset is unchanged; rich `drawingInfo` renderers are projected
+  metadata (ADR-0050), so a `classBreaks` style's server render is rejected
+  until the raster filter subset grows.
 
 ### M3 — Tiles
 - **Implemented:** `tile/{z}/{y}/{x}` rendered through the registered
@@ -106,18 +112,28 @@ future track and should not be smuggled in as "MapServer".
   asserted on the root. Cache ownership is the ADR-0046 in-memory cache.
 
 ### M4 — Style metadata (§12–15)
-- **Implemented:** `drawingInfo` with a `simple` renderer, projected from
-  the persisted MapLibre fragment (fill → `esriSFS`, line → `esriSLS`,
-  circle → `esriSMS`); richer renderer types are not produced (ADR-0048).
-- **Proof (built):** unit tests round-trip the projection and colour
-  parsing; an HTTP test reads a layer's `drawingInfo`. The renderer types
-  stay in the adapter — no renderer type enters `Spatial.PluginSdk`.
+- **Implemented:** `drawingInfo` projected from the persisted MapLibre
+  fragment (ADR-0047): a single `fill`/`line`/`circle` gives a `simple`
+  renderer, equal-value filter siblings a `uniqueValue` renderer, and
+  interval filter siblings a `classBreaks` renderer; `labelingInfo` carries
+  the single-field `symbol` label subset; `domains` (coded value from
+  unique values, range from class breaks) are emitted for the rendered field
+  when the catalogue schema declares it (ADR-0050). The MapServer image
+  resource (§4.7) is mounted and returns a typed `not.found`, because the
+  engine has no picture symbols.
+- **Proof (built):** unit tests project every renderer/symbol/label/domain/
+  colour shape and assert the served JSON; HTTP tests read a layer's
+  `drawingInfo`, `labelingInfo`, `domains` and the image error; the ArcGIS
+  REST JS e2e reads a rich layer over the official client. All renderer,
+  symbol, label and domain types stay in the adapter — none enters
+  `Spatial.PluginSdk`.
 
 ## 5. Non-goals (standing)
 
 Query Related Records, attachments, HTML Popup (no relationship/attachment
-model — ADR-0035), time-aware maps, `gdbVersion`/versioning, MapServer
-editing (spec forbids it), print/geoprocessing.
+model — ADR-0035), picture-symbol MapServer images (no picture symbols —
+ADR-0050), time-aware maps, `gdbVersion`/versioning, MapServer editing
+(spec forbids it), print/geoprocessing.
 
 ## 6. Risks
 
@@ -136,4 +152,5 @@ editing (spec forbids it), print/geoprocessing.
 - `architecture/publishing-and-ingest-plan.md` (Publication/registry/admin)
 - `architecture/geoservices-implementation-plan.md` (query/edit engines)
 - `architecture/references/geoservices-compatibility.md` §4
-- ADR-0035, ADR-0037, ADR-0040 (metrics), principles 1–2
+- ADR-0035, ADR-0037, ADR-0040 (metrics), ADR-0050 (rich style metadata),
+  principles 1–2

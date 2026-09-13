@@ -127,6 +127,32 @@ test("an unmodified Esri client queries a MapServer layer", { skip }, async () =
   assert.ok(count.count > 0);
 });
 
+const RICH_LAYER = `${ROOT}/rich/MapServer/0`;
+
+test("an unmodified Esri client reads rich MapServer drawingInfo, labels and domains", { skip }, async () => {
+  const layer = await request(RICH_LAYER, { params: { f: "json" } });
+
+  assert.equal(layer.drawingInfo.renderer.type, "classBreaks");
+  assert.equal(layer.drawingInfo.renderer.field, "population");
+  assert.equal(layer.drawingInfo.renderer.classBreakInfos.length, 2);
+  assert.equal(layer.drawingInfo.labelingInfo[0].labelExpression, "[name]");
+  assert.equal(layer.drawingInfo.labelingInfo[0].symbol.type, "esriTS");
+  assert.equal(layer.domains.population.type, "range");
+  assert.deepEqual(layer.domains.population.range, [0, 100000000]);
+});
+
+test("an unmodified Esri client gets a typed error for the absent MapServer image", { skip }, async () => {
+  await assert.rejects(
+    () => request(`${MAP_LAYER}/images/1DD4FC53`, { params: { f: "json" } }),
+    (error: unknown) => {
+      const failure = error as { code?: string; originalMessage?: string; message?: string };
+      assert.match(failure.code ?? "", /404/);
+      assert.match(failure.originalMessage ?? failure.message ?? "", /picture/i);
+      return true;
+    },
+  );
+});
+
 test("an unmodified Esri client identifies and renders a MapServer", { skip }, async () => {
   const identify = await request(`${MAP_SERVICE}/identify`, {
     params: {

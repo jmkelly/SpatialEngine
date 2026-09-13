@@ -21,6 +21,13 @@ this file together, then tag the release (`RELEASING.md`).
   served as an ArcGIS MapServer — root, layer, `query`, `identify`, `find` and
   render — with the persisted style lowered to `drawingInfo`; covered by
   ArcGIS REST JS end-to-end tests.
+- **Rich MapServer style metadata** (ADR-0050): the adapter projects the
+  persisted MapLibre fragment onto `uniqueValue` and `classBreaks` renderers
+  (equal-value and interval `filter` siblings), the single-field `esriTS`
+  `labelingInfo` subset, and coded-value/range `domains` for the rendered
+  field; the §4.7 image resource is mounted and returns a typed `not.found`
+  (the engine has no picture symbols). All Esri types stay inside
+  `Spatial.Adapter.GeoServices`; the ArcGIS REST JS e2e reads a rich layer.
 - **Engine-side ingest reprojection**: `POST /api/ingest` accepts a
   `sourceSrid` and transforms every decoded page to the target SRID through
   the ProjNet `ICoordinateTransforms` service, so uploaded data in a curated

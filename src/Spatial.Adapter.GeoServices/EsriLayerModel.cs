@@ -69,7 +69,7 @@ internal static class EsriLayerModel
     public static Spatial.Core.Geometry.CoordinateReference? LayerCoordinateReference(int srid) =>
         srid > 0 ? Spatial.Core.Geometry.CoordinateReference.Epsg(srid) : null;
 
-    internal static List<EsriField> Fields(DatasetDescription dataset, bool editable)
+    internal static List<EsriField> Fields(DatasetDescription dataset, bool editable, IReadOnlyDictionary<string, EsriDomain>? domains = null)
     {
         var fields = new List<EsriField>
         {
@@ -82,7 +82,8 @@ internal static class EsriLayerModel
                 EsriFieldType.FromAttributeKind(field.Kind),
                 field.Name,
                 field.Nullable,
-                editable && field.Kind != AttributeKind.Geometry));
+                editable && field.Kind != AttributeKind.Geometry,
+                domains?.GetValueOrDefault(field.Name)));
         }
 
         return fields;
@@ -116,8 +117,8 @@ internal sealed record EsriLayer(
     int MaxRecordCount,
     EsriSpatialReferenceDto? SpatialReference);
 
-/// <summary>One Esri field definition.</summary>
-internal sealed record EsriField(string Name, string Type, string Alias, bool Nullable, bool Editable);
+/// <summary>One Esri field definition; <c>domain</c> is emitted only when the catalogue backs one (spec §13).</summary>
+internal sealed record EsriField(string Name, string Type, string Alias, bool Nullable, bool Editable, EsriDomain? Domain = null);
 
 /// <summary>The Esri spatial reference object.</summary>
 internal sealed record EsriSpatialReferenceDto(int Wkid);

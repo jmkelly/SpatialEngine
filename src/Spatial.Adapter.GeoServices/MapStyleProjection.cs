@@ -1,87 +1,275 @@
 using System.Globalization;
 using System.Text.Json;
+using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Projects a publication layer's persisted MapLibre style fragment
-/// (ADR-0047) onto an Esri <c>drawingInfo</c> simple renderer (spec §12).
-/// The mapping is deliberately narrow: a <c>fill</c> fragment becomes an
-/// <c>esriSFS</c>, a <c>line</c> an <c>esriSLS</c> and a <c>circle</c> an
-/// <c>esriSMS</c>; class-break, unique-value and label renderers are not
-/// produced because the renderer has no such model (ADR-0044/ADR-0048). A
-/// layer with no persisted style yields no <c>drawingInfo</c>.
+/// (ADR-0047, dialect ADR-0044) onto the Esri <c>drawingInfo</c>,
+/// <c>labelingInfo</c> and <c>domains</c> shapes (spec §12–15, ADR-0050).
+///
+/// A fragment (or a set of same-kind siblings) maps to:
+/// <list type="bullet">
+///   <item>a <c>simple</c> renderer for one flat-colour <c>fill</c>/<c>line</c>/<c>circle</c>;</item>
+///   <item>a <c>uniqueValue</c> renderer when same-kind siblings carry
+///   <c>==</c>/<c>in</c> filters over one field;</item>
+///   <item>a <c>classBreaks</c> renderer when same-kind siblings carry
+///   <c>all</c> intervals (<c>&gt;=</c>/<c>&lt;</c>) over one numeric field;</item>
+///   <item>label classes for single-field <c>symbol</c> fragments.</item>
+/// </list>
+/// Anything outside that subset is not projected: the layer keeps its
+/// simplest symbol or no label class rather than inventing a model. Every
+/// Esri type stays inside this adapter (ADR-0005); the MapLibre fragment is
+/// the single style source (ADR-0047).
 /// </summary>
 internal static class MapStyleProjection
 {
-    /// <summary>The drawing info for a persisted style fragment, or null when there is none.</summary>
-    public static EsriDrawingInfo? Project(string? style)
+    private static readonly string[] KindPreference = ["fill", "line", "circle"];
+
+    /// <summary>
+    /// The drawing info (and label classes) for a persisted style fragment,
+    /// or null when there is none. <paramref name="dataset"/> supplies the
+    /// geometry family labels are placed against; it may be null for
+    /// renderer-only projections.
+    /// </summary>
+    public static EsriDrawingInfo? Project(string? style, DatasetDescription? dataset = null)
     {
-        if (string.IsNullOrWhiteSpace(style))
+        if (!TryFragments(style, out var fragments))
         {
             return null;
         }
 
-        JsonDocument document;
-        try
+        foreach (var kind in KindPreference)
         {
-            document = JsonDocument.Parse(style);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-
-        using (document)
-        {
-            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            var siblings = fragments.Where(fragment => IsKind(fragment, kind)).ToArray();
+            if (siblings.Length == 0)
             {
-                return null;
+                continue;
             }
 
-            var fragments = document.RootElement.EnumerateArray().ToArray();
-            return Symbol(Fragment(fragments, "fill"))
-                ?? Symbol(Fragment(fragments, "line"))
-                ?? Symbol(Fragment(fragments, "circle"));
-        }
-    }
-
-    private static JsonElement? Fragment(JsonElement[] fragments, string type)
-    {
-        foreach (var fragment in fragments)
-        {
-            if (fragment.ValueKind == JsonValueKind.Object
-                && fragment.TryGetProperty("type", out var value)
-                && value.ValueKind == JsonValueKind.String
-                && string.Equals(value.GetString(), type, StringComparison.Ordinal))
+            var renderer = UniqueValue(siblings) ?? ClassBreaks(siblings) ?? Simple(siblings[0]);
+            if (renderer is null)
             {
-                return fragment;
+                continue;
             }
+
+            var labels = dataset is null ? null : Labels(fragments, dataset);
+            return new EsriDrawingInfo(renderer, labels);
         }
 
         return null;
     }
 
-    private static EsriDrawingInfo? Symbol(JsonElement? fragment)
+    /// <summary>The label classes for a persisted style fragment, or null when there are none.</summary>
+    public static IReadOnlyList<EsriLabelClass>? Labels(string? style, DatasetDescription dataset) =>
+        TryFragments(style, out var fragments) ? Labels(fragments, dataset) : null;
+
+    /// <summary>
+    /// Domains for the field a projected renderer classifies, validated
+    /// against the catalogue schema (spec §13). The engine has no domain
+    /// vocabulary of its own, so the values come from the renderer and the
+    /// catalogue only vouches for the field's existence (ADR-0050).
+    /// </summary>
+    public static IReadOnlyDictionary<string, EsriDomain>? Domains(EsriDrawingInfo? drawingInfo, DatasetDescription dataset)
     {
-        if (fragment is not { } element)
+        if (drawingInfo is null)
         {
             return null;
         }
 
-        var paint = element.TryGetProperty("paint", out var paintElement) && paintElement.ValueKind == JsonValueKind.Object
-            ? paintElement
-            : default;
-        return element.GetProperty("type").GetString() switch
+        var renderer = drawingInfo.Renderer;
+        var field = renderer.Type switch
         {
-            "fill" => Fill(paint),
-            "line" => Line(paint),
-            "circle" => Circle(paint),
+            "uniqueValue" => renderer.Field1,
+            "classBreaks" => renderer.Field,
             _ => null,
         };
+        if (string.IsNullOrWhiteSpace(field) || dataset.Schema.IndexOf(field) < 0)
+        {
+            return null;
+        }
+
+        var domain = renderer switch
+        {
+            { Type: "uniqueValue", UniqueValueInfos: { Count: > 0 } infos } =>
+                new EsriDomain(
+                    "codedValue",
+                    field,
+                    CodedValues: [.. infos.Select(info => new EsriCodedValue(info.Label ?? info.Value, info.Value))]),
+            { Type: "classBreaks", ClassBreakInfos: { Count: > 0 } breaks, MinValue: { } min } =>
+                new EsriDomain("range", field, Range: [min, breaks[^1].ClassMaxValue]),
+            _ => null,
+        };
+        return domain is null
+            ? null
+            : new Dictionary<string, EsriDomain>(StringComparer.Ordinal) { [field] = domain };
     }
 
-    private static EsriDrawingInfo Fill(JsonElement paint)
+    private static List<EsriLabelClass>? Labels(JsonElement[] fragments, DatasetDescription dataset)
+    {
+        List<EsriLabelClass>? labels = null;
+        foreach (var fragment in fragments)
+        {
+            if (Label(fragment, dataset) is { } label)
+            {
+                (labels ??= []).Add(label);
+            }
+        }
+
+        return labels;
+    }
+
+    private static EsriRenderer? Simple(JsonElement fragment)
+    {
+        var symbol = Symbol(fragment);
+        return symbol is null ? null : new EsriRenderer("simple", symbol);
+    }
+
+    private static EsriRenderer? UniqueValue(JsonElement[] siblings)
+    {
+        string? field = null;
+        List<EsriUniqueValueInfo>? infos = null;
+        EsriSymbol? defaultSymbol = null;
+        foreach (var sibling in siblings)
+        {
+            var filter = Filter(sibling);
+            if (filter is not { } expression)
+            {
+                defaultSymbol ??= Symbol(sibling);
+                continue;
+            }
+
+            if (!TryCategorical(expression, out var categorical))
+            {
+                return null;
+            }
+
+            if (field is null)
+            {
+                field = categorical.Field;
+            }
+            else if (!string.Equals(field, categorical.Field, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            if (Symbol(sibling) is not { } symbol)
+            {
+                return null;
+            }
+
+            foreach (var value in categorical.Values)
+            {
+                (infos ??= []).Add(new EsriUniqueValueInfo(value, symbol));
+            }
+        }
+
+        return field is not null && infos is { Count: > 0 }
+            ? new EsriRenderer(
+                "uniqueValue",
+                Field1: field,
+                DefaultSymbol: defaultSymbol,
+                DefaultLabel: defaultSymbol is null ? null : "<Other values>",
+                UniqueValueInfos: infos)
+            : null;
+    }
+
+    private static EsriRenderer? ClassBreaks(JsonElement[] siblings)
+    {
+        if (siblings.Length < 2)
+        {
+            return null;
+        }
+
+        string? field = null;
+        var minValue = double.PositiveInfinity;
+        List<(double Max, EsriSymbol Symbol)>? classes = null;
+        foreach (var sibling in siblings)
+        {
+            if (Filter(sibling) is not { } expression || !TryInterval(expression, out var interval))
+            {
+                return null;
+            }
+
+            if (field is null)
+            {
+                field = interval.Field;
+            }
+            else if (!string.Equals(field, interval.Field, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            if (Symbol(sibling) is not { } symbol)
+            {
+                return null;
+            }
+
+            minValue = Math.Min(minValue, interval.Lower);
+            (classes ??= []).Add((interval.Upper, symbol));
+        }
+
+        if (field is null || classes is not { Count: > 0 })
+        {
+            return null;
+        }
+
+        return new EsriRenderer(
+            "classBreaks",
+            Field: field,
+            MinValue: minValue,
+            ClassBreakInfos: [.. classes
+                .OrderBy(entry => entry.Max)
+                .Select(entry => new EsriClassBreakInfo(entry.Max, entry.Symbol, Format(entry.Max)))]);
+    }
+
+    private static EsriLabelClass? Label(JsonElement fragment, DatasetDescription dataset)
+    {
+        if (!IsKind(fragment, "symbol")
+            || !fragment.TryGetProperty("layout", out var layout)
+            || layout.ValueKind != JsonValueKind.Object
+            || !layout.TryGetProperty("text-field", out var expression)
+            || !TryField(expression, out var field))
+        {
+            return null;
+        }
+
+        var paint = Paint(fragment);
+        var anchor = StringValue(layout, "text-anchor", "center");
+        return new EsriLabelClass(
+            Placement(dataset.GeometryType, anchor),
+            $"[{field}]",
+            UseCodedValues: false,
+            new EsriTextSymbol(
+                "esriTS",
+                EsriColor.ToRgba(StringValue(paint, "text-color", "#000000"), 1.0),
+                BackgroundColor: null,
+                BorderLineColor: null,
+                VerticalAlignment(anchor),
+                HorizontalAlignment(anchor),
+                RightToLeft: false,
+                Angle: 0,
+                XOffset: 0,
+                YOffset: 0,
+                new EsriFont(FontFamily(layout), Number(layout, "text-size", 12), "normal", "normal", "none")),
+            MinScale: 0,
+            MaxScale: 0);
+    }
+
+    private static EsriSymbol? Symbol(JsonElement fragment) => IsSymbolKind(fragment)
+        ? Symbol(fragment.GetProperty("type").GetString()!, Paint(fragment))
+        : null;
+
+    private static EsriSymbol? Symbol(string kind, JsonElement paint) => kind switch
+    {
+        "fill" => Fill(paint),
+        "line" => Line(paint),
+        "circle" => Circle(paint),
+        _ => null,
+    };
+
+    private static EsriSymbol Fill(JsonElement paint)
     {
         var opacity = Number(paint, "fill-opacity", 1.0);
         var fill = Color(paint, "fill-color", "#000000", opacity);
@@ -90,18 +278,18 @@ internal static class MapStyleProjection
         var outline = outlineWidth > 0 && outlineColor is { } stroke
             ? new EsriSymbolOutline("esriSLS", "esriSLSSolid", stroke, outlineWidth)
             : null;
-        return new EsriDrawingInfo(new EsriRenderer("simple", new EsriSymbol("esriSFS", "esriSFSSolid", fill, Outline: outline)));
+        return new EsriSymbol("esriSFS", "esriSFSSolid", fill, Outline: outline);
     }
 
-    private static EsriDrawingInfo Line(JsonElement paint)
+    private static EsriSymbol Line(JsonElement paint)
     {
         var opacity = Number(paint, "line-opacity", 1.0);
         var color = Color(paint, "line-color", "#000000", opacity);
         var width = Number(paint, "line-width", 1.0);
-        return new EsriDrawingInfo(new EsriRenderer("simple", new EsriSymbol("esriSLS", "esriSLSSolid", color, Width: width)));
+        return new EsriSymbol("esriSLS", "esriSLSSolid", color, Width: width);
     }
 
-    private static EsriDrawingInfo Circle(JsonElement paint)
+    private static EsriSymbol Circle(JsonElement paint)
     {
         var opacity = Number(paint, "circle-opacity", 1.0);
         var color = Color(paint, "circle-color", "#000000", opacity);
@@ -111,8 +299,192 @@ internal static class MapStyleProjection
         var outline = strokeWidth > 0 && strokeColor is { } stroke
             ? new EsriSymbolOutline("esriSLS", "esriSLSSolid", stroke, strokeWidth)
             : null;
-        return new EsriDrawingInfo(new EsriRenderer("simple", new EsriSymbol("esriSMS", "esriSMSCircle", color, Size: radius * 2, Outline: outline)));
+        return new EsriSymbol("esriSMS", "esriSMSCircle", color, Size: radius * 2, Outline: outline);
     }
+
+    /// <summary>Whether the fragment is an object of one of the drawable symbol kinds.</summary>
+    private static bool IsSymbolKind(JsonElement fragment) =>
+        KindPreference.Any(kind => IsKind(fragment, kind));
+
+    private static bool IsKind(JsonElement fragment, string kind) =>
+        fragment.ValueKind == JsonValueKind.Object
+        && fragment.TryGetProperty("type", out var type)
+        && type.ValueKind == JsonValueKind.String
+        && string.Equals(type.GetString(), kind, StringComparison.Ordinal);
+
+    private static JsonElement Paint(JsonElement fragment) =>
+        fragment.ValueKind == JsonValueKind.Object
+        && fragment.TryGetProperty("paint", out var paint)
+        && paint.ValueKind == JsonValueKind.Object
+            ? paint
+            : default;
+
+    private static JsonElement? Filter(JsonElement fragment) =>
+        fragment.ValueKind == JsonValueKind.Object
+        && fragment.TryGetProperty("filter", out var filter)
+        && filter.ValueKind == JsonValueKind.Array
+        && filter.GetArrayLength() > 0
+            ? filter
+            : null;
+
+    /// <summary>Reads <c>["==", field, value]</c> or <c>["in", field, v…]</c>.</summary>
+    private static bool TryCategorical(JsonElement filter, out (string Field, IReadOnlyList<string> Values) categorical)
+    {
+        categorical = default;
+        if (filter[0].ValueKind != JsonValueKind.String || filter[1].ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        var field = filter[1].GetString()!;
+        if (filter[0].GetString() == "==" && filter.GetArrayLength() == 3)
+        {
+            categorical = (field, [Format(filter[2])]);
+            return true;
+        }
+
+        if (filter[0].GetString() == "in" && filter.GetArrayLength() >= 3)
+        {
+            var values = new List<string>(filter.GetArrayLength() - 2);
+            for (var i = 2; i < filter.GetArrayLength(); i++)
+            {
+                values.Add(Format(filter[i]));
+            }
+
+            categorical = (field, values);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Reads <c>["all", [">=", field, lo], ["&lt;", field, hi]]</c>.</summary>
+    private static bool TryInterval(JsonElement filter, out (string Field, double Lower, double Upper) interval)
+    {
+        interval = default;
+        if (filter[0].ValueKind != JsonValueKind.String
+            || filter[0].GetString() != "all"
+            || filter.GetArrayLength() != 3
+            || !Comparison(filter[1], ">=", out var lowerField, out var lower)
+            || !Comparison(filter[2], "<", out var upperField, out var upper)
+            || !string.Equals(lowerField, upperField, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        interval = (lowerField, lower, upper);
+        return true;
+    }
+
+    private static bool Comparison(JsonElement filter, string op, out string field, out double value)
+    {
+        field = string.Empty;
+        value = 0;
+        if (filter.ValueKind != JsonValueKind.Array
+            || filter.GetArrayLength() != 3
+            || filter[0].ValueKind != JsonValueKind.String
+            || filter[0].GetString() != op
+            || filter[1].ValueKind != JsonValueKind.String
+            || filter[2].ValueKind != JsonValueKind.Number
+            || !filter[2].TryGetDouble(out value))
+        {
+            return false;
+        }
+
+        field = filter[1].GetString()!;
+        return true;
+    }
+
+    /// <summary>Whether a <c>text-field</c> names exactly one field.</summary>
+    private static bool TryField(JsonElement expression, out string field)
+    {
+        field = string.Empty;
+        if (expression.ValueKind == JsonValueKind.String)
+        {
+            var text = expression.GetString();
+            if (text is { Length: > 2 } && text[0] == '{' && text[^1] == '}')
+            {
+                field = text[1..^1];
+            }
+        }
+        else if (expression.ValueKind == JsonValueKind.Array
+            && expression.GetArrayLength() == 2
+            && expression[0].ValueKind == JsonValueKind.String
+            && expression[0].GetString() == "get"
+            && expression[1].ValueKind == JsonValueKind.String)
+        {
+            field = expression[1].GetString() ?? string.Empty;
+        }
+
+        return field.Length > 0;
+    }
+
+    private static string Placement(string geometry, string anchor)
+    {
+        var family = geometry.Trim().ToLowerInvariant();
+        if (family.StartsWith("line", StringComparison.Ordinal) || family.StartsWith("multiLine", StringComparison.OrdinalIgnoreCase))
+        {
+            return "esriServerLinePlacementCenterAlong";
+        }
+
+        if (family.StartsWith("polygon", StringComparison.Ordinal) || family.StartsWith("multiPolygon", StringComparison.OrdinalIgnoreCase))
+        {
+            return "esriServerPolygonPlacementAlwaysHorizontal";
+        }
+
+        return "esriServerPointLabelPlacement" + anchor switch
+        {
+            "top" => "AboveCenter",
+            "bottom" => "BelowCenter",
+            "left" => "CenterLeft",
+            "right" => "CenterRight",
+            "top-left" => "AboveLeft",
+            "top-right" => "AboveRight",
+            "bottom-left" => "BelowLeft",
+            "bottom-right" => "BelowRight",
+            _ => "CenterCenter",
+        };
+    }
+
+    private static string VerticalAlignment(string anchor) => anchor switch
+    {
+        "top" or "top-left" or "top-right" => "top",
+        "bottom" or "bottom-left" or "bottom-right" => "bottom",
+        _ => "middle",
+    };
+
+    private static string HorizontalAlignment(string anchor) => anchor switch
+    {
+        "left" or "top-left" or "bottom-left" => "left",
+        "right" or "top-right" or "bottom-right" => "right",
+        _ => "center",
+    };
+
+    private static string FontFamily(JsonElement layout)
+    {
+        if (layout.ValueKind != JsonValueKind.Object || !layout.TryGetProperty("text-font", out var font))
+        {
+            return "Arial";
+        }
+
+        if (font.ValueKind == JsonValueKind.String)
+        {
+            return font.GetString() ?? "Arial";
+        }
+
+        return font.ValueKind == JsonValueKind.Array
+            && font.GetArrayLength() > 0
+            && font[0].ValueKind == JsonValueKind.String
+                ? font[0].GetString() ?? "Arial"
+                : "Arial";
+    }
+
+    private static string StringValue(JsonElement element, string name, string fallback) =>
+        element.ValueKind == JsonValueKind.Object
+        && element.TryGetProperty(name, out var value)
+        && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? fallback
+            : fallback;
 
     private static int[] Color(JsonElement paint, string name, string? fallback, double opacity)
     {
@@ -124,13 +496,55 @@ internal static class MapStyleProjection
         return EsriColor.ToRgba(css, opacity);
     }
 
-    private static double Number(JsonElement paint, string name, double fallback) =>
-        paint.ValueKind == JsonValueKind.Object
-        && paint.TryGetProperty(name, out var element)
-        && element.ValueKind == JsonValueKind.Number
-        && element.TryGetDouble(out var value)
-            ? value
+    private static double Number(JsonElement element, string name, double fallback) =>
+        element.ValueKind == JsonValueKind.Object
+        && element.TryGetProperty(name, out var value)
+        && value.ValueKind == JsonValueKind.Number
+        && value.TryGetDouble(out var number)
+            ? number
             : fallback;
+
+    private static string Format(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString() ?? string.Empty,
+        JsonValueKind.True => "true",
+        JsonValueKind.False => "false",
+        JsonValueKind.Number => value.TryGetInt64(out var integer) ? integer.ToString(CultureInfo.InvariantCulture) : value.GetDouble().ToString(CultureInfo.InvariantCulture),
+        _ => string.Empty,
+    };
+
+    private static string Format(double value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Parses the fragment array, cloning the elements so the document can be disposed.</summary>
+    private static bool TryFragments(string? style, out JsonElement[] fragments)
+    {
+        fragments = [];
+        if (string.IsNullOrWhiteSpace(style))
+        {
+            return false;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(style);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            fragments = [.. document.RootElement.EnumerateArray().Select(element => element.Clone())];
+            return fragments.Length > 0;
+        }
+    }
 }
 
 /// <summary>
