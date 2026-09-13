@@ -257,7 +257,7 @@ public sealed class PublicationRegistry : IPublicationRegistry, IDisposable
         }
 
         var layers = declared.Layers
-            .Select(layer => new PublicationLayer(layer.Dataset, layer.LayerId, layer.Name))
+            .Select(layer => new PublicationLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style))
             .ToArray();
         var publication = new Publication(declared.Name, kind, declared.Store, layers, declared.Description, declared.Copyright);
         return declared.Layers.Count == 0 ? publication : PublicationValidator.Normalize(publication, nextLayerId: 0);

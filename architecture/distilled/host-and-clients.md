@@ -51,6 +51,14 @@ POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/addFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/updateFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/deleteFeatures
 POST   /arcgis/rest/services/{service}/FeatureServer/{layerId}/applyEdits
+GET|POST /arcgis/rest/services/{service}/MapServer                   # MapServer root (spec §4, ADR-0048)
+GET|POST /arcgis/rest/services/{service}/MapServer/layers            # all layers and tables
+GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}         # layer metadata (+ drawingInfo)
+GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}/query   # layer query (FeatureServer engine)
+GET|POST /arcgis/rest/services/{service}/MapServer/identify
+GET|POST /arcgis/rest/services/{service}/MapServer/find
+GET|POST /arcgis/rest/services/{service}/MapServer/export            # f=image bytes or {href}
+GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator tile
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService

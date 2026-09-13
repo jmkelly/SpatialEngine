@@ -49,4 +49,10 @@ public sealed class DeclaredLayerOptions
     public int LayerId { get; set; }
 
     public string? Name { get; set; }
+
+    /// <summary>
+    /// The layer's MapLibre style dialect array as JSON (ADR-0047), or null
+    /// for the renderer's default style. Validated when the registry seeds it.
+    /// </summary>
+    public string? Style { get; set; }
 }

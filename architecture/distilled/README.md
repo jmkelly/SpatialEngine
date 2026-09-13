@@ -96,6 +96,8 @@ shape is noted in brackets.
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
+| 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
+| 0048 | A MapServer is a projection of a Map publication over the SDK render and tile contracts. |
 
 ## How to change the architecture
 

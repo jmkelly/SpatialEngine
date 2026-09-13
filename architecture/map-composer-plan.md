@@ -4,8 +4,9 @@
 > `architecture/publishing-and-ingest-plan.md` grown into a first-class
 > authoring surface. It adds **no host contract**: it is a browser client of
 > the existing `POST /api/ingest` and `PUT /api/publications/{name}` routes
-> (ADR-0041), rendered with MapLibre (ADR-0014). Read
-> `publishing-and-ingest-plan.md` and
+> (ADR-0041), rendered with MapLibre (ADR-0014). Per-layer style is now
+> persisted on the publication (ADR-0047); the composition itself still adds
+> no route. Read `publishing-and-ingest-plan.md` and
 > `architecture/distilled/host-and-clients.md` first.
 
 ## 1. The problem
@@ -37,11 +38,11 @@ preview canonical geometry, exactly like the `Map` screen.
 
 **Non-goals (MVP):**
 
-- **No style persistence.** Per-layer style is an authoring aid held in
-  browser state; the published `Publication` carries ordered layers only.
-  Persisting style needs the MapServer render model (M2/M4 of
-  `map-service-plan.md`, ADR-0044) and its own ADR; until then a MapServer
-  is data-only (M0) and cannot honour style anyway.
+- **Style is persisted, rendering is not.** Per-layer style travels with
+  the publication as a MapLibre fragment on each `PublicationLayer`
+  (ADR-0047), so a publish/load round-trip restores it. A MapServer is still
+  data-only (M0) and does not render; the `drawingInfo` projection (M2/M4 of
+  `map-service-plan.md`) remains future work.
 - **No server-side rendering.** The MapLibre preview is the map; the host
   still serves no tiles/export.
 - **No multi-store publication.** A publication names one store, so the
@@ -85,7 +86,8 @@ and which MapLibre layer kinds are emitted.
 
 - `toPublication(draft)` maps layers in **list order** to
   `PublicationLayer[]`, sending `layerId: l.layerId ?? -1` (`-1` is the
-  registry's "assign the next free id" sentinel) and `name: l.name`.
+  registry's "assign the next free id" sentinel), `name: l.name`, and the
+  layer's persisted `style` (a MapLibre fragment, ADR-0047).
 - Order is the layer list top-to-bottom; the MapLibre preview adds specs in
   reverse so the first list row paints on top.
 - `fromPublication(p)` hydrates the form (name, kind, store, layers) and
@@ -125,7 +127,8 @@ and which MapLibre layer kinds are emitted.
 
 ## 6. Future (post-MVP)
 
-- Style persistence + MapServer `drawingInfo` after the render ADR (M2/M4).
+- MapServer `drawingInfo` projection of the persisted style after the render
+  model (M2/M4) — the neutral per-layer style now exists (ADR-0047).
 - Basemap/label layer options and per-layer opacity in the preview legend.
 - Streaming/bounded previews for datasets larger than the in-memory page
   convention (P8), replacing the scan-the-whole-dataset preview.

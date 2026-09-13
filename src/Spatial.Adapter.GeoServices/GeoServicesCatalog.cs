@@ -66,7 +66,8 @@ public sealed class GeoServicesCatalog
         if (!string.Equals(service.Type, "FeatureServer", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                $"GeoServices service '{service.Name}' has unsupported type '{service.Type}'; only FeatureServer is served.");
+                $"GeoServices service '{service.Name}' has unsupported type '{service.Type}'; declared services are FeatureServer only " +
+                "(MapServers are declared as Map publications under Spatial:Publications or created at runtime).");
         }
 
         return new GeoServicesServiceEntry(service.Name, service.Store, "FeatureServer");

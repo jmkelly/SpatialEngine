@@ -144,6 +144,17 @@ export interface PublicationLayer {
   dataset: string;
   layerId: number | string;
   name?: null | string;
+  style?: null | string;
+}
+
+export interface PublicationRenderRequest {
+  viewport: ViewportDto;
+  imagery?: null | RenderImageryDto[];
+  format?: RasterFormat;
+  quality?: number | string;
+  background?: null | string;
+  transparent?: boolean;
+  scale?: number | string;
 }
 
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";

@@ -55,6 +55,46 @@ public sealed class PublicationRegistryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_layer_style_round_trips_through_the_file()
+    {
+        const string style = """[{"type":"fill","paint":{"fill-color":"#ff0000","fill-opacity":0.5}}]""";
+        using (var registry = Registry())
+        {
+            await registry.PutAsync(Feature("parks", new PublicationLayer("memory.parks", 0, null, style)));
+        }
+
+        using var reopened = Registry();
+        var reloaded = await reopened.GetAsync("parks");
+        Assert.Equal(style, reloaded.Layers[0].Style);
+    }
+
+    [Fact]
+    public async Task A_layer_without_style_keeps_a_null_style()
+    {
+        using (var registry = Registry())
+        {
+            await registry.PutAsync(Feature("parks", new PublicationLayer("memory.parks", 0)));
+        }
+
+        using var reopened = Registry();
+        Assert.Null((await reopened.GetAsync("parks")).Layers[0].Style);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("{}")]
+    [InlineData("[1, 2]")]
+    public async Task A_malformed_layer_style_is_rejected(string style)
+    {
+        using var registry = Registry();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            registry.PutAsync(Feature("parks", new PublicationLayer("memory.parks", 0, null, style))));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    [Fact]
     public async Task A_declared_publication_is_immutable_and_listed_first()
     {
         var options = new PublicationsOptions

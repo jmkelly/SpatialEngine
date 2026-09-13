@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
@@ -81,6 +82,50 @@ internal static class PublicationValidator
         if (layer.Name is { Length: 0 })
         {
             throw SpatialException.BadArguments($"Publication '{publication.Name}' has a layer with an empty name.");
+        }
+
+        ValidateStyle(publication, layer);
+    }
+
+    /// <summary>
+    /// A non-empty layer style must be a JSON array of style-layer objects
+    /// (ADR-0047). The renderer still rejects paint it cannot draw; this only
+    /// pins the persisted shape so a corrupt style never reaches the file.
+    /// </summary>
+    private static void ValidateStyle(Publication publication, PublicationLayer layer)
+    {
+        if (string.IsNullOrWhiteSpace(layer.Style))
+        {
+            return;
+        }
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(layer.Style);
+        }
+        catch (JsonException exception)
+        {
+            throw SpatialException.BadArguments(
+                $"Publication '{publication.Name}' layer '{layer.Dataset}' has a style that is not valid JSON: {exception.Message}");
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                throw SpatialException.BadArguments(
+                    $"Publication '{publication.Name}' layer '{layer.Dataset}' style must be an array of style layers.");
+            }
+
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                if (element.ValueKind != JsonValueKind.Object)
+                {
+                    throw SpatialException.BadArguments(
+                        $"Publication '{publication.Name}' layer '{layer.Dataset}' style entries must be JSON objects.");
+                }
+            }
         }
     }
 

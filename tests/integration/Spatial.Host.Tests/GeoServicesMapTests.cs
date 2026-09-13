@@ -1,0 +1,213 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+
+namespace Spatial.Host.Tests;
+
+/// <summary>
+/// The GeoServices MapServer facade (spec §4, ADR-0048): the root, layer
+/// metadata (<c>drawingInfo</c>), all-layers, query, identify, find, export
+/// and tiles, over a runtime <see cref="Spatial.PluginSdk.Providers.PublicationKind.Map"/>
+/// publication backed by the demo store.
+/// </summary>
+public sealed class GeoServicesMapTests : IDisposable
+{
+    private const string Token = "test-admin-token";
+    private const string Root = "/arcgis/rest/services";
+    private const string CityStyle =
+        """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":6,"circle-opacity":1.0}}]""";
+
+    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-").FullName;
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public GeoServicesMapTests() => _factory = new MapFactory(Path.Combine(_directory, "publications.json"));
+
+    public void Dispose()
+    {
+        _factory.Dispose();
+        Directory.Delete(_directory, recursive: true);
+    }
+
+    private async Task<HttpClient> MapServiceAsync()
+    {
+        var client = _factory.CreateClient();
+        var body = JsonSerializer.Serialize(new
+        {
+            name = "world",
+            kind = "map",
+            store = "demo",
+            layers = new[] { new { dataset = "demo.cities", layerId = 0, name = "Cities", style = CityStyle } },
+        });
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/publications/world")
+        {
+            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+        var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return client;
+    }
+
+    private static async Task<JsonElement> BodyAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    }
+
+    [Fact]
+    public async Task The_catalog_advertises_the_map_service()
+    {
+        var client = await MapServiceAsync();
+
+        var services = (await BodyAsync(await client.GetAsync($"{Root}?f=json"))).GetProperty("services").EnumerateArray()
+            .Select(service => (service.GetProperty("name").GetString(), service.GetProperty("type").GetString()))
+            .ToArray();
+
+        Assert.Contains(("world", "MapServer"), services);
+    }
+
+    [Fact]
+    public async Task The_root_describes_the_map_and_its_layers()
+    {
+        var client = await MapServiceAsync();
+
+        var root = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer?f=json"));
+
+        Assert.Equal("Map,Query,Data", root.GetProperty("capabilities").GetString());
+        Assert.True(root.GetProperty("singleFusedMapCache").GetBoolean());
+        Assert.Equal(4326, root.GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        Assert.True(root.GetProperty("tileInfo").GetProperty("lods").GetArrayLength() > 0);
+        Assert.True(root.GetProperty("fullExtent").GetProperty("xmax").GetDouble() > 0);
+        Assert.Equal(0, root.GetProperty("layers")[0].GetProperty("id").GetInt32());
+        Assert.Equal("Cities", root.GetProperty("layers")[0].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task The_layer_metadata_carries_the_projected_drawing_info()
+    {
+        var client = await MapServiceAsync();
+
+        var layer = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/0?f=json"));
+
+        Assert.Equal("esriGeometryPoint", layer.GetProperty("geometryType").GetString());
+        var renderer = layer.GetProperty("drawingInfo").GetProperty("renderer");
+        Assert.Equal("simple", renderer.GetProperty("type").GetString());
+        var symbol = renderer.GetProperty("symbol");
+        Assert.Equal("esriSMS", symbol.GetProperty("type").GetString());
+        var color = symbol.GetProperty("color").EnumerateArray().Select(channel => channel.GetInt32()).ToArray();
+        Assert.Equal([255, 0, 0, 255], color);
+    }
+
+    [Fact]
+    public async Task All_layers_lists_the_published_layers()
+    {
+        var client = await MapServiceAsync();
+
+        var layers = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/layers?f=json"));
+
+        Assert.Single(layers.GetProperty("layers").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Query_counts_the_layer_features()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.PostAsync(
+            $"{Root}/world/MapServer/0/query",
+            new FormUrlEncodedContent([new KeyValuePair<string, string>("returnCountOnly", "true"), new KeyValuePair<string, string>("f", "json")]));
+
+        Assert.True((await BodyAsync(response)).GetProperty("count").GetInt32() > 0);
+    }
+
+    [Fact]
+    public async Task Identify_finds_the_city_under_a_point()
+    {
+        var client = await MapServiceAsync();
+
+        var identify = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&tolerance=5&layers=all" +
+            "&mapExtent=" + Uri.EscapeDataString("-20,20,40,70") + "&imageDisplay=" + Uri.EscapeDataString("400,300,96")));
+
+        var results = identify.GetProperty("results").EnumerateArray().ToArray();
+        Assert.NotEmpty(results);
+        Assert.Equal(0, results[0].GetProperty("layerId").GetInt32());
+        Assert.Equal("Berlin", results[0].GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public async Task Find_matches_text_over_the_string_fields()
+    {
+        var client = await MapServiceAsync();
+
+        var find = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/find?f=json&searchText=Ber&layers=0&returnGeometry=false"));
+
+        var results = find.GetProperty("results").EnumerateArray().ToArray();
+        Assert.NotEmpty(results);
+        Assert.Equal("name", results[0].GetProperty("foundFieldName").GetString());
+        Assert.Equal("Berlin", results[0].GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public async Task Export_streams_an_image_for_f_image()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/export?f=image&bbox=" + Uri.EscapeDataString("-20,20,40,70") +
+            "&bboxSR=4326&imageSR=4326&size=200,150&format=png&transparent=true");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("200", response.Headers.GetValues("X-Raster-Width").Single());
+    }
+
+    [Fact]
+    public async Task Export_json_returns_an_image_href()
+    {
+        var client = await MapServiceAsync();
+
+        var export = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/export?f=json&bbox=" + Uri.EscapeDataString("-20,20,40,70") +
+            "&bboxSR=4326&imageSR=4326&size=200,150&format=png"));
+
+        Assert.Equal(200, export.GetProperty("width").GetInt32());
+        Assert.Contains("f=image", export.GetProperty("href").GetString());
+    }
+
+    [Fact]
+    public async Task A_tile_renders_through_the_scheme()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/world/MapServer/tile/0/0/0?f=image");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task A_feature_server_route_does_not_serve_a_map_publication()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/world/FeatureServer?f=json");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private sealed class MapFactory(string publicationsPath) : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseSetting("Spatial:Admin:Token", Token);
+            builder.UseSetting("Spatial:Publications:Path", publicationsPath);
+        }
+    }
+}

@@ -65,6 +65,10 @@ style/layer/imagery/encoding request.
 ## Style document (documented MapLibre subset)
 
 Canonical document is the MapLibre style spec JSON the workbench writes.
+A publication may also persist a per-layer style fragment in the same dialect
+(ADR-0047): each `PublicationLayer.Style` is a JSON array of style-layer
+objects without `id`/`source-layer`, and the host injects those (plus the
+layer's dataset) when it assembles the render document.
 Supported layers: `background`, `fill`, `line`, `circle`. Per-layer keys:
 `minzoom`, `maxzoom`, `layout.visibility`, `filter`, `paint`.
 
@@ -84,6 +88,7 @@ Supported layers: `background`, `fill`, `line`, `circle`. Per-layer keys:
 | --- | --- |
 | `POST /api/render` | image bytes (`Content-Type` by format) + `X-Raster-Width/Height/Format` |
 | `GET /api/render/capabilities` | advertised formats, pixel cap, imagery source names |
+| `POST /api/publications/{name}/render` | render a publication's datasets with its persisted per-layer style (ADR-0047); same encoding options, no inline style/layers |
 | `POST /api/render/tiles/{z}/{x}/{y}.{format}` | one cache-aware tile (binary) + `X-Tile-Cached` |
 | `POST /api/render/tiles/batch` | ordered tile list (Base64) with cache dispositions |
 | `GET /api/render/tiles/capabilities` | schemes, LODs, default scheme, batch cap |
@@ -119,6 +124,7 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 
 ## Not implemented (per the plan)
 
-R5 publication resolution and the GeoServices `export`/`tile` seam, R6
-labels/symbols, R7 GPU backend, and a persistent/shared tile cache (the
-`ITileCache` contract is ready for it).
+R6 labels/symbols, R7 GPU backend, and a persistent/shared tile cache
+(the `ITileCache` contract is ready for it). The GeoServices MapServer
+(`export`/`tile`, ADR-0048) is implemented; a neutral
+`/api/publications/{name}/tiles` route is not.
