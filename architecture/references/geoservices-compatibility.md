@@ -224,6 +224,15 @@ Ordered by dependency:
   `f=json` is (GDAL ESRIJSON driver, pygeoapi metadata fetch); `f=geojson`
   on query is honestly rejected with a typed `invalid.arguments` failure
   naming `supportedQueryFormats` — GeoJSON output remains a non-goal.
+- Serving status update: the FeatureServer layer and service root advertise
+  truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: false`,
+  `supportsAdvancedQueries: true` and `advancedQueryCapabilities`
+  (`supportsPagination`/`supportsOrderBy`/`supportsDistinct`/
+  `supportsReturningQueryExtent: true`; `supportsStatistics`/
+  `supportsHavingClause`/`useStandardizedQueries: false`), each proved by
+  the behaviour test it names. pygeoapi's connect gate still fails its
+  `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
+  facade serves Esri JSON only.
 
 ## 8. Documentation baseline
 

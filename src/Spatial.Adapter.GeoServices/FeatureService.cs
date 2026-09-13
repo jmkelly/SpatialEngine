@@ -34,11 +34,12 @@ internal static class FeatureService
             CurrentVersion,
             "SpatialEngine Feature Service",
             false,
-            "JSON",
+            EsriLayerModel.SupportedQueryFormats,
             editable ? EsriLayerModel.EditableCapabilities : EsriLayerModel.ReadOnlyCapabilities,
             EsriLayerModel.MaxRecordCount,
             references,
-            []);
+            [],
+            EsriLayerModel.QueryCapabilities);
     }
 
     /// <summary>Builds one layer's metadata (spec §9.1).</summary>

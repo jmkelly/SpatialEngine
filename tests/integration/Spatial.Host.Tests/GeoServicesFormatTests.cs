@@ -55,6 +55,43 @@ public sealed class GeoServicesFormatTests : IClassFixture<WebApplicationFactory
     }
 
     /// <summary>
+    /// T-018: the layer and service root advertise truthful
+    /// <c>advancedQueryCapabilities</c> + <c>supportedQueryFormats</c>.
+    /// Every flag names behaviour proved by its own test: pagination and
+    /// orderBy honoured, statistics/having rejected, distinct values and
+    /// query extent served, non-standardized closed where-grammar.
+    /// </summary>
+    [Fact]
+    public async Task Layer_advertises_truthful_query_capabilities()
+    {
+        var layer = await GetJsonAsync($"{Root}/demo/FeatureServer/0?f=json");
+
+        Assert.Equal("JSON", layer.GetProperty("supportedQueryFormats").GetString());
+        Assert.False(layer.GetProperty("supportsStatistics").GetBoolean());
+        Assert.True(layer.GetProperty("supportsAdvancedQueries").GetBoolean());
+
+        var capabilities = layer.GetProperty("advancedQueryCapabilities");
+        Assert.True(capabilities.GetProperty("supportsPagination").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsOrderBy").GetBoolean());
+        Assert.False(capabilities.GetProperty("supportsStatistics").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsDistinct").GetBoolean());
+        Assert.False(capabilities.GetProperty("supportsHavingClause").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsReturningQueryExtent").GetBoolean());
+        Assert.False(capabilities.GetProperty("useStandardizedQueries").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Service_root_advertises_truthful_query_capabilities()
+    {
+        var root = await GetJsonAsync($"{Root}/demo/FeatureServer?f=json");
+
+        Assert.Equal("JSON", root.GetProperty("supportedQueryFormats").GetString());
+        var capabilities = root.GetProperty("advancedQueryCapabilities");
+        Assert.True(capabilities.GetProperty("supportsPagination").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsOrderBy").GetBoolean());
+        Assert.False(capabilities.GetProperty("supportsStatistics").GetBoolean());
+    }
+    /// <summary>
     /// T-017: <c>f=geojson</c> on query is honestly rejected — the facade
     /// serves Esri JSON only, so the 400 names <c>supportedQueryFormats</c>
     /// and the layer advertises the truthful value (see T-018).
