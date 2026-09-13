@@ -113,8 +113,8 @@ matching kind. New failures are `invalid.arguments`.
 | `Feature` | `{root}/{name}/FeatureServer…` | feature | ADR-0035/0037/0038 |
 | `Map` | `{root}/{name}/MapServer…` | feature | ADR-0048 |
 | `Tiles` | `/api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}` | feature | ADR-0046 + ADR-0044 |
-| `Wms` | `/ogc/wms/{name}` | feature | ADR-0044 + query verbs |
-| `Wfs` | `/ogc/wfs/{name}` | feature | ADR-0035 query engine |
+| `Wms` | `/ogc/{name}/wms` | feature | ADR-0044 + query verbs |
+| `Wfs` | `/ogc/{name}/wfs` | feature | ADR-0035 query engine |
 | `Image` | `{root}/{name}/ImageServer…` | image | ADR-0051 |
 
 The GeoServices adapter resolves a **map** by name and requires the requested
@@ -206,10 +206,15 @@ target becomes a map.
 
 ## Implementation status
 
-Foundation, GeoServices projection, tiles, host API, SDKs, workbench Maps
-experience, seed and docs are implemented. WMS/WFS is implemented in
-`Spatial.Adapter.Ogc`. Raster map layers expose ImageServer through the
-`raster` store.
+Foundation, GeoServices projection, the neutral map tile route, the host
+API, SDKs, workbench Maps experience, seed tooling and docs are implemented.
+WMS 1.3.0 and WFS 2.0.0 are implemented in `Spatial.Adapter.Ogc`:
+`GetCapabilities`/`GetMap`/`GetFeatureInfo` over the render pipeline and
+`GetCapabilities`/`DescribeFeatureType`/`GetFeature` (GeoJSON) over the query
+verbs, both mounted under `Spatial:Ogc:Root` at `/{name}/wms` and
+`/{name}/wfs`. GML output is a recorded non-goal and is a typed
+`invalid.arguments` ServiceException. Raster map layers expose ImageServer
+through the `raster` store.
 
 ## References
 

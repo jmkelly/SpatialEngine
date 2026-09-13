@@ -151,6 +151,7 @@ public sealed class ArchitectureGuardTests
             "Spatial.Provider.PostGIS",
             "Spatial.Provider.Maps",
             "Spatial.Adapter.GeoServices",
+            "Spatial.Adapter.Ogc",
             "Spatial.Provider.ArcGisRest",
             "Spatial.Rendering.Skia",
             "Spatial.Imagery.Vips",
@@ -267,6 +268,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Provider.PostGIS",
         "Spatial.Provider.Maps",
         "Spatial.Adapter.GeoServices",
+        "Spatial.Adapter.Ogc",
         "Spatial.Provider.ArcGisRest",
         "Spatial.Rendering.Skia",
         "Spatial.Imagery.Vips",
@@ -283,6 +285,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Provider.PostGIS",
         "Spatial.Provider.Maps",
         "Spatial.Adapter.GeoServices",
+        "Spatial.Adapter.Ogc",
         "Spatial.Provider.ArcGisRest",
         "Spatial.Rendering.Skia",
         "Spatial.Imagery.Vips",
@@ -293,6 +296,7 @@ public sealed class ArchitectureGuardTests
     private static string[] AllowedBoundaryReferences(string projectName) => projectName switch
     {
         "Spatial.Adapter.GeoServices" => ["Spatial.Interop.Esri", "Spatial.Interop.Ingest"],
+        "Spatial.Adapter.Ogc" => ["Spatial.Interop.Esri"],
         "Spatial.Provider.ArcGisRest" => ["Spatial.Interop.Esri"],
         _ => [],
     };

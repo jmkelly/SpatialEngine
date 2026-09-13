@@ -10,6 +10,7 @@ public static class SpatialApi
         StoreEndpoints.Map(app);
         RenderEndpoints.Map(app);
         MapRenderEndpoints.Map(app);
+        MapTileEndpoints.Map(app);
         TileEndpoints.Map(app);
         AdminEndpoints.Map(app, admin, ingest);
     }

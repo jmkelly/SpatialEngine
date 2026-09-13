@@ -63,6 +63,7 @@ internal static class HostComposition
         StoreServices.Configure(builder);
         MapServices.Configure(builder);
         RenderingServices.Configure(builder);
+        OgcServices.Configure(builder);
     }
 
     /// <summary>Builds the request pipeline: request logging, workbench, routing, health, API and GeoServices.</summary>
@@ -116,6 +117,10 @@ internal static class HostComposition
             MaxBytes = ingestOptions.MaxBytes,
             BatchSize = ingestOptions.BatchSize,
         }, maps);
+
+        // The OGC WMS/WFS boundary adapter (ADR-0052 §3): mounted at
+        // Spatial:Ogc:Root, projecting the same maps read-only.
+        OgcServices.Map(app);
     }
 }
 

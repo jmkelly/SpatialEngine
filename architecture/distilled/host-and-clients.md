@@ -41,7 +41,8 @@ DELETE /api/maps/{name}                 # -> {deleted} (admin)
 POST   /api/maps/{name}/render          # persisted layer styles -> image
 GET    /api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}  # map tile (Tiles service)
 GET    /arcgis/rest/services/{name}/ImageServer  # raster layers (Image service)
-/ogc/wms/{name} | /ogc/wfs/{name}       # OGC WMS/WFS (Wms/Wfs services)
+GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 (Wms service)
+GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service)
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=
                                        # raw/multipart upload -> IngestResult;
                                        # sourceSrid reprojects via ICoordinateTransforms
@@ -129,6 +130,9 @@ defaults to `memory` so the database-free upload path works out of the box.
 | `Spatial:Maps:Path` | Runtime map JSON file (default `./data/maps.json`) |
 | `Spatial:Maps:LegacyPath` | Pre-ADR-0052 publications JSON read once for migration (default `./data/publications.json`) |
 | `Spatial:Maps:Declared` | Config-seeded immutable maps (`{name, store, services[], layers[]}`) |
+| `Spatial:Ogc:Root` | OGC WMS/WFS URL prefix (default `/ogc`) |
+| `Spatial:Ogc:ServiceTitle` | Capabilities title shared by WMS and WFS |
+| `Spatial:Ogc:MaxFeatures` | Largest feature count one WFS `GetFeature` returns |
 | `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` | Ingest caps and the format allowlist (ADR-0041 §6) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |

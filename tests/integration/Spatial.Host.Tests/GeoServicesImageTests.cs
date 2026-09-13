@@ -80,15 +80,19 @@ public sealed class GeoServicesImageTests : IDisposable
         image.WriteToFile(path);
     }
 
-    private static async Task<HttpClient> ImageServiceAsync(
-        WebApplicationFactory<Program> factory, string service, string dataset)
+    private static Task<HttpClient> ImageServiceAsync(
+        WebApplicationFactory<Program> factory, string service, string dataset) =>
+        PutMapAsync(factory, service, dataset, ImageServices);
+
+    private static async Task<HttpClient> PutMapAsync(
+        WebApplicationFactory<Program> factory, string service, string dataset, string[] services)
     {
         var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
         {
             name = service,
             store = "raster",
-            services = ImageServices,
+            services,
             layers = new[] { new { dataset, layerId = 0, name = service, kind = "image" } },
         });
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/maps/{service}")
@@ -99,6 +103,30 @@ public sealed class GeoServicesImageTests : IDisposable
         var response = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return client;
+    }
+
+    [Fact]
+    public async Task A_map_that_enables_the_image_service_serves_an_image_server()
+    {
+        var client = await ImageServiceAsync(_factory, Name, Dataset);
+
+        var services = (await BodyAsync(await client.GetAsync($"{Root}?f=json"))).GetProperty("services").EnumerateArray()
+            .Select(service => (service.GetProperty("name").GetString(), service.GetProperty("type").GetString()))
+            .ToArray();
+        var root = await BodyAsync(await client.GetAsync($"{Root}/{Name}/ImageServer?f=json"));
+
+        Assert.Contains((Name, "ImageServer"), services);
+        Assert.Equal(4326, root.GetProperty("extent").GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+    }
+
+    [Fact]
+    public async Task A_map_that_does_not_enable_the_image_service_has_no_image_server()
+    {
+        var client = await PutMapAsync(_factory, "draft", Dataset, []);
+
+        var response = await client.GetAsync($"{Root}/draft/ImageServer?f=json");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     private static async Task<JsonElement> BodyAsync(HttpResponseMessage response)

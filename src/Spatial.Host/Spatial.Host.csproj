@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
     <ProjectReference Include="..\Spatial.Adapter.GeoServices\Spatial.Adapter.GeoServices.csproj" />
+    <ProjectReference Include="..\Spatial.Adapter.Ogc\Spatial.Adapter.Ogc.csproj" />
     <ProjectReference Include="..\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
     <ProjectReference Include="..\Spatial.Provider.Demo\Spatial.Provider.Demo.csproj" />

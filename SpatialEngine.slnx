@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Spatial.AppHost/Spatial.AppHost.csproj" />
     <Project Path="src/Spatial.Adapter.GeoServices/Spatial.Adapter.GeoServices.csproj" />
+    <Project Path="src/Spatial.Adapter.Ogc/Spatial.Adapter.Ogc.csproj" />
     <Project Path="src/Spatial.Core/Spatial.Core.csproj" />
     <Project Path="src/Spatial.Host/Spatial.Host.csproj" />
     <Project Path="src/Spatial.Interop.Esri/Spatial.Interop.Esri.csproj" />
@@ -21,6 +22,7 @@
   <Folder Name="/tests/" />
   <Folder Name="/tests/unit/">
     <Project Path="tests/unit/Spatial.Adapter.GeoServices.Tests/Spatial.Adapter.GeoServices.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Adapter.Ogc.Tests/Spatial.Adapter.Ogc.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Esri.Tests/Spatial.Interop.Esri.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Ingest.Tests/Spatial.Interop.Ingest.Tests.csproj" />
