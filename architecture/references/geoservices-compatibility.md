@@ -225,12 +225,14 @@ Ordered by dependency:
   on query is honestly rejected with a typed `invalid.arguments` failure
   naming `supportedQueryFormats` — GeoJSON output remains a non-goal.
 - Serving status update: the FeatureServer layer and service root advertise
-  truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: false`,
+  truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: true`,
   `supportsAdvancedQueries: true` and `advancedQueryCapabilities`
   (`supportsPagination`/`supportsOrderBy`/`supportsDistinct`/
-  `supportsReturningQueryExtent: true`; `supportsStatistics`/
-  `supportsHavingClause`/`useStandardizedQueries: false`), each proved by
-  the behaviour test it names. pygeoapi's connect gate still fails its
+  `supportsReturningQueryExtent`/`supportsStatistics`/
+  `supportsHavingClause: true`; `useStandardizedQueries: false`), each proved by
+  the behaviour test it names. `outStatistics` (`count/sum/min/max/avg/stddev/var`)
+  with `groupByFieldsForStatistics` and `having` is served over the matched set
+  (T-019). pygeoapi's connect gate still fails its
   `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
   facade serves Esri JSON only.
 

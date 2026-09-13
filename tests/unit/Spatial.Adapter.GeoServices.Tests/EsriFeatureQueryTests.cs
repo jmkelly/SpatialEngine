@@ -136,8 +136,6 @@ public sealed class EsriFeatureQueryTests
     }
 
     [Theory]
-    [InlineData("outStatistics")]
-    [InlineData("groupByFieldsForStatistics")]
     [InlineData("returnZ")]
     [InlineData("returnM")]
     public async Task Unsupported_query_parameters_are_rejected(string name)
@@ -169,5 +167,32 @@ public sealed class EsriFeatureQueryTests
         var query = await ParseAsync(("outSR", "4326"));
 
         Assert.Equal(CoordinateReference.Epsg(4326), query.OutSr);
+    }
+
+    [Fact]
+    public async Task Out_statistics_group_by_and_having_are_parsed()
+    {
+        var query = await ParseAsync(
+            ("outStatistics", "[{\"statisticType\":\"sum\",\"onStatisticField\":\"population\",\"outStatisticFieldName\":\"sumpop\"}]"),
+            ("groupByFieldsForStatistics", "name"),
+            ("having", "sumpop > 100"));
+
+        Assert.Single(query.OutStatistics!);
+        Assert.Equal("sum", query.OutStatistics![0].StatisticType);
+        Assert.Equal(["name"], query.GroupByFields);
+        Assert.NotNull(query.Having);
+    }
+
+    [Fact]
+    public async Task Group_by_without_statistics_is_rejected()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("groupByFieldsForStatistics", "name")));
+    }
+
+    [Fact]
+    public async Task Statistics_conflict_with_other_result_shapes()
+    {
+        const string stats = "[{\"statisticType\":\"count\",\"onStatisticField\":\"*\",\"outStatisticFieldName\":\"n\"}]";
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("outStatistics", stats), ("returnCountOnly", "true")));
     }
 }

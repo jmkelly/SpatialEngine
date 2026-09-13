@@ -22,7 +22,10 @@ internal sealed record EsriFeatureQuery(
     bool ReturnExtentOnly,
     bool ReturnDistinctValues,
     int? ResultOffset,
-    int? ResultRecordCount)
+    int? ResultRecordCount,
+    IReadOnlyList<EsriOutStatistic>? OutStatistics,
+    IReadOnlyList<string>? GroupByFields,
+    EsriFilterClause? Having)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
@@ -38,7 +41,20 @@ internal sealed record EsriFeatureQuery(
         var returnCountOnly = parameters.GetBool("returnCountOnly", false);
         var returnExtentOnly = parameters.GetBool("returnExtentOnly", false);
         var returnDistinctValues = parameters.GetBool("returnDistinctValues", false);
-        ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues);
+        var outStatistics = ParseOutStatistics(parameters.Get("outStatistics"));
+        var groupByFields = ParseGroupByFields(parameters.Get("groupByFieldsForStatistics"));
+        var having = ParseHaving(parameters.Get("having"));
+        if (groupByFields is not null && outStatistics is null)
+        {
+            throw EsriInteropException.Invalid("'groupByFieldsForStatistics' requires 'outStatistics'.");
+        }
+
+        if (having is not null && outStatistics is null)
+        {
+            throw EsriInteropException.Invalid("'having' requires 'outStatistics'.");
+        }
+
+        ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null);
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
@@ -53,7 +69,10 @@ internal sealed record EsriFeatureQuery(
             returnExtentOnly,
             returnDistinctValues,
             ParseNonNegativeInt(parameters.Get("resultOffset"), "resultOffset"),
-            ParseNonNegativeInt(parameters.Get("resultRecordCount"), "resultRecordCount"));
+            ParseNonNegativeInt(parameters.Get("resultRecordCount"), "resultRecordCount"),
+            outStatistics,
+            groupByFields,
+            having);
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -172,9 +191,9 @@ internal sealed record EsriFeatureQuery(
     /// explicitly avoids silently dropping a client's request; an ambiguous
     /// combination is a typed <c>invalid.arguments</c> failure.
     /// </summary>
-    private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues)
+    private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues, bool statistics = false)
     {
-        var requested = new List<string>(4);
+        var requested = new List<string>(5);
         if (idsOnly)
         {
             requested.Add("returnIdsOnly");
@@ -195,6 +214,11 @@ internal sealed record EsriFeatureQuery(
             requested.Add("returnDistinctValues");
         }
 
+        if (statistics)
+        {
+            requested.Add("outStatistics");
+        }
+
         if (requested.Count > 1)
         {
             throw EsriInteropException.Invalid(
@@ -202,11 +226,109 @@ internal sealed record EsriFeatureQuery(
         }
     }
 
+    private static List<EsriOutStatistic>? ParseOutStatistics(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        System.Text.Json.JsonDocument document;
+        try
+        {
+            document = System.Text.Json.JsonDocument.Parse(value);
+        }
+        catch (System.Text.Json.JsonException exception)
+        {
+            throw EsriInteropException.Invalid($"'outStatistics' must be a JSON array, got an unparsable value: {exception.Message}.");
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array || document.RootElement.GetArrayLength() == 0)
+            {
+                throw EsriInteropException.Invalid("'outStatistics' must be a non-empty JSON array.");
+            }
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var statistics = new List<EsriOutStatistic>(document.RootElement.GetArrayLength());
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                statistics.Add(ParseOutStatistic(element, seen));
+            }
+
+            return statistics;
+        }
+    }
+
+    private static EsriOutStatistic ParseOutStatistic(System.Text.Json.JsonElement element, HashSet<string> seen)
+    {
+        if (element.ValueKind != System.Text.Json.JsonValueKind.Object)
+        {
+            throw EsriInteropException.Invalid("'outStatistics' entries must be objects with statisticType, onStatisticField and outStatisticFieldName.");
+        }
+
+        var type = element.TryGetProperty("statisticType", out var typeElement) && typeElement.ValueKind == System.Text.Json.JsonValueKind.String
+            ? typeElement.GetString()?.Trim().ToLowerInvariant()
+            : null;
+        var onField = element.TryGetProperty("onStatisticField", out var onElement) && onElement.ValueKind == System.Text.Json.JsonValueKind.String
+            ? onElement.GetString()?.Trim()
+            : null;
+        var outName = element.TryGetProperty("outStatisticFieldName", out var outElement) && outElement.ValueKind == System.Text.Json.JsonValueKind.String
+            ? outElement.GetString()?.Trim()
+            : null;
+        if (string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(onField) || string.IsNullOrWhiteSpace(outName))
+        {
+            throw EsriInteropException.Invalid("'outStatistics' entries need a non-empty statisticType, onStatisticField and outStatisticFieldName.");
+        }
+
+        if (type is not ("count" or "sum" or "min" or "max" or "avg" or "stddev" or "var"))
+        {
+            throw EsriInteropException.Invalid($"Statistic type '{type}' is not supported; use count, sum, min, max, avg, stddev or var.");
+        }
+
+        if (!seen.Add(outName!))
+        {
+            throw EsriInteropException.Invalid($"Duplicate outStatisticFieldName '{outName}'.");
+        }
+
+        return new EsriOutStatistic(type!, onField!, outName!);
+    }
+
+    private static string[]? ParseGroupByFields(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var fields = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (fields.Length == 0)
+        {
+            throw EsriInteropException.Invalid("'groupByFieldsForStatistics' must name at least one field.");
+        }
+
+        return fields;
+    }
+
+    private static EsriFilterClause? ParseHaving(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!EsriFilterClause.TryParse(value, out var clause, out var error))
+        {
+            throw EsriInteropException.Invalid($"The 'having' clause is not supported: {error}.");
+        }
+
+        return clause;
+    }
+
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
         Reject(parameters, "time", "temporal queries are not supported.");
-        Reject(parameters, "outStatistics", "attribute statistics are not supported.");
-        Reject(parameters, "groupByFieldsForStatistics", "statistics grouping is not supported.");
         Reject(parameters, "returnZ", "Z output is not supported.");
         Reject(parameters, "returnM", "M output is not supported.");
     }
@@ -219,6 +341,12 @@ internal sealed record EsriFeatureQuery(
         }
     }
 }
+
+/// <summary>
+/// One <c>outStatistics</c> entry: the aggregation, its input field and
+/// the output alias (spec §9.1.4, 10.x statistics).
+/// </summary>
+internal sealed record EsriOutStatistic(string StatisticType, string OnStatisticField, string OutStatisticFieldName);
 
 /// <summary>
 /// One <c>orderByFields</c> entry: the field name (validated against the

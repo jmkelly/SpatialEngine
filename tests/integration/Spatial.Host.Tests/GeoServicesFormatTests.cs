@@ -55,11 +55,11 @@ public sealed class GeoServicesFormatTests : IClassFixture<WebApplicationFactory
     }
 
     /// <summary>
-    /// T-018: the layer and service root advertise truthful
+    /// T-018/T-019: the layer and service root advertise truthful
     /// <c>advancedQueryCapabilities</c> + <c>supportedQueryFormats</c>.
-    /// Every flag names behaviour proved by its own test: pagination and
-    /// orderBy honoured, statistics/having rejected, distinct values and
-    /// query extent served, non-standardized closed where-grammar.
+    /// Every flag names behaviour proved by its own test: pagination,
+    /// orderBy, statistics/having, distinct values and query extent served,
+    /// non-standardized closed where-grammar.
     /// </summary>
     [Fact]
     public async Task Layer_advertises_truthful_query_capabilities()
@@ -67,15 +67,15 @@ public sealed class GeoServicesFormatTests : IClassFixture<WebApplicationFactory
         var layer = await GetJsonAsync($"{Root}/demo/FeatureServer/0?f=json");
 
         Assert.Equal("JSON", layer.GetProperty("supportedQueryFormats").GetString());
-        Assert.False(layer.GetProperty("supportsStatistics").GetBoolean());
+        Assert.True(layer.GetProperty("supportsStatistics").GetBoolean());
         Assert.True(layer.GetProperty("supportsAdvancedQueries").GetBoolean());
 
         var capabilities = layer.GetProperty("advancedQueryCapabilities");
         Assert.True(capabilities.GetProperty("supportsPagination").GetBoolean());
         Assert.True(capabilities.GetProperty("supportsOrderBy").GetBoolean());
-        Assert.False(capabilities.GetProperty("supportsStatistics").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsStatistics").GetBoolean());
         Assert.True(capabilities.GetProperty("supportsDistinct").GetBoolean());
-        Assert.False(capabilities.GetProperty("supportsHavingClause").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsHavingClause").GetBoolean());
         Assert.True(capabilities.GetProperty("supportsReturningQueryExtent").GetBoolean());
         Assert.False(capabilities.GetProperty("useStandardizedQueries").GetBoolean());
     }
@@ -89,7 +89,7 @@ public sealed class GeoServicesFormatTests : IClassFixture<WebApplicationFactory
         var capabilities = root.GetProperty("advancedQueryCapabilities");
         Assert.True(capabilities.GetProperty("supportsPagination").GetBoolean());
         Assert.True(capabilities.GetProperty("supportsOrderBy").GetBoolean());
-        Assert.False(capabilities.GetProperty("supportsStatistics").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsStatistics").GetBoolean());
     }
     /// <summary>
     /// T-017: <c>f=geojson</c> on query is honestly rejected — the facade
