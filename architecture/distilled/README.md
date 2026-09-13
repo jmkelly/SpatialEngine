@@ -18,7 +18,7 @@ reflects the state at decision time.
 | Esri GeoServices REST (serve/consume) | `../geoservices-implementation-plan.md`, `../references/geoservices-compatibility.md` | 0035, 0037 |
 | Ingest, runtime service publishing, Esri admin | `../publishing-and-ingest-plan.md` | 0041 (proposed), 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `../map-composer-plan.md` | 0014, 0041 |
-| MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed) |
+| MapServer / ImageServer (scaffolds) | `../map-service-plan.md`, `../image-service-plan.md` | 0035, 0041 (proposed), 0048, 0051 |
 | Raster rendering / imagery / tiles (R0–R4) | `rendering.md`, `../rendering-implementation-plan.md`, `../../research/rendering/README.md` | 0044, 0046 |
 | Any architectural change | this file + `../principles.md` | — |
 
@@ -98,6 +98,7 @@ shape is noted in brackets.
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
 | 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
 | 0048 | A MapServer is a projection of a Map publication over the SDK render and tile contracts. |
+| 0051 | Rasters are provider-owned; contracts carry only encoded images and core-typed metadata/geometry, never raster values or third-party types. NetVips is the engine; GDAL needs measured demand. |
 
 ## How to change the architecture
 

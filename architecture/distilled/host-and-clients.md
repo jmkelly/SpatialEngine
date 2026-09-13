@@ -60,6 +60,12 @@ GET|POST /arcgis/rest/services/{service}/MapServer/identify
 GET|POST /arcgis/rest/services/{service}/MapServer/find
 GET|POST /arcgis/rest/services/{service}/MapServer/export            # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator tile
+GET|POST /arcgis/rest/services/{service}/ImageServer                 # ImageServer root (spec §8, ADR-0051)
+GET|POST /arcgis/rest/services/{service}/ImageServer/exportImage    # f=image bytes or {href}
+GET|POST /arcgis/rest/services/{service}/ImageServer/identify       # pixel values + catalog items
+GET|POST /arcgis/rest/services/{service}/ImageServer/query          # raster catalog listing
+GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}     # raster catalog item
+GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/info # raster info
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService

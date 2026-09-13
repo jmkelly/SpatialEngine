@@ -11,6 +11,19 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **ImageServer projection** (ADR-0051): a `PublicationKind.Image`
+  publication is served as an ArcGIS ImageServer — root metadata (extent,
+  pixel size, band count, pixel type, service data type, catalog
+  `fields`/`objectIdField`), raster info, catalog item/listing, `identify` and
+  `exportImage` (`f=image` bytes or JSON `href`, bbox/image SR, png/jpg/tiff,
+  interpolation, compression, `pixelType`, `noData`). The raster boundary is
+  provider-owned: `Spatial.PluginSdk` gains the core-typed `IRasterCatalogue`
+  contract (no raster values, no third-party types), `Spatial.Imagery.Vips`
+  implements it over the managed NetVips path behind `Spatial:Raster`
+  configuration, and only encoded image bytes, core metadata and core
+  geometry footprints cross the contract. GDAL is a measured-demand
+  follow-up; raster analytics/functions remain non-goals. Architecture tests
+  pin the SDK's package-free, core-typed surface.
 - **Persisted per-layer style on publications** (ADR-0047):
   `PublicationLayer` gains an optional MapLibre style fragment (`string?`),
   validated as a JSON array of style-layer objects and persisted in

@@ -1,6 +1,7 @@
 using Spatial.Host.Api;
 using Spatial.Host.Tiling;
 using Spatial.Imagery.Vips;
+using Spatial.Imagery.Vips.Raster;
 using Spatial.PluginSdk;
 using Spatial.Rendering.Skia;
 using Spatial.Tiling.WebMercator;
@@ -29,6 +30,14 @@ internal static class RenderingServices
         builder.Services.AddSingleton(imageryOptions);
         builder.Services.AddSingleton(tileOptions);
         builder.Services.AddSingleton<IRasterOperations>(new VipsRasterOperations(imageryOptions.ToSourceMap()));
+
+        // The raster catalogue (ADR-0051): the ImageServer's provider face,
+        // configured from Spatial:Raster and registered under the keyed
+        // "raster" store. It lives in the imagery implementation because the
+        // managed NetVips path owns every raster type.
+        var rasterOptions = builder.Configuration.GetSection("Spatial:Raster").Get<RasterOptions>() ?? new RasterOptions();
+        builder.Services.AddKeyedSingleton<IRasterCatalogue>("raster", (services, _) =>
+            new VipsRasterCatalogue(rasterOptions.ToDescriptors(), services.GetRequiredService<ICoordinateTransforms>()));
         builder.Services.AddSingleton<IMapRenderer>(services => new MapRenderer(
             services.GetRequiredService<ICoordinateTransforms>(),
             services.GetRequiredService<IGeometryOperations>(),

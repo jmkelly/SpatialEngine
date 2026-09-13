@@ -17,6 +17,7 @@ sit in the root `Spatial.PluginSdk` namespace; the wire DTOs in
 | `IMapRenderer.RenderAsync(MapRenderRequest)` | the whole pipeline → `RasterImage` |
 | `IRasterOperations.ReadAsync(RasterReadRequest)` | load/normalise one configured imagery source |
 | `IRasterOperations.CompositeAsync(RasterCompositeRequest)` | blend a bottom-to-top layer stack, encode |
+| `IRasterCatalogue` (ADR-0051) | raster dataset metadata, catalog items/identify and warped/encoded export for the ImageServer |
 | `RasterViewport(Envelope Bounds, int Width, int Height, string Crs)` | the viewport, x-first |
 | `RasterBuffer` / `RasterImage` | raw (premultiplied RGBA by default) pixels / encoded bytes |
 | `RasterLayer`, `RasterBufferLayer`, `RasterSourceLayer` | the composite stack entries |
@@ -34,7 +35,7 @@ layer's keyed store and catalogue at the edge.
 | Project | Owns | Package |
 | --- | --- | --- |
 | `Spatial.Rendering.Skia` | `IMapRenderer` | SkiaSharp 4.152.0 (+ Linux native assets) |
-| `Spatial.Imagery.Vips` | `IRasterOperations` | NetVips 3.2.0 + NetVips.Native 8.18.6 |
+| `Spatial.Imagery.Vips` | `IRasterOperations`, `IRasterCatalogue` | NetVips 3.2.0 + NetVips.Native 8.18.6 |
 | `Spatial.Tiling.WebMercator` | `ITileScheme` (EPSG:3857 XYZ) | none |
 
 Neither references the other (ADR-0033); `Spatial.Host` wires them. Skia plus

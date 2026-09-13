@@ -22,7 +22,9 @@ Microsoft DI — keyed services where two stores serve one contract:
   `IDemoJobs`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and
   `ITileCache` as singletons (ADR-0044/ADR-0046). `ITileScheme` and
   `ITileCache` are the pluggable tiling seams: new projections/cache owners
-  are additional registrations, not host changes.
+  are additional registrations, not host changes. `IRasterCatalogue` is
+  keyed `"raster"` (ADR-0051), configured from `Spatial:Raster` and
+  implemented by `Spatial.Imagery.Vips`.
 - `Spatial.Adapter.GeoServices` is mounted by the host at
   `Spatial:GeoServices:Root` (ADR-0035).
 

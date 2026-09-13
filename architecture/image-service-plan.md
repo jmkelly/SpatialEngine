@@ -1,13 +1,21 @@
-# Image Service (ImageServer) Implementation Plan — scaffold
+# Image Service (ImageServer) Implementation Plan
 
-> **Status:** scaffold, not scheduled. Read
+> **Status:** I0–I2 implemented (ADR-0051). The raster boundary is fixed
+> (provider-owned rasters; encoded images + core-typed metadata cross a
+> contract), the NetVips path is chosen over GDAL pending measured demand,
+> and the GeoServices ImageServer serves root metadata, raster info, catalog
+> listing/item, identify and `exportImage` over a `PublicationKind.Image`
+> publication. I3 (catalog `query`/`download`/file resources) and I4 (cache
+> and limits) remain. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
 > `publishing-and-ingest-plan.md` first.
 >
-> **Blocking decision:** the engine has no raster concept anywhere
-> (ADR-0035 lists image as out of scope; core holds geometry/feature
-> values only). The raster boundary is the whole plan. Nothing here should
-> be started before that ADR.
+> **Blocking decision (resolved):** the engine had no raster concept
+> (ADR-0035 listed image as out of scope). ADR-0051 fixes the boundary and the
+> engine path: the existing NetVips `IRasterOperations`/imagery implementation
+> is extended with a core-typed `IRasterCatalogue` face in
+> `Spatial.Imagery.Vips`; only encoded image bytes, core metadata and core
+> geometry footprints cross contracts. GDAL is a measured-demand follow-up.
 
 ## 1. What the spec requires (v1.0 §8)
 
@@ -63,29 +71,45 @@ demands for AOT.
 
 ## 4. Phases
 
-### I0 — Raster boundary ADR
-- **Deliverable:** the ADR that fixes option A/C, the engine choice, the
-  catalog model, and the wire rule (encoded images + metadata, never raster
-  values in contracts). Package allowlist and project boundaries updated
-  with it.
-- **Proof:** architecture tests; an interop test that no raster/third-party
-  type reaches the SDK.
+### I0 — Raster boundary ADR — **delivered**
+- **Deliverable:** ADR-0051 fixes option A (provider-owned rasters; encoded
+  images + core-typed metadata/geometry only), chooses the managed NetVips
+  path over GDAL (ADR-0021 measured-demand rule), models the catalog as a
+  core `FeatureSchema` of raster items and bounds pixel-type conversion.
+- **Delivered:** `Spatial.PluginSdk.IRasterCatalogue` and its core-typed
+  records/enums (`RasterInfo`, `RasterBandStatistics`,
+  `RasterDatasetDescription`, `RasterCatalogItem`, `RasterIdentifyRequest`,
+  `RasterIdentifyResult`, `RasterExportRequest`, `RasterPixelType`,
+  `RasterInterpolation`); architecture tests pin the SDK's package-free,
+  core-typed surface.
+- **Proof:** `Spatial.Architecture.Tests` (SDK references Core + framework
+  only; the public surface names no third-party type).
 
-### I1 — Raster catalogue and metadata
-- **Deliverable:** `PublicationKind.Image` publications; Image Server root
-  metadata from a raster provider (`IDataCatalogue`-style but raster-typed,
-  e.g. `IRasterCatalogue.DescribeAsync`); raster info; per-item catalog
-  listing when a catalog dataset exists; `identify` of catalog items.
-- **Proof:** metadata fixtures from the spec's example; empty/absent
-  catalog behaviour; footprint geometry round-trips as core geometry.
+### I1 — Raster catalogue and metadata — **delivered**
+- **Deliverable:** `PublicationKind.Image` publications; a raster-catalogue
+  provider; Image Server root metadata, raster info, catalog item/listing
+  and identify; footprints/extents as core geometry.
+- **Delivered:** `Spatial.Imagery.Vips.VipsRasterCatalogue` (describe,
+  list, identify, export) over configured dataset descriptors;
+  `Spatial.Host` registers the keyed `raster` catalogue from
+  `Spatial:Raster`; the GeoServices adapter serves `/{service}/ImageServer`,
+  `/{service}/ImageServer/{rasterId}` and `.../{rasterId}/info`,
+  `.../query` (catalog listing) and `.../identify`.
+- **Proof:** provider unit tests (metadata, catalog, footprint round-trip,
+  identify); host HTTP tests (spec metadata fixture, catalog fields/list,
+  absent-catalog rejection).
 
-### I2 — Export Image
+### I2 — Export Image — **delivered**
 - **Deliverable:** `exportImage` with `bbox` + `size` (or `bboxSR`/
   `imageSR`), `format` (png/jpg/tiff), `interpolation`, `compression`,
-  `pixelType`, `noData`; `f=image` streaming and the JSON `href` shape.
-- **Proof:** golden-image tests at fixed extent/size; nodata and
-  transparency; CRS transformation correctness; pixel-type conversion
-  limits rejected explicitly.
+  `pixelType`, `noData`; `f=image` streaming and the JSON `href` shape;
+  unsupported pixel types rejected explicitly.
+- **Delivered:** `IRasterCatalogue.ExportAsync` (crop, resample, cast,
+  nodata alpha, encode) and the adapter's `exportImage` route with bbox
+  reprojection through `ICoordinateTransforms`.
+- **Proof:** golden export at a fixed extent/size, nodata/transparency,
+  CRS transform correctness and pixel-type rejection (provider unit tests +
+  host HTTP tests).
 
 ### I3 — Catalog operations
 - **Deliverable:** `query` over the image catalog (reuse the safe `where`

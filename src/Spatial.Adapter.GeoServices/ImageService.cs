@@ -1,0 +1,342 @@
+using System.Globalization;
+using System.Text.Json;
+using Spatial.Core.Features;
+using Spatial.Core.Geometry;
+using Spatial.Interop.Esri;
+using Spatial.PluginSdk;
+
+namespace Spatial.Adapter.GeoServices;
+
+/// <summary>
+/// Shapes the Image Service resources (spec §8) from a raster provider's
+/// core-typed description and items (ADR-0051). No raster value or third-party
+/// type enters the adapter: the provider returns encoded images and core
+/// metadata, and this type only maps them to Esri JSON. Feature-bearing
+/// responses (catalog items, query, identify) are written through the shared
+/// Esri codecs so footprints round-trip as core geometry.
+/// </summary>
+internal static class ImageService
+{
+    public const double CurrentVersion = 10.0;
+
+    /// <summary>Builds the Image Service root (spec §8.0.3).</summary>
+    public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright)
+    {
+        var info = description.Raster;
+        var srid = MapService.SridOf(info.Crs);
+        var statistics = info.BandStatistics;
+        return new EsriImageServerRoot(
+            CurrentVersion,
+            description.Description ?? description.Name,
+            description.Name,
+            description.Description,
+            Extent(info.Extent, srid),
+            info.PixelSizeX,
+            info.PixelSizeY,
+            info.BandCount,
+            PixelType(info.PixelType),
+            0,
+            0,
+            copyright,
+            ServiceDataType(info),
+            statistics?.Select(stat => stat.Min).ToArray(),
+            statistics?.Select(stat => stat.Max).ToArray(),
+            statistics?.Select(stat => stat.Mean).ToArray(),
+            statistics?.Select(stat => stat.StandardDeviation).ToArray(),
+            description.HasCatalog ? description.ObjectIdField : null,
+            description.HasCatalog && description.CatalogSchema is { } schema ? Fields(schema, description.ObjectIdField!) : null);
+    }
+
+    /// <summary>Builds the Raster Info resource (spec §8.4.3).</summary>
+    public static EsriRasterInfo Info(RasterInfo info)
+    {
+        var srid = MapService.SridOf(info.Crs);
+        return new EsriRasterInfo(
+            new EsriPoint(info.Extent.MinX, info.Extent.MaxY),
+            info.BlockWidth > 0 ? info.BlockWidth : info.Width,
+            info.BlockHeight > 0 ? info.BlockHeight : 1,
+            info.PixelSizeX,
+            info.PixelSizeY,
+            Extent(info.Extent, srid),
+            info.BandCount,
+            PixelType(info.PixelType),
+            info.FirstPyramidLevel,
+            info.MaxPyramidLevel);
+    }
+
+    /// <summary>Builds the Export Image JSON response (spec §8.0.4); the adapter owns the href.</summary>
+    public static EsriImageExportResponse Export(string href, RasterViewport viewport, int srid) =>
+        new(
+            href,
+            viewport.Width,
+            viewport.Height,
+            new EsriExtent(
+                viewport.Bounds.MinX, viewport.Bounds.MinY, viewport.Bounds.MaxX, viewport.Bounds.MaxY,
+                EsriLayerModel.SpatialReference(srid)));
+
+    /// <summary>Builds one raster catalog item as an Esri feature (spec §8.1).</summary>
+    public static IResult CatalogItem(RasterCatalogItem item, FeatureSchema schema, string objectIdField, bool returnGeometry)
+    {
+        var feature = Feature(item, schema);
+        return EsriJson.Write(writer =>
+            EsriFeatureCodec.Write(writer, feature, new EsriFeatureWriteOptions(objectIdField, item.ObjectId, ReturnGeometry: returnGeometry)));
+    }
+
+    /// <summary>Lists catalog items (spec §8.0.5, ids-only and feature-set forms).</summary>
+    public static IResult Query(
+        RasterDatasetDescription description,
+        IReadOnlyList<RasterCatalogItem> items,
+        bool idsOnly,
+        bool returnGeometry,
+        IReadOnlyList<string>? outFields)
+    {
+        var schema = description.CatalogSchema!;
+        var objectIdField = description.ObjectIdField ?? "OBJECTID";
+        if (idsOnly)
+        {
+            return EsriJson.Value(new EsriObjectIdsResponse(objectIdField, [.. items.Select(item => item.ObjectId)]));
+        }
+
+        return WriteFeatureSet(description, items, returnGeometry, outFields);
+    }
+
+    /// <summary>Writes the Identify response (spec §8.0.6): pixel values, location and overlapping items.</summary>
+    public static IResult Identify(
+        RasterDatasetDescription description,
+        RasterIdentifyResult result,
+        double x,
+        double y)
+    {
+        var srid = MapService.SridOf(description.Raster.Crs);
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            if (result.ObjectId is { } objectId)
+            {
+                writer.WriteNumber("objectId", objectId);
+            }
+
+            writer.WriteString("value", string.Join(",", result.PixelValues.Select(value => value.ToString(CultureInfo.InvariantCulture))));
+            writer.WritePropertyName("location");
+            WritePoint(writer, x, y, srid);
+            if (description.HasCatalog && description.CatalogSchema is { } schema && result.Items.Count > 0)
+            {
+                writer.WritePropertyName("catalogItems");
+                writer.WriteStartObject();
+                WriteFeatureSetBody(writer, description, schema, result.Items, returnGeometry: true, outFields: null);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndObject();
+        });
+    }
+
+    /// <summary>Maps an engine pixel type to its Esri <c>pixelType</c> string (spec §8.0.4.2).</summary>
+    public static string PixelType(RasterPixelType type) => type switch
+    {
+        RasterPixelType.U1 => "U1",
+        RasterPixelType.U2 => "U2",
+        RasterPixelType.U4 => "U4",
+        RasterPixelType.U8 => "U8",
+        RasterPixelType.S8 => "S8",
+        RasterPixelType.U16 => "U16",
+        RasterPixelType.S16 => "S16",
+        RasterPixelType.U32 => "U32",
+        RasterPixelType.S32 => "S32",
+        RasterPixelType.F32 => "F32",
+        RasterPixelType.F64 => "F64",
+        RasterPixelType.C64 => "C64",
+        RasterPixelType.C128 => "C128",
+        _ => "UNKNOWN",
+    };
+
+    /// <summary>Parses the requested Esri <c>pixelType</c>; unsupported names are invalid arguments.</summary>
+    public static RasterPixelType? ParsePixelType(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim().ToUpperInvariant() switch
+        {
+            "U1" => RasterPixelType.U1,
+            "U2" => RasterPixelType.U2,
+            "U4" => RasterPixelType.U4,
+            "U8" => RasterPixelType.U8,
+            "S8" => RasterPixelType.S8,
+            "U16" => RasterPixelType.U16,
+            "S16" => RasterPixelType.S16,
+            "U32" => RasterPixelType.U32,
+            "S32" => RasterPixelType.S32,
+            "F32" => RasterPixelType.F32,
+            "F64" => RasterPixelType.F64,
+            "C64" => RasterPixelType.C64,
+            "C128" => RasterPixelType.C128,
+            "UNKNOWN" => RasterPixelType.Unknown,
+            _ => throw EsriInteropException.Invalid($"Pixel type '{value}' is not supported."),
+        };
+    }
+
+    /// <summary>Parses the Esri <c>interpolation</c> parameter (spec §8.0.4.2).</summary>
+    public static RasterInterpolation ParseInterpolation(string? value) => value?.Trim() switch
+    {
+        null or "" or "RSP_NearestNeighbor" => RasterInterpolation.NearestNeighbor,
+        "RSP_BilinearInterpolation" => RasterInterpolation.Bilinear,
+        "RSP_CubicConvolution" => RasterInterpolation.CubicConvolution,
+        "RSP_Majority" => RasterInterpolation.Majority,
+        _ => throw EsriInteropException.Invalid($"Interpolation '{value}' is not supported."),
+    };
+
+    /// <summary>Parses the Esri export <c>format</c> parameter (spec §8.0.4.2).</summary>
+    public static RasterFormat ParseFormat(string? value) => value?.Trim().ToLowerInvariant() switch
+    {
+        null or "" or "jpgpng" or "png" or "png8" or "png24" or "png32" => RasterFormat.Png,
+        "jpg" or "jpeg" => RasterFormat.Jpeg,
+        "tif" or "tiff" => RasterFormat.Tiff,
+        _ => throw EsriInteropException.Invalid($"Image format '{value}' is not supported (png, jpg, tiff)."),
+    };
+
+    /// <summary>Parses the optional <c>noData</c> parameter.</summary>
+    public static double? ParseNoData(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var noData) || !double.IsFinite(noData))
+        {
+            throw EsriInteropException.Invalid($"'noData' must be a finite number, got '{value}'.");
+        }
+
+        return noData;
+    }
+
+    /// <summary>Parses the optional <c>compressionQuality</c> parameter (0–100).</summary>
+    public static int ParseQuality(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return 90;
+        }
+
+        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var quality) || quality is < 0 or > 100)
+        {
+            throw EsriInteropException.Invalid($"'compressionQuality' must be an integer between 0 and 100, got '{value}'.");
+        }
+
+        return quality;
+    }
+
+    private static IResult WriteFeatureSet(
+        RasterDatasetDescription description,
+        IReadOnlyList<RasterCatalogItem> items,
+        bool returnGeometry,
+        IReadOnlyList<string>? outFields)
+    {
+        var schema = description.CatalogSchema!;
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            WriteFeatureSetBody(writer, description, schema, items, returnGeometry, outFields);
+            writer.WriteEndObject();
+        });
+    }
+
+    private static void WriteFeatureSetBody(
+        Utf8JsonWriter writer,
+        RasterDatasetDescription description,
+        FeatureSchema schema,
+        IReadOnlyList<RasterCatalogItem> items,
+        bool returnGeometry,
+        IReadOnlyList<string>? outFields)
+    {
+        var objectIdField = description.ObjectIdField ?? "OBJECTID";
+        writer.WriteString("objectIdFieldName", objectIdField);
+        writer.WriteString("geometryType", "esriGeometryPolygon");
+        writer.WritePropertyName("spatialReference");
+        WriteSpatialReference(writer, description.Raster.Crs);
+        writer.WritePropertyName("fields");
+        writer.WriteStartArray();
+        WriteFieldObjects(writer, schema, objectIdField);
+        writer.WriteEndArray();
+        writer.WritePropertyName("features");
+        writer.WriteStartArray();
+        foreach (var item in items)
+        {
+            EsriFeatureCodec.Write(
+                writer,
+                Feature(item, schema),
+                new EsriFeatureWriteOptions(objectIdField, item.ObjectId, outFields, returnGeometry));
+        }
+
+        writer.WriteEndArray();
+        writer.WriteBoolean("exceededTransferLimit", false);
+    }
+
+    /// <summary>Builds the catalog feature from the core-typed item (footprint stays core geometry).</summary>
+    public static Feature Feature(RasterCatalogItem item, FeatureSchema schema) =>
+        new(
+            new FeatureId(item.ObjectId.ToString(CultureInfo.InvariantCulture)),
+            schema,
+            item.Attributes);
+
+    private static List<EsriField> Fields(FeatureSchema schema, string objectIdField) =>
+    [
+        .. schema.Fields.Select(field => new EsriField(
+            field.Name,
+            field.Name == objectIdField ? EsriFieldType.Oid : EsriFieldType.FromAttributeKind(field.Kind),
+            field.Name,
+            field.Nullable,
+            false)),
+    ];
+
+    private static void WriteFieldObjects(Utf8JsonWriter writer, FeatureSchema schema, string objectIdField)
+    {
+        foreach (var field in schema.Fields)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("name", field.Name);
+            writer.WriteString("type", field.Name == objectIdField ? EsriFieldType.Oid : EsriFieldType.FromAttributeKind(field.Kind));
+            writer.WriteString("alias", field.Name);
+            writer.WriteBoolean("nullable", field.Nullable);
+            writer.WriteBoolean("editable", false);
+            writer.WriteEndObject();
+        }
+    }
+
+    private static void WriteSpatialReference(Utf8JsonWriter writer, string crs)
+    {
+        var srid = MapService.SridOf(crs);
+        if (srid > 0 && WkidMap.TryFromEpsg(srid, out var wkid))
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("wkid", wkid);
+            writer.WriteEndObject();
+            return;
+        }
+
+        writer.WriteNullValue();
+    }
+
+    private static void WritePoint(Utf8JsonWriter writer, double x, double y, int srid)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("x", x);
+        writer.WriteNumber("y", y);
+        writer.WritePropertyName("spatialReference");
+        WriteSpatialReference(writer, $"EPSG:{srid.ToString(CultureInfo.InvariantCulture)}");
+        writer.WriteEndObject();
+    }
+
+    private static EsriExtent? Extent(Envelope extent, int srid) =>
+        extent.IsEmpty ? null : new EsriExtent(extent.MinX, extent.MinY, extent.MaxX, extent.MaxY, EsriLayerModel.SpatialReference(srid));
+
+    private static string ServiceDataType(RasterInfo info) => info.BandCount switch
+    {
+        1 => "esriImageServiceDataTypeGeneric",
+        3 or 4 when info.PixelType == RasterPixelType.U8 => "esriImageServiceDataTypeRGB",
+        _ => "esriImageServiceDataTypeGeneric",
+    };
+}

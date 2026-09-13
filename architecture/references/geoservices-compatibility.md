@@ -137,7 +137,7 @@ and date encoding differ.
 | Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a simple `drawingInfo`. The image (§4.7) resource and rich renderers (class breaks, unique value, labels) remain absent |
 | Geocode Service (§5) | — | Absent |
 | GP Service (§6): tasks, `submitJob`, job polling, results | — | Absent; no job model (ADR-0033 removed jobs) |
-| Image Service (§8): export, raster functions, download | — | Explicitly out of scope (ADR-0035: no raster pipeline) |
+| Image Service (§8): export, raster functions, download | `/arcgis/rest/services/{service}/ImageServer` (ADR-0051) | **Implemented** as a projection of a `PublicationKind.Image` publication over the SDK `IRasterCatalogue` contract: root metadata (extent, pixel size, band count, pixel type, service data type, catalog fields/objectIdField), raster info, catalog item/listing, identify and `exportImage` (png/jpg/tiff, `f=image` bytes or JSON `href`, bbox/image SR, interpolation, compression, pixelType, noData), with provider-owned rasters (encoded images + core-typed metadata/geometry only). Raster functions, `download` and §8.2–8.5 file/thumbnail resources remain absent (I3/I5) |
 | Geometry objects (§10) | point/polyline/polygon/envelope, Z/M absent | Superset — engine also has multipoint, multi-\*, geometry collection, Z/M |
 | Symbol/renderer/label/domain objects (§12–15) | Map-render oriented | Absent (client-side MapLibre concern) |
 
