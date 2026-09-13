@@ -11,9 +11,35 @@ namespace Spatial.Adapter.Ogc;
 /// here directly from <see cref="IGeometry"/> values. No third-party type
 /// crosses the boundary; the primary geometry column becomes the feature's
 /// <c>geometry</c> and the remaining attributes become <c>properties</c>.
+///
+/// <para>Attribute values and geometry families dispatch through small
+/// per-kind/-family writers, so each unit stays cohesive and low-complexity
+/// (ADR-0040).</para>
 /// </summary>
 internal static class GeoJson
 {
+    private static readonly Dictionary<AttributeKind, Action<Utf8JsonWriter, AttributeValue>> ValueWriters = new()
+    {
+        [AttributeKind.Boolean] = (writer, value) => writer.WriteBooleanValue(value.BooleanValue),
+        [AttributeKind.Int64] = (writer, value) => writer.WriteNumberValue(value.Int64Value),
+        [AttributeKind.Double] = WriteDoubleValue,
+        [AttributeKind.String] = (writer, value) => writer.WriteStringValue(value.StringValue),
+        [AttributeKind.DateTimeOffset] = (writer, value) => writer.WriteStringValue(value.DateTimeOffsetValue),
+        [AttributeKind.Guid] = (writer, value) => writer.WriteStringValue(value.GuidValue),
+        [AttributeKind.Geometry] = WriteGeometryValue,
+    };
+
+    private static readonly Dictionary<Type, Action<Utf8JsonWriter, IGeometry>> GeometryWriters = new()
+    {
+        [typeof(Point)] = (writer, geometry) => WritePoint(writer, (Point)geometry),
+        [typeof(MultiPoint)] = (writer, geometry) => WriteMultiPoint(writer, (MultiPoint)geometry),
+        [typeof(LineString)] = (writer, geometry) => WriteLineString(writer, (LineString)geometry),
+        [typeof(MultiLineString)] = (writer, geometry) => WriteMultiLineString(writer, (MultiLineString)geometry),
+        [typeof(Polygon)] = (writer, geometry) => WritePolygon(writer, (Polygon)geometry),
+        [typeof(MultiPolygon)] = (writer, geometry) => WriteMultiPolygon(writer, (MultiPolygon)geometry),
+        [typeof(GeometryCollection)] = (writer, geometry) => WriteCollection(writer, (GeometryCollection)geometry),
+    };
+
     /// <summary>Serialises a set of features, each with its own dataset description, as a FeatureCollection.</summary>
     public static byte[] FeatureCollection(IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> features)
     {
@@ -42,68 +68,28 @@ internal static class GeoJson
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(geometry);
         writer.WriteStartObject();
-        switch (geometry)
+        if (GeometryWriters.TryGetValue(geometry.GetType(), out var write))
         {
-            case Point point:
-                writer.WriteString("type", "Point");
-                writer.WritePropertyName("coordinates");
-                WritePosition(writer, point.Coordinate);
-                break;
-            case MultiPoint multiPoint:
-                writer.WriteString("type", "MultiPoint");
-                writer.WritePropertyName("coordinates");
-                WritePositions(writer, multiPoint.Points.Select(item => item.Coordinate));
-                break;
-            case LineString line:
-                writer.WriteString("type", "LineString");
-                writer.WritePropertyName("coordinates");
-                WriteSequence(writer, line.Sequence);
-                break;
-            case MultiLineString multiLine:
-                writer.WriteString("type", "MultiLineString");
-                writer.WritePropertyName("coordinates");
-                writer.WriteStartArray();
-                foreach (var part in multiLine.LineStrings)
-                {
-                    WriteSequence(writer, part.Sequence);
-                }
-
-                writer.WriteEndArray();
-                break;
-            case Polygon polygon:
-                writer.WriteString("type", "Polygon");
-                writer.WritePropertyName("coordinates");
-                WriteRings(writer, polygon);
-                break;
-            case MultiPolygon multiPolygon:
-                writer.WriteString("type", "MultiPolygon");
-                writer.WritePropertyName("coordinates");
-                writer.WriteStartArray();
-                foreach (var part in multiPolygon.Polygons)
-                {
-                    WriteRings(writer, part);
-                }
-
-                writer.WriteEndArray();
-                break;
-            case IGeometryParts parts:
-                writer.WriteString("type", "GeometryCollection");
-                writer.WritePropertyName("geometries");
-                writer.WriteStartArray();
-                foreach (var part in parts.Geometries)
-                {
-                    WriteGeometry(writer, part);
-                }
-
-                writer.WriteEndArray();
-                break;
-            default:
-                writer.WriteString("type", "Point");
-                writer.WriteNull("coordinates");
-                break;
+            write(writer, geometry);
+        }
+        else
+        {
+            WriteNullPoint(writer);
         }
 
         writer.WriteEndObject();
+    }
+
+    /// <summary>Writes one attribute value as a JSON value, mapping null/unknown kinds to JSON null.</summary>
+    internal static void WriteValue(Utf8JsonWriter writer, AttributeValue value)
+    {
+        if (value.IsNull || !ValueWriters.TryGetValue(value.Kind, out var write))
+        {
+            writer.WriteNullValue();
+            return;
+        }
+
+        write(writer, value);
     }
 
     private static void WriteFeature(Utf8JsonWriter writer, DatasetDescription dataset, Feature feature)
@@ -126,49 +112,108 @@ internal static class GeoJson
 
         writer.WriteEndObject();
         writer.WritePropertyName("geometry");
+        WriteFeatureGeometry(writer, feature, geometryIndex);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteFeatureGeometry(Utf8JsonWriter writer, Feature feature, int geometryIndex)
+    {
         if (geometryIndex >= 0
             && feature[geometryIndex].Kind == AttributeKind.Geometry
             && !feature[geometryIndex].IsNull)
         {
             WriteGeometry(writer, feature[geometryIndex].GeometryValue);
-        }
-        else
-        {
-            writer.WriteNullValue();
+            return;
         }
 
-        writer.WriteEndObject();
+        writer.WriteNullValue();
     }
 
-    private static void WriteValue(Utf8JsonWriter writer, AttributeValue value)
+    private static void WriteDoubleValue(Utf8JsonWriter writer, AttributeValue value)
     {
-        switch (value.Kind)
+        if (double.IsFinite(value.DoubleValue))
         {
-            case AttributeKind.Boolean:
-                writer.WriteBooleanValue(value.BooleanValue);
-                break;
-            case AttributeKind.Int64:
-                writer.WriteNumberValue(value.Int64Value);
-                break;
-            case AttributeKind.Double when double.IsFinite(value.DoubleValue):
-                writer.WriteNumberValue(value.DoubleValue);
-                break;
-            case AttributeKind.String:
-                writer.WriteStringValue(value.StringValue);
-                break;
-            case AttributeKind.DateTimeOffset:
-                writer.WriteStringValue(value.DateTimeOffsetValue);
-                break;
-            case AttributeKind.Guid:
-                writer.WriteStringValue(value.GuidValue);
-                break;
-            case AttributeKind.Geometry when !value.IsNull:
-                WriteGeometry(writer, value.GeometryValue);
-                break;
-            default:
-                writer.WriteNullValue();
-                break;
+            writer.WriteNumberValue(value.DoubleValue);
+            return;
         }
+
+        writer.WriteNullValue();
+    }
+
+    private static void WriteGeometryValue(Utf8JsonWriter writer, AttributeValue value) =>
+        WriteGeometry(writer, value.GeometryValue);
+
+    private static void WritePoint(Utf8JsonWriter writer, Point point)
+    {
+        writer.WriteString("type", "Point");
+        writer.WritePropertyName("coordinates");
+        WritePosition(writer, point.Coordinate);
+    }
+
+    private static void WriteMultiPoint(Utf8JsonWriter writer, MultiPoint multiPoint)
+    {
+        writer.WriteString("type", "MultiPoint");
+        writer.WritePropertyName("coordinates");
+        WritePositions(writer, multiPoint.Points.Select(item => item.Coordinate));
+    }
+
+    private static void WriteLineString(Utf8JsonWriter writer, LineString line)
+    {
+        writer.WriteString("type", "LineString");
+        writer.WritePropertyName("coordinates");
+        WriteSequence(writer, line.Sequence);
+    }
+
+    private static void WriteMultiLineString(Utf8JsonWriter writer, MultiLineString multiLine)
+    {
+        writer.WriteString("type", "MultiLineString");
+        writer.WritePropertyName("coordinates");
+        writer.WriteStartArray();
+        foreach (var part in multiLine.LineStrings)
+        {
+            WriteSequence(writer, part.Sequence);
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WritePolygon(Utf8JsonWriter writer, Polygon polygon)
+    {
+        writer.WriteString("type", "Polygon");
+        writer.WritePropertyName("coordinates");
+        WriteRings(writer, polygon);
+    }
+
+    private static void WriteMultiPolygon(Utf8JsonWriter writer, MultiPolygon multiPolygon)
+    {
+        writer.WriteString("type", "MultiPolygon");
+        writer.WritePropertyName("coordinates");
+        writer.WriteStartArray();
+        foreach (var part in multiPolygon.Polygons)
+        {
+            WriteRings(writer, part);
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteCollection(Utf8JsonWriter writer, GeometryCollection collection)
+    {
+        writer.WriteString("type", "GeometryCollection");
+        writer.WritePropertyName("geometries");
+        writer.WriteStartArray();
+        foreach (var part in collection.Geometries)
+        {
+            WriteGeometry(writer, part);
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WriteNullPoint(Utf8JsonWriter writer)
+    {
+        writer.WriteString("type", "Point");
+        writer.WriteNull("coordinates");
     }
 
     private static void WriteSequence(Utf8JsonWriter writer, ICoordinateSequence sequence)
