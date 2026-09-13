@@ -41,6 +41,7 @@ internal static class WmsService
             "GETCAPABILITIES" => await CapabilitiesAsync(map, services, options, context, cancellationToken),
             "GETMAP" => await GetMapAsync(map, parameters, services, cancellationToken),
             "GETFEATUREINFO" => await GetFeatureInfoAsync(map, parameters, services, cancellationToken),
+            "GETLEGENDGRAPHIC" => await GetLegendGraphicAsync(map, parameters, services, cancellationToken),
             _ => throw OgcServiceException.NotSupported($"The WMS operation '{request}' is not supported."),
         };
     }
@@ -77,6 +78,71 @@ internal static class WmsService
         var image = await services.Renderer.RenderAsync(request, cancellationToken);
         return Results.Bytes(image.Content, image.MediaType);
     }
+
+    /// <summary>
+    /// The fixed legend frame: QGIS's GetLegendGraphic carries no size, so
+    /// the legend renders at this frame unless WIDTH/HEIGHT override it.
+    /// </summary>
+    internal const int LegendWidth = 120;
+    internal const int LegendHeight = 60;
+
+    /// <summary>
+    /// Renders one layer's persisted style over its own extent at legend
+    /// size (research/interop/wms-conformance.md G6): QGIS's layer tree
+    /// requests one PNG per visible layer, so the legend is a small
+    /// single-layer render rather than a symbol swatch. STYLE accepts the
+    /// advertised <c>default</c> only; an unknown layer is
+    /// <c>LayerNotDefined</c>.
+    /// </summary>
+    private static async Task<IResult> GetLegendGraphicAsync(
+        Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
+    {
+        var names = parameters.List("layer");
+        if (names.Count == 0)
+        {
+            throw OgcServiceException.Missing("layer");
+        }
+
+        if (names.Count > 1)
+        {
+            throw OgcServiceException.Invalid("The 'layer' parameter names a single layer.");
+        }
+
+        RequireDefaultStyles(parameters.List("style"));
+        var layer = OgcLayers.Select(map, names).Single();
+        var loaded = await services.LoadAsync(map, layer, cancellationToken);
+        var viewport = await LegendViewportAsync(services, loaded, parameters, cancellationToken);
+        var request = new MapRenderRequest(
+            viewport,
+            MapStyle.Compose(map.Name, new[] { layer }),
+            OgcRender.Sources(services, map, new[] { layer }),
+            null,
+            ParseFormat(parameters.Get("format")),
+            90,
+            ParseColor(parameters.Get("bgcolor")),
+            ParseTransparent(parameters.Get("transparent")),
+            1.0);
+        var image = await services.Renderer.RenderAsync(request, cancellationToken);
+        return Results.Bytes(image.Content, image.MediaType);
+    }
+
+    private static async Task<RasterViewport> LegendViewportAsync(
+        OgcRequestServices services, OgcLayer loaded, OgcParameters parameters, CancellationToken cancellationToken)
+    {
+        var width = LegendSize(parameters.Get("width"), LegendWidth);
+        var height = LegendSize(parameters.Get("height"), LegendHeight);
+        var extent = await OgcGeometry.ExtentAsync(
+            services.Features(loaded.Store), loaded.Layer.Dataset, cancellationToken);
+        if (extent is { } box && !box.IsEmpty && box.Width > 0 && box.Height > 0)
+        {
+            return new RasterViewport(box, width, height, Crs(loaded.Description.Srid));
+        }
+
+        return new RasterViewport(new Envelope(-180, -90, 180, 90), width, height, "EPSG:4326");
+    }
+
+    private static int LegendSize(string? text, int fallback) =>
+        text is null ? fallback : PositiveInt(text, "width");
 
     private static async Task<IResult> GetFeatureInfoAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)

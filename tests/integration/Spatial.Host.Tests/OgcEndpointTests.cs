@@ -283,6 +283,80 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Wms_get_legend_graphic_renders_the_layer_style()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // The QGIS layer-tree request shape (research/interop/wms-conformance.md trace C).
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.3.0&sld_version=1.1.0&request=GetLegendGraphic&format=image/png&layer=cities&style=&transparent=true");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal(0x89, bytes[0]);
+    }
+
+    [Fact]
+    public async Task Wms_get_legend_graphic_requires_a_layer()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("MissingParameterValue", await ReportCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Wms_get_legend_graphic_rejects_an_unknown_layer()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=ghost&style=");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("LayerNotDefined", await ReportCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Wms_get_legend_graphic_rejects_an_unknown_style()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=cities&style=bogus");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("StyleNotDefined", await ReportCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Wms_capabilities_advertise_a_legend_url_per_style()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var document = await XmlAsync(response);
+        var layer = document.Descendants(Wms + "Layer")
+            .First(element => element.Element(Wms + "Name")?.Value == "cities");
+        var href = layer.Element(Wms + "Style")?.Element(Wms + "LegendURL")
+            ?.Elements().FirstOrDefault(element => element.Name.LocalName == "OnlineResource")
+            ?.Attributes().FirstOrDefault(attribute => attribute.Name.LocalName == "href")?.Value;
+        Assert.Contains("GetLegendGraphic", href);
+        Assert.Contains("layer=cities", href);
+    }
+
+    [Fact]
     public async Task Wms_get_map_rejects_an_unknown_style()
     {
         using var factory = Factory();

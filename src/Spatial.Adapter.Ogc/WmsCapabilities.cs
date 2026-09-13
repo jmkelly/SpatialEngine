@@ -24,7 +24,7 @@ internal static class WmsCapabilities
             CrsElement("EPSG:3857"));
         foreach (var layer in layers)
         {
-            rootLayer.Add(await LayerAsync(layer, services, cancellationToken));
+            rootLayer.Add(await LayerAsync(layer, baseUrl, services, cancellationToken));
         }
 
         var document = new XDocument(
@@ -46,7 +46,7 @@ internal static class WmsCapabilities
         return OgcXml.Write(document);
     }
 
-    private static async Task<XElement> LayerAsync(OgcLayer layer, OgcRequestServices services, CancellationToken cancellationToken)
+    private static async Task<XElement> LayerAsync(OgcLayer layer, string baseUrl, OgcRequestServices services, CancellationToken cancellationToken)
     {
         var element = new XElement(
             OgcXml.Wms + "Layer",
@@ -59,7 +59,15 @@ internal static class WmsCapabilities
             new XElement(
                 OgcXml.Wms + "Style",
                 new XElement(OgcXml.Wms + "Name", "default"),
-                new XElement(OgcXml.Wms + "Title", "Default")));
+                new XElement(OgcXml.Wms + "Title", "Default"),
+                new XElement(
+                    OgcXml.Wms + "LegendURL",
+                    new XAttribute("width", WmsService.LegendWidth),
+                    new XAttribute("height", WmsService.LegendHeight),
+                    new XElement(OgcXml.Wms + "Format", "image/png"),
+                    new XElement(
+                        OgcXml.Wms + "OnlineResource",
+                        new XAttribute(OgcXml.Xlink + "href", LegendUrl(baseUrl, layer.Name))))));
         var extent = await OgcGeometry.ExtentAsync(services.Features(layer.Store), layer.Layer.Dataset, cancellationToken);
         if (extent is { } bounds)
         {
@@ -88,6 +96,7 @@ internal static class WmsCapabilities
             OgcXml.Wms + "Request",
             Operation("GetCapabilities", Endpoint(baseUrl), "application/xml"),
             Operation("GetMap", Endpoint(baseUrl), "image/png", "image/jpeg"),
+            Operation("GetLegendGraphic", Endpoint(baseUrl), "image/png", "image/jpeg"),
             Operation("GetFeatureInfo", Endpoint(baseUrl), "text/plain", "text/html", "text/xml", "application/json", "application/vnd.ogc.gml"));
 
     // A DCP Get advertises the service endpoint, not a ready-made request: the
@@ -96,6 +105,11 @@ internal static class WmsCapabilities
     // service/request parameters; repeating them because the URI already
     // carried them makes the parameter malformed (SERVICE=WMS,WMS).
     private static string Endpoint(string baseUrl) => $"{baseUrl}?";
+
+    // QGIS falls back to the style's LegendURL when it has no legend cache:
+    // point it at GetLegendGraphic for the advertised default style.
+    private static string LegendUrl(string baseUrl, string layer) =>
+        $"{baseUrl}?service=WMS&request=GetLegendGraphic&layer={Uri.EscapeDataString(layer)}&style=default&format=image/png";
 
     private static XElement Operation(string name, string href, params string[] formats) =>
         new(

@@ -42,7 +42,7 @@ DELETE /api/maps/{name}                 # -> {deleted} (admin)
 POST   /api/maps/{name}/render          # persisted layer styles -> image
 GET    /api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}  # map tile (Tiles service)
 GET    /arcgis/rest/services/{name}/ImageServer  # raster layers (Image service)
-GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 (Wms service): GetMap PNG/JPEG, GetFeatureInfo text/plain+text/html+text/xml+JSON+GML; EPSG:4326 is lat-first for 1.3.x but x-first for 1.1.1, and GetMap requires VERSION; every layer advertises one default Style (STYLES= or STYLES=default renders it, any other name is StyleNotDefined)
+GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 (Wms service): GetMap PNG/JPEG, GetLegendGraphic per-layer style PNG (+LegendURL per style), GetFeatureInfo text/plain+text/html+text/xml+JSON+GML; EPSG:4326 is lat-first for 1.3.x but x-first for 1.1.1, and GetMap requires VERSION; every layer advertises one default Style (STYLES= or STYLES=default renders it, any other name is StyleNotDefined)
 GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service)
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=
                                        # raw/multipart upload -> IngestResult;
