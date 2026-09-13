@@ -219,9 +219,9 @@ test("render returns image bytes and metadata headers", async (t) => {
   assert.deepEqual(host.requests, ["POST /api/render", "GET /api/render/capabilities"]);
 });
 
-test("rendering a publication posts to its render route and returns image bytes", async (t) => {
+test("rendering a map posts to its render route and returns image bytes", async (t) => {
   const host = await fakeHost({
-    "/api/publications/cities/render": () => ({
+    "/api/maps/cities/render": () => ({
       status: 200,
       body: Uint8Array.of(0x89, 0x50, 0x4e, 0x47),
       contentType: "image/png",
@@ -231,7 +231,7 @@ test("rendering a publication posts to its render route and returns image bytes"
   t.after(() => host.server.close());
   const client = new SpatialClient(host.url);
 
-  const image = await client.renderPublication("cities", {
+  const image = await client.renderMap("cities", {
     viewport: { minX: -10, minY: 35, maxX: 30, maxY: 60, width: 400, height: 250, crs: "EPSG:4326" },
     format: "png",
   });
@@ -240,7 +240,7 @@ test("rendering a publication posts to its render route and returns image bytes"
   assert.equal(image.format, "png");
   assert.equal(image.width, 400);
   assert.deepEqual([...image.bytes], [0x89, 0x50, 0x4e, 0x47]);
-  assert.deepEqual(host.requests, ["POST /api/publications/cities/render"]);
+  assert.deepEqual(host.requests, ["POST /api/maps/cities/render"]);
 });
 
 test("render maps host failures to SpatialApiError", async (t) => {
@@ -305,31 +305,31 @@ test("tiles render, batch and describe the scheme", async (t) => {
   );
 });
 
-test("publications and ingest hit the admin routes", async (t) => {
-  const publication = { name: "parks", kind: "feature" as const, store: "memory", layers: [{ dataset: "public.parks", layerId: 0 }] };
+test("maps and ingest hit the admin routes", async (t) => {
+  const map = { name: "parks", store: "memory", services: ["feature" as const], layers: [{ dataset: "public.parks", layerId: 0, kind: "feature" as const }] };
   const host = await fakeHost({
-    "/api/publications": () => ({
+    "/api/maps": () => ({
       status: 200,
-      body: JSON.stringify([publication]),
+      body: JSON.stringify([map]),
       contentType: "application/json",
     }),
-    "/api/publications/parks": (req) =>
+    "/api/maps/parks": (req) =>
       req.method === "DELETE"
         ? { status: 200, body: JSON.stringify(true), contentType: "application/json" }
-        : { status: 200, body: JSON.stringify(publication), contentType: "application/json" },
+        : { status: 200, body: JSON.stringify(map), contentType: "application/json" },
     "/api/ingest": () => ({
       status: 200,
-      body: JSON.stringify({ dataset: "public.parks", features: 2, srid: 4326, identityField: "id", publication }),
+      body: JSON.stringify({ dataset: "public.parks", features: 2, srid: 4326, identityField: "id", map }),
       contentType: "application/json",
     }),
   });
   t.after(() => host.server.close());
   const client = new SpatialClient(host.url);
 
-  assert.equal((await client.listPublications()).length, 1);
-  assert.equal((await client.getPublication("parks")).name, "parks");
-  assert.equal((await client.putPublication(publication, "secret")).name, "parks");
-  assert.equal(await client.deletePublication("parks", "secret"), true);
+  assert.equal((await client.listMaps()).length, 1);
+  assert.equal((await client.getMap("parks")).name, "parks");
+  assert.equal((await client.putMap(map, "secret")).name, "parks");
+  assert.equal(await client.deleteMap("parks", "secret"), true);
 
   const result = await client.ingest(
     new Blob(["{}"], { type: "application/geo+json" }),
@@ -338,13 +338,13 @@ test("publications and ingest hit the admin routes", async (t) => {
     "secret",
   );
   assert.equal(result.features, 2);
-  assert.equal(result.publication?.name, "parks");
+  assert.equal(result.map?.name, "parks");
 
   assert.deepEqual(host.requests, [
-    "GET /api/publications",
-    "GET /api/publications/parks",
-    "PUT /api/publications/parks",
-    "DELETE /api/publications/parks",
+    "GET /api/maps",
+    "GET /api/maps/parks",
+    "PUT /api/maps/parks",
+    "DELETE /api/maps/parks",
     "POST /api/ingest",
   ]);
 });

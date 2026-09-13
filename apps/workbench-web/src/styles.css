@@ -202,3 +202,7 @@ table.grid th { color: var(--muted); font-weight: 600; text-transform: uppercase
 
 .composer-pub-actions { display: flex; gap: 6px; }
 .composer-pub-actions button { padding: 3px 8px; font-size: 12px; }
+
+.service-toggles { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.service-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
+.endpoint-url { min-width: 0; font-size: 12px; overflow-wrap: anywhere; color: var(--muted); }

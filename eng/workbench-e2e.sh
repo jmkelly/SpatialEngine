@@ -12,10 +12,10 @@ PORT="${WORKBENCH_E2E_PORT:-$(node -e 'const net = require("node:net"); const s 
 WORKBENCH_URL="http://127.0.0.1:${PORT}"
 WEB_ROOT="$(pwd)/artifacts/workbench-web"
 HOST_LOG="$(mktemp -t spatial-workbench-host.XXXXXX.log)"
-# An isolated publications file per run: the suite creates and deletes
+# An isolated maps file per run: the suite creates and deletes
 # services, and persisted state must never leak between runs.
-PUBLICATIONS_DIR="$(mktemp -d -t spatial-workbench-pubs.XXXXXX)"
-PUBLICATIONS_FILE="$PUBLICATIONS_DIR/publications.json"
+MAPS_DIR="$(mktemp -d -t spatial-workbench-maps.XXXXXX)"
+MAPS_FILE="$MAPS_DIR/maps.json"
 PID=""
 
 # A zombie host from an interrupted run would answer the e2e with stale
@@ -44,7 +44,7 @@ cleanup() {
   # an interrupted run would leave a stale host answering future runs.
   pkill -f 'Spatial.Host --urls' 2>/dev/null || true
   rm -f "$HOST_LOG"
-  rm -rf "$PUBLICATIONS_DIR"
+  rm -rf "$MAPS_DIR"
 }
 trap cleanup EXIT
 
@@ -62,7 +62,7 @@ cp -r apps/workbench-web/dist/* "$WEB_ROOT/"
 echo "== start the host serving the workbench =="
 SPATIAL_ADMIN_TOKEN="workbench-e2e-token" \
   Spatial__WebRoot="$WEB_ROOT" \
-  Spatial__Publications__Path="$PUBLICATIONS_FILE" \
+  Spatial__Maps__Path="$MAPS_FILE" \
   ASPNETCORE_URLS="$WORKBENCH_URL" \
   dotnet run --project src/Spatial.Host --no-build --no-launch-profile --urls "$WORKBENCH_URL" >"$HOST_LOG" 2>&1 &
 PID=$!

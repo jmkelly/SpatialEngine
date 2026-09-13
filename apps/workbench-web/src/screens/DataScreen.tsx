@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "../api.ts";
-import type { IngestResult, Publication } from "@spatial/client";
+import type { IngestResult, Map } from "@spatial/client";
 
 /**
  * The Data screen: upload a GeoJSON,
- * NDJSON or CSV file and load it into a dataset — optionally publishing it as
- * a feature service in the same call — then list the publications the host
- * serves. The admin token is host configuration and is only held in the
- * form field; the upload body is opaque bytes decoded by the host.
+ * NDJSON or CSV file and load it into a dataset — optionally registering it
+ * on a Feature map in the same call — then list the maps the host serves. The
+ * admin token is host configuration and is only held in the form field; the
+ * upload body is opaque bytes decoded by the host.
  */
 export function DataScreen() {
   const client = createClient();
@@ -23,11 +23,11 @@ export function DataScreen() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<IngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [publications, setPublications] = useState<Publication[]>([]);
+  const [maps, setMaps] = useState<Map[]>([]);
 
   const refresh = useCallback(async () => {
     try {
-      setPublications(await client.listPublications());
+      setMaps(await client.listMaps());
     } catch (failure) {
       setError(messageOf(failure));
     }
@@ -75,7 +75,7 @@ export function DataScreen() {
       <h2>Upload &amp; publish data</h2>
       <p className="muted small">
         Load a foreign data file into an engine dataset with one atomic request.
-        Give a publication name to expose it as a feature service immediately.
+        Give a map name to register it on a Feature map immediately.
       </p>
 
       <div className="run-layout">
@@ -146,7 +146,7 @@ export function DataScreen() {
           )}
 
           <label className="field">
-            <span>Publish as (optional)</span>
+            <span>Publish to map (optional)</span>
             <input data-testid="publish" value={publish} onChange={(event) => setPublish(event.target.value)} />
           </label>
 
@@ -173,21 +173,21 @@ export function DataScreen() {
               </div>
               <p className="muted small">
                 identity: {result.identityField ?? "none"}
-                {result.publication ? ` · published as ${result.publication.name}` : ""}
+                {result.map ? ` · published to ${result.map.name}` : ""}
               </p>
             </div>
           )}
 
-          <h3>Publications</h3>
-          {publications.length === 0 ? (
-            <p className="empty">No publications.</p>
+          <h3>Maps</h3>
+          {maps.length === 0 ? (
+            <p className="empty">No maps.</p>
           ) : (
-            <ul className="capability-list" data-testid="publications">
-              {publications.map((publication) => (
-                <li key={publication.name} className="capability-row">
-                  <span className="capability-name">{publication.name}</span>
+            <ul className="capability-list" data-testid="maps">
+              {maps.map((map) => (
+                <li key={map.name} className="capability-row">
+                  <span className="capability-name">{map.name}</span>
                   <span className="muted small">
-                    {publication.kind} · {publication.layers.length} layer(s)
+                    {map.services.length > 0 ? map.services.join(", ") : "no services"} · {map.layers.length} layer(s)
                   </span>
                 </li>
               ))}

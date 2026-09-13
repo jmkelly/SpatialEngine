@@ -8,8 +8,8 @@
 // that CRS and transformed to `srid` by the ProjNet service before it is
 // stored. `identity: "auto"` makes the dataset editable/lookup-able.
 //
-// Services are publications (ADR-0041). A `map` service is served as a
-// MapServer (ADR-0048); a `feature` service is a queryable/editable
+// Services are maps (ADR-0052). A map exposing `map` is served as a
+// MapServer (ADR-0048); one exposing `feature` is a queryable/editable
 // FeatureServer. Each layer's `style` is a compact draw recipe
 // ({ color, opacity, lineWidth, radius, visible }) and `geometry` is its
 // family; `seed.mjs` lowers them to the persisted MapLibre style fragment
@@ -93,42 +93,42 @@ const palette = {
 export const services = [
   {
     name: "WorldCountries",
-    kind: "feature",
+    services: ["feature"],
     description: "Every country as an editable, queryable feature layer.",
     copyright: "Natural Earth",
     layers: [{ dataset: "public.world_countries", name: "Countries", geometry: "polygon", style: palette.country }],
   },
   {
     name: "WorldPlaces",
-    kind: "feature",
+    services: ["feature"],
     description: "Populated places, queryable by name and population.",
     copyright: "Natural Earth",
     layers: [{ dataset: "public.world_places", name: "Places", geometry: "point", style: palette.place }],
   },
   {
     name: "UnitedStates",
-    kind: "feature",
+    services: ["feature"],
     description: "US states as features.",
     copyright: "Natural Earth",
     layers: [{ dataset: "public.us_states", name: "States", geometry: "polygon", style: palette.state }],
   },
   {
     name: "SeismicActivity",
-    kind: "feature",
+    services: ["feature"],
     description: "Recent magnitude 2.5+ earthquakes.",
     copyright: "USGS Earthquake Hazards Program",
     layers: [{ dataset: "public.earthquakes", name: "Earthquakes", geometry: "point", style: palette.quake }],
   },
   {
     name: "WorldPlacesMercator",
-    kind: "feature",
+    services: ["feature"],
     description: "Populated places stored in EPSG:3857 (reprojected on ingest).",
     copyright: "Natural Earth",
     layers: [{ dataset: "public.world_places_mercator", name: "Places (Mercator)", geometry: "point", style: palette.mercator }],
   },
   {
     name: "WorldReference",
-    kind: "map",
+    services: ["map"],
     description: "A styled reference map: countries, lakes, rivers and places.",
     copyright: "Natural Earth",
     layers: [
@@ -140,7 +140,7 @@ export const services = [
   },
   {
     name: "WorldAtlas",
-    kind: "map",
+    services: ["map"],
     description: "A second styled map with a different palette for the same data.",
     copyright: "Natural Earth",
     layers: [
@@ -150,7 +150,7 @@ export const services = [
   },
   {
     name: "SeismicMap",
-    kind: "map",
+    services: ["map"],
     description: "A styled map of recent earthquakes.",
     copyright: "USGS Earthquake Hazards Program",
     layers: [{ dataset: "public.earthquakes", name: "Earthquakes", geometry: "point", style: palette.quake }],
