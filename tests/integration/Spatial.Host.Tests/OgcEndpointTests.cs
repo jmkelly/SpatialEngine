@@ -162,6 +162,28 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Wms_get_feature_info_misses_a_click_outside_the_marker()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // The 85cabcc band: the identify tolerance is the rendered marker
+        // radius (8px) plus half a pixel, i.e. 0.85 viewport units here.
+        // Amsterdam is at (4.9041, 52.3676); pixel column 40 centres on
+        // x=4.05, just outside the box, so the click must miss while the
+        // neighbouring column 41 (x=4.15) still hits.
+        var miss = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=40&j=76&info_format=text/plain");
+        var hit = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=41&j=76&info_format=text/plain");
+
+        Assert.Equal(HttpStatusCode.OK, miss.StatusCode);
+        Assert.DoesNotContain("Amsterdam", await miss.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, hit.StatusCode);
+        Assert.Contains("Amsterdam", await hit.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task Wms_epsg4326_bbox_is_latitude_first()
     {
         using var factory = Factory();
