@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Unit tests of the Spatial CLI (clients/dotnet/Spatial.Cli, ADR-0052)
+    against a fake gateway: argument parsing, settings resolution, style
+    lowering, endpoint shaping, command dispatch and exit codes — no network.
+    The CLI is quality-gated through this project (it is not part of the
+    solution itself — see tests/architecture solution-membership rule).
+  -->
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\clients\dotnet\Spatial.Cli\Spatial.Cli.csproj" />
+    <ProjectReference Include="..\..\..\clients\dotnet\Spatial.Client\Spatial.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+</Project>

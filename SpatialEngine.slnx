@@ -25,6 +25,7 @@
     <Project Path="tests/unit/Spatial.Interop.Esri.Tests/Spatial.Interop.Esri.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Ingest.Tests/Spatial.Interop.Ingest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Client.Tests/Spatial.Client.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Cli.Tests/Spatial.Cli.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.Demo.Tests/Spatial.Provider.Demo.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.Memory.Tests/Spatial.Provider.Memory.Tests.csproj" />
