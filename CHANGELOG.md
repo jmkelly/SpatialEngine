@@ -187,6 +187,14 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **WMS GetFeatureInfo missed the feature under the click**: the search was
+  widened by only half a pixel, so clicking anywhere inside a rendered point
+  marker (but not within half a pixel of its coordinate) returned an empty
+  `FeatureCollection` and clients such as QGIS reported "no feature at the
+  location". The tolerance now includes the layer's persisted marker radius
+  (plus its stroke and the clicked pixel), so a click inside the drawn symbol
+  identifies the point feature.
+
 - **Composer crashed when served over plain HTTP**: adding an existing
   service (or any composer layer) called `crypto.randomUUID`, which browsers
   only expose in secure contexts, so on a LAN HTTP origin it threw
