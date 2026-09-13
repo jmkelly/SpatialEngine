@@ -109,7 +109,7 @@ public sealed class SymbolSceneBuilderTests
         new(new SymbolOptions(
             template, [], 16, new StyleColor(0, 0, 0), StyleColor.Transparent, 0, SymbolAnchor.Center, 0, 0, 2, false, null, 1, false));
 
-    private static LayerFeatures Features(params IFeature[] features) => new(4326, "geometry", features);
+    private static LayerFeatures Features(params IFeature[] features) => new(4326, "geometry", features, new Envelope(-180, -90, 180, 90));
 
     private static Feature SymbolFeature(string label, double x, double y) =>
         new(new FeatureId(label), Schema, Base(AttributeValue.FromString(label), GeometryFactory.CreatePoint(x, y)));

@@ -32,6 +32,54 @@ internal static class GeometryPipeline
         return transforms.Transform(ring, from, to, cancellationToken).Envelope ?? bounds;
     }
 
+    /// <summary>
+    /// Places a source-CRS geometry into the viewport CRS. When the CRSs
+    /// differ the geometry is first clipped to the source-CRS image of the
+    /// viewport, so geometry reaching beyond the target projection's valid
+    /// area (the poles in Web Mercator) is bounded before it is reprojected.
+    /// </summary>
+    public static IGeometry Place(
+        IGeometry geometry, LayerFeatures features, RasterViewport viewport,
+        ICoordinateTransforms transforms, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        var source = FormattableString.Invariant($"EPSG:{features.Srid}");
+        if (string.Equals(source, viewport.Crs, StringComparison.OrdinalIgnoreCase))
+        {
+            return geometry;
+        }
+
+        var bounded = ClipToBounds(geometry, features.SourceBounds, operations, cancellationToken);
+        return Project(bounded, features.Srid, viewport.Crs, transforms, cancellationToken);
+    }
+
+    /// <summary>
+    /// Clips a geometry to <paramref name="bounds"/> when it reaches beyond
+    /// them; a geometry already inside the bounds (or without an envelope) is
+    /// returned unchanged, so the common case pays nothing.
+    /// </summary>
+    public static IGeometry ClipToBounds(
+        IGeometry geometry, Envelope bounds, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        if (bounds.IsEmpty || geometry.Envelope is not { } envelope || Contains(bounds, envelope))
+        {
+            return geometry;
+        }
+
+        var clip = GeometryFactory.CreatePolygon(
+        [
+            new Coordinate(bounds.MinX, bounds.MinY),
+            new Coordinate(bounds.MaxX, bounds.MinY),
+            new Coordinate(bounds.MaxX, bounds.MaxY),
+            new Coordinate(bounds.MinX, bounds.MaxY),
+            new Coordinate(bounds.MinX, bounds.MinY),
+        ]);
+        return operations.Intersection(geometry, clip, cancellationToken);
+    }
+
+    private static bool Contains(Envelope outer, Envelope inner) =>
+        inner.MinX >= outer.MinX && inner.MaxX <= outer.MaxX
+        && inner.MinY >= outer.MinY && inner.MaxY <= outer.MaxY;
+
     /// <summary>Places a source-CRS geometry into the viewport CRS (a no-op when they already agree).</summary>
     public static IGeometry Project(
         IGeometry geometry, int sourceSrid, string target, ICoordinateTransforms transforms, CancellationToken cancellationToken)

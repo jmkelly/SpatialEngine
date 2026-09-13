@@ -62,4 +62,26 @@ public sealed class WmsCapabilitiesTests
         Assert.Equal("52.3676", epsg4326.Attribute("minx")!.Value);
         Assert.Equal("4.9041", epsg4326.Attribute("miny")!.Value);
     }
+
+    [Fact]
+    public async Task Capabilities_clamp_the_mercator_bounding_box_to_the_projection_domain()
+    {
+        // A point at the south pole is a valid WGS84 extent but outside Web
+        // Mercator; the advertised mercator box must stay inside the domain.
+        var map = OgcFixtures.Map(MapService.Wms);
+        var (services, store) = OgcFixtures.Build(map);
+        store.Seed(OgcFixtures.City("Polar", 0, 0, -90));
+        var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
+
+        var xml = await WmsCapabilities.BuildAsync(
+            map, [layer], "http://localhost/ogc/world/wms", services, new OgcOptions(), CancellationToken.None);
+        var document = XDocument.Parse(xml);
+
+        var mercator = document.Descendants(Wms + "BoundingBox")
+            .Single(element => element.Attribute("CRS")?.Value == "EPSG:3857");
+        Assert.Equal("-85.05112877980659", mercator.Attribute("miny")!.Value);
+        Assert.Equal("-85.05112877980659", mercator.Attribute("maxy")!.Value);
+        var geographic = document.Descendants(Wms + "EX_GeographicBoundingBox").Single();
+        Assert.Equal("-90", geographic.Element(Wms + "southBoundLatitude")!.Value);
+    }
 }

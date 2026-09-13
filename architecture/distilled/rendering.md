@@ -47,7 +47,9 @@ Pipeline stages (all in `Spatial.Rendering.Skia` unless noted):
 1. **Compile** — `StyleCompiler` → `CompiledStyle` (cached by style hash).
 2. **Read** — `FeaturePipeline` describes the dataset and pushes the viewport
    bbox into `IFeatureStore.QueryAsync`, once per dataset.
-3. **Place** — `GeometryPipeline.Project` transforms source SRID → viewport CRS.
+3. **Place** — `GeometryPipeline.Place` clips source geometry to the
+   viewport's source-CRS image (so a dataset reaching the poles stays inside
+   Web Mercator's domain) and transforms source SRID → viewport CRS.
 4. **Shape** — `GeometryPipeline.SimplifyAndCull` simplifies in screen units
    (`unitsPerPixel / 2`) and drops geometry outside the viewport.
 5. **Rasterize** — `SkiaVectorRasterizer` clears the background and draws the
@@ -137,6 +139,9 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 - Tiles: Web-Mercator LOD math, cache get/set/eviction/invalidation, the tile
   version fingerprint, `TileService` order/batch-cap/cancellation, and the
   HTTP tile routes (hit/miss, formats, schemes, batch).
+- Global data: a dataset whose extent reaches a pole is clipped to the
+  viewport before reprojection, so Web-Mercator tiles and WMS capabilities
+  never ask the transform service to project ±90° (`PolarRenderTests`).
 - Labels/symbols: property resolution (including typed rejection of
   unsupported keys and unknown fonts), text-anchor/offset placement, halo,
   collision (first wins, `*-allow-overlap` places all), byte-identical

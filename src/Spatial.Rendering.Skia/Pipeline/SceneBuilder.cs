@@ -86,7 +86,7 @@ internal sealed class SceneBuilder
                 continue;
             }
 
-            var placed = GeometryPipeline.Project(geometry, features.Srid, viewport.Crs, _transforms, cancellationToken);
+            var placed = GeometryPipeline.Place(geometry, features, viewport, _transforms, _operations, cancellationToken);
             if (GeometryPipeline.SimplifyAndCull(placed, tolerance, viewport.Bounds, _operations, cancellationToken) is { } shaped)
             {
                 geometries.Add(shaped);

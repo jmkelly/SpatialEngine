@@ -17,6 +17,7 @@ Implements ADR-0033 (replaces ADR-0030/0031 HTTP/workbench surfaces).
 
 ```
 GET    /                                # identity doc (index.html when workbench served)
+GET    /routes                          # HTML index of every route and published service
 GET    /health/live | /health/ready     # ready includes the configured stores
 POST   /api/geometry/buffer             # {geometry, distance, quadrantSegments?} -> {geometry}
 POST   /api/geometry/intersection       # {left, right} -> {geometry}

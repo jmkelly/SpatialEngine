@@ -42,6 +42,9 @@ internal static class OgcGeometry
         }
     }
 
+    /// <summary>Web Mercator's maximum latitude: the projection is undefined at the poles.</summary>
+    public const double WebMercatorLatitudeLimit = 85.05112877980659;
+
     /// <summary>Reprojects an envelope through the transform service; the result's envelope covers the transformed corners.</summary>
     public static Envelope Transform(Envelope envelope, string source, string target, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
@@ -60,6 +63,22 @@ internal static class OgcGeometry
         ]);
         return transforms.Transform(polygon, source, target, cancellationToken).Envelope ?? envelope;
     }
+
+    /// <summary>
+    /// Projects a WGS84 envelope to EPSG:3857, clamping the latitude to Web
+    /// Mercator's valid domain first: a global dataset whose extent reaches a
+    /// pole is a valid WGS84 extent, but the projection is undefined there.
+    /// </summary>
+    public static Envelope ToWebMercator(
+        Envelope wgs84, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+        Transform(ClampLatitude(wgs84, WebMercatorLatitudeLimit), "EPSG:4326", "EPSG:3857", transforms, cancellationToken);
+
+    private static Envelope ClampLatitude(Envelope envelope, double limit) =>
+        new(
+            envelope.MinX,
+            Math.Clamp(envelope.MinY, -limit, limit),
+            envelope.MaxX,
+            Math.Clamp(envelope.MaxY, -limit, limit));
 
     /// <summary>The union of every geometry envelope in a dataset, or <c>null</c> when it has no geometry.</summary>
     public static async Task<Envelope?> ExtentAsync(IFeatureStore store, string dataset, CancellationToken cancellationToken)

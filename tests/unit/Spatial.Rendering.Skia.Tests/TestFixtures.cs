@@ -38,11 +38,16 @@ internal sealed class FakeOperations : IGeometryOperations
 {
     public int SimplifyCalls { get; private set; }
 
+    public int IntersectionCalls { get; private set; }
+
     public IGeometry Buffer(IGeometry geometry, double distance, int quadrantSegments = 8, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
-    public IGeometry Intersection(IGeometry left, IGeometry right, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
+    public IGeometry Intersection(IGeometry left, IGeometry right, CancellationToken cancellationToken = default)
+    {
+        IntersectionCalls++;
+        return left;
+    }
 
     public bool Validate(IGeometry geometry, CancellationToken cancellationToken = default) => true;
 

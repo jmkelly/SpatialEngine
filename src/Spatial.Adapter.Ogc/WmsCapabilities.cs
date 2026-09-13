@@ -61,7 +61,7 @@ internal static class WmsCapabilities
         {
             var source = $"EPSG:{layer.Description.Srid.ToString(CultureInfo.InvariantCulture)}";
             var wgs84 = OgcGeometry.Transform(bounds, source, "EPSG:4326", services.Transforms, cancellationToken);
-            var mercator = OgcGeometry.Transform(bounds, source, "EPSG:3857", services.Transforms, cancellationToken);
+            var mercator = OgcGeometry.ToWebMercator(wgs84, services.Transforms, cancellationToken);
             element.Add(GeographicBoundingBox(wgs84));
             element.Add(BoundingBox("EPSG:4326", wgs84, yFirst: true));
             element.Add(BoundingBox("CRS:84", wgs84, yFirst: false));

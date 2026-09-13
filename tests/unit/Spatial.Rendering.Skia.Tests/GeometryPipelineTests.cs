@@ -1,4 +1,5 @@
 using Spatial.Core.Geometry;
+using Spatial.PluginSdk;
 using Spatial.Rendering.Skia.Pipeline;
 
 namespace Spatial.Rendering.Skia.Tests;
@@ -52,6 +53,89 @@ public sealed class GeometryPipelineTests
         Assert.Equal("EPSG:3857", transforms.LastTarget);
         Assert.Equal(new Coordinate(1, 1), ((IPoint)result).Coordinate);
     }
+
+    [Fact]
+    public void Place_SkipsClipAndTransformWhenCrsAgree()
+    {
+        var point = GeometryFactory.CreatePoint(1, 2);
+        var operations = new FakeOperations();
+        var features = new LayerFeatures(4326, "geometry", [], new Envelope(-180, -90, 180, 90));
+        var viewport = new RasterViewport(new Envelope(-10, -10, 10, 10), 100, 100, "EPSG:4326");
+
+        var result = GeometryPipeline.Place(point, features, viewport, new OffsetTransforms(100, 100), operations, CancellationToken.None);
+
+        Assert.Same(point, result);
+        Assert.Equal(0, operations.IntersectionCalls);
+    }
+
+    [Fact]
+    public void Place_DoesNotClipGeometryInsideTheSourceBounds()
+    {
+        var operations = new FakeOperations();
+        var features = new LayerFeatures(4326, "geometry", [], new Envelope(-180, -85.0511, 180, 85.0511));
+        var viewport = new RasterViewport(new Envelope(-20_037_508, -20_037_508, 20_037_508, 20_037_508), 256, 256, "EPSG:3857");
+
+        _ = GeometryPipeline.Place(GeometryFactory.CreatePoint(0, 52), features, viewport, new IdentityTransforms(), operations, CancellationToken.None);
+
+        Assert.Equal(0, operations.IntersectionCalls);
+    }
+
+    [Fact]
+    public void Place_ClipsGeometryThatReachesBeyondTheSourceBoundsBeforeTransforming()
+    {
+        var operations = new FakeOperations();
+        var features = new LayerFeatures(4326, "geometry", [], new Envelope(-180, -85.0511, 180, 85.0511));
+        var viewport = new RasterViewport(new Envelope(-20_037_508, -20_037_508, 20_037_508, 20_037_508), 256, 256, "EPSG:3857");
+
+        var result = GeometryPipeline.Place(PolarBand(), features, viewport, new IdentityTransforms(), operations, CancellationToken.None);
+
+        Assert.Equal(1, operations.IntersectionCalls);
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public void ClipToBounds_LeavesGeometryInsideTheBounds()
+    {
+        var operations = new FakeOperations();
+
+        var result = GeometryPipeline.ClipToBounds(
+            GeometryFactory.CreatePoint(0, 0), new Envelope(-10, -10, 10, 10), operations, CancellationToken.None);
+
+        Assert.Equal(0, operations.IntersectionCalls);
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public void ClipToBounds_ReturnsGeometryWithoutEnvelope()
+    {
+        var empty = GeometryFactory.CreateEmptyPoint();
+        var operations = new FakeOperations();
+
+        var result = GeometryPipeline.ClipToBounds(empty, new Envelope(-10, -10, 10, 10), operations, CancellationToken.None);
+
+        Assert.Same(empty, result);
+        Assert.Equal(0, operations.IntersectionCalls);
+    }
+
+    [Fact]
+    public void ClipToBounds_ClipsGeometryThatExceedsTheBounds()
+    {
+        var operations = new FakeOperations();
+
+        var result = GeometryPipeline.ClipToBounds(PolarBand(), new Envelope(-180, -85.0511, 180, 85.0511), operations, CancellationToken.None);
+
+        Assert.Equal(1, operations.IntersectionCalls);
+        Assert.NotNull(result);
+    }
+
+    private static Polygon PolarBand() => GeometryFactory.CreatePolygon(
+    [
+        new Coordinate(-180, -90),
+        new Coordinate(180, -90),
+        new Coordinate(180, -60),
+        new Coordinate(-180, -60),
+        new Coordinate(-180, -90),
+    ]);
 
     [Fact]
     public void SimplifyAndCull_DropsGeometryOutsideTheViewport()

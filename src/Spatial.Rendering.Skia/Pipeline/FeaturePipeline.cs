@@ -1,10 +1,15 @@
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.PluginSdk;
 
 namespace Spatial.Rendering.Skia.Pipeline;
 
-/// <summary>Resolved source data for one dataset: source SRID, geometry column and features.</summary>
-internal sealed record LayerFeatures(int Srid, string GeometryColumn, IReadOnlyList<IFeature> Features);
+/// <summary>
+/// Resolved source data for one dataset: source SRID, geometry column and
+/// features, plus the source-CRS image of the viewport used to clip geometry
+/// before reprojection.
+/// </summary>
+internal sealed record LayerFeatures(int Srid, string GeometryColumn, IReadOnlyList<IFeature> Features, Envelope SourceBounds);
 
 /// <summary>
 /// The read stage of the render pipeline: describe the dataset to learn its
@@ -30,6 +35,6 @@ internal sealed class FeaturePipeline
             features.AddRange(batch.Features);
         }
 
-        return new LayerFeatures(description.Srid, description.GeometryColumn, features);
+        return new LayerFeatures(description.Srid, description.GeometryColumn, features, sourceBounds);
     }
 }
