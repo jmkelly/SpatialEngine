@@ -205,4 +205,22 @@ public sealed class EsriFeatureQueryTests
 
         Assert.Equal(CoordinateReference.Epsg(3857), query.Geometry!.CoordinateReference);
     }
+
+    [Fact]
+    public async Task Paging_limit_parameters_are_parsed()
+    {
+        var query = await ParseAsync(("returnExceededLimitFeatures", "true"), ("maxRecordCountFactor", "3"));
+
+        Assert.True(query.ReturnExceededLimitFeatures);
+        Assert.Equal(3, query.MaxRecordCountFactor);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("abc")]
+    public async Task Bad_max_record_count_factors_are_rejected(string value)
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("maxRecordCountFactor", value)));
+    }
 }

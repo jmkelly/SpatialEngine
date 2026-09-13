@@ -25,7 +25,9 @@ internal sealed record EsriFeatureQuery(
     int? ResultRecordCount,
     IReadOnlyList<EsriOutStatistic>? OutStatistics,
     IReadOnlyList<string>? GroupByFields,
-    EsriFilterClause? Having)
+    EsriFilterClause? Having,
+    bool ReturnExceededLimitFeatures,
+    int? MaxRecordCountFactor)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
@@ -56,6 +58,7 @@ internal sealed record EsriFeatureQuery(
 
         ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null);
         var inSr = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
+        var maxRecordCountFactor = ParseMaxRecordCountFactor(parameters.Get("maxRecordCountFactor"));
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
@@ -73,7 +76,9 @@ internal sealed record EsriFeatureQuery(
             ParseNonNegativeInt(parameters.Get("resultRecordCount"), "resultRecordCount"),
             outStatistics,
             groupByFields,
-            having);
+            having,
+            parameters.GetBool("returnExceededLimitFeatures", false),
+            maxRecordCountFactor);
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -325,6 +330,21 @@ internal sealed record EsriFeatureQuery(
         }
 
         return clause;
+    }
+
+    private static int? ParseMaxRecordCountFactor(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var factor) || factor < 1)
+        {
+            throw EsriInteropException.Invalid($"'maxRecordCountFactor' must be a positive integer, got '{value}'.");
+        }
+
+        return factor;
     }
 
     private static void RejectUnsupported(EsriRequestParameters parameters)

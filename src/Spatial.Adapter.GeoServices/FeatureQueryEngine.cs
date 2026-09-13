@@ -293,9 +293,21 @@ internal static class FeatureQueryEngine
     private static PageResult Page(List<MatchedFeature> matches, EsriFeatureQuery query)
     {
         var offset = Math.Min(query.ResultOffset ?? 0, matches.Count);
-        var count = query.ResultRecordCount ?? EsriLayerModel.MaxRecordCount;
+        var count = EffectivePageSize(query);
         var items = matches.Skip(offset).Take(count).ToArray();
         return new PageResult(items, offset + items.Length < matches.Count);
+    }
+
+    /// <summary>
+    /// The effective page cap: <c>maxRecordCount × maxRecordCountFactor</c>
+    /// (T-021). <c>returnExceededLimitFeatures</c> is accepted so the REST JS
+    /// <c>queryAllFeatures</c> loop runs unmodified; the
+    /// <c>exceededTransferLimit</c> flag stays correct either way.
+    /// </summary>
+    internal static int EffectivePageSize(EsriFeatureQuery query)
+    {
+        var cap = EsriLayerModel.MaxRecordCount * (query.MaxRecordCountFactor ?? 1);
+        return Math.Min(query.ResultRecordCount ?? cap, cap);
     }
 
     private static MatchedFeature TransformFeature(
@@ -419,7 +431,7 @@ internal static class FeatureQueryEngine
         }
 
         var offset = Math.Min(query.ResultOffset ?? 0, rows.Count);
-        var count = query.ResultRecordCount ?? EsriLayerModel.MaxRecordCount;
+        var count = EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
         return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, offset + page.Length < rows.Count);
     }
@@ -518,7 +530,7 @@ internal static class FeatureQueryEngine
 
         rows = ApplyStatisticOrder(rows, groupFields, statistics, query.OrderByFields, dataset);
         var offset = Math.Min(query.ResultOffset ?? 0, rows.Count);
-        var count = query.ResultRecordCount ?? EsriLayerModel.MaxRecordCount;
+        var count = EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
         return WriteStatistics(dataset, groupFields, statistics, statInputs, page, offset + page.Length < rows.Count);
     }
