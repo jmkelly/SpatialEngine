@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
 using Spatial.Host.Tiling;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
@@ -26,17 +27,11 @@ internal static class MapTileEndpoints
 
     private static async Task<IResult> Tile(
         string name,
-        [AsParameters] TileAddress address,
+        [AsParameters] MapTileParameters parameters,
         HttpContext context,
-        IServiceProvider services,
         IMapRegistry registry,
         TileService tiles,
-        RenderingOptions options,
-        int quality = 90,
-        string? background = null,
-        bool transparent = true,
-        double scale = 1.0,
-        string? scheme = null)
+        RenderingOptions options)
     {
         try
         {
@@ -46,14 +41,14 @@ internal static class MapTileEndpoints
                 throw SpatialException.Missing($"Map '{map.Name}' does not expose a Tiles service.");
             }
 
-            var request = Request(map, address.Format, quality, background, transparent, scale, scheme);
+            var request = Request(map, parameters);
             RenderEndpoints.ValidateFormat(request.Format, options);
-            var tileScheme = tiles.Resolve(request.Scheme);
+            var scheme = tiles.Resolve(request.Scheme);
             var result = await tiles.RenderAsync(
-                TileEndpoints.ToSpec(request, services),
+                TileEndpoints.ToSpec(request, context.RequestServices),
                 TileEndpoints.Fingerprint(request),
-                new TileCoordinate(address.Z, address.X, address.Y),
-                tileScheme,
+                new TileCoordinate(parameters.Z, parameters.X, parameters.Y),
+                scheme,
                 context.RequestAborted);
             TileEndpoints.WriteHeaders(context, result);
             return Results.Bytes(result.Image.Content, result.Image.MediaType);
@@ -64,19 +59,54 @@ internal static class MapTileEndpoints
         }
     }
 
-    private static TileRenderRequest Request(
-        Map map, string format, int quality, string? background, bool transparent, double scale, string? scheme)
+    private static TileRenderRequest Request(Map map, MapTileParameters parameters)
     {
         var layers = map.Layers.Where(layer => layer.Kind == MapLayerKind.Feature).ToList();
         var style = MapStyle.Compose(map.Name, layers);
         return new TileRenderRequest(
             JsonDocument.Parse(style).RootElement.Clone(),
             [.. layers.Select(layer => new RenderLayerDto(layer.Dataset, layer.Store ?? map.Store))],
-            Scheme: scheme,
-            Format: TileEndpoints.ParseFormat(format),
-            Quality: quality,
-            Background: background,
-            Transparent: transparent,
-            Scale: scale);
+            Scheme: parameters.Scheme,
+            Format: TileEndpoints.ParseFormat(parameters.Format),
+            Quality: parameters.Quality ?? 90,
+            Background: parameters.Background,
+            Transparent: parameters.Transparent ?? true,
+            Scale: parameters.Scale ?? 1.0);
     }
+}
+
+/// <summary>
+/// The map tile address and options bound from the route and query
+/// (<c>[AsParameters]</c>), so the handler's dependency list stays short
+/// (ADR-0040). The path format is authoritative; the rest mirror the other
+/// tile routes.
+/// </summary>
+internal sealed class MapTileParameters
+{
+    [FromRoute]
+    public int Z { get; set; }
+
+    [FromRoute]
+    public int X { get; set; }
+
+    [FromRoute]
+    public int Y { get; set; }
+
+    [FromRoute]
+    public string Format { get; set; } = "png";
+
+    [FromQuery]
+    public int? Quality { get; set; }
+
+    [FromQuery]
+    public string? Background { get; set; }
+
+    [FromQuery]
+    public bool? Transparent { get; set; }
+
+    [FromQuery]
+    public double? Scale { get; set; }
+
+    [FromQuery]
+    public string? Scheme { get; set; }
 }

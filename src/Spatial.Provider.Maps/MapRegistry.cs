@@ -235,32 +235,39 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
         var loaded = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
         foreach (var legacy in file?.Publications ?? [])
         {
-            if (legacy.Layers.Count == 0)
+            if (ProjectLegacy(legacy) is { } map)
             {
-                continue;
+                loaded[map.Name] = map;
             }
-
-            var service = legacy.Kind?.ToLowerInvariant() switch
-            {
-                "feature" => MapService.Feature,
-                "map" => MapService.Map,
-                "image" => MapService.Image,
-                _ => (MapService?)null,
-            };
-            if (service is null)
-            {
-                continue;
-            }
-
-            var layers = legacy.Layers
-                .Select(layer => new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style))
-                .ToList();
-            var map = new Map(legacy.Name, legacy.Store, layers, [service.Value], legacy.Description, legacy.Copyright);
-            loaded[map.Name] = MapValidator.Normalize(map, nextLayerId: 0);
         }
 
         return loaded;
     }
+
+    /// <summary>Projects one legacy record onto a map, or null when it carries no servable layer or has an unknown kind.</summary>
+    private static Map? ProjectLegacy(LegacyPublication legacy)
+    {
+        if (legacy.Layers.Count == 0 || LegacyService(legacy.Kind) is not { } service)
+        {
+            return null;
+        }
+
+        var layerKind = service == MapService.Image ? MapLayerKind.Image : MapLayerKind.Feature;
+        var layers = legacy.Layers
+            .Select(layer => new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, layerKind))
+            .ToList();
+        var map = new Map(legacy.Name, legacy.Store, layers, [service], legacy.Description, legacy.Copyright);
+        return MapValidator.Normalize(map, nextLayerId: 0);
+    }
+
+    /// <summary>The service a legacy <c>kind</c> name maps to, or null when it is unknown.</summary>
+    private static MapService? LegacyService(string? kind) => kind?.ToLowerInvariant() switch
+    {
+        "feature" => MapService.Feature,
+        "map" => MapService.Map,
+        "image" => MapService.Image,
+        _ => null,
+    };
 
     private async Task PersistAsync(IReadOnlyDictionary<string, Map> runtime, CancellationToken cancellationToken)
     {
@@ -310,31 +317,26 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
 
     private static Map BuildDeclared(DeclaredMapOptions declared)
     {
-        var services = new List<MapService>();
-        foreach (var name in declared.Services)
-        {
-            if (!Enum.TryParse<MapService>(name, ignoreCase: true, out var service) || !Enum.IsDefined(service))
-            {
-                throw SpatialException.BadArguments(
-                    $"Declared map '{declared.Name}' has unknown service '{name}'.");
-            }
-
-            services.Add(service);
-        }
-
-        var layers = declared.Layers.Select(layer =>
-        {
-            if (!Enum.TryParse<MapLayerKind>(layer.Kind, ignoreCase: true, out var kind) || !Enum.IsDefined(kind))
-            {
-                throw SpatialException.BadArguments(
-                    $"Declared map '{declared.Name}' layer '{layer.Dataset}' has unknown kind '{layer.Kind}'.");
-            }
-
-            return new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, kind, layer.Store);
-        }).ToArray();
-
+        var services = declared.Services.Select(name => ParseService(declared.Name, name)).ToList();
+        var layers = declared.Layers.Select(layer => ParseLayer(declared.Name, layer)).ToArray();
         var map = new Map(declared.Name, declared.Store, layers, services, declared.Description, declared.Copyright);
         return declared.Layers.Count == 0 ? map : MapValidator.Normalize(map, nextLayerId: 0);
+    }
+
+    private static MapService ParseService(string mapName, string name) =>
+        Enum.TryParse<MapService>(name, ignoreCase: true, out var service) && Enum.IsDefined(service)
+            ? service
+            : throw SpatialException.BadArguments($"Declared map '{mapName}' has unknown service '{name}'.");
+
+    private static MapLayer ParseLayer(string mapName, DeclaredLayerOptions layer)
+    {
+        if (!Enum.TryParse<MapLayerKind>(layer.Kind, ignoreCase: true, out var kind) || !Enum.IsDefined(kind))
+        {
+            throw SpatialException.BadArguments(
+                $"Declared map '{mapName}' layer '{layer.Dataset}' has unknown kind '{layer.Kind}'.");
+        }
+
+        return new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, kind, layer.Store);
     }
 }
 

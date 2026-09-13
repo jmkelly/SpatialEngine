@@ -9,7 +9,7 @@ import type {
   FeatureWriteResponse,
   GeometryResponse,
   Map,
-  MapRenderRequest,
+  MapRenderRequestDto,
   RasterFormat,
   RenderCapabilitiesResponse,
   RenderRequest,
@@ -221,7 +221,7 @@ export class SpatialClient {
   }
 
   /** Renders a map's datasets using its persisted layer styles (ADR-0047/ADR-0052). */
-  async renderMap(name: string, request: MapRenderRequest, signal?: AbortSignal): Promise<RasterImage> {
+  async renderMap(name: string, request: MapRenderRequestDto, signal?: AbortSignal): Promise<RasterImage> {
     return this.postForImage(`/api/maps/${encodeURIComponent(name)}/render`, request, signal);
   }
 

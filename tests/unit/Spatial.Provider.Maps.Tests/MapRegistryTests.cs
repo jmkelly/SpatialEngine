@@ -317,4 +317,110 @@ public sealed class MapRegistryTests : IDisposable
 
         Assert.Contains("\"version\": 1", await File.ReadAllTextAsync(FilePath));
     }
+
+    [Theory]
+    [InlineData("feature", MapService.Feature)]
+    [InlineData("map", MapService.Map)]
+    [InlineData("image", MapService.Image)]
+    public async Task A_legacy_kind_maps_to_its_service(string kind, MapService expected)
+    {
+        Directory.CreateDirectory(_directory);
+        var legacyPath = System.IO.Path.Combine(_directory, "publications.json");
+        var json = "{\"version\":1,\"publications\":[{\"name\":\"legacy\",\"kind\":\"" + kind + "\",\"store\":\"demo\",\"layers\":[{\"dataset\":\"raster.ortho\",\"layerId\":0}]}]}";
+        await File.WriteAllTextAsync(legacyPath, json);
+
+        using var registry = Registry(new MapsOptions { Path = FilePath, LegacyPath = legacyPath });
+        var migrated = await registry.GetAsync("legacy");
+
+        Assert.Equal([expected], migrated.Services);
+        var expectedKind = expected == MapService.Image ? MapLayerKind.Image : MapLayerKind.Feature;
+        Assert.Equal(expectedKind, migrated.Layers[0].Kind);
+    }
+
+    [Fact]
+    public async Task Legacy_entries_without_layers_or_unknown_kinds_are_skipped()
+    {
+        Directory.CreateDirectory(_directory);
+        var legacyPath = System.IO.Path.Combine(_directory, "publications.json");
+        await File.WriteAllTextAsync(legacyPath, """
+            {"version":1,"publications":[
+              {"name":"empty","kind":"feature","store":"demo","layers":[]},
+              {"name":"weird","kind":"table","store":"demo","layers":[{"dataset":"demo.points","layerId":0}]},
+              {"name":"kept","kind":"feature","store":"demo","layers":[{"dataset":"demo.points","layerId":0}]}
+            ]}
+            """);
+
+        using var registry = Registry(new MapsOptions { Path = FilePath, LegacyPath = legacyPath });
+
+        Assert.Equal(["kept"], (await registry.ListAsync()).Select(map => map.Name));
+    }
+
+    [Fact]
+    public async Task A_corrupt_legacy_file_is_a_store_unavailable_diagnostic()
+    {
+        Directory.CreateDirectory(_directory);
+        var legacyPath = System.IO.Path.Combine(_directory, "publications.json");
+        await File.WriteAllTextAsync(legacyPath, "{ not json");
+        using var registry = Registry(new MapsOptions { Path = FilePath, LegacyPath = legacyPath });
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => registry.ListAsync());
+
+        Assert.Equal(SpatialException.StoreUnavailable, failure.Code);
+        Assert.Contains("legacy publication file", failure.Message);
+    }
+
+    [Fact]
+    public async Task A_declared_map_can_carry_an_image_layer_and_a_service_set()
+    {
+        var options = new MapsOptions
+        {
+            Path = FilePath,
+            Declared =
+            [
+                new DeclaredMapOptions
+                {
+                    Name = "imagery",
+                    Store = "raster",
+                    Services = [nameof(MapService.Image), nameof(MapService.Wms)],
+                    Layers =
+                    [
+                        new DeclaredLayerOptions { Dataset = "ortho", LayerId = 0, Kind = nameof(MapLayerKind.Image) },
+                        new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 1, Kind = nameof(MapLayerKind.Feature) },
+                    ],
+                },
+            ],
+        };
+
+        using var registry = Registry(options);
+        var map = await registry.GetAsync("imagery");
+
+        Assert.Equal([MapService.Image, MapService.Wms], map.Services);
+        Assert.Equal([MapLayerKind.Image, MapLayerKind.Feature], map.Layers.Select(layer => layer.Kind));
+    }
+
+    [Fact]
+    public void A_declared_map_with_an_unknown_service_is_rejected()
+    {
+        var options = new MapsOptions
+        {
+            Path = FilePath,
+            Declared = [new DeclaredMapOptions { Name = "bad", Store = "demo", Services = ["teleport"], Layers = [new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 0 }] }],
+        };
+
+        var failure = Assert.Throws<SpatialException>(() => Registry(options));
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    [Fact]
+    public void A_declared_map_with_an_unknown_layer_kind_is_rejected()
+    {
+        var options = new MapsOptions
+        {
+            Path = FilePath,
+            Declared = [new DeclaredMapOptions { Name = "bad", Store = "demo", Services = [nameof(MapService.Feature)], Layers = [new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 0, Kind = "hologram" }] }],
+        };
+
+        var failure = Assert.Throws<SpatialException>(() => Registry(options));
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
 }

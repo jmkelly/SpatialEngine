@@ -149,7 +149,7 @@ export interface MapLayer {
 
 export type MapLayerKind = "feature" | "image";
 
-export interface MapRenderRequest {
+export interface MapRenderRequestDto {
   viewport: ViewportDto;
   imagery?: null | RenderImageryDto[];
   format?: RasterFormat;
