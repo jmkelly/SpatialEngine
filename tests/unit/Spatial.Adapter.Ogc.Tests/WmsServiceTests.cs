@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Adapter.Ogc.Tests;
 
@@ -9,6 +12,104 @@ namespace Spatial.Adapter.Ogc.Tests;
 /// </summary>
 public sealed class WmsServiceTests
 {
+    [Theory]
+    [InlineData("text/html", "text/html", "<table>")]
+    [InlineData("text/xml", "text/xml", "<FeatureInfoResponse")]
+    [InlineData("application/vnd.ogc.gml", "application/vnd.ogc.gml", "gml:Point")]
+    public async Task Get_feature_info_serves_the_documented_formats(string infoFormat, string mediaType, string marker)
+    {
+        var map = OgcFixtures.Map();
+        var (services, store) = OgcFixtures.Build(map);
+        store.Seed(
+            OgcFixtures.City("Amsterdam", 900_000, 5, 55),
+            Road("road", 4.9, 55, 5.1, 55),
+            Block("block", 4.9, 54.9, 5.1, 55.1));
+
+        var (contentType, body) = await IdentifyAsync(map, services, infoFormat, i: null, j: null);
+
+        Assert.Equal(mediaType, contentType);
+        Assert.Contains(marker, body);
+        Assert.Contains("Amsterdam", body);
+    }
+
+    [Fact]
+    public async Task Get_feature_info_gml_covers_every_geometry_family()
+    {
+        var map = OgcFixtures.Map();
+        var (services, store) = OgcFixtures.Build(map);
+        store.Seed(
+            OgcFixtures.City("Amsterdam", 900_000, 5, 55),
+            Road("road", 4.9, 55, 5.1, 55),
+            Block("block", 4.9, 54.9, 5.1, 55.1));
+
+        var (_, body) = await IdentifyAsync(map, services, "application/vnd.ogc.gml", i: null, j: null);
+
+        Assert.Contains("gml:Point", body);
+        Assert.Contains("gml:LineString", body);
+        Assert.Contains("gml:Polygon", body);
+    }
+
+    [Fact]
+    public async Task Get_feature_info_rejects_an_unknown_format_with_invalid_format()
+    {
+        var map = OgcFixtures.Map();
+        var (services, _) = OgcFixtures.Build(map);
+
+        var exception = await Assert.ThrowsAsync<OgcServiceException>(
+            () => IdentifyAsync(map, services, "UnknownFormat", i: null, j: null));
+
+        Assert.Equal("InvalidFormat", exception.Code);
+    }
+
+    private static Feature Road(string name, double x1, double y1, double x2, double y2) => new(
+        new FeatureId(name),
+        OgcFixtures.Schema,
+        [
+            AttributeValue.FromString(name),
+            AttributeValue.FromInt64(0),
+            AttributeValue.FromGeometry(GeometryFactory.CreateLineString(
+                [new Coordinate(x1, y1), new Coordinate(x2, y2)], CoordinateReference.Epsg(4326))),
+        ]);
+
+    private static Feature Block(string name, double minX, double minY, double maxX, double maxY) => new(
+        new FeatureId(name),
+        OgcFixtures.Schema,
+        [
+            AttributeValue.FromString(name),
+            AttributeValue.FromInt64(0),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePolygon(
+                [
+                    new Coordinate(minX, minY),
+                    new Coordinate(maxX, minY),
+                    new Coordinate(maxX, maxY),
+                    new Coordinate(minX, maxY),
+                    new Coordinate(minX, minY),
+                ],
+                CoordinateReference.Epsg(4326))),
+        ]);
+
+    private static async Task<(string? ContentType, string Body)> IdentifyAsync(
+        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string infoFormat, int? i, int? j)
+    {
+        var query = "?service=WMS&request=GetFeatureInfo&query_layers=Cities&crs=CRS:84"
+            + "&bbox=0,50,10,60&width=100&height=100"
+            + (i is null ? string.Empty : $"&i={i}&j={j}")
+            + $"&info_format={Uri.EscapeDataString(infoFormat)}";
+        var request = new DefaultHttpContext();
+        request.Request.QueryString = new QueryString(query);
+        var parameters = await OgcParameters.ReadAsync(request, CancellationToken.None);
+        var response = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider(),
+        };
+        response.Response.Body = new MemoryStream();
+        var result = await WmsService.HandleAsync(map.Name, parameters, services, new OgcOptions(), request, CancellationToken.None);
+        await result.ExecuteAsync(response);
+        response.Response.Body.Seek(0, SeekOrigin.Begin);
+        var body = await new StreamReader(response.Response.Body).ReadToEndAsync();
+        return (response.Response.ContentType?.Split(';')[0].Trim(), body);
+    }
+
     [Fact]
     public void Format_value_covers_every_attribute_kind()
     {

@@ -38,4 +38,8 @@ internal sealed class OgcServiceException : Exception
     /// <summary>The requested operation is known but unsupported.</summary>
     public static OgcServiceException NotSupported(string message) =>
         new("OperationNotSupported", message, StatusCodes.Status400BadRequest);
+
+    /// <summary>A requested output format the service does not support (WMS <c>InvalidFormat</c>).</summary>
+    public static OgcServiceException InvalidFormat(string message) =>
+        new("InvalidFormat", message, StatusCodes.Status400BadRequest);
 }

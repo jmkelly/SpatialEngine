@@ -42,7 +42,7 @@ DELETE /api/maps/{name}                 # -> {deleted} (admin)
 POST   /api/maps/{name}/render          # persisted layer styles -> image
 GET    /api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}  # map tile (Tiles service)
 GET    /arcgis/rest/services/{name}/ImageServer  # raster layers (Image service)
-GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 (Wms service)
+GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 (Wms service): GetMap PNG/JPEG, GetFeatureInfo text/plain+text/html+text/xml+JSON+GML
 GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service)
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=
                                        # raw/multipart upload -> IngestResult;

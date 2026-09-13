@@ -114,6 +114,37 @@ public sealed class OgcEndpointTests : IDisposable
         Assert.Equal("Amsterdam", feature.GetProperty("properties").GetProperty("name").GetString());
     }
 
+    [Theory]
+    [InlineData("text/html", "text/html")]
+    [InlineData("text/xml", "text/xml")]
+    [InlineData("application/vnd.ogc.gml", "application/vnd.ogc.gml")]
+    public async Task Wms_get_feature_info_serves_each_info_format(string infoFormat, string mediaType)
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format="
+            + Uri.EscapeDataString(infoFormat));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(mediaType, response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("Amsterdam", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Wms_get_feature_info_rejects_an_unknown_info_format()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format=UnknownFormat");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("InvalidFormat", await ReportCodeAsync(response));
+    }
+
     [Fact]
     public async Task Wms_get_feature_info_identifies_a_click_within_the_marker()
     {

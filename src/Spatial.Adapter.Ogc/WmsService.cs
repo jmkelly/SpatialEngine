@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Net;
 using System.Text;
+using System.Xml.Linq;
 using Microsoft.AspNetCore.Http;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
@@ -120,8 +122,11 @@ internal static class WmsService
         {
             null or "text/plain" => Results.Text(TextInfo(matches), "text/plain"),
             "application/json" or "application/geo+json" => Results.Bytes(GeoJson.FeatureCollection(matches), "application/json"),
-            _ => throw OgcServiceException.NotSupported(
-                $"Unsupported WMS info format '{infoFormat}'; supported: text/plain, application/json."),
+            "text/html" => Results.Text(HtmlInfo(matches), "text/html"),
+            "text/xml" => Results.Text(XmlInfo(matches), "text/xml"),
+            "application/vnd.ogc.gml" => Results.Text(GmlInfo(matches), "application/vnd.ogc.gml"),
+            _ => throw OgcServiceException.InvalidFormat(
+                $"Unsupported WMS info format '{infoFormat}'; supported: text/plain, text/html, text/xml, application/json, application/vnd.ogc.gml."),
         };
 
     private static string TextInfo(IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> matches)
@@ -148,6 +153,193 @@ internal static class WmsService
 
     internal static string FormatValue(AttributeValue value) =>
         ValueFormatters.TryGetValue(value.Kind, out var format) ? format(value) : string.Empty;
+
+    private static string HtmlInfo(IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> matches)
+    {
+        var builder = new StringBuilder();
+        builder.Append("<!DOCTYPE html><html><head><title>GetFeatureInfo</title></head><body>");
+        foreach (var (dataset, feature) in matches)
+        {
+            builder.Append("<h1>Layer: ").Append(WebUtility.HtmlEncode(dataset.Id)).Append("</h1>");
+            builder.Append("<h2>Feature: ").Append(WebUtility.HtmlEncode(feature.Id.Value)).Append("</h2><table>");
+            for (var index = 0; index < feature.Schema.Count; index++)
+            {
+                if (feature.Schema[index].Kind == AttributeKind.Geometry)
+                {
+                    continue;
+                }
+
+                builder.Append("<tr><td>").Append(WebUtility.HtmlEncode(feature.Schema[index].Name))
+                    .Append("</td><td>").Append(WebUtility.HtmlEncode(FormatValue(feature[index])))
+                    .Append("</td></tr>");
+            }
+
+            builder.Append("</table>");
+        }
+
+        builder.Append("</body></html>");
+        return builder.ToString();
+    }
+
+    private static string XmlInfo(IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> matches)
+    {
+        var root = new XElement("FeatureInfoResponse");
+        foreach (var (dataset, feature) in matches)
+        {
+            var layer = new XElement("Layer", new XAttribute("name", dataset.Id));
+            var current = new XElement("Feature", new XAttribute("id", feature.Id.Value));
+            for (var index = 0; index < feature.Schema.Count; index++)
+            {
+                if (feature.Schema[index].Kind == AttributeKind.Geometry)
+                {
+                    continue;
+                }
+
+                current.Add(new XElement(
+                    "Attribute",
+                    new XAttribute("name", feature.Schema[index].Name),
+                    new XAttribute("value", FormatValue(feature[index]))));
+            }
+
+            layer.Add(current);
+            root.Add(layer);
+        }
+
+        return OgcXml.Write(new XDocument(new XDeclaration("1.0", "utf-8", null), root));
+    }
+
+    private static string GmlInfo(IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> matches)
+    {
+        var root = new XElement(
+            OgcXml.Wfs + "FeatureCollection",
+            new XAttribute(XNamespace.Xmlns + "gml", OgcXml.Gml.NamespaceName),
+            new XAttribute("numberMatched", matches.Count.ToString(CultureInfo.InvariantCulture)),
+            new XAttribute("numberReturned", matches.Count.ToString(CultureInfo.InvariantCulture)));
+        foreach (var (dataset, feature) in matches)
+        {
+            var member = new XElement(OgcXml.Wfs + "member");
+            var current = new XElement(
+                XName.Get(SafeName(dataset.Id)),
+                new XAttribute(OgcXml.Gml + "id", $"{SafeName(dataset.Id)}.{feature.Id.Value}"));
+            var geometryName = GeometryName(feature);
+            for (var index = 0; index < feature.Schema.Count; index++)
+            {
+                if (feature.Schema[index].Kind == AttributeKind.Geometry)
+                {
+                    continue;
+                }
+
+                current.Add(new XElement(XName.Get(SafeName(feature.Schema[index].Name)), FormatValue(feature[index])));
+            }
+
+            var geometryIndex = GeometryIndex(feature);
+            if (geometryIndex >= 0 && !feature[geometryIndex].IsNull)
+            {
+                current.Add(new XElement(XName.Get(SafeName(geometryName)), WriteGmlGeometry(feature[geometryIndex].GeometryValue)));
+            }
+
+            member.Add(current);
+            root.Add(member);
+        }
+
+        return OgcXml.Write(new XDocument(new XDeclaration("1.0", "utf-8", null), root));
+    }
+
+    private static int GeometryIndex(Feature feature)
+    {
+        for (var index = 0; index < feature.Schema.Count; index++)
+        {
+            if (feature.Schema[index].Kind == AttributeKind.Geometry)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static string GeometryName(Feature feature)
+    {
+        var index = GeometryIndex(feature);
+        return index >= 0 ? feature.Schema[index].Name : "geometry";
+    }
+
+    private static string SafeName(string name)
+    {
+        var builder = new StringBuilder(name.Length);
+        for (var index = 0; index < name.Length; index++)
+        {
+            var rune = name[index];
+            var ok = index == 0
+                ? char.IsLetter(rune) || rune == '_'
+                : char.IsLetterOrDigit(rune) || rune is '.' or '-' or '_' or ':';
+            builder.Append(ok ? rune : '_');
+        }
+
+        return builder.Length == 0 ? "_" : builder.ToString();
+    }
+
+    private static XElement WriteGmlGeometry(IGeometry geometry) => geometry switch
+    {
+        Point point => new XElement(
+            OgcXml.Gml + "Point",
+            point.Coordinate is { } coordinate
+                ? new XElement(OgcXml.Gml + "pos", Doubles(coordinate.X, coordinate.Y))
+                : null),
+        MultiPoint multi => new XElement(
+            OgcXml.Gml + "MultiPoint",
+            multi.Points.Select(member => new XElement(OgcXml.Gml + "pointMember", WriteGmlGeometry(member)))),
+        LineString line => new XElement(OgcXml.Gml + "LineString", new XElement(OgcXml.Gml + "posList", Positions(line.Sequence))),
+        MultiLineString multi => new XElement(
+            OgcXml.Gml + "MultiCurve",
+            multi.LineStrings.Select(member => new XElement(OgcXml.Gml + "curveMember", WriteGmlGeometry(member)))),
+        Polygon polygon => WriteGmlPolygon(polygon),
+        MultiPolygon multi => new XElement(
+            OgcXml.Gml + "MultiSurface",
+            multi.Polygons.Select(member => new XElement(OgcXml.Gml + "surfaceMember", WriteGmlGeometry(member)))),
+        GeometryCollection collection => new XElement(
+            OgcXml.Gml + "MultiGeometry",
+            collection.Geometries.Select(member => new XElement(OgcXml.Gml + "geometryMember", WriteGmlGeometry(member)))),
+        _ => new XElement(OgcXml.Gml + "Point"),
+    };
+
+    private static XElement WriteGmlPolygon(Polygon polygon)
+    {
+        var current = new XElement(
+            OgcXml.Gml + "Polygon",
+            new XElement(
+                OgcXml.Gml + "exterior",
+                new XElement(OgcXml.Gml + "LinearRing", new XElement(OgcXml.Gml + "posList", Positions(polygon.ExteriorRing.Sequence)))));
+        foreach (var ring in polygon.InteriorRings)
+        {
+            current.Add(new XElement(
+                OgcXml.Gml + "interior",
+                new XElement(OgcXml.Gml + "LinearRing", new XElement(OgcXml.Gml + "posList", Positions(ring.Sequence)))));
+        }
+
+        return current;
+    }
+
+    private static string Doubles(double x, double y) =>
+        $"{x.ToString("R", CultureInfo.InvariantCulture)} {y.ToString("R", CultureInfo.InvariantCulture)}";
+
+    private static string Positions(ICoordinateSequence sequence)
+    {
+        var builder = new StringBuilder();
+        for (var index = 0; index < sequence.Count; index++)
+        {
+            if (index > 0)
+            {
+                builder.Append(' ');
+            }
+
+            builder.Append(sequence.GetOrdinate(index, Ordinate.X).ToString("R", CultureInfo.InvariantCulture))
+                .Append(' ')
+                .Append(sequence.GetOrdinate(index, Ordinate.Y).ToString("R", CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
+    }
 
     private static RasterViewport ParseViewport(OgcParameters parameters)
     {
