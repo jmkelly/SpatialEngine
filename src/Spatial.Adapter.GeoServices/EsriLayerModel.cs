@@ -25,6 +25,23 @@ internal static class EsriLayerModel
     /// <summary>The configured maximum page size in features.</summary>
     public const int MaxRecordCount = 1000;
 
+    /// <summary>The only query output the facade serves (T-017: GeoJSON stays honestly rejected).</summary>
+    public const string SupportedQueryFormats = "JSON";
+
+    /// <summary>
+    /// The truthful query flags (T-018): pagination/orderBy honoured,
+    /// distinct values and query extent served, statistics/having rejected,
+    /// closed where-grammar (not standardized queries).
+    /// </summary>
+    public static readonly EsriAdvancedQueryCapabilities QueryCapabilities = new(
+        SupportsPagination: true,
+        SupportsOrderBy: true,
+        SupportsStatistics: false,
+        SupportsDistinct: true,
+        SupportsHavingClause: false,
+        SupportsReturningQueryExtent: true,
+        UseStandardizedQueries: false);
+
     private static readonly Dictionary<string, string> GeometryTypeMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["point"] = "esriGeometryPoint",
@@ -59,7 +76,11 @@ internal static class EsriLayerModel
             Fields(dataset, editable),
             editable ? EditableCapabilities : ReadOnlyCapabilities,
             MaxRecordCount,
-            SpatialReference(dataset.Srid));
+            SpatialReference(dataset.Srid),
+            SupportedQueryFormats,
+            SupportsStatistics: false,
+            SupportsAdvancedQueries: true,
+            QueryCapabilities);
 
     /// <summary>The layer's Esri spatial reference, or null when the SRID is unknown to the map.</summary>
     public static EsriSpatialReferenceDto? SpatialReference(int srid) =>
@@ -99,7 +120,8 @@ internal sealed record EsriFeatureServerRoot(
     string Capabilities,
     int MaxRecordCount,
     IReadOnlyList<EsriLayerRef> Layers,
-    IReadOnlyList<EsriLayerRef> Tables);
+    IReadOnlyList<EsriLayerRef> Tables,
+    EsriAdvancedQueryCapabilities? AdvancedQueryCapabilities = null);
 
 /// <summary>One layer reference under the <c>FeatureServer</c> root.</summary>
 internal sealed record EsriLayerRef(int Id, string Name, string Type);
@@ -115,7 +137,27 @@ internal sealed record EsriLayer(
     IReadOnlyList<EsriField> Fields,
     string Capabilities,
     int MaxRecordCount,
-    EsriSpatialReferenceDto? SpatialReference);
+    EsriSpatialReferenceDto? SpatialReference,
+    string SupportedQueryFormats,
+    bool SupportsStatistics,
+    bool SupportsAdvancedQueries,
+    EsriAdvancedQueryCapabilities AdvancedQueryCapabilities);
+
+/// <summary>
+/// The query flags clients branch on (spec §9.1 layer resource). Every value
+/// is proved by the behaviour it names: pagination and orderBy are honoured
+/// by <c>FeatureQueryEngine</c>, distinct values and query extent are served,
+/// statistics/having are explicitly rejected, and the closed where-grammar is
+/// not the standardized SQL the flag names.
+/// </summary>
+internal sealed record EsriAdvancedQueryCapabilities(
+    bool SupportsPagination,
+    bool SupportsOrderBy,
+    bool SupportsStatistics,
+    bool SupportsDistinct,
+    bool SupportsHavingClause,
+    bool SupportsReturningQueryExtent,
+    bool UseStandardizedQueries);
 
 /// <summary>One Esri field definition; <c>domain</c> is emitted only when the catalogue backs one (spec §13).</summary>
 internal sealed record EsriField(string Name, string Type, string Alias, bool Nullable, bool Editable, EsriDomain? Domain = null);

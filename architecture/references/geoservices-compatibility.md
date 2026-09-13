@@ -45,7 +45,7 @@ Two directions must not be confused:
 
 | Dimension | GeoServices v1.0 | SpatialEngine | Compatible |
 | --- | --- | --- | --- |
-| Method | GET with query params (`f=json` required; POST only for edits) | POST JSON bodies, camelCase, OpenAPI | No |
+| Method | GET with query params (`f=json` required; `f=pjson` accepted as a JSON alias; POST only for edits) | POST JSON bodies, camelCase, OpenAPI | No |
 | Service root | `<catalog>/<serviceName>/<Map\|Feature\|Geometry\|…>Server` | `/api/...` route groups; root is an identity doc | No (mappable) |
 | Geometry wire | JSON `{x,y}` / `paths` / `rings` / `points` / `{xmin..}` | Base64 `SGEOM` (ADR-0020) | No |
 | Feature wire | JSON `{geometry, attributes}` inline | Base64 `SFBAT` batch pages | No |
@@ -220,6 +220,19 @@ Ordered by dependency:
 - Recorded Geometry Service non-goals: `offset`, `cut`, `reshape`,
   `trimExtend` and `autoComplete` have no engine verb; the facade rejects
   them with a typed `invalid.arguments` failure and does not advertise them.
+- Serving status update: `f=pjson` is accepted as a JSON alias everywhere
+  `f=json` is (GDAL ESRIJSON driver, pygeoapi metadata fetch); `f=geojson`
+  on query is honestly rejected with a typed `invalid.arguments` failure
+  naming `supportedQueryFormats` — GeoJSON output remains a non-goal.
+- Serving status update: the FeatureServer layer and service root advertise
+  truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: false`,
+  `supportsAdvancedQueries: true` and `advancedQueryCapabilities`
+  (`supportsPagination`/`supportsOrderBy`/`supportsDistinct`/
+  `supportsReturningQueryExtent: true`; `supportsStatistics`/
+  `supportsHavingClause`/`useStandardizedQueries: false`), each proved by
+  the behaviour test it names. pygeoapi's connect gate still fails its
+  `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
+  facade serves Esri JSON only.
 
 ## 8. Documentation baseline
 
