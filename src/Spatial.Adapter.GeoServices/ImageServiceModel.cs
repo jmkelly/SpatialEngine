@@ -41,3 +41,9 @@ internal sealed record EsriRasterInfo(
 
 /// <summary>The Export Image JSON response (spec §8.0.4); the image itself is at <c>href</c>.</summary>
 internal sealed record EsriImageExportResponse(string Href, int Width, int Height, EsriExtent Extent);
+
+/// <summary>The Download Rasters response (spec §8.0.7): the raw files behind the selected rasters.</summary>
+internal sealed record EsriRasterDownloadResponse(IReadOnlyList<EsriRasterFileEntry> RasterFiles);
+
+/// <summary>One downloadable raw file: its opaque id, size and the raster ids it backs (spec §8.0.7.3).</summary>
+internal sealed record EsriRasterFileEntry(string Id, long Size, IReadOnlyList<long> RasterIds);

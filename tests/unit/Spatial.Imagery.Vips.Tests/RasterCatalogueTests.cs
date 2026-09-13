@@ -262,6 +262,111 @@ public sealed class RasterCatalogueTests
             () => catalogue.ExportAsync("raster", new RasterExportRequest(viewport), new CancellationToken(canceled: true)));
     }
 
+    [Fact]
+    public async Task Export_of_a_named_catalog_item_uses_that_item()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.CatalogDataset());
+        var viewport = new RasterViewport(new Envelope(0, 0, fixture.Width, fixture.Height), 4, 4, Crs);
+
+        var image = await catalogue.ExportAsync("raster", new RasterExportRequest(viewport, RasterFormat.Png, RasterId: 7));
+
+        Assert.Equal(4, image.Width);
+        Assert.NotEmpty(image.Content);
+    }
+
+    [Fact]
+    public async Task Export_of_an_unknown_catalog_item_is_not_found()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.CatalogDataset());
+        var viewport = new RasterViewport(new Envelope(0, 0, fixture.Width, fixture.Height), 4, 4, Crs);
+
+        await Assert.ThrowsAsync<SpatialException>(
+            () => catalogue.ExportAsync("raster", new RasterExportRequest(viewport, RasterFormat.Png, RasterId: 99)));
+    }
+
+    [Fact]
+    public async Task List_files_reports_the_single_raster_file()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.Dataset());
+
+        var files = await catalogue.ListFilesAsync("raster");
+
+        var file = Assert.Single(files);
+        Assert.Equal($"dataset~{Path.GetFileName(fixture.Path)}", file.Id);
+        Assert.Equal(Path.GetFileName(fixture.Path), file.Name);
+        Assert.Equal("image/tiff", file.MediaType);
+        Assert.Equal(new FileInfo(fixture.Path).Length, file.Size);
+    }
+
+    [Fact]
+    public async Task List_files_of_a_catalog_lists_each_item_under_its_id()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.CatalogDataset());
+
+        var file = Assert.Single(await catalogue.ListFilesAsync("raster", 7));
+        var all = Assert.Single(await catalogue.ListFilesAsync("raster"));
+
+        Assert.StartsWith("7~", file.Id, StringComparison.Ordinal);
+        Assert.Equal(file.Id, all.Id);
+    }
+
+    [Fact]
+    public async Task List_files_of_an_unknown_item_is_not_found()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.CatalogDataset());
+
+        await Assert.ThrowsAsync<SpatialException>(() => catalogue.ListFilesAsync("raster", 99));
+    }
+
+    [Fact]
+    public async Task Read_file_returns_the_raw_bytes()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.Dataset());
+        var file = (await catalogue.ListFilesAsync("raster"))[0];
+
+        var content = await catalogue.ReadFileAsync("raster", file.Id);
+
+        Assert.Equal(File.ReadAllBytes(fixture.Path), content.Content);
+        Assert.Equal("image/tiff", content.MediaType);
+        Assert.Equal(file.Name, content.Name);
+        Assert.Equal(file.Size, content.Size);
+    }
+
+    [Fact]
+    public async Task Read_file_never_opens_an_arbitrary_path()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.Dataset());
+
+        await Assert.ThrowsAsync<SpatialException>(() => catalogue.ReadFileAsync("raster", "dataset~not-the-file.tif"));
+        await Assert.ThrowsAsync<SpatialException>(() => catalogue.ReadFileAsync("raster", "7~wsiearth.tif"));
+        await Assert.ThrowsAsync<SpatialException>(() => catalogue.ReadFileAsync("raster", "not-a-file-id"));
+    }
+
+    [Theory]
+    [InlineData("a.tif", "image/tiff")]
+    [InlineData("a.TIFF", "image/tiff")]
+    [InlineData("a.png", "image/png")]
+    [InlineData("a.jpg", "image/jpeg")]
+    [InlineData("a.jpeg", "image/jpeg")]
+    [InlineData("a.jp2", "image/jp2")]
+    [InlineData("a.j2k", "image/jp2")]
+    [InlineData("a.gif", "image/gif")]
+    [InlineData("a.bmp", "image/bmp")]
+    [InlineData("a.img", "application/octet-stream")]
+    [InlineData("a.xyz", "application/octet-stream")]
+    [InlineData("no-extension", "application/octet-stream")]
+    public void Media_type_maps_each_supported_extension(string path, string expected)
+    {
+        Assert.Equal(expected, VipsRasterFiles.MediaType(path));
+    }
+
     private static VipsRasterCatalogue Catalogue(RasterDatasetDescriptor dataset) =>
         new([dataset], new IdentityTransforms());
 }

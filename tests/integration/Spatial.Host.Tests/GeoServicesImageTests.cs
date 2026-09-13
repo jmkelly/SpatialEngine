@@ -78,6 +78,26 @@ public sealed class GeoServicesImageTests : IDisposable
         image.WriteToFile(path);
     }
 
+    private static void WriteTiledPyramid(string path, int width, int height, int tileSize)
+    {
+        var pixels = new byte[width * height];
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = (byte)(i % 256);
+        }
+
+        using var image = Image.NewFromMemory(pixels, width, height, 1, Enums.BandFormat.Uchar);
+        image.Tiffsave(
+            path,
+            compression: Enums.ForeignTiffCompression.Deflate,
+            predictor: Enums.ForeignTiffPredictor.Horizontal,
+            tile: true,
+            tileWidth: tileSize,
+            tileHeight: tileSize,
+            pyramid: true,
+            subifd: true);
+    }
+
     private static async Task<HttpClient> ImageServiceAsync(
         WebApplicationFactory<Program> factory, string service, string dataset)
     {
@@ -134,6 +154,20 @@ public sealed class GeoServicesImageTests : IDisposable
         Assert.False(root.TryGetProperty("objectIdField", out _));
         Assert.False(root.TryGetProperty("fields", out _));
         Assert.Equal(82.707, root.GetProperty("meanValues")[0].GetDouble(), 3);
+    }
+
+    [Fact]
+    public async Task The_root_reports_pyramid_pixel_size_bounds()
+    {
+        var tiledPath = System.IO.Path.Combine(_directory, "tiled.tif");
+        WriteTiledPyramid(tiledPath, width: 64, height: 48, tileSize: 16);
+        await using var tiledFactory = new ImageFactory(_directory, tiledPath, Dataset, catalog: false, width: 64, height: 48);
+        var client = await ImageServiceAsync(tiledFactory, Name, Dataset);
+
+        var root = await BodyAsync(await client.GetAsync($"{Root}/{Name}/ImageServer?f=json"));
+
+        Assert.Equal(1, root.GetProperty("minPixelSize").GetDouble());
+        Assert.Equal(4, root.GetProperty("maxPixelSize").GetDouble());
     }
 
     [Fact]
@@ -246,12 +280,12 @@ public sealed class GeoServicesImageTests : IDisposable
 
         var list = await BodyAsync(await client.GetAsync($"{Root}/{CatalogName}/ImageServer/query?f=json"));
         var features = list.GetProperty("features").EnumerateArray().ToArray();
-        Assert.Single(features);
+        Assert.Equal(2, features.Length);
         Assert.Equal("first", features[0].GetProperty("attributes").GetProperty("Name").GetString());
         Assert.True(features[0].GetProperty("geometry").TryGetProperty("rings", out _));
 
         var ids = await BodyAsync(await client.GetAsync($"{Root}/{CatalogName}/ImageServer/query?f=json&returnIdsOnly=true"));
-        Assert.Equal(7, ids.GetProperty("objectIds")[0].GetInt64());
+        Assert.Equal([7L, 8L], ids.GetProperty("objectIds").EnumerateArray().Select(value => value.GetInt64()).ToArray());
 
         var item = await BodyAsync(await client.GetAsync($"{Root}/{CatalogName}/ImageServer/7?f=json"));
         Assert.Equal(7, item.GetProperty("attributes").GetProperty("OBJECTID").GetInt64());
@@ -267,19 +301,142 @@ public sealed class GeoServicesImageTests : IDisposable
         Assert.Single(identify.GetProperty("catalogItems").GetProperty("features").EnumerateArray());
     }
 
+    [Fact]
+    public async Task Catalog_query_filters_projects_and_orders()
+    {
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var filtered = await BodyAsync(await client.GetAsync(
+            $"{Root}/{CatalogName}/ImageServer/query?f=json&where=" + Uri.EscapeDataString("Name = 'second'") +
+            "&outFields=Name&returnGeometry=false"));
+        var feature = Assert.Single(filtered.GetProperty("features").EnumerateArray());
+        Assert.Equal("second", feature.GetProperty("attributes").GetProperty("Name").GetString());
+        Assert.False(feature.TryGetProperty("geometry", out _));
+
+        var ordered = await BodyAsync(await client.GetAsync(
+            $"{Root}/{CatalogName}/ImageServer/query?f=json&orderByFields=OBJECTID%20DESC&resultRecordCount=1"));
+        var page = Assert.Single(ordered.GetProperty("features").EnumerateArray());
+        Assert.Equal(8, page.GetProperty("attributes").GetProperty("OBJECTID").GetInt64());
+        Assert.True(ordered.GetProperty("exceededTransferLimit").GetBoolean());
+
+        var count = await BodyAsync(await client.GetAsync($"{Root}/{CatalogName}/ImageServer/query?f=json&returnCountOnly=true"));
+        Assert.Equal(2, count.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public async Task Catalog_query_rejects_an_unsupported_where_and_time()
+    {
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var badWhere = await client.GetAsync(
+            $"{Root}/{CatalogName}/ImageServer/query?f=json&where=" + Uri.EscapeDataString("Name === 'x'"));
+        var time = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/query?f=json&time=1199145600000");
+
+        Assert.Equal(HttpStatusCode.BadRequest, badWhere.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, time.StatusCode);
+    }
+
+    [Fact]
+    public async Task Raster_image_renders_the_named_item()
+    {
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var response = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/8/image?f=image&size=4,3");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("4", response.Headers.GetValues("X-Raster-Width").Single());
+    }
+
+    [Fact]
+    public async Task Raster_thumbnail_streams_a_reduced_image()
+    {
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var response = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/7/thumbnail");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        using var image = Image.NewFromBuffer(await response.Content.ReadAsByteArrayAsync());
+        Assert.True(image.Width <= 200 && image.Height <= 200);
+    }
+
+    [Fact]
+    public async Task Download_is_disabled_until_the_host_opts_in()
+    {
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var response = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/download?rasterIds=7");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Download_lists_raw_files_and_the_file_resource_streams_them()
+    {
+        await using var catalogFactory = new ImageFactory(
+            _directory, _rasterPath, CatalogDatasetName, catalog: true, allowDownload: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var download = await BodyAsync(await client.GetAsync($"{Root}/{CatalogName}/ImageServer/download?f=json&rasterIds=7"));
+        var file = Assert.Single(download.GetProperty("rasterFiles").EnumerateArray());
+        Assert.Equal(7, Assert.Single(file.GetProperty("rasterIds").EnumerateArray()).GetInt64());
+        Assert.Equal(new FileInfo(_rasterPath).Length, file.GetProperty("size").GetInt64());
+        var id = file.GetProperty("id").GetString()!;
+        Assert.StartsWith("7~", id, StringComparison.Ordinal);
+
+        var content = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/file?id={Uri.EscapeDataString(id)}");
+        Assert.Equal(HttpStatusCode.OK, content.StatusCode);
+        Assert.Equal("image/tiff", content.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(File.ReadAllBytes(_rasterPath), await content.Content.ReadAsByteArrayAsync());
+
+        using var rangeRequest = new HttpRequestMessage(HttpMethod.Get, $"{Root}/{CatalogName}/ImageServer/file?id={Uri.EscapeDataString(id)}");
+        rangeRequest.Headers.Range = new RangeHeaderValue(0, 9);
+        var range = await client.SendAsync(rangeRequest);
+        Assert.Equal(HttpStatusCode.PartialContent, range.StatusCode);
+        Assert.Equal(10, (await range.Content.ReadAsByteArrayAsync()).Length);
+    }
+
+    [Fact]
+    public async Task Download_rejects_files_over_the_size_cap()
+    {
+        await using var catalogFactory = new ImageFactory(
+            _directory, _rasterPath, CatalogDatasetName, catalog: true, allowDownload: true, maxDownloadBytes: 16);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var download = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/download?f=json&rasterIds=7");
+
+        Assert.Equal(HttpStatusCode.BadRequest, download.StatusCode);
+    }
+
     private sealed class ImageFactory : WebApplicationFactory<Program>
     {
         private readonly string _directory;
         private readonly string _rasterPath;
         private readonly string _dataset;
         private readonly bool _catalog;
+        private readonly bool _allowDownload;
+        private readonly long _maxDownloadBytes;
+        private readonly int _width;
+        private readonly int _height;
 
-        public ImageFactory(string directory, string rasterPath, string dataset, bool catalog)
+        public ImageFactory(
+            string directory, string rasterPath, string dataset, bool catalog,
+            bool allowDownload = false, long maxDownloadBytes = 0, int width = Width, int height = Height)
         {
             _directory = directory;
             _rasterPath = rasterPath;
             _dataset = dataset;
             _catalog = catalog;
+            _allowDownload = allowDownload;
+            _maxDownloadBytes = maxDownloadBytes;
+            _width = width;
+            _height = height;
         }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -291,14 +448,24 @@ public sealed class GeoServicesImageTests : IDisposable
             builder.UseSetting("Spatial:Raster:Sources:0:Crs", "EPSG:4326");
             builder.UseSetting("Spatial:Raster:Sources:0:Extent:0", "0");
             builder.UseSetting("Spatial:Raster:Sources:0:Extent:1", "0");
-            builder.UseSetting("Spatial:Raster:Sources:0:Extent:2", Width.ToString(CultureInfo.InvariantCulture));
-            builder.UseSetting("Spatial:Raster:Sources:0:Extent:3", Height.ToString(CultureInfo.InvariantCulture));
+            builder.UseSetting("Spatial:Raster:Sources:0:Extent:2", _width.ToString(CultureInfo.InvariantCulture));
+            builder.UseSetting("Spatial:Raster:Sources:0:Extent:3", _height.ToString(CultureInfo.InvariantCulture));
             builder.UseSetting("Spatial:Raster:Sources:0:PixelSizeX", "1");
             builder.UseSetting("Spatial:Raster:Sources:0:PixelSizeY", "1");
             builder.UseSetting("Spatial:Raster:Sources:0:Statistics:0", "0");
             builder.UseSetting("Spatial:Raster:Sources:0:Statistics:1", "255");
             builder.UseSetting("Spatial:Raster:Sources:0:Statistics:2", "82.707");
             builder.UseSetting("Spatial:Raster:Sources:0:Statistics:3", "39.838");
+            if (_allowDownload)
+            {
+                builder.UseSetting("Spatial:GeoServices:AllowRasterDownload", "true");
+            }
+
+            if (_maxDownloadBytes > 0)
+            {
+                builder.UseSetting("Spatial:GeoServices:MaxRasterDownloadBytes", _maxDownloadBytes.ToString(CultureInfo.InvariantCulture));
+            }
+
             if (_catalog)
             {
                 builder.ConfigureTestServices(services =>
@@ -310,21 +477,6 @@ public sealed class GeoServicesImageTests : IDisposable
 
     private static RasterDatasetDescriptor CatalogDescriptor(string itemPath)
     {
-        var footprint = GeometryFactory.CreatePolygon(
-            [
-                new Coordinate(0, 0),
-                new Coordinate(Width, 0),
-                new Coordinate(Width, Height),
-                new Coordinate(0, Height),
-                new Coordinate(0, 0),
-            ],
-            CoordinateReference.Epsg(4326));
-        var item = new RasterCatalogItemDescriptor(
-            7,
-            footprint,
-            itemPath,
-            new Envelope(0, 0, Width, Height),
-            [AttributeValue.FromString("first")]);
         return new RasterDatasetDescriptor(
             CatalogDatasetName,
             itemPath,
@@ -334,6 +486,31 @@ public sealed class GeoServicesImageTests : IDisposable
             1,
             "Catalog",
             CatalogAttributes: [new RasterAttributeDescriptor("Name", AttributeKind.String, Nullable: false)],
-            Items: [item]);
+            Items:
+            [
+                new RasterCatalogItemDescriptor(
+                    7,
+                    Footprint(0, 0, Width, Height),
+                    itemPath,
+                    new Envelope(0, 0, Width, Height),
+                    [AttributeValue.FromString("first")]),
+                new RasterCatalogItemDescriptor(
+                    8,
+                    Footprint(4, 3, Width, Height),
+                    itemPath,
+                    new Envelope(4, 3, Width, Height),
+                    [AttributeValue.FromString("second")]),
+            ]);
     }
+
+    private static Polygon Footprint(double minX, double minY, double maxX, double maxY) =>
+        GeometryFactory.CreatePolygon(
+            [
+                new Coordinate(minX, minY),
+                new Coordinate(maxX, minY),
+                new Coordinate(maxX, maxY),
+                new Coordinate(minX, maxY),
+                new Coordinate(minX, minY),
+            ],
+            CoordinateReference.Epsg(4326));
 }

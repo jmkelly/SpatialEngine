@@ -57,7 +57,40 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dataset);
         ArgumentNullException.ThrowIfNull(request);
-        return Task.Run(() => _exporter.Export(Resolve(dataset), request, cancellationToken), cancellationToken);
+        return Task.Run(() => _exporter.Export(ExportTarget(Resolve(dataset), request.RasterId), request, cancellationToken), cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<RasterFile>> ListFilesAsync(
+        string dataset, long? rasterId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset);
+        return Task.Run(() => VipsRasterFiles.List(Resolve(dataset), rasterId), cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public Task<RasterFileContent> ReadFileAsync(
+        string dataset, string fileId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileId);
+        return Task.Run(() => VipsRasterFiles.Read(Resolve(dataset), fileId), cancellationToken);
+    }
+
+    /// <summary>
+    /// Rewrites a configured dataset (or one catalog item) as a tiled,
+    /// internally-overviewed TIFF — a COG-style file — at
+    /// <paramref name="destinationPath"/>. This is an offline storage
+    /// operation for ingest/seed tooling: it is on the concrete provider,
+    /// never on the <see cref="IRasterCatalogue"/> contract, and no client
+    /// request reaches it (ADR-0051, plan I4).
+    /// </summary>
+    public Task WriteCogAsync(
+        string dataset, long? rasterId, string destinationPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
+        return Task.Run(() => VipsRasterCog.Write(ExportTarget(Resolve(dataset), rasterId).Path, destinationPath), cancellationToken);
     }
 
     private RasterDatasetDescription Describe(string dataset, CancellationToken cancellationToken)
@@ -129,6 +162,29 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         _datasets.TryGetValue(dataset, out var descriptor)
             ? descriptor
             : throw SpatialException.Missing($"Raster dataset '{dataset}' is not configured.");
+
+    /// <summary>
+    /// The raster to export: the dataset itself, or the named catalog item
+    /// when <paramref name="rasterId"/> is set. The item's own georeferencing
+    /// wins, falling back to the dataset descriptor (ADR-0051).
+    /// </summary>
+    private static RasterDatasetDescriptor ExportTarget(RasterDatasetDescriptor descriptor, long? rasterId)
+    {
+        if (rasterId is not { } id)
+        {
+            return descriptor;
+        }
+
+        var item = descriptor.Items?.FirstOrDefault(candidate => candidate.ObjectId == id)
+            ?? throw SpatialException.Missing($"Raster catalog item {id} does not exist in '{descriptor.Name}'.");
+        return new RasterDatasetDescriptor(
+            descriptor.Name,
+            item.Path,
+            item.Crs ?? descriptor.Crs,
+            item.Extent,
+            item.PixelSizeX > 0 ? item.PixelSizeX : descriptor.PixelSizeX,
+            item.PixelSizeY > 0 ? item.PixelSizeY : descriptor.PixelSizeY);
+    }
 
     private IGeometry ProjectGeometry(IGeometry geometry, string fromCrs, string toCrs, CancellationToken cancellationToken)
     {
