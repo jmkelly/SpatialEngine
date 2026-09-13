@@ -18,6 +18,16 @@ namespace Spatial.Adapter.Ogc;
 /// </summary>
 internal static class WmsService
 {
+    private static readonly Dictionary<AttributeKind, Func<AttributeValue, string>> ValueFormatters = new()
+    {
+        [AttributeKind.Boolean] = value => value.BooleanValue ? "true" : "false",
+        [AttributeKind.Int64] = value => value.Int64Value.ToString(CultureInfo.InvariantCulture),
+        [AttributeKind.Double] = value => value.DoubleValue.ToString("R", CultureInfo.InvariantCulture),
+        [AttributeKind.String] = value => value.StringValue,
+        [AttributeKind.DateTimeOffset] = value => value.DateTimeOffsetValue.ToString("O", CultureInfo.InvariantCulture),
+        [AttributeKind.Guid] = value => value.GuidValue.ToString(),
+    };
+
     public static async Task<IResult> HandleAsync(
         string name, OgcParameters parameters, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
     {
@@ -125,16 +135,8 @@ internal static class WmsService
         return builder.ToString();
     }
 
-    private static string FormatValue(AttributeValue value) => value.Kind switch
-    {
-        AttributeKind.Boolean => value.BooleanValue ? "true" : "false",
-        AttributeKind.Int64 => value.Int64Value.ToString(CultureInfo.InvariantCulture),
-        AttributeKind.Double => value.DoubleValue.ToString("R", CultureInfo.InvariantCulture),
-        AttributeKind.String => value.StringValue,
-        AttributeKind.DateTimeOffset => value.DateTimeOffsetValue.ToString("O", CultureInfo.InvariantCulture),
-        AttributeKind.Guid => value.GuidValue.ToString(),
-        _ => string.Empty,
-    };
+    internal static string FormatValue(AttributeValue value) =>
+        ValueFormatters.TryGetValue(value.Kind, out var format) ? format(value) : string.Empty;
 
     private static RasterViewport ParseViewport(OgcParameters parameters)
     {
@@ -175,21 +177,30 @@ internal static class WmsService
         _ => throw OgcServiceException.Invalid($"The 'transparent' parameter must be TRUE or FALSE, got '{value}'."),
     };
 
-    private static string? ParseColor(string? value)
+    internal static string? ParseColor(string? value)
     {
         if (value is null)
         {
             return null;
         }
 
-        var trimmed = value.Trim();
-        trimmed = trimmed.StartsWith('#')
-            ? trimmed[1..]
-            : trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? trimmed[2..] : trimmed;
-        return trimmed.Length == 6 && trimmed.All(Uri.IsHexDigit)
-            ? "#" + trimmed.ToUpperInvariant()
+        var digits = TrimColorPrefix(value.Trim());
+        return IsHexColor(digits)
+            ? $"#{digits.ToUpperInvariant()}"
             : throw OgcServiceException.Invalid($"The 'bgcolor' parameter must be 0xRRGGBB or #RRGGBB, got '{value}'.");
     }
+
+    private static string TrimColorPrefix(string value)
+    {
+        if (value.StartsWith('#'))
+        {
+            return value[1..];
+        }
+
+        return value.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? value[2..] : value;
+    }
+
+    private static bool IsHexColor(string digits) => digits.Length == 6 && digits.All(Uri.IsHexDigit);
 
     private static int PositiveInt(string text, string name) =>
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
