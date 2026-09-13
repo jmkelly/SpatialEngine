@@ -87,6 +87,9 @@ internal static class EsriLayerModel
 
         return fields;
     }
+
+    /// <summary>The dataset's fields as a read-only Esri field list (map services never edit).</summary>
+    public static IReadOnlyList<EsriField> FieldsOf(DatasetDescription dataset) => Fields(dataset, editable: false);
 }
 
 /// <summary>The <c>FeatureServer</c> root shape (spec §9.0).</summary>

@@ -101,8 +101,22 @@ workbench from the host as above.
 ./eng/workbench-e2e.sh   # real host + built workbench + Playwright
 ```
 
-CI runs all three plus the JavaScript typecheck, generated-types drift check
-and unit suites on every push and pull request.
+### Seed it with real data
+
+`eng/seed.sh` fetches real, publicly available data (Natural Earth, USGS),
+loads it through the ingest API — including a server-side reprojection — and
+publishes a set of styled feature and map services. Start a host with an
+admin token and run:
+
+```bash
+SPATIAL_ADMIN_TOKEN=seed-admin-token ./eng/seed.sh
+```
+
+See [`tools/seed/README.md`](tools/seed/README.md) for the datasets and
+services, and `--only`/`--force`/`--list` options.
+
+CI runs all three verification scripts plus the JavaScript typecheck,
+generated-types drift check and unit suites on every push and pull request.
 
 ---
 

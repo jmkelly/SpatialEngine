@@ -11,6 +11,23 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Styled publications and a data-only MapServer** (ADR-0047):
+  `PublicationLayer` gains an optional core-typed `LayerStyle`
+  (colour/opacity/line width/radius/visible), validated by the registry and
+  persisted in `publications.json`. A `PublicationKind.Map` publication is
+  served as a MapServer M0 — root, `layers`, layer metadata with
+  `drawingInfo` lowered from the style, and `query` reusing the FeatureServer
+  query engine — advertising `Query,Data` (never `Map`, as export/tiles are
+  not served). The catalog advertises it alongside FeatureServers.
+- **Engine-side ingest reprojection**: `POST /api/ingest` accepts a
+  `sourceSrid` and transforms every decoded page to the target SRID through
+  the ProjNet `ICoordinateTransforms` service, so uploaded data in a curated
+  CRS lands in a declared column CRS. The .NET and TypeScript SDKs pass the
+  optional parameter through.
+- **Seed tooling** (`eng/seed.sh`, `tools/seed/`): an on-demand script that
+  fetches real public data (Natural Earth, USGS), ingests it — including the
+  4326 → 3857 reprojection — and publishes a set of styled feature and map
+  services through the neutral admin API, idempotently.
 - **Structured logging to Seq** (ADR-0045): `Spatial.Host` logs through
   Serilog — console always, Seq when `Spatial:Logging:Seq:Url`
   (`SPATIAL_SEQ_URL`) is set — with one structured event per request
@@ -26,8 +43,9 @@ this file together, then tag the release (`RELEASING.md`).
   as a neutral feature or map service through the existing
   `PUT /api/publications/{name}` and `POST /api/ingest` routes. Loads and
   deletes existing services, preserving their stable layer ids. No host
-  contract, SDK or ADR change; per-layer style stays a client-side authoring
-  aid until the MapServer render model lands.
+  contract or ADR change at MVP; per-layer style now has a contract home in
+  ADR-0047 (`PublicationLayer.Style`) that the composer can round-trip as a
+  follow-up.
 - **Tiles and a pluggable tile cache** (ADR-0046, plan R4): the core-typed
   `ITileScheme`/`ITileCache` contracts in `Spatial.PluginSdk`
   (`TileCoordinate`, `TileLevel`, `TileCacheKey`) with the

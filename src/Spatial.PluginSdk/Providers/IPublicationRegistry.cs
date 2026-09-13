@@ -27,8 +27,10 @@ public enum PublicationKind
 /// published layer name. <see cref="LayerId"/> is assigned once and
 /// persisted: ids are append-only, never reused and never renumbered, so
 /// adding or removing a layer cannot renumber the others (ADR-0041).
+/// <see cref="Style"/> optionally carries the layer's render style
+/// (ADR-0047); a null style means the adapter's default.
 /// </summary>
-public sealed record PublicationLayer(string Dataset, int LayerId, string? Name = null)
+public sealed record PublicationLayer(string Dataset, int LayerId, string? Name = null, LayerStyle? Style = null)
 {
     public override string ToString() => $"{LayerId}: {Dataset}";
 }

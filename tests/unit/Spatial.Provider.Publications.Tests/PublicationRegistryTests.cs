@@ -182,6 +182,37 @@ public sealed class PublicationRegistryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_layer_style_round_trips_and_is_validated()
+    {
+        var style = new LayerStyle("#ff8800", Opacity: 0.25, LineWidth: 4, Radius: 9);
+        using (var registry = Registry())
+        {
+            await registry.PutAsync(Feature("styled", new PublicationLayer("memory.parks", 0, "Parks", style)));
+        }
+
+        using var reopened = Registry();
+        var reloaded = await reopened.GetAsync("styled");
+        Assert.Equal(style, reloaded.Layers[0].Style);
+    }
+
+    [Theory]
+    [InlineData("red", 1.0, 1.0, 1.0)]
+    [InlineData("#fff", 1.5, 1.0, 1.0)]
+    [InlineData("#fff", -0.1, 1.0, 1.0)]
+    [InlineData("#fff", double.NaN, 1.0, 1.0)]
+    [InlineData("#fff", 1.0, -1.0, 1.0)]
+    [InlineData("#fff", 1.0, 1.0, -1.0)]
+    public async Task An_invalid_style_is_rejected(string color, double opacity, double lineWidth, double radius)
+    {
+        using var registry = Registry();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => registry.PutAsync(
+            Feature("bad", new PublicationLayer("memory.parks", 0, null, new LayerStyle(color, opacity, lineWidth, radius)))));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    [Fact]
     public async Task The_file_carries_a_schema_version()
     {
         using (var registry = Registry())

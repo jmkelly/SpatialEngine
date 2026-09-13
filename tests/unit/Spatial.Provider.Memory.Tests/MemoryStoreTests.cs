@@ -63,6 +63,14 @@ public sealed class MemoryStoreTests
     }
 
     [Fact]
+    public async Task Describe_reports_the_inferred_geometry_type()
+    {
+        var store = await IngestedAsync();
+
+        Assert.Equal("Point", (await store.DescribeAsync("memory.cities")).GeometryType);
+    }
+
+    [Fact]
     public async Task Source_ingest_uses_the_named_field()
     {
         var store = new MemoryStore();

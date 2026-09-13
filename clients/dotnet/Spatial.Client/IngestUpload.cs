@@ -13,4 +13,5 @@ public sealed record IngestUpload(
     string Store = "memory",
     string? Identity = null,
     string? IdentityField = null,
-    string? Publish = null);
+    string? Publish = null,
+    int? SourceSrid = null);

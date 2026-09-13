@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Spatial.Core.Features;
 using Spatial.Interop.Ingest;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
@@ -126,12 +127,14 @@ internal static class AdminEndpoints
             var format = ParseFormat(ingest, query["format"].ToString());
             var identityField = EmptyToNull(query["identityField"].ToString());
             var identity = ParseIdentity(query["identity"].ToString());
+            var sourceSrid = ParseOptionalSrid(query["sourceSrid"].ToString());
             var target = services.GetKeyedService<IDatasetIngest>(store)
                 ?? throw SpatialException.BadArguments($"Store '{store}' does not support ingest.");
 
-            var decoded = await DecodeAsync(context, ingest, format, srid, identityField);
+            var decoded = await DecodeAsync(context, ingest, format, sourceSrid ?? srid, identityField);
+            var pages = ConvertIfNeeded(decoded.Pages, sourceSrid, srid, services, token);
             var outcome = await target.IngestAsync(
-                new IngestRequest(dataset, srid, identity, identityField), decoded.Pages, token);
+                new IngestRequest(dataset, srid, identity, identityField), pages, token);
 
             return Results.Ok(await WithPublicationAsync(registry, query["publish"].ToString(), store, outcome, token));
         }
@@ -239,6 +242,66 @@ internal static class AdminEndpoints
         int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var srid) && srid > 0
             ? srid
             : throw SpatialException.BadArguments($"The 'srid' query parameter must be a positive integer, got '{value}'.");
+
+    private static int? ParseOptionalSrid(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var srid) && srid > 0
+            ? srid
+            : throw SpatialException.BadArguments($"The 'sourceSrid' query parameter must be a positive integer, got '{value}'.");
+    }
+
+    /// <summary>
+    /// Reprojects decoded pages from the source CRS to the target SRID through
+    /// the engine's transform service (ADR-0047): uploads may carry data in a
+    /// curated CRS and still land in one declared column CRS. A missing or
+    /// equal source SRID is a pass-through, so the common 4326 case costs
+    /// nothing and the codec stays free of algorithms.
+    /// </summary>
+    private static IReadOnlyList<FeatureBatch> ConvertIfNeeded(
+        IReadOnlyList<FeatureBatch> pages, int? sourceSrid, int targetSrid, IServiceProvider services, CancellationToken token)
+    {
+        if (sourceSrid is not { } source || source == targetSrid)
+        {
+            return pages;
+        }
+
+        var transforms = services.GetRequiredService<ICoordinateTransforms>();
+        var sourceCrs = $"EPSG:{source}";
+        var targetCrs = $"EPSG:{targetSrid}";
+        var converted = new List<FeatureBatch>(pages.Count);
+        foreach (var page in pages)
+        {
+            var features = new Feature[page.Count];
+            for (var index = 0; index < page.Count; index++)
+            {
+                features[index] = ConvertFeature(page[index], sourceCrs, targetCrs, transforms, token);
+            }
+
+            converted.Add(new FeatureBatch(page.Schema, features));
+        }
+
+        return converted;
+    }
+
+    private static Feature ConvertFeature(
+        Feature feature, string source, string target, ICoordinateTransforms transforms, CancellationToken token)
+    {
+        var attributes = new AttributeValue[feature.Attributes.Count];
+        for (var index = 0; index < attributes.Length; index++)
+        {
+            var value = feature.Attributes[index];
+            attributes[index] = value.Kind == AttributeKind.Geometry && !value.IsNull
+                ? AttributeValue.FromGeometry(transforms.Transform(value.GeometryValue, source, target, token))
+                : value;
+        }
+
+        return new Feature(feature.Id, feature.Schema, attributes);
+    }
 
     private static IngestFormat ParseFormat(IngestOptions ingest, string name)
     {

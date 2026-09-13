@@ -342,6 +342,76 @@ public sealed class AdminEndpointTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, badResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task A_map_publication_is_served_as_a_styled_map_server()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var ingest = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.parks&srid=4326&format=geojson",
+            new StringContent(GeoJson, Encoding.UTF8, "application/json")));
+        Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
+
+        const string body = """
+            {"name":"parks_map","kind":"map","store":"memory","layers":[
+              {"dataset":"public.parks","layerId":0,"name":"Parks","style":{"color":"#ff0000","opacity":0.5,"lineWidth":3,"radius":8,"visible":true}}
+            ]}
+            """;
+        var put = await client.SendAsync(Authorized(HttpMethod.Put, "/api/publications/parks_map", Json(body)));
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var catalog = await BodyAsync(await client.GetAsync("/arcgis/rest/services?f=json"));
+        var services = catalog.GetProperty("services").EnumerateArray()
+            .Select(service => (service.GetProperty("name").GetString(), service.GetProperty("type").GetString()))
+            .ToArray();
+        Assert.Contains(("parks_map", "MapServer"), services);
+
+        var root = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer?f=json"));
+        Assert.Equal("Query,Data", root.GetProperty("capabilities").GetString());
+        Assert.Equal(1, root.GetProperty("layers").GetArrayLength());
+        Assert.Equal(2.35, root.GetProperty("fullExtent").GetProperty("xmin").GetDouble(), precision: 3);
+        Assert.Equal(13.4, root.GetProperty("fullExtent").GetProperty("xmax").GetDouble(), precision: 3);
+
+        var layers = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer/layers?f=json"));
+        Assert.Equal(1, layers.GetProperty("layers").GetArrayLength());
+
+        var layer = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer/0?f=json"));
+        var symbol = layer.GetProperty("drawingInfo").GetProperty("renderer").GetProperty("symbol");
+        Assert.Equal("esriSMS", symbol.GetProperty("type").GetString());
+        Assert.Equal([255, 0, 0, 128], symbol.GetProperty("color").EnumerateArray().Select(c => c.GetInt32()).ToArray());
+        Assert.Equal(16, symbol.GetProperty("size").GetDouble(), precision: 3);
+
+        var query = await BodyAsync(await client.GetAsync("/arcgis/rest/services/parks_map/MapServer/0/query?where=1%3D1&outFields=*&f=json"));
+        Assert.Equal(2, query.GetProperty("features").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Ingest_reprojects_a_source_crs_to_the_target_srid()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        // Berlin in EPSG:3857 (Web Mercator) loaded into an EPSG:4326 column.
+        const string webMercator = """
+            {"type":"FeatureCollection","features":[
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[1494000,6894000]},"properties":{"name":"Berlin"}}
+            ]}
+            """;
+        var ingest = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.merc&srid=4326&sourceSrid=3857&format=geojson&publish=merc",
+            new StringContent(webMercator, Encoding.UTF8, "application/json")));
+        Assert.True(ingest.StatusCode == HttpStatusCode.OK, await ingest.Content.ReadAsStringAsync());
+
+        var query = await BodyAsync(await client.GetAsync(
+            "/arcgis/rest/services/merc/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=json"));
+        var geometry = query.GetProperty("features")[0].GetProperty("geometry");
+        Assert.InRange(geometry.GetProperty("x").GetDouble(), 13.3, 13.5);
+        Assert.InRange(geometry.GetProperty("y").GetDouble(), 52.4, 52.6);
+    }
+
     /// <summary>A host with an admin token and a per-test publication file.</summary>
     private sealed class AdminFactory(string publicationsPath, long maxBytes) : WebApplicationFactory<Program>
     {

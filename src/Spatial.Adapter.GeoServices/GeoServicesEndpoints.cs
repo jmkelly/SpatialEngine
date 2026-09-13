@@ -56,6 +56,9 @@ public static class GeoServicesEndpoints
                 new FeatureQueryContext(catalog, registry, context, service, layerId, services, operations, transforms),
                 cancellationToken));
 
+        // MapServer M0 (ADR-0047): a data-only projection of a Map publication.
+        MapServerEndpoints.Map(group);
+
         // Editing (ADR-0037): POST-only, per spec §9.1.6–§9.1.9.
         group.MapPost("/{service}/FeatureServer/{layerId:int}/addFeatures", (
             HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
@@ -83,6 +86,10 @@ public static class GeoServicesEndpoints
                 if (publication.Kind == PublicationKind.Feature)
                 {
                     services.Add(new EsriServiceEntry(publication.Name, "FeatureServer"));
+                }
+                else if (publication.Kind == PublicationKind.Map)
+                {
+                    services.Add(new EsriServiceEntry(publication.Name, "MapServer"));
                 }
             }
 

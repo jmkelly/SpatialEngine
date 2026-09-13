@@ -275,7 +275,7 @@ export class SpatialClient {
   async ingest(
     content: Blob,
     fileName: string,
-    options: { dataset: string; srid: number; format?: string; store?: string; identity?: string; identityField?: string; publish?: string },
+    options: { dataset: string; srid: number; format?: string; store?: string; identity?: string; identityField?: string; publish?: string; sourceSrid?: number },
     adminToken?: string,
     signal?: AbortSignal,
   ): Promise<IngestResult> {
@@ -288,6 +288,7 @@ export class SpatialClient {
     if (options.identity) query.set("identity", options.identity);
     if (options.identityField) query.set("identityField", options.identityField);
     if (options.publish) query.set("publish", options.publish);
+    if (options.sourceSrid !== undefined) query.set("sourceSrid", String(options.sourceSrid));
     const form = new FormData();
     form.append("file", content, fileName);
     return this.send<IngestResult>("POST", `/api/ingest?${query.toString()}`, {

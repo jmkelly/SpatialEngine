@@ -16,6 +16,7 @@ internal static class PublicationValidator
 {
     private static readonly Regex NamePattern = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private static readonly Regex DatasetPattern = new(@"^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", RegexOptions.Compiled);
+    private static readonly Regex ColorPattern = new(@"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", RegexOptions.Compiled);
 
     /// <summary>Validates and normalises a publication, assigning any negative layer ids.</summary>
     public static Publication Normalize(Publication publication, int nextLayerId)
@@ -81,6 +82,32 @@ internal static class PublicationValidator
         if (layer.Name is { Length: 0 })
         {
             throw SpatialException.BadArguments($"Publication '{publication.Name}' has a layer with an empty name.");
+        }
+
+        if (layer.Style is { } style)
+        {
+            ValidateStyle(publication, dataset, style);
+        }
+    }
+
+    private static void ValidateStyle(Publication publication, string dataset, LayerStyle style)
+    {
+        var context = $"Publication '{publication.Name}' layer '{dataset}'";
+        if (!ColorPattern.IsMatch(style.Color ?? string.Empty))
+        {
+            throw SpatialException.BadArguments($"{context} has colour '{style.Color}'; expected #rgb or #rrggbb.");
+        }
+
+        ValidateRange(context, "opacity", style.Opacity, 1);
+        ValidateRange(context, "line width", style.LineWidth, double.PositiveInfinity);
+        ValidateRange(context, "radius", style.Radius, double.PositiveInfinity);
+    }
+
+    private static void ValidateRange(string context, string name, double value, double max)
+    {
+        if (!double.IsFinite(value) || value < 0 || value > max)
+        {
+            throw SpatialException.BadArguments($"{context} has {name} {value}; expected a finite value in 0..{max}.");
         }
     }
 

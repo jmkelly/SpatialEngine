@@ -248,6 +248,7 @@ public sealed class SpatialClient
             ["identity"] = upload.Identity,
             ["identityField"] = upload.IdentityField,
             ["publish"] = upload.Publish,
+            ["sourceSrid"] = upload.SourceSrid?.ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
         var queryString = string.Join('&', query
             .Where(pair => !string.IsNullOrEmpty(pair.Value))

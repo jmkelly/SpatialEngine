@@ -24,6 +24,8 @@ interop surface.
 
 - `eng/verify.sh` — format, build, full tests; the gate before done.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
+- `eng/seed.sh` — on-demand realistic dataset: fetch public data, ingest
+  (with engine-side reprojection) and publish styled feature/map services.
 - Quality loop: read the `quality-loop` skill first; repo policy is
   `.dependably` and `coverage-policy.json`.
 

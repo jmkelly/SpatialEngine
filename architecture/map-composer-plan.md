@@ -4,7 +4,9 @@
 > `architecture/publishing-and-ingest-plan.md` grown into a first-class
 > authoring surface. It adds **no host contract**: it is a browser client of
 > the existing `POST /api/ingest` and `PUT /api/publications/{name}` routes
-> (ADR-0041), rendered with MapLibre (ADR-0014). Read
+> (ADR-0041), rendered with MapLibre (ADR-0014). ADR-0047 now gives the
+> contract a per-layer `LayerStyle`; the composer can round-trip it on
+> publish/load (see §6) without any further host change. Read
 > `publishing-and-ingest-plan.md` and
 > `architecture/distilled/host-and-clients.md` first.
 
@@ -37,11 +39,13 @@ preview canonical geometry, exactly like the `Map` screen.
 
 **Non-goals (MVP):**
 
-- **No style persistence.** Per-layer style is an authoring aid held in
-  browser state; the published `Publication` carries ordered layers only.
-  Persisting style needs the MapServer render model (M2/M4 of
-  `map-service-plan.md`, ADR-0044) and its own ADR; until then a MapServer
-  is data-only (M0) and cannot honour style anyway.
+- **Style round-trip.** Per-layer style is held in browser state. Since
+  ADR-0047 the `PublicationLayer` contract carries a `LayerStyle` and a
+  MapServer projects it to `drawingInfo`, so `toPublication`/`fromPublication`
+  can carry the composed style instead of dropping it when the form is
+  submitted or reopened; this is a client-side change with no host or ADR
+  impact. Labels, class breaks and scale dependencies remain the M4 render
+  model.
 - **No server-side rendering.** The MapLibre preview is the map; the host
   still serves no tiles/export.
 - **No multi-store publication.** A publication names one store, so the
@@ -125,7 +129,12 @@ and which MapLibre layer kinds are emitted.
 
 ## 6. Future (post-MVP)
 
-- Style persistence + MapServer `drawingInfo` after the render ADR (M2/M4).
+- Wire the composer's `toPublication`/`fromPublication` to the ADR-0047
+  `LayerStyle` so a composed style survives publish and reopen (the host and
+  MapServer already honour it).
+- Style persistence + MapServer `drawingInfo` are delivered (ADR-0047); the
+  remaining render-model work is labels, class breaks and scale dependencies
+  (M4).
 - Basemap/label layer options and per-layer opacity in the preview legend.
 - Streaming/bounded previews for datasets larger than the in-memory page
   convention (P8), replacing the scan-the-whole-dataset preview.

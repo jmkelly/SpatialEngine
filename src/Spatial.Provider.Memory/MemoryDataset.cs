@@ -79,7 +79,29 @@ internal sealed class MemoryDataset
     public DatasetSummary ToSummary() => new(Id, SchemaName, Table, GeometryColumn, Srid, Features.Count);
 
     public DatasetDescription ToDescription() =>
-        new(Id, SchemaName, Table, GeometryColumn, Srid, "Geometry", Features.Count, IdColumns, Schema);
+        new(Id, SchemaName, Table, GeometryColumn, Srid, GeometryTypeName(), Features.Count, IdColumns, Schema);
+
+    /// <summary>
+    /// The dataset's geometry type inferred from the first non-null geometry
+    /// value, so a GeoServices layer advertises the real Esri geometry rather
+    /// than a placeholder. An empty or all-null dataset falls back to
+    /// <c>Geometry</c>.
+    /// </summary>
+    private string GeometryTypeName()
+    {
+        foreach (var feature in Features)
+        {
+            foreach (var attribute in feature.Attributes)
+            {
+                if (attribute.Kind == AttributeKind.Geometry && !attribute.IsNull)
+                {
+                    return attribute.GeometryValue.Type.ToString();
+                }
+            }
+        }
+
+        return "Geometry";
+    }
 
     /// <summary>Copies the dataset with a fresh feature list (used for transaction snapshots).</summary>
     public MemoryDataset Clone() =>

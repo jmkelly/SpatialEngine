@@ -1,7 +1,8 @@
 # Map Service (MapServer) Implementation Plan — scaffold
 
-> **Status:** scaffold, not scheduled. Reuses the publication registry and
-> admin surface from `publishing-and-ingest-plan.md`. Read
+> **Status:** M0 (data-only MapServer) implemented under ADR-0047 together
+> with per-layer render style; M1–M4 remain scaffold. Reuses the publication
+> registry and admin surface from `publishing-and-ingest-plan.md`. Read
 > `architecture/references/geoservices-compatibility.md` §4 first.
 >
 > **Blocking decision:** MapServer is only useful to ArcGIS clients if it
@@ -62,15 +63,20 @@ future track and should not be smuggled in as "MapServer".
 
 ## 4. Phases
 
-### M0 — Data-only MapServer
-- **Deliverable:** `/{service}/MapServer` root for a `PublicationKind.Map`
-  publication: layers/tables, `spatialReference`, extents, `units`,
-  `copyrightText`, `capabilities: "Map,Query,Data"` (only if `export` is
-  served — otherwise `"Query,Data"`); `All Layers and Tables`;
-  Layer/Table + `query` (reuse the FeatureServer query engine).
-- **Proof:** HTTP tests from the spec's example payloads; ArcGIS REST JS
-  `getService`/`getLayer`/`query` against the host; a test pinning that
-  `export` is **not** advertised when unrendered.
+### M0 — Data-only MapServer — **delivered (ADR-0047)**
+- **Delivered:** `/{service}/MapServer` root for a `PublicationKind.Map`
+  publication: layers, tables, `spatialReference`, extents (computed by
+  scanning the layers — the stores expose no extent capability yet),
+  `units`, `copyrightText`; `layers` (All Layers and Tables); Layer/Table
+  with `drawingInfo` lowered from the layer's optional `LayerStyle`
+  (ADR-0047); and `query` reusing the FeatureServer query engine. The root
+  advertises `capabilities: "Query,Data"` and never `Map`, because export is
+  not served.
+- **Proof:** `EsriMapModelTests` pin the style → symbol lowering, colour
+  parsing and units; `AdminEndpointTests.A_map_publication_is_served_as_a_styled_map_server`
+  drives a real styled publication from ingest to catalog, root, `layers`,
+  layer `drawingInfo` and query; `Spatial.Provider.Memory` reports the real
+  inferred geometry type so the symbol family is correct.
 
 ### M1 — Identify and Find
 - **Deliverable:** `identify` (point/envelope + tolerance + layer ids;
