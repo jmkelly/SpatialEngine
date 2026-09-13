@@ -1238,6 +1238,18 @@
         }
       }
     },
+    "/routes": {
+      "get": {
+        "tags": [
+          "Spatial.Host"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/arcgis/rest/services": {
       "get": {
         "tags": [
