@@ -19,7 +19,9 @@ internal static class PostgisWriteOperations
     /// Chooses the statement and bound values for one edit. An add whose
     /// identity is <see cref="FeatureId.Unassigned"/> omits the identity
     /// columns so the database assigns them (ADR-0043); every other add and
-    /// update binds the full schema. Stateless, so it lives with the write
+    /// update binds the full schema, and an update appends the feature's
+    /// pre-edit identity so the row is matched by <see cref="FeatureId"/>.
+    /// Stateless, so it lives with the write
     /// leaves rather than on the editing capability (ADR-0040).
     /// </summary>
     public static (string Sql, object?[] Values) PlanFeature(
@@ -27,9 +29,15 @@ internal static class PostgisWriteOperations
     {
         if (update)
         {
+            var kinds = description.IdColumns
+                .Select(column => description.Schema[description.Schema.IndexOf(column)].Kind)
+                .ToArray();
+            var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid)
+                .Concat(PostgisDiagnostics.ParseFeatureIdentity(kinds, feature.Id))
+                .ToArray();
             return (
                 PostgisQueries.Update(name, description.Schema, description.Srid, description.IdColumns),
-                PostgisRowMapper.Parameters(description.Schema, feature, description.Srid));
+                values);
         }
 
         if (!feature.Id.Equals(FeatureId.Unassigned))

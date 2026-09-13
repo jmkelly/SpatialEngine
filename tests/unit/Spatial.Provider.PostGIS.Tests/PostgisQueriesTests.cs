@@ -134,7 +134,7 @@ public sealed class PostgisQueriesTests
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
 
         Assert.Equal(
-            "UPDATE \"public\".\"places\" SET \"id\" = @p0, \"name\" = @p1, \"geom\" = ST_SetSRID(ST_GeomFromEWKB(@p2), 4326) WHERE \"id\" = @p0",
+            "UPDATE \"public\".\"places\" SET \"id\" = @p0, \"name\" = @p1, \"geom\" = ST_SetSRID(ST_GeomFromEWKB(@p2), 4326) WHERE \"id\" = @p3",
             PostgisQueries.Update(dataset, Schema, 4326, ["id"]));
     }
 
