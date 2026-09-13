@@ -88,6 +88,18 @@ absent `Style` is the old behaviour, so existing publications load unchanged.
   zoom windows) needs no new storage decision — the dialect already supports
   it; only the composer UI has to grow.
 
+## Implementation status
+
+Implemented: the `PublicationLayer.Style` contract and validation, its
+persistence in the ADR-0041 registry (runtime file and declared config), the
+workbench composer round-trip, and the host route
+`POST /api/publications/{name}/render` — it composes a publication's
+per-layer fragments into one MapLibre document (injecting `id` and
+`source-layer`, defaulting a style-less layer to a neutral symbol) and renders
+it with `IMapRenderer`, so a headlessly authored style takes effect. Not
+built: publication tiles and the GeoServices `export`/`tile` projection
+(`map-service-plan.md` M2/M3).
+
 ## Alternatives
 
 - **One MapLibre document on the `Publication`** (not per layer): matches the

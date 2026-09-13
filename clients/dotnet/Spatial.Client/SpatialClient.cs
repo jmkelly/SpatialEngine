@@ -183,6 +183,15 @@ public sealed class SpatialClient
         return await _transport.PostForImageAsync("/api/render", request, cancellationToken);
     }
 
+    /// <summary>Renders a publication's datasets using its persisted layer styles (ADR-0047).</summary>
+    public async Task<RasterImage> RenderPublicationAsync(
+        string name, PublicationRenderRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await _transport.PostForImageAsync(
+            $"/api/publications/{Uri.EscapeDataString(name)}/render", request, cancellationToken);
+    }
+
     /// <summary>Describes the configured raster formats, pixel cap and imagery sources.</summary>
     public Task<RenderCapabilitiesResponse> RenderCapabilitiesAsync(CancellationToken cancellationToken = default) =>
         _transport.GetAsync<RenderCapabilitiesResponse>("/api/render/capabilities", cancellationToken);

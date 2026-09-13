@@ -219,6 +219,30 @@ test("render returns image bytes and metadata headers", async (t) => {
   assert.deepEqual(host.requests, ["POST /api/render", "GET /api/render/capabilities"]);
 });
 
+test("rendering a publication posts to its render route and returns image bytes", async (t) => {
+  const host = await fakeHost({
+    "/api/publications/cities/render": () => ({
+      status: 200,
+      body: Uint8Array.of(0x89, 0x50, 0x4e, 0x47),
+      contentType: "image/png",
+      headers: { "x-raster-width": "400", "x-raster-height": "250" },
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  const image = await client.renderPublication("cities", {
+    viewport: { minX: -10, minY: 35, maxX: 30, maxY: 60, width: 400, height: 250, crs: "EPSG:4326" },
+    format: "png",
+  });
+
+  assert.equal(image.mediaType, "image/png");
+  assert.equal(image.format, "png");
+  assert.equal(image.width, 400);
+  assert.deepEqual([...image.bytes], [0x89, 0x50, 0x4e, 0x47]);
+  assert.deepEqual(host.requests, ["POST /api/publications/cities/render"]);
+});
+
 test("render maps host failures to SpatialApiError", async (t) => {
   const host = await fakeHost({
     "/api/render": () => ({
