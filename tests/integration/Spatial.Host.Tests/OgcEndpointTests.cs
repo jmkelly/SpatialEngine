@@ -156,6 +156,96 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Wms_get_feature_info_honours_feature_count()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // The MapServer trace-D shape (research/interop/wms-conformance.md
+        // G8): FEATURE_COUNT travels on the identify request and caps the rows.
+        var capped = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain&feature_count=5");
+
+        Assert.Equal(HttpStatusCode.OK, capped.StatusCode);
+        Assert.Contains("Amsterdam", await capped.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Wms_get_feature_info_rejects_a_bad_feature_count()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain&feature_count=abc");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("InvalidParameterValue", await ReportCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Wms_get_map_tolerates_the_qgis_dpi_triple()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // QGIS sends DPI + MAP_RESOLUTION + FORMAT_OPTIONS together by default
+        // (dpiMode=7; research/interop/wms-conformance.md G9, trace A). The
+        // service renders at its own scale today; the triple must never 400.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE&DPI=90&MAP_RESOLUTION=90&FORMAT_OPTIONS=dpi:90");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_legend_graphic_tolerates_dpi()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // QGIS appends DPI to the layer-tree legend request (trace C); it is
+        // accepted and ignored — the legend keeps its fixed frame.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&version=1.3.0&sld_version=1.1.0&request=GetLegendGraphic&format=image/png&layer=cities&style=&transparent=true&DPI=90");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_jpeg_with_transparent_stays_lenient()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // JPEG carries no alpha and QGIS never sends this combination, but a
+        // client that does must get an image, never a 500.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/jpeg&transparent=TRUE");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_map_accepts_an_explicit_bgcolor()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // CITE basic:blue-bgcolor (research/interop/wms-conformance.md G11):
+        // an explicit BGCOLOR is honoured; without one the renderer paints
+        // the opaque-white default.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&bgcolor=0x0000FF");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
     public async Task Wms_get_feature_info_identifies_a_click_within_the_marker()
     {
         using var factory = Factory();

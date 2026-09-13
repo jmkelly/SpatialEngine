@@ -252,22 +252,31 @@ internal static class WmsService
     private static async Task<IResult> GetFeatureInfoAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var queryNames = parameters.List("query_layers");
         var names = queryNames.Count > 0 ? queryNames : parameters.List("layers");
         RequireQueryable(map, names);
         var layers = OgcLayers.Select(map, names);
         var viewport = ParseViewport(parameters, requireVersion: false);
         var point = ClickPoint(parameters, viewport);
+        var limit = OptionalFeatureCount(parameters.Get("feature_count"));
         var matches = new List<(DatasetDescription Dataset, Feature Feature)>();
         foreach (var layer in layers)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var loaded = await services.LoadAsync(map, layer, cancellationToken);
             var tolerance = ClickTolerance(viewport, layer);
             var features = await QueryNearAsync(services, loaded, viewport.Crs, point, tolerance, cancellationToken);
             matches.AddRange(features.Select(feature => (loaded.Description, feature)));
+            if (limit is not null && matches.Count >= limit.Value)
+            {
+                break;
+            }
         }
 
-        return WriteFeatureInfo(parameters.Get("info_format"), matches);
+        return WriteFeatureInfo(
+            parameters.Get("info_format"),
+            limit is null ? matches : matches.Take(limit.Value).ToList());
     }
 
     /// <summary>
@@ -604,6 +613,24 @@ internal static class WmsService
         int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
             ? value
             : throw OgcServiceException.Invalid($"The '{name}' parameter must be a positive integer, got '{text}'.");
+
+    /// <summary>
+    /// Reads the GetFeatureInfo row cap (research/interop/wms-conformance.md
+    /// G8): QGIS sends <c>FEATURE_COUNT</c> (default 10) and the MapServer
+    /// traces use <c>FEATURE_COUNT=5</c>. Absent means every match (the
+    /// previous behaviour); a present value must be a positive integer.
+    /// </summary>
+    private static int? OptionalFeatureCount(string? text)
+    {
+        if (text is null)
+        {
+            return null;
+        }
+
+        return int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : throw OgcServiceException.Invalid($"The 'feature_count' parameter must be a positive integer, got '{text}'.");
+    }
 
     private static double? OptionalPointNumber(string? text, string name)
     {
