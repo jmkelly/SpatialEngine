@@ -4,6 +4,7 @@ using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Interop.Esri;
 using Spatial.PluginSdk;
+using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 
@@ -33,13 +34,15 @@ internal static class MapIdentifyEngine
         var tolerance = ToleranceUnits(parameters);
         var queryGeometry = tolerance > 0 ? operations.Buffer(geometry, tolerance, 8, cancellationToken) : geometry;
         var returnGeometry = parameters.GetBool("returnGeometry", true);
-        var hits = await MatchAsync(store, MapLayerSelection.Select(layers, parameters.Get("layers")), queryGeometry, identifyCrs, returnGeometry, operations, transforms, cancellationToken);
+        var layerDefs = MapRenderEngine.ParseLayerDefs(parameters.Get("layerDefs"));
+        var hits = await MatchAsync(store, MapLayerSelection.Select(layers, parameters.Get("layers")), layerDefs, queryGeometry, identifyCrs, returnGeometry, operations, transforms, cancellationToken);
         return EsriJson.Write(writer => WriteResults(writer, hits, returnGeometry));
     }
 
     private static async Task<List<IdentifyHit>> MatchAsync(
         IFeatureStore store,
         IReadOnlyList<MapLayerInfo> layers,
+        IReadOnlyDictionary<int, string>? layerDefs,
         IGeometry queryGeometry,
         CoordinateReference? identifyCrs,
         bool returnGeometry,
@@ -51,12 +54,23 @@ internal static class MapIdentifyEngine
         foreach (var layer in layers)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var definition = layerDefs?.GetValueOrDefault(layer.Layer.Id) is { } where
+                ? ParseLayerDef(layer.Layer.Id, where)
+                : null;
+            var scheme = definition is null ? null : EsriObjectIdScheme.For(layer.Dataset);
             var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Dataset.Srid);
             var localQuery = Transform(queryGeometry, layerCrs, transforms, cancellationToken);
             var batches = await store.ScanAsync(layer.Layer.Dataset, cancellationToken);
+            long ordinal = 0;
             foreach (var feature in batches.SelectMany(batch => batch.Features))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                ordinal++;
+                if (definition is not null && !MatchesDefinition(scheme!, layer.Dataset, definition, feature, ordinal))
+                {
+                    continue;
+                }
+
                 if (FeatureGeometry.Find(feature) is not { } geometry
                     || operations.Intersection(geometry, localQuery, cancellationToken).IsEmpty)
                 {
@@ -69,6 +83,33 @@ internal static class MapIdentifyEngine
         }
 
         return hits;
+    }
+
+    /// <summary>
+    /// Parses one layer's <c>layerDefs</c> clause. The clause was validated
+    /// when the <c>layerDefs</c> object parsed, so its re-rendered form always
+    /// parses; a failure here is still typed rather than silent.
+    /// </summary>
+    private static EsriFilterClause ParseLayerDef(int layerId, string where) =>
+        EsriFilterClause.TryParse(where, out var clause, out var error) && clause is not null
+            ? clause
+            : throw EsriInteropException.Invalid($"'layerDefs' clause for layer {layerId} is not supported: {error}.");
+
+    /// <summary>
+    /// Applies one layer's definition to a feature, resolving the synthetic
+    /// <c>OBJECTID</c> exactly as the query path does.
+    /// </summary>
+    private static bool MatchesDefinition(
+        EsriObjectIdScheme scheme, DatasetDescription dataset, EsriFilterClause definition, Feature feature, long ordinal)
+    {
+        if (!scheme.TryResolve(feature, ordinal, out var objectId))
+        {
+            throw new EsriInteropException(
+                EsriErrorCodes.ServerError,
+                $"The identity column of layer '{dataset.Id}' is not an integer.");
+        }
+
+        return definition.Matches(feature, new EsriSyntheticField(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId)));
     }
 
     private static void WriteResults(Utf8JsonWriter writer, IReadOnlyList<IdentifyHit> hits, bool returnGeometry)

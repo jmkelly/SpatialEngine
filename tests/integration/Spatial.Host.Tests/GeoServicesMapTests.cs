@@ -179,6 +179,46 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task Identify_honours_layer_defs()
+    {
+        var client = await MapServiceAsync();
+        var point =
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("{\"x\":13.405,\"y\":52.52,\"spatialReference\":{\"wkid\":4326}}") +
+            "&geometryType=esriGeometryPoint&sr=4326&tolerance=5&layers=all" +
+            "&mapExtent=" + Uri.EscapeDataString("-20,20,40,70") + "&imageDisplay=" + Uri.EscapeDataString("400,300,96");
+
+        var unfiltered = await BodyAsync(await client.GetAsync(point));
+        Assert.NotEmpty(unfiltered.GetProperty("results").EnumerateArray());
+
+        var excluded = await BodyAsync(await client.GetAsync(
+            point + "&layerDefs=" + Uri.EscapeDataString("{\"0\":\"population > 10000000\"}")));
+        Assert.Empty(excluded.GetProperty("results").EnumerateArray());
+
+        var included = await BodyAsync(await client.GetAsync(
+            point + "&layerDefs=" + Uri.EscapeDataString("{\"0\":\"population > 1000000\"}")));
+        var hits = included.GetProperty("results").EnumerateArray().ToArray();
+        Assert.NotEmpty(hits);
+        Assert.Equal("Berlin", hits[0].GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public async Task Identify_with_a_malformed_layer_defs_is_a_typed_error()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("{\"x\":13.405,\"y\":52.52,\"spatialReference\":{\"wkid\":4326}}") +
+            "&geometryType=esriGeometryPoint&sr=4326&layers=all" +
+            "&layerDefs=" + Uri.EscapeDataString("not-json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, JsonDocument.Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
     public async Task Find_matches_text_over_the_string_fields()
     {
         var client = await MapServiceAsync();
