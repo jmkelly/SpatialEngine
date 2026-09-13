@@ -2,10 +2,6 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Spatial.Core.Features;
-using Spatial.Core.Features.Codec;
-using Spatial.Core.Geometry;
-using Spatial.Core.Geometry.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
 
@@ -85,19 +81,6 @@ internal sealed class SpatialClientTransport
         using var response = await _http.SendAsync(request, cancellationToken);
         return await ReadAsync<T>(response, cancellationToken);
     }
-
-    /// <summary>Serialises a body with the shared camelCase wire options.</summary>
-    public static HttpContent Json(object body) =>
-        JsonContent.Create(body, options: HostApiJson.Options);
-
-    public static string Encode(IGeometry geometry) =>
-        Convert.ToBase64String(GeometryCodec.Encode(geometry));
-
-    public static IGeometry Decode(string base64) =>
-        GeometryCodec.Decode(Convert.FromBase64String(base64));
-
-    public static FeatureBatch DecodeBatch(string base64) =>
-        FeatureBatchCodec.Decode(Convert.FromBase64String(base64));
 
     private static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {

@@ -25,25 +25,42 @@ internal static class VipsEncoder
         return new RasterImage(content, MediaType(format), image.Width, image.Height, format);
     }
 
+    private static readonly Dictionary<RasterFormat, string> PlainSuffixes = new()
+    {
+        [RasterFormat.Png] = ".png",
+        [RasterFormat.Tiff] = ".tif",
+    };
+
+    private static readonly Dictionary<RasterFormat, string> QualitySuffixes = new()
+    {
+        [RasterFormat.Jpeg] = ".jpg",
+        [RasterFormat.Webp] = ".webp",
+    };
+
+    private static readonly Dictionary<RasterFormat, string> MediaTypes = new()
+    {
+        [RasterFormat.Png] = "image/png",
+        [RasterFormat.Jpeg] = "image/jpeg",
+        [RasterFormat.Webp] = "image/webp",
+        [RasterFormat.Tiff] = "image/tiff",
+    };
+
     private static string Suffix(RasterFormat format, int quality)
     {
-        var clamped = Math.Clamp(quality, 1, 100);
-        return format switch
+        if (PlainSuffixes.TryGetValue(format, out var plain))
         {
-            RasterFormat.Png => ".png",
-            RasterFormat.Jpeg => FormattableString.Invariant($".jpg[Q={clamped}]"),
-            RasterFormat.Webp => FormattableString.Invariant($".webp[Q={clamped}]"),
-            RasterFormat.Tiff => ".tif",
-            _ => throw SpatialException.BadArguments($"Unsupported raster format '{format}'."),
-        };
+            return plain;
+        }
+
+        if (QualitySuffixes.TryGetValue(format, out var qualitySuffix))
+        {
+            var clamped = Math.Clamp(quality, 1, 100);
+            return FormattableString.Invariant($"{qualitySuffix}[Q={clamped}]");
+        }
+
+        throw SpatialException.BadArguments($"Unsupported raster format '{format}'.");
     }
 
-    private static string MediaType(RasterFormat format) => format switch
-    {
-        RasterFormat.Png => "image/png",
-        RasterFormat.Jpeg => "image/jpeg",
-        RasterFormat.Webp => "image/webp",
-        RasterFormat.Tiff => "image/tiff",
-        _ => "application/octet-stream",
-    };
+    private static string MediaType(RasterFormat format) =>
+        MediaTypes.TryGetValue(format, out var mediaType) ? mediaType : "application/octet-stream";
 }

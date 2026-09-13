@@ -32,7 +32,7 @@ public sealed class SymbolSceneBuilderTests
         var (name, attribute) = Attribute(kind, value);
         var feature = FeatureWith((name, attribute));
 
-        Assert.Equal(expected, SymbolSceneBuilder.ReadAttribute(feature, name));
+        Assert.Equal(expected, SymbolTemplateResolver.ReadAttribute(feature, name));
     }
 
     [Fact]
@@ -42,10 +42,10 @@ public sealed class SymbolSceneBuilderTests
         var at = new DateTimeOffset(2026, 9, 16, 12, 30, 0, TimeSpan.Zero);
         var feature = FeatureWith(("token", AttributeValue.FromGuid(guid)), ("at", AttributeValue.FromDateTimeOffset(at)));
 
-        Assert.Equal(guid.ToString(), SymbolSceneBuilder.ReadAttribute(feature, "token"));
+        Assert.Equal(guid.ToString(), SymbolTemplateResolver.ReadAttribute(feature, "token"));
         Assert.Equal(
             at.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
-            SymbolSceneBuilder.ReadAttribute(feature, "at"));
+            SymbolTemplateResolver.ReadAttribute(feature, "at"));
     }
 
     [Fact]
@@ -53,8 +53,8 @@ public sealed class SymbolSceneBuilderTests
     {
         var feature = FeatureWith(("geometry", AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 1))));
 
-        Assert.Null(SymbolSceneBuilder.ReadAttribute(feature, "geometry"));
-        Assert.Null(SymbolSceneBuilder.ReadAttribute(feature, "absent"));
+        Assert.Null(SymbolTemplateResolver.ReadAttribute(feature, "geometry"));
+        Assert.Null(SymbolTemplateResolver.ReadAttribute(feature, "absent"));
     }
 
     [Fact]

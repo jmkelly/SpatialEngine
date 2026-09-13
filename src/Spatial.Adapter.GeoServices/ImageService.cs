@@ -19,6 +19,45 @@ internal static class ImageService
 {
     public const double CurrentVersion = 10.0;
 
+    /// <summary>The Esri <c>pixelType</c> name for every supported core pixel type.</summary>
+    private static readonly Dictionary<RasterPixelType, string> PixelTypeNames =
+        new Dictionary<RasterPixelType, string>
+        {
+            [RasterPixelType.U1] = "U1",
+            [RasterPixelType.U2] = "U2",
+            [RasterPixelType.U4] = "U4",
+            [RasterPixelType.U8] = "U8",
+            [RasterPixelType.S8] = "S8",
+            [RasterPixelType.U16] = "U16",
+            [RasterPixelType.S16] = "S16",
+            [RasterPixelType.U32] = "U32",
+            [RasterPixelType.S32] = "S32",
+            [RasterPixelType.F32] = "F32",
+            [RasterPixelType.F64] = "F64",
+            [RasterPixelType.C64] = "C64",
+            [RasterPixelType.C128] = "C128",
+        };
+
+    /// <summary>The core pixel type named by every Esri <c>pixelType</c> value.</summary>
+    private static readonly Dictionary<string, RasterPixelType> PixelTypesByName =
+        new Dictionary<string, RasterPixelType>(StringComparer.Ordinal)
+        {
+            ["U1"] = RasterPixelType.U1,
+            ["U2"] = RasterPixelType.U2,
+            ["U4"] = RasterPixelType.U4,
+            ["U8"] = RasterPixelType.U8,
+            ["S8"] = RasterPixelType.S8,
+            ["U16"] = RasterPixelType.U16,
+            ["S16"] = RasterPixelType.S16,
+            ["U32"] = RasterPixelType.U32,
+            ["S32"] = RasterPixelType.S32,
+            ["F32"] = RasterPixelType.F32,
+            ["F64"] = RasterPixelType.F64,
+            ["C64"] = RasterPixelType.C64,
+            ["C128"] = RasterPixelType.C128,
+            ["UNKNOWN"] = RasterPixelType.Unknown,
+        };
+
     /// <summary>Builds the Image Service root (spec §8.0.3).</summary>
     public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright)
     {
@@ -132,23 +171,8 @@ internal static class ImageService
     }
 
     /// <summary>Maps an engine pixel type to its Esri <c>pixelType</c> string (spec §8.0.4.2).</summary>
-    public static string PixelType(RasterPixelType type) => type switch
-    {
-        RasterPixelType.U1 => "U1",
-        RasterPixelType.U2 => "U2",
-        RasterPixelType.U4 => "U4",
-        RasterPixelType.U8 => "U8",
-        RasterPixelType.S8 => "S8",
-        RasterPixelType.U16 => "U16",
-        RasterPixelType.S16 => "S16",
-        RasterPixelType.U32 => "U32",
-        RasterPixelType.S32 => "S32",
-        RasterPixelType.F32 => "F32",
-        RasterPixelType.F64 => "F64",
-        RasterPixelType.C64 => "C64",
-        RasterPixelType.C128 => "C128",
-        _ => "UNKNOWN",
-    };
+    public static string PixelType(RasterPixelType type) =>
+        PixelTypeNames.TryGetValue(type, out var name) ? name : "UNKNOWN";
 
     /// <summary>Parses the requested Esri <c>pixelType</c>; unsupported names are invalid arguments.</summary>
     public static RasterPixelType? ParsePixelType(string? value)
@@ -158,24 +182,9 @@ internal static class ImageService
             return null;
         }
 
-        return value.Trim().ToUpperInvariant() switch
-        {
-            "U1" => RasterPixelType.U1,
-            "U2" => RasterPixelType.U2,
-            "U4" => RasterPixelType.U4,
-            "U8" => RasterPixelType.U8,
-            "S8" => RasterPixelType.S8,
-            "U16" => RasterPixelType.U16,
-            "S16" => RasterPixelType.S16,
-            "U32" => RasterPixelType.U32,
-            "S32" => RasterPixelType.S32,
-            "F32" => RasterPixelType.F32,
-            "F64" => RasterPixelType.F64,
-            "C64" => RasterPixelType.C64,
-            "C128" => RasterPixelType.C128,
-            "UNKNOWN" => RasterPixelType.Unknown,
-            _ => throw EsriInteropException.Invalid($"Pixel type '{value}' is not supported."),
-        };
+        return PixelTypesByName.TryGetValue(value.Trim().ToUpperInvariant(), out var type)
+            ? type
+            : throw EsriInteropException.Invalid($"Pixel type '{value}' is not supported.");
     }
 
     /// <summary>Parses the Esri <c>interpolation</c> parameter (spec §8.0.4.2).</summary>

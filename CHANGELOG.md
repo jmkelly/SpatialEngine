@@ -11,6 +11,12 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Map labels and sprite symbols** (ADR-0049, plan R6): the Skia
+  renderer's MapLibre subset gains `symbol` layers — `SkiaSharp.HarfBuzz`
+  text shaping, a deterministic label placement/collision pass, and
+  `Svg.Skia` sprite icons. Fonts are an embedded, pinned `NotoSans` resource
+  (no system-font dependence) and the default marker sprite is embedded
+  (ADR-0049). Unsupported symbol properties stay typed `invalid.arguments`.
 - **ImageServer projection** (ADR-0051): a `PublicationKind.Image`
   publication is served as an ArcGIS ImageServer — root metadata (extent,
   pixel size, band count, pixel type, service data type, catalog
@@ -105,6 +111,14 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **Quality loop cleared to green** (ADR-0040): the raster/MapServer/
+  ImageServer work plus pre-existing baseline debt were paid down in one
+  pass — high-complexity methods split into cohesive services
+  (`MapStyleProjection`, `ImageService`, `VipsRasterCatalogue`,
+  `MapRenderEngine`, the GeoServices endpoint groups and `VipsEncoder`),
+  `Program.cs` de-top-levelled off the CRAP `Program.<Main>$` entry, and
+  real unit tests added. `crap4dotnet` CRAP, authored branch coverage,
+  `.dependably` metrics and the warnings gate are all green.
 - **Viewport bbox pushdown direction fixed** (plan R4):
   `GeometryPipeline.TransformEnvelope` transformed viewport bounds the wrong
   way (`dataset CRS → viewport CRS` instead of `viewport CRS → dataset CRS`),

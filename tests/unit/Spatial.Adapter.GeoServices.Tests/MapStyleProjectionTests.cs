@@ -301,6 +301,123 @@ public sealed class MapStyleProjectionTests
         Assert.Equal("esriTS", labeling[0].GetProperty("symbol").GetProperty("type").GetString());
     }
 
+    [Theory]
+    [InlineData("top", "esriServerPointLabelPlacementAboveCenter")]
+    [InlineData("bottom", "esriServerPointLabelPlacementBelowCenter")]
+    [InlineData("left", "esriServerPointLabelPlacementCenterLeft")]
+    [InlineData("right", "esriServerPointLabelPlacementCenterRight")]
+    [InlineData("top-left", "esriServerPointLabelPlacementAboveLeft")]
+    [InlineData("top-right", "esriServerPointLabelPlacementAboveRight")]
+    [InlineData("bottom-left", "esriServerPointLabelPlacementBelowLeft")]
+    [InlineData("bottom-right", "esriServerPointLabelPlacementBelowRight")]
+    [InlineData("center", "esriServerPointLabelPlacementCenterCenter")]
+    public void Every_anchor_projects_a_distinct_point_placement(string anchor, string expected)
+    {
+        var labels = MapStyleProjection.Labels(
+            $$$"""[{"type":"symbol","layout":{"text-field":"{name}","text-anchor":"{{{anchor}}}"},"paint":{"text-color":"#000000"}}]""",
+            Cities());
+
+        Assert.Equal(expected, Assert.Single(labels!).LabelPlacement);
+    }
+
+    [Theory]
+    [InlineData("line", "esriServerLinePlacementCenterAlong")]
+    [InlineData("multiLineString", "esriServerLinePlacementCenterAlong")]
+    [InlineData("polygon", "esriServerPolygonPlacementAlwaysHorizontal")]
+    [InlineData("multiPolygon", "esriServerPolygonPlacementAlwaysHorizontal")]
+    public void The_geometry_family_selects_the_placement_family(string geometryType, string expected)
+    {
+        var labels = MapStyleProjection.Labels(
+            """[{"type":"symbol","layout":{"text-field":"{name}"},"paint":{"text-color":"#000000"}}]""",
+            Cities(geometryType));
+
+        Assert.Equal(expected, Assert.Single(labels!).LabelPlacement);
+    }
+
+    [Theory]
+    [InlineData("""["==","country","DE"]""", "DE")]
+    [InlineData("""["==","country",true]""", "true")]
+    [InlineData("""["==","country",false]""", "false")]
+    [InlineData("""["==","country",42]""", "42")]
+    [InlineData("""["==","country",1.5]""", "1.5")]
+    [InlineData("""["==","country",null]""", "")]
+    [InlineData("""["==","country",[]]""", "")]
+    public void Every_filter_value_kind_becomes_a_coded_value(string filter, string expected)
+    {
+        var renderer = MapStyleProjection.Project(
+            $$$"""[{"type":"circle","filter":{{{filter}}},"paint":{"circle-color":"#ff0000"}}]""")!.Renderer;
+
+        Assert.Equal("uniqueValue", renderer.Type);
+        Assert.Equal(expected, Assert.Single(renderer.UniqueValueInfos!).Value);
+    }
+
+    [Theory]
+    [InlineData("""["all",[">","population",0],["<","population",1000]]""")]
+    [InlineData("""["all",[">=","population",0],["<=","population",1000]]""")]
+    [InlineData("""["all",[">=","population",0],["<","name",1000]]""")]
+    [InlineData("""["all",[">=","population",0]]""")]
+    [InlineData("""["all",[">=","population","x"],["<","population",1000]]""")]
+    [InlineData("""["all","x",["<","population",1000]]""")]
+    public void An_unreadable_interval_falls_back_to_a_simple_renderer(string filter)
+    {
+        var style =
+            $$$"""[{"type":"fill","filter":{{{filter}}},"paint":{"fill-color":"#ffffcc"}},{"type":"fill","filter":{{{filter}}},"paint":{"fill-color":"#ff0000"}}]""";
+
+        Assert.Equal("simple", MapStyleProjection.Project(style)!.Renderer.Type);
+    }
+
+    [Theory]
+    [InlineData("""{"text-field":"{name}"}""", "Arial")]
+    [InlineData("""{"text-field":"{name}","text-font":"Courier New"}""", "Courier New")]
+    [InlineData("""{"text-field":"{name}","text-font":["Noto Sans","Arial"]}""", "Noto Sans")]
+    [InlineData("""{"text-field":"{name}","text-font":[]}""", "Arial")]
+    [InlineData("""{"text-field":"{name}","text-font":[7]}""", "Arial")]
+    public void Text_font_forms_project_a_family(string layout, string expected)
+    {
+        var labels = MapStyleProjection.Labels(
+            $$$"""[{"type":"symbol","layout":{{{layout}}},"paint":{"text-color":"#000000"}}]""",
+            Cities());
+
+        Assert.Equal(expected, Assert.Single(labels!).Symbol.Font.Family);
+    }
+
+    [Fact]
+    public void Domains_without_drawing_info_or_a_classifying_renderer_are_null()
+    {
+        Assert.Null(MapStyleProjection.Domains(null, Cities()));
+        Assert.Null(MapStyleProjection.Domains(
+            new EsriDrawingInfo(new EsriRenderer("simple", new EsriSymbol("esriSFS", "esriSFSSolid", [0, 0, 0, 255]))), Cities()));
+        Assert.Null(MapStyleProjection.Domains(
+            new EsriDrawingInfo(new EsriRenderer("uniqueValue", Field1: "country")), Cities()));
+        Assert.Null(MapStyleProjection.Domains(
+            new EsriDrawingInfo(new EsriRenderer("classBreaks", Field: "population", MinValue: 0)), Cities()));
+    }
+
+    [Theory]
+    [InlineData("#abc", "170,187,204,255")]
+    [InlineData("#abcd", "170,187,204,221")]
+    [InlineData("#aabbcc", "170,187,204,255")]
+    [InlineData("#aabbccdd", "170,187,204,221")]
+    [InlineData("#ab", "0,0,0,0")]
+    [InlineData("#aabbccddee", "0,0,0,0")]
+    public void Hex_colours_parse_every_supported_length(string css, string expected)
+    {
+        Assert.Equal(expected.Split(',').Select(int.Parse), EsriColor.ToRgba(css, 1.0));
+    }
+
+    [Theory]
+    [InlineData("rgb(1,2,3)", "1,2,3,255")]
+    [InlineData("rgba(1,2,3,0.5)", "1,2,3,128")]
+    [InlineData("rgb(1,2)", "0,0,0,0")]
+    [InlineData("rgb 1,2,3", "0,0,0,0")]
+    [InlineData("rgb(1,2,300)", "1,2,255,255")]
+    [InlineData("rgb(-5,2,3)", "0,2,3,255")]
+    [InlineData("rgb(a,b,c)", "0,0,0,0")]
+    public void Functional_colours_parse_their_channels(string css, string expected)
+    {
+        Assert.Equal(expected.Split(',').Select(int.Parse), EsriColor.ToRgba(css, 1.0));
+    }
+
     private static DatasetDescription Cities(string geometryType = "point") => new(
         "demo.cities",
         "public",

@@ -124,12 +124,21 @@ internal static class MapIdentifyEngine
 
         var extent = EsriValueParser.ParseDoubles(mapExtent, "mapExtent");
         var display = EsriValueParser.ParseDoubles(imageDisplay, "imageDisplay");
+        return TryUnitsPerPixel(extent, display, out var unitsPerPixel)
+            ? Math.Abs(pixels) * unitsPerPixel
+            : 0;
+    }
+
+    private static bool TryUnitsPerPixel(IReadOnlyList<double> extent, IReadOnlyList<double> display, out double unitsPerPixel)
+    {
+        unitsPerPixel = 0;
         if (extent.Count < 4 || display.Count < 2 || display[0] <= 0)
         {
-            return 0;
+            return false;
         }
 
-        return Math.Abs(pixels) * ((extent[2] - extent[0]) / display[0]);
+        unitsPerPixel = (extent[2] - extent[0]) / display[0];
+        return true;
     }
 
     private static double ParseDouble(string? value, double fallback) =>

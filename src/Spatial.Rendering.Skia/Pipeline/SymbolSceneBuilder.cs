@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.PluginSdk;
@@ -54,7 +52,7 @@ internal sealed class SymbolSceneBuilder
             }
         }
 
-        candidates.Sort(CompareCandidates);
+        candidates.Sort(SymbolCandidateOrder.Compare);
         return candidates;
     }
 
@@ -72,94 +70,9 @@ internal sealed class SymbolSceneBuilder
             return null;
         }
 
-        var text = ResolveTemplate(options.TextField, feature);
-        var icon = options.IconImage is { } template ? ResolveTemplate(template, feature) : null;
+        var text = SymbolTemplateResolver.Resolve(options.TextField, feature);
+        var icon = options.IconImage is { } template ? SymbolTemplateResolver.Resolve(template, feature) : null;
         return text is not null || icon is not null ? new SymbolFeature(shaped, text, icon) : null;
-    }
-
-    /// <summary>Orders candidates by identity then source envelope centre (a deterministic tie-break).</summary>
-    private static int CompareCandidates((IFeature Feature, IGeometry Geometry) left, (IFeature Feature, IGeometry Geometry) right)
-    {
-        var byId = string.CompareOrdinal(left.Feature.Id.Value, right.Feature.Id.Value);
-        if (byId != 0)
-        {
-            return byId;
-        }
-
-        var (leftX, leftY) = Centre(left.Geometry);
-        var (rightX, rightY) = Centre(right.Geometry);
-        var byX = leftX.CompareTo(rightX);
-        return byX != 0 ? byX : leftY.CompareTo(rightY);
-    }
-
-    private static (double X, double Y) Centre(IGeometry geometry) =>
-        geometry.Envelope is { } envelope
-            ? ((envelope.MinX + envelope.MaxX) / 2, (envelope.MinY + envelope.MaxY) / 2)
-            : (double.NaN, double.NaN);
-
-    /// <summary>
-    /// Expands a MapLibre <c>text-field</c>/<c>icon-image</c> template:
-    /// <c>{attribute}</c> tokens are replaced by attribute text. Returns
-    /// <c>null</c> when a token names a missing attribute, which skips that
-    /// part of the symbol (never a half-rendered label).
-    /// </summary>
-    private static string? ResolveTemplate(string template, IFeature feature)
-    {
-        if (template.Length == 0)
-        {
-            return null;
-        }
-
-        var builder = new StringBuilder(template.Length);
-        var index = 0;
-        while (index < template.Length)
-        {
-            var open = template.IndexOf('{', index);
-            if (open < 0)
-            {
-                builder.Append(template, index, template.Length - index);
-                break;
-            }
-
-            builder.Append(template, index, open - index);
-            var close = template.IndexOf('}', open + 1);
-            if (close < 0)
-            {
-                builder.Append(template, open, template.Length - open);
-                break;
-            }
-
-            if (ReadAttribute(feature, template[(open + 1)..close]) is not { } text)
-            {
-                return null;
-            }
-
-            builder.Append(text);
-            index = close + 1;
-        }
-
-        return builder.ToString();
-    }
-
-    internal static string? ReadAttribute(IFeature feature, string name)
-    {
-        var index = feature.Schema.IndexOf(name);
-        if (index < 0)
-        {
-            return null;
-        }
-
-        var value = feature[index];
-        return value.Kind switch
-        {
-            AttributeKind.String => value.StringValue,
-            AttributeKind.Int64 => value.Int64Value.ToString(CultureInfo.InvariantCulture),
-            AttributeKind.Double => value.DoubleValue.ToString(CultureInfo.InvariantCulture),
-            AttributeKind.Boolean => value.BooleanValue ? "true" : "false",
-            AttributeKind.Guid => value.GuidValue.ToString(),
-            AttributeKind.DateTimeOffset => value.DateTimeOffsetValue.ToString("O", CultureInfo.InvariantCulture),
-            _ => null,
-        };
     }
 
     private static IGeometry? FeatureGeometry(IFeature feature, string column)

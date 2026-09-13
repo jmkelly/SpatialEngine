@@ -79,32 +79,36 @@ internal static class MapStyleProjection
         }
 
         var renderer = drawingInfo.Renderer;
-        var field = renderer.Type switch
-        {
-            "uniqueValue" => renderer.Field1,
-            "classBreaks" => renderer.Field,
-            _ => null,
-        };
+        var field = DomainField(renderer);
         if (string.IsNullOrWhiteSpace(field) || dataset.Schema.IndexOf(field) < 0)
         {
             return null;
         }
 
-        var domain = renderer switch
-        {
-            { Type: "uniqueValue", UniqueValueInfos: { Count: > 0 } infos } =>
-                new EsriDomain(
-                    "codedValue",
-                    field,
-                    CodedValues: [.. infos.Select(info => new EsriCodedValue(info.Label ?? info.Value, info.Value))]),
-            { Type: "classBreaks", ClassBreakInfos: { Count: > 0 } breaks, MinValue: { } min } =>
-                new EsriDomain("range", field, Range: [min, breaks[^1].ClassMaxValue]),
-            _ => null,
-        };
+        var domain = BuildDomain(renderer, field);
         return domain is null
             ? null
             : new Dictionary<string, EsriDomain>(StringComparer.Ordinal) { [field] = domain };
     }
+
+    private static string? DomainField(EsriRenderer renderer) => renderer.Type switch
+    {
+        "uniqueValue" => renderer.Field1,
+        "classBreaks" => renderer.Field,
+        _ => null,
+    };
+
+    private static EsriDomain? BuildDomain(EsriRenderer renderer, string field) => renderer switch
+    {
+        { Type: "uniqueValue", UniqueValueInfos: { Count: > 0 } infos } =>
+            new EsriDomain(
+                "codedValue",
+                field,
+                CodedValues: [.. infos.Select(info => new EsriCodedValue(info.Label ?? info.Value, info.Value))]),
+        { Type: "classBreaks", ClassBreakInfos: { Count: > 0 } breaks, MinValue: { } min } =>
+            new EsriDomain("range", field, Range: [min, breaks[^1].ClassMaxValue]),
+        _ => null,
+    };
 
     private static List<EsriLabelClass>? Labels(JsonElement[] fragments, DatasetDescription dataset)
     {
@@ -128,51 +132,69 @@ internal static class MapStyleProjection
 
     private static EsriRenderer? UniqueValue(JsonElement[] siblings)
     {
-        string? field = null;
-        List<EsriUniqueValueInfo>? infos = null;
-        EsriSymbol? defaultSymbol = null;
+        var builder = new UniqueValueBuilder();
         foreach (var sibling in siblings)
         {
-            var filter = Filter(sibling);
-            if (filter is not { } expression)
+            if (!builder.TryAdd(sibling))
             {
-                defaultSymbol ??= Symbol(sibling);
-                continue;
+                return null;
+            }
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// Accumulates the categorical infos of same-kind siblings, rejecting a
+    /// second field or an unreadable symbol rather than inventing a model.
+    /// </summary>
+    private sealed class UniqueValueBuilder
+    {
+        private readonly List<EsriUniqueValueInfo> _infos = [];
+        private string? _field;
+        private EsriSymbol? _defaultSymbol;
+
+        public bool TryAdd(JsonElement sibling)
+        {
+            if (Filter(sibling) is not { } expression)
+            {
+                _defaultSymbol ??= Symbol(sibling);
+                return true;
             }
 
             if (!TryCategorical(expression, out var categorical))
             {
-                return null;
+                return false;
             }
 
-            if (field is null)
+            if (_field is not null && !string.Equals(_field, categorical.Field, StringComparison.Ordinal))
             {
-                field = categorical.Field;
-            }
-            else if (!string.Equals(field, categorical.Field, StringComparison.Ordinal))
-            {
-                return null;
+                return false;
             }
 
             if (Symbol(sibling) is not { } symbol)
             {
-                return null;
+                return false;
             }
 
+            _field ??= categorical.Field;
             foreach (var value in categorical.Values)
             {
-                (infos ??= []).Add(new EsriUniqueValueInfo(value, symbol));
+                _infos.Add(new EsriUniqueValueInfo(value, symbol));
             }
+
+            return true;
         }
 
-        return field is not null && infos is { Count: > 0 }
-            ? new EsriRenderer(
-                "uniqueValue",
-                Field1: field,
-                DefaultSymbol: defaultSymbol,
-                DefaultLabel: defaultSymbol is null ? null : "<Other values>",
-                UniqueValueInfos: infos)
-            : null;
+        public EsriRenderer? Build() =>
+            _field is not null && _infos.Count > 0
+                ? new EsriRenderer(
+                    "uniqueValue",
+                    Field1: _field,
+                    DefaultSymbol: _defaultSymbol,
+                    DefaultLabel: _defaultSymbol is null ? null : "<Other values>",
+                    UniqueValueInfos: _infos)
+                : null;
     }
 
     private static EsriRenderer? ClassBreaks(JsonElement[] siblings)
@@ -182,46 +204,61 @@ internal static class MapStyleProjection
             return null;
         }
 
-        string? field = null;
-        var minValue = double.PositiveInfinity;
-        List<(double Max, EsriSymbol Symbol)>? classes = null;
+        var builder = new ClassBreaksBuilder();
         foreach (var sibling in siblings)
+        {
+            if (!builder.TryAdd(sibling))
+            {
+                return null;
+            }
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// Accumulates the interval infos of same-kind siblings, rejecting a
+    /// second field or an unreadable symbol rather than inventing a model.
+    /// </summary>
+    private sealed class ClassBreaksBuilder
+    {
+        private readonly List<(double Max, EsriSymbol Symbol)> _classes = [];
+        private string? _field;
+        private double _minValue = double.PositiveInfinity;
+
+        public bool TryAdd(JsonElement sibling)
         {
             if (Filter(sibling) is not { } expression || !TryInterval(expression, out var interval))
             {
-                return null;
+                return false;
             }
 
-            if (field is null)
+            if (_field is not null && !string.Equals(_field, interval.Field, StringComparison.Ordinal))
             {
-                field = interval.Field;
-            }
-            else if (!string.Equals(field, interval.Field, StringComparison.Ordinal))
-            {
-                return null;
+                return false;
             }
 
             if (Symbol(sibling) is not { } symbol)
             {
-                return null;
+                return false;
             }
 
-            minValue = Math.Min(minValue, interval.Lower);
-            (classes ??= []).Add((interval.Upper, symbol));
+            _field ??= interval.Field;
+            _minValue = Math.Min(_minValue, interval.Lower);
+            _classes.Add((interval.Upper, symbol));
+            return true;
         }
 
-        if (field is null || classes is not { Count: > 0 })
-        {
-            return null;
-        }
-
-        return new EsriRenderer(
-            "classBreaks",
-            Field: field,
-            MinValue: minValue,
-            ClassBreakInfos: [.. classes
-                .OrderBy(entry => entry.Max)
-                .Select(entry => new EsriClassBreakInfo(entry.Max, entry.Symbol, Format(entry.Max)))]);
+        public EsriRenderer? Build() =>
+            _field is not null && _classes.Count > 0
+                ? new EsriRenderer(
+                    "classBreaks",
+                    Field: _field,
+                    MinValue: _minValue,
+                    ClassBreakInfos: [.. _classes
+                        .OrderBy(entry => entry.Max)
+                        .Select(entry => new EsriClassBreakInfo(entry.Max, entry.Symbol, Format(entry.Max)))])
+                : null;
     }
 
     private static EsriLabelClass? Label(JsonElement fragment, DatasetDescription dataset)
@@ -398,53 +435,64 @@ internal static class MapStyleProjection
     /// <summary>Whether a <c>text-field</c> names exactly one field.</summary>
     private static bool TryField(JsonElement expression, out string field)
     {
-        field = string.Empty;
-        if (expression.ValueKind == JsonValueKind.String)
+        field = expression.ValueKind switch
         {
-            var text = expression.GetString();
-            if (text is { Length: > 2 } && text[0] == '{' && text[^1] == '}')
-            {
-                field = text[1..^1];
-            }
-        }
-        else if (expression.ValueKind == JsonValueKind.Array
-            && expression.GetArrayLength() == 2
-            && expression[0].ValueKind == JsonValueKind.String
-            && expression[0].GetString() == "get"
-            && expression[1].ValueKind == JsonValueKind.String)
-        {
-            field = expression[1].GetString() ?? string.Empty;
-        }
-
+            JsonValueKind.String => BracedField(expression.GetString()),
+            JsonValueKind.Array => GetExpressionField(expression),
+            _ => string.Empty,
+        };
         return field.Length > 0;
     }
+
+    private static string BracedField(string? text) =>
+        text is { Length: > 2 } && text[0] == '{' && text[^1] == '}'
+            ? text[1..^1]
+            : string.Empty;
+
+    private static string GetExpressionField(JsonElement expression) =>
+        expression.GetArrayLength() == 2
+        && expression[0].ValueKind == JsonValueKind.String
+        && expression[0].GetString() == "get"
+        && expression[1].ValueKind == JsonValueKind.String
+            ? expression[1].GetString() ?? string.Empty
+            : string.Empty;
+
+    private static readonly Dictionary<string, string> AnchorSuffixes = new(StringComparer.Ordinal)
+    {
+        ["top"] = "AboveCenter",
+        ["bottom"] = "BelowCenter",
+        ["left"] = "CenterLeft",
+        ["right"] = "CenterRight",
+        ["top-left"] = "AboveLeft",
+        ["top-right"] = "AboveRight",
+        ["bottom-left"] = "BelowLeft",
+        ["bottom-right"] = "BelowRight",
+    };
 
     private static string Placement(string geometry, string anchor)
     {
         var family = geometry.Trim().ToLowerInvariant();
-        if (family.StartsWith("line", StringComparison.Ordinal) || family.StartsWith("multiLine", StringComparison.OrdinalIgnoreCase))
+        if (IsLine(family))
         {
             return "esriServerLinePlacementCenterAlong";
         }
 
-        if (family.StartsWith("polygon", StringComparison.Ordinal) || family.StartsWith("multiPolygon", StringComparison.OrdinalIgnoreCase))
+        if (IsPolygon(family))
         {
             return "esriServerPolygonPlacementAlwaysHorizontal";
         }
 
-        return "esriServerPointLabelPlacement" + anchor switch
-        {
-            "top" => "AboveCenter",
-            "bottom" => "BelowCenter",
-            "left" => "CenterLeft",
-            "right" => "CenterRight",
-            "top-left" => "AboveLeft",
-            "top-right" => "AboveRight",
-            "bottom-left" => "BelowLeft",
-            "bottom-right" => "BelowRight",
-            _ => "CenterCenter",
-        };
+        return "esriServerPointLabelPlacement" + AnchorSuffix(anchor);
     }
+
+    private static bool IsLine(string family) =>
+        family.StartsWith("line", StringComparison.Ordinal) || family.StartsWith("multiline", StringComparison.Ordinal);
+
+    private static bool IsPolygon(string family) =>
+        family.StartsWith("polygon", StringComparison.Ordinal) || family.StartsWith("multipolygon", StringComparison.Ordinal);
+
+    private static string AnchorSuffix(string anchor) =>
+        AnchorSuffixes.TryGetValue(anchor, out var suffix) ? suffix : "CenterCenter";
 
     private static string VerticalAlignment(string anchor) => anchor switch
     {
@@ -460,24 +508,22 @@ internal static class MapStyleProjection
         _ => "center",
     };
 
-    private static string FontFamily(JsonElement layout)
+    private static string FontFamily(JsonElement layout) =>
+        layout.ValueKind == JsonValueKind.Object && layout.TryGetProperty("text-font", out var font)
+            ? FontName(font)
+            : "Arial";
+
+    private static string FontName(JsonElement font) => font.ValueKind switch
     {
-        if (layout.ValueKind != JsonValueKind.Object || !layout.TryGetProperty("text-font", out var font))
-        {
-            return "Arial";
-        }
+        JsonValueKind.String => font.GetString() ?? "Arial",
+        JsonValueKind.Array => FirstFont(font),
+        _ => "Arial",
+    };
 
-        if (font.ValueKind == JsonValueKind.String)
-        {
-            return font.GetString() ?? "Arial";
-        }
-
-        return font.ValueKind == JsonValueKind.Array
-            && font.GetArrayLength() > 0
-            && font[0].ValueKind == JsonValueKind.String
-                ? font[0].GetString() ?? "Arial"
-                : "Arial";
-    }
+    private static string FirstFont(JsonElement font) =>
+        font.GetArrayLength() > 0 && font[0].ValueKind == JsonValueKind.String
+            ? font[0].GetString() ?? "Arial"
+            : "Arial";
 
     private static string StringValue(JsonElement element, string name, string fallback) =>
         element.ValueKind == JsonValueKind.Object
@@ -602,16 +648,43 @@ internal static class EsriColor
         return null;
     }
 
-    private static int[]? ParseHex(string hex)
+    private static int[]? ParseHex(string hex) => hex.Length switch
     {
-        return hex.Length switch
+        3 or 4 => ParseShortHex(hex),
+        6 or 8 => ParseLongHex(hex),
+        _ => null,
+    };
+
+    private static int[] ParseShortHex(string hex)
+    {
+        var channels = new int[4];
+        for (var index = 0; index < hex.Length; index++)
         {
-            3 => [Channel(hex[0]), Channel(hex[1]), Channel(hex[2]), 255],
-            4 => [Channel(hex[0]), Channel(hex[1]), Channel(hex[2]), Channel(hex[3])],
-            6 => [Byte(hex, 0), Byte(hex, 2), Byte(hex, 4), 255],
-            8 => [Byte(hex, 0), Byte(hex, 2), Byte(hex, 4), Byte(hex, 6)],
-            _ => null,
-        };
+            channels[index] = Channel(hex[index]);
+        }
+
+        if (hex.Length == 3)
+        {
+            channels[3] = 255;
+        }
+
+        return channels;
+    }
+
+    private static int[] ParseLongHex(string hex)
+    {
+        var channels = new int[4];
+        for (var index = 0; index < hex.Length / 2; index++)
+        {
+            channels[index] = Byte(hex, index * 2);
+        }
+
+        if (hex.Length == 6)
+        {
+            channels[3] = 255;
+        }
+
+        return channels;
     }
 
     private static int[]? ParseFunctional(string text)
@@ -624,29 +697,46 @@ internal static class EsriColor
         }
 
         var parts = text[(open + 1)..close].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length is not (3 or 4))
-        {
-            return null;
-        }
+        return parts.Length is 3 or 4 ? ParseChannels(parts) : null;
+    }
 
+    private static int[]? ParseChannels(string[] parts)
+    {
         var channels = new int[4];
-        for (var i = 0; i < 3; i++)
+        for (var index = 0; index < 3; index++)
         {
-            if (!double.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            if (!TryChannel(parts[index], out channels[index]))
             {
                 return null;
             }
-
-            channels[i] = (int)Math.Clamp(Math.Round(value), 0, 255);
         }
 
-        channels[3] = 255;
-        if (parts.Length == 4 && double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var alpha))
-        {
-            channels[3] = (int)Math.Clamp(Math.Round(alpha * 255), 0, 255);
-        }
-
+        channels[3] = parts.Length == 4 && TryAlpha(parts[3], out var alpha) ? alpha : 255;
         return channels;
+    }
+
+    private static bool TryChannel(string part, out int channel)
+    {
+        channel = 0;
+        if (!double.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            return false;
+        }
+
+        channel = (int)Math.Clamp(Math.Round(value), 0, 255);
+        return true;
+    }
+
+    private static bool TryAlpha(string part, out int alpha)
+    {
+        alpha = 0;
+        if (!double.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            return false;
+        }
+
+        alpha = (int)Math.Clamp(Math.Round(value * 255), 0, 255);
+        return true;
     }
 
     private static int Byte(string hex, int index) =>

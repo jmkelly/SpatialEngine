@@ -14,9 +14,9 @@ namespace Spatial.Adapter.GeoServices;
 /// the adapter consumes only the SDK <see cref="IRasterCatalogue"/> contract,
 /// never a NetVips type or a raster file path.
 /// </summary>
-public static partial class GeoServicesEndpoints
+internal static class ImageServerEndpoints
 {
-    private static void MapImageServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IPublicationRegistry registry)
+    internal static void MapImageServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IPublicationRegistry registry)
     {
         group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
             ImageServerRoot(catalog, registry, service, context, services, cancellationToken));
@@ -83,12 +83,12 @@ public static partial class GeoServicesEndpoints
             var exported = await image.Catalogue.ExportAsync(image.Dataset, request, cancellationToken);
             if (stream)
             {
-                WriteImageHeaders(context, exported);
+                GeoServicesResponses.WriteImageHeaders(context, exported);
                 return Results.Bytes(exported.Content, exported.MediaType);
             }
 
             return EsriJson.Value(ImageService.Export(
-                ExportHref(context), viewport, MapService.SridOf(imageCrs.ToString())));
+                GeoServicesResponses.ExportHref(context), viewport, MapService.SridOf(imageCrs.ToString())));
         }
         catch (Exception exception)
         {
@@ -190,7 +190,7 @@ public static partial class GeoServicesEndpoints
     private static async Task<ImageContext> ResolveImageAsync(
         GeoServicesCatalog catalog, IPublicationRegistry registry, string service, IServiceProvider services, CancellationToken cancellationToken)
     {
-        var resolved = await ResolveServiceAsync(catalog, registry, service, "ImageServer", PublicationKind.Image, cancellationToken);
+        var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "ImageServer", PublicationKind.Image, cancellationToken);
         if (resolved.Layers is not { Count: > 0 } layers)
         {
             throw EsriInteropException.Invalid(

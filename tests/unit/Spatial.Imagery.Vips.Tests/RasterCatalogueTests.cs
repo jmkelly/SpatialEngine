@@ -154,6 +154,33 @@ public sealed class RasterCatalogueTests
         Assert.NotEmpty(image.Content);
     }
 
+    [Theory]
+    [InlineData(RasterInterpolation.NearestNeighbor)]
+    [InlineData(RasterInterpolation.Bilinear)]
+    [InlineData(RasterInterpolation.CubicConvolution)]
+    [InlineData(RasterInterpolation.Majority)]
+    public async Task Export_supports_each_interpolation(RasterInterpolation interpolation)
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.Dataset());
+        var viewport = new RasterViewport(new Envelope(0, 0, fixture.Width, fixture.Height), 4, 4, Crs);
+
+        var image = await catalogue.ExportAsync("raster", new RasterExportRequest(viewport, RasterFormat.Png, Interpolation: interpolation));
+
+        Assert.NotEmpty(image.Content);
+    }
+
+    [Fact]
+    public async Task Export_rejects_an_unsupported_interpolation()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.Dataset());
+        var viewport = new RasterViewport(new Envelope(0, 0, fixture.Width, fixture.Height), 4, 4, Crs);
+
+        await Assert.ThrowsAsync<SpatialException>(
+            () => catalogue.ExportAsync("raster", new RasterExportRequest(viewport, RasterFormat.Png, Interpolation: (RasterInterpolation)99)));
+    }
+
     [Fact]
     public async Task Export_rejects_an_unsupported_pixel_type()
     {

@@ -36,43 +36,58 @@ internal static class PostgisGeometryType
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(features);
 
-        typeNames = [];
         var resolved = new string?[schema.Count];
         var layouts = new string?[schema.Count];
         foreach (var feature in features)
         {
-            for (var i = 0; i < schema.Count; i++)
+            if (!TryObserve(schema, feature, resolved, layouts, out error))
             {
-                if (schema[i].Kind != AttributeKind.Geometry || feature[i].Kind != AttributeKind.Geometry)
-                {
-                    continue;
-                }
-
-                if (feature[i].GeometryValue is not { IsEmpty: false })
-                {
-                    continue;
-                }
-
-                var observed = PostgisEwkb.SqlTypeName(feature[i]);
-                if (resolved[i] is null)
-                {
-                    resolved[i] = observed;
-                    layouts[i] = PostgisEwkb.LayoutName(feature[i]);
-                    continue;
-                }
-
-                if (resolved[i] != observed)
-                {
-                    error = $"the geometry field '{schema[i].Name}' mixes {layouts[i]} and {PostgisEwkb.LayoutName(feature[i])} coordinates; use one coordinate layout per dataset.";
-                    return false;
-                }
+                typeNames = [];
+                return false;
             }
         }
 
-        typeNames = new string[schema.Count];
-        for (var i = 0; i < resolved.Length; i++)
+        typeNames = [.. resolved.Select(name => name ?? DefaultTypeName)];
+        error = string.Empty;
+        return true;
+    }
+
+    /// <summary>
+    /// Records the layout observed for every non-empty geometry in one
+    /// feature, rejecting a field whose geometries mix layouts.
+    /// </summary>
+    private static bool TryObserve(
+        IFeatureSchema schema,
+        Feature feature,
+        string?[] resolved,
+        string?[] layouts,
+        out string error)
+    {
+        for (var i = 0; i < schema.Count; i++)
         {
-            typeNames[i] = resolved[i] ?? DefaultTypeName;
+            if (schema[i].Kind != AttributeKind.Geometry || feature[i].Kind != AttributeKind.Geometry)
+            {
+                continue;
+            }
+
+            if (feature[i].GeometryValue is not { IsEmpty: false })
+            {
+                continue;
+            }
+
+            var observed = PostgisEwkb.SqlTypeName(feature[i]);
+            if (resolved[i] is null)
+            {
+                resolved[i] = observed;
+                layouts[i] = PostgisEwkb.LayoutName(feature[i]);
+                continue;
+            }
+
+            if (resolved[i] != observed)
+            {
+                error = $"the geometry field '{schema[i].Name}' mixes {layouts[i]} and {PostgisEwkb.LayoutName(feature[i])} coordinates; use one coordinate layout per dataset.";
+                return false;
+            }
         }
 
         error = string.Empty;

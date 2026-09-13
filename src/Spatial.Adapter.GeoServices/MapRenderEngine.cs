@@ -54,46 +54,62 @@ internal static class MapRenderEngine
             return null;
         }
 
-        JsonDocument document;
+        using var document = ParseDocument(value);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw EsriInteropException.Invalid(InvalidLayerDefs);
+        }
+
+        var defs = new Dictionary<int, string>();
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            if (TryReadDefinition(property, out var id, out var where))
+            {
+                defs[id] = where;
+            }
+        }
+
+        return defs.Count == 0 ? null : defs;
+    }
+
+    private const string InvalidLayerDefs = "'layerDefs' must be a JSON object of layer id to where clause.";
+
+    private static JsonDocument ParseDocument(string value)
+    {
         try
         {
-            document = JsonDocument.Parse(value);
+            return JsonDocument.Parse(value);
         }
         catch (JsonException)
         {
-            throw EsriInteropException.Invalid("'layerDefs' must be a JSON object of layer id to where clause.");
+            throw EsriInteropException.Invalid(InvalidLayerDefs);
         }
+    }
 
-        using (document)
+    /// <summary>
+    /// Reads one <c>{"id":"where"}</c> entry: a non-integer name or an
+    /// unsupported clause is invalid, a blank clause is skipped.
+    /// </summary>
+    private static bool TryReadDefinition(JsonProperty property, out int id, out string where)
+    {
+        where = string.Empty;
+        if (!int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
         {
-            if (document.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                throw EsriInteropException.Invalid("'layerDefs' must be a JSON object of layer id to where clause.");
-            }
-
-            var defs = new Dictionary<int, string>();
-            foreach (var property in document.RootElement.EnumerateObject())
-            {
-                if (!int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
-                {
-                    throw EsriInteropException.Invalid($"'layerDefs' names layer '{property.Name}', which is not an integer id.");
-                }
-
-                if (property.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(property.Value.GetString()))
-                {
-                    continue;
-                }
-
-                if (!EsriFilterClause.TryParse(property.Value.GetString()!, out var clause, out var error))
-                {
-                    throw EsriInteropException.Invalid($"'layerDefs' clause for layer {id} is not supported: {error}.");
-                }
-
-                defs[id] = clause!.ToWhere();
-            }
-
-            return defs.Count == 0 ? null : defs;
+            throw EsriInteropException.Invalid($"'layerDefs' names layer '{property.Name}', which is not an integer id.");
         }
+
+        if (property.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(property.Value.GetString()))
+        {
+            return false;
+        }
+
+        if (!EsriFilterClause.TryParse(property.Value.GetString()!, out var clause, out var error))
+        {
+            throw EsriInteropException.Invalid($"'layerDefs' clause for layer {id} is not supported: {error}.");
+        }
+
+        where = clause!.ToWhere();
+        return true;
     }
 
     /// <summary>Parses the MapServer <c>format</c> parameter to an engine raster format.</summary>

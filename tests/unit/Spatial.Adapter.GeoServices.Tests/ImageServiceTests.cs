@@ -73,6 +73,39 @@ public sealed class ImageServiceTests
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }
 
+    public static TheoryData<RasterPixelType, string> PixelTypes => new()
+    {
+        { RasterPixelType.U1, "U1" },
+        { RasterPixelType.U2, "U2" },
+        { RasterPixelType.U4, "U4" },
+        { RasterPixelType.U8, "U8" },
+        { RasterPixelType.S8, "S8" },
+        { RasterPixelType.U16, "U16" },
+        { RasterPixelType.S16, "S16" },
+        { RasterPixelType.U32, "U32" },
+        { RasterPixelType.S32, "S32" },
+        { RasterPixelType.F32, "F32" },
+        { RasterPixelType.F64, "F64" },
+        { RasterPixelType.C64, "C64" },
+        { RasterPixelType.C128, "C128" },
+    };
+
+    [Theory]
+    [MemberData(nameof(PixelTypes))]
+    public void Pixel_type_round_trips_the_supported_vocabulary(RasterPixelType type, string name)
+    {
+        Assert.Equal(name, ImageService.PixelType(type));
+        Assert.Equal(type, ImageService.ParsePixelType(name));
+        Assert.Equal(type, ImageService.ParsePixelType(name.ToLowerInvariant()));
+    }
+
+    [Fact]
+    public void Unknown_pixel_type_round_trips_through_the_unknown_name()
+    {
+        Assert.Equal("UNKNOWN", ImageService.PixelType(RasterPixelType.Unknown));
+        Assert.Equal(RasterPixelType.Unknown, ImageService.ParsePixelType("unknown"));
+    }
+
     [Theory]
     [InlineData("RSP_NearestNeighbor", RasterInterpolation.NearestNeighbor)]
     [InlineData("RSP_BilinearInterpolation", RasterInterpolation.Bilinear)]

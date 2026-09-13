@@ -181,6 +181,72 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task Find_projects_geometry_when_a_different_sr_is_requested()
+    {
+        var client = await MapServiceAsync();
+
+        var find = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/find?f=json&searchText=Ber&layers=0&returnGeometry=true&sr=3857"));
+
+        var geometry = find.GetProperty("results").EnumerateArray().First().GetProperty("geometry");
+        Assert.True(geometry.GetProperty("x").GetDouble() > 1_000_000);
+    }
+
+    [Fact]
+    public async Task Find_keeps_the_layer_geometry_when_the_requested_sr_matches()
+    {
+        var client = await MapServiceAsync();
+
+        var find = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/find?f=json&searchText=Ber&layers=0&returnGeometry=true&sr=4326"));
+
+        var geometry = find.GetProperty("results").EnumerateArray().First().GetProperty("geometry");
+        Assert.NotEqual(0, geometry.GetProperty("x").GetDouble());
+    }
+
+    [Theory]
+    [InlineData("name", true)]
+    [InlineData("name,population", true)]
+    [InlineData("population", false)]
+    [InlineData("missing", false)]
+    public async Task Find_honours_the_search_fields_filter(string searchFields, bool matches)
+    {
+        var client = await MapServiceAsync();
+
+        var find = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/find?f=json&searchText=Ber&layers=0&returnGeometry=false&searchFields={searchFields}"));
+
+        Assert.Equal(matches, find.GetProperty("results").EnumerateArray().Any());
+    }
+
+    [Fact]
+    public async Task Identify_without_a_map_extent_uses_an_exact_intersection()
+    {
+        var client = await MapServiceAsync();
+
+        var identify = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&layers=all"));
+
+        Assert.True(identify.GetProperty("results").EnumerateArray().Any());
+    }
+
+    [Fact]
+    public async Task Identify_with_a_zero_width_display_uses_an_exact_intersection()
+    {
+        var client = await MapServiceAsync();
+
+        var identify = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&tolerance=5&layers=all" +
+            "&mapExtent=" + Uri.EscapeDataString("-20,20,40,70") + "&imageDisplay=" + Uri.EscapeDataString("0,300,96")));
+
+        Assert.True(identify.GetProperty("results").EnumerateArray().Any());
+    }
+
+    [Fact]
     public async Task Export_streams_an_image_for_f_image()
     {
         var client = await MapServiceAsync();

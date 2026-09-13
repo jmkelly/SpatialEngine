@@ -25,7 +25,7 @@ public readonly record struct CrsIdentity(string Authority, string Code)
         }
 
         var separator = text.IndexOf(':');
-        if (separator <= 0 || separator == text.Length - 1)
+        if (!IsValidSeparator(separator, text.Length))
         {
             return false;
         }
@@ -55,16 +55,17 @@ public readonly record struct CrsIdentity(string Authority, string Code)
     /// <inheritdoc />
     public override string ToString() => $"{Authority}:{Code}";
 
-    private static bool IsValidToken(ReadOnlySpan<char> token)
-    {
-        if (token.Length == 0 || token.Length > 64)
-        {
-            return false;
-        }
+    private static bool IsValidSeparator(int separator, int length) =>
+        separator > 0 && separator < length - 1;
 
+    private static bool IsValidToken(ReadOnlySpan<char> token) =>
+        token.Length is > 0 and <= 64 && IsTokenText(token);
+
+    private static bool IsTokenText(ReadOnlySpan<char> token)
+    {
         foreach (var character in token)
         {
-            if (!(char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-'))
+            if (!IsTokenCharacter(character))
             {
                 return false;
             }
@@ -72,4 +73,7 @@ public readonly record struct CrsIdentity(string Authority, string Code)
 
         return true;
     }
+
+    private static bool IsTokenCharacter(char character) =>
+        char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-';
 }

@@ -38,20 +38,11 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         ArgumentNullException.ThrowIfNull(geometry);
         cancellationToken.ThrowIfCancellationRequested();
         var sourceIdentity = ResolveSource(geometry, source);
-        if (!CrsIdentity.TryParse(target, out var targetIdentity))
-        {
-            throw SpatialException.BadArguments($"'target' must be a CRS identity (authority:code), got '{target ?? "nothing"}'.");
-        }
+        var targetIdentity = ResolveTarget(target);
 
         var sourceSystem = Lookup(sourceIdentity);
         var targetSystem = Lookup(targetIdentity);
-        if (source is not null && geometry.CoordinateReference is { } stamped
-            && (!string.Equals(stamped.Authority, sourceIdentity.Authority, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(stamped.Code, sourceIdentity.Code, StringComparison.OrdinalIgnoreCase)))
-        {
-            throw SpatialException.BadArguments(
-                $"The geometry carries CRS {stamped} but 'source' says {sourceIdentity}; make them agree, or omit 'source'.");
-        }
+        EnsureSourceMatchesStamp(geometry, source, sourceIdentity);
 
         try
         {
@@ -86,6 +77,27 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         }
 
         throw SpatialException.BadArguments("'source' is required when the geometry carries no CRS identity.");
+    }
+
+    private static CrsIdentity ResolveTarget(string target)
+    {
+        if (!CrsIdentity.TryParse(target, out var identity))
+        {
+            throw SpatialException.BadArguments($"'target' must be a CRS identity (authority:code), got '{target ?? "nothing"}'.");
+        }
+
+        return identity;
+    }
+
+    private static void EnsureSourceMatchesStamp(IGeometry geometry, string? source, CrsIdentity sourceIdentity)
+    {
+        if (source is not null && geometry.CoordinateReference is { } stamped
+            && (!string.Equals(stamped.Authority, sourceIdentity.Authority, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(stamped.Code, sourceIdentity.Code, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw SpatialException.BadArguments(
+                $"The geometry carries CRS {stamped} but 'source' says {sourceIdentity}; make them agree, or omit 'source'.");
+        }
     }
 
     private static ProjCs.CoordinateSystem Lookup(CrsIdentity identity)

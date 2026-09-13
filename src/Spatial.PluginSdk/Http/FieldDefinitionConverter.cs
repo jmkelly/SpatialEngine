@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Spatial.Core.Features;
 
-namespace Spatial.PluginSdk.Http;
+namespace Spatial.PluginSdk;
 
 /// <summary>
 /// JSON converter for <see cref="FieldDefinition"/> (ADR-0033): the core

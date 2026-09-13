@@ -43,9 +43,9 @@ public sealed class SpatialClient
         ArgumentNullException.ThrowIfNull(geometry);
         var response = await _transport.PostAsync<GeometryResponse>(
             "/api/geometry/buffer",
-            new BufferRequest(SpatialClientTransport.Encode(geometry), distance, quadrantSegments),
+            new BufferRequest(SpatialClientCodec.Encode(geometry), distance, quadrantSegments),
             cancellationToken);
-        return SpatialClientTransport.Decode(response.Geometry);
+        return SpatialClientCodec.Decode(response.Geometry);
     }
 
     public async Task<IGeometry> IntersectionAsync(IGeometry left, IGeometry right, CancellationToken cancellationToken = default)
@@ -54,16 +54,16 @@ public sealed class SpatialClient
         ArgumentNullException.ThrowIfNull(right);
         var response = await _transport.PostAsync<GeometryResponse>(
             "/api/geometry/intersection",
-            new IntersectionRequest(SpatialClientTransport.Encode(left), SpatialClientTransport.Encode(right)),
+            new IntersectionRequest(SpatialClientCodec.Encode(left), SpatialClientCodec.Encode(right)),
             cancellationToken);
-        return SpatialClientTransport.Decode(response.Geometry);
+        return SpatialClientCodec.Decode(response.Geometry);
     }
 
     public async Task<bool> ValidateAsync(IGeometry geometry, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         var response = await _transport.PostAsync<ValidateResponse>(
-            "/api/geometry/validate", new ValidateRequest(SpatialClientTransport.Encode(geometry)), cancellationToken);
+            "/api/geometry/validate", new ValidateRequest(SpatialClientCodec.Encode(geometry)), cancellationToken);
         return response.Valid;
     }
 
@@ -71,8 +71,8 @@ public sealed class SpatialClient
     {
         ArgumentNullException.ThrowIfNull(geometry);
         var response = await _transport.PostAsync<GeometryResponse>(
-            "/api/geometry/simplify", new SimplifyRequest(SpatialClientTransport.Encode(geometry), tolerance), cancellationToken);
-        return SpatialClientTransport.Decode(response.Geometry);
+            "/api/geometry/simplify", new SimplifyRequest(SpatialClientCodec.Encode(geometry), tolerance), cancellationToken);
+        return SpatialClientCodec.Decode(response.Geometry);
     }
 
     // ---- transforms ----
@@ -84,8 +84,8 @@ public sealed class SpatialClient
     {
         ArgumentNullException.ThrowIfNull(geometry);
         var response = await _transport.PostAsync<GeometryResponse>(
-            "/api/coordinates/transform", new TransformRequest(SpatialClientTransport.Encode(geometry), source, target), cancellationToken);
-        return SpatialClientTransport.Decode(response.Geometry);
+            "/api/coordinates/transform", new TransformRequest(SpatialClientCodec.Encode(geometry), source, target), cancellationToken);
+        return SpatialClientCodec.Decode(response.Geometry);
     }
 
     // ---- catalogue / datasets ----
@@ -123,7 +123,7 @@ public sealed class SpatialClient
         var response = await _transport.PostAsync<FeatureBatchesResponse>(
             $"/api/features/scan?store={Uri.EscapeDataString(store)}",
             new ScanRequest(dataset), cancellationToken);
-        return response.Batches.Select(SpatialClientTransport.DecodeBatch).ToArray();
+        return response.Batches.Select(SpatialClientCodec.DecodeBatch).ToArray();
     }
 
     public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
@@ -134,7 +134,7 @@ public sealed class SpatialClient
             $"/api/features/query?store={Uri.EscapeDataString(store)}",
             new FeatureQueryRequest(dataset, bbox is null ? null : new BboxDto(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY), filter),
             cancellationToken);
-        return response.Batches.Select(SpatialClientTransport.DecodeBatch).ToArray();
+        return response.Batches.Select(SpatialClientCodec.DecodeBatch).ToArray();
     }
 
     public async Task<int> WriteAsync(
@@ -222,7 +222,7 @@ public sealed class SpatialClient
         return _transport.SendAsync<Publication>(
             HttpMethod.Put,
             $"/api/publications/{Uri.EscapeDataString(publication.Name)}",
-            SpatialClientTransport.Json(publication),
+            SpatialClientCodec.Json(publication),
             adminToken,
             cancellationToken);
     }

@@ -29,9 +29,7 @@ public static partial class GeoServicesEndpoints
         // catalog, Geometry Server and Feature Server roots accept both.
         group.MapMethods(string.Empty, ["GET", "POST"], (HttpContext context, CancellationToken cancellationToken) =>
             Catalog(catalog, registry, context, cancellationToken));
-        group.MapMethods("/Geometry/GeometryServer", ["GET", "POST"], (HttpContext context, CancellationToken cancellationToken) =>
-            GeometryServerInfo(context, cancellationToken));
-        group.MapMethods("/Geometry/GeometryServer/{operation}", ["GET", "POST"], GeometryOperation);
+        GeometryServerEndpoints.MapGeometryServer(group);
 
         group.MapMethods("/{service}/FeatureServer", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
             FeatureServerRoot(catalog, registry, service, context, services, cancellationToken));
@@ -72,8 +70,8 @@ public static partial class GeoServicesEndpoints
 
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
-        MapMapServer(group, catalog, registry);
-        MapImageServer(group, catalog, registry);
+        MapServerEndpoints.MapMapServer(group, catalog, registry);
+        ImageServerEndpoints.MapImageServer(group, catalog, registry);
     }
 
     private static async Task<IResult> Catalog(GeoServicesCatalog catalog, IPublicationRegistry registry, HttpContext context, CancellationToken cancellationToken)
@@ -82,33 +80,7 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var services = new List<EsriServiceEntry> { new(GeoServicesCatalog.GeometryServiceName, "GeometryServer") };
-            foreach (var publication in await registry.ListAsync(cancellationToken))
-            {
-                var type = publication.Kind switch
-                {
-                    PublicationKind.Feature => "FeatureServer",
-                    PublicationKind.Map => "MapServer",
-                    PublicationKind.Image => "ImageServer",
-                    _ => null,
-                };
-                if (type is not null)
-                {
-                    services.Add(new EsriServiceEntry(publication.Name, type));
-                }
-            }
-
-            // Declared services are also publications (seeded at composition), but
-            // the catalog keeps a deterministic Geometry-first order and tolerates a
-            // registry that is not populated (for example in unit tests).
-            foreach (var entry in catalog.Services)
-            {
-                if (entry.Type == "FeatureServer" && !services.Any(service => string.Equals(service.Name, entry.Name, StringComparison.OrdinalIgnoreCase)))
-                {
-                    services.Add(new EsriServiceEntry(entry.Name, entry.Type));
-                }
-            }
-
+            var services = await BuildServicesAsync(catalog, registry, cancellationToken);
             return EsriJson.Value(new CatalogResponse(10.0, [], services.ToArray()));
         }
         catch (Exception exception)
@@ -117,38 +89,46 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    private static async Task<IResult> GeometryServerInfo(HttpContext context, CancellationToken cancellationToken)
+    /// <summary>
+    /// The catalogue entries: a deterministic Geometry-first order built from
+    /// the registry's publications plus the declared FeatureServer services.
+    /// Declared services are also publications (seeded at composition), and a
+    /// registry that is not populated (for example in unit tests) is tolerated.
+    /// </summary>
+    private static async Task<List<EsriServiceEntry>> BuildServicesAsync(
+        GeoServicesCatalog catalog, IPublicationRegistry registry, CancellationToken cancellationToken)
     {
-        try
+        var services = new List<EsriServiceEntry> { new(GeoServicesCatalog.GeometryServiceName, "GeometryServer") };
+        foreach (var publication in await registry.ListAsync(cancellationToken))
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            EsriFormat.Ensure(parameters.Get("f"));
-            return GeometryService.Info();
+            if (ServerType(publication.Kind) is { } type)
+            {
+                services.Add(new EsriServiceEntry(publication.Name, type));
+            }
         }
-        catch (Exception exception)
+
+        foreach (var entry in catalog.Services)
         {
-            return EsriErrorMapper.Map(exception);
+            AddDeclared(services, entry);
         }
+
+        return services;
     }
 
-    private static async Task<IResult> GeometryOperation(
-        HttpContext context, string operation, IServiceProvider services, CancellationToken cancellationToken)
+    private static string? ServerType(PublicationKind kind) => kind switch
     {
-        try
+        PublicationKind.Feature => "FeatureServer",
+        PublicationKind.Map => "MapServer",
+        PublicationKind.Image => "ImageServer",
+        _ => null,
+    };
+
+    private static void AddDeclared(List<EsriServiceEntry> services, GeoServicesServiceEntry entry)
+    {
+        if (entry.Type == "FeatureServer"
+            && !services.Any(service => string.Equals(service.Name, entry.Name, StringComparison.OrdinalIgnoreCase)))
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            EsriFormat.Ensure(parameters.Get("f"));
-            var capabilities = new GeometryServiceCapabilities(
-                services.GetRequiredService<IGeometryOperations>(),
-                services.GetRequiredService<IGeometryMeasures>(),
-                services.GetRequiredService<IGeometryProcessing>(),
-                services.GetRequiredService<IGeometryRelations>(),
-                services.GetRequiredService<ICoordinateTransforms>());
-            return GeometryService.Dispatch(operation, parameters, capabilities, cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            return EsriErrorMapper.Map(exception);
+            services.Add(new EsriServiceEntry(entry.Name, entry.Type));
         }
     }
 
@@ -281,7 +261,7 @@ public static partial class GeoServicesEndpoints
     /// runtime publication exposes its persisted explicit layers (ADR-0041).
     /// A publication of the wrong kind or an unknown name is not-found.
     /// </summary>
-    private static async Task<ResolvedService> ResolveServiceAsync(
+    internal static async Task<ResolvedService> ResolveServiceAsync(
         GeoServicesCatalog catalog,
         IPublicationRegistry registry,
         string service,
@@ -313,7 +293,7 @@ public static partial class GeoServicesEndpoints
     }
 
     /// <summary>Lists the published layers: explicit for a runtime publication, whole-store (sorted) for a declared service.</summary>
-    private static async Task<IReadOnlyList<PublishedLayer>> ListLayersAsync(
+    internal static async Task<IReadOnlyList<PublishedLayer>> ListLayersAsync(
         IServiceProvider services, ResolvedService resolved, CancellationToken cancellationToken)
     {
         if (resolved.Layers is { } layers)
@@ -329,7 +309,7 @@ public static partial class GeoServicesEndpoints
         return datasets.Select((dataset, index) => new PublishedLayer(index, dataset.Id, dataset.Table)).ToArray();
     }
 
-    private static async Task<DatasetDescription> DescribeAsync(
+    internal static async Task<DatasetDescription> DescribeAsync(
         IServiceProvider services, ResolvedService resolved, int layerId, CancellationToken cancellationToken)
     {
         var layers = await ListLayersAsync(services, resolved, cancellationToken);
