@@ -50,6 +50,27 @@ public sealed class WmsServiceTests
     }
 
     [Fact]
+    public async Task Get_feature_info_rejects_a_non_queryable_layer()
+    {
+        var map = new Spatial.PluginSdk.Providers.Map(
+            OgcFixtures.MapName,
+            OgcFixtures.Store,
+            [
+                new Spatial.PluginSdk.Providers.MapLayer(OgcFixtures.Dataset, 0, "Cities"),
+                new Spatial.PluginSdk.Providers.MapLayer(
+                    OgcFixtures.Dataset, 1, "Photo", Kind: Spatial.PluginSdk.Providers.MapLayerKind.Image),
+            ],
+            [Spatial.PluginSdk.Providers.MapService.Wms]);
+        var (services, store) = OgcFixtures.Build(map);
+        store.Seed(OgcFixtures.City("Amsterdam", 900_000, 5, 55));
+
+        var exception = await Assert.ThrowsAsync<OgcServiceException>(
+            () => IdentifyOnAsync(map, services, "Photo"));
+
+        Assert.Equal("LayerNotQueryable", exception.Code);
+    }
+
+    [Fact]
     public async Task Get_feature_info_rejects_an_unknown_format_with_invalid_format()
     {
         var map = OgcFixtures.Map();
@@ -88,6 +109,15 @@ public sealed class WmsServiceTests
                 CoordinateReference.Epsg(4326))),
         ]);
 
+    private static Task<(string? ContentType, string Body)> IdentifyOnAsync(
+        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string queryLayers)
+    {
+        var query = "?service=WMS&request=GetFeatureInfo"
+            + $"&query_layers={Uri.EscapeDataString(queryLayers)}&crs=CRS:84"
+            + "&bbox=0,50,10,60&width=100&height=100&info_format=text/plain";
+        return IdentifyRawAsync(map, services, query);
+    }
+
     private static async Task<(string? ContentType, string Body)> IdentifyAsync(
         Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string infoFormat, int? i, int? j)
     {
@@ -95,6 +125,12 @@ public sealed class WmsServiceTests
             + "&bbox=0,50,10,60&width=100&height=100"
             + (i is null ? string.Empty : $"&i={i}&j={j}")
             + $"&info_format={Uri.EscapeDataString(infoFormat)}";
+        return await IdentifyRawAsync(map, services, query);
+    }
+
+    private static async Task<(string? ContentType, string Body)> IdentifyRawAsync(
+        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string query)
+    {
         var request = new DefaultHttpContext();
         request.Request.QueryString = new QueryString(query);
         var parameters = await OgcParameters.ReadAsync(request, CancellationToken.None);

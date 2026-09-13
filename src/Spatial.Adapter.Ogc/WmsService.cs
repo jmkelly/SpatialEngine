@@ -62,6 +62,7 @@ internal static class WmsService
     private static async Task<IResult> GetMapAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
+        RequireDefaultStyles(parameters.List("styles"));
         var layers = OgcLayers.Select(map, parameters.List("layers"));
         var request = new MapRenderRequest(
             ParseViewport(parameters),
@@ -80,8 +81,10 @@ internal static class WmsService
     private static async Task<IResult> GetFeatureInfoAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
-        var names = parameters.List("query_layers");
-        var layers = OgcLayers.Select(map, names.Count > 0 ? names : parameters.List("layers"));
+        var queryNames = parameters.List("query_layers");
+        var names = queryNames.Count > 0 ? queryNames : parameters.List("layers");
+        RequireQueryable(map, names);
+        var layers = OgcLayers.Select(map, names);
         var viewport = ParseViewport(parameters);
         var point = ClickPoint(parameters, viewport);
         var matches = new List<(DatasetDescription Dataset, Feature Feature)>();
@@ -347,15 +350,30 @@ internal static class WmsService
         var (identity, yFirst) = OgcCrs.Resolve(crs);
         var bounds = OgcGeometry.ParseBbox(parameters.Required("bbox"));
         var xFirst = yFirst ? new Envelope(bounds.MinY, bounds.MinX, bounds.MaxY, bounds.MaxX) : bounds;
+        RequireNonEmptyExtent(parameters.Get("bbox"), xFirst);
         var width = PositiveInt(parameters.Required("width"), "width");
         var height = PositiveInt(parameters.Required("height"), "height");
         return new RasterViewport(xFirst, width, height, identity);
     }
 
+    /// <summary>
+    /// Rejects a degenerate bbox: the envelope constructor already rejects an
+    /// inverted extent, but a zero-width or zero-height extent (CITE
+    /// <c>bbox-minx-eq-maxx</c> et al.) constructs fine and must raise a
+    /// Service Exception instead of rendering.
+    /// </summary>
+    private static void RequireNonEmptyExtent(string? text, Envelope bounds)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            throw OgcServiceException.Invalid($"The 'bbox' parameter must span a non-empty extent, got '{text}'.");
+        }
+    }
+
     private static Coordinate ClickPoint(OgcParameters parameters, RasterViewport viewport)
     {
-        var i = OptionalNumber(parameters.Get("i") ?? parameters.Get("x"), "i");
-        var j = OptionalNumber(parameters.Get("j") ?? parameters.Get("y"), "j");
+        var i = OptionalPointNumber(parameters.Get("i") ?? parameters.Get("x"), "i");
+        var j = OptionalPointNumber(parameters.Get("j") ?? parameters.Get("y"), "j");
         if (i is null || j is null)
         {
             return new Coordinate(viewport.Bounds.CenterX, viewport.Bounds.CenterY);
@@ -370,7 +388,7 @@ internal static class WmsService
     {
         null or "IMAGE/PNG" or "PNG" => RasterFormat.Png,
         "IMAGE/JPEG" or "IMAGE/JPG" or "JPEG" or "JPG" => RasterFormat.Jpeg,
-        _ => throw OgcServiceException.Invalid($"Unsupported WMS format '{format}'; supported: image/png, image/jpeg."),
+        _ => throw OgcServiceException.InvalidFormat($"Unsupported WMS format '{format}'; supported: image/png, image/jpeg."),
     };
 
     private static bool ParseTransparent(string? value) => value?.ToUpperInvariant() switch
@@ -410,7 +428,7 @@ internal static class WmsService
             ? value
             : throw OgcServiceException.Invalid($"The '{name}' parameter must be a positive integer, got '{text}'.");
 
-    private static double? OptionalNumber(string? text, string name)
+    private static double? OptionalPointNumber(string? text, string name)
     {
         if (text is null)
         {
@@ -419,7 +437,44 @@ internal static class WmsService
 
         return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
             ? value
-            : throw OgcServiceException.Invalid($"The '{name}' parameter must be a number, got '{text}'.");
+            : throw OgcServiceException.InvalidPoint($"The '{name}' parameter must be a number, got '{text}'.");
+    }
+
+    /// <summary>
+    /// Rejects a named style: the service serves the persisted default style
+    /// only and advertises no named styles, so any requested name is
+    /// <c>StyleNotDefined</c>. Empty entries (<c>STYLES=</c>) select the
+    /// default and are accepted.
+    /// </summary>
+    private static void RequireDefaultStyles(IReadOnlyList<string> styles)
+    {
+        foreach (var style in styles)
+        {
+            if (!string.IsNullOrWhiteSpace(style))
+            {
+                throw OgcServiceException.StyleNotDefined(
+                    $"Style '{style}' is not defined; this service serves the default style only.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Rejects a GetFeatureInfo layer that exists on the map but is not a
+    /// queryable feature layer (for example a raster image layer) with
+    /// <c>LayerNotQueryable</c>. Unknown names fall through to
+    /// <see cref="OgcLayers.Select"/> which reports <c>LayerNotDefined</c>.
+    /// </summary>
+    private static void RequireQueryable(Map map, IReadOnlyList<string> names)
+    {
+        foreach (var name in names)
+        {
+            var layer = map.Layers.FirstOrDefault(candidate =>
+                string.Equals(OgcLayers.NameOf(candidate), name, StringComparison.OrdinalIgnoreCase));
+            if (layer is not null && layer.Kind != MapLayerKind.Feature)
+            {
+                throw OgcServiceException.LayerNotQueryable($"Layer '{name}' is not queryable.");
+            }
+        }
     }
 
     private static string Crs(int srid) => $"EPSG:{srid.ToString(CultureInfo.InvariantCulture)}";
