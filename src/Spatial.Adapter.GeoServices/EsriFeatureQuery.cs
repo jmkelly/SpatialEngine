@@ -55,10 +55,11 @@ internal sealed record EsriFeatureQuery(
         }
 
         ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null);
+        var inSr = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
-            ParseGeometry(parameters.Get("geometry"), fallback),
+            ParseGeometry(parameters.Get("geometry"), inSr ?? fallback),
             ParseSpatialRel(parameters.Get("spatialRel")),
             ParseOutFields(parameters.Get("outFields")),
             ParseOrderByFields(parameters.Get("orderByFields")),

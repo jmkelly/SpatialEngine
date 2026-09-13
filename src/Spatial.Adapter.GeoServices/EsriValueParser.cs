@@ -35,7 +35,7 @@ internal static class EsriValueParser
             return [EsriGeometryCodec.Decode(document.RootElement, fallback)];
         }
 
-        if (EsriGeometryCodec.TryParseSimple(trimmed, out var simple))
+        if (EsriGeometryCodec.TryParseSimple(trimmed, out var simple, fallback))
         {
             return [simple!];
         }
@@ -53,7 +53,7 @@ internal static class EsriValueParser
             return EsriGeometryCodec.Decode(document.RootElement, fallback);
         }
 
-        if (EsriGeometryCodec.TryParseSimple(trimmed, out var simple))
+        if (EsriGeometryCodec.TryParseSimple(trimmed, out var simple, fallback))
         {
             return simple!;
         }

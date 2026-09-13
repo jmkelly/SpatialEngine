@@ -68,9 +68,11 @@ public static class EsriGeometryCodec
     /// <summary>
     /// Parses the comma-separated simple geometry syntax the spec allows in
     /// request parameters: <c>x,y</c> (point) or
-    /// <c>xmin,ymin,xmax,ymax</c> (envelope).
+    /// <c>xmin,ymin,xmax,ymax</c> (envelope). The optional
+    /// <paramref name="fallback"/> stamps the result (for example an
+    /// <c>inSR</c> request parameter) when the syntax carries no reference.
     /// </summary>
-    public static bool TryParseSimple(string? text, out IGeometry? geometry)
+    public static bool TryParseSimple(string? text, out IGeometry? geometry, CoordinateReference? fallback = null)
     {
         geometry = null;
         if (string.IsNullOrWhiteSpace(text))
@@ -85,8 +87,8 @@ public static class EsriGeometryCodec
         }
 
         geometry = parts.Length == 2
-            ? GeometryFactory.CreatePoint(Number(parts[0]), Number(parts[1]))
-            : EnvelopePolygon(Number(parts[0]), Number(parts[1]), Number(parts[2]), Number(parts[3]));
+            ? GeometryFactory.CreatePoint(Number(parts[0]), Number(parts[1]), fallback)
+            : EnvelopePolygon(Number(parts[0]), Number(parts[1]), Number(parts[2]), Number(parts[3]), fallback);
         return true;
     }
 

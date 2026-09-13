@@ -195,4 +195,14 @@ public sealed class EsriFeatureQueryTests
         const string stats = "[{\"statisticType\":\"count\",\"onStatisticField\":\"*\",\"outStatisticFieldName\":\"n\"}]";
         await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("outStatistics", stats), ("returnCountOnly", "true")));
     }
+
+    [Fact]
+    public async Task In_sr_is_honoured_for_a_geometry_without_its_own_reference()
+    {
+        var query = EsriFeatureQuery.Parse(
+            await ParamsAsync(("geometry", "13.405,52.52"), ("inSR", "3857")),
+            CoordinateReference.Epsg(4326));
+
+        Assert.Equal(CoordinateReference.Epsg(3857), query.Geometry!.CoordinateReference);
+    }
 }
