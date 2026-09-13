@@ -74,7 +74,11 @@ future track and should not be smuggled in as "MapServer".
   `.../{layerId}/query` (the FeatureServer query engine). Map publications
   are advertised as `MapServer` in the catalog.
 - **Proof (built):** HTTP tests over a runtime Map publication
-  (`GeoServicesMapTests`); capabilities match what is served.
+  (`GeoServicesMapTests`); capabilities match what is served. The ArcGIS
+  REST JS e2e (`clients/typescript/test/geoservices-e2e.test.ts`, run by
+  `eng/e2e-web.sh` against a declared Map publication) drives discovery,
+  identify, export and tiles with the official Esri client over a temporary
+  host port.
 
 ### M1 — Identify and Find
 - **Implemented:** `identify` (point/envelope + pixel tolerance + layer

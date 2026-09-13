@@ -6,8 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-WORKBENCH_URL="http://127.0.0.1:5999"
-PORT="${WORKBENCH_URL##*:}"
+# A free port keeps the e2e from colliding with a developer's host; pin one
+# with WORKBENCH_E2E_PORT when a fixed port is wanted.
+PORT="${WORKBENCH_E2E_PORT:-$(node -e 'const net = require("node:net"); const s = net.createServer(); s.listen(0, "127.0.0.1", () => { process.stdout.write(String(s.address().port)); s.close(); });')}"
+WORKBENCH_URL="http://127.0.0.1:${PORT}"
 WEB_ROOT="$(pwd)/artifacts/workbench-web"
 HOST_LOG="$(mktemp -t spatial-workbench-host.XXXXXX.log)"
 # An isolated publications file per run: the suite creates and deletes
