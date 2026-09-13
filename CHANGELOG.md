@@ -11,6 +11,14 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Spatial CLI** (ADR-0052): a dependency-free console client of the public
+  host API at `clients/dotnet/Spatial.Cli`. It adds datasets through the
+  neutral ingest route, composes styled maps/publications (FeatureServer,
+  MapServer or ImageServer), stores the workspace as a versioned declarative
+  `spatial.json`, and reports each publication's GeoServices endpoint.
+  Descriptive long flags, a `--json` envelope, `--dry-run` and stable exit
+  codes make it script- and LLM-friendly; it publishes as one self-contained
+  binary. Quality-gated through `tests/unit/Spatial.Cli.Tests`.
 - **Map labels and sprite symbols** (ADR-0049): the Skia
   renderer's MapLibre subset gains `symbol` layers — `SkiaSharp.HarfBuzz`
   text shaping, a deterministic label placement/collision pass, and
