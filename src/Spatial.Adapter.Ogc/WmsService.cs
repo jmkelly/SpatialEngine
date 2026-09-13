@@ -82,17 +82,28 @@ internal static class WmsService
         var layers = OgcLayers.Select(map, names.Count > 0 ? names : parameters.List("layers"));
         var viewport = ParseViewport(parameters);
         var point = ClickPoint(parameters, viewport);
-        var tolerance = viewport.UnitsPerPixel > 0 ? viewport.UnitsPerPixel / 2 : 1e-6;
         var matches = new List<(DatasetDescription Dataset, Feature Feature)>();
         foreach (var layer in layers)
         {
             var loaded = await services.LoadAsync(map, layer, cancellationToken);
+            var tolerance = ClickTolerance(viewport, layer);
             var features = await QueryNearAsync(services, loaded, viewport.Crs, point, tolerance, cancellationToken);
             matches.AddRange(features.Select(feature => (loaded.Description, feature)));
         }
 
         return WriteFeatureInfo(parameters.Get("info_format"), matches);
     }
+
+    /// <summary>
+    /// The identify tolerance in viewport units: the layer's rendered marker
+    /// radius plus half a pixel for the integer click coordinate, scaled by the
+    /// viewport's units-per-pixel. A layer without a circle marker (lines and
+    /// polygons) falls back to the clicked pixel alone.
+    /// </summary>
+    private static double ClickTolerance(RasterViewport viewport, MapLayer layer) =>
+        viewport.UnitsPerPixel > 0
+            ? viewport.UnitsPerPixel * (OgcClickTolerance.MarkerRadiusPixels(layer.Style) + OgcClickTolerance.BasePixels)
+            : 1e-6;
 
     private static async Task<IReadOnlyList<Feature>> QueryNearAsync(
         OgcRequestServices services, OgcLayer layer, string viewportCrs, Coordinate point, double tolerance, CancellationToken cancellationToken)
