@@ -120,6 +120,6 @@ shape is noted in brackets.
 - Delivery plans are removed once their track is implemented (the GeoServices,
   publishing/ingest, MapServer, composer and rendering plans are retired);
   older ADRs may still name them as dated records. `image-service-plan.md`
-  stays while I4 (cache and limits) is open.
+  stays while I4 (COG/tiled GeoTIFF) and I5 (cache and limits) are open.
 - Byte-level wire specs: `GeometryCodec`/`FeatureBatchCodec` source is the
   authoritative format spec; `core.md` carries the essentials.

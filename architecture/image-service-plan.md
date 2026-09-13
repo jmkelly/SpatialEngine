@@ -6,7 +6,8 @@
 > and the GeoServices ImageServer serves root metadata, raster info, catalog
 > listing/item/query, identify, `exportImage`, and the catalog file surface
 > (`download`, Raster Image/Thumbnail/File) over a `PublicationKind.Image`
-> publication. I4 (cache and limits beyond the download caps) remains. Read
+> publication. **I4 — COG and tiled GeoTIFF support** and I5 (cache and
+> limits beyond the download caps) remain. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
 > `architecture/distilled/host-and-clients.md` first.
 >
@@ -15,7 +16,9 @@
 > engine path: the existing NetVips `IRasterOperations`/imagery implementation
 > is extended with a core-typed `IRasterCatalogue` face in
 > `Spatial.Imagery.Vips`; only encoded image bytes, core metadata and core
-> geometry footprints cross contracts. GDAL is a measured-demand follow-up.
+> geometry footprints cross contracts. GDAL is a measured-demand follow-up;
+> tiled and internally-overviewed (pyramidal) TIFFs — including COG — are
+> already inside libvips and are scheduled as I4 without it.
 
 ## 1. What the spec requires (v1.0 §8)
 
@@ -59,7 +62,9 @@ contract as raster values — only encoded images and metadata do. This is
 the same shape ADR-0035 used for Esri JSON and is the only option that
 keeps the core a geometry/feature value model. The engine choice (managed
 COG reader vs GDAL) is settled **inside** the I0 ADR, with measured demand
-as ADR-0021 requires.
+as ADR-0021 requires. The managed reader is NetVips' `tiffload`, which
+already handles the tiled/pyramidal structure a COG adds; phase I4 turns
+that into block/pyramid metadata, overview-aware export and COG writing.
 
 **Engine choice (part of the same ADR):** a managed COG/GeoTIFF reader plus
 a warp/sample implementation, or GDAL (native packages, container
@@ -128,14 +133,74 @@ demands for AOT.
   and `time` rejection, image/thumbnail bytes, download caps, ranged file
   streaming); `RasterOptions` catalog-config projection tests.
 
-### I4 — Scale, cache and limits
+### I4 — COG and tiled GeoTIFF support
+
+Raster imagery is normally stored as a **tiled GeoTIFF**, and a **Cloud
+Optimized GeoTIFF (COG)** is that plus an internal overview pyramid stored
+before the data. The managed NetVips path already reads and writes both — no
+GDAL, no new package (ADR-0051 option A is unchanged: structure stays
+provider-owned and only core metadata crosses). Today the provider reads a
+tiled/pyramidal file as if it were a stripped image and hardcodes the block
+and pyramid fields of `RasterInfo` to 0, so the extra structure is paid for
+and then thrown away.
+
+- **Deliverable:**
+  1. **Read the structure.** `VipsRasterReader.ReadInfo` reads
+     `tile-width`/`tile-height` and `n-subifds` from the file and fills
+     `RasterInfo.BlockWidth`/`BlockHeight`/`FirstPyramidLevel`/
+     `MaxPyramidLevel` (absent fields stay 0 for striped rasters);
+     `VipsRasterFiles.Open` opens with random access so a tiled raster is
+     read by tile, not streamed.
+  2. **Use the overviews.** `VipsRasterExporter` selects the coarsest
+     pyramid level whose resolution still covers the requested output
+     pixels (`Image.Tiffload(path, subifd: n)`) before it crops and
+     resamples, so an `exportImage` or tile from a large COG reads a
+     fraction of the pixels; whole-image paths use `Image.Thumbnail`,
+     which already picks a level. Level selection is a pure helper so it
+     is unit-testable and never loses detail.
+  3. **Write COG-style output.** A provider verb (used by ingest/seed, not
+     a client request) rewrites a configured raster with
+     `Tiffsave(tile: true, tileWidth: 256, tileHeight: 256, pyramid: true,
+     subifd: true, compression: Deflate, predictor: Horizontal, bigtiff:
+     auto)` so an uploaded stripped GeoTIFF can be published as a COG.
+  4. **Honest metadata.** The ImageServer root derives
+     `minPixelSize`/`maxPixelSize` from the pyramid factor and raster info
+     reports the real block/pyramid numbers instead of 0.
+- **Research findings** (verified on this machine against the pinned NetVips
+  3.2.0 / libvips 8.18.6):
+  - `Image.Tiffload(filename, subifd: i, access: Enums.Access.Random)`
+    selects an internal overview and random access;
+    `Image.Tiffsave(..., tile, tileWidth, tileHeight, pyramid, subifd,
+    compression, predictor, bigtiff)` writes the COG-style file.
+  - A generated 4096² tiled+pyramidal TIFF reports `n-subifds=4`,
+    `tile-width=256`, `tile-height=256`; `subifd` 0–3 are
+    2048²/1024²/512²/256², a 256² crop took ~80 ms (ranged, not a full
+    decode), and `Image.Thumbnail` selected an overview automatically.
+  - A striped TIFF exposes neither field, so the new metadata is a no-op
+    for the current fixtures; `NetVips.Image.Get` throws on a missing
+    field, so presence is checked via `GetFields()`.
+  - A local path is opened directly. Remote/HTTP COG range reads need a
+    custom `VipsSource` (and an HTTP client libvips does not bundle) and
+    stay a separate decision; georeferencing is still descriptor-supplied
+    because libvips does not expose the GeoTIFF GeoKey tags.
+- **Non-goals for this phase:** HTTP COG range reading, on-the-fly
+  mosaicking, GeoKey parsing, and a GDAL backend (the ADR-0051
+  measured-demand triggers are unchanged). Writing a COG is a repackaging
+  step to serve existing imagery, not raster analytics.
+- **Proof:** provider tests build a striped, a tiled, and a tiled+pyramidal
+  fixture and assert the `RasterInfo` block/pyramid fields, that the chosen
+  subifd is coarser than full resolution for a large downscale (and the
+  pixels still match), and that a thumbnail matches the reference; a
+  round-trip test saves a COG-style file and re-reads its structure.
+
+### I5 — Scale, cache and limits
 - **Deliverable:** tile/export caching policy, request size caps,
   concurrency limits, cancellation over HTTP (client disconnect cancels
-  raster work); optional pre-tiled/COG mosaicking.
+  raster work); optional pre-tiled/COG mosaicking (now buildable on I4).
 - **Proof:** cancellation and cap tests; load-shape check that export does
   not park a request.
 
-### I5 — (Explicit non-goal) raster analytics
+### I6 — (Explicit non-goal) raster analytics
 Raster functions, statistics computation beyond stored metadata, on-the-fly
 mosaicking, and multidimensional/time-aware imagery are recorded as
 non-goals unless a separate ADR adopts them.
@@ -145,6 +210,8 @@ non-goals unless a separate ADR adopts them.
 Raster analytics and raster-function chains; spectral indices; server-side
 time-series; elevation/point-cloud services; editing imagery. The engine
 serves *existing* imagery; it does not become a raster processing engine.
+Repackaging a stored raster as a tiled, internally-overviewed COG so it can
+be served efficiently (I4) is a storage concern, not analytics.
 
 ## 6. Risks
 

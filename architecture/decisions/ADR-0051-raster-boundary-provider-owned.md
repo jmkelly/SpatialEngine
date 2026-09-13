@@ -76,7 +76,11 @@ the repository, already owns the encode seam (ADR-0044), and already satisfies
 the "framework-only packages" rule under an approved allowlist. The
 ImageServer requirements (read a GeoTIFF/COG, crop/resize, resample, cast
 band formats, apply nodata transparency, encode PNG/JPEG/TIFF) are inside
-NetVips' capability. GDAL is **not** adopted now: it would add a native
+NetVips' capability. Tiled and internally-overviewed (pyramidal) TIFFs, the
+structure a Cloud Optimized GeoTIFF adds, are read with `tiffload(
+subifd: n)`/random access and written with `tiffsave(tile, pyramid,
+subifd)`, so COG support does not need GDAL either (scheduled as plan I4).
+GDAL is **not** adopted now: it would add a native
 package and a Docker/attestation surface without a measured need. Per
 ADR-0021 the decision is demand-driven; adopting GDAL (mosaicking beyond the
 configured catalog, GeoKey parsing, hundreds of formats) requires a new ADR
@@ -97,7 +101,10 @@ Concretely:
   descriptor**, not parsed from GeoTIFF tags: libvips/NetVips is an imagery
   library and does not expose the GeoTIFF `ModelPixelScale`/`GeoKeyDirectory`
   tags. This is the honest cost of the managed path and the recorded trigger
-  for the GDAL follow-up. Raster width/height/band count/pixel type are read
+  for the GDAL follow-up. The tiled/pyramidal *storage* metadata
+  (`tile-width`/`tile-height`/`n-subifds`) is exposed and is used for block
+  and pyramid reporting (plan I4); only the georeferencing keys are not.
+  Raster width/height/band count/pixel type are read
   from the file (NetVips metadata); extent/CRS/pixel size come from the
   descriptor.
 
@@ -201,13 +208,14 @@ list/read files); `Spatial.Host` registration from `Spatial:Raster` (single
 rasters and configured catalogs); the `PublicationKind.Image` GeoServices
 ImageServer projection (root, raster info, catalog item/listing/query,
 identify, `exportImage`, Raster Image/Thumbnail and the opt-in Download
-Rasters/Raster File surface). Not implemented: I4 in-memory export caching
-beyond the download caps; raster functions/statistics computation (I5
-non-goal).
+Rasters/Raster File surface). Not implemented: I4 COG/tiled-GeoTIFF
+structure awareness (block/pyramid metadata, overview-aware export and
+COG-style writing); I5 in-memory export caching beyond the download caps;
+raster functions/statistics computation (I6 non-goal).
 
 ## References
 
-- `architecture/image-service-plan.md` — I0–I2 delivery plan
+- `architecture/image-service-plan.md` — I0–I4 delivery plan
 - `architecture/references/geoservices-compatibility.md` §4 and the spec PDF §8
 - ADR-0001/0032 (core values), ADR-0005 (no third-party types in contracts),
   ADR-0021 (native/AOT evidence), ADR-0035 (GeoServices boundary adapter),
