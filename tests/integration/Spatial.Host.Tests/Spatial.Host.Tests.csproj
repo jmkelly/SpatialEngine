@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Recorded real QGIS 4.2.2 WMS traffic (T-013). -->
+    <Content Include="..\..\fixtures\qgis\*.json">
+      <Link>qgis-fixtures\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
