@@ -9,10 +9,11 @@ namespace Spatial.Rendering.Skia.Styling;
 /// <summary>
 /// Compiles a MapLibre-style document into the internal <see cref="CompiledStyle"/>
 /// draw plan. The documented subset is <c>background</c>, <c>fill</c>,
-/// <c>line</c> and <c>circle</c> layers with a flat paint recipe and a
-/// MapLibre <c>filter</c> expression; unsupported types and paint properties
-/// fail with a typed <c>invalid.arguments</c> instead of being flattened.
-/// Compiled plans are cached by the style document hash.
+/// <c>line</c>, <c>circle</c> and <c>symbol</c> layers with a flat paint
+/// recipe, a MapLibre <c>filter</c> expression and (for symbols) the
+/// documented layout keys; unsupported types and properties fail with a typed
+/// <c>invalid.arguments</c> instead of being flattened. Compiled plans are
+/// cached by the style document hash.
 /// </summary>
 internal sealed class StyleCompiler
 {
@@ -92,9 +93,10 @@ internal sealed class StyleCompiler
         var filter = layer.TryGetProperty("filter", out var filterElement) && filterElement.ValueKind != JsonValueKind.Null
             ? FilterReader.Read(filterElement)
             : StyleFilter.Always;
+        var layout = layer.TryGetProperty("layout", out var layoutElement) ? layoutElement : default;
         var paint = layer.TryGetProperty("paint", out var paintElement)
-            ? PaintReader.Read(kind, paintElement)
-            : PaintReader.Read(kind, default);
+            ? PaintReader.Read(kind, paintElement, layout)
+            : PaintReader.Read(kind, default, layout);
         return new DrawLayer(id, dataset, kind, minZoom, maxZoom, visible, filter, paint);
     }
 
@@ -104,6 +106,7 @@ internal sealed class StyleCompiler
         "fill" => DrawKind.Fill,
         "line" => DrawKind.Line,
         "circle" => DrawKind.Circle,
+        "symbol" => DrawKind.Symbol,
         _ => throw SpatialException.BadArguments($"Unsupported layer type '{type}'."),
     };
 

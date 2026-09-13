@@ -18,6 +18,13 @@ public sealed class RenderFacadeTests
               "paint": { "circle-color": "#ffd166", "circle-radius": 4 } } ] }
         """;
 
+    private const string SymbolStyle = """
+        { "version": 8, "layers": [
+            { "id": "cities", "type": "symbol", "source-layer": "demo.cities",
+              "layout": { "text-field": "{name}", "text-size": 16, "text-anchor": "left" },
+              "paint": { "text-color": "#000000", "text-halo-color": "#ffffff", "text-halo-width": 1 } } ] }
+        """;
+
     [Fact]
     public async Task RenderAsync_ProducesAnImageThroughTheVectorOnlyPath()
     {
@@ -236,6 +243,76 @@ public sealed class RenderFacadeTests
         Assert.Equal((byte)0, pixel.Green);
         Assert.Equal((byte)255, pixel.Blue);
         Assert.Equal((byte)255, pixel.Alpha);
+    }
+
+    [Fact]
+    public async Task RenderAsync_RendersSymbolLabelsEndToEnd()
+    {
+        var store = new FakeStore(TestFeatures.Schema, TestFeatures.Point("London", 0, 0));
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+
+        var image = await renderer.RenderAsync(Request(store) with { Style = SymbolStyle });
+
+        Assert.Equal(RasterFormat.Png, image.Format);
+        using var bitmap = SKBitmap.Decode(image.Content);
+        Assert.NotNull(bitmap);
+        Assert.True(CountInked(bitmap) > 0);
+    }
+
+    [Fact]
+    public async Task RenderAsync_SymbolLabelsAreDeterministicAcrossFeatureOrder()
+    {
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+        var ordered = new FakeStore(
+            TestFeatures.Schema, TestFeatures.Point("Alpha", 0, 0), TestFeatures.Point("Beta", 0.5, 0));
+        var reversed = new FakeStore(
+            TestFeatures.Schema, TestFeatures.Point("Beta", 0.5, 0), TestFeatures.Point("Alpha", 0, 0));
+
+        var first = await renderer.RenderAsync(Request(ordered) with { Style = SymbolStyle });
+        var second = await renderer.RenderAsync(Request(reversed) with { Style = SymbolStyle });
+
+        Assert.Equal(first.Content, second.Content);
+    }
+
+    [Fact]
+    public async Task RenderAsync_RejectsAnUnsupportedSymbolProperty()
+    {
+        var store = new FakeStore(TestFeatures.Schema, TestFeatures.Point("London", 0, 0));
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+        var style = SymbolStyle.Replace(
+            "\"text-size\": 16", "\"text-size\": 16, \"text-transform\": \"uppercase\"", StringComparison.Ordinal);
+
+        var exception = await Assert.ThrowsAsync<SpatialException>(
+            () => renderer.RenderAsync(Request(store) with { Style = style }));
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+    }
+
+    [Fact]
+    public async Task RenderAsync_HonoursCancellationForSymbolLayers()
+    {
+        var store = new FakeStore(TestFeatures.Schema, TestFeatures.Point("London", 0, 0));
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => renderer.RenderAsync(
+                Request(store) with { Style = SymbolStyle }, new CancellationToken(canceled: true)));
+    }
+
+    private static long CountInked(SKBitmap bitmap)
+    {
+        long count = 0;
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                if (bitmap.GetPixel(x, y).Alpha > 0)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
     }
 
     private static MapRenderRequest Request(IFeatureStore store) => new(

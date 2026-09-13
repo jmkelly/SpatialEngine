@@ -10,19 +10,22 @@ namespace Spatial.Rendering.Skia.Pipeline;
 /// Builds the ordered <see cref="RenderScene"/> from a compiled style: resolve
 /// each dataset's keyed services, push the viewport bbox down once per dataset,
 /// place and shape the geometry with the injected engine services, and keep
-/// the style's bottom-to-top layer order. It adds no spatial algorithm.
+/// the style's bottom-to-top layer order. Symbol layers are delegated to
+/// <see cref="SymbolSceneBuilder"/>. It adds no spatial algorithm.
 /// </summary>
 internal sealed class SceneBuilder
 {
     private readonly ICoordinateTransforms _transforms;
     private readonly IGeometryOperations _operations;
     private readonly FeaturePipeline _features;
+    private readonly SymbolSceneBuilder _symbols;
 
     public SceneBuilder(ICoordinateTransforms transforms, IGeometryOperations operations)
     {
         _transforms = transforms;
         _operations = operations;
         _features = new FeaturePipeline(transforms);
+        _symbols = new SymbolSceneBuilder(transforms, operations);
     }
 
     public async Task<RenderScene> BuildAsync(
@@ -65,6 +68,12 @@ internal sealed class SceneBuilder
     }
 
     private SceneLayer BuildSceneLayer(
+        DrawLayer layer, LayerFeatures features, RasterViewport viewport, CancellationToken cancellationToken) =>
+        layer.Paint is SymbolPaint symbol
+            ? _symbols.Build(layer, features, viewport, symbol, cancellationToken)
+            : BuildGeometryLayer(layer, features, viewport, cancellationToken);
+
+    private SceneLayer BuildGeometryLayer(
         DrawLayer layer, LayerFeatures features, RasterViewport viewport, CancellationToken cancellationToken)
     {
         var tolerance = viewport.UnitsPerPixel / 2;

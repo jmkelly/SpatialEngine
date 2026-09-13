@@ -267,7 +267,14 @@ public sealed class ArchitectureGuardTests
             ["Spatial.Operations.NetTopologySuite"] = ["NetTopologySuite"],
             ["Spatial.Transformations.ProjNet"] = ["ProjNET"],
             ["Spatial.Provider.PostGIS"] = ["Npgsql"],
-            ["Spatial.Rendering.Skia"] = ["SkiaSharp", "SkiaSharp.NativeAssets.Linux.NoDependencies"],
+            ["Spatial.Rendering.Skia"] =
+            [
+                "HarfBuzzSharp.NativeAssets.Linux",
+                "SkiaSharp",
+                "SkiaSharp.HarfBuzz",
+                "SkiaSharp.NativeAssets.Linux.NoDependencies",
+                "Svg.Skia",
+            ],
             ["Spatial.Imagery.Vips"] = ["NetVips", "NetVips.Native"],
         };
 

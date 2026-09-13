@@ -1,8 +1,9 @@
 # Raster Rendering
 
-The condensed form of ADR-0044 and `../rendering-implementation-plan.md`
-(R0–R3): turn the engine's vector outputs into styled raster output over a
-NetVips imagery pipeline. Read the ADR for the decision and the research at
+The condensed form of ADR-0044 (and ADR-0049 for labels/symbols) and
+`../rendering-implementation-plan.md` (R0–R6): turn the engine's vector
+outputs into styled raster output over a NetVips imagery pipeline. Read the
+ADR for the decision and the research at
 `../../research/rendering/README.md` for the measured baseline and the
 libvips traps; this is the as-built shape.
 
@@ -33,7 +34,7 @@ layer's keyed store and catalogue at the edge.
 
 | Project | Owns | Package |
 | --- | --- | --- |
-| `Spatial.Rendering.Skia` | `IMapRenderer` | SkiaSharp 4.152.0 (+ Linux native assets) |
+| `Spatial.Rendering.Skia` | `IMapRenderer` | SkiaSharp 4.152.0 (+ Linux native assets), SkiaSharp.HarfBuzz 4.152.0 (HarfBuzzSharp 14.2.1.200), Svg.Skia 5.2.3 |
 | `Spatial.Imagery.Vips` | `IRasterOperations` | NetVips 3.2.0 + NetVips.Native 8.18.6 |
 | `Spatial.Tiling.WebMercator` | `ITileScheme` (EPSG:3857 XYZ) | none |
 
@@ -50,6 +51,8 @@ Pipeline stages (all in `Spatial.Rendering.Skia` unless noted):
    (`unitsPerPixel / 2`) and drops geometry outside the viewport.
 5. **Rasterize** — `SkiaVectorRasterizer` clears the background and draws the
    scene to premultiplied RGBA (`SkiaPathBuilder` / `SkiaPaintFactory`).
+   Symbol layers are shaped and placed by `SkiaSymbolRasterizer` over the
+   embedded `BundledFont` and `SpriteRegistry` (ADR-0049).
 6. **Compose + encode** — `RasterComposer` calls `IRasterOperations`; without
    an imagery pipeline the vector-only path encodes PNG/JPEG with Skia.
 7. `MapRenderer` is a thin facade; `SceneBuilder` builds the scene;
@@ -69,13 +72,25 @@ A publication may also persist a per-layer style fragment in the same dialect
 (ADR-0047): each `PublicationLayer.Style` is a JSON array of style-layer
 objects without `id`/`source-layer`, and the host injects those (plus the
 layer's dataset) when it assembles the render document.
-Supported layers: `background`, `fill`, `line`, `circle`. Per-layer keys:
+Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer keys:
 `minzoom`, `maxzoom`, `layout.visibility`, `filter`, `paint`.
 
 - Paint: `background-color/-opacity`; `fill-color/-opacity`,
   `fill-outline-color`, `fill-outline-width`; `line-color/-opacity/-width/`
   `-dasharray/-cap/-join`; `circle-color/-radius/-opacity/-stroke-color/`
-  `-stroke-width`.
+  `-stroke-width`; `text-color/-opacity`, `text-halo-color/-width`.
+- Symbol layout (ADR-0049): `text-field` (a `{attribute}` template),
+  `text-font` (the bundled Noto Sans aliases only), `text-size`,
+  `text-anchor`, `text-offset` (ems), `text-padding`, `text-allow-overlap`,
+  `icon-image` (a bundled sprite name), `icon-size`, `icon-allow-overlap`.
+  `symbol-placement: line`, expressions and unknown keys are rejected.
+- Fonts come only from the embedded Noto Sans Regular 2.003 (OFL-1.1);
+  sprites only from the embedded `Resources/Sprites/*.svg` (the bundled
+  `default-marker`), never a URL. `icon-image` resolves at draw time; an
+  unknown name is a typed error.
+- Label placement is a deterministic greedy first-fit: layers in document
+  order, features sorted by identity then source envelope centre, with
+  `*-allow-overlap` bypassing the collision test.
 - Filter operators: `==`, `!=`, `has`, `!has`, `in`, `all`, `any`, `none`,
   `!` over `IFeature` attributes (never SQL).
 - An unknown layer type, paint property, filter expression or visibility is a
@@ -121,10 +136,18 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 - Tiles: Web-Mercator LOD math, cache get/set/eviction/invalidation, the tile
   version fingerprint, `TileService` order/batch-cap/cancellation, and the
   HTTP tile routes (hit/miss, formats, schemes, batch).
+- Labels/symbols: property resolution (including typed rejection of
+  unsupported keys and unknown fonts), text-anchor/offset placement, halo,
+  collision (first wins, `*-allow-overlap` places all), byte-identical
+  repeated runs, feature-order independence, the embedded-font hash, the
+  embedded sprite registry, and a committed golden render under
+  `tests/fixtures/rendering/golden/` compared exactly on CI and with a
+  bounded tolerance elsewhere.
 
 ## Not implemented (per the plan)
 
-R6 labels/symbols, R7 GPU backend, and a persistent/shared tile cache
-(the `ITileCache` contract is ready for it). The GeoServices MapServer
-(`export`/`tile`, ADR-0048) is implemented; a neutral
-`/api/publications/{name}/tiles` route is not.
+R7 GPU backend, and a persistent/shared tile cache (the `ITileCache`
+contract is ready for it). The GeoServices MapServer (`export`/`tile`,
+ADR-0048) is implemented; a neutral `/api/publications/{name}/tiles` route is
+not. Within the symbol subset, line placement, expressions, sprite sheets and
+text transforms are not claimed.

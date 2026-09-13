@@ -1,14 +1,15 @@
 # Raster Rendering Implementation Plan
 
-> **Status:** R0–R4 implemented (contracts, Skia vector render, NetVips
+> **Status:** R0–R6 implemented (contracts, Skia vector render, NetVips
 > imagery, MapLibre-subset style document, host routes and clients, tiles +
-> content-addressed cache); R5–R7 (GeoServices export seam, labels/symbols,
-> GPU) remain.
+> content-addressed cache, publication/GeoServices seam, labels and symbols);
+> R7 (GPU) remains and needs a measured bottleneck.
 > Companion to
 > `architecture/decisions/ADR-0044-raster-rendering-pipeline.md` (the gating
-> decision) and the research at `research/rendering/README.md` (candidate
-> survey, spike, measured baselines, integration gotchas). Read the research
-> first — it is where the library choice and the NetVips traps are proven.
+> decision), ADR-0049 (the label/symbol package boundary) and the research at
+> `research/rendering/README.md` (candidate survey, spike, measured baselines,
+> integration gotchas). Read the research first — it is where the library
+> choice and the NetVips traps are proven.
 >
 > **Numbering note:** ADR-0041 is the ingest/publications decision and
 > ADR-0042/0043 are reserved by `publishing-and-ingest-plan.md`, so the
@@ -305,10 +306,17 @@ and `clients/dotnet`; TS wire types regenerate from OpenAPI.
 
 ### R6 — Labels and symbols
 
-- **Deliverable:** `SkiaSharp.HarfBuzz` shaping, label placement/collision
-  pass, `Svg.Skia` sprite symbols.
-- **Proof:** placement fixtures; deterministic collision across runs; font
-  bundling pinned (no system-font dependence).
+- **Deliverable:** `SkiaSharp.HarfBuzz` shaping over the embedded Noto Sans
+  Regular 2.003 (OFL-1.1), a deterministic placement/collision pass, and
+  `Svg.Skia` sprite icons from the embedded sprite registry (plus the bundled
+  `default-marker`). New packages pinned in `Directory.Packages.props` and
+  allowlisted by ADR-0049.
+- **Proof (built):** property-resolution and typed-rejection unit tests;
+  anchor/offset/halo/collision fixtures; byte-identical repeated runs and
+  feature-order independence; the embedded-font hash and sprite registry;
+  `POST /api/render` and `POST /api/render/tiles/{z}/{x}/{y}.{format}` symbol
+  coverage; a committed golden render (byte-equal on CI, bounded tolerance
+  elsewhere).
 
 ### R7 — Performance / GPU (only with evidence)
 

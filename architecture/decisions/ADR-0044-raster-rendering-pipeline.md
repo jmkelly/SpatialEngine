@@ -103,16 +103,17 @@ Raster rendering is a **composed pipeline**, not a new subsystem bolted on:
 
 ## Implementation status
 
-Implemented (R0–R3 of `rendering-implementation-plan.md`): the
+Implemented (R0–R6 of `rendering-implementation-plan.md`): the
 `Spatial.PluginSdk` rendering contracts, `Spatial.Rendering.Skia`
-(`IMapRenderer`: MapLibre-subset `background`/`fill`/`line`/`circle`,
-attribute filters, zoom windows, bbox pushdown, screen-space simplify/cull),
-`Spatial.Imagery.Vips` (`IRasterOperations`: read/normalise, blend,
-PNG/JPEG/WebP/TIFF encode) and the host's `POST /api/render` +
-`GET /api/render/capabilities` routes with the .NET and TypeScript clients.
-Not yet implemented: tiles and the content-addressed cache (R4), the
-GeoServices `export`/`tile` seam (R5), labels/symbols (R6) and any GPU
-backend (R7).
+(`IMapRenderer`: MapLibre-subset `background`/`fill`/`line`/`circle`/`symbol`,
+attribute filters, zoom windows, bbox pushdown, screen-space simplify/cull,
+HarfBuzz text shaping over an embedded font, deterministic label collision and
+embedded SVG sprites — ADR-0049), `Spatial.Imagery.Vips`
+(`IRasterOperations`: read/normalise, blend, PNG/JPEG/WebP/TIFF encode), the
+host's `POST /api/render` + `GET /api/render/capabilities` routes, tiles and
+the content-addressed cache (R4), the GeoServices `export`/`tile` seam (R5)
+with the .NET and TypeScript clients. Not yet implemented: any GPU backend
+(R7).
 
 ## Alternatives
 

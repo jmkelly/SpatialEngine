@@ -156,6 +156,27 @@ public sealed class TileEndpointsTests : IClassFixture<WebApplicationFactory<Pro
         Assert.Equal("false", after.Headers.GetValues("X-Tile-Cached").Single());
     }
 
+    [Fact]
+    public async Task A_tile_renders_symbol_labels()
+    {
+        using var client = await FreshClientAsync();
+        var style = JsonDocument.Parse(
+            """
+            { "version": 8, "layers": [
+                { "id": "labels", "type": "symbol", "source-layer": "demo.cities",
+                  "layout": { "text-field": "{name}", "text-size": 10, "text-anchor": "left",
+                              "icon-image": "default-marker", "icon-size": 0.5, "text-offset": [0.4, 0] },
+                  "paint": { "text-color": "#ffffff", "text-halo-color": "#0b1220", "text-halo-width": 1 } } ] }
+            """).RootElement.Clone();
+
+        var response = await client.PostAsJsonAsync("/api/render/tiles/0/0/0.png", TileRequest() with { Style = style });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal(0x89, bytes[0]);
+    }
+
     private async Task<HttpClient> FreshClientAsync()
     {
         var client = _factory.CreateClient();

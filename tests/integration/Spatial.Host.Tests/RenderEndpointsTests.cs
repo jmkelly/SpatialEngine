@@ -133,6 +133,57 @@ public sealed class RenderEndpointsTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal("invalid.arguments", await CodeAsync(response));
     }
 
+    [Fact]
+    public async Task Render_returns_a_png_for_a_symbol_layer()
+    {
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/render", SymbolRequest());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.Equal(0x89, bytes[0]);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(bytes);
+        Assert.NotNull(bitmap);
+        Assert.True(CountInked(bitmap) > 0);
+    }
+
+    [Fact]
+    public async Task Render_maps_an_unsupported_symbol_property_to_400()
+    {
+        using var client = _factory.CreateClient();
+
+        var request = SymbolRequest();
+        request.Style = JsonDocument.Parse(
+            """
+            { "version": 8, "layers": [
+                { "id": "labels", "type": "symbol", "source-layer": "demo.cities",
+                  "layout": { "text-field": "{name}", "text-transform": "uppercase" } } ] }
+            """).RootElement.Clone();
+        var response = await client.PostAsJsonAsync("/api/render", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid.arguments", await CodeAsync(response));
+    }
+
+    private static long CountInked(SkiaSharp.SKBitmap bitmap)
+    {
+        long count = 0;
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                if (bitmap.GetPixel(x, y).Alpha > 0)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
     private static async Task<string?> CodeAsync(HttpResponseMessage response)
     {
         var body = await response.Content.ReadFromJsonAsync<ErrorBody>();
@@ -151,6 +202,20 @@ public sealed class RenderEndpointsTests : IClassFixture<WebApplicationFactory<P
             """).RootElement.Clone(),
         Layers = [new Layer { Dataset = dataset, Store = "demo" }],
         Format = format,
+    };
+
+    private static RenderRequest SymbolRequest() => new()
+    {
+        Viewport = new Viewport { MinX = -180, MinY = -85, MaxX = 180, MaxY = 85, Width = 400, Height = 250, Crs = "EPSG:4326" },
+        Style = JsonDocument.Parse(
+            """
+            { "version": 8, "layers": [
+                { "id": "labels", "type": "symbol", "source-layer": "demo.cities",
+                  "layout": { "text-field": "{name}", "text-size": 12, "text-anchor": "left",
+                              "icon-image": "default-marker", "icon-size": 0.75, "text-offset": [0.6, 0] },
+                  "paint": { "text-color": "#ffffff", "text-halo-color": "#0b1220", "text-halo-width": 1 } } ] }
+            """).RootElement.Clone(),
+        Layers = [new Layer { Dataset = "demo.cities", Store = "demo" }],
     };
 
     private sealed class RenderRequest
