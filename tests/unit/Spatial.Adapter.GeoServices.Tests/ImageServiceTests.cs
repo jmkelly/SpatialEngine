@@ -23,6 +23,8 @@ public sealed class ImageServiceTests
         Assert.Equal("ESRI", root.CopyrightText);
         Assert.Null(root.ObjectIdField);
         Assert.Null(root.Fields);
+        Assert.Equal(0, root.MinPixelSize);
+        Assert.Equal(0, root.MaxPixelSize);
         Assert.Equal([0.0, 0.0, 0.0], root.MinValues);
         Assert.Equal([255.0, 254.0, 255.0], root.MaxValues);
         Assert.Equal(30.386, root.PixelSizeX, 3);
@@ -44,6 +46,17 @@ public sealed class ImageServiceTests
     }
 
     [Fact]
+    public void Root_derives_the_pixel_size_bounds_from_the_pyramid()
+    {
+        var description = Description(hasCatalog: false) with { Raster = Raster() with { MaxPyramidLevel = 3 } };
+
+        var root = ImageService.Root(description, null);
+
+        Assert.Equal(30.386, root.MinPixelSize, 3);
+        Assert.Equal(30.386 * 8, root.MaxPixelSize, 3);
+    }
+
+    [Fact]
     public void Info_reports_origin_and_pixel_grid()
     {
         var info = ImageService.Info(Raster());
@@ -54,6 +67,23 @@ public sealed class ImageServiceTests
         Assert.Equal(1, info.BlockHeight);
         Assert.Equal("U8", info.PixelType);
         Assert.Equal(4326, info.Extent!.SpatialReference!.Wkid);
+    }
+
+    [Fact]
+    public void Info_reports_the_pyramid_grid()
+    {
+        var info = ImageService.Info(Raster() with
+        {
+            BlockWidth = 256,
+            BlockHeight = 256,
+            FirstPyramidLevel = 1,
+            MaxPyramidLevel = 4,
+        });
+
+        Assert.Equal(256, info.BlockWidth);
+        Assert.Equal(256, info.BlockHeight);
+        Assert.Equal(1, info.FirstPyramidLevel);
+        Assert.Equal(4, info.MaxPyramidLevel);
     }
 
     [Theory]
@@ -164,6 +194,44 @@ public sealed class ImageServiceTests
         Assert.IsType<Polygon>(feature["Shape"].GeometryValue);
         Assert.Equal("first", feature["Name"].StringValue);
         Assert.Equal(37, feature["OBJECTID"].Int64Value);
+    }
+
+    [Fact]
+    public void Download_deduplicates_a_file_shared_by_two_rasters()
+    {
+        var shared = new RasterFile("7~a.tif", "a.tif", "image/tiff", 10);
+        var response = ImageService.Download(
+        [
+            (shared, 7L),
+            (shared, 8L),
+            (new RasterFile("9~b.png", "b.png", "image/png", 20), 9L),
+        ]);
+
+        Assert.Equal(2, response.RasterFiles.Count);
+        Assert.Equal("7~a.tif", response.RasterFiles[0].Id);
+        Assert.Equal(10, response.RasterFiles[0].Size);
+        Assert.Equal([7L, 8L], response.RasterFiles[0].RasterIds);
+        Assert.Equal([9L], response.RasterFiles[1].RasterIds);
+    }
+
+    [Fact]
+    public void Thumbnail_viewport_caps_the_longest_side_and_preserves_the_ratio()
+    {
+        var viewport = ImageService.ThumbnailViewport(Raster() with { Width = 1000, Height = 500 }, 200);
+
+        Assert.Equal(200, viewport.Width);
+        Assert.Equal(100, viewport.Height);
+        Assert.Equal("EPSG:4326", viewport.Crs);
+        Assert.Equal(new Envelope(-180, -90, 180, 90), viewport.Bounds);
+    }
+
+    [Fact]
+    public void Parse_raster_ids_requires_a_non_empty_list()
+    {
+        Assert.Equal([7L, 8L], ImageService.ParseRasterIds("7,8"));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds(null));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds(" "));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds("abc"));
     }
 
     private static RasterCatalogItem Item()

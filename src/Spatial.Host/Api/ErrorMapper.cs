@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Spatial.Interop.Ingest;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
 
@@ -30,6 +32,12 @@ internal static class ErrorMapper
                     statusCode: StatusCodes.Status500InternalServerError),
             },
             OperationCanceledException => Results.StatusCode(StatusCodes.Status499ClientClosedRequest),
+            // A malformed upload is a client error, not a provider failure: the
+            // ingest decoder documents that the host maps it to invalid.arguments.
+            IngestFormatException ingest => Results.BadRequest(
+                new ErrorResponse(SpatialException.InvalidArguments, ingest.Message)),
+            JsonException json => Results.BadRequest(
+                new ErrorResponse(SpatialException.InvalidArguments, json.Message)),
             _ => Results.Json(
                 new ErrorResponse("provider.failure", exception.Message),
                 statusCode: StatusCodes.Status500InternalServerError),

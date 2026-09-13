@@ -1,9 +1,9 @@
 # Seed: realistic on-demand spatial data
 
 `eng/seed.sh` fetches real, publicly available spatial data, loads it through
-the neutral ingest API and publishes a set of styled feature and map services.
-It exists so a fresh host (or a demo/test environment) can be given a
-non-trivial dataset in one command.
+the neutral ingest API and publishes a set of styled maps exposing feature and
+map services. It exists so a fresh host (or a demo/test environment) can be
+given a non-trivial dataset in one command.
 
 ```bash
 # Start (or reuse) a host, seed it, and leave it running:
@@ -39,10 +39,10 @@ source or a service.
 | `public.earthquakes` | USGS feed | magnitude 2.5+, past 7 days |
 | `public.world_places_mercator` | Natural Earth 1:110m | **reprojected 4326 → 3857 on ingest** |
 
-**Services** (publications, `PUT /api/publications/{name}`):
+**Maps** (`PUT /api/maps/{name}`, ADR-0053):
 
-- Feature services: `WorldCountries`, `WorldPlaces`, `UnitedStates`,
-  `SeismicActivity`, `WorldPlacesMercator`.
+- Feature maps (`services: ["feature"]`): `WorldCountries`, `WorldPlaces`,
+  `UnitedStates`, `SeismicActivity`, `WorldPlacesMercator`.
 - Map services (MapServer, ADR-0048): `WorldReference`, `WorldAtlas`,
   `SeismicMap` — each layer's persisted style (ADR-0047) is lowered to
   `drawingInfo`.
@@ -55,5 +55,5 @@ source or a service.
   the EPSG:4326 → EPSG:3857 reprojection) run **inside the engine** via the
   ingest `sourceSrid` parameter and the ProjNet transformation service.
 - Re-running is safe: an existing dataset is reused (unless `--force`) and an
-  existing publication keeps its stable layer ids (ADR-0041).
+  existing map keeps its stable layer ids (ADR-0041).
 - It does not run in `eng/verify.sh`: it depends on the network.

@@ -129,25 +129,27 @@ export interface IntersectionRequest {
 
 export type JsonElement = unknown;
 
-export interface Publication {
+export interface Map {
   name: string;
-  kind: PublicationKind;
   store: string;
-  layers: PublicationLayer[];
+  layers: MapLayer[];
+  services: MapService[];
   description?: null | string;
   copyright?: null | string;
 }
 
-export type PublicationKind = "feature" | "map" | "image";
-
-export interface PublicationLayer {
+export interface MapLayer {
   dataset: string;
   layerId: number | string;
   name?: null | string;
   style?: null | string;
+  kind?: MapLayerKind;
+  store?: null | string;
 }
 
-export interface PublicationRenderRequest {
+export type MapLayerKind = "feature" | "image";
+
+export interface MapRenderRequestDto {
   viewport: ViewportDto;
   imagery?: null | RenderImageryDto[];
   format?: RasterFormat;
@@ -156,6 +158,8 @@ export interface PublicationRenderRequest {
   transparent?: boolean;
   scale?: number | string;
 }
+
+export type MapService = "feature" | "map" | "tiles" | "wms" | "wfs" | "image";
 
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";
 

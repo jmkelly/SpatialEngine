@@ -1,17 +1,18 @@
 import type { LayerSpecification } from "maplibre-gl";
-import type { Publication, PublicationKind, PublicationLayer } from "@spatial/client";
+import type { Map, MapLayer, MapLayerKind, MapService } from "@spatial/client";
 import { newId } from "./ids.ts";
 
 /**
  * The composer's pure model: the
  * ordered layer list, the MapLibre style for each layer, and the mapping to
- * and from the host's neutral `Publication` contract. Deliberately free of
- * React and of the SDK transport so Node can type-strip it and the unit
- * tests pin the mapping without a renderer.
+ * and from the host's neutral `Map` contract. Deliberately free of React and
+ * of the SDK transport so Node can type-strip it and the unit tests pin the
+ * mapping without a renderer.
  *
- * Per-layer style is authored in browser state and persisted with the
- * publication as a MapLibre style fragment on each layer (ADR-0047), so a
- * publish/load round-trip restores it instead of resetting it.
+ * Per-layer style and kind are authored in browser state and persisted with
+ * the map as a MapLibre style fragment and a layer kind (ADR-0047/ADR-0053),
+ * so a publish/load round-trip restores them instead of resetting them. Each
+ * layer belongs to the map; style is never global and never shared.
  */
 
 /** The geometry family a layer's features share; `mixed` draws every symbol kind. */
@@ -34,19 +35,25 @@ export interface ComposerLayer {
   dataset: string;
   name: string;
   geometry: GeometryKind;
+  /** Feature layers feed Feature/Map/Tiles/WMS/WFS; image layers feed Image (ADR-0053). */
+  kind: MapLayerKind;
   style: LayerStyle;
   featureCount: number;
-  /** The published layer id when loaded from a publication; null for a new layer. */
+  /** The published layer id when loaded from a map; null for a new layer. */
   layerId: number | null;
 }
 
-/** The editable state behind one publication. */
+/** The editable state behind one map. */
 export interface ComposerDraft {
   name: string;
-  kind: PublicationKind;
   store: string;
   layers: ComposerLayer[];
+  /** The exposure set; a map may expose any subset of the six services (ADR-0053). */
+  services: MapService[];
 }
+
+/** The exposure set a new draft starts with; feature layers feed it. */
+export const defaultServices: MapService[] = ["feature"];
 
 export const StyleDefaults: LayerStyle = { color: "#4fc3f7", opacity: 0.3, lineWidth: 2, radius: 5, visible: true };
 
@@ -257,37 +264,39 @@ export function sourceId(layerId: string): string {
 }
 
 /**
- * Maps the ordered layer list onto the host's publication layers. Order is
+ * Maps the ordered layer list onto the host's map layers. Order is
  * preserved; `layerId` is the loaded stable id or `-1`, the registry's
  * "assign the next free id" sentinel, so appended layers never renumber
- * existing ones (ADR-0041).
+ * existing ones (ADR-0041). Each layer's `kind` is persisted (ADR-0053).
  */
-export function toPublicationLayers(layers: readonly ComposerLayer[]): PublicationLayer[] {
+export function toMapLayers(layers: readonly ComposerLayer[]): MapLayer[] {
   return layers.map((layer) => ({
     dataset: layer.dataset,
     layerId: layer.layerId ?? -1,
     name: layer.name,
     style: persistedStyle(layer),
+    kind: layer.kind,
   }));
 }
 
-/** Builds the `Publication` body for a draft. */
-export function toPublication(draft: ComposerDraft): Publication {
-  return { name: draft.name.trim(), kind: draft.kind, store: draft.store, layers: toPublicationLayers(draft.layers) };
+/** Builds the `Map` body for a draft. */
+export function toMap(draft: ComposerDraft): Map {
+  return { name: draft.name.trim(), store: draft.store, layers: toMapLayers(draft.layers), services: [...draft.services] };
 }
 
-/** Hydrates a draft from a stored publication, preserving stable layer ids (geometry is inferred after scanning). */
-export function fromPublication(publication: Publication): ComposerDraft {
+/** Hydrates a draft from a stored map, preserving stable layer ids and kinds (geometry is inferred after scanning). */
+export function fromMap(map: Map): ComposerDraft {
   return {
-    name: publication.name,
-    kind: publication.kind,
-    store: publication.store,
-    layers: publication.layers.map((layer, index) => ({
+    name: map.name,
+    store: map.store,
+    services: [...map.services],
+    layers: map.layers.map((layer, index) => ({
       id: newLayerId(),
-      store: publication.store,
+      store: map.store,
       dataset: layer.dataset,
       name: layer.name ?? layer.dataset,
       geometry: "mixed",
+      kind: layer.kind ?? "feature",
       style: styleFromPersisted(layer.style, defaultStyle("mixed", index)),
       featureCount: 0,
       layerId: toLayerId(layer.layerId),

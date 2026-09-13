@@ -62,7 +62,7 @@ internal static class ImageService
     public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright)
     {
         var info = description.Raster;
-        var srid = MapService.SridOf(info.Crs);
+        var srid = MapServerResources.SridOf(info.Crs);
         var statistics = info.BandStatistics;
         return new EsriImageServerRoot(
             CurrentVersion,
@@ -74,8 +74,8 @@ internal static class ImageService
             info.PixelSizeY,
             info.BandCount,
             PixelType(info.PixelType),
-            0,
-            0,
+            MinPixelSize(info),
+            MaxPixelSize(info),
             copyright,
             ServiceDataType(info),
             statistics?.Select(stat => stat.Min).ToArray(),
@@ -86,10 +86,23 @@ internal static class ImageService
             description.HasCatalog && description.CatalogSchema is { } schema ? Fields(schema, description.ObjectIdField!) : null);
     }
 
+    /// <summary>
+    /// The finest (full-resolution) pixel size, or 0 when the raster has no
+    /// pyramid (spec §8.0.3 reports 0.0 for a non-pyramidal service).
+    /// </summary>
+    private static double MinPixelSize(RasterInfo info) => info.MaxPyramidLevel > 0 ? info.PixelSizeX : 0;
+
+    /// <summary>
+    /// The coarsest overview pixel size: the full-resolution size doubled once
+    /// per pyramid level, or 0 when the raster has no pyramid.
+    /// </summary>
+    private static double MaxPixelSize(RasterInfo info) =>
+        info.MaxPyramidLevel > 0 ? info.PixelSizeX * Math.Pow(2, info.MaxPyramidLevel) : 0;
+
     /// <summary>Builds the Raster Info resource (spec §8.4.3).</summary>
     public static EsriRasterInfo Info(RasterInfo info)
     {
-        var srid = MapService.SridOf(info.Crs);
+        var srid = MapServerResources.SridOf(info.Crs);
         return new EsriRasterInfo(
             new EsriPoint(info.Extent.MinX, info.Extent.MaxY),
             info.BlockWidth > 0 ? info.BlockWidth : info.Width,
@@ -121,22 +134,38 @@ internal static class ImageService
             EsriFeatureCodec.Write(writer, feature, new EsriFeatureWriteOptions(objectIdField, item.ObjectId, ReturnGeometry: returnGeometry)));
     }
 
-    /// <summary>Lists catalog items (spec §8.0.5, ids-only and feature-set forms).</summary>
-    public static IResult Query(
-        RasterDatasetDescription description,
-        IReadOnlyList<RasterCatalogItem> items,
-        bool idsOnly,
-        bool returnGeometry,
-        IReadOnlyList<string>? outFields)
+    /// <summary>Builds the Download Rasters response (spec §8.0.7), deduplicating files shared by rasters.</summary>
+    public static EsriRasterDownloadResponse Download(IReadOnlyList<(RasterFile File, long RasterId)> files)
     {
-        var schema = description.CatalogSchema!;
-        var objectIdField = description.ObjectIdField ?? "OBJECTID";
-        if (idsOnly)
+        var entries = files
+            .GroupBy(file => file.File.Id, StringComparer.Ordinal)
+            .Select(group => new EsriRasterFileEntry(
+                group.Key,
+                group.First().File.Size,
+                [.. group.Select(item => item.RasterId).Distinct().Order()]))
+            .ToArray();
+        return new EsriRasterDownloadResponse(entries);
+    }
+
+    /// <summary>
+    /// The reduced viewport of a raster thumbnail (spec §8.3): the item's whole
+    /// extent at a size preserving its aspect ratio, capped at
+    /// <paramref name="maxSize"/> pixels on the longest side.
+    /// </summary>
+    public static RasterViewport ThumbnailViewport(RasterInfo info, int maxSize)
+    {
+        var longest = Math.Max(info.Width, info.Height);
+        if (longest <= 0 || maxSize <= 0)
         {
-            return EsriJson.Value(new EsriObjectIdsResponse(objectIdField, [.. items.Select(item => item.ObjectId)]));
+            return new RasterViewport(info.Extent, 1, 1, info.Crs);
         }
 
-        return WriteFeatureSet(description, items, returnGeometry, outFields);
+        var scale = Math.Min(1.0, (double)maxSize / longest);
+        return new RasterViewport(
+            info.Extent,
+            Math.Max(1, (int)Math.Round(info.Width * scale)),
+            Math.Max(1, (int)Math.Round(info.Height * scale)),
+            info.Crs);
     }
 
     /// <summary>Writes the Identify response (spec §8.0.6): pixel values, location and overlapping items.</summary>
@@ -146,7 +175,7 @@ internal static class ImageService
         double x,
         double y)
     {
-        var srid = MapService.SridOf(description.Raster.Crs);
+        var srid = MapServerResources.SridOf(description.Raster.Crs);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -238,19 +267,16 @@ internal static class ImageService
         return quality;
     }
 
-    private static IResult WriteFeatureSet(
-        RasterDatasetDescription description,
-        IReadOnlyList<RasterCatalogItem> items,
-        bool returnGeometry,
-        IReadOnlyList<string>? outFields)
+    /// <summary>Parses the required catalog <c>rasterIds</c> list (spec §8.0.7).</summary>
+    public static IReadOnlyList<long> ParseRasterIds(string? value)
     {
-        var schema = description.CatalogSchema!;
-        return EsriJson.Write(writer =>
+        if (string.IsNullOrWhiteSpace(value))
         {
-            writer.WriteStartObject();
-            WriteFeatureSetBody(writer, description, schema, items, returnGeometry, outFields);
-            writer.WriteEndObject();
-        });
+            throw EsriInteropException.Invalid("The 'rasterIds' parameter is required.");
+        }
+
+        var ids = EsriValueParser.ParseInt64s(value, "rasterIds");
+        return ids.Count == 0 ? throw EsriInteropException.Invalid("The 'rasterIds' parameter is required.") : ids;
     }
 
     private static void WriteFeatureSetBody(
@@ -317,7 +343,7 @@ internal static class ImageService
 
     private static void WriteSpatialReference(Utf8JsonWriter writer, string crs)
     {
-        var srid = MapService.SridOf(crs);
+        var srid = MapServerResources.SridOf(crs);
         if (srid > 0 && WkidMap.TryFromEpsg(srid, out var wkid))
         {
             writer.WriteStartObject();

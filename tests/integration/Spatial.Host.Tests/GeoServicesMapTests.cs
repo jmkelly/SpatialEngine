@@ -17,6 +17,8 @@ namespace Spatial.Host.Tests;
 /// </summary>
 public sealed class GeoServicesMapTests : IDisposable
 {
+    private static readonly string[] MapServices = ["map"];
+
     private const string Token = "test-admin-token";
     private const string Root = "/arcgis/rest/services";
     private const string CityStyle =
@@ -63,11 +65,11 @@ public sealed class GeoServicesMapTests : IDisposable
         var body = JsonSerializer.Serialize(new
         {
             name = "world",
-            kind = "map",
             store = "demo",
+            services = MapServices,
             layers = new[] { new { dataset, layerId = 0, name = "Cities", style } },
         });
-        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/publications/world")
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/maps/world")
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         };
@@ -109,6 +111,16 @@ public sealed class GeoServicesMapTests : IDisposable
         Assert.True(root.GetProperty("fullExtent").GetProperty("xmax").GetDouble() > 0);
         Assert.Equal(0, root.GetProperty("layers")[0].GetProperty("id").GetInt32());
         Assert.Equal("Cities", root.GetProperty("layers")[0].GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task The_root_reports_the_map_name()
+    {
+        var client = await MapServiceAsync();
+
+        var root = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer?f=json"));
+
+        Assert.Equal("world", root.GetProperty("mapName").GetString());
     }
 
     [Fact]
@@ -360,7 +372,7 @@ public sealed class GeoServicesMapTests : IDisposable
     {
         var store = new WritableMemoryStore();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => MapService.ReadLayersAsync(
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => MapServerResources.ReadLayersAsync(
             store, store, [new PublishedLayer(0, "memory.places", "Places")], new CancellationToken(canceled: true)));
     }
 
@@ -379,7 +391,7 @@ public sealed class GeoServicesMapTests : IDisposable
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Publications:Path", publicationsPath);
+            builder.UseSetting("Spatial:Maps:Path", publicationsPath);
         }
     }
 }

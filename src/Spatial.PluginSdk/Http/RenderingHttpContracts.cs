@@ -33,12 +33,12 @@ public sealed record RenderRequest(
     double Scale = 1.0);
 
 /// <summary>
-/// The <c>POST /api/publications/{name}/render</c> body (ADR-0047): the same
-/// viewport and encoding inputs as <see cref="RenderRequest"/> without a style
-/// or layer list, because both come from the named publication's persisted
-/// layers and their style fragments.
+/// The <c>POST /api/maps/{name}/render</c> body (ADR-0053 §4, evolving
+/// ADR-0047): the same viewport and encoding inputs as
+/// <see cref="RenderRequest"/> without a style or layer list, because both
+/// come from the named map's persisted layers and their style fragments.
 /// </summary>
-public sealed record PublicationRenderRequest(
+public sealed record MapRenderRequestDto(
     ViewportDto Viewport,
     IReadOnlyList<RenderImageryDto>? Imagery = null,
     RasterFormat Format = RasterFormat.Png,

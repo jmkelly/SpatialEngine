@@ -2,8 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addLayer,
+  defaultServices,
   defaultStyle,
-  fromPublication,
+  fromMap,
   geometryTypesOf,
   inferGeometryKind,
   layerSpecs,
@@ -11,8 +12,8 @@ import {
   removeLayer,
   reorderLayers,
   sourceId,
-  toPublication,
-  toPublicationLayers,
+  toMap,
+  toMapLayers,
   updateLayerName,
   updateLayerStyle,
   type ComposerLayer,
@@ -20,7 +21,7 @@ import {
 
 /**
  * The composer model is pure: ordering, style and the mapping onto the
- * host's neutral `Publication` contract are pinned here without a renderer.
+ * host's neutral `Map` contract are pinned here without a renderer.
  */
 
 function layer(dataset: string, overrides: Partial<ComposerLayer> = {}): ComposerLayer {
@@ -30,6 +31,7 @@ function layer(dataset: string, overrides: Partial<ComposerLayer> = {}): Compose
     dataset,
     name: dataset,
     geometry: "point",
+    kind: "feature",
     style: defaultStyle("point"),
     featureCount: 3,
     layerId: null,
@@ -95,73 +97,81 @@ test("reorderLayers moves an item and tolerates no-op or out-of-range moves", ()
   assert.deepEqual(reorderLayers(layers, 0, 9).map((entry) => entry.dataset), ["a", "b", "c"]);
 });
 
-test("toPublication assigns -1 to new layers and preserves list order", () => {
-  const layers = [layer("public.a"), layer("public.b", { name: "B layer" })];
-  const mapped = toPublicationLayers(layers);
+test("toMap assigns -1 to new layers and preserves list order and kinds", () => {
+  const layers = [layer("public.a"), layer("public.b", { name: "B layer", kind: "image" })];
+  const mapped = toMapLayers(layers);
   assert.deepEqual(mapped.map(({ style: _style, ...rest }) => rest), [
-    { dataset: "public.a", layerId: -1, name: "public.a" },
-    { dataset: "public.b", layerId: -1, name: "B layer" },
+    { dataset: "public.a", layerId: -1, name: "public.a", kind: "feature" },
+    { dataset: "public.b", layerId: -1, name: "B layer", kind: "image" },
   ]);
   assert.ok(mapped.every((entry) => typeof entry.style === "string" && entry.style.length > 0), "every layer carries a style fragment");
 
-  const publication = toPublication({ name: "  cities  ", kind: "map", store: "memory", layers });
-  assert.equal(publication.name, "cities", "the name is trimmed for the flat-identifier grammar");
-  assert.equal(publication.kind, "map");
-  assert.equal(publication.store, "memory");
-  assert.equal(publication.layers.length, 2);
+  const map = toMap({ name: "  cities  ", store: "memory", layers, services: ["feature", "map", "tiles"] });
+  assert.equal(map.name, "cities", "the name is trimmed for the flat-identifier grammar");
+  assert.equal(map.store, "memory");
+  assert.deepEqual(map.services, ["feature", "map", "tiles"]);
+  assert.equal(map.layers.length, 2);
 });
 
-test("fromPublication preserves order and stable layer ids, then maps back", () => {
-  const draft = fromPublication({
+test("fromMap preserves order, stable layer ids and the service set, then maps back", () => {
+  const draft = fromMap({
     name: "cities",
-    kind: "feature",
     store: "memory",
+    services: ["feature", "wfs"],
     layers: [
       { dataset: "public.b", layerId: 4, name: null },
-      { dataset: "public.a", layerId: 7, name: "A" },
+      { dataset: "public.a", layerId: 7, name: "A", kind: "image" },
     ],
   });
 
   assert.equal(draft.store, "memory");
+  assert.deepEqual(draft.services, ["feature", "wfs"]);
   assert.deepEqual(draft.layers.map((entry) => entry.dataset), ["public.b", "public.a"]);
   assert.deepEqual(draft.layers.map((entry) => entry.layerId), [4, 7]);
+  assert.deepEqual(draft.layers.map((entry) => entry.kind), ["feature", "image"]);
   assert.equal(draft.layers[0]!.name, "public.b", "a missing name falls back to the dataset");
 
-  assert.deepEqual(toPublicationLayers(draft.layers).map(({ style: _style, ...rest }) => rest), [
-    { dataset: "public.b", layerId: 4, name: "public.b" },
-    { dataset: "public.a", layerId: 7, name: "A" },
+  assert.deepEqual(toMapLayers(draft.layers).map(({ style: _style, ...rest }) => rest), [
+    { dataset: "public.b", layerId: 4, name: "public.b", kind: "feature" },
+    { dataset: "public.a", layerId: 7, name: "A", kind: "image" },
   ]);
 });
 
-test("layer style survives a publication round-trip (ADR-0047)", () => {
+test("layer style survives a map round-trip (ADR-0047)", () => {
   const point = layer("public.a", {
     geometry: "point",
     style: { color: "#123456", opacity: 0.4, lineWidth: 2, radius: 11, visible: false },
   });
-  const [published] = toPublicationLayers([point]);
+  const [published] = toMapLayers([point]);
   assert.ok(published?.style, "the style fragment is persisted");
 
-  const restored = fromPublication({ name: "svc", kind: "map", store: "memory", layers: [published!] });
+  const restored = fromMap({ name: "svc", store: "memory", services: ["map"], layers: [published!] });
   assert.deepEqual(restored.layers[0]!.style, { color: "#123456", opacity: 0.4, lineWidth: 2, radius: 11, visible: false });
 
   const line = layer("public.b", {
     geometry: "line",
     style: { color: "#abcdef", opacity: 0.8, lineWidth: 5, radius: 5, visible: true },
   });
-  const [linePublish] = toPublicationLayers([line]);
-  const lineRestored = fromPublication({ name: "svc", kind: "map", store: "memory", layers: [linePublish!] });
+  const [linePublish] = toMapLayers([line]);
+  const lineRestored = fromMap({ name: "svc", store: "memory", services: ["map"], layers: [linePublish!] });
   assert.equal(lineRestored.layers[0]!.style.color, "#abcdef");
   assert.equal(lineRestored.layers[0]!.style.lineWidth, 5);
 });
 
 test("a layer without a persisted style falls back to the default", () => {
-  const draft = fromPublication({
+  const draft = fromMap({
     name: "svc",
-    kind: "map",
     store: "memory",
+    services: [],
     layers: [{ dataset: "public.a", layerId: 0, name: null }],
   });
   assert.deepEqual(draft.layers[0]!.style, defaultStyle("mixed", 0));
+  assert.deepEqual(draft.layers[0]!.kind, "feature", "an absent kind defaults to feature");
+  assert.deepEqual(draft.services, [], "an empty service set is a valid draft");
+});
+
+test("a new draft starts with the feature service enabled", () => {
+  assert.deepEqual(defaultServices, ["feature"]);
 });
 
 test("layerSpecs emit one shape per geometry family with the layer's paint", () => {

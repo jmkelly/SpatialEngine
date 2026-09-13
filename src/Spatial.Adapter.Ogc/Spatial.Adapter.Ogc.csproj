@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The OGC WMS 1.3.0 / WFS 2.0.0 boundary adapter (ADR-0052 §3): a read-only
+    projection of a feature map onto the OGC protocols. It contains no spatial
+    algorithms — it parses protocol requests, resolves the map's feature
+    layers through the keyed stores, delegates rendering to IMapRenderer and
+    querying to IFeatureStore, and writes OGC XML, XSD and GeoJSON itself.
+    ASP.NET Core types stay inside this project; the adapter is mounted by
+    Spatial.Host only. It deliberately does not reference the GeoServices
+    adapter.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Adapter.Ogc</AssemblyName>
+    <RootNamespace>Spatial.Adapter.Ogc</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Adapter.Ogc.Tests" />
+    <InternalsVisibleTo Include="Spatial.Host.Tests" />
+  </ItemGroup>
+
+</Project>

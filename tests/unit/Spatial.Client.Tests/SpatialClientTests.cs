@@ -207,16 +207,16 @@ public sealed class SpatialClientTests
     }
 
     [Fact]
-    public async Task RenderPublication_posts_to_the_publication_route_and_reads_the_image()
+    public async Task RenderMap_posts_to_the_map_route_and_reads_the_image()
     {
         using var stub = new StubClient(new StubHttpHandler(_ => Image([7, 7], "image/png", 400, 250)));
-        var request = new PublicationRenderRequest(new ViewportDto(-10, 35, 30, 60, 400, 250, "EPSG:4326"));
+        var request = new MapRenderRequestDto(new ViewportDto(-10, 35, 30, 60, 400, 250, "EPSG:4326"));
 
-        var image = await stub.Client.RenderPublicationAsync("cities", request);
+        var image = await stub.Client.RenderMapAsync("cities", request);
 
         Assert.Equal([7, 7], image.Content);
         Assert.Equal(400, image.Width);
-        Assert.Equal("/api/publications/cities/render", Assert.Single(stub.Handler.Exchanges).Request.RequestUri?.AbsolutePath);
+        Assert.Equal("/api/maps/cities/render", Assert.Single(stub.Handler.Exchanges).Request.RequestUri?.AbsolutePath);
     }
 
     [Fact]

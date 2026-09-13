@@ -108,7 +108,7 @@ internal static class TileEndpoints
         return Results.NoContent();
     }
 
-    private static TileRenderSpec ToSpec(TileRenderRequest request, IServiceProvider services) =>
+    internal static TileRenderSpec ToSpec(TileRenderRequest request, IServiceProvider services) =>
         new(
             request.Style.GetRawText(),
             RenderEndpoints.ResolveLayers(request.Layers, services),
@@ -158,7 +158,7 @@ internal static class TileEndpoints
         }
     }
 
-    private static void WriteHeaders(HttpContext context, TileResult result)
+    internal static void WriteHeaders(HttpContext context, TileResult result)
     {
         RenderEndpoints.WriteMetadataHeaders(context, result.Image);
         context.Response.Headers["X-Tile-Cached"] = result.Cached ? "true" : "false";
@@ -187,7 +187,7 @@ internal static class TileEndpoints
             scheme.MaxZoom,
             [.. scheme.Levels.Select(level => new TileLevelDto(level.Zoom, level.Resolution, level.ScaleDenominator))]);
 
-    private static RasterFormat ParseFormat(string format)
+    internal static RasterFormat ParseFormat(string format)
     {
         if (Enum.TryParse<RasterFormat>(format, ignoreCase: true, out var parsed)
             && string.Equals(parsed.ToString(), format, StringComparison.OrdinalIgnoreCase))

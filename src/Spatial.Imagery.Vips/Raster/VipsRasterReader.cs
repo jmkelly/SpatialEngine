@@ -36,6 +36,7 @@ internal static class VipsRasterReader
         IReadOnlyList<RasterBandStatistics>? statistics)
     {
         using var image = VipsRasterFiles.Open(path);
+        var levels = VipsRasterStructure.PyramidLevels(image);
         return new RasterInfo(
             extent,
             crs,
@@ -46,10 +47,10 @@ internal static class VipsRasterReader
             image.Bands,
             RasterBandFormats.ToCore(image.Format),
             statistics,
-            BlockWidth: 0,
-            BlockHeight: 0,
-            FirstPyramidLevel: 0,
-            MaxPyramidLevel: 0);
+            BlockWidth: VipsRasterStructure.TileWidth(image),
+            BlockHeight: VipsRasterStructure.TileHeight(image),
+            FirstPyramidLevel: levels > 0 ? 1 : 0,
+            MaxPyramidLevel: levels);
     }
 
     public static Envelope Union(IReadOnlyList<RasterCatalogItemDescriptor> items)

@@ -76,7 +76,11 @@ the repository, already owns the encode seam (ADR-0044), and already satisfies
 the "framework-only packages" rule under an approved allowlist. The
 ImageServer requirements (read a GeoTIFF/COG, crop/resize, resample, cast
 band formats, apply nodata transparency, encode PNG/JPEG/TIFF) are inside
-NetVips' capability. GDAL is **not** adopted now: it would add a native
+NetVips' capability. Tiled and internally-overviewed (pyramidal) TIFFs, the
+structure a Cloud Optimized GeoTIFF adds, are read with `tiffload(
+subifd: n)`/random access and written with `tiffsave(tile, pyramid,
+subifd)`, so COG support does not need GDAL either (plan I4, delivered).
+GDAL is **not** adopted now: it would add a native
 package and a Docker/attestation surface without a measured need. Per
 ADR-0021 the decision is demand-driven; adopting GDAL (mosaicking beyond the
 configured catalog, GeoKey parsing, hundreds of formats) requires a new ADR
@@ -97,7 +101,10 @@ Concretely:
   descriptor**, not parsed from GeoTIFF tags: libvips/NetVips is an imagery
   library and does not expose the GeoTIFF `ModelPixelScale`/`GeoKeyDirectory`
   tags. This is the honest cost of the managed path and the recorded trigger
-  for the GDAL follow-up. Raster width/height/band count/pixel type are read
+  for the GDAL follow-up. The tiled/pyramidal *storage* metadata
+  (`tile-width`/`tile-height`/`n-subifds`) is exposed and is used for block
+  and pyramid reporting (plan I4, delivered); only the georeferencing keys are not.
+  Raster width/height/band count/pixel type are read
   from the file (NetVips metadata); extent/CRS/pixel size come from the
   descriptor.
 
@@ -133,8 +140,9 @@ GeoServices adapter resolves the publication, then the keyed
 `IRasterCatalogue`, and maps spec §8 onto the SDK verbs. `PublicationKind.Image`
 already exists (ADR-0041); the catalog advertises it as `ImageServer`. The
 non-goals stand: raster functions, spectral indices, on-the-fly mosaicking
-beyond the configured catalog, multidimensional/time imagery, and `download`
-raw rasters are out of scope for I0–I2 (I3 adds catalog `query`/`download`).
+beyond the configured catalog, multidimensional/time imagery, and download
+clipping/re-encoding are out of scope; catalog `query` and raw `download` are
+I3 and are served through the same provider-owned boundary.
 
 ## Consequences
 
@@ -153,9 +161,15 @@ raw rasters are out of scope for I0–I2 (I3 adds catalog `query`/`download`).
   NetVips GeoKey reader, if one appears) can replace it behind the same
   contract; the trigger is a measured need for tag parsing, mosaics or
   additional formats, recorded here and in the plan.
-- The ImageServer serves metadata, item listing, identify, raster info and
-  `exportImage` (encoded bytes via `f=image`, JSON `href` otherwise). Raster
+- The ImageServer serves metadata, item listing/query, identify, raster info,
+  `exportImage` (encoded bytes via `f=image`, JSON `href` otherwise), the
+  Raster Image/Thumbnail resources, and the raw `download`/Raster File
+  resources (opt-in, size-capped, opaque provider file ids). Raster
   functions/analytics remain an explicit non-goal.
+- Raw download is a second consumer of the provider's files: `ListFilesAsync`
+  / `ReadFileAsync` return an opaque `RasterFile.Id` and bytes, and the
+  provider validates the id against the files it owns, so no path ever
+  crosses the boundary or reaches a caller.
 - Nodata and transparency: `noData` produces an alpha mask so PNG/JPEG
   exports treat those pixels as transparent (PNG) or background (JPEG);
   `format`, `interpolation` and `compressionQuality` map to NetVips
@@ -186,18 +200,22 @@ raw rasters are out of scope for I0–I2 (I3 adds catalog `query`/`download`).
 
 ## Implementation status
 
-I0–I2 of `architecture/image-service-plan.md`:
-`Spatial.PluginSdk.IRasterCatalogue` and its core-typed records/enums;
-`Spatial.Imagery.Vips.VipsRasterCatalogue` (describe, list, identify,
-export); `Spatial.Host` registration from `Spatial:Raster`; the
-`PublicationKind.Image` GeoServices ImageServer projection (root, raster
-info, catalog item/listing, identify, `exportImage`). Not implemented: spec
-§8.0.5 full `query`, §8.0.7 `download` and §8.2–8.5 file/thumbnail
-resources (I3); raster functions/statistics computation (I5 non-goal).
+I0–I3 of `architecture/image-service-plan.md`:
+`Spatial.PluginSdk.IRasterCatalogue` and its core-typed records/enums
+(including `RasterFile`/`RasterFileContent` and the file verbs);
+`Spatial.Imagery.Vips.VipsRasterCatalogue` (describe, list, identify, export,
+list/read files); `Spatial.Host` registration from `Spatial:Raster` (single
+rasters and configured catalogs); the `PublicationKind.Image` GeoServices
+ImageServer projection (root, raster info, catalog item/listing/query,
+identify, `exportImage`, Raster Image/Thumbnail and the opt-in Download
+Rasters/Raster File surface). Also delivered: I4 COG/tiled-GeoTIFF
+structure awareness (block/pyramid metadata, overview-aware export and
+COG-style writing). Not implemented: I5 in-memory export caching beyond the
+download caps; raster functions/statistics computation (I6 non-goal).
 
 ## References
 
-- `architecture/image-service-plan.md` — I0–I2 delivery plan
+- `architecture/image-service-plan.md` — I0–I4 delivery plan
 - `architecture/references/geoservices-compatibility.md` §4 and the spec PDF §8
 - ADR-0001/0032 (core values), ADR-0005 (no third-party types in contracts),
   ADR-0021 (native/AOT evidence), ADR-0035 (GeoServices boundary adapter),

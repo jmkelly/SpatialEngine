@@ -8,8 +8,8 @@ import type {
   FeatureBatchesResponse,
   FeatureWriteResponse,
   GeometryResponse,
-  Publication,
-  PublicationRenderRequest,
+  Map,
+  MapRenderRequestDto,
   RasterFormat,
   RenderCapabilitiesResponse,
   RenderRequest,
@@ -32,13 +32,13 @@ export interface RasterImage {
   format: RasterFormat;
 }
 
-/** The result of a neutral ingest (ADR-0041); the publication is present when `publish` was requested. */
+/** The result of a neutral ingest (ADR-0041); the map is present when `publish` was requested. */
 export interface IngestResult {
   dataset: string;
   features: number;
   srid: number;
   identityField?: null | string;
-  publication?: null | Publication;
+  map?: null | Map;
 }
 
 /**
@@ -220,9 +220,9 @@ export class SpatialClient {
     return this.postForImage("/api/render", request, signal);
   }
 
-  /** Renders a publication's datasets using its persisted layer styles (ADR-0047). */
-  async renderPublication(name: string, request: PublicationRenderRequest, signal?: AbortSignal): Promise<RasterImage> {
-    return this.postForImage(`/api/publications/${encodeURIComponent(name)}/render`, request, signal);
+  /** Renders a map's datasets using its persisted layer styles (ADR-0047/ADR-0053). */
+  async renderMap(name: string, request: MapRenderRequestDto, signal?: AbortSignal): Promise<RasterImage> {
+    return this.postForImage(`/api/maps/${encodeURIComponent(name)}/render`, request, signal);
   }
 
   /** Renders one cache-aware tile; the request's format selects the path suffix. */
@@ -246,37 +246,38 @@ export class SpatialClient {
     return this.get<TileCapabilitiesResponse>("/api/render/tiles/capabilities", signal);
   }
 
-  // ---- publications & ingest (ADR-0041) ----
+  // ---- maps & ingest (ADR-0041/ADR-0053) ----
 
-  /** Lists every publication (declared first, then runtime by name). */
-  async listPublications(signal?: AbortSignal): Promise<Publication[]> {
-    return this.get<Publication[]>("/api/publications", signal);
+  /** Lists every map (declared first, then runtime by name). */
+  async listMaps(signal?: AbortSignal): Promise<Map[]> {
+    return this.get<Map[]>("/api/maps", signal);
   }
 
-  /** Gets one publication by name. */
-  async getPublication(name: string, signal?: AbortSignal): Promise<Publication> {
-    return this.get<Publication>(`/api/publications/${encodeURIComponent(name)}`, signal);
+  /** Gets one map by name. */
+  async getMap(name: string, signal?: AbortSignal): Promise<Map> {
+    return this.get<Map>(`/api/maps/${encodeURIComponent(name)}`, signal);
   }
 
-  /** Creates or replaces a runtime publication (requires the admin token). */
-  async putPublication(publication: Publication, adminToken?: string): Promise<Publication> {
-    return this.send<Publication>("PUT", `/api/publications/${encodeURIComponent(publication.name)}`, {
-      body: JSON.stringify(publication),
+  /** Creates or replaces a runtime map (requires the admin token). */
+  async putMap(map: Map, adminToken?: string): Promise<Map> {
+    return this.send<Map>("PUT", `/api/maps/${encodeURIComponent(map.name)}`, {
+      body: JSON.stringify(map),
       headers: { "content-type": "application/json", ...authorization(adminToken) },
     });
   }
 
-  /** Deletes a runtime publication and reports whether it existed (requires the admin token). */
-  async deletePublication(name: string, adminToken?: string): Promise<boolean> {
-    return this.send<boolean>("DELETE", `/api/publications/${encodeURIComponent(name)}`, {
+  /** Deletes a runtime map and reports whether it existed (requires the admin token). */
+  async deleteMap(name: string, adminToken?: string): Promise<boolean> {
+    return this.send<boolean>("DELETE", `/api/maps/${encodeURIComponent(name)}`, {
       headers: authorization(adminToken),
     });
   }
 
   /**
    * Uploads a GeoJSON/NDJSON/CSV blob and loads it atomically into a dataset,
-   * optionally registering a publication in the same call (requires the admin
-   * token). The browser/tool path uses multipart; the body is opaque bytes.
+   * optionally registering the dataset on a Feature map in the same call
+   * (requires the admin token). The browser/tool path uses multipart; the body
+   * is opaque bytes.
    */
   async ingest(
     content: Blob,

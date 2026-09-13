@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Spatial.AppHost/Spatial.AppHost.csproj" />
     <Project Path="src/Spatial.Adapter.GeoServices/Spatial.Adapter.GeoServices.csproj" />
+    <Project Path="src/Spatial.Adapter.Ogc/Spatial.Adapter.Ogc.csproj" />
     <Project Path="src/Spatial.Core/Spatial.Core.csproj" />
     <Project Path="src/Spatial.Host/Spatial.Host.csproj" />
     <Project Path="src/Spatial.Interop.Esri/Spatial.Interop.Esri.csproj" />
@@ -11,7 +12,7 @@
     <Project Path="src/Spatial.Provider.Demo/Spatial.Provider.Demo.csproj" />
     <Project Path="src/Spatial.Provider.Memory/Spatial.Provider.Memory.csproj" />
     <Project Path="src/Spatial.Provider.PostGIS/Spatial.Provider.PostGIS.csproj" />
-    <Project Path="src/Spatial.Provider.Publications/Spatial.Provider.Publications.csproj" />
+    <Project Path="src/Spatial.Provider.Maps/Spatial.Provider.Maps.csproj" />
     <Project Path="src/Spatial.Provider.ArcGisRest/Spatial.Provider.ArcGisRest.csproj" />
     <Project Path="src/Spatial.Imagery.Vips/Spatial.Imagery.Vips.csproj" />
     <Project Path="src/Spatial.Rendering.Skia/Spatial.Rendering.Skia.csproj" />
@@ -21,15 +22,17 @@
   <Folder Name="/tests/" />
   <Folder Name="/tests/unit/">
     <Project Path="tests/unit/Spatial.Adapter.GeoServices.Tests/Spatial.Adapter.GeoServices.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Adapter.Ogc.Tests/Spatial.Adapter.Ogc.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Esri.Tests/Spatial.Interop.Esri.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Interop.Ingest.Tests/Spatial.Interop.Ingest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Client.Tests/Spatial.Client.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Cli.Tests/Spatial.Cli.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Operations.NetTopologySuite.Tests/Spatial.Operations.NetTopologySuite.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.Demo.Tests/Spatial.Provider.Demo.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.Memory.Tests/Spatial.Provider.Memory.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.PostGIS.Tests/Spatial.Provider.PostGIS.Tests.csproj" />
-    <Project Path="tests/unit/Spatial.Provider.Publications.Tests/Spatial.Provider.Publications.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Provider.Maps.Tests/Spatial.Provider.Maps.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Provider.ArcGisRest.Tests/Spatial.Provider.ArcGisRest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Rendering.Skia.Tests/Spatial.Rendering.Skia.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Tiling.WebMercator.Tests/Spatial.Tiling.WebMercator.Tests.csproj" />

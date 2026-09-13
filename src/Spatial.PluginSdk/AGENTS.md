@@ -18,9 +18,11 @@ implementations and the host — never the reverse.
   dataset catalogue, feature reads/writes (canonical `FeatureBatch` pages),
   additive per-feature editing (ADR-0037) and read-by-identity lookup for
   edit resolution (ADR-0038), and store-owned string transaction handles.
-- `IPublicationRegistry` + `Publication`/`PublicationKind`/`PublicationLayer`
-  — the runtime publication registry (ADR-0041), the neutral unit of
-  service exposure (name, kind, store, stable-id layers).
+- `IMapRegistry` + `Map`/`MapService`/`MapLayer`/`MapLayerKind`
+  — the runtime map registry (ADR-0053), the neutral unit of authoring and
+  exposure (name, store, stable-id layers, enabled services). A map exposes
+  any subset of Feature/Map/Tiles/Wms/Wfs/Image; the same dataset can be
+  styled differently in different maps.
 - `IDatasetIngest` + `IngestRequest`/`IngestOutcome`/`IngestIdentity` —
   atomic bulk create-and-load with an identity mode (ADR-0041).
 - `IDemoJobs` — the demo cancellable sleep with progress.

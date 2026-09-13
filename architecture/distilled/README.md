@@ -19,6 +19,7 @@ reflects the state at decision time.
 | Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `host-and-clients.md` | 0014, 0041, 0047 |
 | MapServer / ImageServer | `host-and-clients.md`, `../image-service-plan.md` | 0035, 0048, 0050, 0051 |
+| Command-line workspace (datasets, maps, project file) | `cli.md` | 0041, 0047, 0052 |
 | Raster rendering / imagery / tiles / labels | `rendering.md`, `../../research/rendering/README.md` | 0044, 0046, 0049 |
 | Any architectural change | this file + `../principles.md` | — |
 
@@ -97,10 +98,12 @@ shape is noted in brackets.
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
 | 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
-| 0048 | A MapServer is a projection of a Map publication over the SDK render and tile contracts. |
+| 0048 | A MapServer is a projection of a map over the SDK render and tile contracts. |
 | 0049 | Labels/symbols shape with HarfBuzz over an embedded pinned font and draw embedded SVG sprites; deterministic collision; new Skia.HarfBuzz/Svg.Skia packages are allowlisted. |
 | 0050 | Rich MapServer renderers, labels and domains are an adapter projection of the persisted MapLibre style; §4.7 images are a typed `not.found`. |
 | 0051 | Rasters are provider-owned; contracts carry only encoded images and core-typed metadata/geometry, never raster values or third-party types. NetVips is the engine; GDAL needs measured demand. |
+| 0052 | The Spatial CLI is a dependency-free public-API client; a versioned declarative project file captures datasets + maps and lowers to publications. |
+| 0053 | A Map is the unit of authoring and exposure; its Feature/Map/Tiles/WMS/WFS/Image services are projections of one map. |
 
 ## How to change the architecture
 
@@ -120,6 +123,6 @@ shape is noted in brackets.
 - Delivery plans are removed once their track is implemented (the GeoServices,
   publishing/ingest, MapServer, composer and rendering plans are retired);
   older ADRs may still name them as dated records. `image-service-plan.md`
-  stays while I3/I4 are open.
+  stays while I5 (cache and limits) is open.
 - Byte-level wire specs: `GeometryCodec`/`FeatureBatchCodec` source is the
   authoritative format spec; `core.md` carries the essentials.

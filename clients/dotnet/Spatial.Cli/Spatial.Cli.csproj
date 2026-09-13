@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The Spatial CLI (ADR-0052): a dependency-free console client of the
+    public host HTTP API. It references the .NET client SDK and the core
+    contracts, holds no spatial algorithm and no provider, and is published
+    as one self-contained binary. It lives outside src/ (it is a client,
+    like Spatial.Client) and is built and quality-gated through
+    tests/unit/Spatial.Cli.Tests.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Spatial.Cli</AssemblyName>
+    <RootNamespace>Spatial.Cli</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Client\Spatial.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+</Project>

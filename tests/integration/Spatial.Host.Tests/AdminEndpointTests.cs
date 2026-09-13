@@ -17,6 +17,9 @@ public sealed class AdminEndpointTests : IDisposable
 {
     private const string Token = "test-admin-token";
 
+    private static readonly string[] MapServices = ["map"];
+    private static readonly string[] ImageServices = ["image"];
+
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-admin-").FullName;
 
     private WebApplicationFactory<Program> Factory(long maxBytes = 100_000_000) =>
@@ -49,7 +52,7 @@ public sealed class AdminEndpointTests : IDisposable
         using var factory = new WebApplicationFactory<Program>();
         var client = factory.CreateClient();
 
-        var put = await client.PutAsync("/api/publications/x", Json("{}"));
+        var put = await client.PutAsync("/api/maps/x", Json("{}"));
         var ingest = await client.PostAsync("/api/ingest?dataset=public.x&srid=4326&format=geojson", new ByteArrayContent([]));
 
         // The read route still exists, so PUT is method-not-allowed rather than
@@ -64,13 +67,52 @@ public sealed class AdminEndpointTests : IDisposable
         using var factory = Factory();
         var client = factory.CreateClient();
 
-        var missing = await client.PutAsync("/api/publications/x", Json("{}"));
+        var missing = await client.PutAsync("/api/maps/x", Json("{}"));
         Assert.Equal(HttpStatusCode.Unauthorized, missing.StatusCode);
 
-        var wrongRequest = new HttpRequestMessage(HttpMethod.Put, "/api/publications/x") { Content = Json("{}") };
+        var wrongRequest = new HttpRequestMessage(HttpMethod.Put, "/api/maps/x") { Content = Json("{}") };
         wrongRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "nope");
         var wrong = await client.SendAsync(wrongRequest);
         Assert.Equal(HttpStatusCode.Forbidden, wrong.StatusCode);
+    }
+
+    [Fact]
+    public async Task Publishing_a_map_with_a_missing_dataset_is_not_found()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+        var body = JsonSerializer.Serialize(new
+        {
+            name = "ghost",
+            store = "memory",
+            services = MapServices,
+            layers = new[] { new { dataset = "public.ghost", layerId = 0, kind = "feature" } },
+        });
+
+        var response = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/ghost", Json(body)));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("not.found", (await BodyAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/maps/ghost")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Publishing_an_image_map_without_a_raster_provider_is_rejected()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+        var body = JsonSerializer.Serialize(new
+        {
+            name = "imagery",
+            store = "memory",
+            services = ImageServices,
+            layers = new[] { new { dataset = "public.raster", layerId = 0, kind = "image" } },
+        });
+
+        var response = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/imagery", Json(body)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid.arguments", (await BodyAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
@@ -89,9 +131,9 @@ public sealed class AdminEndpointTests : IDisposable
         Assert.Equal("public.parks", result.GetProperty("dataset").GetString());
         Assert.Equal(2, result.GetProperty("features").GetInt64());
         Assert.Equal("id", result.GetProperty("identityField").GetString());
-        Assert.Equal("parks", result.GetProperty("publication").GetProperty("name").GetString());
+        Assert.Equal("parks", result.GetProperty("map").GetProperty("name").GetString());
 
-        var publication = await client.GetAsync("/api/publications/parks");
+        var publication = await client.GetAsync("/api/maps/parks");
         Assert.Equal(HttpStatusCode.OK, publication.StatusCode);
         var layers = (await BodyAsync(publication)).GetProperty("layers").EnumerateArray().ToArray();
         Assert.Single(layers);
@@ -133,6 +175,23 @@ public sealed class AdminEndpointTests : IDisposable
         Assert.Null(result.GetProperty("identityField").GetString());
     }
 
+    [Theory]
+    [InlineData("not json at all")]
+    [InlineData("")]
+    [InlineData("{\"type\":\"FeatureCollection\",\"features\":[]}")]
+    public async Task A_malformed_upload_is_a_bad_request(string body)
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/api/ingest?store=memory&dataset=public.bad&srid=4326&format=geojson",
+            new StringContent(body, Encoding.UTF8, "application/json")));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid.arguments", (await BodyAsync(response)).GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task A_disallowed_format_is_rejected()
     {
@@ -161,17 +220,22 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task Publications_can_be_put_and_deleted()
+    public async Task Maps_can_be_put_and_deleted()
     {
         using var factory = Factory();
         var client = factory.CreateClient();
-        const string body = """{"name":"parks","kind":"feature","store":"memory","layers":[{"dataset":"public.parks","layerId":0}]}""";
+        const string body = """{"name":"parks","store":"memory","services":["feature"],"layers":[{"dataset":"public.parks","layerId":0}]}""";
 
-        var put = await client.SendAsync(Authorized(HttpMethod.Put, "/api/publications/parks", Json(body)));
+        await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.parks&srid=4326&format=geojson",
+            new StringContent(GeoJson, Encoding.UTF8, "application/json")));
+
+        var put = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/parks", Json(body)));
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         Assert.Equal("parks", (await BodyAsync(put)).GetProperty("name").GetString());
 
-        var delete = await client.SendAsync(Authorized(HttpMethod.Delete, "/api/publications/parks"));
+        var delete = await client.SendAsync(Authorized(HttpMethod.Delete, "/api/maps/parks"));
         Assert.True((await BodyAsync(delete)).GetBoolean());
     }
 
@@ -190,7 +254,7 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     [Fact]
-    public async Task A_runtime_publication_is_served_through_geoservices()
+    public async Task A_runtime_map_is_served_through_geoservices()
     {
         using var factory = Factory();
         var client = factory.CreateClient();
@@ -313,8 +377,8 @@ public sealed class AdminEndpointTests : IDisposable
             adminToken: Token);
 
         Assert.Equal(2, result.Features);
-        Assert.Equal("parks", (await client.GetPublicationAsync("parks")).Name);
-        Assert.Contains(await client.ListPublicationsAsync(), publication => publication.Name == "parks");
+        Assert.Equal("parks", (await client.GetMapAsync("parks")).Name);
+        Assert.Contains(await client.ListMapsAsync(), map => map.Name == "parks");
     }
 
     [Fact]
@@ -367,13 +431,13 @@ public sealed class AdminEndpointTests : IDisposable
         Assert.InRange(geometry.GetProperty("y").GetDouble(), 52.4, 52.6);
     }
 
-    /// <summary>A host with an admin token and a per-test publication file.</summary>
-    private sealed class AdminFactory(string publicationsPath, long maxBytes) : WebApplicationFactory<Program>
+    /// <summary>A host with an admin token and a per-test map file.</summary>
+    private sealed class AdminFactory(string mapsPath, long maxBytes) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Publications:Path", publicationsPath);
+            builder.UseSetting("Spatial:Maps:Path", mapsPath);
             builder.UseSetting("Spatial:Ingest:MaxBytes", maxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
     }

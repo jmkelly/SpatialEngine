@@ -50,7 +50,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 - Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
   (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IPublicationRegistry`, `IDemoJobs`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IMapRegistry`, `IDemoJobs`)
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
@@ -63,7 +63,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive capability, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity capability, implemented by PostGIS only (ADR-0038) |
 | `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive capability (ADR-0041). The host ingest route also accepts `sourceSrid` and reprojects the decoded pages through `ICoordinateTransforms` before load |
-| `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IPublicationRegistry`) | publication name / `Publication` | runtime service registry (ADR-0041): declared entries immutable, runtime entries persisted; `Publication` carries name, kind, store and stable-id layers; each layer may carry a persisted MapLibre style fragment (ADR-0047) |
+| `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (Feature/Map/Tiles/Wms/Wfs/Image); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
@@ -75,29 +75,37 @@ without any raster value crossing a contract. Implemented by
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
-| `DescribeAsync` | dataset | `RasterDatasetDescription`: core `RasterInfo` (extent, CRS identity, pixel size, dimensions, band count, pixel type, optional stored band statistics) and, when a catalog exists, its integer `ObjectIdField` + core `FeatureSchema` |
+| `DescribeAsync` | dataset | `RasterDatasetDescription`: core `RasterInfo` (extent, CRS identity, pixel size, dimensions, band count, pixel type, block size and pyramid levels from a tiled/pyramidal file, optional stored band statistics) and, when a catalog exists, its integer `ObjectIdField` + core `FeatureSchema` |
 | `ListItemsAsync` | dataset | catalog items: integer identity, core geometry footprint, per-item raster info, attributes in schema order; empty for a single-raster service |
 | `IdentifyAsync` | dataset, `RasterIdentifyRequest` | sampled pixel values at the geometry centroid plus the overlapping catalog items; works without a catalog |
-| `ExportAsync` | dataset, `RasterExportRequest` | warped/encoded `RasterImage` over a `RasterViewport`; resampling kernel, target pixel type, nodata transparency, quality |
+| `ExportAsync` | dataset, `RasterExportRequest` | warped/encoded `RasterImage` over a `RasterViewport`; resampling kernel, target pixel type, nodata transparency, quality; an optional `RasterId` selects one catalog item; a downscale reads the coarsest internal overview that still covers the output |
+| `ListFilesAsync` | dataset, optional `rasterId` | opaque `RasterFile` descriptors (`Id`, `Name`, `MediaType`, `Size`) for a catalog item or the whole dataset (spec §8.0.7) |
+| `ReadFileAsync` | dataset, `RasterFile.Id` | raw file bytes (`RasterFileContent`); the provider validates the opaque id against its own files (spec §8.5) |
 
 **Raster interchange rules:** only encoded image bytes (`RasterImage`),
 core metadata, core `IGeometry` footprints and core `AttributeValue`
 attributes cross. The identify response adds one scalar sample per band at
 the identified point (spec §8.0.6); it is a value tuple, never a raster/band
-model. Raster values, file paths, NetVips/GDAL types and GeoTIFF
-tags stay inside the provider. Pixel-type conversion is limited to the real
-integer/float formats and rejects complex/sub-byte types (a colour raster
-stays 8-bit). Georeferencing is descriptor-supplied on the managed NetVips
-path; GDAL is the measured-demand upgrade. `RasterFormat`/
-`RasterPixelFormat`/`RasterBlend`/`RasterViewport`/`RasterBuffer`/
-`RasterImage` keep the ADR-0044 render vocabulary.
+model. Raw download crosses as `RasterFile`/`RasterFileContent` (bytes plus
+media type, name and size), keyed by an opaque provider-owned id; a path,
+file handle, NetVips/GDAL type or GeoTIFF tag never crosses. A tiled,
+internally-overviewed (pyramidal) GeoTIFF — a COG — is read through
+`tile-width`/`tile-height`/`n-subifds` and exported from the chosen overview;
+`RasterInfo` reports those as block size and pyramid levels. Writing a
+COG-style file is a concrete `VipsRasterCatalogue.WriteCogAsync` storage
+operation, not a contract verb. Pixel-type
+conversion is limited to the real integer/float formats and rejects
+complex/sub-byte types (a colour raster stays 8-bit). Georeferencing is
+descriptor-supplied on the managed NetVips path; GDAL is the measured-demand
+upgrade. `RasterFormat`/`RasterPixelFormat`/`RasterBlend`/`RasterViewport`/
+`RasterBuffer`/`RasterImage` keep the ADR-0044 render vocabulary.
 
 **Interchange rules:**
 - Feature data is **canonical `FeatureBatch` pages** (ADR-0020); on HTTP as
   Base64 SFBAT strings.
 - Metadata is **JSON DTOs** — never feature/geometry payloads.
-- `Publication`/`PublicationKind`/`PublicationLayer` and the ingest records
-  are core-typed (ADR-0041); no protocol or provider type crosses.
+- `Map`/`MapService`/`MapLayer`/`MapLayerKind` and the ingest records
+  are core-typed (ADR-0053); no protocol or provider type crosses.
 - Dataset identifiers: strict `schema.table` grammar (`[a-z_][a-z0-9_]*` per
   part; `public` default), validated, never concatenated raw into SQL;
   filter literals are always bound parameters.
@@ -125,13 +133,18 @@ process-local and non-durable; an `Auto`/`Source` dataset is editable and
 lookup-able, a `None` dataset is query-only; bbox queries only (attribute
 filters rejected).
 
-**Publication registry specifics (ADR-0041):** `Spatial.Provider.Publications`
+**Map registry specifics (ADR-0053):** `Spatial.Provider.Maps`
 composes immutable declared entries (config-seeded, whole-store entries
 expand to the sorted dataset list with stable ids) with runtime entries in a
-versioned JSON file written atomically. `PublicationLayer` optionally carries
+versioned JSON file written atomically, and reads a pre-ADR-0053
+`publications.json` once for migration. `MapLayer` optionally carries
 `Style`, a JSON array of MapLibre style-layer objects in the ADR-0044 subset,
 persisted verbatim (ADR-0047); the dataset is not repeated inside it — the
-host injects `source-layer` when it assembles a render document. `Auto`-identity
+host injects `source-layer` when it assembles a render document. The OGC
+WMS/WFS projection lives in `Spatial.Adapter.Ogc`, reads the same map and
+keyed stores, and adds no contract: it renders through `IMapRenderer` and
+queries through `IFeatureStore`. An enabled
+service must be fed by a layer of the matching `Kind`. `Auto`-identity
 ingest adds a
 `GENERATED BY DEFAULT AS IDENTITY` primary key; `Source` uses a named integer
 field; `None` is data-only. Ingest declares each geometry column with the

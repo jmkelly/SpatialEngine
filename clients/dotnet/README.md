@@ -30,3 +30,14 @@ and quality-gated through `tests/unit/Spatial.Client.Tests` (stub-handler
 unit tests) and `tests/integration/Spatial.Host.Tests` (against the real
 host). It is not part of the solution — build it via the test projects or
 `dotnet build clients/dotnet/Spatial.Client`.
+
+## Spatial.Cli
+
+`Spatial.Cli` sits beside the SDK at `clients/dotnet/Spatial.Cli` (ADR-0052).
+It is a dependency-free console client of the same public host API — it adds
+datasets, composes and styles maps, stores a declarative `spatial.json`
+workspace and reports the GeoServices endpoints — and it is not part of the
+solution. It builds with `dotnet build clients/dotnet/Spatial.Cli` and is
+quality-gated through `tests/unit/Spatial.Cli.Tests`; `eng/cli-e2e.sh` is the
+real-host end-to-end proof. See
+[`Spatial.Cli/README.md`](Spatial.Cli/README.md).

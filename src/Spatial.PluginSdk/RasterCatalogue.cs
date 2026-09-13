@@ -128,7 +128,25 @@ public sealed record RasterExportRequest(
     RasterPixelType? PixelType = null,
     double? NoData = null,
     int CompressionQuality = 90,
-    bool Transparent = true);
+    bool Transparent = true,
+    long? RasterId = null);
+
+/// <summary>
+/// One raw raster file of a dataset or catalog item (spec §8.0.7/§8.5): an
+/// opaque provider-owned <see cref="Id"/> (never a path), a display
+/// <see cref="Name"/>, its media type and its size in bytes. The id is what a
+/// client passes back to <see cref="IRasterCatalogue.ReadFileAsync"/>; the
+/// provider validates it against the files it actually owns (ADR-0051).
+/// </summary>
+public sealed record RasterFile(string Id, string Name, string MediaType, long Size);
+
+/// <summary>
+/// The bytes of one raw raster file, bounded by the host's download cap
+/// (spec §8.5). <see cref="Size"/> is the full file size even when the
+/// content is a range. Raw raster bytes are file content, not a decoded
+/// image, so they carry no raster metadata.
+/// </summary>
+public sealed record RasterFileContent(byte[] Content, string MediaType, string Name, long Size);
 
 /// <summary>
 /// The raster-imagery face the ImageServer projects (ADR-0051): metadata,
@@ -150,7 +168,27 @@ public interface IRasterCatalogue
     Task<RasterIdentifyResult> IdentifyAsync(
         string dataset, RasterIdentifyRequest request, CancellationToken cancellationToken = default);
 
-    /// <summary>Warps and encodes one dataset over the requested viewport.</summary>
+    /// <summary>
+    /// Warps and encodes one dataset (or, when <see cref="RasterExportRequest.RasterId"/>
+    /// names one, a single catalog item) over the requested viewport.
+    /// </summary>
     Task<RasterImage> ExportAsync(
         string dataset, RasterExportRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the raw files backing a dataset or one catalog item
+    /// (spec §8.0.7). <paramref name="rasterId"/> null selects the whole
+    /// dataset; a named id that has no catalog is a typed
+    /// <c>not.found</c>/<c>invalid.arguments</c> failure, never a silent fallback.
+    /// </summary>
+    Task<IReadOnlyList<RasterFile>> ListFilesAsync(
+        string dataset, long? rasterId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads one raw file identified by a <see cref="RasterFile.Id"/> obtained
+    /// from <see cref="ListFilesAsync"/>. The id is validated against the
+    /// provider's own files, so a caller can never name an arbitrary path.
+    /// </summary>
+    Task<RasterFileContent> ReadFileAsync(
+        string dataset, string fileId, CancellationToken cancellationToken = default);
 }

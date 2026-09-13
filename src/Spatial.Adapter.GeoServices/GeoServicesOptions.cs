@@ -13,6 +13,19 @@ public sealed class GeoServicesOptions
 
     /// <summary>The logical services the facade serves.</summary>
     public IReadOnlyList<GeoServicesServiceOptions> Services { get; set; } = [];
+
+    /// <summary>
+    /// Whether the Image Service serves raw raster download (spec §8.0.7/§8.5).
+    /// Off by default: download exposes provider-owned raster files verbatim,
+    /// so a host opts in explicitly (the size cap below is always enforced).
+    /// </summary>
+    public bool AllowRasterDownload { get; set; }
+
+    /// <summary>The maximum bytes one download or file response may expose.</summary>
+    public long MaxRasterDownloadBytes { get; set; } = 64L * 1024 * 1024;
+
+    /// <summary>The maximum files one download response may list.</summary>
+    public int MaxRasterDownloadFiles { get; set; } = 1000;
 }
 
 /// <summary>One configured logical GeoServices service.</summary>

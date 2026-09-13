@@ -8,15 +8,18 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The neutral admin surface (ADR-0041 §5): publication CRUD and the single
-/// ingest request. Mutation routes require the configured admin token (env
-/// <c>SPATIAL_ADMIN_TOKEN</c>) compared in constant time; when no token is
-/// configured they are not mounted at all, while the read routes stay
+/// The neutral admin surface (ADR-0053 §4, evolving ADR-0041 §5): map CRUD and
+/// the single ingest request. Mutation routes require the configured admin
+/// token (env <c>SPATIAL_ADMIN_TOKEN</c>) compared in constant time; when no
+/// token is configured they are not mounted at all, while the read routes stay
 /// available. Ingest decodes a raw or multipart upload with
 /// <see cref="DatasetDecoder"/> and loads it atomically through the target
 /// store's <see cref="IDatasetIngest"/>. A <c>publish</c> query parameter
-/// registers the uploaded dataset as a one-layer publication in the same
-/// call and reports the partial state safely retryably.
+/// registers the uploaded dataset as a one-layer Feature map in the same call
+/// and reports the partial state safely retryably.
+///
+/// <para>The pre-ADR-0053 <c>/api/publications</c> routes remain as
+/// deprecated aliases for one release.</para>
 /// </summary>
 internal static class AdminEndpoints
 {
@@ -25,24 +28,32 @@ internal static class AdminEndpoints
 
     public static void Map(IEndpointRouteBuilder app, AdminOptions admin, IngestOptions ingest)
     {
-        app.MapGet("/api/publications", ListPublications).Produces<IReadOnlyList<Publication>>();
-        app.MapGet("/api/publications/{name}", GetPublication)
-            .Produces<Publication>();
+        app.MapGet("/api/maps", ListMaps).Produces<IReadOnlyList<Map>>();
+        app.MapGet("/api/maps/{name}", GetMap).Produces<Map>();
+
+        // Deprecated aliases (ADR-0053 §4): removed in the next release.
+        app.MapGet("/api/publications", ListMaps).Produces<IReadOnlyList<Map>>();
+        app.MapGet("/api/publications/{name}", GetMap).Produces<Map>();
 
         if (!admin.Enabled)
         {
             return;
         }
 
-        app.MapPut("/api/publications/{name}", (string name, Publication publication, HttpContext context, IPublicationRegistry registry, CancellationToken token) =>
-            PutPublication(context, admin, name, publication, registry, token));
-        app.MapDelete("/api/publications/{name}", (string name, HttpContext context, IPublicationRegistry registry, CancellationToken token) =>
-            DeletePublication(context, admin, name, registry, token));
-        app.MapPost("/api/ingest", (HttpContext context, IServiceProvider services, IPublicationRegistry registry, CancellationToken token) =>
+        app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
+            PutMap(context, admin, name, map, services, registry, token));
+        app.MapDelete("/api/maps/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
+            DeleteMap(context, admin, name, registry, token));
+        app.MapPost("/api/ingest", (HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
             Ingest(context, admin, ingest, services, registry, token));
+
+        app.MapPut("/api/publications/{name}", (string name, Map map, HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
+            PutMap(context, admin, name, map, services, registry, token));
+        app.MapDelete("/api/publications/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
+            DeleteMap(context, admin, name, registry, token));
     }
 
-    private static async Task<IResult> ListPublications(IPublicationRegistry registry, CancellationToken token)
+    private static async Task<IResult> ListMaps(IMapRegistry registry, CancellationToken token)
     {
         try
         {
@@ -54,7 +65,7 @@ internal static class AdminEndpoints
         }
     }
 
-    private static async Task<IResult> GetPublication(string name, IPublicationRegistry registry, CancellationToken token)
+    private static async Task<IResult> GetMap(string name, IMapRegistry registry, CancellationToken token)
     {
         try
         {
@@ -66,9 +77,9 @@ internal static class AdminEndpoints
         }
     }
 
-    private static async Task<IResult> PutPublication(
-        HttpContext context, AdminOptions admin, string name, Publication publication,
-        IPublicationRegistry registry, CancellationToken token)
+    private static async Task<IResult> PutMap(
+        HttpContext context, AdminOptions admin, string name, Map map,
+        IServiceProvider services, IMapRegistry registry, CancellationToken token)
     {
         if (Authorize(context, admin) is { } rejection)
         {
@@ -77,7 +88,9 @@ internal static class AdminEndpoints
 
         try
         {
-            var stored = await registry.PutAsync(publication with { Name = Uri.UnescapeDataString(name) }, token);
+            var named = map with { Name = Uri.UnescapeDataString(name) };
+            await EnsureLayersAreServableAsync(services, named, token);
+            var stored = await registry.PutAsync(named, token);
             return Results.Ok(stored);
         }
         catch (Exception exception)
@@ -86,8 +99,34 @@ internal static class AdminEndpoints
         }
     }
 
-    private static async Task<IResult> DeletePublication(
-        HttpContext context, AdminOptions admin, string name, IPublicationRegistry registry, CancellationToken token)
+    /// <summary>
+    /// Rejects a map whose layers cannot be served, so a dangling dataset or a
+    /// missing raster provider never becomes a published service that fails on
+    /// every request: a feature layer must exist in its store's catalogue and an
+    /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
+    /// </summary>
+    private static async Task EnsureLayersAreServableAsync(IServiceProvider services, Map map, CancellationToken token)
+    {
+        foreach (var layer in map.Layers)
+        {
+            var store = layer.Store ?? map.Store;
+            if (layer.Kind == MapLayerKind.Image)
+            {
+                var raster = services.GetKeyedService<IRasterCatalogue>(store)
+                    ?? throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' exposes an image layer but store '{store}' has no raster provider.");
+                await raster.DescribeAsync(layer.Dataset, token);
+                continue;
+            }
+
+            var catalogue = services.GetKeyedService<IDataCatalogue>(store)
+                ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
+            await catalogue.DescribeAsync(layer.Dataset, token);
+        }
+    }
+
+    private static async Task<IResult> DeleteMap(
+        HttpContext context, AdminOptions admin, string name, IMapRegistry registry, CancellationToken token)
     {
         if (Authorize(context, admin) is { } rejection)
         {
@@ -106,7 +145,7 @@ internal static class AdminEndpoints
 
     private static async Task<IResult> Ingest(
         HttpContext context, AdminOptions admin, IngestOptions ingest,
-        IServiceProvider services, IPublicationRegistry registry, CancellationToken token)
+        IServiceProvider services, IMapRegistry registry, CancellationToken token)
     {
         if (Authorize(context, admin) is { } rejection)
         {
@@ -136,7 +175,7 @@ internal static class AdminEndpoints
             var outcome = await target.IngestAsync(
                 new IngestRequest(dataset, srid, identity, identityField), pages, token);
 
-            return Results.Ok(await WithPublicationAsync(registry, query["publish"].ToString(), store, outcome, token));
+            return Results.Ok(await WithMapAsync(registry, query["publish"].ToString(), store, outcome, token));
         }
         catch (Exception exception)
         {
@@ -165,8 +204,8 @@ internal static class AdminEndpoints
         return decoded;
     }
 
-    private static async Task<IngestOutcome> WithPublicationAsync(
-        IPublicationRegistry registry, string publish, string store, IngestOutcome outcome, CancellationToken token)
+    private static async Task<IngestOutcome> WithMapAsync(
+        IMapRegistry registry, string publish, string store, IngestOutcome outcome, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(publish))
         {
@@ -174,7 +213,7 @@ internal static class AdminEndpoints
         }
 
         var name = Uri.UnescapeDataString(publish);
-        Publication? existing = null;
+        Map? existing = null;
         try
         {
             existing = await registry.GetAsync(name, token);
@@ -187,15 +226,15 @@ internal static class AdminEndpoints
         if (layers.TrueForAll(layer => !string.Equals(layer.Dataset, outcome.Dataset, StringComparison.Ordinal)))
         {
             var next = layers.Count == 0 ? 0 : layers.Max(layer => layer.LayerId) + 1;
-            layers.Add(new PublicationLayer(outcome.Dataset, next));
+            layers.Add(new MapLayer(outcome.Dataset, next));
         }
 
-        var publication = await registry.PutAsync(
+        var map = await registry.PutAsync(
             existing is null
-                ? new Publication(name, PublicationKind.Feature, store, layers)
-                : existing with { Store = store, Layers = layers },
+                ? new Map(name, store, layers, [MapService.Feature])
+                : existing with { Store = store, Layers = layers, Services = [.. existing.Services.Union([MapService.Feature])] },
             token);
-        return outcome with { Publication = publication };
+        return outcome with { Map = map };
     }
 
     /// <summary>Reads the request body into memory, enforcing the byte cap for raw and multipart bodies.</summary>

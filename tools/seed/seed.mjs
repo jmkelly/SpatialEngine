@@ -5,9 +5,9 @@
 // It is a pure client of the public admin API (ADR-0041): it fetches real
 // data from the internet, ingests it through POST /api/ingest (using the
 // engine's server-side reprojection when a source declares one), and
-// publishes the services through PUT /api/publications/{name}. The only
-// style logic here lowers the manifest's compact draw recipe to the persisted
-// MapLibre fragment the host stores (ADR-0047); no geometry logic lives here.
+// publishes the maps through PUT /api/maps/{name}. The only style logic here
+// lowers the manifest's compact draw recipe to the persisted MapLibre
+// fragment the host stores (ADR-0047); no geometry logic lives here.
 //
 // Usage:
 //   node tools/seed/seed.mjs [--host=URL] [--token=TOKEN] [--store=memory]
@@ -138,13 +138,13 @@ async function download(url) {
 // ---- services ----------------------------------------------------------------
 
 async function seedService(service) {
-  const existing = await getPublication(service.name);
+  const existing = await getMap(service.name);
   const existingIds = new Map((existing?.layers ?? []).map((layer) => [layer.dataset, layer.layerId]));
 
   const payload = {
     name: service.name,
-    kind: service.kind,
     store,
+    services: service.services,
     description: service.description,
     copyright: service.copyright,
     layers: service.layers.map((layer) => ({
@@ -153,11 +153,12 @@ async function seedService(service) {
       // Preserve a published id so re-running never renumbers the layers
       // (ADR-0041); a new layer asks the registry to assign the next free id.
       layerId: existingIds.get(layer.dataset) ?? -1,
+      kind: layer.kind ?? "feature",
       style: persistedStyle(layer),
     })),
   };
 
-  const response = await request(`/api/publications/${encodeURIComponent(service.name)}`, {
+  const response = await request(`/api/maps/${encodeURIComponent(service.name)}`, {
     method: "PUT",
     json: payload,
   });
@@ -166,11 +167,11 @@ async function seedService(service) {
   }
 
   published++;
-  console.log(`  ✓ published ${service.kind} service ${service.name} (${service.layers.length} layer(s))`);
+  console.log(`  ✓ published map ${service.name} [${service.services.join(", ")}] (${service.layers.length} layer(s))`);
 }
 
-async function getPublication(name) {
-  const response = await request(`/api/publications/${encodeURIComponent(name)}`);
+async function getMap(name) {
+  const response = await request(`/api/maps/${encodeURIComponent(name)}`);
   return response.status === 200 ? response.body : null;
 }
 
@@ -222,7 +223,7 @@ function persistedStyle(layer) {
 async function verifyServices(selected) {
   console.log("• verifying served services");
   for (const service of selected) {
-    const type = service.kind === "map" ? "MapServer" : "FeatureServer";
+    const type = service.services.includes("map") ? "MapServer" : "FeatureServer";
     const response = await request(`/arcgis/rest/services/${encodeURIComponent(service.name)}/${type}?f=json`);
     if (!response.ok) {
       failures.push(`${service.name}: not served (${response.status})`);
@@ -299,9 +300,9 @@ function listManifest() {
     console.log(`  ${source.id.padEnd(34)} ${source.format} EPSG:${source.srid}${source.sourceSrid ? ` (from EPSG:${source.sourceSrid})` : ""}  ${source.note ?? ""}`);
   }
 
-  console.log("\nServices:");
+  console.log("\nMaps:");
   for (const service of services) {
-    console.log(`  ${service.name.padEnd(26)} ${service.kind.padEnd(8)} ${service.layers.map((layer) => layer.name).join(", ")}`);
+    console.log(`  ${service.name.padEnd(26)} ${service.services.join(",").padEnd(10)} ${service.layers.map((layer) => layer.name).join(", ")}`);
   }
 }
 
@@ -319,7 +320,7 @@ function summarise() {
 
   console.log("");
   console.log(`  GeoServices catalog: ${host}/arcgis/rest/services?f=json`);
-  console.log(`  Publications:        ${host}/api/publications`);
+  console.log(`  Maps:                ${host}/api/maps`);
 }
 
 function parseArgs(argv) {

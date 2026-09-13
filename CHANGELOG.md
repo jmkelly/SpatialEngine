@@ -11,6 +11,49 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Maps are the unit of authoring and exposure** (ADR-0053). `Map` replaces
+  `Publication` across the engine: a named, ordered set of styled layers from
+  one keyed store plus the set of services it exposes — `Feature`, `Map`,
+  `Tiles`, `Wms`, `Wfs` and `Image`. A layer is owned by its map, so the same
+  dataset can be styled differently in different maps. `IMapRegistry`
+  (`Spatial.Provider.Maps`) persists maps to `maps.json` and reads a legacy
+  `publications.json` once for migration; the GeoServices adapter serves only
+  the services a map enables. New surfaces: map tiles at
+  `GET /api/maps/{name}/tiles/{z}/{x}/{y}.{format}`, and OGC WMS 1.3.0 / WFS
+  2.0.0 in the new `Spatial.Adapter.Ogc`. The neutral host API moves to
+  `/api/maps` (deprecated `/api/publications` aliases remain for one
+  release), and the workbench Composer becomes the Maps experience with
+  service toggles and copyable endpoint URLs. The TypeScript and .NET SDKs,
+  the seed tool and the OpenAPI snapshot move to the map contract (the CLI
+  composes `Map` documents too).
+- **COG and tiled GeoTIFF support** (ADR-0051, plan I4): the NetVips raster
+  catalogue now reads a tiled/pyramidal GeoTIFF's structure (`tile-width`,
+  `tile-height`, `n-subifds`) into `RasterInfo`'s block and pyramid fields,
+  opens tiled rasters for random access, exports a downscale from the
+  coarsest internal overview that still covers the output, and reports the
+  ImageServer `minPixelSize`/`maxPixelSize` from the pyramid depth. A
+  COG-style tiled+pyramidal file can be written through the concrete
+  `VipsRasterCatalogue.WriteCogAsync` storage operation. No new dependency:
+  libvips already covers the format, so the GDAL follow-up trigger is
+  unchanged.
+- **ImageServer catalog operations** (ADR-0051, plan I3): the GeoServices
+  ImageServer now serves the full catalog `query` (the Feature Service safe
+  `where` subset, `objectIds`, geometry, `outFields`, `orderByFields`,
+  paging, ids/count/extent/distinct and `outSR`), the §8.2 Raster Image and
+  §8.3 Thumbnail resources, and the §8.0.7 Download Rasters / §8.5 Raster
+  File surface. `IRasterCatalogue` gains `ListFilesAsync`/`ReadFileAsync`
+  over opaque provider-owned file ids (paths never cross); raw download is
+  opt-in (`Spatial:GeoServices:AllowRasterDownload`), size/file-capped and
+  range-capable. `Spatial:Raster` can now declare catalog attributes and
+  items, so catalogs are configurable end-to-end rather than test-only.
+- **Spatial CLI** (ADR-0052): a dependency-free console client of the public
+  host API at `clients/dotnet/Spatial.Cli`. It adds datasets through the
+  neutral ingest route, composes styled maps (FeatureServer, MapServer or
+  ImageServer), stores the workspace as a versioned declarative
+  `spatial.json`, and reports each map's GeoServices endpoint. Descriptive
+  long flags, a `--json` envelope, `--dry-run` and stable exit codes make it
+  script- and LLM-friendly; it publishes as one self-contained binary.
+  Quality-gated through `tests/unit/Spatial.Cli.Tests`.
 - **Map labels and sprite symbols** (ADR-0049): the Skia
   renderer's MapLibre subset gains `symbol` layers — `SkiaSharp.HarfBuzz`
   text shaping, a deterministic label placement/collision pass, and

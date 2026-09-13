@@ -201,16 +201,16 @@ test("a GeoJSON upload is ingested and published as a feature service", async ({
 
   await expect(page.getByTestId("ingest-result")).toContainText("public.e2e_cities", { timeout: 30_000 });
   await expect(page.getByTestId("ingest-result")).toContainText("2 feature(s)");
-  await expect(page.getByTestId("publications")).toContainText("e2e_cities");
+  await expect(page.getByTestId("maps")).toContainText("e2e_cities");
 });
 
 test("the map composer uploads, styles, reorders and publishes layers", async ({ page }) => {
-  // The run's publications file is isolated, but never assume a clean name.
-  await page.request.delete("/api/publications/composer_e2e", {
+  // The run's maps file is isolated, but never assume a clean name.
+  await page.request.delete("/api/maps/composer_e2e", {
     headers: { authorization: "Bearer workbench-e2e-token" },
   });
   await page.goto("/?basemap=none");
-  await openTab(page, "Composer");
+  await openTab(page, "Maps");
 
   await page.getByTestId("composer-store").selectOption("memory");
   await page.getByTestId("composer-token").fill("workbench-e2e-token");
@@ -237,11 +237,11 @@ test("the map composer uploads, styles, reorders and publishes layers", async ({
 
   // Publish the ordered composition as a map service.
   await page.getByTestId("composer-name").fill("composer_e2e");
-  await page.getByTestId("composer-kind").selectOption("map");
+  await page.getByTestId("composer-service-map").check();
   await page.getByTestId("composer-publish").click();
   await expect(page.getByTestId("composer-status")).toContainText("Published composer_e2e", { timeout: 30_000 });
-  await expect(page.getByTestId("composer-publications")).toContainText("composer_e2e");
-  await expect(page.getByTestId("composer-publications")).toContainText("2 layer(s)");
+  await expect(page.getByTestId("composer-maps")).toContainText("composer_e2e");
+  await expect(page.getByTestId("composer-maps")).toContainText("2 layer(s)");
 
   // Style persistence (ADR-0047): load the published service back and the
   // layer that was hidden before publishing stays hidden.
@@ -253,7 +253,7 @@ test("the map composer uploads, styles, reorders and publishes layers", async ({
 
 test("the map composer reorders layers by drag and drop", async ({ page }) => {
   await page.goto("/?basemap=none");
-  await openTab(page, "Composer");
+  await openTab(page, "Maps");
   await page.getByTestId("composer-store").selectOption("memory");
   await page.getByTestId("composer-token").fill("workbench-e2e-token");
 
