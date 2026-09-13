@@ -54,7 +54,7 @@ internal static class EsriFormat
             return;
         }
 
-        throw EsriInteropException.Invalid($"Format '{format}' is not supported; the facade serves f=json (f=pjson is accepted as an alias). Supported query formats: JSON.");
+        throw EsriInteropException.Invalid($"Format '{format}' is not supported; supportedQueryFormats is 'JSON' — use f=json (f=pjson is accepted as an alias).");
     }
 }
 

@@ -220,6 +220,10 @@ Ordered by dependency:
 - Recorded Geometry Service non-goals: `offset`, `cut`, `reshape`,
   `trimExtend` and `autoComplete` have no engine verb; the facade rejects
   them with a typed `invalid.arguments` failure and does not advertise them.
+- Serving status update: `f=pjson` is accepted as a JSON alias everywhere
+  `f=json` is (GDAL ESRIJSON driver, pygeoapi metadata fetch); `f=geojson`
+  on query is honestly rejected with a typed `invalid.arguments` failure
+  naming `supportedQueryFormats` — GeoJSON output remains a non-goal.
 
 ## 8. Documentation baseline
 

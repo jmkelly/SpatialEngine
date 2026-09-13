@@ -53,4 +53,22 @@ public sealed class GeoServicesFormatTests : IClassFixture<WebApplicationFactory
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
     }
+
+    /// <summary>
+    /// T-017: <c>f=geojson</c> on query is honestly rejected — the facade
+    /// serves Esri JSON only, so the 400 names <c>supportedQueryFormats</c>
+    /// and the layer advertises the truthful value (see T-018).
+    /// </summary>
+    [Fact]
+    public async Task Geojson_on_query_is_rejected_naming_supported_query_formats()
+    {
+        var response = await _client.GetAsync(
+            $"{Root}/demo/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains("supportedQueryFormats", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
 }
