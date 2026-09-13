@@ -11,6 +11,20 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Maps are the unit of authoring and exposure** (ADR-0052). `Map` replaces
+  `Publication` across the engine: a named, ordered set of styled layers from
+  one keyed store plus the set of services it exposes — `Feature`, `Map`,
+  `Tiles`, `Wms`, `Wfs` and `Image`. A layer is owned by its map, so the same
+  dataset can be styled differently in different maps. `IMapRegistry`
+  (`Spatial.Provider.Maps`) persists maps to `maps.json` and reads a legacy
+  `publications.json` once for migration; the GeoServices adapter serves only
+  the services a map enables. New surfaces: map tiles at
+  `GET /api/maps/{name}/tiles/{z}/{x}/{y}.{format}`, and OGC WMS 1.3.0 / WFS
+  2.0.0 in the new `Spatial.Adapter.Ogc`. The neutral host API moves to
+  `/api/maps` (deprecated `/api/publications` aliases remain for one
+  release), and the workbench Composer becomes the Maps experience with
+  service toggles and copyable endpoint URLs. The TypeScript and .NET SDKs,
+  the seed tool and the OpenAPI snapshot move to the map contract.
 - **Map labels and sprite symbols** (ADR-0049): the Skia
   renderer's MapLibre subset gains `symbol` layers — `SkiaSharp.HarfBuzz`
   text shaping, a deterministic label placement/collision pass, and

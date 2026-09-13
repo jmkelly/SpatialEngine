@@ -151,7 +151,7 @@ serves *existing* imagery; it does not become a raster processing engine.
 
 ## 7. References
 
-- `architecture/distilled/contracts.md` (Publication/registry/admin)
+- `architecture/distilled/contracts.md` (Map/registry/admin)
 - `architecture/distilled/host-and-clients.md` (M0 data-only pattern; shared render path)
 - `architecture/references/geoservices-compatibility.md` §4
 - ADR-0001/0032 (core values), ADR-0021 (native/AOT evidence), ADR-0035, principles 1–2

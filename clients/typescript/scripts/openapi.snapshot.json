@@ -883,7 +883,7 @@
             }
           },
           {
-            "name": "quality",
+            "name": "Quality",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -891,27 +891,25 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 90
+              "format": "int32"
             }
           },
           {
-            "name": "background",
+            "name": "Background",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "transparent",
+            "name": "Transparent",
             "in": "query",
             "schema": {
-              "type": "boolean",
-              "default": true
+              "type": "boolean"
             }
           },
           {
-            "name": "scale",
+            "name": "Scale",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
@@ -919,12 +917,11 @@
                 "number",
                 "string"
               ],
-              "format": "double",
-              "default": 1
+              "format": "double"
             }
           },
           {
-            "name": "scheme",
+            "name": "Scheme",
             "in": "query",
             "schema": {
               "type": "string"
