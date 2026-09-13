@@ -483,6 +483,66 @@ public sealed class OgcEndpointTests : IDisposable
         Assert.Equal("MissingParameterValue", await ReportCodeAsync(response));
     }
 
+    [Theory]
+    [InlineData("5,10,5,5")]
+    [InlineData("5,5,10,5")]
+    public async Task Wms_get_map_rejects_an_inverted_y_bbox(string bbox)
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // CITE getmap:bbox-miny-gt-maxy / bbox-miny-eq-maxy.
+        var response = await client.GetAsync(
+            $"/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
+
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
+    }
+
+    [Fact]
+    public async Task Wms_111_gdal_shaped_get_map_still_renders()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // The GDAL 1.1.1 KVP shape (research/interop/wms-conformance.md trace E):
+        // SRS (not CRS), lon/lat bbox, trailing empty STYLES. T-031's
+        // VERSION gating must keep this traffic rendering.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.1.1&layers=cities&styles=&srs=EPSG:4326&bbox=-10,35,30,60&format=image/png&width=200&height=200");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Wms_get_feature_info_without_a_version_keeps_the_130_reading()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        // GetMap without VERSION is MissingParameterValue, but GetFeatureInfo
+        // stays lenient and reads the bbox the 1.3.0 way.
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=EPSG:4326&bbox=50,0,60,10&width=100&height=100&i=49&j=76&info_format=text/plain");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Amsterdam", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Wms_get_feature_info_rejects_a_degenerate_bbox()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=10,10,5,5&width=100&height=100&i=49&j=76&info_format=text/plain");
+
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
+    }
+
     [Fact]
     public async Task Wms_accepts_a_form_post()
     {
