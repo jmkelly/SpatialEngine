@@ -17,6 +17,13 @@ public sealed class HttpSpatialGateway : ISpatialGateway
     private readonly HttpClient _http;
     private readonly SpatialClient _client;
 
+    /// <summary>Creates a gateway over an existing client (used by tests over a test server).</summary>
+    public HttpSpatialGateway(HttpClient http)
+    {
+        _http = http ?? throw new ArgumentNullException(nameof(http));
+        _client = new SpatialClient(_http);
+    }
+
     /// <summary>Creates a gateway for the configured host.</summary>
     public HttpSpatialGateway(CliSettings settings)
     {
