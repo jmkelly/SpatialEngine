@@ -21,14 +21,35 @@ public static class CliApplication
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(console);
 
-        var parsed = CliParser.Parse(args);
+        ParsedCommandLine parsed;
+        try
+        {
+            parsed = CliParser.Parse(args);
+        }
+        catch (CliUsageException usage)
+        {
+            console.ErrorWriter.WriteLine($"error: invalid.arguments: {usage.Message}");
+            return ExitCodes.Usage;
+        }
+
         if (parsed.WantsHelp || parsed.Group is null)
         {
             CliHelp.Render(console, parsed.Group, parsed.Verb);
             return ExitCodes.Success;
         }
 
-        var settings = CliSettings.Resolve(parsed);
+        CliSettings settings;
+        try
+        {
+            settings = CliSettings.Resolve(parsed);
+        }
+        catch (CliUsageException usage)
+        {
+            new CliOutput(console, parsed.Has("json"), parsed.Has("quiet"), parsed.Has("verbose"))
+                .Error($"{parsed.Group} {parsed.Verb}", "invalid.arguments", usage.Message);
+            return ExitCodes.Usage;
+        }
+
         var output = new CliOutput(console, settings.Json, settings.Quiet, settings.Verbose);
         var label = $"{parsed.Group} {parsed.Verb}";
         if (CliCommandCatalog.Find(parsed.Group, parsed.Verb) is not { } command)
@@ -38,7 +59,31 @@ public static class CliApplication
             return ExitCodes.Usage;
         }
 
+        if (UnknownOption(parsed, command) is { } unknown)
+        {
+            output.Error(label, "invalid.arguments", $"Unknown option '--{unknown}'.");
+            CliHelp.Render(console, parsed.Group, parsed.Verb);
+            return ExitCodes.Usage;
+        }
+
         return await ExecuteAsync(command, settings, parsed, output, label, gatewayFactory);
+    }
+
+    /// <summary>The first supplied option the resolved command (or the globals) does not accept.</summary>
+    private static string? UnknownOption(ParsedCommandLine parsed, CliCommandInfo command)
+    {
+        var known = new HashSet<string>(StringComparer.Ordinal) { "help" };
+        foreach (var option in CliCommandCatalog.GlobalOptions)
+        {
+            known.Add(option.Name);
+        }
+
+        foreach (var option in command.Options)
+        {
+            known.Add(option.Name);
+        }
+
+        return parsed.Options.Keys.FirstOrDefault(name => !known.Contains(name));
     }
 
     private static async Task<int> ExecuteAsync(

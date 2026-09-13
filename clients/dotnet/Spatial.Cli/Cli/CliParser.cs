@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Spatial.Cli;
 
 /// <summary>
@@ -26,24 +28,18 @@ public sealed record ParsedCommandLine(
 /// (ADR-0052). Supports <c>--name value</c>, <c>--name=value</c>, repeated
 /// options, boolean flags from the known flag set, <c>-h</c>/<c>--help</c>,
 /// and <c>--</c> to end option parsing.
+///
+/// <para>The catalog is the source of truth for which options take a value:
+/// a known value option consumes the next token (including a negative number
+/// such as <c>-2</c>), while an unknown option is recorded valueless so it can
+/// never swallow a positional. The application reports unknown options after
+/// the command is resolved, so a typo cannot silently run a different verb.</para>
 /// </summary>
 public static class CliParser
 {
-    // Options that are flags everywhere they appear: they never consume the
-    // next token as a value. Keep this list to genuinely boolean switches.
-    private static readonly HashSet<string> Flags = new(StringComparer.Ordinal)
-    {
-        "help",
-        "json",
-        "quiet",
-        "verbose",
-        "dry-run",
-        "hidden",
-        "visible",
-        "force",
-        "no-verify",
-        "include-style",
-    };
+    // Global and command option names, mapped to whether they are flags. Built
+    // once from the catalog so option/value decisions never drift from --help.
+    private static readonly Dictionary<string, bool> KnownOptions = BuildKnownOptions();
 
     /// <summary>Parses <paramref name="args"/> into group, verb, positionals and options.</summary>
     public static ParsedCommandLine Parse(IReadOnlyList<string> args)
@@ -103,15 +99,23 @@ public static class CliParser
             return index;
         }
 
-        if (Flags.Contains(name))
+        if (!KnownOptions.TryGetValue(name, out var isFlag))
+        {
+            // An unknown option must not swallow the next token: leaving it in
+            // place keeps the group/verb readable for a precise error.
+            Add(options, name, null);
+            return index;
+        }
+
+        if (isFlag)
         {
             Add(options, name, null);
             return index;
         }
 
-        // An option that takes a value consumes the next token unless it is
-        // itself an option (then the command's required-option check reports it).
-        if (index + 1 < args.Count && !IsOption(args[index + 1]))
+        // A value option consumes the next token unless it is itself an option;
+        // a negative number is a value, not an option.
+        if (index + 1 < args.Count && IsValue(args[index + 1]))
         {
             Add(options, name, args[index + 1]);
             return index + 1;
@@ -135,6 +139,14 @@ public static class CliParser
     private static bool IsOption(string token) =>
         token.Length > 1 && token[0] == '-' && token != "-";
 
+    private static bool IsValue(string token) =>
+        !IsOption(token) || IsNegativeNumber(token);
+
+    private static bool IsNegativeNumber(string token) =>
+        token.Length > 1
+        && token[0] == '-'
+        && double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
+
     private static (string Name, string? Value) Split(string token)
     {
         var body = token.StartsWith("--", StringComparison.Ordinal) ? token[2..] : token[1..];
@@ -145,5 +157,27 @@ public static class CliParser
         }
 
         return (body[..separator], body[(separator + 1)..]);
+    }
+
+    private static Dictionary<string, bool> BuildKnownOptions()
+    {
+        var known = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var option in CliCommandCatalog.GlobalOptions)
+        {
+            known[option.Name] = option.IsFlag;
+        }
+
+        foreach (var command in CliCommandCatalog.Commands)
+        {
+            foreach (var option in command.Options)
+            {
+                // A name that takes a value anywhere takes one everywhere.
+                known[option.Name] = known.TryGetValue(option.Name, out var isFlag)
+                    ? isFlag && option.IsFlag
+                    : option.IsFlag;
+            }
+        }
+
+        return known;
     }
 }

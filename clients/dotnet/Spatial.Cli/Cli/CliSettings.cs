@@ -46,11 +46,6 @@ public sealed record CliSettings(
         var store = NonEmpty(parsed.Last("store")) ?? DefaultStore;
         var project = NonEmpty(parsed.Last("project")) ?? DefaultProjectPath;
         var geoServicesRoot = NonEmpty(parsed.Last("geoservices-root")) ?? DefaultGeoServicesRoot;
-        var seconds = NonEmpty(parsed.Last("timeout")) is { } text
-            && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedSeconds)
-                ? parsedSeconds
-                : DefaultTimeout.TotalSeconds;
-
         return new CliSettings(
             host,
             token,
@@ -61,7 +56,31 @@ public sealed record CliSettings(
             parsed.Has("quiet"),
             parsed.Has("verbose"),
             parsed.Has("dry-run"),
-            TimeSpan.FromSeconds(seconds));
+            ResolveTimeout(parsed));
+    }
+
+    /// <summary>Resolves a strictly positive, finite per-request timeout.</summary>
+    private static TimeSpan ResolveTimeout(ParsedCommandLine parsed)
+    {
+        if (NonEmpty(parsed.Last("timeout")) is not { } text)
+        {
+            if (parsed.Has("timeout"))
+            {
+                throw new CliUsageException("Option --timeout expects a positive number of seconds.");
+            }
+
+            return DefaultTimeout;
+        }
+
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+            || double.IsNaN(seconds)
+            || double.IsInfinity(seconds)
+            || seconds <= 0)
+        {
+            throw new CliUsageException($"Option --timeout expects a positive number of seconds, got '{text}'.");
+        }
+
+        return TimeSpan.FromSeconds(seconds);
     }
 
     private static string? NonEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;

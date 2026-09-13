@@ -111,7 +111,10 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
   (ADR-0047): a `polygon` layer draws fill + line, a `line` layer line, a
   `point` layer circle, and `mixed` draws all three. `color` defaults
   `#4fc3f7`, `opacity` `1`, `lineWidth` `2`, `radius` `5`, `visible`
-  `true`.
+  `true`. `color` must be `#rrggbb`, `opacity` must be `0..1` and
+  `lineWidth`/`radius` must be positive; anything else is
+  `invalid.arguments` so a style that the renderer would reject never
+  reaches the store.
 - `apply` is idempotent: an existing dataset is reused unless `--force`;
   an existing map keeps its stable layer ids (ADR-0041) and its
   layers are replaced by the file's ordered list.

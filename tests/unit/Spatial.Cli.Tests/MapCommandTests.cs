@@ -370,6 +370,64 @@ public sealed class MapCommandTests
         Assert.Equal("#abcdef", recipe.Color);
     }
 
+    [Theory]
+    [InlineData("#GGGGGG")]
+    [InlineData("notacolor")]
+    [InlineData("#ff00")]
+    public async Task Set_style_rejects_an_invalid_colour(string colour)
+    {
+        var run = await CliHarness.RunAsync(WorldGateway(), "map", "set-style", "--map", "World", "--dataset", "public.world", "--color", colour, "--token", "secret");
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("invalid.arguments", run.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("5")]
+    [InlineData("1.5")]
+    [InlineData("-0.5")]
+    public async Task Set_style_rejects_an_out_of_range_opacity(string opacity)
+    {
+        var run = await CliHarness.RunAsync(WorldGateway(), "map", "set-style", "--map", "World", "--dataset", "public.world", "--opacity", opacity, "--token", "secret");
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("invalid.arguments", run.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("line-width", "0")]
+    [InlineData("line-width", "-1")]
+    [InlineData("radius", "0")]
+    [InlineData("radius", "-2")]
+    public async Task Set_style_rejects_a_non_positive_size(string option, string value)
+    {
+        var run = await CliHarness.RunAsync(WorldGateway(), "map", "set-style", "--map", "World", "--dataset", "public.world", $"--{option}", value, "--token", "secret");
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("invalid.arguments", run.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Set_style_accepts_a_valid_boundary_recipe()
+    {
+        var gateway = WorldGateway();
+
+        var run = await CliHarness.RunAsync(
+            gateway, "map", "set-style", "--map", "World", "--dataset", "public.world",
+            "--color", "#4FC3F7", "--opacity", "0", "--line-width", "0.5", "--radius", "1", "--token", "secret");
+
+        Assert.Equal(ExitCodes.Success, run.ExitCode);
+        Assert.Single(gateway.PutCalls);
+    }
+
+    private static FakeSpatialGateway WorldGateway() => new()
+    {
+        MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
+        {
+            ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapService.Map]),
+        },
+    };
+
     [Fact]
     public async Task Delete_removes_the_publication()
     {

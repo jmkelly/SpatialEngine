@@ -48,4 +48,18 @@ public sealed class CliSettingsTests
         Assert.Equal(CliSettings.DefaultHost, settings.Host);
         Assert.Null(settings.Token);
     }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("abc")]
+    [InlineData("NaN")]
+    [InlineData("Infinity")]
+    [InlineData("1e999")]
+    public void Resolve_rejects_an_invalid_timeout(string value)
+    {
+        var parsed = CliParser.Parse(["host", "health", "--timeout", value]);
+
+        Assert.Throws<CliUsageException>(() => CliSettings.Resolve(parsed, _ => null));
+    }
 }

@@ -56,4 +56,27 @@ public sealed class CliParserTests
         Assert.Equal(["--not-an-option"], parsed.Positionals);
         Assert.False(parsed.Has("not-an-option"));
     }
+
+    [Theory]
+    [InlineData("-2")]
+    [InlineData("-0.5")]
+    [InlineData("-Infinity")]
+    public void Parse_consumes_a_negative_number_as_an_option_value(string value)
+    {
+        var parsed = CliParser.Parse(["map", "set-style", "--opacity", value]);
+
+        Assert.Equal("map", parsed.Group);
+        Assert.Equal("set-style", parsed.Verb);
+        Assert.Equal(value, parsed.Last("opacity"));
+    }
+
+    [Fact]
+    public void Parse_does_not_consume_a_positional_for_an_unknown_option()
+    {
+        var parsed = CliParser.Parse(["--bogus", "map", "list"]);
+
+        Assert.Equal("map", parsed.Group);
+        Assert.Equal("list", parsed.Verb);
+        Assert.True(parsed.Has("bogus"));
+    }
 }

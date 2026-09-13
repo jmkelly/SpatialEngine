@@ -271,6 +271,21 @@ public sealed class ProjectCommandTests
     }
 
     [Fact]
+    public async Task Apply_rejects_a_project_layer_with_an_invalid_style()
+    {
+        var path = WriteProject(
+            [new ProjectDataset("public.world", 4326, "world.geojson")],
+            [new ProjectMap("World", "map", Layers: [new ProjectLayer("public.world", Style: new ProjectStyle(Color: "#GGGGGG"))])]);
+        var gateway = new FakeSpatialGateway();
+
+        var run = await CliHarness.RunAsync(gateway, "project", "apply", "--project", path, "--token", "t");
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("invalid.arguments", run.Error, StringComparison.Ordinal);
+        Assert.Empty(gateway.PutCalls);
+    }
+
+    [Fact]
     public async Task Apply_dry_run_never_mutates()
     {
         var path = WriteProject(

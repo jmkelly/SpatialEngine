@@ -220,8 +220,12 @@ public static class ProjectApplier
     private static int NextLayerId(Map? map) =>
         map?.Layers is { Count: > 0 } layers ? layers.Max(layer => layer.LayerId) + 1 : 0;
 
-    private static string LowerStyle(ProjectLayer layer) =>
-        MapLibreStyleBuilder.Lower(layer.Style?.ToRecipe() ?? new DrawRecipe(), GeometryFamilies.Parse(layer.Geometry));
+    private static string LowerStyle(ProjectLayer layer)
+    {
+        var recipe = layer.Style?.ToRecipe() ?? new DrawRecipe();
+        DrawRecipeValidation.EnsureValid(recipe);
+        return MapLibreStyleBuilder.Lower(recipe, GeometryFamilies.Parse(layer.Geometry));
+    }
 
     private static MapService ParseKind(string kind) => kind.ToLowerInvariant() switch
     {

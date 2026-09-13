@@ -71,6 +71,8 @@ public sealed class CliArguments
 
     private static double ParseDouble(string name, string value) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+        && !double.IsNaN(parsed)
+        && !double.IsInfinity(parsed)
             ? parsed
-            : throw new CliUsageException($"Option --{name} expects a number, got '{value}'.");
+            : throw new CliUsageException($"Option --{name} expects a finite number, got '{value}'.");
 }

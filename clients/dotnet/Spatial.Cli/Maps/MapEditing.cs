@@ -154,7 +154,14 @@ internal static class MapEditing
             recipe = recipe with { Visible = true };
         }
 
-        return layer with { Style = MapLibreStyleBuilder.Lower(recipe, family) };
+        return layer with { Style = MapLibreStyleBuilder.Lower(Validated(recipe), family) };
+    }
+
+    /// <summary>Validates the recipe before it can reach the store.</summary>
+    private static DrawRecipe Validated(DrawRecipe recipe)
+    {
+        DrawRecipeValidation.EnsureValid(recipe);
+        return recipe;
     }
 
     /// <summary>

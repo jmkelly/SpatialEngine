@@ -115,6 +115,35 @@ public sealed class CommandTests
     }
 
     [Fact]
+    public async Task Unknown_option_is_a_usage_error_without_misparsing_the_command()
+    {
+        var run = await CliHarness.RunAsync(new FakeSpatialGateway(), "--bogus", "map", "list");
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("Unknown option '--bogus'", run.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_option_the_command_does_not_accept_is_a_usage_error()
+    {
+        var run = await CliHarness.RunAsync(new FakeSpatialGateway(), "map", "list", "--color", "#ffffff");
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("Unknown option '--color'", run.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("0")]
+    public async Task Invalid_timeout_is_a_usage_error(string value)
+    {
+        var run = await CliHarness.RunAsync(new FakeSpatialGateway(), "host", "health", "--timeout", value);
+
+        Assert.Equal(ExitCodes.Usage, run.ExitCode);
+        Assert.Contains("timeout", run.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Missing_required_option_is_a_usage_error()
     {
         var run = await CliHarness.RunAsync(new FakeSpatialGateway(), "dataset", "describe");
