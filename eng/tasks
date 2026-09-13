@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Thin wrapper for the development task queue (tools/tasks/tasks.mjs).
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$here/../tools/tasks/tasks.mjs" "$@"

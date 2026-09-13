@@ -47,3 +47,9 @@ StrykerOutput/
 # --- Playwright browser test artifacts ---
 test-results/
 playwright-report/
+
+# --- Local development task queue (tools/tasks) ---
+.spatial-tasks/
+*.tasks.db
+*.tasks.db-wal
+*.tasks.db-shm
