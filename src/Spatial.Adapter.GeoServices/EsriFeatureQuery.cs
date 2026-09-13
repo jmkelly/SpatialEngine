@@ -29,7 +29,8 @@ internal sealed record EsriFeatureQuery(
     bool ReturnExceededLimitFeatures,
     int? MaxRecordCountFactor,
     int? GeometryPrecision,
-    double? MaxAllowableOffset)
+    double? MaxAllowableOffset,
+    EsriTimeExtent? Time)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
@@ -100,7 +101,8 @@ internal sealed record EsriFeatureQuery(
             parameters.GetBool("returnExceededLimitFeatures", false),
             maxRecordCountFactor,
             geometryPrecision,
-            maxAllowableOffset);
+            maxAllowableOffset,
+            ParseTime(parameters.Get("time")));
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -199,6 +201,57 @@ internal sealed record EsriFeatureQuery(
             _ => throw EsriInteropException.Invalid(
                 $"'orderByFields' entry '{entry}' has direction '{parts[1]}'; use ASC or DESC."),
         };
+    }
+
+    /// <summary>
+    /// Parses the <c>time</c> parameter: an instant (<c>time=ms</c>) or an
+    /// extent (<c>time=start,end</c>) with <c>null</c> infinity bounds. Each
+    /// bound is epoch milliseconds (an ISO-8601 date-time is also accepted).
+    /// An absent or blank value leaves the extent unset.
+    /// </summary>
+    private static EsriTimeExtent? ParseTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var parts = value.Split(',');
+        if (parts.Length == 1)
+        {
+            var instant = ParseTimeBound(parts[0], allowNull: false);
+            return new EsriTimeExtent(instant, instant);
+        }
+
+        if (parts.Length == 2)
+        {
+            return new EsriTimeExtent(ParseTimeBound(parts[0], allowNull: true), ParseTimeBound(parts[1], allowNull: true));
+        }
+
+        throw EsriInteropException.Invalid($"'time' must be an instant or a start,end extent, got '{value}'.");
+    }
+
+    private static long? ParseTimeBound(string? value, bool allowNull)
+    {
+        var text = value?.Trim();
+        if (string.IsNullOrEmpty(text) || string.Equals(text, "null", StringComparison.OrdinalIgnoreCase))
+        {
+            return allowNull
+                ? null
+                : throw EsriInteropException.Invalid("'time' must be epoch milliseconds or an ISO-8601 date-time.");
+        }
+
+        if (long.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var milliseconds))
+        {
+            return milliseconds;
+        }
+
+        if (DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var parsed))
+        {
+            return parsed.ToUnixTimeMilliseconds();
+        }
+
+        throw EsriInteropException.Invalid($"'time' bound '{text}' is not epoch milliseconds, an ISO-8601 date-time or null.");
     }
 
     private static int? ParseNonNegativeInt(string? value, string name)
@@ -411,9 +464,25 @@ internal sealed record EsriFeatureQuery(
 
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
-        Reject(parameters, "time", "temporal queries are not supported.");
         Reject(parameters, "returnZ", "Z output is not supported.");
         Reject(parameters, "returnM", "M output is not supported.");
+        // T-024 silent-ignore audit: every served-allowlist parameter the
+        // engine cannot honour is rejected by name, so a client never gets a
+        // silently narrowed query. Dropping any of these would change the
+        // result set (distance/units, text, resultType) or promise data the
+        // engine does not version (gdbVersion, historicMoment).
+        Reject(parameters, "sqlFormat", "raw SQL is never accepted; the facade evaluates its closed where-grammar.");
+        Reject(parameters, "resultType", "only current data is served; tile-version result types are not supported.");
+        Reject(parameters, "gdbVersion", "versioned geodatabase queries are not supported.");
+        Reject(parameters, "historicMoment", "historical queries are not supported.");
+        Reject(parameters, "datumTransformation", "datum transformations are not supported; outSR reprojection uses the registered transforms.");
+        Reject(parameters, "returnCentroid", "centroid output is not supported.");
+        Reject(parameters, "distance", "distance queries are not supported; buffer the geometry client-side instead.");
+        Reject(parameters, "units", "'units' is only meaningful with 'distance', which is not supported.");
+        Reject(parameters, "relationParam", "custom DE-9IM relations are not supported.");
+        Reject(parameters, "text", "full-text search is not supported; use 'where' with LIKE.");
+        Reject(parameters, "returnTrueCurves", "true-curve output is not supported.");
+        Reject(parameters, "multipatchOption", "multipatch options are not supported.");
     }
 
     private static void Reject(EsriRequestParameters parameters, string name, string message)
@@ -436,3 +505,10 @@ internal sealed record EsriOutStatistic(string StatisticType, string OnStatistic
 /// dataset schema by the service) and its sort direction.
 /// </summary>
 internal sealed record EsriOrderByField(string Name, bool Descending);
+
+/// <summary>
+/// The parsed <c>time</c> parameter (spec §9.1.4): an instant has equal
+/// bounds; an extent carries <c>null</c> for an open (infinite) bound.
+/// Bounds are epoch milliseconds.
+/// </summary>
+internal sealed record EsriTimeExtent(long? StartMs, long? EndMs);

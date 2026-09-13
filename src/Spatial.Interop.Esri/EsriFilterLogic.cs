@@ -52,7 +52,7 @@ internal static class EsriFilterLogic
         [AttributeKind.Double] = (attribute, comparisonOperator, literal) => CompareNumber(attribute.DoubleValue, literal, comparisonOperator),
         [AttributeKind.String] = (attribute, comparisonOperator, literal) => CompareStrings(attribute.StringValue, literal, comparisonOperator),
         [AttributeKind.Boolean] = (attribute, comparisonOperator, literal) => CompareBoolean(attribute.BooleanValue, literal, comparisonOperator),
-        [AttributeKind.DateTimeOffset] = (attribute, comparisonOperator, literal) => CompareNumber(attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds(), literal, comparisonOperator),
+        [AttributeKind.DateTimeOffset] = (attribute, comparisonOperator, literal) => CompareDate(attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds(), literal, comparisonOperator),
         [AttributeKind.Guid] = (attribute, comparisonOperator, literal) => CompareGuid(attribute.GuidValue, literal, comparisonOperator),
     };
 
@@ -69,6 +69,16 @@ internal static class EsriFilterLogic
         (l, r) => l >= r,
         (_, _) => false,
     ];
+
+    private static bool CompareDate(long milliseconds, Literal literal, ComparisonOperator comparisonOperator)
+    {
+        if (literal.Kind == LiteralKind.DateTime)
+        {
+            return ApplyNumberComparison(milliseconds, literal.Number, comparisonOperator);
+        }
+
+        return CompareNumber(milliseconds, literal, comparisonOperator);
+    }
 
     private static bool CompareNumber(double left, Literal literal, ComparisonOperator comparisonOperator)
     {
@@ -156,6 +166,11 @@ internal static class EsriFilterLogic
             return false;
         }
 
+        if (IsDateOperand(left, right))
+        {
+            return BothDateTime(left, right) && ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
+        }
+
         if (IsBooleanOperand(left, right))
         {
             return EvaluateBooleanConstant(left, comparisonOperator, right);
@@ -171,6 +186,12 @@ internal static class EsriFilterLogic
 
     private static bool HasNullOperand(Literal left, Literal right) =>
         left.Kind is LiteralKind.Null || right.Kind is LiteralKind.Null;
+
+    private static bool IsDateOperand(Literal left, Literal right) =>
+        left.Kind == LiteralKind.DateTime || right.Kind == LiteralKind.DateTime;
+
+    private static bool BothDateTime(Literal left, Literal right) =>
+        left.Kind == LiteralKind.DateTime && right.Kind == LiteralKind.DateTime;
 
     private static bool IsBooleanOperand(Literal left, Literal right) =>
         left.Kind == LiteralKind.Boolean || right.Kind == LiteralKind.Boolean;
@@ -275,6 +296,12 @@ internal enum LiteralKind
     Decimal,
     Boolean,
     Null,
+    /// <summary>
+    /// A date-time literal (<c>TIMESTAMP '…'</c> or <c>CURRENT_TIMESTAMP …</c>):
+    /// epoch milliseconds in <see cref="Literal.Number"/>, rendered back as a
+    /// <c>TIMESTAMP</c> literal so the where-clause round-trips.
+    /// </summary>
+    DateTime,
 }
 
 /// <summary>One parsed literal with its wire-renderable form.</summary>
@@ -286,6 +313,7 @@ internal readonly record struct Literal(LiteralKind Kind, string? Text, double N
         LiteralKind.Integer => ((long)Number).ToString(CultureInfo.InvariantCulture),
         LiteralKind.Decimal => Number.ToString("R", CultureInfo.InvariantCulture),
         LiteralKind.Boolean => Boolean ? "TRUE" : "FALSE",
+        LiteralKind.DateTime => "TIMESTAMP '" + DateTimeOffset.FromUnixTimeMilliseconds((long)Number).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "'",
         _ => "NULL",
     };
 }

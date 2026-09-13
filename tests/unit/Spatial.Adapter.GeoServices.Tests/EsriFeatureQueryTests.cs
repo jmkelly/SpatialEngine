@@ -138,9 +138,23 @@ public sealed class EsriFeatureQueryTests
     [Theory]
     [InlineData("returnZ")]
     [InlineData("returnM")]
+    [InlineData("sqlFormat")]
+    [InlineData("resultType")]
+    [InlineData("gdbVersion")]
+    [InlineData("historicMoment")]
+    [InlineData("datumTransformation")]
+    [InlineData("returnCentroid")]
+    [InlineData("distance")]
+    [InlineData("units")]
+    [InlineData("relationParam")]
+    [InlineData("text")]
+    [InlineData("returnTrueCurves")]
+    [InlineData("multipatchOption")]
     public async Task Unsupported_query_parameters_are_rejected(string name)
     {
-        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, "x")));
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, "x")));
+
+        Assert.Contains($"'{name}'", exception.Message);
     }
 
     [Fact]
@@ -250,5 +264,46 @@ public sealed class EsriFeatureQueryTests
         var query = await ParseAsync(("geometryPrecision", "2"), ("maxAllowableOffset", "10"));
         Assert.Equal(2, query.GeometryPrecision);
         Assert.Equal(10.0, query.MaxAllowableOffset);
+    }
+
+    [Fact]
+    public async Task A_time_instant_parses_to_a_point_extent()
+    {
+        var query = await ParseAsync(("time", "1199145600000"));
+
+        Assert.NotNull(query.Time);
+        Assert.Equal(1199145600000L, query.Time.StartMs);
+        Assert.Equal(1199145600000L, query.Time.EndMs);
+    }
+
+    [Fact]
+    public async Task A_time_extent_parses_with_null_infinity_bounds()
+    {
+        var openStart = await ParseAsync(("time", "null,1199145600000"));
+        Assert.Null(openStart.Time!.StartMs);
+        Assert.Equal(1199145600000L, openStart.Time.EndMs);
+
+        var openEnd = await ParseAsync(("time", "1199145600000,null"));
+        Assert.Equal(1199145600000L, openEnd.Time!.StartMs);
+        Assert.Null(openEnd.Time.EndMs);
+
+        var closed = await ParseAsync(("time", "1199145600000,1230768000000"));
+        Assert.Equal(1199145600000L, closed.Time!.StartMs);
+        Assert.Equal(1230768000000L, closed.Time.EndMs);
+    }
+
+    [Theory]
+    [InlineData("yesterday")]
+    [InlineData("1,2,3")]
+    [InlineData("null")]
+    public async Task A_malformed_time_is_rejected(string value)
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("time", value)));
+    }
+
+    [Fact]
+    public async Task No_time_leaves_the_extent_absent()
+    {
+        Assert.Null((await ParseAsync()).Time);
     }
 }

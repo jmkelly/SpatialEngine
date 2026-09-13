@@ -355,17 +355,28 @@ public sealed class GeoServicesImageTests : IDisposable
     }
 
     [Fact]
-    public async Task Catalog_query_rejects_an_unsupported_where_and_time()
+    public async Task Catalog_query_rejects_an_unsupported_where()
     {
         await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
         var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
 
         var badWhere = await client.GetAsync(
             $"{Root}/{CatalogName}/ImageServer/query?f=json&where=" + Uri.EscapeDataString("Name === 'x'"));
-        var time = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/query?f=json&time=1199145600000");
 
         Assert.Equal(HttpStatusCode.BadRequest, badWhere.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, time.StatusCode);
+    }
+
+    [Fact]
+    public async Task Catalog_query_accepts_time_like_the_feature_query()
+    {
+        // T-022: the temporal surface lives on the shared query path, so the
+        // raster catalog accepts time exactly as the Feature Service does.
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var time = await client.GetAsync($"{Root}/{CatalogName}/ImageServer/query?f=json&time=1199145600000");
+
+        Assert.Equal(HttpStatusCode.OK, time.StatusCode);
     }
 
     [Fact]

@@ -61,16 +61,26 @@ internal static class EsriLayerModel
     }
 
     /// <summary>Builds the layer reference for the <c>FeatureServer</c> root.</summary>
-    public static EsriLayerRef Reference(int id, string name) =>
-        new(id, name, "Feature Layer");
+    public static EsriLayerRef Reference(int id, string name, bool isTable = false) =>
+        new(id, name, isTable ? "Table" : "Feature Layer");
+
+    /// <summary>
+    /// Whether the dataset is served as a table: its schema carries no
+    /// geometry field, so there is nothing to draw or intersect.
+    /// </summary>
+    public static bool IsTable(DatasetDescription dataset)
+    {
+        ArgumentNullException.ThrowIfNull(dataset);
+        return !dataset.Schema.Fields.Any(field => field.Kind == AttributeKind.Geometry);
+    }
 
     /// <summary>Builds the full layer metadata (spec §9.1).</summary>
-    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable) =>
+    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable, bool isTable = false) =>
         new(
             10.0,
             id,
             dataset.Table,
-            "Feature Layer",
+            isTable ? "Table" : "Feature Layer",
             GeometryType(dataset.GeometryType),
             ObjectIdField,
             Fields(dataset, editable),

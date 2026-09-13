@@ -26,10 +26,16 @@ internal static class FeatureService
 {
     private const double CurrentVersion = 10.0;
 
-    /// <summary>Builds the <c>FeatureServer</c> root (spec §9.0).</summary>
-    public static EsriFeatureServerRoot Root(IReadOnlyList<PublishedLayer> layers, bool editable)
+    /// <summary>
+    /// Builds the <c>FeatureServer</c> root (spec §9.0): spatial datasets
+    /// under <c>layers</c>, datasets without a geometry field under
+    /// <c>tables</c>. Both lists share the single layer/table id space, so
+    /// ids stay stable whether or not tables exist.
+    /// </summary>
+    public static EsriFeatureServerRoot Root(IReadOnlyList<PublishedLayer> layers, IReadOnlyList<PublishedLayer> tables, bool editable)
     {
-        var references = layers.Select(layer => EsriLayerModel.Reference(layer.Id, layer.Name)).ToArray();
+        var layerRefs = layers.Select(layer => EsriLayerModel.Reference(layer.Id, layer.Name)).ToArray();
+        var tableRefs = tables.Select(table => EsriLayerModel.Reference(table.Id, table.Name, isTable: true)).ToArray();
         return new EsriFeatureServerRoot(
             CurrentVersion,
             "SpatialEngine Feature Service",
@@ -37,14 +43,14 @@ internal static class FeatureService
             EsriLayerModel.SupportedQueryFormats,
             editable ? EsriLayerModel.EditableCapabilities : EsriLayerModel.ReadOnlyCapabilities,
             EsriLayerModel.MaxRecordCount,
-            references,
-            [],
+            layerRefs,
+            tableRefs,
             EsriLayerModel.QueryCapabilities);
     }
 
     /// <summary>Builds one layer's metadata (spec §9.1).</summary>
-    public static EsriLayer Layer(int layerId, DatasetDescription dataset, bool editable) =>
-        EsriLayerModel.Describe(layerId, dataset, editable);
+    public static EsriLayer Layer(int layerId, DatasetDescription dataset, bool editable, bool isTable = false) =>
+        EsriLayerModel.Describe(layerId, dataset, editable, isTable);
 
     /// <summary>Executes a query and writes the spec §9.1.4.3 response.</summary>
     public static Task<IResult> QueryAsync(

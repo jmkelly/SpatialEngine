@@ -167,4 +167,25 @@ public sealed class GeoServicesQueryShapeTests : IClassFixture<WebApplicationFac
 
         Assert.Equal(400, error.GetProperty("code").GetInt32());
     }
+
+    /// <summary>
+    /// T-024 silent-ignore audit: parameters the engine cannot honour are
+    /// rejected by name over HTTP, never silently dropped.
+    /// </summary>
+    [Theory]
+    [InlineData("sqlFormat=standard", "sqlFormat")]
+    [InlineData("resultType=tile", "resultType")]
+    [InlineData("gdbVersion=abc", "gdbVersion")]
+    [InlineData("historicMoment=123", "historicMoment")]
+    [InlineData("datumTransformation=1", "datumTransformation")]
+    [InlineData("returnCentroid=true", "returnCentroid")]
+    [InlineData("distance=100&units=esriSRUnit_Meter", "distance")]
+    [InlineData("text=broken+pipe", "text")]
+    public async Task Unhonoured_parameters_are_rejected_by_name(string parameters, string name)
+    {
+        var error = await GetErrorAsync($"{Cities}/query?{parameters}&f=json");
+
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains($"'{name}'", error.GetProperty("message").GetString());
+    }
 }
