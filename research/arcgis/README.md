@@ -1,5 +1,11 @@
 # ArcGIS REST endpoint autoresearch
 
+> Conformance catalogue (T-012, checked 2026-09-13):
+> [`conformance-sources.md`](conformance-sources.md) — external test corpora
+> (arcgis-rest-js, Esri reference, Koop, pygeoapi, GDAL) and 15 implementable
+> serve/consume tests with request, expected assertion, real-client
+> dependency, current-behaviour pointer and effort.
+
 Ground-truth corpus for the GeoServices work (ADR-0035):
 
 - **consume:** `Spatial.Provider.ArcGisRest` (the engine reads ArcGIS REST), and
