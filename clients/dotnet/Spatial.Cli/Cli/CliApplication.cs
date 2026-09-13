@@ -120,6 +120,7 @@ public static class CliApplication
         var (code, message, exitCode) = exception switch
         {
             CliUsageException usage => ("invalid.arguments", usage.Message, ExitCodes.Usage),
+            CliSourceException source => ("store.unavailable", source.Message, ExitCodes.Unavailable),
             SpatialClientException spatial => (spatial.Code, spatial.Message, ExitCodes.ForSpatialCode(spatial.Code)),
             HttpRequestException http => ("store.unavailable", $"Could not reach the host at {host}: {http.Message}", ExitCodes.Unavailable),
             OperationCanceledException => ("cancelled", "The operation was cancelled.", ExitCodes.Cancelled),

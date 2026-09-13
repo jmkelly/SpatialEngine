@@ -40,15 +40,15 @@ internal static class AdminEndpoints
             return;
         }
 
-        app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, name, map, registry, token));
+        app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
+            PutMap(context, admin, name, map, services, registry, token));
         app.MapDelete("/api/maps/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
             DeleteMap(context, admin, name, registry, token));
         app.MapPost("/api/ingest", (HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
             Ingest(context, admin, ingest, services, registry, token));
 
-        app.MapPut("/api/publications/{name}", (string name, Map map, HttpContext context, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, name, map, registry, token));
+        app.MapPut("/api/publications/{name}", (string name, Map map, HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
+            PutMap(context, admin, name, map, services, registry, token));
         app.MapDelete("/api/publications/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
             DeleteMap(context, admin, name, registry, token));
     }
@@ -79,7 +79,7 @@ internal static class AdminEndpoints
 
     private static async Task<IResult> PutMap(
         HttpContext context, AdminOptions admin, string name, Map map,
-        IMapRegistry registry, CancellationToken token)
+        IServiceProvider services, IMapRegistry registry, CancellationToken token)
     {
         if (Authorize(context, admin) is { } rejection)
         {
@@ -88,12 +88,40 @@ internal static class AdminEndpoints
 
         try
         {
-            var stored = await registry.PutAsync(map with { Name = Uri.UnescapeDataString(name) }, token);
+            var named = map with { Name = Uri.UnescapeDataString(name) };
+            await EnsureLayersAreServableAsync(services, named, token);
+            var stored = await registry.PutAsync(named, token);
             return Results.Ok(stored);
         }
         catch (Exception exception)
         {
             return ErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// Rejects a map whose layers cannot be served, so a dangling dataset or a
+    /// missing raster provider never becomes a published service that fails on
+    /// every request: a feature layer must exist in its store's catalogue and an
+    /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
+    /// </summary>
+    private static async Task EnsureLayersAreServableAsync(IServiceProvider services, Map map, CancellationToken token)
+    {
+        foreach (var layer in map.Layers)
+        {
+            var store = layer.Store ?? map.Store;
+            if (layer.Kind == MapLayerKind.Image)
+            {
+                var raster = services.GetKeyedService<IRasterCatalogue>(store)
+                    ?? throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' exposes an image layer but store '{store}' has no raster provider.");
+                await raster.DescribeAsync(layer.Dataset, token);
+                continue;
+            }
+
+            var catalogue = services.GetKeyedService<IDataCatalogue>(store)
+                ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
+            await catalogue.DescribeAsync(layer.Dataset, token);
         }
     }
 

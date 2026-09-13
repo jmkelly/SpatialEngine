@@ -104,7 +104,11 @@ Only the stored aggregate and the file name change.
 Validation follows ADR-0041: flat identifier names, strict `schema.table`
 datasets, unique non-negative layer ids, a non-empty layer list, JSON-array
 styles, and every enabled service must be fed by at least one layer of the
-matching kind. New failures are `invalid.arguments`.
+matching kind. New failures are `invalid.arguments`. The host also resolves
+each layer against its store's catalogue before storing the map — a feature
+layer must describe and an image layer needs the store's `IRasterCatalogue` —
+so a dangling layer or a store with no raster provider can never be published
+as a service that fails on every request.
 
 ### 3. Each service is an independent projection of one map
 

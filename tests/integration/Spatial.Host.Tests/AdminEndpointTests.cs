@@ -17,6 +17,9 @@ public sealed class AdminEndpointTests : IDisposable
 {
     private const string Token = "test-admin-token";
 
+    private static readonly string[] MapServices = ["map"];
+    private static readonly string[] ImageServices = ["image"];
+
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-admin-").FullName;
 
     private WebApplicationFactory<Program> Factory(long maxBytes = 100_000_000) =>
@@ -71,6 +74,45 @@ public sealed class AdminEndpointTests : IDisposable
         wrongRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "nope");
         var wrong = await client.SendAsync(wrongRequest);
         Assert.Equal(HttpStatusCode.Forbidden, wrong.StatusCode);
+    }
+
+    [Fact]
+    public async Task Publishing_a_map_with_a_missing_dataset_is_not_found()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+        var body = JsonSerializer.Serialize(new
+        {
+            name = "ghost",
+            store = "memory",
+            services = MapServices,
+            layers = new[] { new { dataset = "public.ghost", layerId = 0, kind = "feature" } },
+        });
+
+        var response = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/ghost", Json(body)));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("not.found", (await BodyAsync(response)).GetProperty("code").GetString());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/maps/ghost")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Publishing_an_image_map_without_a_raster_provider_is_rejected()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+        var body = JsonSerializer.Serialize(new
+        {
+            name = "imagery",
+            store = "memory",
+            services = ImageServices,
+            layers = new[] { new { dataset = "public.raster", layerId = 0, kind = "image" } },
+        });
+
+        var response = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/imagery", Json(body)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid.arguments", (await BodyAsync(response)).GetProperty("code").GetString());
     }
 
     [Fact]
@@ -133,6 +175,23 @@ public sealed class AdminEndpointTests : IDisposable
         Assert.Null(result.GetProperty("identityField").GetString());
     }
 
+    [Theory]
+    [InlineData("not json at all")]
+    [InlineData("")]
+    [InlineData("{\"type\":\"FeatureCollection\",\"features\":[]}")]
+    public async Task A_malformed_upload_is_a_bad_request(string body)
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/api/ingest?store=memory&dataset=public.bad&srid=4326&format=geojson",
+            new StringContent(body, Encoding.UTF8, "application/json")));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid.arguments", (await BodyAsync(response)).GetProperty("code").GetString());
+    }
+
     [Fact]
     public async Task A_disallowed_format_is_rejected()
     {
@@ -166,6 +225,11 @@ public sealed class AdminEndpointTests : IDisposable
         using var factory = Factory();
         var client = factory.CreateClient();
         const string body = """{"name":"parks","store":"memory","services":["feature"],"layers":[{"dataset":"public.parks","layerId":0}]}""";
+
+        await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.parks&srid=4326&format=geojson",
+            new StringContent(GeoJson, Encoding.UTF8, "application/json")));
 
         var put = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/parks", Json(body)));
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);

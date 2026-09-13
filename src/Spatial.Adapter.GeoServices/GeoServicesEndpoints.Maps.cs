@@ -49,7 +49,7 @@ internal static class MapServerEndpoints
             var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
             var layers = await GeoServicesEndpoints.ListLayersAsync(services, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(Store(services, resolved.Store), Catalogue(services, resolved.Store), layers, cancellationToken);
-            return EsriJson.Value(MapServerResources.Root(infos, MapTileScheme(services), resolved.Description, resolved.Copyright));
+            return EsriJson.Value(MapServerResources.Root(service, infos, MapTileScheme(services), resolved.Description, resolved.Copyright));
         }
         catch (Exception exception)
         {

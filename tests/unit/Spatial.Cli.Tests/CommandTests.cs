@@ -178,6 +178,22 @@ public sealed class CommandTests
     }
 
     [Fact]
+    public async Task A_source_fetch_failure_names_the_source_not_the_host()
+    {
+        var gateway = new FakeSpatialGateway
+        {
+            Failure = new CliSourceException("Could not fetch the source 'https://example.invalid/x.geojson': Name or service not known."),
+        };
+
+        var run = await CliHarness.RunAsync(
+            gateway, "dataset", "add", "--url", "https://example.invalid/x.geojson", "--dataset", "public.x", "--srid", "4326", "--token", "t");
+
+        Assert.Equal(ExitCodes.Unavailable, run.ExitCode);
+        Assert.Contains("example.invalid", run.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("Could not reach the host", run.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Help_is_printed_with_no_arguments()
     {
         var run = await CliHarness.RunAsync(new FakeSpatialGateway());

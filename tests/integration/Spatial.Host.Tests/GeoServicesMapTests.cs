@@ -114,6 +114,16 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task The_root_reports_the_map_name()
+    {
+        var client = await MapServiceAsync();
+
+        var root = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer?f=json"));
+
+        Assert.Equal("world", root.GetProperty("mapName").GetString());
+    }
+
+    [Fact]
     public async Task The_layer_metadata_carries_the_projected_drawing_info()
     {
         var client = await MapServiceAsync();

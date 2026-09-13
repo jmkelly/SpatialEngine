@@ -102,7 +102,14 @@ public sealed class HttpSpatialGateway : ISpatialGateway
         if (Uri.TryCreate(source, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {
-            return await _http.GetStreamAsync(uri, cancellationToken);
+            try
+            {
+                return await _http.GetStreamAsync(uri, cancellationToken);
+            }
+            catch (HttpRequestException exception)
+            {
+                throw new CliSourceException($"Could not fetch the source '{uri}': {exception.Message}", exception);
+            }
         }
 
         return File.OpenRead(source);

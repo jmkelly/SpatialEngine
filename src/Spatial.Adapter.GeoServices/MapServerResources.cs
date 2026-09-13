@@ -49,14 +49,14 @@ internal static class MapServerResources
 
     /// <summary>Builds the MapServer root (spec §4.0).</summary>
     public static EsriMapServerRoot Root(
-        IReadOnlyList<MapLayerInfo> layers, ITileScheme? scheme, string? description, string? copyright)
+        string mapName, IReadOnlyList<MapLayerInfo> layers, ITileScheme? scheme, string? description, string? copyright)
     {
         var mapSrid = MapSrid(layers);
         var extent = FullExtent(layers, mapSrid);
         return new EsriMapServerRoot(
             CurrentVersion,
             "SpatialEngine Map Service",
-            "SpatialEngine",
+            mapName,
             description,
             copyright,
             EsriLayerModel.SpatialReference(mapSrid),
