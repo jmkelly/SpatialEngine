@@ -27,13 +27,30 @@ internal sealed record EsriFeatureQuery(
     IReadOnlyList<string>? GroupByFields,
     EsriFilterClause? Having,
     bool ReturnExceededLimitFeatures,
-    int? MaxRecordCountFactor)
+    int? MaxRecordCountFactor,
+    int? GeometryPrecision,
+    double? MaxAllowableOffset)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
 
     /// <summary>The exact intersection relation.</summary>
     public const string Intersects = "esriSpatialRelIntersects";
+
+    /// <summary>Feature contains the query geometry (DE-9IM, boundary excluded).</summary>
+    public const string Contains = "esriSpatialRelContains";
+
+    /// <summary>Feature lies within the query geometry (DE-9IM, boundary excluded).</summary>
+    public const string Within = "esriSpatialRelWithin";
+
+    /// <summary>Boundaries touch with disjoint interiors.</summary>
+    public const string Touches = "esriSpatialRelTouches";
+
+    /// <summary>Same-dimension overlap with neither containing the other.</summary>
+    public const string Overlaps = "esriSpatialRelOverlaps";
+
+    /// <summary>Geometries of different dimension cross.</summary>
+    public const string Crosses = "esriSpatialRelCrosses";
 
     /// <summary>Parses the query parameters, rejecting unsupported constructs.</summary>
     public static EsriFeatureQuery Parse(EsriRequestParameters parameters, CoordinateReference? fallback)
@@ -59,6 +76,9 @@ internal sealed record EsriFeatureQuery(
         ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null);
         var inSr = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         var maxRecordCountFactor = ParseMaxRecordCountFactor(parameters.Get("maxRecordCountFactor"));
+        RejectQuantization(parameters);
+        var geometryPrecision = ParseGeometryPrecision(parameters.Get("geometryPrecision"));
+        var maxAllowableOffset = ParseMaxAllowableOffset(parameters.Get("maxAllowableOffset"));
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
@@ -78,7 +98,9 @@ internal sealed record EsriFeatureQuery(
             groupByFields,
             having,
             parameters.GetBool("returnExceededLimitFeatures", false),
-            maxRecordCountFactor);
+            maxRecordCountFactor,
+            geometryPrecision,
+            maxAllowableOffset);
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -118,9 +140,11 @@ internal sealed record EsriFeatureQuery(
 
         return value.Trim() switch
         {
-            EnvelopeIntersects or Intersects => value.Trim(),
+            EnvelopeIntersects or Intersects or Contains or Within or Touches or Overlaps or Crosses => value.Trim(),
+            "esriSpatialRelIndexIntersects" => throw EsriInteropException.Invalid(
+                "spatialRel 'esriSpatialRelIndexIntersects' is not supported; it names an index optimisation, not a predicate. Use esriSpatialRelEnvelopeIntersects."),
             _ => throw EsriInteropException.Invalid(
-                $"spatialRel '{value}' is not supported; use {EnvelopeIntersects} or {Intersects}."),
+                $"spatialRel '{value}' is not supported."),
         };
     }
 
@@ -345,6 +369,44 @@ internal sealed record EsriFeatureQuery(
         }
 
         return factor;
+    }
+
+    private static void RejectQuantization(EsriRequestParameters parameters)
+    {
+        if (parameters.Has("quantizationParameters"))
+        {
+            throw EsriInteropException.Invalid("The 'quantizationParameters' parameter is not supported: quantized responses are not served; request full-precision geometries.");
+        }
+    }
+
+    private static int? ParseGeometryPrecision(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var precision) || precision < 0 || precision > 15)
+        {
+            throw EsriInteropException.Invalid($"'geometryPrecision' must be an integer 0-15, got '{value}'.");
+        }
+
+        return precision;
+    }
+
+    private static double? ParseMaxAllowableOffset(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var offset) || !double.IsFinite(offset) || offset < 0)
+        {
+            throw EsriInteropException.Invalid($"'maxAllowableOffset' must be a non-negative number, got '{value}'.");
+        }
+
+        return offset;
     }
 
     private static void RejectUnsupported(EsriRequestParameters parameters)

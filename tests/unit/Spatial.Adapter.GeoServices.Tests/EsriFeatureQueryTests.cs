@@ -76,7 +76,7 @@ public sealed class EsriFeatureQueryTests
     [Fact]
     public async Task An_unsupported_relation_is_rejected()
     {
-        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("spatialRel", "esriSpatialRelContains")));
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("spatialRel", "esriSpatialRelBogus")));
     }
 
     [Fact]
@@ -222,5 +222,33 @@ public sealed class EsriFeatureQueryTests
     public async Task Bad_max_record_count_factors_are_rejected(string value)
     {
         await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("maxRecordCountFactor", value)));
+    }
+
+    [Theory]
+    [InlineData("esriSpatialRelContains")]
+    [InlineData("esriSpatialRelWithin")]
+    [InlineData("esriSpatialRelTouches")]
+    [InlineData("esriSpatialRelOverlaps")]
+    [InlineData("esriSpatialRelCrosses")]
+    public async Task Remaining_spatial_relations_are_accepted(string spatialRel)
+    {
+        var query = await ParseAsync(("spatialRel", spatialRel));
+
+        Assert.Equal(spatialRel, query.SpatialRel);
+    }
+
+    [Fact]
+    public async Task Index_intersects_stays_rejected()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("spatialRel", "esriSpatialRelIndexIntersects")));
+    }
+
+    [Fact]
+    public async Task Quantization_is_rejected_while_precision_and_offset_parse()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("quantizationParameters", "{\"mode\":\"view\"}")));
+        var query = await ParseAsync(("geometryPrecision", "2"), ("maxAllowableOffset", "10"));
+        Assert.Equal(2, query.GeometryPrecision);
+        Assert.Equal(10.0, query.MaxAllowableOffset);
     }
 }

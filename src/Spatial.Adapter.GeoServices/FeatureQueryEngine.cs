@@ -192,8 +192,103 @@ internal static class FeatureQueryEngine
             return featureEnvelope.Intersects(queryEnvelope);
         }
 
-        return !operations.Intersection(geometry, queryGeometry, cancellationToken).IsEmpty;
+        if (string.Equals(spatialRel, EsriFeatureQuery.Intersects, StringComparison.Ordinal))
+        {
+            return !operations.Intersection(geometry, queryGeometry, cancellationToken).IsEmpty;
+        }
+
+        return spatialRel switch
+        {
+            var rel when string.Equals(rel, EsriFeatureQuery.Contains, StringComparison.Ordinal) => Contains(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Within, StringComparison.Ordinal) => Contains(queryGeometry, geometry, queryEnvelope, featureEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Touches, StringComparison.Ordinal) => Touches(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Overlaps, StringComparison.Ordinal) => Overlaps(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Crosses, StringComparison.Ordinal) => Crosses(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
+            _ => throw EsriInteropException.Invalid($"spatialRel '{spatialRel}' is not supported."),
+        };
     }
+
+    /// <summary>
+    /// DE-9IM contains approximated with the available verbs: the container
+    /// envelope must contain the containee envelope and the intersection must
+    /// cover the containee (envelope-equal). Boundary cases (containee on the
+    /// container boundary) read as contained; exact boundary exclusion needs
+    /// a boundary verb the engine does not expose.
+    /// </summary>
+    private static bool Contains(IGeometry container, IGeometry containee, Envelope containerEnvelope, Envelope containeeEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        if (!containerEnvelope.Contains(containeeEnvelope))
+        {
+            return false;
+        }
+
+        var intersection = operations.Intersection(container, containee, cancellationToken);
+        return !intersection.IsEmpty && intersection.Envelope is { } envelope && EnvelopesEqual(envelope, containeeEnvelope);
+    }
+
+    private static bool Touches(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        var intersection = operations.Intersection(left, right, cancellationToken);
+        if (intersection.IsEmpty || intersection.Envelope is not { } envelope)
+        {
+            return false;
+        }
+
+        if (Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
+            || Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken))
+        {
+            return false;
+        }
+
+        return IsDegenerate(envelope);
+    }
+
+    private static bool Overlaps(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        if (Dimension(left) != Dimension(right))
+        {
+            return false;
+        }
+
+        var intersection = operations.Intersection(left, right, cancellationToken);
+        if (intersection.IsEmpty || Dimension(intersection) != Dimension(left))
+        {
+            return false;
+        }
+
+        return !Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
+            && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
+    }
+
+    private static bool Crosses(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        if (Dimension(left) == Dimension(right))
+        {
+            return false;
+        }
+
+        var intersection = operations.Intersection(left, right, cancellationToken);
+        if (intersection.IsEmpty)
+        {
+            return false;
+        }
+
+        return !Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
+            && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
+    }
+
+    private static int Dimension(IGeometry geometry) => geometry.Type switch
+    {
+        GeometryType.Point or GeometryType.MultiPoint => 0,
+        GeometryType.LineString or GeometryType.MultiLineString => 1,
+        GeometryType.Polygon or GeometryType.MultiPolygon => 2,
+        _ => -1,
+    };
+
+    private static bool EnvelopesEqual(Envelope left, Envelope right) =>
+        left.MinX == right.MinX && left.MinY == right.MinY && left.MaxX == right.MaxX && left.MaxY == right.MaxY;
+
+    private static bool IsDegenerate(Envelope envelope) => envelope.MinX == envelope.MaxX || envelope.MinY == envelope.MaxY;
 
     internal static IGeometry? TransformQueryGeometry(
         IGeometry? geometry,
@@ -318,22 +413,80 @@ internal static class FeatureQueryEngine
         CancellationToken cancellationToken)
     {
         var feature = match.Feature;
-        if (query.OutSr is not { } target || layerCrs is null || target == layerCrs)
-        {
-            return match;
-        }
-
         var geometryIndex = FeatureGeometry.Index(feature.Schema);
         if (geometryIndex < 0 || feature[geometryIndex].Kind != AttributeKind.Geometry)
         {
             return match;
         }
 
-        var transformed = transforms.Transform(feature[geometryIndex].GeometryValue, layerCrs.Value.ToString(), target.ToString(), cancellationToken);
+        var geometry = feature[geometryIndex].GeometryValue;
+        if (query.OutSr is { } target && layerCrs is not null && target != layerCrs)
+        {
+            geometry = transforms.Transform(geometry, layerCrs.Value.ToString(), target.ToString(), cancellationToken);
+        }
+
+        if (query.GeometryPrecision is { } precision)
+        {
+            geometry = RoundGeometry(geometry, precision);
+        }
+        else if (ReferenceEquals(geometry, feature[geometryIndex].GeometryValue))
+        {
+            return match;
+        }
+
         var attributes = feature.Attributes.ToArray();
-        attributes[geometryIndex] = AttributeValue.FromGeometry(transformed);
+        attributes[geometryIndex] = AttributeValue.FromGeometry(geometry);
         return new MatchedFeature(match.ObjectId, new Feature(feature.Id, feature.Schema, attributes));
     }
+
+    internal static IGeometry RoundGeometry(IGeometry geometry, int precision)
+    {
+        var crs = geometry.CoordinateReference;
+        return geometry switch
+        {
+            Point point when point.Coordinate is { } coordinate =>
+                GeometryFactory.CreatePoint(RoundCoordinate(coordinate, precision), crs),
+            MultiPoint multiPoint =>
+                GeometryFactory.CreateMultiPoint(multiPoint.Points.Select(point => GeometryFactory.CreatePoint(RoundCoordinate(point.Coordinate ?? new Coordinate(0, 0), precision), crs)), crs),
+            LineString line => RoundLine(line, crs, precision),
+            MultiLineString multiLine =>
+                GeometryFactory.CreateMultiLineString(multiLine.LineStrings.Select(line => RoundLine(line, null, precision)), crs),
+            Polygon polygon => RoundPolygon(polygon, crs, precision),
+            MultiPolygon multiPolygon =>
+                GeometryFactory.CreateMultiPolygon(multiPolygon.Polygons.Select(polygon => RoundPolygon(polygon, null, precision)), crs),
+            GeometryCollection collection =>
+                GeometryFactory.CreateGeometryCollection(collection.Geometries.Select(member => RoundGeometry(member, precision)), crs),
+            _ => geometry,
+        };
+    }
+
+    private static LineString RoundLine(LineString line, CoordinateReference? crs, int precision)
+    {
+        var sequence = line.Sequence;
+        var rounded = new Coordinate[sequence.Count];
+        for (var i = 0; i < rounded.Length; i++)
+        {
+            rounded[i] = RoundCoordinate(sequence.GetCoordinate(i), precision);
+        }
+
+        return GeometryFactory.CreateLineString(rounded, sequence.Layout, crs ?? line.CoordinateReference);
+    }
+
+    private static Polygon RoundPolygon(Polygon polygon, CoordinateReference? crs, int precision)
+    {
+        var exterior = RoundLine(polygon.ExteriorRing, null, precision);
+        var holes = polygon.InteriorRings.Select(ring => RoundLine(ring, null, precision));
+        return GeometryFactory.CreatePolygon(exterior, holes, crs ?? polygon.CoordinateReference);
+    }
+
+    private static Coordinate RoundCoordinate(Coordinate coordinate, int precision) => new(
+        Math.Round(coordinate.X, precision),
+        Math.Round(coordinate.Y, precision),
+        RoundOrdinate(coordinate.Z, precision),
+        RoundOrdinate(coordinate.M, precision));
+
+    private static double? RoundOrdinate(double? value, int precision) =>
+        value is null || double.IsNaN(value.Value) ? value : Math.Round(value.Value, precision);
 
     private static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query)
     {
