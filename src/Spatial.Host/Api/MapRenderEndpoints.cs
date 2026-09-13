@@ -29,7 +29,7 @@ internal static class MapRenderEndpoints
         string name,
         MapRenderRequestDto request,
         HttpContext context,
-        IServiceProvider services,
+        IStoreRegistry stores,
         IMapRegistry registry,
         IMapRenderer renderer,
         RenderingOptions options,
@@ -42,7 +42,7 @@ internal static class MapRenderEndpoints
             var mapRequest = new MapRenderRequest(
                 RenderEndpoints.ToViewport(request.Viewport),
                 MapStyle.Compose(map),
-                ResolveLayers(map, services),
+                ResolveLayers(map, stores),
                 RenderEndpoints.ToImagery(request.Imagery),
                 request.Format,
                 request.Quality,
@@ -59,12 +59,12 @@ internal static class MapRenderEndpoints
         }
     }
 
-    private static List<MapLayerSource> ResolveLayers(Map map, IServiceProvider services)
+    private static List<MapLayerSource> ResolveLayers(Map map, IStoreRegistry stores)
     {
         var layers = map.Layers
             .Where(layer => layer.Kind == MapLayerKind.Feature)
             .Select(layer => new RenderLayerDto(layer.Dataset, layer.Store ?? map.Store))
             .ToList();
-        return RenderEndpoints.ResolveLayers(layers, services);
+        return RenderEndpoints.ResolveLayers(layers, stores);
     }
 }

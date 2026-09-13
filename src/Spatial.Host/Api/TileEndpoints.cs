@@ -2,6 +2,7 @@ using System.Globalization;
 using Spatial.Host.Tiling;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
+using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Host.Api;
 
@@ -49,7 +50,7 @@ internal static class TileEndpoints
         [AsParameters] TileAddress address,
         TileRenderRequest request,
         HttpContext context,
-        IServiceProvider services,
+        IStoreRegistry stores,
         TileService tiles,
         RenderingOptions options)
     {
@@ -59,7 +60,7 @@ internal static class TileEndpoints
             RenderEndpoints.ValidateFormat(effective.Format, options);
             var scheme = tiles.Resolve(effective.Scheme);
             var result = await tiles.RenderAsync(
-                ToSpec(effective, services),
+                ToSpec(effective, stores),
                 Fingerprint(effective),
                 new TileCoordinate(address.Z, address.X, address.Y),
                 scheme,
@@ -75,7 +76,7 @@ internal static class TileEndpoints
 
     private static async Task<IResult> Batch(
         TileBatchRequest batch,
-        IServiceProvider services,
+        IStoreRegistry stores,
         TileService tiles,
         RenderingOptions options,
         CancellationToken cancellationToken)
@@ -86,7 +87,7 @@ internal static class TileEndpoints
             var scheme = tiles.Resolve(batch.Request.Scheme);
             var coordinates = batch.Tiles.Select(tile => new TileCoordinate(tile.Z, tile.X, tile.Y)).ToList();
             var results = await tiles.RenderBatchAsync(
-                ToSpec(batch.Request, services), Fingerprint(batch.Request), scheme, coordinates, cancellationToken);
+                ToSpec(batch.Request, stores), Fingerprint(batch.Request), scheme, coordinates, cancellationToken);
             return Results.Ok(new TileBatchResponse(
                 [.. results.Select((result, index) => ToDto(result, coordinates[index]))]));
         }
@@ -108,10 +109,10 @@ internal static class TileEndpoints
         return Results.NoContent();
     }
 
-    internal static TileRenderSpec ToSpec(TileRenderRequest request, IServiceProvider services) =>
+    internal static TileRenderSpec ToSpec(TileRenderRequest request, IStoreRegistry stores) =>
         new(
             request.Style.GetRawText(),
-            RenderEndpoints.ResolveLayers(request.Layers, services),
+            RenderEndpoints.ResolveLayers(request.Layers, stores),
             RenderEndpoints.ToImagery(request.Imagery),
             request.Format,
             request.Quality,

@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.PluginSdk;
@@ -44,11 +43,23 @@ internal static class OgcFixtures
     public static (OgcRequestServices Services, FakeStore Store) Build(Map map)
     {
         var store = new FakeStore(map.Layers[0].Dataset);
-        var provider = new ServiceCollection()
-            .AddKeyedSingleton<IFeatureStore>(Store, store)
-            .AddKeyedSingleton<IDataCatalogue>(Store, store)
-            .BuildServiceProvider();
-        return (new OgcRequestServices(provider, new FakeRegistry(map), new FakeRenderer(), new IdentityTransforms()), store);
+        return (new OgcRequestServices(new FakeStoreRegistry(store), new FakeRegistry(map), new FakeRenderer(), new IdentityTransforms()), store);
+    }
+
+    /// <summary>One keyed store exposed through the typed registry seam (ADR-0033).</summary>
+    internal sealed class FakeStoreRegistry(FakeStore store) : IStoreRegistry
+    {
+        public IDataCatalogue Catalogue(string name) => store;
+
+        public IFeatureStore Features(string name) => store;
+
+        public IFeatureEditStore? EditStore(string name) => null;
+
+        public ITransactionStore? Transactions(string name) => null;
+
+        public IDatasetIngest? Ingest(string name) => null;
+
+        public IRasterCatalogue? RasterCatalogue(string name) => null;
     }
 
     internal sealed class FakeStore(string dataset) : IFeatureStore, IDataCatalogue

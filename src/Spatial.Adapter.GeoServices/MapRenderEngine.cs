@@ -21,10 +21,10 @@ internal static class MapRenderEngine
 {
     /// <summary>Resolves each selected layer's keyed store and catalogue into render sources.</summary>
     public static IReadOnlyList<MapLayerSource> Sources(
-        IServiceProvider services, string store, IReadOnlyList<PublishedLayer> layers, IReadOnlyDictionary<int, string>? layerDefs)
+        IStoreRegistry stores, string store, IReadOnlyList<PublishedLayer> layers, IReadOnlyDictionary<int, string>? layerDefs)
     {
-        var features = services.GetRequiredKeyedService<IFeatureStore>(store);
-        var catalogue = services.GetRequiredKeyedService<IDataCatalogue>(store);
+        var features = stores.Features(store);
+        var catalogue = stores.Catalogue(store);
         return layers
             .Select(layer => new MapLayerSource(layer.Dataset, features, catalogue, layerDefs?.GetValueOrDefault(layer.Id)))
             .ToArray();

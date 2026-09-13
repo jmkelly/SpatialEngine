@@ -32,18 +32,20 @@ internal static class GeometryServerEndpoints
     }
 
     private static async Task<IResult> GeometryOperation(
-        HttpContext context, string operation, IServiceProvider services, CancellationToken cancellationToken)
+        HttpContext context,
+        string operation,
+        IGeometryOperations geometry,
+        IGeometryMeasures measures,
+        IGeometryProcessing processing,
+        IGeometryRelations relations,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var capabilities = new GeometryServiceCapabilities(
-                services.GetRequiredService<IGeometryOperations>(),
-                services.GetRequiredService<IGeometryMeasures>(),
-                services.GetRequiredService<IGeometryProcessing>(),
-                services.GetRequiredService<IGeometryRelations>(),
-                services.GetRequiredService<ICoordinateTransforms>());
+            var capabilities = new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms);
             return GeometryService.Dispatch(operation, parameters, capabilities, cancellationToken);
         }
         catch (Exception exception)

@@ -25,6 +25,10 @@ implementations and the host — never the reverse.
   styled differently in different maps.
 - `IDatasetIngest` + `IngestRequest`/`IngestOutcome`/`IngestIdentity` —
   atomic bulk create-and-load with an identity mode (ADR-0041).
+- `Providers/IStoreRegistry` — the typed seam over the keyed stores
+  (ADR-0033): a runtime store name resolves to its catalogue, feature store
+  and additive faces, so boundary adapters and the host API never hold the
+  DI container. Implemented by `Spatial.Host`'s `KeyedStoreRegistry`.
 - `IDemoJobs` — the demo cancellable sleep with progress.
 - `ITileScheme` + `TileCoordinate`/`TileLevel` and `ITileCache` +
   `TileCacheKey` — pluggable tiling schemes and a content-addressed tile

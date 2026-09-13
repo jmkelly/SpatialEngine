@@ -21,22 +21,22 @@ public static class OgcEndpoints
         group.MapMethods("/{name}/wms", ["GET", "POST"], (
             string name,
             HttpContext context,
-            IServiceProvider services,
+            IStoreRegistry stores,
             IMapRenderer renderer,
             ICoordinateTransforms transforms,
             CancellationToken cancellationToken) =>
             Dispatch(context, parameters => WmsService.HandleAsync(
-                name, parameters, new OgcRequestServices(services, registry, renderer, transforms), options, context, cancellationToken), cancellationToken));
+                name, parameters, new OgcRequestServices(stores, registry, renderer, transforms), options, context, cancellationToken), cancellationToken));
 
         group.MapMethods("/{name}/wfs", ["GET", "POST"], (
             string name,
             HttpContext context,
-            IServiceProvider services,
+            IStoreRegistry stores,
             IMapRenderer renderer,
             ICoordinateTransforms transforms,
             CancellationToken cancellationToken) =>
             Dispatch(context, parameters => WfsService.HandleAsync(
-                name, parameters, new OgcRequestServices(services, registry, renderer, transforms), options, context, cancellationToken), cancellationToken));
+                name, parameters, new OgcRequestServices(stores, registry, renderer, transforms), options, context, cancellationToken), cancellationToken));
     }
 
     private static async Task<IResult> Dispatch(

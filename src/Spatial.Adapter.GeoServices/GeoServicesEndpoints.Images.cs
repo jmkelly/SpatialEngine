@@ -23,45 +23,45 @@ internal static class ImageServerEndpoints
     internal static void MapImageServer(
         RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry, GeoServicesOptions options)
     {
-        group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            ImageServerRoot(catalog, registry, service, context, services, cancellationToken));
+        group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageServerRoot(catalog, registry, service, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/exportImage", ["GET", "POST"], (
-            string service, HttpContext context, IServiceProvider services, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            ImageExport(catalog, registry, service, context, services, transforms, cancellationToken));
-        group.MapMethods("/{service}/ImageServer/identify", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            ImageIdentify(catalog, registry, service, context, services, cancellationToken));
+            string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            ImageExport(catalog, registry, service, context, stores, transforms, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/identify", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageIdentify(catalog, registry, service, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/query", ["GET", "POST"], (
-            string service, HttpContext context, IServiceProvider services,
+            string service, HttpContext context, IStoreRegistry stores,
             IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            ImageQuery(catalog, registry, service, context, services, operations, transforms, cancellationToken));
+            ImageQuery(catalog, registry, service, context, stores, operations, transforms, cancellationToken));
         group.MapMethods("/{service}/ImageServer/download", ["GET", "POST"], (
-            string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            ImageDownload(catalog, registry, service, context, services, options, cancellationToken));
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageDownload(catalog, registry, service, context, stores, options, cancellationToken));
         group.MapMethods("/{service}/ImageServer/file", ["GET", "POST"], (
-            string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            ImageFile(catalog, registry, service, context, services, options, cancellationToken));
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageFile(catalog, registry, service, context, stores, options, cancellationToken));
         group.MapMethods("/{service}/ImageServer/{rasterId:long}/info", ["GET", "POST"], (
-            string service, long rasterId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            RasterInfo(catalog, registry, service, rasterId, context, services, cancellationToken));
+            string service, long rasterId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            RasterInfo(catalog, registry, service, rasterId, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/{rasterId:long}/image", ["GET", "POST"], (
-            string service, long rasterId, HttpContext context, IServiceProvider services, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            RasterImage(catalog, registry, service, rasterId, context, services, transforms, cancellationToken));
+            string service, long rasterId, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            RasterImage(catalog, registry, service, rasterId, context, stores, transforms, cancellationToken));
         group.MapMethods("/{service}/ImageServer/{rasterId:long}/thumbnail", ["GET", "POST"], (
-            string service, long rasterId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            RasterThumbnail(catalog, registry, service, rasterId, context, services, cancellationToken));
+            string service, long rasterId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            RasterThumbnail(catalog, registry, service, rasterId, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/{rasterId:long}", ["GET", "POST"], (
-            string service, long rasterId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            RasterItem(catalog, registry, service, rasterId, context, services, cancellationToken));
+            string service, long rasterId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            RasterItem(catalog, registry, service, rasterId, context, stores, cancellationToken));
     }
 
     private static async Task<IResult> ImageServerRoot(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             return EsriJson.Value(ImageService.Root(image.Description, image.Copyright));
         }
         catch (Exception exception)
@@ -72,12 +72,12 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> ImageExport(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IServiceProvider services, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+        IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             var rasterId = ParseExportRasterId(parameters, image.Description, service);
             return await ExportImageAsync(image, parameters, context, transforms, rasterId, defaultBbox: null, defaultCrs: null, cancellationToken);
         }
@@ -89,13 +89,13 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> ImageIdentify(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IServiceProvider services, CancellationToken cancellationToken)
+        IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             var rasterCrs = image.Description.Raster.Crs;
             var srid = MapServerResources.SridOf(rasterCrs);
             var geometry = EsriValueParser.ParseGeometry(parameters.Require("geometry"), CoordinateReference.Epsg(srid));
@@ -112,13 +112,13 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> ImageQuery(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IServiceProvider services, IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+        IStoreRegistry stores, IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             var layerCrs = EsriLayerModel.LayerCoordinateReference(MapServerResources.SridOf(image.Description.Raster.Crs));
             var query = EsriFeatureQuery.Parse(parameters, layerCrs);
@@ -133,14 +133,14 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> ImageDownload(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IServiceProvider services, GeoServicesOptions options, CancellationToken cancellationToken)
+        IStoreRegistry stores, GeoServicesOptions options, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EnsureDownloadAllowed(options);
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             RejectDownloadClipping(parameters);
             var rasterIds = ImageService.ParseRasterIds(parameters.Get("rasterIds"));
@@ -157,13 +157,13 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> ImageFile(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IServiceProvider services, GeoServicesOptions options, CancellationToken cancellationToken)
+        IStoreRegistry stores, GeoServicesOptions options, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EnsureDownloadAllowed(options);
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             var fileId = parameters.Require("id");
             var files = await image.Catalogue.ListFilesAsync(image.Dataset, null, cancellationToken);
@@ -186,13 +186,13 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> RasterItem(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IServiceProvider services, CancellationToken cancellationToken)
+        IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             var item = await FindItemAsync(image, rasterId, cancellationToken);
             return ImageService.CatalogItem(
@@ -206,13 +206,13 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> RasterInfo(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IServiceProvider services, CancellationToken cancellationToken)
+        IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             var item = await FindItemAsync(image, rasterId, cancellationToken);
             return EsriJson.Value(ImageService.Info(item.Raster));
@@ -226,12 +226,12 @@ internal static class ImageServerEndpoints
     /// <summary>The Raster Image resource (spec §8.2): one catalog item over the export pipeline.</summary>
     private static async Task<IResult> RasterImage(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IServiceProvider services, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+        IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             var item = await FindItemAsync(image, rasterId, cancellationToken);
             return await ExportImageAsync(image, parameters, context, transforms, rasterId, item.Raster.Extent, item.Raster.Crs, cancellationToken);
@@ -245,7 +245,7 @@ internal static class ImageServerEndpoints
     /// <summary>The Raster Thumbnail resource (spec §8.3): a reduced image of one catalog item, streamed.</summary>
     private static async Task<IResult> RasterThumbnail(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IServiceProvider services, CancellationToken cancellationToken)
+        IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
@@ -257,7 +257,7 @@ internal static class ImageServerEndpoints
                 EsriFormat.Ensure(format);
             }
 
-            var image = await ResolveImageAsync(catalog, registry, service, services, cancellationToken);
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             RequireCatalog(image.Description, service);
             var item = await FindItemAsync(image, rasterId, cancellationToken);
             var viewport = ImageService.ThumbnailViewport(item.Raster, ThumbnailMaxSize);
@@ -326,7 +326,7 @@ internal static class ImageServerEndpoints
 
     /// <summary>Resolves the image publication, its keyed raster catalogue and the described dataset.</summary>
     private static async Task<ImageContext> ResolveImageAsync(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, IStoreRegistry stores, CancellationToken cancellationToken)
     {
         var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "ImageServer", MapService.Image, cancellationToken);
         if (resolved.Layers is not { Count: > 0 } layers)
@@ -335,7 +335,7 @@ internal static class ImageServerEndpoints
                 $"Image Service '{service}' must expose an explicit raster dataset as its layer.");
         }
 
-        var catalogue = services.GetKeyedService<IRasterCatalogue>(resolved.Store)
+        var catalogue = stores.RasterCatalogue(resolved.Store)
             ?? throw new EsriInteropException(
                 EsriErrorCodes.ServiceUnavailable, $"No raster provider is configured for store '{resolved.Store}'.");
         var dataset = layers.OrderBy(layer => layer.LayerId).First().Dataset;

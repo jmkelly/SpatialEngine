@@ -31,42 +31,42 @@ public static partial class GeoServicesEndpoints
             Catalog(catalog, registry, context, cancellationToken));
         GeometryServerEndpoints.MapGeometryServer(group);
 
-        group.MapMethods("/{service}/FeatureServer", ["GET", "POST"], (string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            FeatureServerRoot(catalog, registry, service, context, services, cancellationToken));
-        group.MapMethods("/{service}/FeatureServer/{layerId:int}", ["GET", "POST"], (string service, int layerId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken) =>
-            FeatureLayer(catalog, registry, service, layerId, context, services, cancellationToken));
+        group.MapMethods("/{service}/FeatureServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureServerRoot(catalog, registry, service, context, stores, cancellationToken));
+        group.MapMethods("/{service}/FeatureServer/{layerId:int}", ["GET", "POST"], (string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureLayer(catalog, registry, service, layerId, context, stores, cancellationToken));
         // The Feature (object) resource (spec §9.1.2): ArcGIS REST JS
         // getFeature reads `<layerId>/<objectId>` directly.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/{objectId:long}", ["GET", "POST"], (
-            string service, int layerId, long objectId, HttpContext context, IServiceProvider services,
+            string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores,
             ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            FeatureResource(catalog, registry, service, layerId, objectId, context, services, transforms, cancellationToken));
+            FeatureResource(catalog, registry, service, layerId, objectId, context, stores, transforms, cancellationToken));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/query", ["GET", "POST"], (
             HttpContext context,
             string service,
             int layerId,
-            IServiceProvider services,
+            IStoreRegistry stores,
             IGeometryOperations operations,
             ICoordinateTransforms transforms,
             CancellationToken cancellationToken) =>
             FeatureQuery(
-                new FeatureQueryContext(catalog, registry, context, service, layerId, services, operations, transforms),
+                new FeatureQueryContext(catalog, registry, context, service, layerId, stores, operations, transforms),
                 cancellationToken));
 
         // Editing (ADR-0037): POST-only, per spec §9.1.6–§9.1.9.
         group.MapPost("/{service}/FeatureServer/{layerId:int}/addFeatures", (
-            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, services, EsriEditOperation.Add), cancellationToken));
+            HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Add), cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/updateFeatures", (
-            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, services, EsriEditOperation.Update), cancellationToken));
+            HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Update), cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/deleteFeatures", (
-            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, services, EsriEditOperation.Delete), cancellationToken));
+            HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Delete), cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/applyEdits", (
-            HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, services, EsriEditOperation.Apply), cancellationToken));
+            HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Apply), cancellationToken));
 
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
@@ -136,15 +136,15 @@ public static partial class GeoServicesEndpoints
     }
 
     private static async Task<IResult> FeatureServerRoot(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            var layers = await ListLayersAsync(services, resolved, cancellationToken);
-            return EsriJson.Value(FeatureService.Root(layers, IsEditable(services, resolved.Store)));
+            var layers = await ListLayersAsync(stores, resolved, cancellationToken);
+            return EsriJson.Value(FeatureService.Root(layers, IsEditable(stores, resolved.Store)));
         }
         catch (Exception exception)
         {
@@ -153,15 +153,15 @@ public static partial class GeoServicesEndpoints
     }
 
     private static async Task<IResult> FeatureLayer(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, HttpContext context, IServiceProvider services, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(services, resolved, layerId, cancellationToken);
-            var editable = IsEditable(services, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
+            var description = await DescribeAsync(stores, resolved, layerId, cancellationToken);
+            var editable = IsEditable(stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
             return EsriJson.Value(FeatureService.Layer(layerId, description, editable));
         }
         catch (Exception exception)
@@ -177,7 +177,7 @@ public static partial class GeoServicesEndpoints
         int layerId,
         long objectId,
         HttpContext context,
-        IServiceProvider services,
+        IStoreRegistry stores,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken)
     {
@@ -186,9 +186,9 @@ public static partial class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(services, resolved, layerId, cancellationToken);
+            var description = await DescribeAsync(stores, resolved, layerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
-            var store = services.GetRequiredKeyedService<IFeatureStore>(resolved.Store);
+            var store = stores.Features(resolved.Store);
             return await FeatureService.FeatureAsync(description, store, objectId, query, transforms, cancellationToken);
         }
         catch (Exception exception)
@@ -204,9 +204,9 @@ public static partial class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(request.Services, resolved, request.LayerId, cancellationToken);
+            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
-            var store = request.Services.GetRequiredKeyedService<IFeatureStore>(resolved.Store);
+            var store = request.Stores.Features(resolved.Store);
             return await FeatureService.QueryAsync(description, store, query, request.Operations, request.Transforms, cancellationToken);
         }
         catch (Exception exception)
@@ -223,9 +223,9 @@ public static partial class GeoServicesEndpoints
             EsriFormat.Ensure(parameters.Get("f"));
             EsriEditRequest.RejectUnsupported(parameters);
             var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(request.Services, resolved, request.LayerId, cancellationToken);
-            var store = request.Services.GetRequiredKeyedService<IFeatureStore>(resolved.Store);
-            var editStore = EditStore(request.Services, resolved.Store)
+            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
+            var store = request.Stores.Features(resolved.Store);
+            var editStore = EditStore(request.Stores, resolved.Store)
                 ?? throw EsriInteropException.Invalid(
                     $"Service '{request.Service}' is read-only; it exposes no feature-editing capability.");
 
@@ -251,12 +251,12 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    private static bool IsEditable(IServiceProvider services, string store) =>
-        EditStore(services, store) is not null;
+    private static bool IsEditable(IStoreRegistry stores, string store) =>
+        EditStore(stores, store) is not null;
 
     /// <summary>Resolves the service's keyed editing capability, or null when the store is read-only (ADR-0037).</summary>
-    private static IFeatureEditStore? EditStore(IServiceProvider services, string store) =>
-        services.GetKeyedService<IFeatureEditStore>(store);
+    private static IFeatureEditStore? EditStore(IStoreRegistry stores, string store) =>
+        stores.EditStore(store);
 
     /// <summary>
     /// Resolves one GeoServices server (Feature, Map or Image): a
@@ -303,7 +303,7 @@ public static partial class GeoServicesEndpoints
 
     /// <summary>Lists the published layers: explicit for a runtime publication, whole-store (sorted) for a declared service.</summary>
     internal static async Task<IReadOnlyList<PublishedLayer>> ListLayersAsync(
-        IServiceProvider services, ResolvedService resolved, CancellationToken cancellationToken)
+        IStoreRegistry stores, ResolvedService resolved, CancellationToken cancellationToken)
     {
         if (resolved.Layers is { } layers)
         {
@@ -313,18 +313,18 @@ public static partial class GeoServicesEndpoints
                 .ToArray();
         }
 
-        var catalogue = services.GetRequiredKeyedService<IDataCatalogue>(resolved.Store);
+        var catalogue = stores.Catalogue(resolved.Store);
         var datasets = (await catalogue.ListAsync(null, cancellationToken)).OrderBy(dataset => dataset.Id, StringComparer.Ordinal).ToArray();
         return datasets.Select((dataset, index) => new PublishedLayer(index, dataset.Id, dataset.Table)).ToArray();
     }
 
     internal static async Task<DatasetDescription> DescribeAsync(
-        IServiceProvider services, ResolvedService resolved, int layerId, CancellationToken cancellationToken)
+        IStoreRegistry stores, ResolvedService resolved, int layerId, CancellationToken cancellationToken)
     {
-        var layers = await ListLayersAsync(services, resolved, cancellationToken);
+        var layers = await ListLayersAsync(stores, resolved, cancellationToken);
         var layer = layers.FirstOrDefault(candidate => candidate.Id == layerId)
             ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in the service.");
-        var catalogue = services.GetRequiredKeyedService<IDataCatalogue>(resolved.Store);
+        var catalogue = stores.Catalogue(resolved.Store);
         return await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
     }
 
@@ -352,7 +352,7 @@ internal sealed record FeatureQueryContext(
     HttpContext Context,
     string Service,
     int LayerId,
-    IServiceProvider Services,
+    IStoreRegistry Stores,
     IGeometryOperations Operations,
     ICoordinateTransforms Transforms);
 
@@ -363,7 +363,7 @@ internal sealed record FeatureEditContext(
     HttpContext Context,
     string Service,
     int LayerId,
-    IServiceProvider Services,
+    IStoreRegistry Stores,
     EsriEditOperation Operation);
 
 /// <summary>The GeoServices catalog resource (spec §3).</summary>

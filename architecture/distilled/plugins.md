@@ -27,6 +27,12 @@ Microsoft DI — keyed services where two stores serve one contract:
   implemented by `Spatial.Imagery.Vips`.
 - `Spatial.Adapter.GeoServices` is mounted by the host at
   `Spatial:GeoServices:Root` (ADR-0035).
+- `IStoreRegistry` (`Spatial.Host`'s `KeyedStoreRegistry`) is the single
+  typed seam over the keyed stores: a request's store name resolves to its
+  catalogue, feature store and additive faces, so the boundary adapters and
+  the host API depend on the registry and never hold `IServiceProvider`
+  (ADR-0033). The container is captured only in this one implementation,
+  where the runtime key is needed.
 
 In order of preference for new implementations:
 

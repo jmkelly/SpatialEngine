@@ -17,6 +17,10 @@ internal static class StoreServices
 {
     public static void Configure(WebApplicationBuilder builder)
     {
+        // The one typed seam over the keyed stores (ADR-0033): adapters and
+        // the host API resolve store capabilities through it, never through
+        // the container.
+        builder.Services.AddSingleton<IStoreRegistry, KeyedStoreRegistry>();
         ConfigureDemo(builder);
         ConfigureMemory(builder);
         ConfigurePostgis(builder);

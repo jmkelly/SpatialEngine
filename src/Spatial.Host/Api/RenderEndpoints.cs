@@ -2,6 +2,7 @@ using System.Globalization;
 using Spatial.Core.Geometry;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
+using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Host.Api;
 
@@ -55,7 +56,7 @@ internal static class RenderEndpoints
         }
     }
 
-    internal static List<MapLayerSource> ResolveLayers(IReadOnlyList<RenderLayerDto> layers, IServiceProvider services)
+    internal static List<MapLayerSource> ResolveLayers(IReadOnlyList<RenderLayerDto> layers, IStoreRegistry stores)
     {
         var resolved = new List<MapLayerSource>(layers.Count);
         foreach (var layer in layers)
@@ -63,8 +64,8 @@ internal static class RenderEndpoints
             var store = layer.Store ?? StoreEndpoints.Demo;
             resolved.Add(new MapLayerSource(
                 layer.Dataset,
-                StoreEndpoints.ResolveFeatures(services, store),
-                StoreEndpoints.ResolveCatalogue(services, store),
+                StoreEndpoints.ResolveFeatures(stores, store),
+                StoreEndpoints.ResolveCatalogue(stores, store),
                 layer.Filter));
         }
 
@@ -87,11 +88,11 @@ internal static class RenderEndpoints
         return layers;
     }
 
-    internal static MapRenderRequest ToMapRequest(RenderRequest request, RasterViewport viewport, IServiceProvider services) =>
+    internal static MapRenderRequest ToMapRequest(RenderRequest request, RasterViewport viewport, IStoreRegistry stores) =>
         new(
             viewport,
             request.Style.GetRawText(),
-            ResolveLayers(request.Layers, services),
+            ResolveLayers(request.Layers, stores),
             ToImagery(request.Imagery),
             request.Format,
             request.Quality,
@@ -109,7 +110,7 @@ internal static class RenderEndpoints
     private static async Task<IResult> Render(
         RenderRequest request,
         HttpContext context,
-        IServiceProvider services,
+        IStoreRegistry stores,
         IMapRenderer renderer,
         RenderingOptions options,
         CancellationToken cancellationToken)
@@ -117,7 +118,7 @@ internal static class RenderEndpoints
         try
         {
             ValidateFormat(request.Format, options);
-            var mapRequest = ToMapRequest(request, ToViewport(request.Viewport), services);
+            var mapRequest = ToMapRequest(request, ToViewport(request.Viewport), stores);
             var image = await renderer.RenderAsync(mapRequest, cancellationToken);
             WriteMetadataHeaders(context, image);
             return Results.Bytes(image.Content, image.MediaType);

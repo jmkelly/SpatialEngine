@@ -40,15 +40,15 @@ internal static class AdminEndpoints
             return;
         }
 
-        app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, name, map, services, registry, token));
+        app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IStoreRegistry stores, IMapRegistry registry, CancellationToken token) =>
+            PutMap(context, admin, name, map, stores, registry, token));
         app.MapDelete("/api/maps/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
             DeleteMap(context, admin, name, registry, token));
-        app.MapPost("/api/ingest", (HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
-            Ingest(context, admin, ingest, services, registry, token));
+        app.MapPost("/api/ingest", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token) =>
+            Ingest(context, admin, ingest, stores, transforms, registry, token));
 
-        app.MapPut("/api/publications/{name}", (string name, Map map, HttpContext context, IServiceProvider services, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, name, map, services, registry, token));
+        app.MapPut("/api/publications/{name}", (string name, Map map, HttpContext context, IStoreRegistry stores, IMapRegistry registry, CancellationToken token) =>
+            PutMap(context, admin, name, map, stores, registry, token));
         app.MapDelete("/api/publications/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
             DeleteMap(context, admin, name, registry, token));
     }
@@ -79,7 +79,7 @@ internal static class AdminEndpoints
 
     private static async Task<IResult> PutMap(
         HttpContext context, AdminOptions admin, string name, Map map,
-        IServiceProvider services, IMapRegistry registry, CancellationToken token)
+        IStoreRegistry stores, IMapRegistry registry, CancellationToken token)
     {
         if (Authorize(context, admin) is { } rejection)
         {
@@ -89,7 +89,7 @@ internal static class AdminEndpoints
         try
         {
             var named = map with { Name = Uri.UnescapeDataString(name) };
-            await EnsureLayersAreServableAsync(services, named, token);
+            await EnsureLayersAreServableAsync(stores, named, token);
             var stored = await registry.PutAsync(named, token);
             return Results.Ok(stored);
         }
@@ -105,22 +105,21 @@ internal static class AdminEndpoints
     /// every request: a feature layer must exist in its store's catalogue and an
     /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
     /// </summary>
-    private static async Task EnsureLayersAreServableAsync(IServiceProvider services, Map map, CancellationToken token)
+    private static async Task EnsureLayersAreServableAsync(IStoreRegistry stores, Map map, CancellationToken token)
     {
         foreach (var layer in map.Layers)
         {
             var store = layer.Store ?? map.Store;
             if (layer.Kind == MapLayerKind.Image)
             {
-                var raster = services.GetKeyedService<IRasterCatalogue>(store)
+                var raster = stores.RasterCatalogue(store)
                     ?? throw SpatialException.BadArguments(
                         $"Map '{map.Name}' exposes an image layer but store '{store}' has no raster provider.");
                 await raster.DescribeAsync(layer.Dataset, token);
                 continue;
             }
 
-            var catalogue = services.GetKeyedService<IDataCatalogue>(store)
-                ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
+            var catalogue = stores.Catalogue(store);
             await catalogue.DescribeAsync(layer.Dataset, token);
         }
     }
@@ -145,7 +144,7 @@ internal static class AdminEndpoints
 
     private static async Task<IResult> Ingest(
         HttpContext context, AdminOptions admin, IngestOptions ingest,
-        IServiceProvider services, IMapRegistry registry, CancellationToken token)
+        IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token)
     {
         if (Authorize(context, admin) is { } rejection)
         {
@@ -167,11 +166,11 @@ internal static class AdminEndpoints
             var identityField = EmptyToNull(query["identityField"].ToString());
             var identity = ParseIdentity(query["identity"].ToString());
             var sourceSrid = ParseOptionalSrid(query["sourceSrid"].ToString());
-            var target = services.GetKeyedService<IDatasetIngest>(store)
+            var target = stores.Ingest(store)
                 ?? throw SpatialException.BadArguments($"Store '{store}' does not support ingest.");
 
             var decoded = await DecodeAsync(context, ingest, format, sourceSrid ?? srid, identityField);
-            var pages = ConvertIfNeeded(decoded.Pages, sourceSrid, srid, services, token);
+            var pages = ConvertIfNeeded(decoded.Pages, sourceSrid, srid, transforms, token);
             var outcome = await target.IngestAsync(
                 new IngestRequest(dataset, srid, identity, identityField), pages, token);
 
@@ -302,14 +301,13 @@ internal static class AdminEndpoints
     /// nothing and the codec stays free of algorithms.
     /// </summary>
     private static IReadOnlyList<FeatureBatch> ConvertIfNeeded(
-        IReadOnlyList<FeatureBatch> pages, int? sourceSrid, int targetSrid, IServiceProvider services, CancellationToken token)
+        IReadOnlyList<FeatureBatch> pages, int? sourceSrid, int targetSrid, ICoordinateTransforms transforms, CancellationToken token)
     {
         if (sourceSrid is not { } source || source == targetSrid)
         {
             return pages;
         }
 
-        var transforms = services.GetRequiredService<ICoordinateTransforms>();
         var sourceCrs = $"EPSG:{source}";
         var targetCrs = $"EPSG:{targetSrid}";
         var converted = new List<FeatureBatch>(pages.Count);

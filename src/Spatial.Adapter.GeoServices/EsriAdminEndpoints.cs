@@ -35,8 +35,8 @@ public static class EsriAdminEndpoints
             Handle(options, context, () => CreateServiceAsync(registry, service, context, token)));
         group.MapPost("/services/{service}/deleteService", (string service, HttpContext context, CancellationToken token) =>
             Handle(options, context, () => DeleteServiceAsync(registry, service, token)));
-        group.MapPost("/uploads", (HttpContext context, IServiceProvider services, CancellationToken token) =>
-            Handle(options, context, () => UploadAsync(options, staging, context, services, token)));
+        group.MapPost("/uploads", (HttpContext context, IStoreRegistry stores, CancellationToken token) =>
+            Handle(options, context, () => UploadAsync(options, staging, context, stores, token)));
         group.MapPost("/uploads/{id}/publish", (string id, HttpContext context, CancellationToken token) =>
             Handle(options, context, () => PublishAsync(registry, staging, id, context, token)));
     }
@@ -98,7 +98,7 @@ public static class EsriAdminEndpoints
     }
 
     private static async Task<IResult> UploadAsync(
-        EsriAdminOptions options, EsriUploadStaging staging, HttpContext context, IServiceProvider services, CancellationToken token)
+        EsriAdminOptions options, EsriUploadStaging staging, HttpContext context, IStoreRegistry stores, CancellationToken token)
     {
         var query = context.Request.Query;
         var store = Query(query, "store") ?? "memory";
@@ -106,7 +106,7 @@ public static class EsriAdminEndpoints
         var format = ParseFormat(Query(query, "format") ?? "geojson");
         var srid = ParseSrid(Query(query, "srid"));
         var identityField = Query(query, "identityField");
-        var target = services.GetKeyedService<IDatasetIngest>(store)
+        var target = stores.Ingest(store)
             ?? throw EsriInteropException.Invalid($"Store '{store}' does not support ingest.");
 
         await using var body = await ReadUploadAsync(context.Request, options.MaxBytes);

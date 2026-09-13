@@ -30,6 +30,7 @@ internal static class MapTileEndpoints
         [AsParameters] MapTileParameters parameters,
         HttpContext context,
         IMapRegistry registry,
+        IStoreRegistry stores,
         TileService tiles,
         RenderingOptions options)
     {
@@ -45,7 +46,7 @@ internal static class MapTileEndpoints
             RenderEndpoints.ValidateFormat(request.Format, options);
             var scheme = tiles.Resolve(request.Scheme);
             var result = await tiles.RenderAsync(
-                TileEndpoints.ToSpec(request, context.RequestServices),
+                TileEndpoints.ToSpec(request, stores),
                 TileEndpoints.Fingerprint(request),
                 new TileCoordinate(parameters.Z, parameters.X, parameters.Y),
                 scheme,

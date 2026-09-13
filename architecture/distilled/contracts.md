@@ -50,7 +50,13 @@ holding algorithms. All verbs are pure, planar and cancellable.
 - Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
   (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IMapRegistry`, `IDemoJobs`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IStoreRegistry`, `IMapRegistry`, `IDemoJobs`)
+
+`IStoreRegistry` is the one runtime-keyed seam (ADR-0033): a store name
+resolves to its catalogue, feature store and additive capabilities, so a
+protocol adapter reads a mixed map's layers from their own stores without
+holding the DI container. Required reads are `invalid.arguments` for an
+unknown store; additive capabilities return `null`.
 
 | Method | Input | Behaviour |
 | --- | --- | --- |

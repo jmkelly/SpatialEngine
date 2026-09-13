@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 
@@ -6,25 +5,21 @@ namespace Spatial.Adapter.Ogc;
 
 /// <summary>
 /// The in-process services one OGC request resolves against (ADR-0053 §3):
-/// the map registry, the raster renderer and the coordinate transforms. The
-/// keyed stores are resolved lazily per layer store, so a mixed map reads
-/// each layer from its own store.
+/// the keyed store registry, the map registry, the raster renderer and the
+/// coordinate transforms. The registry resolves the keyed stores lazily per
+/// layer store, so a mixed map reads each layer from its own store.
 /// </summary>
 internal sealed record OgcRequestServices(
-    IServiceProvider Provider,
+    IStoreRegistry Stores,
     IMapRegistry Registry,
     IMapRenderer Renderer,
     ICoordinateTransforms Transforms)
 {
     /// <summary>The keyed data catalogue for a store, or <c>invalid.arguments</c> when unknown.</summary>
-    public IDataCatalogue Catalogue(string store) =>
-        Provider.GetKeyedService<IDataCatalogue>(store)
-        ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
+    public IDataCatalogue Catalogue(string store) => Stores.Catalogue(store);
 
     /// <summary>The keyed feature store for a store, or <c>invalid.arguments</c> when unknown.</summary>
-    public IFeatureStore Features(string store) =>
-        Provider.GetKeyedService<IFeatureStore>(store)
-        ?? throw SpatialException.BadArguments($"Unknown store '{store}'.");
+    public IFeatureStore Features(string store) => Stores.Features(store);
 
     /// <summary>Resolves a map and requires it to expose <paramref name="service"/> (404 otherwise).</summary>
     public async Task<Map> ResolveMapAsync(string name, MapService service, string label, CancellationToken cancellationToken)
