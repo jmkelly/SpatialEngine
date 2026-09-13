@@ -76,7 +76,7 @@ public sealed class EsriFeatureQueryTests
     [Fact]
     public async Task An_unsupported_relation_is_rejected()
     {
-        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("spatialRel", "esriSpatialRelContains")));
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("spatialRel", "esriSpatialRelBogus")));
     }
 
     [Fact]
@@ -136,8 +136,6 @@ public sealed class EsriFeatureQueryTests
     }
 
     [Theory]
-    [InlineData("outStatistics")]
-    [InlineData("groupByFieldsForStatistics")]
     [InlineData("returnZ")]
     [InlineData("returnM")]
     public async Task Unsupported_query_parameters_are_rejected(string name)
@@ -169,5 +167,88 @@ public sealed class EsriFeatureQueryTests
         var query = await ParseAsync(("outSR", "4326"));
 
         Assert.Equal(CoordinateReference.Epsg(4326), query.OutSr);
+    }
+
+    [Fact]
+    public async Task Out_statistics_group_by_and_having_are_parsed()
+    {
+        var query = await ParseAsync(
+            ("outStatistics", "[{\"statisticType\":\"sum\",\"onStatisticField\":\"population\",\"outStatisticFieldName\":\"sumpop\"}]"),
+            ("groupByFieldsForStatistics", "name"),
+            ("having", "sumpop > 100"));
+
+        Assert.Single(query.OutStatistics!);
+        Assert.Equal("sum", query.OutStatistics![0].StatisticType);
+        Assert.Equal(["name"], query.GroupByFields);
+        Assert.NotNull(query.Having);
+    }
+
+    [Fact]
+    public async Task Group_by_without_statistics_is_rejected()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("groupByFieldsForStatistics", "name")));
+    }
+
+    [Fact]
+    public async Task Statistics_conflict_with_other_result_shapes()
+    {
+        const string stats = "[{\"statisticType\":\"count\",\"onStatisticField\":\"*\",\"outStatisticFieldName\":\"n\"}]";
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("outStatistics", stats), ("returnCountOnly", "true")));
+    }
+
+    [Fact]
+    public async Task In_sr_is_honoured_for_a_geometry_without_its_own_reference()
+    {
+        var query = EsriFeatureQuery.Parse(
+            await ParamsAsync(("geometry", "13.405,52.52"), ("inSR", "3857")),
+            CoordinateReference.Epsg(4326));
+
+        Assert.Equal(CoordinateReference.Epsg(3857), query.Geometry!.CoordinateReference);
+    }
+
+    [Fact]
+    public async Task Paging_limit_parameters_are_parsed()
+    {
+        var query = await ParseAsync(("returnExceededLimitFeatures", "true"), ("maxRecordCountFactor", "3"));
+
+        Assert.True(query.ReturnExceededLimitFeatures);
+        Assert.Equal(3, query.MaxRecordCountFactor);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("abc")]
+    public async Task Bad_max_record_count_factors_are_rejected(string value)
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("maxRecordCountFactor", value)));
+    }
+
+    [Theory]
+    [InlineData("esriSpatialRelContains")]
+    [InlineData("esriSpatialRelWithin")]
+    [InlineData("esriSpatialRelTouches")]
+    [InlineData("esriSpatialRelOverlaps")]
+    [InlineData("esriSpatialRelCrosses")]
+    public async Task Remaining_spatial_relations_are_accepted(string spatialRel)
+    {
+        var query = await ParseAsync(("spatialRel", spatialRel));
+
+        Assert.Equal(spatialRel, query.SpatialRel);
+    }
+
+    [Fact]
+    public async Task Index_intersects_stays_rejected()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("spatialRel", "esriSpatialRelIndexIntersects")));
+    }
+
+    [Fact]
+    public async Task Quantization_is_rejected_while_precision_and_offset_parse()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("quantizationParameters", "{\"mode\":\"view\"}")));
+        var query = await ParseAsync(("geometryPrecision", "2"), ("maxAllowableOffset", "10"));
+        Assert.Equal(2, query.GeometryPrecision);
+        Assert.Equal(10.0, query.MaxAllowableOffset);
     }
 }

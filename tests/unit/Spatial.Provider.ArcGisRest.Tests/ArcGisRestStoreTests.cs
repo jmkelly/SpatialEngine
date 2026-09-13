@@ -187,6 +187,18 @@ public sealed class ArcGisRestStoreTests
     }
 
     [Fact]
+    public async Task Query_sends_order_by_object_id_for_stable_paging()
+    {
+        var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
+        var store = Store(handler);
+
+        await store.QueryAsync("arcgis.l0", new BoundingBox(1, 2, 3, 4), "name = 'Berlin'");
+
+        var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
+        Assert.Contains("orderByFields=OBJECTID", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Query_rejects_an_untranslatable_filter()
     {
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));

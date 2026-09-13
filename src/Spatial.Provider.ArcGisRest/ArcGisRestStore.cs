@@ -183,6 +183,7 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
             new("returnGeometry", "true"),
             new("resultOffset", offset.ToString(CultureInfo.InvariantCulture)),
             new("resultRecordCount", pageSize.ToString(CultureInfo.InvariantCulture)),
+            new("orderByFields", OrderByField(description)),
         };
         if (description.Srid > 0)
         {
@@ -201,6 +202,14 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
 
         return parameters;
     }
+
+    /// <summary>
+    /// The stable paging key (T-027): the remote object-id field, so pages
+    /// that a remote does not order deterministically cannot overlap or drop
+    /// rows across resultOffset windows.
+    /// </summary>
+    private static string OrderByField(DatasetDescription description) =>
+        description.IdColumns is { Count: > 0 } ids ? ids[0] : "OBJECTID";
 
     private static void AddEnvelope(List<KeyValuePair<string, string>> parameters, BoundingBox box, int srid)
     {

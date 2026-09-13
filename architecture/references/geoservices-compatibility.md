@@ -225,14 +225,33 @@ Ordered by dependency:
   on query is honestly rejected with a typed `invalid.arguments` failure
   naming `supportedQueryFormats` — GeoJSON output remains a non-goal.
 - Serving status update: the FeatureServer layer and service root advertise
-  truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: false`,
+  truthful `supportedQueryFormats` (`'JSON'`), `supportsStatistics: true`,
   `supportsAdvancedQueries: true` and `advancedQueryCapabilities`
   (`supportsPagination`/`supportsOrderBy`/`supportsDistinct`/
-  `supportsReturningQueryExtent: true`; `supportsStatistics`/
-  `supportsHavingClause`/`useStandardizedQueries: false`), each proved by
-  the behaviour test it names. pygeoapi's connect gate still fails its
+  `supportsReturningQueryExtent`/`supportsStatistics`/
+  `supportsHavingClause: true`; `useStandardizedQueries: false`), each proved by
+  the behaviour test it names. `outStatistics` (`count/sum/min/max/avg/stddev/var`)
+  with `groupByFieldsForStatistics` and `having` is served over the matched set
+  (T-019). pygeoapi's connect gate still fails its
   `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
   facade serves Esri JSON only.
+- Serving status update: `inSR` is honoured for query geometry (T-020) — the
+  input geometry is interpreted in `inSR` (including the simple comma syntax
+  which carries no reference) and transformed to the layer CRS before matching.
+- Serving status update: `returnExceededLimitFeatures` is accepted (the REST JS
+  `queryAllFeatures` loop runs unmodified with a correct `exceededTransferLimit`)
+  and `maxRecordCountFactor` multiplies the page cap (`maxRecordCount × factor`,
+  default 1), so oversized `resultRecordCount` values cap honestly (T-021).
+- Serving status update: `Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are
+  served via the envelope + intersection verbs (boundary-exactness needs a
+  boundary verb the engine does not expose); `esriSpatialRelIndexIntersects`
+  stays rejected with a named alternative. `quantizationParameters` is honestly
+  rejected, `geometryPrecision` rounds every ordinate, `maxAllowableOffset` is
+  accepted (full precision returned) (T-023).
+- Consume status update: the ArcGIS REST provider sends
+  `orderByFields=<objectIdField>` on every paged query for a stable paging
+  sequence; the ImageServer operation surface is pinned by reconnaissance tests
+  (T-027).
 
 ## 8. Documentation baseline
 

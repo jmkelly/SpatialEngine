@@ -29,16 +29,16 @@ internal static class EsriLayerModel
     public const string SupportedQueryFormats = "JSON";
 
     /// <summary>
-    /// The truthful query flags (T-018): pagination/orderBy honoured,
-    /// distinct values and query extent served, statistics/having rejected,
+    /// The truthful query flags: pagination/orderBy honoured,
+    /// distinct values, query extent and statistics/having served,
     /// closed where-grammar (not standardized queries).
     /// </summary>
     public static readonly EsriAdvancedQueryCapabilities QueryCapabilities = new(
         SupportsPagination: true,
         SupportsOrderBy: true,
-        SupportsStatistics: false,
+        SupportsStatistics: true,
         SupportsDistinct: true,
-        SupportsHavingClause: false,
+        SupportsHavingClause: true,
         SupportsReturningQueryExtent: true,
         UseStandardizedQueries: false);
 
@@ -78,7 +78,7 @@ internal static class EsriLayerModel
             MaxRecordCount,
             SpatialReference(dataset.Srid),
             SupportedQueryFormats,
-            SupportsStatistics: false,
+            SupportsStatistics: true,
             SupportsAdvancedQueries: true,
             QueryCapabilities);
 
