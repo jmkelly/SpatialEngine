@@ -337,6 +337,12 @@ internal static class PostgisEwkb
         throw new NotSupportedException($"cannot write EWKB for geometry type {geometry.Type}");
     }
 
+    /// <summary>
+    /// Writes a point's ordinates for its layout (empty points use the NaN
+    /// sentinel). CRAP-gate waiver (T-009, quality-waivers.json): the
+    /// layout chain is intentional and fully covered — do not rewrite this
+    /// method to satisfy the tool; cross-check the merged cobertura first.
+    /// </summary>
     private static void WritePoint(Writer writer, IPoint point)
     {
         var layout = point.Layout;
