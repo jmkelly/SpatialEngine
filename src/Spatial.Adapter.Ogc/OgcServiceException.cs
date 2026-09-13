@@ -38,4 +38,20 @@ internal sealed class OgcServiceException : Exception
     /// <summary>The requested operation is known but unsupported.</summary>
     public static OgcServiceException NotSupported(string message) =>
         new("OperationNotSupported", message, StatusCodes.Status400BadRequest);
+
+    /// <summary>A requested output format the service does not support (WMS <c>InvalidFormat</c>).</summary>
+    public static OgcServiceException InvalidFormat(string message) =>
+        new("InvalidFormat", message, StatusCodes.Status400BadRequest);
+
+    /// <summary>A GetFeatureInfo pixel coordinate is malformed (WMS <c>InvalidPoint</c>).</summary>
+    public static OgcServiceException InvalidPoint(string message) =>
+        new("InvalidPoint", message, StatusCodes.Status400BadRequest);
+
+    /// <summary>A requested style is not defined for the layer (WMS <c>StyleNotDefined</c>).</summary>
+    public static OgcServiceException StyleNotDefined(string message) =>
+        new("StyleNotDefined", message, StatusCodes.Status400BadRequest);
+
+    /// <summary>A GetFeatureInfo layer cannot be queried (WMS <c>LayerNotQueryable</c>).</summary>
+    public static OgcServiceException LayerNotQueryable(string message) =>
+        new("LayerNotQueryable", message, StatusCodes.Status400BadRequest);
 }

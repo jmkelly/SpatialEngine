@@ -84,7 +84,7 @@ internal static class WmsCapabilities
             OgcXml.Wms + "Request",
             Operation("GetCapabilities", Endpoint(baseUrl), "application/xml"),
             Operation("GetMap", Endpoint(baseUrl), "image/png", "image/jpeg"),
-            Operation("GetFeatureInfo", Endpoint(baseUrl), "text/plain", "application/json"));
+            Operation("GetFeatureInfo", Endpoint(baseUrl), "text/plain", "text/html", "text/xml", "application/json", "application/vnd.ogc.gml"));
 
     // A DCP Get advertises the service endpoint, not a ready-made request: the
     // WMS 1.3.0 examples (and GeoServer) end it with a bare '?'. Clients that
