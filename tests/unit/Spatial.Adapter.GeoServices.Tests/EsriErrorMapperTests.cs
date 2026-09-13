@@ -39,11 +39,37 @@ public sealed class EsriErrorMapperTests
     [InlineData(EsriErrorCodes.NotFound, StatusCodes.Status404NotFound)]
     [InlineData(EsriErrorCodes.ServiceUnavailable, StatusCodes.Status503ServiceUnavailable)]
     [InlineData(EsriErrorCodes.ServerError, StatusCodes.Status500InternalServerError)]
+    [InlineData(EsriErrorCodes.TokenRequired, StatusCodes.Status401Unauthorized)]
+    [InlineData(EsriErrorCodes.InvalidToken, StatusCodes.Status403Forbidden)]
     public async Task Interop_codes_map_to_http_statuses(int code, int expectedStatus)
     {
-        var (status, _) = await ExecuteAsync(EsriErrorMapper.Map(new EsriInteropException(code, "x")));
+        var (status, body) = await ExecuteAsync(EsriErrorMapper.Map(new EsriInteropException(code, "x")));
 
         Assert.Equal(expectedStatus, status);
+        Assert.Equal(code, body.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    /// <summary>
+    /// T-025: the envelope always carries <c>details</c> (an empty array when
+    /// there is nothing to add), matching the Esri examples.
+    /// </summary>
+    [Fact]
+    public async Task Every_envelope_carries_a_details_array()
+    {
+        foreach (var failure in new Exception[]
+        {
+            EsriInteropException.Invalid("bad input"),
+            new EsriInteropException(EsriErrorCodes.NotFound, "missing"),
+            new SpatialException(SpatialException.StoreUnavailable, "down"),
+            new OperationCanceledException(),
+            new InvalidOperationException("boom"),
+        })
+        {
+            var (_, body) = await ExecuteAsync(EsriErrorMapper.Map(failure));
+
+            var details = body.GetProperty("error").GetProperty("details");
+            Assert.Equal(JsonValueKind.Array, details.ValueKind);
+        }
     }
 
     [Theory]

@@ -108,8 +108,12 @@ internal static class EsriErrorMapper
         _ => CodeFor(spatialCode),
     };
 
+    /// <summary>
+    /// Writes the Esri error envelope. <c>details</c> is always present (an
+    /// empty array when there is nothing to add), matching the Esri examples.
+    /// </summary>
     private static IResult Envelope(int code, string message, int statusCode) =>
-        EsriJson.Value(new EsriErrorResponse(new EsriError(code, message)), statusCode);
+        EsriJson.Value(new EsriErrorResponse(new EsriError(code, message, [])), statusCode);
 
     private static int CodeFor(string spatialCode) => spatialCode switch
     {
