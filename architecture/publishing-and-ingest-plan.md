@@ -425,7 +425,7 @@ real) and its gate.
 | **ADR-0048** | `PublicationKind.Map` is served as a MapServer projection (root, layer, query, identify, find, render) | follow-on | accepted |
 | **ADR-0042** | An ephemeral writable in-memory provider implements the writable faces, enabling database-free ingest/publish | P2b | accepted |
 | **ADR-0043** | `IFeatureEditStore` may omit identity on insert | P4-sub | accepted |
-| Map/Image ADRs | see `map-service-plan.md` / `image-service-plan.md` | P5 for non-Feature kinds | later |
+| Map/Image ADRs | see `map-service-plan.md` / `image-service-plan.md` | P5 for non-Feature kinds | ADR-0048 (Map), ADR-0051 (Image) |
 
 Numbering after 0041 is provisional (0040 was the last issued ADR before
 this plan).

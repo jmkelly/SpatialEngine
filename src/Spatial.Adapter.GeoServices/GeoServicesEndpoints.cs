@@ -70,8 +70,10 @@ public static partial class GeoServicesEndpoints
             HttpContext context, string service, int layerId, IServiceProvider services, CancellationToken cancellationToken) =>
             FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, services, EsriEditOperation.Apply), cancellationToken));
 
-        // The Map Service projection (spec §4, ADR-0048).
+        // The Map Service projection (spec §4, ADR-0048) and the Image
+        // Service projection (spec §8, ADR-0051).
         MapMapServer(group, catalog, registry);
+        MapImageServer(group, catalog, registry);
     }
 
     private static async Task<IResult> Catalog(GeoServicesCatalog catalog, IPublicationRegistry registry, HttpContext context, CancellationToken cancellationToken)
@@ -87,6 +89,7 @@ public static partial class GeoServicesEndpoints
                 {
                     PublicationKind.Feature => "FeatureServer",
                     PublicationKind.Map => "MapServer",
+                    PublicationKind.Image => "ImageServer",
                     _ => null,
                 };
                 if (type is not null)

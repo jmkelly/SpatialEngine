@@ -67,6 +67,31 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
+## Raster imagery (`IRasterCatalogue`, NetVips)
+
+Added by ADR-0051 so the GeoServices ImageServer (spec §8) can read a raster
+without any raster value crossing a contract. Implemented by
+`Spatial.Imagery.Vips`; core-typed, package-free.
+
+| Method | Input | Behaviour |
+| --- | --- | --- |
+| `DescribeAsync` | dataset | `RasterDatasetDescription`: core `RasterInfo` (extent, CRS identity, pixel size, dimensions, band count, pixel type, optional stored band statistics) and, when a catalog exists, its integer `ObjectIdField` + core `FeatureSchema` |
+| `ListItemsAsync` | dataset | catalog items: integer identity, core geometry footprint, per-item raster info, attributes in schema order; empty for a single-raster service |
+| `IdentifyAsync` | dataset, `RasterIdentifyRequest` | sampled pixel values at the geometry centroid plus the overlapping catalog items; works without a catalog |
+| `ExportAsync` | dataset, `RasterExportRequest` | warped/encoded `RasterImage` over a `RasterViewport`; resampling kernel, target pixel type, nodata transparency, quality |
+
+**Raster interchange rules:** only encoded image bytes (`RasterImage`),
+core metadata, core `IGeometry` footprints and core `AttributeValue`
+attributes cross. The identify response adds one scalar sample per band at
+the identified point (spec §8.0.6); it is a value tuple, never a raster/band
+model. Raster values, file paths, NetVips/GDAL types and GeoTIFF
+tags stay inside the provider. Pixel-type conversion is limited to the real
+integer/float formats and rejects complex/sub-byte types (a colour raster
+stays 8-bit). Georeferencing is descriptor-supplied on the managed NetVips
+path; GDAL is the measured-demand upgrade. `RasterFormat`/
+`RasterPixelFormat`/`RasterBlend`/`RasterViewport`/`RasterBuffer`/
+`RasterImage` keep the ADR-0044 render vocabulary.
+
 **Interchange rules:**
 - Feature data is **canonical `FeatureBatch` pages** (ADR-0020); on HTTP as
   Base64 SFBAT strings.

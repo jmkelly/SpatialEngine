@@ -32,7 +32,7 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// ADR-0033: the SDK holds interfaces over Core only; it takes no
+    /// ADR-0033/ADR-0005: the SDK holds interfaces over Core only; it takes no
     /// third-party packages and references nothing but Core.
     /// </summary>
     [Fact]
@@ -45,6 +45,51 @@ public sealed class ArchitectureGuardTests
             .Select(r => $"{sdk.RelativePath} must reference only Spatial.Core, but references {r}."));
         violations.AddRange(sdk.Packages
             .Select(p => $"{sdk.RelativePath} must take no packages, but references {p.Id}."));
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
+    /// ADR-0005/ADR-0051: the compiled SDK must not reference any third-party
+    /// implementation assembly (NetVips, SkiaSharp, NTS, Npgsql, ProjNET,
+    /// ASP.NET Core). A raster type or any other engine type can therefore
+    /// never reach a public contract. This is the interop proof for the
+    /// provider-owned raster boundary.
+    /// </summary>
+    [Fact]
+    public void PluginSdk_references_only_core_and_framework_assemblies()
+    {
+        var assembly = typeof(Spatial.PluginSdk.RasterInfo).Assembly;
+        var violations = assembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name ?? string.Empty)
+            .Where(name => name != "Spatial.Core"
+                && !name.StartsWith("System", StringComparison.Ordinal)
+                && name is not ("netstandard" or "mscorlib" or "Spatial.PluginSdk"))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
+    /// ADR-0051 belt-and-braces: the SDK source names no raster or
+    /// third-party implementation type, so a raster value cannot be smuggled
+    /// into the contract even as an unused import.
+    /// </summary>
+    [Fact]
+    public void PluginSdk_source_names_no_raster_or_third_party_type()
+    {
+        var root = Path.Combine(Repository.Value.Root, "src", "Spatial.PluginSdk");
+        var forbidden = new[] { "NetVips", "Vips", "SkiaSharp", "Npgsql", "NetTopologySuite", "ProjNET", "Microsoft.AspNetCore" };
+        var violations = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .SelectMany(path => File.ReadAllLines(path)
+                .Select((line, index) => (Path: path, Line: line, Number: index + 1))
+                .Where(entry => !entry.Line.TrimStart().StartsWith("///", StringComparison.Ordinal)
+                    && forbidden.Any(name => entry.Line.Contains(name, StringComparison.Ordinal)))
+                .Select(entry => $"{Path.GetRelativePath(Repository.Value.Root, entry.Path)}:{entry.Number} mentions a third-party type."))
+            .ToList();
 
         Assert.Empty(violations);
     }

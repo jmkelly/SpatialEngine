@@ -15,4 +15,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- The SDK interop guard inspects the compiled contract surface, so the
+       architecture suite loads Spatial.PluginSdk (Core transitively). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
 </Project>
