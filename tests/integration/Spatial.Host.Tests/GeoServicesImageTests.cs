@@ -255,6 +255,49 @@ public sealed class GeoServicesImageTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    /// <summary>
+    /// T-015 closeout: raster-selection parameters a real client sends
+    /// (mosaicRule, renderingRule, bandIds) change which pixels combine.
+    /// Silently ignoring them serves wrong bytes, so exportImage rejects
+    /// each by name (the T8 quantization precedent).
+    /// </summary>
+    [Theory]
+    [InlineData("mosaicRule", "%7B%22mosaicMethod%22%3A%22esriMosaicNorthwest%22%7D")]
+    [InlineData("renderingRule", "%7B%22rasterFunction%22%3A%22Stretch%22%7D")]
+    [InlineData("bandIds", "0")]
+    public async Task Export_rejects_unhonoured_raster_selection_parameters(string name, string value)
+    {
+        var client = await ImageServiceAsync(_factory, Name, Dataset);
+
+        var response = await client.GetAsync(
+            $"{Root}/{Name}/ImageServer/exportImage?f=json&bbox=0,0,{Width},{Height}&size=4,3&{name}={value}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains(name, error.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// T-015 closeout: the same raster-selection parameters are rejected by
+    /// name on the ImageServer catalog query (it shares the feature-query
+    /// parse path, where they would otherwise be silently ignored).
+    /// </summary>
+    [Theory]
+    [InlineData("mosaicRule", "%7B%22mosaicMethod%22%3A%22esriMosaicNorthwest%22%7D")]
+    [InlineData("renderingRule", "%7B%22rasterFunction%22%3A%22Stretch%22%7D")]
+    [InlineData("bandIds", "0")]
+    public async Task Catalog_query_rejects_unhonoured_raster_selection_parameters(string name, string value)
+    {
+        await using var catalogFactory = new ImageFactory(_directory, _rasterPath, CatalogDatasetName, catalog: true);
+        var client = await ImageServiceAsync(catalogFactory, CatalogName, CatalogDatasetName);
+
+        var response = await client.GetAsync(
+            $"{Root}/{CatalogName}/ImageServer/query?f=json&{name}={value}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Export_applies_nodata_as_transparency()
     {

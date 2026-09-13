@@ -483,6 +483,12 @@ internal sealed record EsriFeatureQuery(
         Reject(parameters, "text", "full-text search is not supported; use 'where' with LIKE.");
         Reject(parameters, "returnTrueCurves", "true-curve output is not supported.");
         Reject(parameters, "multipatchOption", "multipatch options are not supported.");
+        // T-015 closeout: raster-selection parameters change which pixels
+        // combine, so silently ignoring them (the ImageServer catalog query
+        // shares this parse path) would serve wrong bytes.
+        Reject(parameters, "mosaicRule", "on-the-fly mosaicking is not supported; address one raster via rasterIds.");
+        Reject(parameters, "renderingRule", "raster functions are not supported.");
+        Reject(parameters, "bandIds", "band selection is not supported; all bands are served.");
     }
 
     private static void Reject(EsriRequestParameters parameters, string name, string message)

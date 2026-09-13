@@ -287,6 +287,9 @@ internal static class ImageServerEndpoints
         ImageContext image, EsriRequestParameters parameters, HttpContext context, ICoordinateTransforms transforms,
         long? rasterId, Envelope? defaultBbox, string? defaultCrs, CancellationToken cancellationToken)
     {
+        // T-015 closeout: raster-selection parameters change which pixels
+        // combine; silently ignoring them would serve wrong bytes.
+        RejectRasterSelection(parameters);
         var format = parameters.Get("f");
         var stream = string.Equals(format, "image", StringComparison.OrdinalIgnoreCase);
         if (!stream)
@@ -355,6 +358,27 @@ internal static class ImageServerEndpoints
         if (!description.HasCatalog)
         {
             throw EsriInteropException.Invalid($"Image Service '{service}' does not include an accessible raster catalog.");
+        }
+    }
+
+    /// <summary>
+    /// Rejects raster-selection parameters that would change the exported
+    /// pixels (mosaic method, raster functions, band selection): the engine
+    /// serves one raster's native bands, so honouring them is out of scope
+    /// and ignoring them would serve wrong bytes.
+    /// </summary>
+    private static void RejectRasterSelection(EsriRequestParameters parameters)
+    {
+        RejectExportParameter(parameters, "mosaicRule", "on-the-fly mosaicking is not supported; address one raster via rasterIds.");
+        RejectExportParameter(parameters, "renderingRule", "raster functions are not supported.");
+        RejectExportParameter(parameters, "bandIds", "band selection is not supported; all bands are served.");
+    }
+
+    private static void RejectExportParameter(EsriRequestParameters parameters, string name, string reason)
+    {
+        if (parameters.Has(name))
+        {
+            throw EsriInteropException.Invalid($"The '{name}' parameter is not supported: {reason}");
         }
     }
 

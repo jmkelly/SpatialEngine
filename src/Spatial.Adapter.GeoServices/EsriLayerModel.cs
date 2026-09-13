@@ -156,8 +156,8 @@ internal sealed record EsriLayer(
 /// <summary>
 /// The query flags clients branch on (spec §9.1 layer resource). Every value
 /// is proved by the behaviour it names: pagination and orderBy are honoured
-/// by <c>FeatureQueryEngine</c>, distinct values and query extent are served,
-/// statistics/having are explicitly rejected, and the closed where-grammar is
+/// by <c>FeatureQueryEngine</c>, distinct values, query extent and
+/// statistics/having are served, and the closed where-grammar is
 /// not the standardized SQL the flag names.
 /// </summary>
 internal sealed record EsriAdvancedQueryCapabilities(
