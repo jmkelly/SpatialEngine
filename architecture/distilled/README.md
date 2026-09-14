@@ -110,6 +110,7 @@ shape is noted in brackets.
 | 0057 | ImageServer capability flags (raster-function/mosaic/mensuration/download honesty) plus reject-by-name for mensuration/multidimensional/catalog-write ops. |
 | 0058 | MapServer export reads time/timeRelation/layerTimeOptions, dynamicLayers and layerOption; cached-root fields follow the served scheme. |
 | 0059 | Map/Image offline and async surface (exportTiles, WMTS, KML, jobs) is rejected by name; T-048 builds on that scope. |
+| 0061 | Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals; raster tiles stay the surface. |
 
 ## How to change the architecture
 
