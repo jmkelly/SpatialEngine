@@ -7,18 +7,19 @@
     "path": "/arcgis/rest/services/Geometry/GeometryServer/lengths",
     "query": "polylines=%5B%7B%22paths%22%3A%5B%5B%5B0%2C0%5D%2C%5B3%2C4%5D%5D%5D%7D%5D&sr=4326&calculationType=planar&f=json"
   },
-  "expectStatus": 400,
+  "expectStatus": 200,
   "esriResponse": {
     "lengths": [
       5.0
     ]
   },
-  "notes": "Docs name the input 'polylines'; our Geometry Service requires 'geometries' for every verb, so the doc-verbatim query is an honest 400. Input aliasing is follow-up work, not this slice.",
+  "expect": {
+    "lengths": [
+      5
+    ]
+  },
+  "notes": "Docs name the input 'polylines'; T-083 accepts it leniently, so the doc-verbatim query now answers 200 with Esri's own number.",
   "knownDeltas": [
-    "HONEST REJECT: docs 'polylines' param not accepted; engine requires 'geometries'. Follow-up alias task."
-  ],
-  "expectError": {
-    "code": 400,
-    "messageContains": "'geometries' parameter is required"
-  }
+    "Host accepts docs 'polylines' alias leniently (T-083); lengths number matches Esri verbatim."
+  ]
 }
