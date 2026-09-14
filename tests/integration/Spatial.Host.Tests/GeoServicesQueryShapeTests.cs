@@ -157,7 +157,6 @@ public sealed class GeoServicesQueryShapeTests : IClassFixture<WebApplicationFac
     [Theory]
     [InlineData("returnExtentOnly=true&returnCountOnly=true")]
     [InlineData("returnExtentOnly=true&returnIdsOnly=true")]
-    [InlineData("returnDistinctValues=true&returnCountOnly=true")]
     [InlineData("returnDistinctValues=true&returnIdsOnly=true")]
     [InlineData("returnExtentOnly=true&returnDistinctValues=true")]
     [InlineData("returnIdsOnly=true&returnCountOnly=true")]
@@ -166,6 +165,19 @@ public sealed class GeoServicesQueryShapeTests : IClassFixture<WebApplicationFac
         var error = await GetErrorAsync($"{Cities}/query?{parameters}&f=json");
 
         Assert.Equal(400, error.GetProperty("code").GetInt32());
+    }
+
+    /// <summary>
+    /// T-037: COUNT DISTINCT is the one honest exception — returnCountOnly
+    /// with returnDistinctValues counts the deduplicated projection (S3).
+    /// </summary>
+    [Fact]
+    public async Task Count_only_with_distinct_values_is_count_distinct()
+    {
+        var response = await _client.GetAsync($"{Cities}/query?returnDistinctValues=true&returnCountOnly=true&outFields=name&f=json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(8, body.GetProperty("count").GetInt32());
     }
 
     /// <summary>
