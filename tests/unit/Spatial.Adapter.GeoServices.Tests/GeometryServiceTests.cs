@@ -94,6 +94,35 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
+    public async Task Project_rejects_datum_transformation()
+    {
+        // The engine has no datum tables: a client-supplied transformation
+        // must fail honestly rather than project silently without it.
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("project",
+            ("geometries", """[{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("outSR", "32632"),
+            ("datumTransformation", "1")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("'datumTransformation'", exception.Message);
+    }
+
+    [Fact]
+    public async Task Project_honours_cancellation()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var parameters = await ParamsAsync(
+            ("geometries", """[{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("outSR", "32632"));
+
+        Assert.Throws<OperationCanceledException>(() =>
+            GeometryService.Dispatch("project", parameters, Capabilities, cancelled.Token));
+    }
+
+    [Fact]
     public async Task Generalize_simplifies_with_the_deviation()
     {
         var result = await DispatchAsync("generalize",

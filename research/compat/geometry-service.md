@@ -40,7 +40,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeometryService.cs` (dispatch +
 | `autoComplete` (`auto-complete/`) | rejected, unadvertised | **Non-goal** | same |
 | `findtransformations` (datum-transformation lookup) | served | **Have** | S2; curated EPSG catalogue (15 CRSs) + classic Helmert; served: same datum returns `[]`, a datum step returns one forward `{geoTransforms:[{name,transformForward:true,method}]}` composite with the OSGB36 classic-Helmert note; `vertical=true`/non-empty `extentOfInterest` rejected; `numOfResults` honoured |
 | `fromGeoCoordinateString` / `toGeoCoordinateString` (MGRS/USNG/UTM notation) | rejected, unadvertised | **Non-goal** | S2 lists 8 conversion types each (MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD) with modes; no codec in tree, no engine verb: reject by name, unadvertised, never half-parse (non-goal, §7.1) |
-| `datumTransformation` param on `project` | honestly rejected | **Partial** | rejected by name (`EsriFeatureQuery.cs` path for queries; geometry `project` likewise has no datum tables) |
+| `datumTransformation` param on `project` | honestly rejected | **Partial** | rejected by name (`GeometryService.cs:Project` and `EsriFeatureQuery.cs` for queries; the engine has no datum tables, so a supplied transformation fails instead of projecting silently without it) |
 
 Score: **15/21 served**, 5 edit-topology non-goals + 1 notation non-goal row
 (no engine verb, rejected by name, unadvertised). The old "3 of 19" verdict in
