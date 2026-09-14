@@ -112,7 +112,12 @@ public sealed record MapLayerSource(
 
 /// <summary>
 /// A complete render request: viewport, style document, resolved layer
-/// sources, optional configured imagery, and output encoding.
+/// sources, optional configured imagery, and output encoding. Style pixel
+/// sizes (widths, radii, text and icon sizes) are defined at
+/// <paramref name="Dpi"/> 96; a higher DPI renders the same frame with
+/// proportionally larger symbology. <paramref name="Scale"/> is the
+/// device pixel ratio: it grows the output frame, leaving symbol sizes in
+/// output pixels unchanged.
 /// </summary>
 public sealed record MapRenderRequest(
     RasterViewport Viewport,
@@ -123,7 +128,15 @@ public sealed record MapRenderRequest(
     int Quality = 90,
     string? Background = null,
     bool Transparent = true,
-    double Scale = 1.0);
+    double Scale = 1.0,
+    double Dpi = MapRenderRequest.ReferenceDpi)
+{
+    /// <summary>
+    /// The DPI style pixel sizes are defined at (CSS reference pixel): a
+    /// request at this DPI renders exactly the authored sizes.
+    /// </summary>
+    public const double ReferenceDpi = 96.0;
+}
 
 /// <summary>
 /// Renders styled vector layers over imagery to one encoded image: read
