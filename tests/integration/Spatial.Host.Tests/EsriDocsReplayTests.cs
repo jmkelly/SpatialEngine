@@ -20,7 +20,10 @@ namespace Spatial.Host.Tests;
 /// <c>|a-b| &lt;= tol * max(1,|a|,|b|)</c>, so large projected coordinates
 /// do not fail on float formatting noise.
 /// No Docker, no network: <see cref="WebApplicationFactory{TEntryPoint}"/>.
-/// Later slices reuse this harness: ImageServer + edge-cases (T-071).
+/// Slice D (T-071) lives in <c>EsriDocsImageServerReplayTests</c>,
+/// <c>EsriDocsEdgeCaseReplayTests</c> and <c>EsriDocsParityPolicyTests</c>
+/// with fixtures under <c>esri-docs/imageserver/</c>,
+/// <c>esri-docs/edgecases/</c> and <c>esri-docs/policy.json</c>.
 /// </summary>
 /// <remarks>
 /// ProjNet-vs-Esri-PE note: <c>project</c> and <c>outSR</c> replays agree
