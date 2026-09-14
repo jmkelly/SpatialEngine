@@ -66,6 +66,11 @@ internal static class GeometryService
 
     private static IResult Project(EsriRequestParameters parameters, ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
+        // The engine has no datum tables: reject a client-supplied datum
+        // transformation by name (like the query path) rather than project
+        // silently without it. Clients needing a datum step should consult
+        // findTransformations for the curated catalogue path.
+        Reject(parameters, "datumTransformation", "datum transformations are not supported; reprojection uses the registered transforms.");
         var source = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         var target = EsriValueParser.ParseSpatialReference(parameters.Require("outSR"))
             ?? throw EsriInteropException.Invalid("'outSR' is required for project.");
