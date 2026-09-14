@@ -33,7 +33,8 @@ internal static class VipsRasterReader
         string crs,
         double pixelSizeX,
         double pixelSizeY,
-        IReadOnlyList<RasterBandStatistics>? statistics)
+        IReadOnlyList<RasterBandStatistics>? statistics,
+        RasterAttributeTable? attributeTable = null)
     {
         using var image = VipsRasterFiles.Open(path);
         var levels = VipsRasterStructure.PyramidLevels(image);
@@ -50,7 +51,44 @@ internal static class VipsRasterReader
             BlockWidth: VipsRasterStructure.TileWidth(image),
             BlockHeight: VipsRasterStructure.TileHeight(image),
             FirstPyramidLevel: levels > 0 ? 1 : 0,
-            MaxPyramidLevel: levels);
+            MaxPyramidLevel: levels,
+            AttributeTable: attributeTable);
+    }
+
+    /// <summary>
+    /// Fail-fast validation of a configured raster attribute table (ADR-0054):
+    /// the table needs at least its identity column and every row must carry
+    /// exactly one value per column, so a ragged table breaks startup with a
+    /// typed failure instead of serving short rows.
+    /// </summary>
+    public static void ValidateAttributeTable(RasterDatasetDescriptor descriptor)
+    {
+        if (descriptor.AttributeTable is not { } table)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(table.ObjectIdField))
+        {
+            throw SpatialException.BadArguments(
+                $"Raster dataset '{descriptor.Name}' configures a raster attribute table without an object-id field.");
+        }
+
+        if (table.Fields.Count == 0)
+        {
+            throw SpatialException.BadArguments(
+                $"Raster dataset '{descriptor.Name}' configures a raster attribute table without columns.");
+        }
+
+        for (var row = 0; row < table.Rows.Count; row++)
+        {
+            if (table.Rows[row].Count != table.Fields.Count)
+            {
+                throw SpatialException.BadArguments(
+                    $"Raster dataset '{descriptor.Name}' raster attribute table row {row} has {table.Rows[row].Count} values " +
+                    $"but the table declares {table.Fields.Count} columns.");
+            }
+        }
     }
 
     public static Envelope Union(IReadOnlyList<RasterCatalogItemDescriptor> items)

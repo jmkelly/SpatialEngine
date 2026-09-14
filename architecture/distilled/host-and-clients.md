@@ -77,6 +77,13 @@ GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}     # raster cat
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/info # raster info
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/image # one item's exported image (spec §8.2)
 GET|POST /arcgis/rest/services/{service}/ImageServer/{rasterId}/thumbnail # one item's thumbnail (spec §8.3)
+GET|POST /arcgis/rest/services/{service}/ImageServer/legend      # per-band swatches (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/find        # catalog text search (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/statistics  # stored band stats (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/computeHistograms # per-band histograms (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/rasterAttributeTable # class table (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/thumbnail   # dataset thumbnail (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/metadata    # dataset metadata as JSON (ADR-0054)
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService
