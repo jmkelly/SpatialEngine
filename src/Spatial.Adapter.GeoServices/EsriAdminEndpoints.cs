@@ -187,7 +187,17 @@ public static class EsriAdminEndpoints
 
     private static async Task<MemoryStream> ReadUploadAsync(HttpRequest request, long maxBytes)
     {
-        var form = await request.ReadFormAsync();
+        IFormCollection form;
+        try
+        {
+            form = await request.ReadFormAsync();
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or BadHttpRequestException)
+        {
+            throw EsriInteropException.Invalid(
+                $"The multipart upload is malformed and the 'file' part could not be read: {exception.Message}");
+        }
+
         var file = form.Files.Count > 0
             ? form.Files[0]
             : throw EsriInteropException.Invalid("The multipart upload carries no file part.");
