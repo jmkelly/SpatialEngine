@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0056: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty
+# ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty
 
 ## Context
 

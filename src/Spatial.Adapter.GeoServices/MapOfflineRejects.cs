@@ -8,7 +8,7 @@ namespace Spatial.Adapter.GeoServices;
 /// The offline and async surface (S4 <c>exportTiles</c> /
 /// <c>estimateExportTileSize</c> map + image variants, the WMTS triple,
 /// <c>generateKml</c> / the <c>kml</c> image, async <c>jobs</c>): documented
-/// non-goals under the no-job architecture (ADR-0033, ADR-0059). Tiles are
+/// non-goals under the no-job architecture (ADR-0033, ADR-0060). Tiles are
 /// live-rendered per scheme only, so there is no packaging model and no job
 /// model to poll. Each named operation resolves its service first (an unknown
 /// service stays a typed <c>not.found</c>) and is then rejected by name with a
@@ -40,7 +40,7 @@ internal static class MapOfflineRejects
     /// <summary>Rejects the WMTS surface (S4 wmts-*-map-service/: base, capabilities, tile).</summary>
     internal static Task<IResult> Wmts(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, CancellationToken cancellationToken) =>
-        RejectAsync(catalog, registry, service, "MapServer", MapService.Map, "The 'WMTS' resource is not supported: no WMTS endpoint (capabilities or tile) is served. Fetch live tiles via tile/{z}/{y}/{x} (ADR-0059 scopes WMTS for T-048).", cancellationToken);
+        RejectAsync(catalog, registry, service, "MapServer", MapService.Map, "The 'WMTS' resource is not supported: no WMTS endpoint (capabilities or tile) is served. Fetch live tiles via tile/{z}/{y}/{x} (ADR-0060 scopes WMTS for T-048).", cancellationToken);
 
     /// <summary>Rejects MapServer <c>generateKml</c> (S4 generate-kml/).</summary>
     internal static Task<IResult> GenerateKml(

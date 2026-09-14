@@ -30,11 +30,12 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (root/layers/layer/query/identify/fi
 | `<layerId>/query` (FeatureServer engine) | served | **Have** | `MapQuery` → `FeatureService.QueryAsync` |
 | `identify` (with `layerDefs` filtering) | served | **Have** | `MapIdentifyEngine.cs`; `layerDefs` honoured (T-015 update) |
 | `find` | served | **Have** | `MapFindEngine.cs` |
-| `export` (png/jpg/webp/tiff; `bbox/bboxSR/imageSR/size/layers/layerOption/layerDefs/format/transparent/dpi`; `f=image` bytes or `{href}`) | served | **Have** | `GeoServicesEndpoints.MapExport.cs`; `MapRenderEngine.cs` (T-040: `time`/`layerTimeOptions`/`timeRelation`, `dynamicLayers`, `layerOption`, ADR-0056) |
+| `export` (png/jpg/webp/tiff; `bbox/bboxSR/imageSR/size/layers/layerOption/layerDefs/format/transparent/dpi`; `f=image` bytes or `{href}`) | served | **Have** | `GeoServicesEndpoints.MapExport.cs`; `MapRenderEngine.cs` (T-040: `time`/`layerTimeOptions`/`timeRelation`, `dynamicLayers`, `layerOption`, ADR-0058) |
 | `tile/{z}/{y}/{x}` Web-Mercator tile | served | **Have** | `MapExportEndpoints`; `IMapRenderer`+`ITileScheme` (ADR-0046/0048) |
 | `<layerId>/images/<imageId>` (§4.7 picture-symbol images) | typed `not.found` | **Non-goal** | `GeoServicesEndpoints.Maps.cs:MapImage` (ADR-0050: no picture symbols) |
 | `legend` (per-layer symbology legend) | — | **Missing** | S4 `legend-map-service/`; G1 `map-legend.Census.json` is the replay fixture; no route in `Maps.cs` |
-| `dynamicLayers` / `dynamicLayerTable` (per-request layer redefinition) | served | **Have** | S1/S4; `export` rebinds `mapLayer` sources with a `drawingInfo` override over the projected subset (T-040, ADR-0056); new data sources stay honestly rejected |
+| `dynamicLayers` / `dynamicLayerTable` (per-request layer redefinition) | served | **Have** | S1/S4; `export` rebinds `mapLayer` sources with a `drawingInfo` override over the projected subset (T-040, ADR-0058); new data sources stay honestly rejected |
+
 | `generateRenderer` (server classification) | — | **Missing** | S4; same gap as Feature (shared classification engine absent) |
 | `queryDomains` / `queryLegends` (service-level domain/legend queries) | — | **Missing** | S4 `query-domains-map-service/`, `query-legends-map-service/` |
 | `queryRelatedRecords` (map-service variant) | — | **Missing** | S4; no relationship model |
@@ -43,15 +44,17 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (root/layers/layer/query/identify/fi
 | KML (`generateKml`, `kml-image`) | — | **Missing** | S4; no KML surface anywhere in tree |
 | `image` (map image resource) / `htmlPopup` / attachments on map layers | — | **Missing** | S4; same non-model gaps as Feature |
 | Async (`.../MapServer/jobs`, `map-service-job/result/input`) | — | **Non-goal** | S4; no job model by architecture (ADR-0033) |
-| `time` / `layerTimeOptions` / `timeRelation` on export/identify | partial | **Partial** | live roots advertise `supportsTimeRelation` and `export` honours all three (T-040, ADR-0056); `identify` still ignores `time` (follow-up) |
-| `layerOption` (`all\|visible\|top`), `gdbVersion`, `mapRangeValues`, `datumTransformations` on export | partial | **Partial** | `layerOption` validated and served (T-040, ADR-0056); `gdbVersion`/`mapRangeValues`/`datumTransformations` still ignored (speculative per §2) |
+| `time` / `layerTimeOptions` / `timeRelation` on export/identify | partial | **Partial** | live roots advertise `supportsTimeRelation` and `export` honours all three (T-040, ADR-0058); `identify` still ignores `time` (follow-up) |
+| `layerOption` (`all\|visible\|top`), `gdbVersion`, `mapRangeValues`, `datumTransformations` on export | partial | **Partial** | `layerOption` validated and served (T-040, ADR-0058); `gdbVersion`/`mapRangeValues`/`datumTransformations` still ignored (speculative per §2) |
+
 | Cached-service fields (`singleFusedMapCache`, `tileInfo` LODs, `storageInfo`, `exportTilesAllowed`) on root | served | **Have** | `singleFusedMapCache`+`tileInfo` per served scheme (LOD rows replayed vs G1, T-040), `exportTilesAllowed:false` (packaging is T-041); `storageInfo` honestly absent (no stored cache) |
 
 ## 2. Export-param detail (S2 vs `MapExport.cs`)
 
 Have: `bbox`, `size`, `bboxSR`, `imageSR`, `layers`, `layerOption`,
 `layerDefs`, `dynamicLayers`, `time`, `layerTimeOptions`, `timeRelation`,
-`format`, `transparent`, `dpi`, `f` (T-040, ADR-0056). Missing:
+`format`, `transparent`, `dpi`, `f` (T-040, ADR-0058). Missing:
+
 `gdbVersion`, `mapRangeValues`, `geometries` (highlight), `rotation`,
 `scale`/`mapScale` enforcement, `historicMoment` — speculative until a
 client trace shows them.

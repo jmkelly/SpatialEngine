@@ -51,7 +51,7 @@ internal static class MapServerEndpoints
     }
 
     /// <summary>
-    /// The offline/async reject surface (ADR-0059): <c>exportTiles</c> +
+    /// The offline/async reject surface (ADR-0060): <c>exportTiles</c> +
     /// <c>estimateExportTileSize</c>, WMTS (base plus the capabilities/tile
     /// remainder), KML (<c>generateKml</c> plus the <c>kml</c> image
     /// remainder) and async <c>jobs</c> (collection plus one job, its results

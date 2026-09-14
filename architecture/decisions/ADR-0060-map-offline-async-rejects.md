@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0059: Map/Image offline and async surface is rejected by name, not served
+# ADR-0060: Map/Image offline and async surface is rejected by name, not served
 
 ## Context
 

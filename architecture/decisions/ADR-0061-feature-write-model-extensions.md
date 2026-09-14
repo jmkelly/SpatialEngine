@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0060: Feature write-model extensions (service query, generateRenderer reuse, validateSQL, aggregation honesty, attachments)
+# ADR-0061: Feature write-model extensions (service query, generateRenderer reuse, validateSQL, aggregation honesty, attachments)
 
 ## Context
 

@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0054: Feature modern query params are an adapter projection
+# ADR-0056: Feature modern query params are an adapter projection
 
 ## Context
 

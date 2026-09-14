@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0057: ImageServer capability honesty — raster-function/mosaic/mensuration flags + named rejects
+# ADR-0059: ImageServer capability honesty — raster-function/mosaic/mensuration flags + named rejects
 
 ## Context
 

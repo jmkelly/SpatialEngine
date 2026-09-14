@@ -13,7 +13,7 @@ namespace Spatial.Adapter.GeoServices;
 /// <c>statistics</c>, <c>computeHistograms</c>, <c>rasterAttributeTable</c>
 /// and the service-level <c>thumbnail</c> and <c>metadata</c>, plus the
 /// offline rejects <c>exportTiles</c> / <c>estimateExportTileSize</c>
-/// (ADR-0059: packaging needs a job model the host does not have).
+/// (ADR-0060: packaging needs a job model the host does not have).
 /// The ImageServer is the GeoServices projection of a
 /// <see cref="MapService.Image"/> publication whose layer names a dataset
 /// in the keyed <c>raster</c> store; the adapter consumes only the SDK

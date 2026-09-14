@@ -22,7 +22,7 @@ sit in the root `Spatial.PluginSdk` namespace; the wire DTOs in
 | `RasterViewport(Envelope Bounds, int Width, int Height, string Crs)` | the viewport, x-first |
 | `RasterBuffer` / `RasterImage` | raw (premultiplied RGBA by default) pixels / encoded bytes |
 | `RasterLayer`, `RasterBufferLayer`, `RasterSourceLayer` | the composite stack entries |
-| `MapLayerSource(Dataset, Features, Catalogue, Filter, Time)` | a resolved keyed store + catalogue, with an optional `MapTimeExtent` render filter (ADR-0056) |
+| `MapLayerSource(Dataset, Features, Catalogue, Filter, Time)` | a resolved keyed store + catalogue, with an optional `MapTimeExtent` render filter (ADR-0058) |
 | `RasterFormat`, `RasterPixelFormat`, `RasterBlend` | png/jpeg/webp/tiff, rgba8888/rgb888, blend modes |
 | `ITileScheme` + `TileCoordinate`/`TileLevel` | pluggable tiling: address → projected extent + LODs (ADR-0046) |
 | `ITileCache` + `TileCacheKey` | content-addressed tile cache; ownership is the implementation's (ADR-0046) |
@@ -161,7 +161,7 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 
 A persistent/shared tile cache (the `ITileCache` contract is ready for it);
 a GPU backend is not planned. Vector tiles (MVT/`.vtpk`) and OGC API Tiles
-are documented non-goals (ADR-0061): the engine serves pre-styled raster
+are documented non-goals (ADR-0062): the engine serves pre-styled raster
 tiles only. The GeoServices MapServer (`export`/`tile`,
 ADR-0048) is implemented; a neutral `/api/publications/{name}/tiles` route is
 not. Within the symbol subset, line placement, expressions, sprite sheets and
