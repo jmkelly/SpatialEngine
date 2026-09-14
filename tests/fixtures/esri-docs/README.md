@@ -5,8 +5,9 @@ docs and `sampleserver6` for the **GeometryServer** slice (T-064). Later
 slices reuse this skeleton: FeatureServer/query (T-069), MapServer (T-070),
 ImageServer + edge-cases + strict-vs-lenient policy (T-071).
 
-- Layout: `geometryserver/<operation>-<shape>.json`, indexed by
-  `geometryserver/manifest.json` (the corpus loop).
+- Layout: `geometryserver/<operation>-<shape>.json` and
+  `featureserver/<operation>-<facet>.json`, each indexed by its own
+  `manifest.json` (the corpus loops).
 - Each case keeps the doc-verbatim `request` (method + path + query string),
   the doc-verbatim `esriResponse`, the `expect` subset our host must satisfy,
   and `knownDeltas` where the engine honestly differs. The replay suite
@@ -25,6 +26,19 @@ the PE engine with datum tables we deliberately do not ship (ADR-0009,
 ADR-0035): same-CRS-family projects agree to the tolerance, datum steps stay
 an honest reject via `findTransformations`. If a future slice tightens
 project assertions, keep the scaled tolerance — never exact string equality.
+
+## FeatureServer/query slice (T-069)
+
+Ten cases over the fixed 8-city demo snapshot (FeatureServer layer 0):
+`where`, `objectIds`, envelope `geometry` + `spatialRel`, `outSR`
+reprojection, `returnGeometry`, `orderByFields`, `resultOffset` /
+`resultRecordCount` paging, `outStatistics`, and `validateSQL` accept +
+reject. The wire shape (feature sets, `exceededTransferLimit`,
+`isValidSQL`/`validationErrors`) is Esri's; the rows are ours — the
+fixtures say so in `knownDeltas` rather than copying Esri sample rows.
+Partial pages pin `features` + `exceededTransferLimit`, never the opaque
+`resultPaginationToken`. No FeatureServer behaviour was changed for this
+slice.
 
 ## Honest deltas (no parity chasing in this slice)
 
