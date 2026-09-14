@@ -44,6 +44,7 @@
   </Folder>
   <Folder Name="/tests/performance/">
     <Project Path="tests/performance/Spatial.Performance/Spatial.Performance.csproj" />
+    <Project Path="tests/performance/Spatial.HostThroughput.Tests/Spatial.HostThroughput.Tests.csproj" />
   </Folder>
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj" />
