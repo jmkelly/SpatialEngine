@@ -191,6 +191,25 @@ table.grid th { color: var(--muted); font-weight: 600; text-transform: uppercase
 }
 .parity-table-wrap { overflow: auto; max-height: 420px; border: 1px solid var(--border); border-radius: 6px; }
 .parity-error { color: var(--danger); font-size: 13px; }
+.parity-query-field { display: grid; gap: 4px; margin: 0 0 12px; }
+.parity-query-field textarea {
+  width: 100%; font-family: ui-monospace, monospace; font-size: 12.5px;
+  background: var(--code-bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; resize: vertical;
+}
+.parity-pre {
+  overflow: auto; max-height: 420px; font-size: 12px; white-space: pre-wrap;
+  word-break: break-word; background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; margin: 0;
+}
+.parity-diff { margin-top: 12px; }
+.parity-diff h3 { margin: 0 0 8px; font-size: 14px; }
+.parity-diff-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.parity-diff-lines code { font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+.parity-diff-left code { color: var(--warn); }
+.parity-diff-right code { color: var(--accent); }
+.parity-diff-same code { color: var(--muted); }
+.linklike { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit; text-decoration: underline; }
 /* Map composer */
 
 .composer-screen { display: flex; flex-direction: column; height: 100%; padding: 12px 16px; max-width: none; }

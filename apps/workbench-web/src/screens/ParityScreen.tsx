@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { hostBaseUrl } from "../api.ts";
 import {
+  EsriGeometryRoot,
+  GeometryOperations,
+  GeometrySamples,
   ParityDefaults,
   buildFeatureCountUrl,
   buildFeatureQueryUrl,
+  buildGeometryUrl,
+  buildImageExportUrl,
   buildMapExportUrl,
+  diffIsClean,
+  diffJsonLines,
+  localGeometryRoot,
   localServiceRoots,
   parseBbox,
   parseSize,
+  prettyJson,
+  type GeometryOperation,
   type ParityBbox,
   type ParitySize,
 } from "../parity.ts";
 
-type ParityTab = "map" | "feature";
+type ParityTab = "map" | "feature" | "image" | "geometry";
 
 interface AppliedSettings {
   bbox: ParityBbox;
@@ -24,6 +34,8 @@ interface AppliedSettings {
   esriMap: string;
   localFeature: string;
   esriFeature: string;
+  localImage: string;
+  esriImage: string;
   where: string;
   maxRecords: number;
 }
@@ -47,12 +59,15 @@ const idlePanel: FeaturePanelState = {
 };
 
 /**
- * Visual parity harness (T-072): side-by-side public Esri vs localhost
- * panels for the same bbox. The Map tab compares MapServer/export images
- * through plain `<img>` tags (`f=image` needs no CORS fetch); the Feature
- * tab compares FeatureServer/query counts and sample attributes fetched as
- * JSON. The localhost side uses only the public GeoServices surface; the
- * screen holds no spatial logic — URL strings in, pixels and JSON out.
+ * Visual parity harness (T-072/T-073): side-by-side public Esri vs localhost
+ * panels for the same bbox. The Map and Image tabs compare MapServer/export
+ * and ImageServer/exportImage pictures through plain `<img>` tags
+ * (`f=image` needs no CORS fetch); the Feature tab compares
+ * FeatureServer/query counts and sample attributes fetched as JSON; the
+ * Geometry playground runs one Esri-docs-style Geometry Service query
+ * against both roots and diffs the answers. The localhost side uses only
+ * the public GeoServices surface; the screen holds no spatial logic — URL
+ * strings in, pixels and JSON out.
  */
 export function ParityScreen() {
   const [tab, setTab] = useState<ParityTab>("map");
@@ -63,6 +78,8 @@ export function ParityScreen() {
   const [esriMap, setEsriMap] = useState<string>(ParityDefaults.esriMap);
   const [localFeature, setLocalFeature] = useState<string>(ParityDefaults.localFeature);
   const [esriFeature, setEsriFeature] = useState<string>(ParityDefaults.esriFeature);
+  const [localImage, setLocalImage] = useState<string>(ParityDefaults.localImage);
+  const [esriImage, setEsriImage] = useState<string>(ParityDefaults.esriImage);
   const [where, setWhere] = useState<string>(ParityDefaults.where);
   const [maxRecordsText, setMaxRecordsText] = useState(String(ParityDefaults.maxRecords));
   const [formError, setFormError] = useState<string | null>(null);
@@ -89,7 +106,7 @@ export function ParityScreen() {
       setFormError("max records is a positive integer");
       return;
     }
-    if (localMap.trim() === "" || esriMap.trim() === "" || localFeature.trim() === "" || esriFeature.trim() === "") {
+    if (localMap.trim() === "" || esriMap.trim() === "" || localFeature.trim() === "" || esriFeature.trim() === "" || localImage.trim() === "" || esriImage.trim() === "") {
       setFormError("the service names and Esri roots must not be empty");
       return;
     }
@@ -104,6 +121,8 @@ export function ParityScreen() {
       esriMap: esriMap.trim(),
       localFeature: localFeature.trim(),
       esriFeature: esriFeature.trim(),
+      localImage: localImage.trim(),
+      esriImage: esriImage.trim(),
       where: where.trim() === "" ? "1=1" : where.trim(),
       maxRecords,
     });
@@ -151,6 +170,10 @@ export function ParityScreen() {
           data-testid="parity-tab-map" onClick={() => setTab("map")}>Map</button>
         <button role="tab" aria-selected={tab === "feature"} className={`tab${tab === "feature" ? " active" : ""}`}
           data-testid="parity-tab-feature" onClick={() => setTab("feature")}>Feature</button>
+        <button role="tab" aria-selected={tab === "image"} className={`tab${tab === "image" ? " active" : ""}`}
+          data-testid="parity-tab-image" onClick={() => setTab("image")}>Image</button>
+        <button role="tab" aria-selected={tab === "geometry"} className={`tab${tab === "geometry" ? " active" : ""}`}
+          data-testid="parity-tab-geometry" onClick={() => setTab("geometry")}>Geometry</button>
       </div>
 
       {applied !== null && tab === "map" && (
@@ -180,6 +203,24 @@ export function ParityScreen() {
           esriFeatureValue={esriFeature}
         />
       )}
+      {applied !== null && tab === "image" && (
+        <ImagePanels
+          bbox={applied.bbox}
+          sr={applied.sr}
+          size={applied.size}
+          localImage={applied.localImage}
+          esriImage={applied.esriImage}
+          onLocalImageChange={setLocalImage}
+          onEsriImageChange={setEsriImage}
+          localImageValue={localImage}
+          esriImageValue={esriImage}
+          onUseImageExtent={() => {
+            setBboxText(ParityDefaults.imageBbox);
+            setSrText(String(ParityDefaults.imageSr));
+          }}
+        />
+      )}
+      {tab === "geometry" && <GeometryPanels />}
     </section>
   );
 }
@@ -195,6 +236,8 @@ function defaultApplied(): AppliedSettings {
     esriMap: ParityDefaults.esriMap,
     localFeature: ParityDefaults.localFeature,
     esriFeature: ParityDefaults.esriFeature,
+    localImage: ParityDefaults.localImage,
+    esriImage: ParityDefaults.esriImage,
     where: ParityDefaults.where,
     maxRecords: ParityDefaults.maxRecords,
   };
@@ -227,14 +270,58 @@ function MapPanels(props: {
         </div>
       </div>
       <div className="parity-panels">
-        <ExportPanel title="Public Esri" testId="esri" url={esriUrl} />
-        <ExportPanel title="Localhost" testId="local" url={localUrl} />
+        <ExportPanel title="Public Esri" testId="esri" url={esriUrl} serviceKind="MapServer export" />
+        <ExportPanel title="Localhost" testId="local" url={localUrl} serviceKind="MapServer export" />
       </div>
     </div>
   );
 }
 
-function ExportPanel({ title, testId, url }: { title: string; testId: string; url: string }) {
+function ImagePanels(props: {
+  bbox: ParityBbox;
+  sr: number;
+  size: ParitySize;
+  localImage: string;
+  esriImage: string;
+  localImageValue: string;
+  esriImageValue: string;
+  onLocalImageChange: (value: string) => void;
+  onEsriImageChange: (value: string) => void;
+  onUseImageExtent: () => void;
+}) {
+  const localRoots = localServiceRoots(hostBaseUrl(), props.localImage);
+  const esriUrl = buildImageExportUrl(props.esriImage, props.bbox, props.sr, props.size);
+  const localUrl = buildImageExportUrl(localRoots.image, props.bbox, props.sr, props.size);
+  return (
+    <div>
+      <p className="muted small">
+        ImageServer/exportImage on both sides. The Esri default is the CharlotteLAS lidar service
+        (North Carolina state plane, WKID 2264) —{" "}
+        <button className="linklike" data-testid="parity-image-extent" onClick={props.onUseImageExtent}>
+          use its extent
+        </button>{" "}
+        then apply. The conformance seed publishes no ImageServer, so the localhost panel
+        reports honestly until a raster service is published.
+      </p>
+      <div className="parity-controls">
+        <div className="field">
+          <label htmlFor="parity-local-image">Localhost image service</label>
+          <input id="parity-local-image" data-testid="parity-local-image" value={props.localImageValue} onChange={(event) => props.onLocalImageChange(event.target.value)} />
+        </div>
+        <div className="field parity-wide">
+          <label htmlFor="parity-esri-image">Public Esri ImageServer root</label>
+          <input id="parity-esri-image" data-testid="parity-esri-image" value={props.esriImageValue} onChange={(event) => props.onEsriImageChange(event.target.value)} />
+        </div>
+      </div>
+      <div className="parity-panels">
+        <ExportPanel title="Public Esri" testId="esri" url={esriUrl} serviceKind="ImageServer exportImage" />
+        <ExportPanel title="Localhost" testId="local" url={localUrl} serviceKind="ImageServer exportImage" />
+      </div>
+    </div>
+  );
+}
+
+function ExportPanel({ title, testId, url, serviceKind }: { title: string; testId: string; url: string; serviceKind: string }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   // The URL is the identity: a new bbox/service restarts the load state.
   useEffect(() => setState("loading"), [url]);
@@ -249,7 +336,7 @@ function ExportPanel({ title, testId, url }: { title: string; testId: string; ur
       <img
         data-testid={`parity-${testId}-image`}
         src={url}
-        alt={`${title} MapServer export`}
+        alt={`${title} ${serviceKind}`}
         onLoad={() => setState("ready")}
         onError={() => setState("error")}
       />
@@ -331,6 +418,177 @@ function FeaturePanels(props: {
         <FeaturePanel title="Localhost" testId="local" state={local} countUrl={localCountUrl} sampleUrl={localSampleUrl} />
       </div>
     </div>
+  );
+}
+
+interface GeometrySideState {
+  status: "idle" | "loading" | "ready" | "error";
+  pretty: string | null;
+  error: string | null;
+  url: string | null;
+}
+
+const idleGeometrySide: GeometrySideState = { status: "idle", pretty: null, error: null, url: null };
+
+/**
+ * Geometry playground (T-073): paste one Esri-docs-style query string, run
+ * it against the public Esri Geometry Service and the localhost one, and
+ * diff the answers. One cancellable round per run: a slow public host never
+ * overwrites fresher results, and the screen holds no spatial logic — the
+ * query string goes out, JSON comes back.
+ */
+function GeometryPanels() {
+  const [esriRoot, setEsriRoot] = useState<string>(EsriGeometryRoot);
+  const [localRoot, setLocalRoot] = useState<string>(() => localGeometryRoot(hostBaseUrl()));
+  const [operation, setOperation] = useState<GeometryOperation>("project");
+  const [query, setQuery] = useState<string>(GeometrySamples.project);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [esri, setEsri] = useState<GeometrySideState>(idleGeometrySide);
+  const [local, setLocal] = useState<GeometrySideState>(idleGeometrySide);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const chooseOperation = (next: GeometryOperation) => {
+    setOperation(next);
+    setQuery(GeometrySamples[next]);
+  };
+
+  const run = () => {
+    if (esriRoot.trim() === "" || localRoot.trim() === "") {
+      setFormError("both Geometry Service roots must not be empty");
+      return;
+    }
+    const esriUrl = buildGeometryUrl(esriRoot.trim(), operation, query);
+    const localUrl = buildGeometryUrl(localRoot.trim(), operation, query);
+    if (esriUrl === null || localUrl === null) {
+      setFormError("paste the Esri docs query string first (everything after the ?)");
+      return;
+    }
+    setFormError(null);
+    abortRef.current?.abort();
+    const abort = new AbortController();
+    abortRef.current = abort;
+    setEsri({ status: "loading", pretty: null, error: null, url: esriUrl });
+    setLocal({ status: "loading", pretty: null, error: null, url: localUrl });
+    void loadGeometrySide(esriUrl, abort.signal).then((state) => {
+      if (!abort.signal.aborted) setEsri(state);
+    });
+    void loadGeometrySide(localUrl, abort.signal).then((state) => {
+      if (!abort.signal.aborted) setLocal(state);
+    });
+  };
+
+  const bothReady = esri.status === "ready" && local.status === "ready" && esri.pretty !== null && local.pretty !== null;
+  const diff = bothReady ? diffJsonLines(esri.pretty!, local.pretty!) : null;
+  const clean = diff !== null && diffIsClean(diff);
+
+  return (
+    <div>
+      <p className="muted small">
+        One query string against both Geometry Services. Pick an operation for its Esri-docs-style
+        sample, edit freely, then run — both answers pretty-print below with a line diff.
+      </p>
+      <div className="parity-controls">
+        <div className="field parity-wide">
+          <label htmlFor="parity-geometry-esri">Public Esri GeometryServer root</label>
+          <input id="parity-geometry-esri" data-testid="parity-geometry-esri" value={esriRoot} onChange={(event) => setEsriRoot(event.target.value)} />
+        </div>
+        <div className="field parity-wide">
+          <label htmlFor="parity-geometry-local">Localhost GeometryServer root</label>
+          <input id="parity-geometry-local" data-testid="parity-geometry-local" value={localRoot} onChange={(event) => setLocalRoot(event.target.value)} />
+        </div>
+      </div>
+      <div className="parity-controls">
+        <div className="field">
+          <label htmlFor="parity-geometry-operation">Operation</label>
+          <select id="parity-geometry-operation" data-testid="parity-geometry-operation" value={operation} onChange={(event) => chooseOperation(event.target.value as GeometryOperation)}>
+            {GeometryOperations.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="field parity-apply-field">
+          <span aria-hidden="true" />
+          <button className="primary" data-testid="parity-geometry-run" onClick={run}>run</button>
+        </div>
+      </div>
+      <div className="field parity-query-field">
+        <label htmlFor="parity-geometry-query">Query string (everything after the ?)</label>
+        <textarea id="parity-geometry-query" data-testid="parity-geometry-query" value={query} onChange={(event) => setQuery(event.target.value)} rows={5} spellCheck={false} />
+      </div>
+      {formError !== null && <p className="parity-error" data-testid="parity-geometry-error" role="alert">{formError}</p>}
+      <div className="parity-panels">
+        <GeometryAnswer title="Public Esri" testId="esri" state={esri} />
+        <GeometryAnswer title="Localhost" testId="local" state={local} />
+      </div>
+      {diff !== null && (
+        <div className="parity-diff" data-testid="parity-geometry-diff">
+          <h3 data-testid="parity-geometry-diff-status">{clean ? "Answers match" : "Answers differ"}</h3>
+          {!clean && (
+            <ol className="parity-diff-lines">
+              {diff.slice(0, 400).map((line, index) => (
+                <li key={index} data-kind={line.kind} className={`parity-diff-${line.kind}`}>
+                  <code>{line.text}</code>
+                </li>
+              ))}
+            </ol>
+          )}
+          {!clean && diff.length > 400 && (
+            <p className="muted small">… {diff.length - 400} further differing lines hidden.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+async function loadGeometrySide(url: string, signal: AbortSignal): Promise<GeometrySideState> {
+  try {
+    const response = await fetch(url, { signal });
+    const text = await response.text();
+    if (!response.ok) {
+      const pretty = prettyJson(text);
+      throw new Error(
+        pretty.ok
+          ? `the service answered ${response.status}: ${(JSON.parse(text) as { error?: { message?: string } }).error?.message ?? text.slice(0, 200)}`
+          : `the service answered ${response.status}`,
+      );
+    }
+    const pretty = prettyJson(text);
+    if (!pretty.ok) throw new Error(pretty.error);
+    return { status: "ready", pretty: pretty.pretty, error: null, url };
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return { ...idleGeometrySide, status: "loading", url };
+    }
+    return { ...idleGeometrySide, status: "error", error: err instanceof Error ? err.message : String(err), url };
+  }
+}
+
+function GeometryAnswer({ title, testId, state }: { title: string; testId: string; state: GeometrySideState }) {
+  return (
+    <figure className="parity-panel" data-testid={`parity-geometry-${testId}-panel`}>
+      <figcaption>
+        <b>{title}</b>{" "}
+        <span className="muted small" data-testid={`parity-geometry-${testId}-status`}>
+          {state.status === "idle" ? "not run yet" : state.status === "loading" ? "loading…" : state.status === "ready" ? "answered" : "failed to load"}
+        </span>
+      </figcaption>
+      {state.status === "error" && (
+        <p className="parity-error" data-testid={`parity-geometry-${testId}-error`} role="alert">{state.error}</p>
+      )}
+      {state.status === "ready" && state.pretty !== null && (
+        <pre className="parity-pre" data-testid={`parity-geometry-${testId}-output`}>{state.pretty}</pre>
+      )}
+      {state.url !== null && (
+        <figcaption className="small">
+          <a className="muted endpoint-url" href={state.url} target="_blank" rel="noreferrer" data-testid={`parity-geometry-${testId}-url`}>
+            {state.url}
+          </a>
+        </figcaption>
+      )}
+    </figure>
   );
 }
 
