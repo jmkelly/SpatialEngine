@@ -106,6 +106,7 @@ shape is noted in brackets.
 | 0053 | A Map is the unit of authoring and exposure; its Feature/Map/Tiles/WMS/WFS/Image services are projections of one map. |
 | 0054 | ImageServer missing resources: legend, find, statistics/histograms, attribute table, thumbnail/metadata. |
 | 0055 | MapServer legend, queryDomains/queryLegends and per-layer generateRenderer are adapter projections of the persisted MapLibre style. |
+| 0056 | MapServer export reads time/timeRelation/layerTimeOptions, dynamicLayers and layerOption; cached-root fields follow the served scheme. |
 
 ## How to change the architecture
 

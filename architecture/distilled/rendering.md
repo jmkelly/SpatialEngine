@@ -22,7 +22,7 @@ sit in the root `Spatial.PluginSdk` namespace; the wire DTOs in
 | `RasterViewport(Envelope Bounds, int Width, int Height, string Crs)` | the viewport, x-first |
 | `RasterBuffer` / `RasterImage` | raw (premultiplied RGBA by default) pixels / encoded bytes |
 | `RasterLayer`, `RasterBufferLayer`, `RasterSourceLayer` | the composite stack entries |
-| `MapLayerSource(Dataset, Features, Catalogue, Filter)` | a resolved keyed store + catalogue |
+| `MapLayerSource(Dataset, Features, Catalogue, Filter, Time)` | a resolved keyed store + catalogue, with an optional `MapTimeExtent` render filter (ADR-0056) |
 | `RasterFormat`, `RasterPixelFormat`, `RasterBlend` | png/jpeg/webp/tiff, rgba8888/rgb888, blend modes |
 | `ITileScheme` + `TileCoordinate`/`TileLevel` | pluggable tiling: address → projected extent + LODs (ADR-0046) |
 | `ITileCache` + `TileCacheKey` | content-addressed tile cache; ownership is the implementation's (ADR-0046) |

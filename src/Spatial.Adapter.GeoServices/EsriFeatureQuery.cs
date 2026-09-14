@@ -207,9 +207,10 @@ internal sealed record EsriFeatureQuery(
     /// Parses the <c>time</c> parameter: an instant (<c>time=ms</c>) or an
     /// extent (<c>time=start,end</c>) with <c>null</c> infinity bounds. Each
     /// bound is epoch milliseconds (an ISO-8601 date-time is also accepted).
-    /// An absent or blank value leaves the extent unset.
+    /// An absent or blank value leaves the extent unset. Shared with the
+    /// export path (T-040), which filters renders with the same grammar.
     /// </summary>
-    private static EsriTimeExtent? ParseTime(string? value)
+    internal static EsriTimeExtent? ParseTime(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
