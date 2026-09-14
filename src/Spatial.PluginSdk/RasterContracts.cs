@@ -99,16 +99,27 @@ public sealed record RasterCompositeRequest(
     bool Transparent = true);
 
 /// <summary>
+/// A temporal extent in epoch milliseconds (T-040, S2 export <c>time</c>):
+/// an instant has equal bounds, a <c>null</c> bound is open (infinite).
+/// Core-typed (two longs), so it crosses the contract boundary.
+/// </summary>
+public sealed record MapTimeExtent(long? StartMs, long? EndMs);
+
+/// <summary>
 /// One styled layer's resolved read services: the dataset key the style's
-/// <c>source-layer</c> names, a keyed store, its catalogue and an optional
-/// store-level filter in the provider's safe grammar. Resolved by the host at
-/// the edge, so the renderer performs no service location.
+/// <c>source-layer</c> names, a keyed store, its catalogue, an optional
+/// store-level filter in the provider's safe grammar and an optional
+/// temporal extent. The renderer drops features whose date values fall
+/// outside <see cref="Time"/>; features without date values always pass
+/// (ArcGIS Server ignores <c>time</c> on non-time-aware layers). Resolved
+/// by the host at the edge, so the renderer performs no service location.
 /// </summary>
 public sealed record MapLayerSource(
     string Dataset,
     IFeatureStore Features,
     IDataCatalogue Catalogue,
-    string? Filter = null);
+    string? Filter = null,
+    MapTimeExtent? Time = null);
 
 /// <summary>
 /// A complete render request: viewport, style document, resolved layer

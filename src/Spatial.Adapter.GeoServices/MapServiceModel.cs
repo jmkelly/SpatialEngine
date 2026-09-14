@@ -20,7 +20,10 @@ internal sealed record EsriMapServerRoot(
     string Capabilities,
     string SupportedImageFormatTypes,
     IReadOnlyList<EsriMapLayerRef> Layers,
-    IReadOnlyList<EsriMapLayerRef> Tables);
+    IReadOnlyList<EsriMapLayerRef> Tables,
+    bool SupportsDynamicLayers,
+    bool SupportsTimeRelation,
+    bool ExportTilesAllowed);
 
 /// <summary>One layer reference under the MapServer root or the all-layers resource.</summary>
 internal sealed record EsriMapLayerRef(
