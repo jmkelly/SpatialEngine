@@ -169,13 +169,34 @@ public sealed class GeometryServiceTests
 
     [Theory]
     [InlineData("geodesic")]
-    [InlineData("unionResults")]
     public async Task Buffer_rejects_unsupported_modifiers(string name)
     {
         await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
             ("geometries", """[{"x":0,"y":0}]"""),
             ("distances", "1"),
             (name, "x")));
+    }
+
+    [Fact]
+    public async Task Buffer_accepts_unionResults_false_as_per_input()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0}]"""),
+            ("distances", "1"),
+            ("unionResults", "false"));
+
+        Assert.Equal(1, result.GetProperty("geometries").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Buffer_rejects_unionResults_true_by_name()
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0}]"""),
+            ("distances", "1"),
+            ("unionResults", "true")));
+
+        Assert.Contains("unionResults", exception.Message);
     }
 
     [Fact]

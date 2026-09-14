@@ -101,7 +101,14 @@ internal static class GeometryService
             throw EsriInteropException.Invalid("The 'geodesic' parameter is not supported: the engine buffers planar; project first (bufferSR) and buffer without geodesic.");
         }
 
-        Reject(parameters, "unionResults", "unionResults is not supported; the result is an array per input.");
+        // unionResults=false is the Esri default and matches engine behavior
+        // (one result array per input), so it is accepted leniently like
+        // geodesic=false; unionResults=true has no engine verb and stays
+        // rejected by name.
+        if (parameters.GetBool("unionResults", false))
+        {
+            throw EsriInteropException.Invalid("The 'unionResults' parameter is not supported: unionResults is not supported; the result is an array per input.");
+        }
         var fallback = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"))
             ?? EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
         var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), fallback);
