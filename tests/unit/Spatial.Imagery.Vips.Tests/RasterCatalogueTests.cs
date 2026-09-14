@@ -263,6 +263,56 @@ public sealed class RasterCatalogueTests
     }
 
     [Fact]
+    public async Task List_items_carries_the_authored_item_metadata()
+    {
+        using var fixture = new RasterFixture();
+        const string xml = "<MD_Metadata><title>Item</title></MD_Metadata>";
+        var catalogue = Catalogue(fixture.CatalogDataset(itemMetadata: xml));
+
+        var item = Assert.Single(await catalogue.ListItemsAsync("raster"));
+
+        Assert.Equal(xml, item.MetadataXml);
+    }
+
+    [Fact]
+    public async Task List_items_without_item_metadata_carries_none()
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.CatalogDataset());
+
+        var item = Assert.Single(await catalogue.ListItemsAsync("raster"));
+
+        Assert.Null(item.MetadataXml);
+    }
+
+    [Fact]
+    public void Malformed_item_metadata_fails_fast_at_construction()
+    {
+        using var fixture = new RasterFixture();
+
+        var failure = Assert.Throws<SpatialException>(
+            () => Catalogue(fixture.CatalogDataset(itemMetadata: "<MD_Metadata><title>unclosed")));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    [Theory]
+    [InlineData("describe")]
+    [InlineData("list")]
+    public async Task Describe_and_list_observe_cancellation(string operation)
+    {
+        using var fixture = new RasterFixture();
+        var catalogue = Catalogue(fixture.CatalogDataset());
+        var token = new CancellationToken(canceled: true);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operation switch
+        {
+            "describe" => catalogue.DescribeAsync("raster", token),
+            _ => catalogue.ListItemsAsync("raster", token),
+        });
+    }
+
+    [Fact]
     public async Task Export_of_a_named_catalog_item_uses_that_item()
     {
         using var fixture = new RasterFixture();
@@ -426,7 +476,7 @@ internal sealed class RasterFixture : IDisposable
     public RasterDatasetDescriptor Dataset(IReadOnlyList<RasterBandStatistics>? statistics = null) =>
         new("raster", Path, "EPSG:4326", new Envelope(0, 0, Width, Height), 1, 1, "Fixture", statistics);
 
-    public RasterDatasetDescriptor CatalogDataset()
+    public RasterDatasetDescriptor CatalogDataset(string? itemMetadata = null)
     {
         var footprint = GeometryFactory.CreatePolygon(
             [
@@ -442,7 +492,8 @@ internal sealed class RasterFixture : IDisposable
             footprint,
             Path,
             new Envelope(0, 0, Width, Height),
-            [AttributeValue.FromString("first")]);
+            [AttributeValue.FromString("first")],
+            MetadataXml: itemMetadata);
         return new RasterDatasetDescriptor(
             "raster",
             Path,

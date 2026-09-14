@@ -29,6 +29,7 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         foreach (var descriptor in _datasets.Values)
         {
             VipsRasterReader.ValidateAttributeTable(descriptor);
+            VipsRasterReader.ValidateMetadata(descriptor);
         }
     }
 
@@ -139,7 +140,7 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
                 item.PixelSizeX > 0 ? item.PixelSizeX : descriptor.PixelSizeX,
                 item.PixelSizeY > 0 ? item.PixelSizeY : descriptor.PixelSizeY,
                 statistics: null);
-            items.Add(new RasterCatalogItem(item.ObjectId, item.Footprint, info, VipsRasterReader.Payload(item)));
+            items.Add(new RasterCatalogItem(item.ObjectId, item.Footprint, info, VipsRasterReader.Payload(item), item.MetadataXml));
         }
 
         return items;

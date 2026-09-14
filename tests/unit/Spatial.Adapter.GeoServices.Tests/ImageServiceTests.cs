@@ -326,20 +326,6 @@ public sealed class ImageServiceTests
     }
 
     [Fact]
-    public void Metadata_projects_the_described_dataset()
-    {
-        var metadata = ImageService.Metadata(Description(hasCatalog: false), "ESRI");
-
-        Assert.Equal("wsiearth.tif", metadata.Name);
-        Assert.Equal(3, metadata.BandCount);
-        Assert.Equal("U8", metadata.PixelType);
-        Assert.Equal("esriImageServiceDataTypeRGB", metadata.ServiceDataType);
-        Assert.Equal("ESRI", metadata.CopyrightText);
-        Assert.Equal(4326, metadata.SpatialReference!.Wkid);
-        Assert.Equal([0.0, 0.0, 0.0], metadata.MinValues);
-    }
-
-    [Fact]
     public void Attribute_table_writes_oid_fields_and_rows()
     {
         var result = ImageService.AttributeTable(AttributeTable());

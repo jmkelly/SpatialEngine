@@ -38,4 +38,27 @@ public sealed class EsriFormatTests
         Assert.Contains("supportedQueryFormats", failure.Message, StringComparison.Ordinal);
         Assert.Contains("f=json", failure.Message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("xml")]
+    [InlineData("XML")]
+    public void Xml_and_an_absent_format_pass_for_metadata(string? format)
+    {
+        EsriFormat.EnsureXml(format);
+    }
+
+    [Theory]
+    [InlineData("json")]
+    [InlineData("pjson")]
+    [InlineData("html")]
+    public void A_non_xml_format_is_a_typed_failure_naming_the_xml_surface(string format)
+    {
+        var failure = Assert.Throws<EsriInteropException>(() => EsriFormat.EnsureXml(format));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+        Assert.Contains("f=xml", failure.Message, StringComparison.Ordinal);
+    }
 }

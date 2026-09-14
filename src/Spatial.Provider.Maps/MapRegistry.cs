@@ -319,8 +319,16 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
     {
         var services = declared.Services.Select(name => ParseService(declared.Name, name)).ToList();
         var layers = declared.Layers.Select(layer => ParseLayer(declared.Name, layer)).ToArray();
-        var map = new Map(declared.Name, declared.Store, layers, services, declared.Description, declared.Copyright);
-        return declared.Layers.Count == 0 ? map : MapValidator.Normalize(map, nextLayerId: 0);
+        var map = new Map(declared.Name, declared.Store, layers, services, declared.Description, declared.Copyright, declared.MetadataXml);
+        if (declared.Layers.Count == 0)
+        {
+            // Whole-store maps skip Normalize (their layers enumerate later),
+            // but authored metadata still fails fast here (ADR-0068).
+            MapValidator.ValidateMetadata(map);
+            return map;
+        }
+
+        return MapValidator.Normalize(map, nextLayerId: 0);
     }
 
     private static MapService ParseService(string mapName, string name) =>

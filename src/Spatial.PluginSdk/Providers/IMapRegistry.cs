@@ -90,6 +90,12 @@ public sealed record MapLayer(
 /// different maps with different styles; styles are never global. A map's
 /// <see cref="Services"/> may be empty (a draft that serves nothing) or any
 /// subset of <see cref="MapService"/>.</para>
+///
+/// <para><see cref="MetadataXml"/> is the map's authored service-level
+/// metadata document (ISO/FGDC XML): the ImageServer <c>metadata</c>
+/// resource serves these bytes as <c>application/xml</c>, and a map without
+/// one answers a typed <c>not.found</c> instead of an invented document
+/// (ADR-0068). It is validated as well-formed XML when the map is stored.</para>
 /// </summary>
 public sealed record Map(
     string Name,
@@ -97,7 +103,8 @@ public sealed record Map(
     IReadOnlyList<MapLayer> Layers,
     IReadOnlyList<MapService> Services,
     string? Description = null,
-    string? Copyright = null)
+    string? Copyright = null,
+    string? MetadataXml = null)
 {
     public override string ToString() =>
         $"{Name} ({Store}, {Layers.Count} layer(s), {string.Join("/", Services)})";
