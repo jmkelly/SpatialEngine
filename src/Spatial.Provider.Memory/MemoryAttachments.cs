@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Memory;
 
 /// <summary>
-/// The in-memory feature-attachment capability (T-060, ADR-0064), split from
+/// The in-memory feature-attachment capability (T-060, ADR-0065), split from
 /// <see cref="MemoryStore"/> exactly like <see cref="MemoryEditor"/> so each
 /// type keeps one cohesive responsibility. Attachments are keyed by dataset
 /// and feature identity with per-feature integer ids starting at one; bytes
@@ -17,7 +17,7 @@ namespace Spatial.Provider.Memory;
 /// </summary>
 public sealed class MemoryAttachments : IFeatureAttachmentStore
 {
-    /// <summary>The default per-attachment byte cap (10 MiB, ADR-0064 §3).</summary>
+    /// <summary>The default per-attachment byte cap (10 MiB, ADR-0065 §3).</summary>
     public const long DefaultMaxBytesPerAttachment = 10_485_760;
 
     private const string DefaultContentType = "application/octet-stream";
