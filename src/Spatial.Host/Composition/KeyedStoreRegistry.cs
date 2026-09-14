@@ -26,6 +26,9 @@ internal sealed class KeyedStoreRegistry(IServiceProvider provider) : IStoreRegi
     public IFeatureEditStore? EditStore(string store) =>
         provider.GetKeyedService<IFeatureEditStore>(store);
 
+    public IFeatureAttachmentStore? AttachmentStore(string store) =>
+        provider.GetKeyedService<IFeatureAttachmentStore>(store);
+
     public ITransactionStore? Transactions(string store) =>
         provider.GetKeyedService<ITransactionStore>(store);
 

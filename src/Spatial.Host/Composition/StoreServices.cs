@@ -40,11 +40,13 @@ internal static class StoreServices
         // under the key `memory`, so ingest/publish work with no database.
         builder.Services.AddSingleton<MemoryStore>();
         builder.Services.AddSingleton<MemoryEditor>();
+        builder.Services.AddSingleton<MemoryAttachments>();
         builder.Services.AddSingleton<MemoryIngest>();
         builder.Services.AddKeyedSingleton<IDataCatalogue>("memory", (services, _) => services.GetRequiredService<MemoryStore>());
         builder.Services.AddKeyedSingleton<IFeatureStore>("memory", (services, _) => services.GetRequiredService<MemoryStore>());
         builder.Services.AddKeyedSingleton<IFeatureLookup>("memory", (services, _) => services.GetRequiredService<MemoryStore>());
         builder.Services.AddKeyedSingleton<IFeatureEditStore>("memory", (services, _) => services.GetRequiredService<MemoryEditor>());
+        builder.Services.AddKeyedSingleton<IFeatureAttachmentStore>("memory", (services, _) => services.GetRequiredService<MemoryAttachments>());
         builder.Services.AddKeyedSingleton<ITransactionStore>("memory", (services, _) => services.GetRequiredService<MemoryStore>());
         builder.Services.AddKeyedSingleton<IDatasetIngest>("memory", (services, _) => services.GetRequiredService<MemoryIngest>());
     }

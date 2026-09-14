@@ -55,6 +55,8 @@ internal static class OgcFixtures
 
         public IFeatureEditStore? EditStore(string name) => null;
 
+        public IFeatureAttachmentStore? AttachmentStore(string name) => null;
+
         public ITransactionStore? Transactions(string name) => null;
 
         public IDatasetIngest? Ingest(string name) => null;
