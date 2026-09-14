@@ -4,7 +4,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The attachment surface (S4 query-attachments/add-attachment/…): the
-/// <c>IFeatureAttachmentStore</c> capability exists (ADR-0064) but no layer
+/// <c>IFeatureAttachmentStore</c> capability exists (ADR-0065) but no layer
 /// advertises <c>hasAttachments</c> yet — so reads truthfully report the
 /// empty set and writes fail as typed <c>invalid.arguments</c> naming the
 /// missing capability (ADR-0058). Serving the surface on the capability is
