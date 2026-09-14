@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Benchmarks are opt-in: this is a console app, not a test project, so
+         `dotnet test` (eng/verify.sh) builds it but never executes benchmarks.
+         Run it via eng/perf.sh. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+    <!-- Raw baselines for the engine-vs-direct comparisons (T-076): the
+         bench project recreates the same operations straight on NTS/ProjNet
+         types, so the delta against the engine verbs is the adapter cost.
+         Versions stay centrally pinned (No_inline_package_versions). -->
+    <PackageReference Include="NetTopologySuite" />
+    <PackageReference Include="ProjNET" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- T-076 micros: the bench project references engine implementation
+         projects directly, never via Spatial.PluginSdk (which takes no
+         packages). NTS/ProjNet/Skia types stay inside the bench methods;
+         nothing crosses a contract. -->
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Provider.Memory\Spatial.Provider.Memory.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
+  </ItemGroup>
+
+</Project>
