@@ -7,9 +7,10 @@ using Spatial.PluginSdk;
 namespace Spatial.Imagery.Vips.Tests;
 
 /// <summary>
-/// Histogram computation and the raster attribute table plumbing (ADR-0054):
-/// full-range 8-bit histograms clipped to the requested bounds, typed
-/// failures for disjoint bounds and non-8-bit bands, cancellation, and
+/// Histogram computation and the raster attribute table plumbing (ADR-0054,
+/// T-054): full-range 8-bit histograms clipped to the requested bounds,
+/// data-driven 256-bin histograms for other real band formats, typed
+/// failures for disjoint bounds and complex bands, cancellation, and
 /// fail-fast descriptor validation.
 /// </summary>
 public sealed class RasterStatisticsTests
@@ -74,9 +75,61 @@ public sealed class RasterStatisticsTests
     }
 
     [Fact]
-    public async Task Compute_rejects_non_uchar_bands()
+    public async Task Compute_returns_data_driven_histograms_for_float()
     {
         using var fixture = new FloatFixture();
+        var catalogue = new VipsRasterCatalogue([fixture.Dataset()], new IdentityTransforms());
+
+        var histograms = await catalogue.ComputeHistogramsAsync(
+            "raster", new RasterHistogramRequest(new Envelope(0, 0, 4, 3), Crs));
+
+        var histogram = Assert.Single(histograms);
+        Assert.Equal(256, histogram.Size);
+        Assert.Equal(0, histogram.Min);
+        Assert.Equal(11, histogram.Max);
+        Assert.Equal(12, histogram.Counts.Sum());
+        Assert.Equal(1, histogram.Counts[0]);
+        Assert.Equal(1, histogram.Counts[255]);
+    }
+
+    [Fact]
+    public async Task Compute_returns_data_driven_histograms_for_ushort()
+    {
+        using var fixture = new UshortFixture();
+        var catalogue = new VipsRasterCatalogue([fixture.Dataset()], new IdentityTransforms());
+
+        var histograms = await catalogue.ComputeHistogramsAsync(
+            "raster", new RasterHistogramRequest(new Envelope(0, 0, 4, 3), Crs));
+
+        var histogram = Assert.Single(histograms);
+        Assert.Equal(256, histogram.Size);
+        Assert.Equal(-0.5, histogram.Min);
+        Assert.Equal(11000.5, histogram.Max);
+        Assert.Equal(12, histogram.Counts.Sum());
+        Assert.Equal(1, histogram.Counts[0]);
+    }
+
+    [Fact]
+    public async Task Compute_bins_a_flat_raster_in_the_middle_bin()
+    {
+        using var fixture = new FlatFixture();
+        var catalogue = new VipsRasterCatalogue([fixture.Dataset()], new IdentityTransforms());
+
+        var histograms = await catalogue.ComputeHistogramsAsync(
+            "raster", new RasterHistogramRequest(new Envelope(0, 0, 4, 3), Crs));
+
+        var histogram = Assert.Single(histograms);
+        Assert.Equal(256, histogram.Size);
+        Assert.Equal(4.5, histogram.Min);
+        Assert.Equal(5.5, histogram.Max);
+        Assert.Equal(12, histogram.Counts.Sum());
+        Assert.Equal(12, histogram.Counts[128]);
+    }
+
+    [Fact]
+    public async Task Compute_rejects_complex_bands()
+    {
+        using var fixture = new ComplexFixture();
         var catalogue = new VipsRasterCatalogue([fixture.Dataset()], new IdentityTransforms());
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() => catalogue.ComputeHistogramsAsync(
@@ -137,13 +190,104 @@ public sealed class RasterStatisticsTests
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
 
-    /// <summary>A 32-bit float raster: histograms are an 8-bit-only operation.</summary>
+    /// <summary>A 16-bit unsigned raster with values spanning more than 256 levels.</summary>
+    private sealed class UshortFixture : IDisposable
+    {
+        public UshortFixture()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"spatial-raster-ushort-{Guid.NewGuid():N}.tif");
+            var pixels = new ushort[4 * 3];
+            for (var i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = (ushort)(i * 1000);
+            }
+
+            var bytes = new byte[pixels.Length * 2];
+            Buffer.BlockCopy(pixels, 0, bytes, 0, bytes.Length);
+            using var image = Image.NewFromMemory(bytes, 4, 3, 1, Enums.BandFormat.Ushort);
+            image.WriteToFile(Path);
+        }
+
+        public string Path { get; }
+
+        public RasterDatasetDescriptor Dataset() =>
+            new("raster", Path, Crs, new Envelope(0, 0, 4, 3), 1, 1, "Ushort fixture");
+
+        public void Dispose()
+        {
+            if (File.Exists(Path))
+            {
+                File.Delete(Path);
+            }
+        }
+    }
+
+    /// <summary>A 32-bit float raster with a single repeated value: no data range to scale.</summary>
+    private sealed class FlatFixture : IDisposable
+    {
+        public FlatFixture()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"spatial-raster-flat-{Guid.NewGuid():N}.tif");
+            var pixels = new float[4 * 3];
+            Array.Fill(pixels, 5f);
+            var bytes = new byte[pixels.Length * 4];
+            Buffer.BlockCopy(pixels, 0, bytes, 0, bytes.Length);
+            using var image = Image.NewFromMemory(bytes, 4, 3, 1, Enums.BandFormat.Float);
+            image.WriteToFile(Path);
+        }
+
+        public string Path { get; }
+
+        public RasterDatasetDescriptor Dataset() =>
+            new("raster", Path, Crs, new Envelope(0, 0, 4, 3), 1, 1, "Flat fixture");
+
+        public void Dispose()
+        {
+            if (File.Exists(Path))
+            {
+                File.Delete(Path);
+            }
+        }
+    }
+
+    /// <summary>A complex raster (vips native format, which stores complex samples): histograms over complex values are meaningless.</summary>
+    private sealed class ComplexFixture : IDisposable
+    {
+        public ComplexFixture()
+        {
+            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"spatial-raster-complex-{Guid.NewGuid():N}.v");
+            var pixels = new byte[4 * 3];
+            using var image = Image.NewFromMemory(pixels, 4, 3, 1, Enums.BandFormat.Uchar);
+            using var cast = image.Cast(Enums.BandFormat.Complex);
+            cast.WriteToFile(Path);
+        }
+
+        public string Path { get; }
+
+        public RasterDatasetDescriptor Dataset() =>
+            new("raster", Path, Crs, new Envelope(0, 0, 4, 3), 1, 1, "Complex fixture");
+
+        public void Dispose()
+        {
+            if (File.Exists(Path))
+            {
+                File.Delete(Path);
+            }
+        }
+    }
+
+    /// <summary>A 32-bit float raster with values 0..11: histograms scale the data range.</summary>
     private sealed class FloatFixture : IDisposable
     {
         public FloatFixture()
         {
             Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"spatial-raster-float-{Guid.NewGuid():N}.tif");
             var pixels = new byte[4 * 3];
+            for (var i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = (byte)i;
+            }
+
             using var image = Image.NewFromMemory(pixels, 4, 3, 1, Enums.BandFormat.Uchar);
             using var cast = image.Cast(Enums.BandFormat.Float);
             cast.WriteToFile(Path);

@@ -65,7 +65,8 @@ internal static class ImageService
     /// Raster functions and mosaicking read <c>None</c>/<c>First</c> because <c>renderingRule</c>,
     /// <c>mosaicRule</c> and multi-raster <c>rasterIds</c> are rejected and one raster's native bands
     /// are served; mensuration reads <c>None</c> for lack of sensor models; <c>hasHistograms</c>
-    /// follows the 8-bit-only <c>computeHistograms</c> provider path; <c>hasRasterAttributeTable</c>
+    /// follows the <c>computeHistograms</c> provider path (every real-valued band format,
+    /// complex excluded); <c>hasRasterAttributeTable</c>
     /// follows the configured table; the download caps are the enforced host options.
     /// </summary>
     public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright, GeoServicesOptions options)
@@ -100,7 +101,7 @@ internal static class ImageService
             MosaicOperator: "First",
             MensurationCapabilities: "None",
             HasColormap: false,
-            HasHistograms: info.PixelType == RasterPixelType.U8,
+            HasHistograms: info.PixelType is not (RasterPixelType.Unknown or RasterPixelType.C64 or RasterPixelType.C128),
             HasRasterAttributeTable: info.AttributeTable is not null,
             MaxDownloadImageCount: options.MaxRasterDownloadFiles,
             MaxDownloadSizeLimit: options.MaxRasterDownloadBytes,

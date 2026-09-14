@@ -236,8 +236,10 @@ public interface IRasterCatalogue
 
     /// <summary>
     /// Computes one histogram per band over the requested bounds of a dataset
-    /// (spec §8 <c>computeHistograms</c>, ADR-0054). Bounds outside the raster
-    /// extent are <c>invalid.arguments</c>; only 8-bit bands are supported.
+    /// (spec §8 <c>computeHistograms</c>, ADR-0054, T-054). Bounds outside the raster
+    /// extent are <c>invalid.arguments</c>. 8-bit bands report full-range
+    /// 256-bin histograms; other real-valued bands report 256-bin histograms
+    /// over their data range (complex bands are <c>invalid.arguments</c>).
     /// </summary>
     Task<IReadOnlyList<RasterHistogram>> ComputeHistogramsAsync(
         string dataset, RasterHistogramRequest request, CancellationToken cancellationToken = default);
