@@ -1,0 +1,6 @@
+{
+ "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0/query?where=1%3D1&returnCountOnly=true&f=json",
+ "body": {
+  "count": 350
+ }
+}

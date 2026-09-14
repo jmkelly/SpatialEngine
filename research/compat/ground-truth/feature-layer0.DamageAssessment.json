@@ -1,0 +1,1324 @@
+{
+ "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0?f=json",
+ "body": {
+  "currentVersion": 10.91,
+  "cimVersion": "2.9.0",
+  "id": 0,
+  "name": "Damage to Residential Buildings",
+  "type": "Feature Layer",
+  "parentLayer": null,
+  "defaultVisibility": true,
+  "minScale": 0,
+  "maxScale": 0,
+  "canScaleSymbols": false,
+  "geometryType": "esriGeometryPoint",
+  "description": "The location of damaged residential structures and a description of the extent to which the structure and its contents were damaged.",
+  "copyrightText": "",
+  "editFieldsInfo": null,
+  "ownershipBasedAccessControlForFeatures": null,
+  "syncCanReturnChanges": false,
+  "relationships": [],
+  "isDataVersioned": false,
+  "isDataArchived": false,
+  "infoInEstimates": [
+   "extent",
+   "count"
+  ],
+  "isDataBranchVersioned": false,
+  "isDataReplicaTracked": false,
+  "isCoGoEnabled": false,
+  "supportsRollbackOnFailureParameter": false,
+  "archivingInfo": {
+   "supportsQueryWithHistoricMoment": false,
+   "startArchivingMoment": -1
+  },
+  "supportsStatistics": true,
+  "supportsExceedsLimitStatistics": true,
+  "supportsAdvancedQueries": true,
+  "supportsValidateSQL": true,
+  "supportsCoordinatesQuantization": true,
+  "supportsQuantizationEditMode": true,
+  "supportsCalculate": true,
+  "supportsASyncCalculate": true,
+  "supportsDatumTransformation": true,
+  "advancedQueryCapabilities": {
+   "supportsPagination": true,
+   "supportsTrueCurve": true,
+   "supportsQueryWithDistance": true,
+   "supportsReturningQueryExtent": true,
+   "supportsStatistics": true,
+   "supportsPercentileStatistics": true,
+   "supportsHavingClause": true,
+   "supportsOrderBy": true,
+   "supportsDistinct": true,
+   "supportsCountDistinct": true,
+   "supportsQueryAttachments": true,
+   "supportsQueryAttachmentsWithReturnUrl": true,
+   "supportsQueryWithResultType": true,
+   "supportsReturningGeometryCentroid": false,
+   "supportsSqlExpression": true,
+   "supportsQueryWithDatumTransformation": true,
+   "supportsLod": false,
+   "supportsQueryWithLodSR": false,
+   "supportsQueryAnalytic": true
+  },
+  "advancedQueryAnalyticCapabilities": {
+   "supportsLinearRegression": true,
+   "supportsAsync": false,
+   "supportsPercentileAnalytic": false
+  },
+  "advancedEditingCapabilities": {
+   "supportedSqlFormatsInCalculate": [
+    "standard"
+   ],
+   "supportsAsyncApplyEdits": true
+  },
+  "hasMetadata": false,
+  "extent": {
+   "xmin": -20004698.6492,
+   "ymin": -22048025.335699998,
+   "xmax": 365227716.6599,
+   "ymax": 54792015.7859,
+   "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857,
+    "xyTolerance": 0.001,
+    "zTolerance": 0.001,
+    "mTolerance": 0.001,
+    "falseX": -28651323.825425006,
+    "falseY": -30665215.055140004,
+    "xyUnits": 47351317.928349085,
+    "falseZ": -100000,
+    "zUnits": 10000,
+    "falseM": -100000,
+    "mUnits": 10000
+   }
+  },
+  "sourceSpatialReference": {
+   "wkid": 102100,
+   "latestWkid": 3857,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -20037700,
+   "falseY": -30241100,
+   "xyUnits": 10000,
+   "falseZ": -100000,
+   "zUnits": 10000,
+   "falseM": -100000,
+   "mUnits": 10000
+  },
+  "drawingInfo": {
+   "renderer": {
+    "type": "uniqueValue",
+    "field1": "typdamage",
+    "uniqueValueInfos": [
+     {
+      "symbol": {
+       "type": "esriPMS",
+       "url": "50c678c97496cbfb7d527ff1b06d6038",
+       "imageData": "iVBORw0KGgoAAAANSUhEUgAAAB8AAAAgCAYAAADqgqNBAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABkUlEQVRIie3WP4saQRjH8e/oYpPWhbPcFB55B9YSi+Vg+4NAKlkk5jXcxMJ3oItodcXB4QvY8nwTi4VFKpNC26Ry5klzhX/Z1fXI3eGvW3hmPizzzPA4/Mc4F/xV4GEY3iql7oAqoPICSqk/1tqJMeb7aDT6eRBvtVqfReQhL7geEfmglLpxHOeT1vpaa73ai4vIl3PCW/m4WCyugWQvDly9II4xxl3/ztVw5XKZ5XJ58vqT8SAIqNfr9Ho9PM+jVqsB0O12Wa1WKatz4EEQ4Ps+AO12m/l8TqVSAUCp7BfkaHwdBiiVSnied+w2x+PbcN5kxrPC1WqVJElS6zLjx/xxGIZEUcR0Os2P+75Po9FARDI1U7FYpNlsEkURs9ksHx7HMXEc0+l0cF03rZzJZMJ4PE6ty4S/ZC74Bb/gO9FaZ6oTkZPx34cKrbWZNz0UY8yvg3ihULi31n7lDFPrdkQkGQ6HG+/tBt7v95+eR+cfnGl0Bv6KyJPjON+AjTPZOfPBYPAIPJ4BTc3b6PZ3h/8DWzV/7rYWJdIAAAAASUVORK5CYII=",
+       "contentType": "image/png",
+       "width": 23,
+       "height": 24,
+       "angle": 0,
+       "xoffset": 0,
+       "yoffset": 0
+      },
+      "value": "Inaccessible",
+      "label": "Inaccessible"
+     },
+     {
+      "symbol": {
+       "type": "esriPMS",
+       "url": "6b813acbb2ab4ee1831c4b3799cafdda",
+       "imageData": "iVBORw0KGgoAAAANSUhEUgAAAB8AAAAgCAYAAADqgqNBAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABjElEQVRIie3Wu0vDUBTH8e+tdtFNETpVfGARN12cikKGgCCugkUHNxG01UEQjOhSkLi4KuIg1EFw0cGAOvgPCIL4wK1uhQ46iO1xcQjakMSk+CC/7cLhfO6Fw+U08oNpjPBfgedyjAMrQA+gQjCegXOlmN3Y4NERX1hAE2E/BNCeZmBEhF7DIGUYvNXERZgIGbans1wmBVzXxIFEHXEaGmiznwMNXEtLB6XSo3uhQ76N6/oa6fQ829sjJJODDAxkANjc7KdSea0frutraNoyANPTxxSLVyQSfQAoFfPcxzduhwHi8Sba2wf9tvGPf4aDxjPuFe7uHubm5iQ83M+Lp6YO2dkZ5fb2NDiuacsMDS0iIijl/tvGYnEymQN2d8d4eLgIhlvWOpa1ztLSPa2tXa745eUWR0dzrnWe8HomwiM8wr8kn0/hZaUTqX4bf3IqrFYrnps696DoiIuwpxSThLO1fs61aXLniJsmZ9ks40qxSkirswgvSnEGzADiiH9coAAUgqJe8jem/d/h70dQadLoFvd8AAAAAElFTkSuQmCC",
+       "contentType": "image/png",
+       "width": 23,
+       "height": 24,
+       "angle": 0,
+       "xoffset": 0,
+       "yoffset": 0
+      },
+      "value": "Affected",
+      "label": "Affected"
+     },
+     {
+      "symbol": {
+       "type": "esriPMS",
+       "url": "1d8ace3059f01b69bd02144b52b99458",
+       "imageData": "iVBORw0KGgoAAAANSUhEUgAAAB8AAAAgCAYAAADqgqNBAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABZ0lEQVRIie3WP0vDQBjH8e+1dbHiIgU3UdFQ7OSkgkPBRQri1FpQfAEi6OBWEKkvwVfgIKSDowodasHuIhQHC938gwgudRDbc8hgbBtyTa74h/wgkAsPz4fjjvBE+MFEAvxX4NIki2AfmAaEBqMBXALbIk3dEZcmSwhONID2RIEUEJclDJHkoytOiHWkZvorE7xgANXuuGS0b7TVP2Zf+rtw0XFo1N3rHOIdT+RhaheuUjAyB2Mb1vfiLLTe+4gn8hDPWe+LZ/B6A8Mz1lqElNv0jtthgPCgtXMP6Q1vh31GHVeFY0l4PNeI97LjhVOorMBTUQMez4GxB0iU/rahAZgvQGUVnss+8dtD61muwdCkO147gusd9zolvI8J8AAP8M5cGKiNdC3P+INjpWwqN3VMk3tnXHKMYBM9U2t7qmS4Y80BFxlKskAWOEDf6PwGlAizJcT38bTjzEUaEzA1oK75I7f9v+Gf9wxKA+EGkV0AAAAASUVORK5CYII=",
+       "contentType": "image/png",
+       "width": 23,
+       "height": 24,
+       "angle": 0,
+       "xoffset": 0,
+       "yoffset": 0
+      },
+      "value": "Minor",
+      "label": "Minor"
+     },
+     {
+      "symbol": {
+       "type": "esriPMS",
+       "url": "a1679d8474450382db74ffbb7d6312bd",
+       "imageData": "iVBORw0KGgoAAAANSUhEUgAAAB8AAAAgCAYAAADqgqNBAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABl0lEQVRIie3WSygEcRzA8e9/djmgHDzam1esRy5yEAePtKUtOVlbtOXgIuHgRFlRLtpSTuLiQOvAjVqH9di7Ukhob0ZJceCgtX/XCdPM7M7m0X5v0/z7ffo3/6a/kx/MmcV/BR6ewC9hFqgBhA3Gi4BDkWCsf4W4Lh6epFtKNm0AteVL8EonddEg7s4giW/xpGTQjq3qVKk+4wbOv8UFuDJng5CUaJ/TOnD5RRW8PMaNF+qUMt7YM09NxyTHq16Ky1soax4CILLURPL9LXN4Y8889Z4ZANpH9nhSzyh0NQAghGJ6jmVcCwM4cvMoKmuxOsY6/hlON9O4Wbi0uhP1ct8+3MqO24Z3iK31cn91kD5e75mhtmsKpARh/AtSlBxaA9ucrPfxcHuUHn4RWeAisoB3+oaC4ipD/Dq2wunuhOE6U3gmy+JZPIt/aW/RjakrnUymjKv6M99ND9VLKNzp4kJhQyYJYM+t9XPnvhDXA3q4L0R0axy/EMxh39X5VUA04WBUgNS++PLN/cuEgbANqGF/47T/O/wDckBnDT8w19MAAAAASUVORK5CYII=",
+       "contentType": "image/png",
+       "width": 23,
+       "height": 24,
+       "angle": 0,
+       "xoffset": 0,
+       "yoffset": 0
+      },
+      "value": "Major",
+      "label": "Major"
+     },
+     {
+      "symbol": {
+       "type": "esriPMS",
+       "url": "616e9bdfa9ef284279abb4b153642834",
+       "imageData": "iVBORw0KGgoAAAANSUhEUgAAAB8AAAAgCAYAAADqgqNBAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABgElEQVRIie3Wv0uCQRzH8feZLho09IO2MMGnFBcnqSGENkGcMiHpD4hAB7cHIvRP8C9oKHRwVMjBrPZA0EXBLYOWFhtEvYYWUR981Ef6gR+44bgv3xfHHceZ+cGYl/ivwDMQkXAFOAFhgNEW8CDg8gSamngGjiXcGgAOxiYhIGG/BIofumPxPpwZsVWN7LZAAapjcQHbi7NBwObgfK4LZ7PbaTebkws1MjPuSSZxxuM8BgJs+HzsRKMA3Hu99DudxeGeZBKXqgJwlM/zUamw5nYDIEwm3X2mxgdhgBWrlXWfb9o20+PD8LzRjeuFt/x+WoWCcfg0Oz7M5XgOBnkrFufHXarKXiIBUoKY/ASZLBYOslmeQiHey+X58FoqRS2VItBosOpwTMTr6TQvsdjEOl34IrPEl/gSH0leUXQ9MvT7M+MtrULZ6+luqhUBr5q4gBsJ5xjzax1ONQz1Uy08DKU7iAi4xriv86eAUhcuBMjBhZEzj0CG77Hw/I3b/u/wL3+WXoLXaA6RAAAAAElFTkSuQmCC",
+       "contentType": "image/png",
+       "width": 23,
+       "height": 24,
+       "angle": 0,
+       "xoffset": 0,
+       "yoffset": 0
+      },
+      "value": "Destroyed",
+      "label": "Destroyed"
+     }
+    ],
+    "fieldDelimiter": ",",
+    "authoringInfo": {
+     "colorRamp": {
+      "type": "multipart",
+      "colorRamps": [
+       {
+        "type": "algorithmic",
+        "algorithm": "esriCIELabAlgorithm",
+        "fromColor": [
+         0,
+         112,
+         6,
+         255
+        ],
+        "toColor": [
+         241,
+         252,
+         30,
+         255
+        ]
+       },
+       {
+        "type": "algorithmic",
+        "algorithm": "esriCIELabAlgorithm",
+        "fromColor": [
+         241,
+         252,
+         30,
+         255
+        ],
+        "toColor": [
+         250,
+         58,
+         10,
+         255
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "scaleSymbols": false,
+   "transparency": 0,
+   "labelingInfo": null
+  },
+  "hasM": false,
+  "hasZ": false,
+  "allowGeometryUpdates": true,
+  "allowTrueCurvesUpdates": false,
+  "onlyAllowTrueCurveUpdatesByTrueCurveClients": false,
+  "hasAttachments": true,
+  "supportsAttachmentsByUploadId": true,
+  "supportsApplyEditsWithGlobalIds": false,
+  "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+  "objectIdField": "objectid",
+  "globalIdField": "",
+  "displayField": "firstname",
+  "typeIdField": "typdamage",
+  "subtypeField": "",
+  "fields": [
+   {
+    "name": "objectid",
+    "type": "esriFieldTypeOID",
+    "alias": "OBJECTID",
+    "domain": null,
+    "editable": false,
+    "nullable": false,
+    "defaultValue": null,
+    "modelName": "System-maintained ObjectID"
+   },
+   {
+    "name": "incidentid",
+    "type": "esriFieldTypeString",
+    "alias": "Incident Number",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 30,
+    "defaultValue": null,
+    "modelName": "INCIDENTID"
+   },
+   {
+    "name": "incidentnm",
+    "type": "esriFieldTypeString",
+    "alias": "Incident Name",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 255,
+    "defaultValue": null,
+    "modelName": "INCIDENTNM"
+   },
+   {
+    "name": "inspectid",
+    "type": "esriFieldTypeString",
+    "alias": "Inspector ID",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 10,
+    "defaultValue": null,
+    "modelName": "INSPECTID"
+   },
+   {
+    "name": "inspector",
+    "type": "esriFieldTypeString",
+    "alias": "Inspector",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 50,
+    "defaultValue": null,
+    "modelName": "INSPECTOR"
+   },
+   {
+    "name": "inspemail",
+    "type": "esriFieldTypeString",
+    "alias": "Inspector's Email Address",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 100,
+    "defaultValue": null,
+    "modelName": "INSPEMAIL"
+   },
+   {
+    "name": "inspphone",
+    "type": "esriFieldTypeString",
+    "alias": "Inspector's Phone Number",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 12,
+    "defaultValue": null,
+    "modelName": "INSPPHONE"
+   },
+   {
+    "name": "affil",
+    "type": "esriFieldTypeString",
+    "alias": "Affiliation",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 255,
+    "defaultValue": null,
+    "modelName": "AFFIL"
+   },
+   {
+    "name": "inspdate",
+    "type": "esriFieldTypeDate",
+    "alias": "Inspection Date Time",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 8,
+    "defaultValue": null,
+    "modelName": "INSPDATE"
+   },
+   {
+    "name": "firstname",
+    "type": "esriFieldTypeString",
+    "alias": "Contact First Name",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 50,
+    "defaultValue": null,
+    "modelName": "FIRSTNAME"
+   },
+   {
+    "name": "lastname",
+    "type": "esriFieldTypeString",
+    "alias": "Contact Last Name",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 50,
+    "defaultValue": null,
+    "modelName": "LASTNAME"
+   },
+   {
+    "name": "fulladdr",
+    "type": "esriFieldTypeString",
+    "alias": "Full Address",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 250,
+    "defaultValue": null,
+    "modelName": "FULLADDR"
+   },
+   {
+    "name": "pstlcity",
+    "type": "esriFieldTypeString",
+    "alias": "Postal City",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 100,
+    "defaultValue": null,
+    "modelName": "PSTLCITY"
+   },
+   {
+    "name": "pstlzip5",
+    "type": "esriFieldTypeString",
+    "alias": "Postal Zip 5",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "PSTLZIP5"
+   },
+   {
+    "name": "siteid",
+    "type": "esriFieldTypeString",
+    "alias": "Site ID",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 30,
+    "defaultValue": null,
+    "modelName": "SITEID"
+   },
+   {
+    "name": "parcelid",
+    "type": "esriFieldTypeString",
+    "alias": "Parcel Identification Number",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 30,
+    "defaultValue": null,
+    "modelName": "PARCELID"
+   },
+   {
+    "name": "usngcoord",
+    "type": "esriFieldTypeString",
+    "alias": "USNG Coordinate",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 50,
+    "defaultValue": null,
+    "modelName": "USNGCOORD"
+   },
+   {
+    "name": "homephone",
+    "type": "esriFieldTypeString",
+    "alias": "Home Phone",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 12,
+    "defaultValue": null,
+    "modelName": "HOMEPHONE"
+   },
+   {
+    "name": "workphone",
+    "type": "esriFieldTypeString",
+    "alias": "Work Phone",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 12,
+    "defaultValue": null,
+    "modelName": "WORKPHONE"
+   },
+   {
+    "name": "cellphone",
+    "type": "esriFieldTypeString",
+    "alias": "Cell Phone",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 12,
+    "defaultValue": null,
+    "modelName": "CELLPHONE"
+   },
+   {
+    "name": "email",
+    "type": "esriFieldTypeString",
+    "alias": "Email",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 100,
+    "defaultValue": null,
+    "modelName": "EMAIL"
+   },
+   {
+    "name": "sms",
+    "type": "esriFieldTypeString",
+    "alias": "SMS or Text",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 100,
+    "defaultValue": null,
+    "modelName": "SMS"
+   },
+   {
+    "name": "represent",
+    "type": "esriFieldTypeString",
+    "alias": "Owner / Occupant",
+    "domain": {
+     "type": "codedValue",
+     "name": "daAccessRepresentation",
+     "description": "A general classification of individual represented the damage to the structure",
+     "codedValues": [
+      {
+       "name": "Owner",
+       "code": "Owner"
+      },
+      {
+       "name": "Occupant",
+       "code": "Occupant"
+      },
+      {
+       "name": "Owner/Occupant",
+       "code": "Owner/Occupant"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 30,
+    "defaultValue": null,
+    "modelName": "REPRESENT"
+   },
+   {
+    "name": "primres",
+    "type": "esriFieldTypeString",
+    "alias": "Primary Residence",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "PRIMRES"
+   },
+   {
+    "name": "habitable",
+    "type": "esriFieldTypeString",
+    "alias": "Habitable",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "HABITABLE"
+   },
+   {
+    "name": "numoccup",
+    "type": "esriFieldTypeInteger",
+    "alias": "Number of Occupants",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "defaultValue": null,
+    "modelName": "NUMOCCUP"
+   },
+   {
+    "name": "strinsur",
+    "type": "esriFieldTypeString",
+    "alias": "Structure Insured",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "STRINSUR"
+   },
+   {
+    "name": "continsur",
+    "type": "esriFieldTypeString",
+    "alias": "Contents Insured",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "CONTINSUR"
+   },
+   {
+    "name": "rentinsur",
+    "type": "esriFieldTypeString",
+    "alias": "Renter's Insurance",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "RENTINSUR"
+   },
+   {
+    "name": "earinsur",
+    "type": "esriFieldTypeString",
+    "alias": "Earthquake Coverage",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "EARINSUR"
+   },
+   {
+    "name": "floodinsur",
+    "type": "esriFieldTypeString",
+    "alias": "Flood Coverage",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "FLOODINSUR"
+   },
+   {
+    "name": "fireinsur",
+    "type": "esriFieldTypeString",
+    "alias": "Wildland Fire Coverage",
+    "domain": {
+     "type": "codedValue",
+     "name": "YesNo",
+     "description": "A yes/no indicator",
+     "codedValues": [
+      {
+       "name": "Yes",
+       "code": "Yes"
+      },
+      {
+       "name": "No",
+       "code": "No"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 5,
+    "defaultValue": null,
+    "modelName": "FIREINSUR"
+   },
+   {
+    "name": "deduct",
+    "type": "esriFieldTypeDouble",
+    "alias": "Insurance Deductible",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "defaultValue": null,
+    "modelName": "DEDUCT"
+   },
+   {
+    "name": "predisval",
+    "type": "esriFieldTypeDouble",
+    "alias": "Value Before Damage",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "defaultValue": null,
+    "modelName": "PREDISVAL"
+   },
+   {
+    "name": "strloss",
+    "type": "esriFieldTypeDouble",
+    "alias": "Estimated $ Loss Structure",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "defaultValue": null,
+    "modelName": "STRLOSS"
+   },
+   {
+    "name": "contloss",
+    "type": "esriFieldTypeDouble",
+    "alias": "Estimated $ Loss Contents",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "defaultValue": null,
+    "modelName": "CONTLOSS"
+   },
+   {
+    "name": "typdamage",
+    "type": "esriFieldTypeString",
+    "alias": "Extent of Damage",
+    "domain": {
+     "type": "codedValue",
+     "name": "daDegreeDamage",
+     "description": "A classification used to identify the extent of the damage",
+     "codedValues": [
+      {
+       "name": "Affected",
+       "code": "Affected"
+      },
+      {
+       "name": "Destroyed",
+       "code": "Destroyed"
+      },
+      {
+       "name": "Inaccessible",
+       "code": "Inaccessible"
+      },
+      {
+       "name": "Major",
+       "code": "Major"
+      },
+      {
+       "name": "Minor",
+       "code": "Minor"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 50,
+    "defaultValue": null,
+    "modelName": "TYPDAMAGE"
+   },
+   {
+    "name": "primcause",
+    "type": "esriFieldTypeString",
+    "alias": "Primary Cause of Damage",
+    "domain": {
+     "type": "codedValue",
+     "name": "daCauseDamage",
+     "description": "The primary cause of damage",
+     "codedValues": [
+      {
+       "name": "Earthquake",
+       "code": "Earthquake"
+      },
+      {
+       "name": "Fire",
+       "code": "Fire"
+      },
+      {
+       "name": "Flood",
+       "code": "Flood"
+      },
+      {
+       "name": "Landslide",
+       "code": "Landslide"
+      },
+      {
+       "name": "Rain",
+       "code": "Rain"
+      },
+      {
+       "name": "Snow",
+       "code": "Snow"
+      },
+      {
+       "name": "Wind",
+       "code": "Wind"
+      },
+      {
+       "name": "Other",
+       "code": "Other"
+      }
+     ],
+     "mergePolicy": "esriMPTDefaultValue",
+     "splitPolicy": "esriSPTDefaultValue"
+    },
+    "editable": true,
+    "nullable": true,
+    "length": 20,
+    "defaultValue": null,
+    "modelName": "PRIMCAUSE"
+   },
+   {
+    "name": "descdamage",
+    "type": "esriFieldTypeString",
+    "alias": "Description of Damage",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 255,
+    "defaultValue": null,
+    "modelName": "DESCDAMAGE"
+   },
+   {
+    "name": "impactjur",
+    "type": "esriFieldTypeString",
+    "alias": "Impact to Jurisdiction",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 255,
+    "defaultValue": null,
+    "modelName": "IMPACTJUR"
+   },
+   {
+    "name": "comments",
+    "type": "esriFieldTypeString",
+    "alias": "Additional Comments",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 255,
+    "defaultValue": null,
+    "modelName": "COMMENTS"
+   },
+   {
+    "name": "lastupdate",
+    "type": "esriFieldTypeDate",
+    "alias": "Last Update Date",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 8,
+    "defaultValue": null,
+    "modelName": "LASTUPDATE"
+   },
+   {
+    "name": "lasteditor",
+    "type": "esriFieldTypeString",
+    "alias": "Last Editor",
+    "domain": null,
+    "editable": true,
+    "nullable": true,
+    "length": 50,
+    "defaultValue": null,
+    "modelName": "LASTEDITOR"
+   }
+  ],
+  "geometryField": {
+   "name": "shape",
+   "type": "esriFieldTypeGeometry",
+   "alias": "SHAPE",
+   "domain": null,
+   "editable": true,
+   "nullable": true,
+   "defaultValue": null,
+   "modelName": "System-maintained Geometry for a feature"
+  },
+  "indexes": [
+   {
+    "name": "r17_sde_rowid_uk",
+    "fields": "objectid",
+    "isAscending": true,
+    "isUnique": true,
+    "description": ""
+   },
+   {
+    "name": "a3_ix1",
+    "fields": "shape",
+    "isAscending": true,
+    "isUnique": true,
+    "description": ""
+   }
+  ],
+  "datesInUnknownTimezone": false,
+  "dateFieldsTimeReference": {
+   "timeZone": "UTC",
+   "respectsDaylightSaving": false
+  },
+  "preferredTimeReference": null,
+  "types": [
+   {
+    "id": "Inaccessible",
+    "name": "Inaccessible",
+    "domains": {
+     "represent": {
+      "type": "inherited"
+     },
+     "primres": {
+      "type": "inherited"
+     },
+     "habitable": {
+      "type": "inherited"
+     },
+     "strinsur": {
+      "type": "inherited"
+     },
+     "continsur": {
+      "type": "inherited"
+     },
+     "rentinsur": {
+      "type": "inherited"
+     },
+     "earinsur": {
+      "type": "inherited"
+     },
+     "floodinsur": {
+      "type": "inherited"
+     },
+     "fireinsur": {
+      "type": "inherited"
+     },
+     "typdamage": {
+      "type": "inherited"
+     },
+     "primcause": {
+      "type": "inherited"
+     }
+    },
+    "templates": [
+     {
+      "name": "Inaccessible",
+      "description": "",
+      "prototype": {
+       "attributes": {
+        "typdamage": "Inaccessible"
+       }
+      },
+      "drawingTool": "esriFeatureEditToolPoint"
+     }
+    ]
+   },
+   {
+    "id": "Affected",
+    "name": "Affected",
+    "domains": {
+     "represent": {
+      "type": "inherited"
+     },
+     "primres": {
+      "type": "inherited"
+     },
+     "habitable": {
+      "type": "inherited"
+     },
+     "strinsur": {
+      "type": "inherited"
+     },
+     "continsur": {
+      "type": "inherited"
+     },
+     "rentinsur": {
+      "type": "inherited"
+     },
+     "earinsur": {
+      "type": "inherited"
+     },
+     "floodinsur": {
+      "type": "inherited"
+     },
+     "fireinsur": {
+      "type": "inherited"
+     },
+     "typdamage": {
+      "type": "inherited"
+     },
+     "primcause": {
+      "type": "inherited"
+     }
+    },
+    "templates": [
+     {
+      "name": "Affected",
+      "description": "",
+      "prototype": {
+       "attributes": {
+        "typdamage": "Affected"
+       }
+      },
+      "drawingTool": "esriFeatureEditToolPoint"
+     }
+    ]
+   },
+   {
+    "id": "Minor",
+    "name": "Minor",
+    "domains": {
+     "represent": {
+      "type": "inherited"
+     },
+     "primres": {
+      "type": "inherited"
+     },
+     "habitable": {
+      "type": "inherited"
+     },
+     "strinsur": {
+      "type": "inherited"
+     },
+     "continsur": {
+      "type": "inherited"
+     },
+     "rentinsur": {
+      "type": "inherited"
+     },
+     "earinsur": {
+      "type": "inherited"
+     },
+     "floodinsur": {
+      "type": "inherited"
+     },
+     "fireinsur": {
+      "type": "inherited"
+     },
+     "typdamage": {
+      "type": "inherited"
+     },
+     "primcause": {
+      "type": "inherited"
+     }
+    },
+    "templates": [
+     {
+      "name": "Minor",
+      "description": "",
+      "prototype": {
+       "attributes": {
+        "typdamage": "Minor"
+       }
+      },
+      "drawingTool": "esriFeatureEditToolPoint"
+     }
+    ]
+   },
+   {
+    "id": "Major",
+    "name": "Major",
+    "domains": {
+     "represent": {
+      "type": "inherited"
+     },
+     "primres": {
+      "type": "inherited"
+     },
+     "habitable": {
+      "type": "inherited"
+     },
+     "strinsur": {
+      "type": "inherited"
+     },
+     "continsur": {
+      "type": "inherited"
+     },
+     "rentinsur": {
+      "type": "inherited"
+     },
+     "earinsur": {
+      "type": "inherited"
+     },
+     "floodinsur": {
+      "type": "inherited"
+     },
+     "fireinsur": {
+      "type": "inherited"
+     },
+     "typdamage": {
+      "type": "inherited"
+     },
+     "primcause": {
+      "type": "inherited"
+     }
+    },
+    "templates": [
+     {
+      "name": "Major",
+      "description": "",
+      "prototype": {
+       "attributes": {
+        "typdamage": "Major"
+       }
+      },
+      "drawingTool": "esriFeatureEditToolPoint"
+     }
+    ]
+   },
+   {
+    "id": "Destroyed",
+    "name": "Destroyed",
+    "domains": {
+     "represent": {
+      "type": "inherited"
+     },
+     "primres": {
+      "type": "inherited"
+     },
+     "habitable": {
+      "type": "inherited"
+     },
+     "strinsur": {
+      "type": "inherited"
+     },
+     "continsur": {
+      "type": "inherited"
+     },
+     "rentinsur": {
+      "type": "inherited"
+     },
+     "earinsur": {
+      "type": "inherited"
+     },
+     "floodinsur": {
+      "type": "inherited"
+     },
+     "fireinsur": {
+      "type": "inherited"
+     },
+     "typdamage": {
+      "type": "inherited"
+     },
+     "primcause": {
+      "type": "inherited"
+     }
+    },
+    "templates": [
+     {
+      "name": "Destroyed",
+      "description": "",
+      "prototype": {
+       "attributes": {
+        "typdamage": "Destroyed"
+       }
+      },
+      "drawingTool": "esriFeatureEditToolPoint"
+     }
+    ]
+   }
+  ],
+  "templates": [],
+  "maxRecordCount": 1000,
+  "supportedQueryFormats": "JSON, geoJSON, PBF",
+  "supportedExportFormats": "sqlite,filegdb",
+  "capabilities": "Query,Create,Update,Delete,Uploads,Editing",
+  "useStandardizedQueries": true,
+  "supportedSpatialRelationships": [
+   "esriSpatialRelIntersects",
+   "esriSpatialRelContains",
+   "esriSpatialRelCrosses",
+   "esriSpatialRelEnvelopeIntersects",
+   "esriSpatialRelIndexIntersects",
+   "esriSpatialRelOverlaps",
+   "esriSpatialRelTouches",
+   "esriSpatialRelWithin",
+   "esriSpatialRelRelation"
+  ],
+  "attachmentProperties": [
+   {
+    "name": "id",
+    "fieldName": "attachmentid",
+    "isEnabled": true
+   },
+   {
+    "name": "globalId",
+    "fieldName": "GLOBALID",
+    "isEnabled": false
+   },
+   {
+    "name": "name",
+    "fieldName": "att_name",
+    "isEnabled": true
+   },
+   {
+    "name": "size",
+    "fieldName": "data_size",
+    "isEnabled": true
+   },
+   {
+    "name": "contentType",
+    "fieldName": "content_type",
+    "isEnabled": true
+   },
+   {
+    "name": "keywords",
+    "fieldName": "KEYWORDS",
+    "isEnabled": false
+   },
+   {
+    "name": "exifInfo",
+    "fieldName": "EXIFINFO",
+    "isEnabled": false
+   }
+  ],
+  "attachmentFields": [
+   {
+    "name": "attachmentid",
+    "type": "esriFieldTypeOID",
+    "alias": "attachmentid",
+    "domain": null,
+    "editable": false,
+    "nullable": false,
+    "defaultValue": null
+   },
+   {
+    "name": "att_name",
+    "type": "esriFieldTypeString",
+    "alias": "att_name",
+    "domain": null,
+    "editable": true,
+    "nullable": false,
+    "length": 250,
+    "defaultValue": null
+   },
+   {
+    "name": "data_size",
+    "type": "esriFieldTypeInteger",
+    "alias": "data_size",
+    "domain": null,
+    "editable": true,
+    "nullable": false,
+    "defaultValue": null
+   },
+   {
+    "name": "content_type",
+    "type": "esriFieldTypeString",
+    "alias": "content_type",
+    "domain": null,
+    "editable": true,
+    "nullable": false,
+    "length": 150,
+    "defaultValue": null
+   }
+  ],
+  "standardMaxRecordCount": 32000,
+  "tileMaxRecordCount": 8000,
+  "standardMaxRecordCountNoGeometry": 32000,
+  "maxRecordCountFactor": 1
+ }
+}

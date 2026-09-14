@@ -1,0 +1,17 @@
+{
+ "checkDate": "2026-09-14",
+ "cases": {
+  "feature-root.DamageAssessment.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer?f=json",
+  "feature-layer0.DamageAssessment.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0?f=json",
+  "feature-query-count.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0/query?where=1%3D1&returnCountOnly=true&f=json",
+  "feature-query-ids.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0/query?where=1%3D1&returnIdsOnly=true&f=json",
+  "feature-query-extent.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0/query?where=1%3D1&returnExtentOnly=true&f=json",
+  "map-root.Census.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer?f=json",
+  "map-layers.Census.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/layers?f=json",
+  "map-legend.Census.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/legend?f=json",
+  "map-root-cached.WorldTopo.json": "https://services.arcgisonline.com/arcgis/rest/services/World_Topo_Map/MapServer?f=json",
+  "image-root.CharlotteLAS.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/CharlotteLAS/ImageServer?f=json",
+  "geometry-root.utility.json": "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer?f=json",
+  "catalog.sampleserver6.json": "https://sampleserver6.arcgisonline.com/arcgis/rest/services?f=json"
+ }
+}

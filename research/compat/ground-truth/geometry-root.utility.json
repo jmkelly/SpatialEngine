@@ -1,0 +1,6 @@
+{
+ "url": "https://utility.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer?f=json",
+ "body": {
+  "serviceDescription": "The Geometry service is used by application developers to perform geometric calculations and web editing   "
+ }
+}

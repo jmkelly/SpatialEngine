@@ -1,0 +1,154 @@
+{
+ "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/Census/MapServer/legend?f=json",
+ "body": {
+  "layers": [
+   {
+    "layerId": 0,
+    "layerName": "Census Block Points",
+    "layerType": "Feature Layer",
+    "minScale": 99999,
+    "maxScale": 0,
+    "legend": [
+     {
+      "label": "0 - 61",
+      "url": "45912af9b34bcb6db2241277268727ed",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAU0lEQVQ4jWNhoDJgGTVw1EA4+I/EZqTUwP/FmxDm9fox/sdnKCEDUQxjYGBgKN70H6+hQz9SGHv9GNHDkIGBgjCEG4rMp8SFRBlCjoFEg1EDKQcANQQULt6468YAAAAASUVORK5CYII=",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 20,
+      "width": 20,
+      "values": [
+       61
+      ]
+     },
+     {
+      "label": "62 - 264",
+      "url": "995d768b7a06919746af4ae83b9db7a9",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAZElEQVQ4je3RwQnAMAwDQBkyn5fJHF4mC7q/fmI5TSgllOgp8D2sgpdTDvgJ6EEnq6DX1num4gzNwBADgNqcogyk2Aj9x8p7gmIq6TCmAkysnKIMG4E3GvXs4MkP6fEqOJX9wQtW3SAuV6DYVAAAAABJRU5ErkJggg==",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 20,
+      "width": 20,
+      "values": [
+       264
+      ]
+     },
+     {
+      "label": "265 - 759",
+      "url": "d219e4728f46dda99ebab75835df0faf",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAh0lEQVQ4jd3UwQnAIAwF0AScz2U6h8t0wfRiisYfa6UiNEdNHx8SG+jjCjtAAWc8AwoR0XG2Xoqshw2MQBfS0jsEw4Q9zPalWIe0oIxiBhVNuXTKr9NplSm37OGPQU6RpwaTd3H92hBNpCzTIfBuGkHts/NAzs29v03V+wRCGN2hGhmK+zGqC/WyNS5+h0nlAAAAAElFTkSuQmCC",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 20,
+      "width": 20,
+      "values": [
+       759
+      ]
+     },
+     {
+      "label": "760 - 1900",
+      "url": "0327eb59cd4e2482e0ff6abfefa40501",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABUAAAAVCAYAAACpF6WWAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAiUlEQVQ4je3VwQ2AIAwF0N+E+VjGOVjGBfFCCVZaFcrBxF4LLz9pAwF2ZaNHWiNY2LbrZorEzQveQ7OFcfGZgp9giT4CJS7hFn0NajCjw2AP1gY1VQEOKbk47bKkP/oRlFIkl7VKkYCVyw84pOWULToFt6BEh2AJ9tAKA7cvfz0ve9qgqFwc+qMO7tFEMKF79LsAAAAASUVORK5CYII=",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 21,
+      "width": 21,
+      "values": [
+       1900
+      ]
+     },
+     {
+      "label": "1901 - 9409",
+      "url": "b55084d1744cbee2fada20bdc7eaa9b8",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAoElEQVRIie3WwQ2AIAwF0N+E+VjGOVjGBfFUg5UW0KIX/rVNXn6AhICPEgZ2szEjDygDwLbrTorEQxW0oCbA4R0L1KDcAzTAC1aDHiESlJiEXiMaNnLrXqWE3NpwylafN3Jvw+FWv5zRghYEAKAUacoVT5GAPx4sMKEVt5HQ1EjIrVXZpga5YBLRoBMD+v4MArghFnQu94AW0ANVQWvHygFjg1BEY8/ExgAAAABJRU5ErkJggg==",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 26,
+      "width": 26,
+      "values": [
+       9409
+      ]
+     }
+    ],
+    "legendGroups": [
+     {
+      "id": "0",
+      "heading": "POP2000"
+     }
+    ]
+   },
+   {
+    "layerId": 1,
+    "layerName": "Census Block Group",
+    "layerType": "Feature Layer",
+    "minScale": 1000000,
+    "maxScale": 0,
+    "legend": [
+     {
+      "label": "",
+      "url": "565e8f49fa5cc4dda6465378dee290a4",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAANElEQVQ4je3VsQ0AQAzCQF7K3BRePN9mAEo8wLUeYBVsJMn2S2DATgK6FSxYsGDBAyY38AH0oQlbgufezQAAAABJRU5ErkJggg==",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 20,
+      "width": 20
+     }
+    ],
+    "legendGroups": [
+     {
+      "id": "0",
+      "heading": ""
+     }
+    ]
+   },
+   {
+    "layerId": 2,
+    "layerName": "Detailed Counties",
+    "layerType": "Feature Layer",
+    "minScale": 0,
+    "maxScale": 0,
+    "legend": [
+     {
+      "label": "",
+      "url": "7d77631315088a3c54bea3ff2391f2cd",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAALUlEQVQ4jWNhYGD4z0BFwAKlGalk3n8WwmpIA6MGjho4auCogaMGohpItWoAAFaOA08xGWr1AAAAAElFTkSuQmCC",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 20,
+      "width": 20
+     }
+    ],
+    "legendGroups": [
+     {
+      "id": "0",
+      "heading": ""
+     }
+    ]
+   },
+   {
+    "layerId": 3,
+    "layerName": "states",
+    "layerType": "Feature Layer",
+    "minScale": 0,
+    "maxScale": 0,
+    "legend": [
+     {
+      "label": "",
+      "url": "c55104adf3cc58f0486b89725e2da22e",
+      "imageData": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAMElEQVQ4jWNhYGD4z0BFwEJNw9ANZKTQrP/oBlIFjBo4auCogaMG0t9AqpTcVHchAFY5A0+qdPJ/AAAAAElFTkSuQmCC",
+      "contentType": "image/png",
+      "groupId": "0",
+      "height": 20,
+      "width": 20
+     }
+    ],
+    "legendGroups": [
+     {
+      "id": "0",
+      "heading": ""
+     }
+    ]
+   }
+  ]
+ }
+}

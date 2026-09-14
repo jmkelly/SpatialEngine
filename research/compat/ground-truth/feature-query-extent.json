@@ -1,0 +1,15 @@
+{
+ "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer/0/query?where=1%3D1&returnExtentOnly=true&f=json",
+ "body": {
+  "extent": {
+   "xmin": -16970078.7429,
+   "ymin": -17313303.673,
+   "xmax": 17086004.797799997,
+   "ymax": 9875311.546999998,
+   "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857
+   }
+  }
+ }
+}

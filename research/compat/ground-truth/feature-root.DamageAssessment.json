@@ -1,0 +1,151 @@
+{
+ "url": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/DamageAssessment/FeatureServer?f=json",
+ "body": {
+  "currentVersion": 10.91,
+  "cimVersion": "2.9.0",
+  "serviceDescription": "This map is used with ArcGIS Mobile to collect structural damage assessment.  It can be used to author the mobile map cache and mobile map service used in the Damage Assessment Mobile Application. ",
+  "hasVersionedData": false,
+  "hasArchivedData": false,
+  "hasBranchVersionedData": false,
+  "supportsDisconnectedEditing": false,
+  "supportsDatumTransformation": true,
+  "supportsReturnServiceEditsOption": true,
+  "returnServiceEditsHaveSR": true,
+  "supportsQueryDataElements": true,
+  "datesInUnknownTimezone": false,
+  "supportsRelationshipsResource": true,
+  "syncEnabled": false,
+  "supportedExportFormats": "sqlite,filegdb",
+  "extractChangesCapabilities": {
+   "supportsReturnIdsOnly": false,
+   "supportsReturnExtentOnly": false,
+   "supportsReturnAttachments": false,
+   "supportsLayerQueries": false,
+   "supportsGeometry": false,
+   "supportsFeatureReturn": false,
+   "supportsReturnHasGeometryUpdates": false
+  },
+  "supportedQueryFormats": "JSON",
+  "maxRecordCount": 1000,
+  "maxRecordCountFactor": 1,
+  "capabilities": "Query,Create,Update,Delete,Uploads,Editing",
+  "description": "This map is used with ArcGIS Mobile to collect structural damage assessment.  It can be used to author the mobile map cache and mobile map service used in the Damage Assessment Mobile Application. ",
+  "copyrightText": "City of Naperville, IL, Esri., Inc.",
+  "advancedEditingCapabilities": {
+   "supportsSplit": true,
+   "supportsReturnServiceEditsInSourceSR": true,
+   "supportsAsyncApplyEdits": true
+  },
+  "spatialReference": {
+   "wkid": 102100,
+   "latestWkid": 3857,
+   "xyTolerance": 0.001,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -28651323.825425006,
+   "falseY": -30665215.055140004,
+   "xyUnits": 47351317.928349085,
+   "falseZ": -100000,
+   "zUnits": 10000,
+   "falseM": -100000,
+   "mUnits": 10000
+  },
+  "initialExtent": {
+   "xmin": -9813850.810326092,
+   "ymin": 5127570.522787967,
+   "xmax": -9812616.719289511,
+   "ymax": 5128305.231088015,
+   "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857,
+    "xyTolerance": 0.001,
+    "zTolerance": 0.001,
+    "mTolerance": 0.001,
+    "falseX": -28651323.825425006,
+    "falseY": -30665215.055140004,
+    "xyUnits": 47351317.928349085,
+    "falseZ": -100000,
+    "zUnits": 10000,
+    "falseM": -100000,
+    "mUnits": 10000
+   }
+  },
+  "fullExtent": {
+   "xmin": -23566597.603764575,
+   "ymin": -21134812.09518998,
+   "xmax": 24922003.161315758,
+   "ymax": 20087353.682474922,
+   "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857,
+    "xyTolerance": 0.001,
+    "zTolerance": 0.001,
+    "mTolerance": 0.001,
+    "falseX": -28651323.825425006,
+    "falseY": -30665215.055140004,
+    "xyUnits": 47351317.928349085,
+    "falseZ": -100000,
+    "zUnits": 10000,
+    "falseM": -100000,
+    "mUnits": 10000
+   }
+  },
+  "allowGeometryUpdates": true,
+  "allowTrueCurvesUpdates": false,
+  "onlyAllowTrueCurveUpdatesByTrueCurveClients": false,
+  "supportsApplyEditsWithGlobalIds": false,
+  "supportsTrueCurve": true,
+  "units": "esriMeters",
+  "documentInfo": {
+   "Title": "Damage Assessment",
+   "Author": "Esri., Inc.",
+   "Comments": "This map is used with ArcGIS Mobile to collect structural damage assessment.  It can be used to author the mobile map cache and mobile map service used in the Damage Assessment Mobile Application. ",
+   "Subject": "This map is used with ArcGIS Mobile to collect structural damage assessment.",
+   "Category": "",
+   "Keywords": "Emergency Management, Damage Assessment, Public Safety"
+  },
+  "supportsQueryDomains": true,
+  "supportsQueryContingentValues": true,
+  "layers": [
+   {
+    "id": 0,
+    "name": "Damage to Residential Buildings",
+    "parentLayerId": -1,
+    "defaultVisibility": true,
+    "subLayerIds": null,
+    "minScale": 0,
+    "maxScale": 0,
+    "type": "Feature Layer",
+    "geometryType": "esriGeometryPoint"
+   }
+  ],
+  "tables": [],
+  "relationships": [],
+  "enableZDefaults": false,
+  "allowUpdateWithoutMValues": false,
+  "supportsVCSProjection": true,
+  "datumTransformations": [
+   {
+    "geoTransforms": [
+     {
+      "wkid": 108001,
+      "latestWkid": 1241,
+      "transformForward": true,
+      "name": "NAD_1927_To_NAD_1983_NADCON"
+     }
+    ]
+   },
+   {
+    "geoTransforms": [
+     {
+      "wkid": 108001,
+      "latestWkid": 1241,
+      "transformForward": false,
+      "name": "NAD_1927_To_NAD_1983_NADCON"
+     }
+    ]
+   }
+  ],
+  "referenceScale": 0
+ }
+}
