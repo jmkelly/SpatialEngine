@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The Map Service routes (spec §4, ADR-0048/ADR-0054): root, all-layers, layer
+/// The Map Service routes (spec §4, ADR-0048/ADR-0055): root, all-layers, layer
 /// metadata, query, identify, find, legend, queryDomains, queryLegends and
 /// per-layer generateRenderer. The MapServer is the GeoServices
 /// projection of a <see cref="MapService.Map"/> publication; its export
@@ -106,7 +106,7 @@ internal static class MapServerEndpoints
     }
 
     /// <summary>
-    /// The MapServer <c>legend</c> resource (S4 legend-map-service/, ADR-0054):
+    /// The MapServer <c>legend</c> resource (S4 legend-map-service/, ADR-0055):
     /// one swatch legend per layer, projected from the persisted style so it
     /// always agrees with the layer metadata <c>drawingInfo</c>.
     /// </summary>
@@ -129,7 +129,7 @@ internal static class MapServerEndpoints
     }
 
     /// <summary>
-    /// The MapServer <c>queryDomains</c> operation (S4, ADR-0054): the
+    /// The MapServer <c>queryDomains</c> operation (S4, ADR-0055): the
     /// projected domains of the selected layers (all layers when
     /// <c>layers</c> is absent). Unknown layer ids are typed
     /// <c>not.found</c>.
@@ -153,7 +153,7 @@ internal static class MapServerEndpoints
     }
 
     /// <summary>
-    /// The MapServer <c>queryLegends</c> operation (S4, ADR-0054): the legend
+    /// The MapServer <c>queryLegends</c> operation (S4, ADR-0055): the legend
     /// of the selected layers (all layers when <c>layers</c> is absent).
     /// Unknown layer ids are typed <c>not.found</c>.
     /// </summary>
@@ -176,7 +176,7 @@ internal static class MapServerEndpoints
     }
 
     /// <summary>
-    /// The per-layer <c>generateRenderer</c> operation (S4, ADR-0054):
+    /// The per-layer <c>generateRenderer</c> operation (S4, ADR-0055):
     /// server-side classification over the layer's data. This is the single
     /// map-service implementation; the feature write-model track reuses it.
     /// </summary>

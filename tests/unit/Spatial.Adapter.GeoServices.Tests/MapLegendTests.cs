@@ -8,7 +8,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
-/// The MapServer legend family units (ADR-0054): swatch bytes carry the PNG
+/// The MapServer legend family units (ADR-0055): swatch bytes carry the PNG
 /// signature, style-less layers fall back to a neutral swatch, and the
 /// classifier rejects bad input with typed errors and honours cancellation.
 /// </summary>
