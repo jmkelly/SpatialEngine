@@ -57,6 +57,62 @@ engines, so there is no Esri reference image to hash. The legend swatch
 restarts: pinned non-empty only, with follow-up T-085 for a stable hash.
 No MapServer behaviour was changed for this slice.
 
+## ImageServer slice (T-071)
+
+Five cases over a runtime `wsiearth` image service published on an 8x6
+U8 gradient raster (EPSG:4326) by the replay suite itself: `root`
+(service envelope + raster description), `exportImage` as JSON envelope
+plus `f=image`, and `identify` (point probe sampling value 66). The wire
+shape is Esri's; the raster description and pixels are ours. The export
+image gets the MapServer treatment — a structural PNG gate (media type,
+raster headers, IHDR dimensions, non-trivial body) — plus an RMSE
+determinism check between two identical exports (RMSE must be 0: the same
+render is pixel-identical to itself). A perceptual hash against Esri
+sample pixels would be dishonest — there is no Esri reference render for
+our raster — so `knownDeltas` says so and `policy.json`
+(renders-are-engine-native) classifies it lenient-documented. No
+ImageServer behaviour was changed for this slice.
+
+## Edge-case slice (T-071)
+
+Seven first-class replays in `edgecases/`: empty-geometry buffer
+(empty-in/empty-out, HTTP 200), unknown WKID (honest 400 naming the
+curated map), out-of-area project (non-finite results are a typed 400
+naming the valid area, never NaN on the wire), invalid SQL (400 naming
+the failing clause), `f=html` rejection (400 naming
+`supportedQueryFormats`), the 498 token contract (`GET /arcgis/admin/
+services` without a credential is 401 with envelope code 498; a wrong
+token is 403/497), and `rollbackOnFailure` (every per-feature result
+reports `success: false`, nothing stored). The 499 cancellation contract
+is mapper-pinned, not HTTP-replayable — a cancelled request yields no
+response to diff — so the policy test pins it live through
+`EsriErrorMapper`. No behaviour was changed for this slice: the probes
+confirmed the host was already honest (notably the out-of-area 400).
+
+## Strict-vs-lenient policy (T-071)
+
+`policy.json` classifies every fixture case in every suite (`coverage`:
+`suite/name` → `strict` | `lenient`) and states the rules. Enforced by
+`EsriDocsParityPolicyTests`: full coverage both ways, non-empty
+deltas/rules, plus live pins (catalog omits unserved types; cancellation
+maps to the 499 envelope).
+
+Strict (must match; a red strict replay is a bug): envelope shapes,
+scaled 1e-6 numerics, typed HTTP statuses with Esri envelope codes
+(400/401+498/403+497/404/499/503 — never ArcGIS 200-by-default),
+`f=json` required (`f=pjson` alias, `f=html` rejected), served-types-only
+catalog, per-feature edit results + `rollbackOnFailure` atomicity, and
+the `validateSQL`/3002 + malformed-`where` SQL contract.
+
+Lenient-documented (intentional deltas, each with `knownDeltas` + a live
+pin): GPServer omission (no job model — `GeoServicesCatalogHonestyTests`),
+engine rows instead of sample rows, engine-native renders (structural
+PNG + RMSE self-determinism, never foreign perceptual hashes), ProjNet-
+vs-PE drift and the curated-WKID-only 400, empty-in/empty-out, the
+out-of-area non-finite 400, ours-only identity (versions, href hosts,
+swatch URL tokens — T-085 tracks the stable swatch hash), and the
+read-only catalog (ingest is the write path).
+
 ## Honest deltas (no parity chasing in this slice)
 
 - `areasAndLengths` / `lengths`: the docs name the inputs `polygons` /
