@@ -67,6 +67,12 @@ GET|POST /arcgis/rest/services/{service}/MapServer/identify
 GET|POST /arcgis/rest/services/{service}/MapServer/find
 GET|POST /arcgis/rest/services/{service}/MapServer/export            # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator tile
+GET|POST /arcgis/rest/services/{service}/MapServer/exportTiles      # reject by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/MapServer/estimateExportTileSize # reject by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/MapServer/WMTS[{/*rest}]    # reject by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/MapServer/generateKml      # reject by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/MapServer/kml/{*rest}      # reject by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/MapServer/jobs[{/*rest}]   # reject by name (ADR-0060)
 GET|POST /arcgis/rest/services/{service}/ImageServer                 # ImageServer root (spec §8, ADR-0051)
 GET|POST /arcgis/rest/services/{service}/ImageServer/exportImage    # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/ImageServer/identify       # pixel values + catalog items
@@ -84,9 +90,9 @@ GET|POST /arcgis/rest/services/{service}/ImageServer/computeHistograms # per-ban
 GET|POST /arcgis/rest/services/{service}/ImageServer/rasterAttributeTable # class table (ADR-0054)
 GET|POST /arcgis/rest/services/{service}/ImageServer/thumbnail   # dataset thumbnail (ADR-0054)
 GET|POST /arcgis/rest/services/{service}/ImageServer/metadata    # dataset metadata as JSON (ADR-0054)
-GET|POST /arcgis/rest/services/{service}/ImageServer/measure…      # mensuration ops rejected by name (ADR-0059)
-GET|POST /arcgis/rest/services/{service}/ImageServer/multidimensionalInfo|slices # rejected by name (ADR-0059)
-GET|POST /arcgis/rest/services/{service}/ImageServer/addRasters…   # catalog writes rejected by name (ADR-0059)
+GET|POST /arcgis/rest/services/{service}/ImageServer/measure…      # mensuration ops rejected by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/ImageServer/multidimensionalInfo|slices # rejected by name (ADR-0060)
+GET|POST /arcgis/rest/services/{service}/ImageServer/addRasters…   # catalog writes rejected by name (ADR-0060)
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService
