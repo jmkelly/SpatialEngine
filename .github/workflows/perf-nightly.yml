@@ -1,0 +1,101 @@
+name: perf-nightly
+
+# Nightly performance suite D (T-078): full-job BenchmarkDotNet micros,
+# sustained-rate host confirmation and the baseline regression gate.
+# Baselines live in artifacts/bench/ (gitignored): the job restores the
+# last green baseline.json from the previous green run's perf-baseline
+# artifact, runs the full Medium job plus the sustained suite, gates on
+# >15% mean regression + the alloc guard + absolute budgets, and promotes
+# a new baseline only on a green scheduled run. workflow_dispatch runs the
+# same measurement check-only (no promotion). Never gates a PR.
+on:
+  schedule:
+    # 03:23 UTC: staggered after the Esri fixture drift check (03:17).
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+# Artifact download needs actions:read; upload needs actions:write.
+permissions:
+  contents: read
+  actions: write
+
+# A new nightly supersedes an in-flight one.
+concurrency:
+  group: perf-nightly
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+
+jobs:
+  nightly:
+    name: full micros · sustained · baseline gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SPATIAL_BENCH_DIR: artifacts/bench
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Toolchain
+        run: dotnet --info
+
+      - name: Restore previous baseline
+        run: |
+          mkdir -p artifacts/bench/prev
+          run_id="$(gh run list --workflow perf-nightly.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          if [[ -n "${run_id:-}" ]]; then
+            if gh run download "$run_id" --name perf-baseline --dir artifacts/bench/prev; then
+              cp artifacts/bench/prev/baseline.json artifacts/bench/baseline.json
+              echo "restored baseline from run $run_id."
+            else
+              echo "no perf-baseline artifact on run $run_id; seeding fresh."
+            fi
+          else
+            echo "no previous successful nightly; seeding fresh."
+          fi
+
+      - name: Full micro job (Medium, JSON export)
+        run: |
+          dotnet run -c Release --project tests/performance/Spatial.Performance/Spatial.Performance.csproj -- \
+            --filter '*' --job Medium --exporters json --artifacts artifacts/bench/raw
+
+      - name: Sustained-rate confirmation (query/export, 60 s each)
+        run: |
+          SPATIAL_SUSTAINED=1 SPATIAL_SUSTAINED_SECONDS=60 \
+            dotnet test tests/performance/Spatial.HostThroughput.Tests/Spatial.HostThroughput.Tests.csproj -c Release
+
+      - name: Baseline gate (15% regression + alloc guard + budgets)
+        run: |
+          SPATIAL_PERF_BASELINE=1 \
+            dotnet test tests/performance/Spatial.Performance.Gates/Spatial.Performance.Gates.csproj -c Release
+
+      - name: Promote baseline (green scheduled runs only)
+        if: success() && github.event_name == 'schedule'
+        run: |
+          SPATIAL_PERF_BASELINE_UPDATE=1 \
+            dotnet test tests/performance/Spatial.Performance.Gates/Spatial.Performance.Gates.csproj -c Release --no-build
+
+      - name: Upload baseline (green scheduled runs only)
+        if: success() && github.event_name == 'schedule'
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-baseline
+          path: artifacts/bench/baseline.json
+          retention-days: 90
+
+      - name: Upload full results (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-results
+          path: artifacts/bench/
+          retention-days: 30

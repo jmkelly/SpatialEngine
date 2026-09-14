@@ -72,3 +72,12 @@ paths as required before budgets were set:
   only, no budget, skips (never fails) when egress is unavailable.
   Follow-ups: T-091 (nightly sustained-rate driver + budget confirmation),
   T-092 (query burst-tail diagnosis). No product code touched.
+
+## Sustained confirmation (T-078, folds T-091)
+
+The burst shape above is complemented by the suite-D sustained driver
+(`SustainedRunner` + `HostSustainedRate`, see `NIGHTLY.md`): query at
+200 rps and export at 60 rps held for 60 s at a constant offered rate,
+asserting the same p95 budgets under continuous load. First samples:
+query p95 0.8 ms, export p95 7.4 ms — steady state far below the burst
+p95s, supporting the burst-tail diagnosis. Buffer stays burst-only.
