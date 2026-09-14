@@ -1,4 +1,6 @@
 using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Spatial.Adapter.GeoServices;
 
@@ -97,17 +99,19 @@ internal static class MapLegend
             value is null ? null : [value]);
     }
 
-    /// <summary>A stable swatch token from its label and colour (the G1 <c>url</c> is a content hash).</summary>
+    /// <summary>A stable swatch token from its label and colour: the SHA-256
+    /// content hash (32 hex chars) matching the G1 <c>url</c> shape and the
+    /// image-legend convention. <see cref="HashCode"/> is per-process
+    /// randomized and would break caching and replay stability.</summary>
     private static string LegendUrl(string label, IReadOnlyList<int> color)
     {
-        var hash = new HashCode();
-        hash.Add(label, StringComparer.Ordinal);
+        var payload = new StringBuilder(label);
         foreach (var channel in color)
         {
-            hash.Add(channel);
+            payload.Append(':').Append(channel.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        return hash.ToHashCode().ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload.ToString())).AsSpan(0, 16)).ToLowerInvariant();
     }
 
     private static IReadOnlyList<int> NeutralSwatch(MapLayerInfo info) =>
