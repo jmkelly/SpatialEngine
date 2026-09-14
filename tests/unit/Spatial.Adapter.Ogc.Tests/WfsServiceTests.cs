@@ -214,6 +214,25 @@ public sealed class WfsServiceTests
     }
 
     [Theory]
+    [InlineData("propertyName")]
+    [InlineData("aliases")]
+    [InlineData("resolve")]
+    [InlineData("resolveDepth")]
+    [InlineData("resolveTimeout")]
+    public async Task GetFeature_honestly_rejects_unimplemented_projection_and_resolve_by_name(string parameter)
+    {
+        var map = WfsMap();
+        var (services, store) = OgcFixtures.Build(map);
+        Seed(store);
+
+        var failure = await GetFeatureFailureAsync(
+            map, services, $"?service=WFS&request=GetFeature&typeNames=Cities&{parameter}=name");
+
+        Assert.Equal("InvalidParameterValue", failure.Code);
+        Assert.Contains(parameter, failure.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
     [InlineData("filter")]
     [InlineData("cql_filter")]
     [InlineData("resourceid")]
