@@ -282,7 +282,12 @@ internal static class GeometryService
 
     private static IResult AreasAndLengths(EsriRequestParameters parameters, IGeometryMeasures measures, CancellationToken cancellationToken)
     {
-        var geometries = InputGeometries(parameters);
+        // Docs-verbatim input names (T-083): areasAndLengths names the array
+        // 'polygons' (older docs/samples 'polys'); both map leniently to the
+        // existing geometry parameter. Anything non-planar stays an honest
+        // reject: the engine has no geodesic verb.
+        var geometries = InputGeometries(parameters, "polygons", "polys");
+        RequirePlanarCalculation(parameters);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -296,7 +301,10 @@ internal static class GeometryService
 
     private static IResult Lengths(EsriRequestParameters parameters, IGeometryMeasures measures, CancellationToken cancellationToken)
     {
-        var geometries = InputGeometries(parameters);
+        // Docs-verbatim input name (T-083): lengths names the array
+        // 'polylines'; it maps leniently to the existing geometry parameter.
+        var geometries = InputGeometries(parameters, "polylines");
+        RequirePlanarCalculation(parameters);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -350,10 +358,51 @@ internal static class GeometryService
     private static IResult LabelPoints(EsriRequestParameters parameters, IGeometryMeasures measures, CancellationToken cancellationToken) =>
         Geometries(InputGeometries(parameters).Select(geometry => measures.LabelPoint(geometry, cancellationToken)));
 
-    private static List<IGeometry> InputGeometries(EsriRequestParameters parameters)
+    private static List<IGeometry> InputGeometries(EsriRequestParameters parameters, params string[] aliases)
     {
+        // The geometry-array input, accepting the docs-verbatim aliases
+        // leniently: 'geometries' wins when present, otherwise the first
+        // supplied alias. Aliasing renames the parameter — the value parses
+        // through the unchanged geometry path, never reinterpreted.
         var spatialReference = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
-        return EsriValueParser.ParseGeometries(parameters.Require("geometries"), spatialReference);
+        var raw = parameters.Get("geometries");
+        foreach (var alias in aliases)
+        {
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                break;
+            }
+
+            raw = parameters.Get(alias);
+        }
+
+        if (!string.IsNullOrWhiteSpace(raw))
+        {
+            return EsriValueParser.ParseGeometries(raw, spatialReference);
+        }
+
+        throw EsriInteropException.Invalid(aliases.Length == 0
+            ? "The 'geometries' parameter is required."
+            : $"The 'geometries' parameter is required (aliases '{string.Join("', '", aliases)}' are also accepted).");
+    }
+
+    /// <summary>
+    /// The engine measures planar (no geodesic verb): <c>calculationType</c>
+    /// absent or <c>planar</c> answers directly; anything else
+    /// (<c>geodesic</c>, <c>preserveShape</c>) fails honestly rather than
+    /// answering planar silently.
+    /// </summary>
+    private static void RequirePlanarCalculation(EsriRequestParameters parameters)
+    {
+        var raw = parameters.Get("calculationType");
+        if (string.IsNullOrWhiteSpace(raw)
+            || string.Equals(raw.Trim(), "planar", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw EsriInteropException.Invalid(
+            $"The 'calculationType' value '{raw}' is not supported: the engine measures planar (no geodesic verb); omit 'calculationType' or pass 'planar'.");
     }
 
     private static IResult Geometries(IEnumerable<IGeometry> geometries) =>

@@ -446,6 +446,70 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
+    public async Task Areas_and_lengths_accepts_docs_polygons_alias_verbatim()
+    {
+        // Esri-docs verbatim (T-064 fixtures): areasAndLengths names the
+        // input 'polygons' with sr + calculationType=planar on the wire.
+        var result = await DispatchAsync("areasandlengths",
+            ("polygons", """[{"rings":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}]"""),
+            ("sr", "4326"),
+            ("calculationType", "planar"));
+
+        Assert.Equal(1.0, result.GetProperty("areas")[0].GetDouble());
+        Assert.Equal(4.0, result.GetProperty("lengths")[0].GetDouble());
+    }
+
+    [Fact]
+    public async Task Areas_and_lengths_accepts_polys_alias()
+    {
+        var result = await DispatchAsync("areasandlengths",
+            ("polys", """[{"rings":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}]"""),
+            ("sr", "4326"));
+
+        Assert.Equal(1.0, result.GetProperty("areas")[0].GetDouble());
+        Assert.Equal(4.0, result.GetProperty("lengths")[0].GetDouble());
+    }
+
+    [Fact]
+    public async Task Lengths_accepts_docs_polylines_alias_verbatim()
+    {
+        // Esri-docs verbatim (T-064 fixtures): lengths names the input
+        // 'polylines' with sr + calculationType=planar on the wire.
+        var result = await DispatchAsync("lengths",
+            ("polylines", """[{"paths":[[[0,0],[3,4]]]}]"""),
+            ("sr", "4326"),
+            ("calculationType", "planar"));
+
+        Assert.Equal(5.0, result.GetProperty("lengths")[0].GetDouble());
+    }
+
+    [Fact]
+    public async Task Areas_and_lengths_prefers_geometries_when_both_names_are_present()
+    {
+        var result = await DispatchAsync("areasandlengths",
+            ("geometries", """[{"rings":[[[0,0],[1,0],[1,1],[0,1],[0,0]]]}]"""),
+            ("polygons", """[{"rings":[[[0,0],[2,0],[2,2],[0,2],[0,0]]]}]"""));
+
+        Assert.Equal(1.0, result.GetProperty("areas")[0].GetDouble());
+    }
+
+    [Theory]
+    [InlineData("areasandlengths", "polygons", "[{\"rings\":[[[0,0],[0,1],[1,1],[1,0],[0,0]]]}]")]
+    [InlineData("lengths", "polylines", "[{\"paths\":[[[0,0],[3,4]]]}]")]
+    public async Task Docs_alias_operations_reject_non_planar_calculation_honestly(string operation, string alias, string payload)
+    {
+        // The engine measures planar (no geodesic verb): a non-planar
+        // calculationType must fail honestly rather than answer planar
+        // silently.
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync(operation,
+            (alias, payload),
+            ("calculationType", "geodesic")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("calculationType", exception.Message);
+    }
+
+    [Fact]
     public async Task Distance_returns_the_planar_distance()
     {
         var result = await DispatchAsync("distance",
