@@ -77,9 +77,12 @@ its track lands) simply omit the capability.
   identity, attachment id, name, content type, size, keywords, `bytea`
   content) — transactional with the surrounding work, discovered-identifier
   statements in the `PostgisQueries` style, no new infrastructure.
-  Implementation is a follow-up task, not this track: until it lands the
-  PostGIS key exposes no attachment capability and the facade keeps its
-  honest empty reads and typed rejects for PostGIS-backed layers.
+  Landed as T-088 (`PostgisAttachmentStore`, wired on the `postgis` key):
+  the per-feature id is one past the sidecar high-water mark (reused after
+  deletes, unlike the memory counter), tables without a primary key reject
+  attachment operations as `invalid.arguments` (no stable identity to key
+  on), and each operation is autocommit — the contract carries no
+  transaction handle to enlist in.
 
 ### 3. Quota and auth (single-admin-token model)
 
@@ -104,9 +107,9 @@ its track lands) simply omit the capability.
 - Behaviour lands with contract, SDK, test (unit red-first plus host
   wiring) and this ADR together, with success, failure and cancellation
   covered.
-- The PostGIS sidecar-table implementation and the T-061 serving surface
-  (hasAttachments/queryAttachments/advertising plus the admin-token write
-  gate) are separate, dep-blocked tracks.
+- The T-061 serving surface (hasAttachments/queryAttachments/advertising
+  plus the admin-token write gate) is a separate, dep-blocked track; the
+  PostGIS sidecar-table persistence landed as T-088.
 
 ## Alternatives
 

@@ -118,6 +118,60 @@ internal static class PostgisQueries
         return $"DELETE FROM {dataset.QuoteQualified()} WHERE {predicate}";
     }
 
+    /// <summary>
+    /// Creates the feature-attachment sidecar table (T-088, ADR-0065 §2):
+    /// one row per attachment with <c>bytea</c> content, keyed by dataset,
+    /// feature identity and the per-feature attachment id. The table is a
+    /// fixed provider-owned identifier, so every value the caller supplies
+    /// stays a bound parameter.
+    /// </summary>
+    public static string EnsureAttachmentTable() =>
+        "CREATE TABLE IF NOT EXISTS \"public\".\"spatial_attachments\" (\"dataset\" text NOT NULL, \"feature_id\" text NOT NULL, "
+        + "\"attachment_id\" bigint NOT NULL, \"name\" text NOT NULL, \"content_type\" text NOT NULL, "
+        + "\"size_bytes\" bigint NOT NULL, \"keywords\" text NULL, \"content\" bytea NOT NULL, "
+        + "PRIMARY KEY (\"dataset\", \"feature_id\", \"attachment_id\"))";
+
+    /// <summary>Reads the per-feature attachment high-water mark (the next id is one past it, starting at one).</summary>
+    public static string MaxAttachmentId() =>
+        "SELECT COALESCE(MAX(\"attachment_id\"), 0) FROM \"public\".\"spatial_attachments\" "
+        + "WHERE \"dataset\" = @p0 AND \"feature_id\" = @p1";
+
+    /// <summary>Inserts one attachment row; every column — including the <c>bytea</c> content — is a bound parameter.</summary>
+    public static string InsertAttachment() =>
+        "INSERT INTO \"public\".\"spatial_attachments\" (\"dataset\", \"feature_id\", \"attachment_id\", \"name\", "
+        + "\"content_type\", \"size_bytes\", \"keywords\", \"content\") VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7)";
+
+    /// <summary>Lists one feature's attachment descriptors in attachment-id order.</summary>
+    public static string ListAttachments() =>
+        "SELECT \"attachment_id\", \"name\", \"content_type\", \"size_bytes\", \"keywords\" "
+        + "FROM \"public\".\"spatial_attachments\" WHERE \"dataset\" = @p0 AND \"feature_id\" = @p1 ORDER BY \"attachment_id\"";
+
+    /// <summary>Reads one attachment with its <c>bytea</c> content.</summary>
+    public static string GetAttachment() =>
+        "SELECT \"attachment_id\", \"name\", \"content_type\", \"size_bytes\", \"keywords\", \"content\" "
+        + "FROM \"public\".\"spatial_attachments\" WHERE \"dataset\" = @p0 AND \"feature_id\" = @p1 AND \"attachment_id\" = @p2";
+
+    /// <summary>Replaces one attachment's metadata and <c>bytea</c> content, keeping its identity.</summary>
+    public static string UpdateAttachment() =>
+        "UPDATE \"public\".\"spatial_attachments\" SET \"name\" = @p3, \"content_type\" = @p4, \"size_bytes\" = @p5, "
+        + "\"keywords\" = @p6, \"content\" = @p7 WHERE \"dataset\" = @p0 AND \"feature_id\" = @p1 AND \"attachment_id\" = @p2";
+
+    /// <summary>Deletes one attachment by its per-feature identity.</summary>
+    public static string DeleteAttachment() =>
+        "DELETE FROM \"public\".\"spatial_attachments\" WHERE \"dataset\" = @p0 AND \"feature_id\" = @p1 AND \"attachment_id\" = @p2";
+
+    /// <summary>
+    /// Probes whether a feature exists by its identity tuple (T-088): one
+    /// bound parameter per identity column, in order, with <c>LIMIT 1</c>.
+    /// Both the table and the identity columns are discovered identifiers,
+    /// never client text.
+    /// </summary>
+    public static string FeatureExists(PostgisDatasetName dataset, IReadOnlyList<string> identityColumns)
+    {
+        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{i}"));
+        return $"SELECT 1 FROM {dataset.QuoteQualified()} WHERE {predicate} LIMIT 1";
+    }
+
     /// <summary>Creates the result table from a defining batch's schema and per-field geometry typmods.</summary>
     public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> geometryTypes)
     {
