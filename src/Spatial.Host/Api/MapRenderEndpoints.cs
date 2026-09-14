@@ -11,7 +11,7 @@ namespace Spatial.Host.Api;
 /// document). The host resolves the map and each layer's keyed store at the
 /// edge and passes a composed <see cref="MapRenderRequest"/> to the renderer;
 /// the renderer never sees a map (ADR-0005/ADR-0033). The pre-ADR-0053
-/// <c>/api/publications/{name}/render</c> route is a deprecated alias.
+/// <c>/api/publications/{name}/render</c> alias was removed in 0.2.0.
 /// </summary>
 internal static class MapRenderEndpoints
 {
@@ -22,7 +22,6 @@ internal static class MapRenderEndpoints
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable);
-        app.MapPost("/api/publications/{name}/render", Render);
     }
 
     private static async Task<IResult> Render(

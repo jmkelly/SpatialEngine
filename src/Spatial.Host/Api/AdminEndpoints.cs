@@ -18,8 +18,8 @@ namespace Spatial.Host.Api;
 /// registers the uploaded dataset as a one-layer Feature map in the same call
 /// and reports the partial state safely retryably.
 ///
-/// <para>The pre-ADR-0053 <c>/api/publications</c> routes remain as
-/// deprecated aliases for one release.</para>
+/// <para>The pre-ADR-0053 <c>/api/publications</c> aliases were removed in
+/// 0.2.0; <c>/api/maps</c> is canonical (unknown routes answer 404).</para>
 /// </summary>
 internal static class AdminEndpoints
 {
@@ -30,10 +30,6 @@ internal static class AdminEndpoints
     {
         app.MapGet("/api/maps", ListMaps).Produces<IReadOnlyList<Map>>();
         app.MapGet("/api/maps/{name}", GetMap).Produces<Map>();
-
-        // Deprecated aliases (ADR-0053 §4): removed in the next release.
-        app.MapGet("/api/publications", ListMaps).Produces<IReadOnlyList<Map>>();
-        app.MapGet("/api/publications/{name}", GetMap).Produces<Map>();
 
         if (!admin.Enabled)
         {
@@ -46,11 +42,6 @@ internal static class AdminEndpoints
             DeleteMap(context, admin, name, registry, token));
         app.MapPost("/api/ingest", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token) =>
             Ingest(context, admin, ingest, stores, transforms, registry, token));
-
-        app.MapPut("/api/publications/{name}", (string name, Map map, HttpContext context, IStoreRegistry stores, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, name, map, stores, registry, token));
-        app.MapDelete("/api/publications/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
-            DeleteMap(context, admin, name, registry, token));
     }
 
     private static async Task<IResult> ListMaps(IMapRegistry registry, CancellationToken token)

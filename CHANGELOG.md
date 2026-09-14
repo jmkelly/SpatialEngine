@@ -7,7 +7,7 @@ All notable changes to Spatial Engine are documented here. The format follows
 The product version is single-sourced in `Directory.Build.props`; update it and
 this file together, then tag the release (`RELEASING.md`).
 
-## [Unreleased]
+## [0.2.0] - 2026-09-14
 
 ### Added
 
@@ -203,6 +203,12 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Removed
 
+- **Deprecated `/api/publications` aliases** (ADR-0053 §4, T-079): the
+  pre-0.2.0 aliases (`GET /api/publications[/{name}]`,
+  `PUT`/`DELETE /api/publications/{name}`,
+  `POST /api/publications/{name}/render`) are gone and answer 404;
+  `/api/maps[/{name}]` and `/api/maps/{name}/render` are canonical. The
+  `publications.json` → `maps.json` migration shim is unchanged.
 - **Rendering research spike** (`research/rendering/spike/RenderSpike`): the
   throwaway vertical slice is deleted now that its findings are promoted into
   ADR-0044 and the production `Spatial.Rendering.Skia` /

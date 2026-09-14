@@ -62,6 +62,20 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task The_removed_publications_aliases_are_not_found()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        // Pre-ADR-0053 aliases were removed in 0.2.0; /api/maps is canonical.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/publications")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/publications/x")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.PostAsync("/api/publications/x/render", Json("{}"))).StatusCode);
+    }
+
+    [Fact]
     public async Task A_missing_token_is_401_and_a_wrong_token_is_403()
     {
         using var factory = Factory();
