@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Spatial.Interop.Esri;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
@@ -70,8 +71,12 @@ public static partial class GeoServicesEndpoints
 
         // The Feature write-model operations (T-038, ADR-0058): service-level
         // query, per-layer generateRenderer, validateSQL, honest aggregation
-        // rejects and the attachment surface.
-        MapFeatureOps(group, catalog, registry);
+        // rejects and the store-backed attachment surface (T-061, ADR-0066).
+        // Attachment writes are admin-token-gated (ADR-0065 §3); the token is
+        // the host's single admin secret, read from configuration like the
+        // Esri admin projection does.
+        var adminToken = app.ServiceProvider.GetService<IConfiguration>()?["Spatial:Admin:Token"];
+        MapFeatureOps(group, catalog, registry, adminToken);
 
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
@@ -170,7 +175,12 @@ public static partial class GeoServicesEndpoints
             var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
             var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var editable = IsEditable(request.Stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
-            return EsriJson.Value(FeatureService.Layer(request.LayerId, description, editable, EsriLayerModel.IsTable(description)));
+            return EsriJson.Value(FeatureService.Layer(
+                request.LayerId,
+                description,
+                editable,
+                EsriLayerModel.IsTable(description),
+                HasAttachments(request.Stores, resolved.Store)));
         }
         catch (Exception exception)
         {
@@ -252,6 +262,10 @@ public static partial class GeoServicesEndpoints
 
     private static bool IsEditable(IStoreRegistry stores, string store) =>
         EditStore(stores, store) is not null;
+
+    /// <summary>Whether the layer advertises attachments: the store exposes the blob capability (T-061, ADR-0066).</summary>
+    private static bool HasAttachments(IStoreRegistry stores, string store) =>
+        stores.AttachmentStore(store) is not null;
 
     /// <summary>Resolves the service's keyed editing capability, or null when the store is read-only (ADR-0037).</summary>
     private static IFeatureEditStore? EditStore(IStoreRegistry stores, string store) =>

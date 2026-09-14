@@ -82,12 +82,31 @@ internal static class EsriLayerModel
     }
 
     /// <summary>
+    /// The attachment fields a served layer advertises (spec §9.1
+    /// <c>attachmentProperties</c>): exactly the descriptor faces the
+    /// <c>IFeatureAttachmentStore</c> capability serves — identity, file
+    /// name, byte size, MIME type and keywords (ADR-0066). Emitted only
+    /// when the layer advertises <c>hasAttachments</c>.
+    /// </summary>
+    public static readonly IReadOnlyList<EsriAttachmentProperty> AttachmentProperties =
+    [
+        new("id", "attachmentId", true),
+        new("name", "attachmentName", true),
+        new("size", "attachmentSize", true),
+        new("contentType", "attachmentContentType", true),
+        new("keywords", "attachmentKeywords", true),
+    ];
+
+    /// <summary>
     /// Builds the full layer metadata (spec §9.1). Layers with a string
     /// identity column advertise it as <c>uniqueIdField</c> (11.5+) so
     /// clients can discover up front the field <c>uniqueIds</c> /
     /// <c>returnUniqueIdsOnly</c> serve (T-036); every other layer omits it.
+    /// A layer whose store exposes the attachment capability advertises
+    /// <c>hasAttachments</c> with its <c>attachmentProperties</c> (T-061,
+    /// ADR-0066); every other layer reports <c>hasAttachments: false</c>.
     /// </summary>
-    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable, bool isTable = false)
+    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable, bool hasAttachments = false, bool isTable = false)
     {
         var uniqueScheme = EsriUniqueIdScheme.For(dataset);
         EsriUniqueIdField? uniqueIdField = uniqueScheme is null
@@ -110,7 +129,9 @@ internal static class EsriLayerModel
             SupportsDefaultSR: true,
             SupportsAdvancedQueries: true,
             QueryCapabilities,
-            uniqueIdField);
+            uniqueIdField,
+            HasAttachments: hasAttachments,
+            AttachmentProperties: hasAttachments ? AttachmentProperties : null);
     }
 
     /// <summary>The layer's Esri spatial reference, or null when the SRID is unknown to the map.</summary>
@@ -175,7 +196,16 @@ internal sealed record EsriLayer(
     bool SupportsDefaultSR,
     bool SupportsAdvancedQueries,
     EsriAdvancedQueryCapabilities AdvancedQueryCapabilities,
-    EsriUniqueIdField? UniqueIdField = null);
+    EsriUniqueIdField? UniqueIdField = null,
+    bool HasAttachments = false,
+    IReadOnlyList<EsriAttachmentProperty>? AttachmentProperties = null);
+
+/// <summary>
+/// One advertised attachment field (spec §9.1 <c>attachmentProperties</c>):
+/// the capability face (<c>name</c>), the field clients read it as
+/// (<c>fieldName</c>) and whether the facade serves it (<c>isEnabled</c>).
+/// </summary>
+internal sealed record EsriAttachmentProperty(string Name, string FieldName, bool IsEnabled);
 
 /// <summary>
 /// The layer's string unique-id field (spec §9.1 layer resource, 11.5+):

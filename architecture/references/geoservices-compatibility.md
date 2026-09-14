@@ -116,7 +116,8 @@ angular `unit` buffers planar degrees.
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
 | `deleteFeatures` (§9.1.8) | — | Implemented via `IFeatureEditStore.DeleteAsync` (ADR-0037) |
 | `applyEdits` (§9.1.9) | transactions (`begin`/`commit`/`rollback`) + write | Implemented at layer level; `rollbackOnFailure` maps to `ITransactionStore`; service-level `applyEdits` out of scope |
-| attachments, `htmlPopup`, `image` (§9.2–9.6) | — | Attachments honestly surfaced, unadvertised: reads report the empty set, writes are typed `invalid.arguments` until an attachment store lands (ADR-0061 tunneled through `IFeatureAttachmentStore` sub-tasks); `htmlPopup`/`image` stay non-goals (§7.1) |
+| attachments (§9.2–9.6) | — | **Served on the `IFeatureAttachmentStore` capability** (ADR-0065/ADR-0066): layers whose store exposes the capability advertise `hasAttachments` with `attachmentProperties` (id, name, size, contentType, keywords); `queryAttachments` returns per-feature `attachmentGroups`, the per-feature `attachments` resource its `attachmentInfos`, and a per-attachment resource serves the bytes; `addAttachment`/`updateAttachment` (multipart `attachment` part) and `deleteAttachments` (per-id results) mutate behind the single admin token. Stores without the capability (demo, PostGIS until its sidecar lands) keep the honest surface: `hasAttachments: false`, empty reads, typed `invalid.arguments` writes | 
+| `htmlPopup`, `image` (§9.2–9.6) | — | Non-goals (§7.1) |
 
 Result-shape additions: `returnExtentOnly` returns the envelope of the full
 matched set (computed before paging) in `outSR` or the layer SR, or

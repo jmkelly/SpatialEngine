@@ -11,7 +11,9 @@ namespace Spatial.Host.Tests;
 /// T-038 items 2–5 over the demo store: the Feature Service per-layer
 /// <c>generateRenderer</c> (reusing the T-039 classifier), <c>validateSQL</c>,
 /// the honestly rejected aggregation extensions (<c>queryBins</c>,
-/// <c>queryTopFeatures</c>, <c>queryAnalytic</c>), and the attachment surface.
+/// <c>queryTopFeatures</c>, <c>queryAnalytic</c>), and the attachment surface
+/// without a blob capability (T-061 served behaviour for capability-less
+/// stores; the store-backed behaviour lives in GeoServicesAttachmentsTests).
 /// Red-first: none of these routes exist today, so every test here 404s
 /// while the surface is unmounted.
 /// </summary>
@@ -182,14 +184,20 @@ public sealed class GeoServicesFeatureOpsTests : IDisposable
             await Client().GetAsync($"{Feature}/99/queryBins?f=json"), HttpStatusCode.NotFound);
     }
 
-    // ---- item 5: attachments (honest until a store lands) ----
+    // ---- item 5: attachments (T-061 served: the demo store exposes no
+    // blob capability, so reads stay empty and writes stay rejected; the
+    // store-backed behaviour lives in GeoServicesAttachmentsTests) ----
 
     [Fact]
-    public async Task Query_attachments_reports_the_empty_set()
+    public async Task Query_attachments_reports_empty_groups_without_a_store()
     {
+        // Without a blob capability nothing is stored for any feature, so
+        // every group is truthfully empty.
         var body = await BodyAsync(await Client().GetAsync($"{Feature}/0/queryAttachments?f=json"));
 
-        Assert.Empty(body.GetProperty("attachmentInfos").EnumerateArray());
+        var groups = body.GetProperty("attachmentGroups").EnumerateArray().ToArray();
+        Assert.NotEmpty(groups);
+        Assert.All(groups, group => Assert.Empty(group.GetProperty("attachmentInfos").EnumerateArray()));
     }
 
     [Fact]
@@ -201,17 +209,39 @@ public sealed class GeoServicesFeatureOpsTests : IDisposable
     }
 
     [Theory]
-    [InlineData("addAttachment")]
-    [InlineData("deleteAttachments")]
-    [InlineData("updateAttachment")]
-    public async Task Attachment_writes_are_rejected_without_a_store(string operation)
+    [InlineData("addAttachment", "")]
+    [InlineData("deleteAttachments", "&attachmentIds=1")]
+    [InlineData("updateAttachment", "&attachmentId=1")]
+    public async Task Attachment_writes_are_rejected_without_a_store(string operation, string ids)
     {
         var error = await ErrorAsync(
-            await Client().PostAsync($"{Feature}/0/1/{operation}?f=json", new StringContent(string.Empty)),
+            await AuthorizedClient().PostAsync($"{Feature}/0/1/{operation}?f=json{ids}", new StringContent(string.Empty)),
             HttpStatusCode.BadRequest);
 
         Assert.Equal(400, error.GetProperty("code").GetInt32());
         Assert.Contains(operation, error.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("addAttachment")]
+    [InlineData("deleteAttachments")]
+    [InlineData("updateAttachment")]
+    public async Task Attachment_writes_require_an_admin_token(string operation)
+    {
+        var missing = await ErrorAsync(
+            await Client().PostAsync($"{Feature}/0/1/{operation}?f=json", new StringContent(string.Empty)),
+            HttpStatusCode.Unauthorized);
+
+        Assert.Equal(498, missing.GetProperty("code").GetInt32());
+
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{Feature}/0/1/{operation}?f=json")
+        {
+            Content = new StringContent(string.Empty),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "nope");
+        var invalid = await ErrorAsync(await Client().SendAsync(request), HttpStatusCode.Forbidden);
+
+        Assert.Equal(497, invalid.GetProperty("code").GetInt32());
     }
 
     [Fact]
@@ -222,12 +252,19 @@ public sealed class GeoServicesFeatureOpsTests : IDisposable
     }
 
     [Fact]
-    public async Task The_layer_does_not_advertise_attachments()
+    public async Task The_layer_reports_no_attachments_without_a_store()
     {
         var layer = await BodyAsync(await Client().GetAsync($"{Feature}/0?f=json"));
 
-        Assert.False(layer.TryGetProperty("hasAttachments", out _));
+        Assert.False(layer.GetProperty("hasAttachments").GetBoolean());
         Assert.False(layer.TryGetProperty("attachmentProperties", out _));
+    }
+
+    private HttpClient AuthorizedClient()
+    {
+        var client = Client();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+        return client;
     }
 
     private static readonly string[] MapServices = ["map"];
