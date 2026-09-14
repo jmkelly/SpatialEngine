@@ -1,0 +1,38 @@
+{
+  "name": "project-point",
+  "operation": "project",
+  "source": "Esri REST docs: project (https://developers.arcgis.com/rest/services-reference/enterprise/project.htm); sampleserver6 pattern",
+  "request": {
+    "method": "GET",
+    "path": "/arcgis/rest/services/Geometry/GeometryServer/project",
+    "query": "geometries=%5B%7B%22x%22%3A-117.15%2C%22y%22%3A32.71%2C%22spatialReference%22%3A%7B%22wkid%22%3A4326%7D%7D%5D&inSR=%7B%22wkid%22%3A4326%7D&outSR=%7B%22wkid%22%3A3857%7D&f=json"
+  },
+  "expectStatus": 200,
+  "esriResponse": {
+    "geometries": [
+      {
+        "x": -13041078.33,
+        "y": 3856874.38,
+        "spatialReference": {
+          "wkid": 3857,
+          "latestWkid": 3857
+        }
+      }
+    ]
+  },
+  "notes": "4326 San Diego point to 3857. ProjNet vs Esri PE agree within the scaled 1e-6 tolerance; datum steps are out of scope (findTransformations is an honest catalogue listing).",
+  "knownDeltas": [
+    "ProjNet-vs-Esri-PE: sub-tolerance numeric drift only; scaled 1e-6 compare absorbs it."
+  ],
+  "expect": {
+    "geometries": [
+      {
+        "x": -13041078.346432,
+        "y": 3856874.2734482037,
+        "spatialReference": {
+          "wkid": 3857
+        }
+      }
+    ]
+  }
+}

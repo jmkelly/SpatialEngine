@@ -1,0 +1,34 @@
+{
+  "name": "label-points",
+  "operation": "labelPoints",
+  "source": "Esri REST docs: labelPoints (https://developers.arcgis.com/rest/services-reference/enterprise/label-points.htm); sampleserver6 pattern",
+  "request": {
+    "method": "GET",
+    "path": "/arcgis/rest/services/Geometry/GeometryServer/labelPoints",
+    "query": "geometries=%5B%7B%22rings%22%3A%5B%5B%5B0%2C0%5D%2C%5B0%2C2%5D%2C%5B2%2C2%5D%2C%5B2%2C0%5D%2C%5B0%2C0%5D%5D%5D%7D%5D&sr=4326&f=json"
+  },
+  "expectStatus": 200,
+  "esriResponse": {
+    "geometries": [
+      {
+        "x": 1.0,
+        "y": 1.0
+      }
+    ]
+  },
+  "notes": "Label point of the 2x2 square is its centre (1,1): inside the polygon by construction.",
+  "knownDeltas": [
+    "Interior-guaranteed point agrees with Esri centre for convex shapes; concave divergence out of scope."
+  ],
+  "expect": {
+    "geometries": [
+      {
+        "x": 1,
+        "y": 1,
+        "spatialReference": {
+          "wkid": 4326
+        }
+      }
+    ]
+  }
+}

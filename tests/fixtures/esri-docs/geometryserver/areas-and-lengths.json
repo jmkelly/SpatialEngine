@@ -1,0 +1,27 @@
+{
+  "name": "areas-and-lengths",
+  "operation": "areasAndLengths",
+  "source": "Esri REST docs: areasAndLengths (https://developers.arcgis.com/rest/services-reference/enterprise/areas-and-lengths.htm); sampleserver6 pattern",
+  "request": {
+    "method": "GET",
+    "path": "/arcgis/rest/services/Geometry/GeometryServer/areasAndLengths",
+    "query": "polygons=%5B%7B%22rings%22%3A%5B%5B%5B0%2C0%5D%2C%5B0%2C1%5D%2C%5B1%2C1%5D%2C%5B1%2C0%5D%2C%5B0%2C0%5D%5D%5D%7D%5D&sr=4326&calculationType=planar&f=json"
+  },
+  "expectStatus": 400,
+  "esriResponse": {
+    "areas": [
+      1.0
+    ],
+    "lengths": [
+      4.0
+    ]
+  },
+  "notes": "Docs name the input 'polygons'; our Geometry Service requires 'geometries' for every verb, so the doc-verbatim query is an honest 400. Input aliasing is follow-up work, not this slice.",
+  "knownDeltas": [
+    "HONEST REJECT: docs 'polygons' param not accepted; engine requires 'geometries'. Follow-up alias task."
+  ],
+  "expectError": {
+    "code": 400,
+    "messageContains": "'geometries' parameter is required"
+  }
+}

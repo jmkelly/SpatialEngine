@@ -1,0 +1,94 @@
+{
+  "name": "union",
+  "operation": "union",
+  "source": "Esri REST docs: union (https://developers.arcgis.com/rest/services-reference/enterprise/union.htm); sampleserver6 pattern",
+  "request": {
+    "method": "GET",
+    "path": "/arcgis/rest/services/Geometry/GeometryServer/union",
+    "query": "geometries=%5B%7B%22rings%22%3A%5B%5B%5B0%2C0%5D%2C%5B0%2C1%5D%2C%5B1%2C1%5D%2C%5B1%2C0%5D%2C%5B0%2C0%5D%5D%5D%7D%2C%7B%22rings%22%3A%5B%5B%5B1%2C0%5D%2C%5B1%2C1%5D%2C%5B2%2C1%5D%2C%5B2%2C0%5D%2C%5B1%2C0%5D%5D%5D%7D%5D&sr=4326&f=json"
+  },
+  "expectStatus": 200,
+  "esriResponse": {
+    "geometries": [
+      {
+        "rings": [
+          [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  "notes": "Two edge-adjacent unit squares dissolve into one hexagon-ring polygon.",
+  "knownDeltas": [
+    "Ring orientation/vertex order follows NTS, not Esri; dissolved shape pinned."
+  ],
+  "expect": {
+    "geometries": [
+      {
+        "rings": [
+          [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        ],
+        "spatialReference": {
+          "wkid": 4326
+        }
+      }
+    ]
+  }
+}

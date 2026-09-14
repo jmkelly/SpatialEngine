@@ -1,0 +1,106 @@
+{
+  "name": "simplify-bowtie",
+  "operation": "simplify",
+  "source": "Esri REST docs: simplify (https://developers.arcgis.com/rest/services-reference/enterprise/simplify.htm); sampleserver6 pattern",
+  "request": {
+    "method": "GET",
+    "path": "/arcgis/rest/services/Geometry/GeometryServer/simplify",
+    "query": "geometries=%5B%7B%22rings%22%3A%5B%5B%5B0%2C0%5D%2C%5B2%2C2%5D%2C%5B2%2C0%5D%2C%5B0%2C2%5D%2C%5B0%2C0%5D%5D%5D%7D%5D&sr=4326&f=json"
+  },
+  "expectStatus": 200,
+  "esriResponse": {
+    "geometries": [
+      {
+        "rings": [
+          [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          [
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  "notes": "simplify is topological repair (not Douglas-Peucker): the self-crossing bow-tie splits into two valid rings. generalize with maxDeviation=0 would leave it whole.",
+  "knownDeltas": [
+    "Ring order/orientation follows NTS repair, not Esri; validity + part count are the parity contract."
+  ],
+  "expect": {
+    "geometries": [
+      {
+        "rings": [
+          [
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          [
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              0,
+              0
+            ]
+          ]
+        ],
+        "spatialReference": {
+          "wkid": 4326
+        }
+      }
+    ]
+  }
+}

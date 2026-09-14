@@ -1,0 +1,78 @@
+{
+  "name": "intersect",
+  "operation": "intersect",
+  "source": "Esri REST docs: intersect (https://developers.arcgis.com/rest/services-reference/enterprise/intersect.htm); sampleserver6 pattern",
+  "request": {
+    "method": "GET",
+    "path": "/arcgis/rest/services/Geometry/GeometryServer/intersect",
+    "query": "geometries=%5B%7B%22rings%22%3A%5B%5B%5B0%2C0%5D%2C%5B0%2C2%5D%2C%5B2%2C2%5D%2C%5B2%2C0%5D%2C%5B0%2C0%5D%5D%5D%7D%5D&geometry=%7B%22xmin%22%3A1%2C%22ymin%22%3A1%2C%22xmax%22%3A3%2C%22ymax%22%3A3%7D&sr=4326&f=json"
+  },
+  "expectStatus": 200,
+  "esriResponse": {
+    "geometries": [
+      {
+        "rings": [
+          [
+            [
+              1,
+              1
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  "notes": "One output geometry per input, envelope 'geometry' as the clipping shape; ring orientation follows the engine (NTS), pinned here.",
+  "knownDeltas": [
+    "Ring orientation/vertex order follows NTS, not Esri; extent + closure pinned."
+  ],
+  "expect": {
+    "geometries": [
+      {
+        "rings": [
+          [
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              1
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        ],
+        "spatialReference": {
+          "wkid": 4326
+        }
+      }
+    ]
+  }
+}
