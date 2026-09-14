@@ -112,8 +112,6 @@ shape is noted in brackets.
 | 0058 | MapServer export reads time/timeRelation/layerTimeOptions, dynamicLayers and layerOption; cached-root fields follow the served scheme. |
 | 0059 | Map/Image offline and async surface (exportTiles, WMTS, KML, jobs) is rejected by name; T-048 builds on that scope. |
 | 0060 | Feature write-model extensions: service-level query, `generateRenderer` reuse, `validateSQL`, aggregation honesty, attachment store-model decision. |
-=======
->>>>>>> 7f9676f (Serve Feature modern query params (returnEnvelope, defaultSR, pagination token, uniqueIds))
 
 ## How to change the architecture
 
