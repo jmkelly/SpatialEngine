@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Spatial.Core.Geometry;
 using Spatial.PluginSdk;
@@ -19,6 +20,21 @@ namespace Spatial.Transformations.ProjNet;
 public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
 {
     private static readonly ProjTf.CoordinateTransformationFactory Transformations = new();
+
+    /// <summary>
+    /// The hot-path cache (T-087): building a math transform from a CRS
+    /// pair dominates single-point transforms (38.7x vs raw ProjNet in the
+    /// T-076 micro), so each EPSG pair's transform is built once and shared.
+    /// ProjNet math transforms hold no per-call state, making them safe to
+    /// share across threads; misses build outside any lock via
+    /// <see cref="ConcurrentDictionary{TKey, TValue}"/>. Bounded by the
+    /// catalogue's CRS pairs.
+    /// </summary>
+    private static readonly ConcurrentDictionary<(int Source, int Target), ProjTf.MathTransform> MathTransforms = new();
+
+    /// <summary>Test pin (T-087): the cached math transform for a pair, when present.</summary>
+    internal static bool TryGetCachedMathTransform(int sourceCode, int targetCode, out ProjTf.MathTransform? math) =>
+        MathTransforms.TryGetValue((sourceCode, targetCode), out math);
 
     public CrsDescription Describe(string crs, CancellationToken cancellationToken = default)
     {
@@ -44,9 +60,20 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         var targetSystem = Lookup(targetIdentity);
         EnsureSourceMatchesStamp(geometry, source, sourceIdentity);
 
+        // Lookup has validated both identities as known EPSG codes, so the
+        // parse cannot fail; the int keys canonicalise spelling variants
+        // ("epsg:4326" shares the "EPSG:4326" entry).
+        var key = (
+            Source: int.Parse(sourceIdentity.Code, NumberStyles.None, CultureInfo.InvariantCulture),
+            Target: int.Parse(targetIdentity.Code, NumberStyles.None, CultureInfo.InvariantCulture));
+
         try
         {
-            var math = Transformations.CreateFromCoordinateSystems(sourceSystem, targetSystem).MathTransform;
+            if (!MathTransforms.TryGetValue(key, out var math))
+            {
+                math = MathTransforms.GetOrAdd(key, _ => Transformations.CreateFromCoordinateSystems(sourceSystem, targetSystem).MathTransform);
+            }
+
             return TransformGeometry(geometry, math, new CoordinateReference(targetIdentity.Authority, targetIdentity.Code));
         }
         catch (SpatialException)
