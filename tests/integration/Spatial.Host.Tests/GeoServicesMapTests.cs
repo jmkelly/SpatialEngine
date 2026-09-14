@@ -98,6 +98,21 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task Html_on_the_map_server_root_is_rejected_naming_the_json_surface()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/world/MapServer?f=html");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        var message = error.GetProperty("message").GetString() ?? string.Empty;
+        Assert.Contains("supportedQueryFormats", message, StringComparison.Ordinal);
+        Assert.Contains("f=json", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task The_root_describes_the_map_and_its_layers()
     {
         var client = await MapServiceAsync();

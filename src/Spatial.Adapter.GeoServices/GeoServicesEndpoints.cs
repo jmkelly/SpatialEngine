@@ -99,8 +99,11 @@ public static partial class GeoServicesEndpoints
     /// the registry's publications plus the declared FeatureServer services.
     /// Declared services are also publications (seeded at composition), and a
     /// registry that is not populated (for example in unit tests) is tolerated.
+    /// Internal for the T-049 catalog-honesty tests: only served types
+    /// (Feature/Map/Image) may appear — Tiles/WMS/WFS and any future
+    /// GPServer-shaped service are omitted, never advertised.
     /// </summary>
-    private static async Task<List<EsriServiceEntry>> BuildServicesAsync(
+    internal static async Task<List<EsriServiceEntry>> BuildServicesAsync(
         GeoServicesCatalog catalog, IMapRegistry registry, CancellationToken cancellationToken)
     {
         var services = new List<EsriServiceEntry> { new(GeoServicesCatalog.GeometryServiceName, "GeometryServer") };

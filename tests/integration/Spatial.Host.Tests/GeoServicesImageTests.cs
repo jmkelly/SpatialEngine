@@ -149,6 +149,21 @@ public sealed class GeoServicesImageTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Html_on_the_image_server_root_is_rejected_naming_the_json_surface()
+    {
+        var client = await ImageServiceAsync(_factory, Name, Dataset);
+
+        var response = await client.GetAsync($"{Root}/{Name}/ImageServer?f=html");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        var message = error.GetProperty("message").GetString() ?? string.Empty;
+        Assert.Contains("supportedQueryFormats", message, StringComparison.Ordinal);
+        Assert.Contains("f=json", message, StringComparison.Ordinal);
+    }
+
     private static async Task<JsonElement> BodyAsync(HttpResponseMessage response)
     {
         var text = await response.Content.ReadAsStringAsync();
