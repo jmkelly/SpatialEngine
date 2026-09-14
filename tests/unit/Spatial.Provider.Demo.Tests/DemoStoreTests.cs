@@ -45,6 +45,34 @@ public sealed class DemoStoreTests
     }
 
     [Fact]
+    public async Task ListAsync_without_a_pattern_returns_the_cached_summary_list()
+    {
+        var first = await _store.ListAsync();
+        var second = await _store.ListAsync();
+
+        Assert.Same(first, second);
+    }
+
+    [Fact]
+    public async Task ListAsync_with_a_pattern_filters_the_cached_summaries()
+    {
+        var cached = await _store.ListAsync();
+        var filtered = await _store.ListAsync("demo.citie_");
+
+        Assert.Single(filtered);
+        Assert.Same(cached.Single(summary => summary.Id == "demo.cities"), filtered[0]);
+    }
+
+    [Fact]
+    public async Task DescribeAsync_returns_the_cached_description()
+    {
+        var first = await _store.DescribeAsync("demo.points");
+        var second = await _store.DescribeAsync("demo.points");
+
+        Assert.Same(first, second);
+    }
+
+    [Fact]
     public async Task Describe_returns_the_dataset_schema()
     {
         var description = await _store.DescribeAsync("demo.points");

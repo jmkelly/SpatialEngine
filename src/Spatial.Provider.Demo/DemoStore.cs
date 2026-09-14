@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Spatial.Core.Features;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
@@ -15,12 +16,33 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoJobs
 {
     private const int BatchSize = 64;
 
+    /// <summary>
+    /// The unfiltered summaries, built once: the catalog is static and
+    /// read-only (ADR-0031/ADR-0033), so the summaries are immutable and
+    /// safe to share across requests. Lazy so first-load timing (including
+    /// the world-cities snapshot parse) matches the uncached path.
+    /// </summary>
+    private static readonly Lazy<IReadOnlyList<DatasetSummary>> CachedSummaries = new(
+        () => DemoDatasetCatalog.Datasets.Select(dataset => dataset.ToSummary()).ToArray(),
+        LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>
+    /// One description per dataset, built once: descriptions derive
+    /// entirely from the immutable catalog entries (identity, row count,
+    /// shared schema), and consumers only read them.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, DatasetDescription> CachedDescriptions = new(StringComparer.Ordinal);
+
     public Task<IReadOnlyList<DatasetSummary>> ListAsync(string? pattern = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        IReadOnlyList<DatasetSummary> result = DemoDatasetCatalog.Datasets
-            .Where(dataset => LikePattern.Matches(dataset.Id, pattern))
-            .Select(dataset => dataset.ToSummary())
+        if (pattern is null)
+        {
+            return Task.FromResult(CachedSummaries.Value);
+        }
+
+        IReadOnlyList<DatasetSummary> result = CachedSummaries.Value
+            .Where(summary => LikePattern.Matches(summary.Id, pattern))
             .ToArray();
         return Task.FromResult(result);
     }
@@ -28,8 +50,12 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoJobs
     public Task<DatasetDescription> DescribeAsync(string dataset, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var found = Find(dataset);
-        return Task.FromResult(found.ToDescription());
+        if (string.IsNullOrWhiteSpace(dataset))
+        {
+            throw SpatialException.BadArguments("A dataset identifier is required.");
+        }
+
+        return Task.FromResult(CachedDescriptions.GetOrAdd(dataset, static id => Find(id).ToDescription()));
     }
 
     public Task<string> CreateAsync(string dataset, FeatureBatch sample, int srid, CancellationToken cancellationToken = default)
