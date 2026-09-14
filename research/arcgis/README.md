@@ -59,6 +59,45 @@ python3 research/arcgis/slim.py
 python3 research/arcgis/report.py
 ```
 
+## Fixture refresh (T-065): nightly/explicit, PR gate stays offline
+
+Last refresh check: **2026-09-14** (`eng/refresh-esri-fixtures.sh --check`:
+`geometry-project` SAME, `basemap-root` SAME, `geometry-root` DRIFT — the
+live sampleserver6 GeometryServer root now answers only `serviceDescription`,
+without the `currentVersion`/`capabilities` keys the checked-in
+`esriResponse` records; filed as a refresh follow-up, fixtures untouched).
+
+Live source URLs probed on every refresh:
+
+- GeometryServer root + project probe:
+  `https://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/Geometry/GeometryServer`
+  (the esri-docs fixtures cite the shortened `sampleserver6/Geometry/
+  GeometryServer` pattern plus the Esri REST docs,
+  `https://developers.arcgis.com/rest/services-reference/enterprise/`) —
+  diffed against `tests/fixtures/esri-docs/geometryserver/metadata.json`.
+- Canvas basemap root:
+  `https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer`
+  — diffed against the recorded envelope in
+  `tests/fixtures/arcgis/captured/canvas-world-dark-gray-base-mapserver/service.json`.
+- Full catalog roots for the corpus pass: `seeds.txt` in this directory
+  (sampleserver6/2/5, `services.arcgis.com`, NPS, USFS, NOAA, National Map,
+  `services.arcgisonline.com`).
+
+Policy:
+
+- `eng/refresh-esri-fixtures.sh --check` (default) fetches the probes,
+  prints the SAME/DRIFT/UNREACHABLE summary, and changes nothing under
+  `tests/`. `--write` refreshes the mapped envelopes (esri-docs
+  `esriResponse` blocks; captured corpus via `harvest.py --services-file` +
+  `slim.py`) and prints `git diff --stat` for a refresh PR.
+- The default suite (`EsriDocsReplayTests`, `RealWorldFixtureTests`)
+  replays checked-in fixtures only — no network. Live probes live in
+  `EsriLiveRefreshTests` and are skipped unless `SPATIAL_ESRI_LIVE=1`.
+- `eng/verify.sh` never invokes the refresh script (pinned by
+  `EsriRefreshGateTests`). Drift a refresh finds is filed via
+  `eng/tasks add --area interop.esri`, never fixed by editing expectations
+  or product code in the refresh itself.
+
 ## Current corpus
 
 52 endpoints / 316 layers across 9 portal catalogs
