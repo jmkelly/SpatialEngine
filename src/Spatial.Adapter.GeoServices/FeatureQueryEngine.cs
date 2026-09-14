@@ -275,8 +275,8 @@ internal static class FeatureQueryEngine
             return false;
         }
 
-        // T-036: the string-ID filter (spec §9.1.4, 11.5+). A null unique id
-        // never equals a requested id; layers without a string unique-id
+        // T-036/T-058: the string-ID filter (spec §9.1.4, 11.5+). A null unique id
+        // never equals a requested id; layers without a string-or-guid unique-id
         // model are rejected when the match loops resolve the id.
         if (match.Query.UniqueIds is { } wanted
             && (match.UniqueId is null || !wanted.Contains(match.UniqueId, StringComparer.Ordinal)))
@@ -557,14 +557,14 @@ internal static class FeatureQueryEngine
     /// <summary>
     /// The <c>returnUniqueIdsOnly</c> response (spec §9.1.4, 11.5+): the
     /// string-ID analogue of <see cref="IdsOnly"/>, symmetric in shape.
-    /// Layers without a string unique-id model never reach here — the match
+    /// Layers without a string-or-guid unique-id model never reach here — the match
     /// loops reject the param first — so a missing scheme is defensive.
     /// </summary>
     private static IResult UniqueIdsOnly(DatasetDescription dataset, IReadOnlyList<MatchedFeature> matches)
     {
         var scheme = EsriUniqueIdScheme.For(dataset)
             ?? throw EsriInteropException.Invalid(
-                $"The 'returnUniqueIdsOnly' parameter is not supported on layer '{dataset.Id}': the layer has no string unique-id field; address its integer features with 'objectIds'.");
+                $"The 'returnUniqueIdsOnly' parameter is not supported on layer '{dataset.Id}': the layer has no string or guid unique-id field; address its integer features with 'objectIds'.");
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
