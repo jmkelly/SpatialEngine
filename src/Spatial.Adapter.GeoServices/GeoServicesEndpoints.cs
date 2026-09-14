@@ -34,13 +34,13 @@ public static partial class GeoServicesEndpoints
         group.MapMethods("/{service}/FeatureServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             FeatureServerRoot(catalog, registry, service, context, stores, cancellationToken));
         group.MapMethods("/{service}/FeatureServer/{layerId:int}", ["GET", "POST"], (string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureLayer(catalog, registry, service, layerId, context, stores, cancellationToken));
+            FeatureLayer(new FeatureLayerContext(catalog, registry, service, layerId, context, stores), cancellationToken));
         // The Feature (object) resource (spec §9.1.2): ArcGIS REST JS
         // getFeature reads `<layerId>/<objectId>` directly.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/{objectId:long}", ["GET", "POST"], (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores,
             ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            FeatureResource(catalog, registry, service, layerId, objectId, context, stores, transforms, cancellationToken));
+            FeatureResource(new FeatureResourceContext(catalog, registry, service, layerId, objectId, context, stores, transforms), cancellationToken));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/query", ["GET", "POST"], (
             HttpContext context,
@@ -161,17 +161,16 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    private static async Task<IResult> FeatureLayer(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
+    private static async Task<IResult> FeatureLayer(FeatureLayerContext request, CancellationToken cancellationToken)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(stores, resolved, layerId, cancellationToken);
-            var editable = IsEditable(stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
-            return EsriJson.Value(FeatureService.Layer(layerId, description, editable, EsriLayerModel.IsTable(description)));
+            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
+            var editable = IsEditable(request.Stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
+            return EsriJson.Value(FeatureService.Layer(request.LayerId, description, editable, EsriLayerModel.IsTable(description)));
         }
         catch (Exception exception)
         {
@@ -179,26 +178,17 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    private static async Task<IResult> FeatureResource(
-        GeoServicesCatalog catalog,
-        IMapRegistry registry,
-        string service,
-        int layerId,
-        long objectId,
-        HttpContext context,
-        IStoreRegistry stores,
-        ICoordinateTransforms transforms,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> FeatureResource(FeatureResourceContext request, CancellationToken cancellationToken)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(stores, resolved, layerId, cancellationToken);
+            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
-            var store = stores.Features(resolved.Store);
-            return await FeatureService.FeatureAsync(description, store, objectId, query, transforms, cancellationToken);
+            var store = request.Stores.Features(resolved.Store);
+            return await FeatureService.FeatureAsync(description, store, request.ObjectId, query, request.Transforms, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -375,6 +365,26 @@ internal sealed record ResolvedService(
     IReadOnlyList<MapLayer>? Layers,
     string? Description = null,
     string? Copyright = null);
+
+/// <summary>The resolved services of one Feature Service layer-metadata request.</summary>
+internal sealed record FeatureLayerContext(
+    GeoServicesCatalog Catalog,
+    IMapRegistry Registry,
+    string Service,
+    int LayerId,
+    HttpContext Context,
+    IStoreRegistry Stores);
+
+/// <summary>The resolved services of one Feature (object) resource request.</summary>
+internal sealed record FeatureResourceContext(
+    GeoServicesCatalog Catalog,
+    IMapRegistry Registry,
+    string Service,
+    int LayerId,
+    long ObjectId,
+    HttpContext Context,
+    IStoreRegistry Stores,
+    ICoordinateTransforms Transforms);
 
 /// <summary>The resolved services of one Feature Service query request.</summary>
 internal sealed record FeatureQueryContext(

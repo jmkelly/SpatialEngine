@@ -30,7 +30,7 @@ internal static class FeatureQueryEngine
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
-        var matches = await MatchAsync(dataset, store, query, queryGeometry, operations, scheme, cancellationToken);
+        var matches = await MatchAsync(new QuerySpec(dataset, store, query, queryGeometry, operations, scheme), cancellationToken);
         return Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
     }
 
@@ -119,7 +119,7 @@ internal static class FeatureQueryEngine
             var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
             var scheme = EsriObjectIdScheme.For(layer.Description);
             var queryGeometry = TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
-            matched.Add((layer, await MatchAsync(layer.Description, store, layer.Query, queryGeometry, operations, scheme, cancellationToken)));
+            matched.Add((layer, await MatchAsync(new QuerySpec(layer.Description, store, layer.Query, queryGeometry, operations, scheme), cancellationToken)));
         }
 
         return EsriJson.Write(writer =>
@@ -243,30 +243,23 @@ internal static class FeatureQueryEngine
         throw new EsriInteropException(EsriErrorCodes.NotFound, $"Feature {objectId} does not exist in layer '{dataset.Id}'.");
     }
 
-    private static async Task<List<MatchedFeature>> MatchAsync(
-        DatasetDescription dataset,
-        IFeatureStore store,
-        EsriFeatureQuery query,
-        IGeometry? queryGeometry,
-        IGeometryOperations operations,
-        EsriObjectIdScheme scheme,
-        CancellationToken cancellationToken)
+    private static async Task<List<MatchedFeature>> MatchAsync(QuerySpec spec, CancellationToken cancellationToken)
     {
-        var batches = await store.ScanAsync(dataset.Id, cancellationToken);
+        var batches = await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken);
         var matches = new List<MatchedFeature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
             ordinal++;
-            if (!scheme.TryResolve(feature, ordinal, out var objectId))
+            if (!spec.Scheme.TryResolve(feature, ordinal, out var objectId))
             {
                 throw new EsriInteropException(
                     EsriErrorCodes.ServerError,
-                    $"The identity column of layer '{dataset.Id}' is not an integer.");
+                    $"The identity column of layer '{spec.Dataset.Id}' is not an integer.");
             }
 
-            var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
-            if (Matches(query, feature, objectId, queryGeometry, operations, cancellationToken, uniqueId))
+            var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
+            if (Matches(new MatchCandidate(spec.Query, feature, objectId, spec.QueryGeometry, spec.Operations, uniqueId), cancellationToken))
             {
                 matches.Add(new MatchedFeature(objectId, feature));
             }
@@ -275,16 +268,9 @@ internal static class FeatureQueryEngine
         return matches;
     }
 
-    internal static bool Matches(
-        EsriFeatureQuery query,
-        Feature feature,
-        long objectId,
-        IGeometry? queryGeometry,
-        IGeometryOperations operations,
-        CancellationToken cancellationToken,
-        string? uniqueId = null)
+    internal static bool Matches(MatchCandidate match, CancellationToken cancellationToken)
     {
-        if (query.ObjectIds is { } ids && !ids.Contains(objectId))
+        if (match.Query.ObjectIds is { } ids && !ids.Contains(match.ObjectId))
         {
             return false;
         }
@@ -292,23 +278,23 @@ internal static class FeatureQueryEngine
         // T-036: the string-ID filter (spec §9.1.4, 11.5+). A null unique id
         // never equals a requested id; layers without a string unique-id
         // model are rejected when the match loops resolve the id.
-        if (query.UniqueIds is { } wanted
-            && (uniqueId is null || !wanted.Contains(uniqueId, StringComparer.Ordinal)))
+        if (match.Query.UniqueIds is { } wanted
+            && (match.UniqueId is null || !wanted.Contains(match.UniqueId, StringComparer.Ordinal)))
         {
             return false;
         }
 
-        if (query.Where is { } where && !where.Matches(feature, SyntheticObjectId(objectId)))
+        if (match.Query.Where is { } where && !where.Matches(match.Feature, SyntheticObjectId(match.ObjectId)))
         {
             return false;
         }
 
-        if (query.Time is { } time && !MatchesTime(feature, time))
+        if (match.Query.Time is { } time && !MatchesTime(match.Feature, time))
         {
             return false;
         }
 
-        return queryGeometry is null || SpatialMatch(feature, queryGeometry, query.SpatialRel, operations, cancellationToken);
+        return match.QueryGeometry is null || SpatialMatch(match.Feature, match.QueryGeometry, match.Query.SpatialRel, match.Operations, cancellationToken);
     }
 
     /// <summary>
@@ -919,7 +905,7 @@ internal static class FeatureQueryEngine
         var count = EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
         var exceeded = offset + page.Length < rows.Count;
-        return WriteStatistics(dataset, groupFields, statistics, statInputs, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
+        return WriteStatistics(new StatisticsPage(dataset, groupFields, statistics, statInputs, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null));
     }
 
     private static List<GroupField> ResolveGroupFields(DatasetDescription dataset, IReadOnlyList<string>? names)
@@ -1264,15 +1250,15 @@ internal static class FeatureQueryEngine
         throw EsriInteropException.Invalid($"'orderByFields' names unknown statistic or group field '{name}' in layer '{dataset.Id}'.");
     }
 
-    private static IResult WriteStatistics(
-        DatasetDescription dataset,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        IReadOnlyList<StatisticInput> inputs,
-        IReadOnlyList<StatisticRow> rows,
-        bool exceeded,
-        string? nextToken)
+    private static IResult WriteStatistics(StatisticsPage page)
     {
+        var dataset = page.Dataset;
+        var groupFields = page.GroupFields;
+        var statistics = page.Statistics;
+        var inputs = page.Inputs;
+        var rows = page.Rows;
+        var exceeded = page.Exceeded;
+        var nextToken = page.NextToken;
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -1426,6 +1412,50 @@ internal static class FeatureQueryEngine
         writer.WriteBoolean("editable", editable);
         writer.WriteEndObject();
     }
+
+    /// <summary>
+    /// One feature-match invocation: which layer, store and parsed query to
+    /// match, with the pre-transformed query geometry and the object-id
+    /// scheme the scan ordinals resolve through. Threading one value instead
+    /// of seven parameters keeps the match loop readable (metrics
+    /// long-parameter-list).
+    /// </summary>
+    private sealed record QuerySpec(
+        DatasetDescription Dataset,
+        IFeatureStore Store,
+        EsriFeatureQuery Query,
+        IGeometry? QueryGeometry,
+        IGeometryOperations Operations,
+        EsriObjectIdScheme Scheme);
+
+    /// <summary>
+    /// One per-feature match candidate: the parsed query, the feature and
+    /// its resolved <c>OBJECTID</c>, the pre-transformed query geometry and
+    /// the geometry verbs a spatial predicate needs. Shared by the Feature
+    /// Service match loop and the Image Service catalog query, so both agree
+    /// on what "matches" means.
+    /// </summary>
+    internal sealed record MatchCandidate(
+        EsriFeatureQuery Query,
+        Feature Feature,
+        long ObjectId,
+        IGeometry? QueryGeometry,
+        IGeometryOperations Operations,
+        string? UniqueId = null);
+
+    /// <summary>
+    /// One statistics response page: the layer, its grouping, the requested
+    /// statistics and their resolved inputs, the computed rows and the paging
+    /// outcome. Grouping one value keeps the writer to a single parameter.
+    /// </summary>
+    private sealed record StatisticsPage(
+        DatasetDescription Dataset,
+        IReadOnlyList<GroupField> GroupFields,
+        IReadOnlyList<EsriOutStatistic> Statistics,
+        IReadOnlyList<StatisticInput> Inputs,
+        IReadOnlyList<StatisticRow> Rows,
+        bool Exceeded,
+        string? NextToken);
 
     internal sealed record MatchedFeature(long ObjectId, Feature Feature);
 
