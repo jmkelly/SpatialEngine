@@ -175,5 +175,7 @@ public sealed class WfsFeatureIdsTests
         public IDatasetIngest? Ingest(string name) => null;
 
         public IRasterCatalogue? RasterCatalogue(string name) => null;
+
+        public IFeatureAttachmentStore? AttachmentStore(string name) => null;
     }
 }
