@@ -23,6 +23,15 @@ internal static class ImageServerEndpoints
     /// <summary>The longest side of a Raster Thumbnail (spec §8.3); the aspect ratio is preserved.</summary>
     private const int ThumbnailMaxSize = 200;
 
+    /// <summary>Why mensuration operations are rejected: the catalog carries no sensor models.</summary>
+    private const string MensurationReason = "mensuration needs sensor models the raster catalog does not carry.";
+
+    /// <summary>Why multidimensional operations are rejected: only flat rasters are served.</summary>
+    private const string MultidimensionalReason = "multidimensional rasters are not supported.";
+
+    /// <summary>Why catalog writes are rejected: ingest is the neutral write path (ADR-0041).</summary>
+    private const string CatalogWriteReason = "the raster catalog is read-only; ingest is the neutral write path.";
+
     /// <summary>The square side of a legend swatch (the reference serves 20x20 symbols).</summary>
     private const int LegendSwatchSize = 20;
 
@@ -30,7 +39,7 @@ internal static class ImageServerEndpoints
         RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry, GeoServicesOptions options)
     {
         group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            ImageServerRoot(catalog, registry, service, context, stores, cancellationToken));
+            ImageServerRoot(catalog, registry, service, context, stores, options, cancellationToken));
         group.MapMethods("/{service}/ImageServer/exportImage", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
             ImageExport(catalog, registry, service, context, stores, transforms, cancellationToken));
@@ -64,6 +73,29 @@ internal static class ImageServerEndpoints
         group.MapMethods("/{service}/ImageServer/metadata", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageMetadata(catalog, registry, service, context, stores, cancellationToken));
+        // T-043 honesty rejects: mensuration needs sensor models the raster
+        // catalog does not carry; multidimensional rasters are not served;
+        // the catalog is read-only (ingest is the neutral write path,
+        // ADR-0041). Each names its operation instead of falling through to
+        // a generic 404 (research S3 measure*/compute-angles/project-*/
+        // image-to-map*/query-gps/query-boundary, multidimensional-info/+
+        // slices/, add-rasters/delete-rasters/update-raster/uploads).
+        MapRejected(group, "measure", MensurationReason);
+        MapRejected(group, "measureFromImage", MensurationReason);
+        MapRejected(group, "computeAngles", MensurationReason);
+        MapRejected(group, "project", MensurationReason);
+        MapRejected(group, "projectImage", MensurationReason);
+        MapRejected(group, "imageToMap", MensurationReason);
+        MapRejected(group, "mapToImage", MensurationReason);
+        MapRejected(group, "queryGPSInfo", MensurationReason);
+        MapRejected(group, "queryBoundary", MensurationReason);
+        MapRejected(group, "multidimensionalInfo", MultidimensionalReason);
+        MapRejected(group, "slices", MultidimensionalReason);
+        MapRejected(group, "addRasters", CatalogWriteReason);
+        MapRejected(group, "deleteRasters", CatalogWriteReason);
+        MapRejected(group, "updateRaster", CatalogWriteReason);
+        MapRejected(group, "uploads", CatalogWriteReason);
+        MapRejected(group, "upload", CatalogWriteReason);
         group.MapMethods("/{service}/ImageServer/file", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageFile(catalog, registry, service, context, stores, options, cancellationToken));
@@ -82,20 +114,33 @@ internal static class ImageServerEndpoints
     }
 
     private static async Task<IResult> ImageServerRoot(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IStoreRegistry stores, GeoServicesOptions options, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            return EsriJson.Value(ImageService.Root(image.Description, image.Copyright));
+            return EsriJson.Value(ImageService.Root(image.Description, image.Copyright, options));
         }
         catch (Exception exception)
         {
             return EsriErrorMapper.Map(exception);
         }
     }
+
+    /// <summary>
+    /// Registers one explicitly unsupported operation: a GET+POST route that
+    /// answers 400 naming the operation, so clients get an Esri envelope
+    /// instead of a generic 404. The rejection is synchronous (no provider
+    /// call), so there is nothing to cancel.
+    /// </summary>
+    private static void MapRejected(RouteGroupBuilder group, string operation, string reason) =>
+        group.MapMethods("/{service}/ImageServer/" + operation, ["GET", "POST"], () => RejectNotSupported(operation, reason));
+
+    /// <summary>Rejects one unsupported operation by name with its reason.</summary>
+    private static IResult RejectNotSupported(string operation, string reason) =>
+        EsriErrorMapper.Map(EsriInteropException.Invalid($"The '{operation}' operation is not supported: {reason}"));
 
     private static async Task<IResult> ImageExport(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
