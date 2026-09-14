@@ -207,6 +207,40 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task A_malformed_multipart_upload_is_a_bad_request_naming_the_file_part()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var bad = new ByteArrayContent(Encoding.UTF8.GetBytes("this is not a valid multipart body"));
+        bad.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data; boundary=----badboundary");
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/api/ingest?store=memory&dataset=public.bad&srid=4326&format=geojson", bad));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await BodyAsync(response);
+        Assert.Equal("invalid.arguments", body.GetProperty("code").GetString());
+        Assert.Contains("file", body.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task The_esri_admin_malformed_multipart_upload_is_a_bad_request_naming_the_file_part()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var bad = new ByteArrayContent(Encoding.UTF8.GetBytes("this is not a valid multipart body"));
+        bad.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data; boundary=----badboundary");
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.bad&srid=4326&format=geojson", bad));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = (await BodyAsync(response)).GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains("file", error.GetProperty("message").GetString());
+    }
+
+    [Fact]
     public async Task A_disallowed_format_is_rejected()
     {
         using var factory = Factory();
