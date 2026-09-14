@@ -37,6 +37,10 @@ public sealed class MapRenderer : IMapRenderer
         ArgumentNullException.ThrowIfNull(request);
         var viewport = RenderValidator.Resolve(request, _limits);
         var style = _compiler.Compile(request.Style);
+        if (DpiScaling.NeedsScaling(request.Dpi))
+        {
+            style = DpiScaling.Apply(style, request.Dpi);
+        }
         var scene = CanvasBackground.Apply(
             await _sceneBuilder.BuildAsync(style, request.Layers, viewport, cancellationToken), request);
         var buffer = SkiaVectorRasterizer.Render(scene, viewport);
