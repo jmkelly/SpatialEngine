@@ -158,3 +158,42 @@ internal sealed record EsriTextSymbol(
 
 /// <summary>The font of a text symbol (spec §12.7).</summary>
 internal sealed record EsriFont(string Family, double Size, string Style, string Weight, string Decoration);
+
+/// <summary>The MapServer <c>legend</c> resource (S4 legend-map-service/): one entry per layer.</summary>
+internal sealed record EsriMapLegendResponse(IReadOnlyList<EsriLegendLayer> Layers);
+
+/// <summary>One layer's legend: its swatches plus the group headings they belong to (G1 map-legend.Census.json).</summary>
+internal sealed record EsriLegendLayer(
+    int LayerId,
+    string LayerName,
+    string LayerType,
+    double MinScale,
+    double MaxScale,
+    IReadOnlyList<EsriLegendEntry> Legend,
+    IReadOnlyList<EsriLegendGroup> LegendGroups);
+
+/// <summary>One legend swatch: its label, swatch bytes and optional data values.</summary>
+internal sealed record EsriLegendEntry(
+    string Label,
+    string Url,
+    string ImageData,
+    string ContentType,
+    int Height,
+    int Width,
+    string? GroupId = null,
+    IReadOnlyList<object>? Values = null);
+
+/// <summary>One legend group heading (the classified field, or empty for a simple renderer).</summary>
+internal sealed record EsriLegendGroup(string Id, string Heading);
+
+/// <summary>The MapServer <c>queryDomains</c> response (S4): the projected domains of each selected layer.</summary>
+internal sealed record EsriMapQueryDomainsResponse(IReadOnlyList<EsriLayerDomains> Domains);
+
+/// <summary>One layer's projected domains, keyed by field name (same shape as the layer metadata <c>domains</c>).</summary>
+internal sealed record EsriLayerDomains(int LayerId, IReadOnlyDictionary<string, EsriDomain> Domains);
+
+/// <summary>The MapServer <c>queryLegends</c> response (S4): the legend layers of each selected layer.</summary>
+internal sealed record EsriMapQueryLegendsResponse(IReadOnlyList<EsriLegendLayer> Layers);
+
+/// <summary>The per-layer <c>generateRenderer</c> response (S4): the classified renderer.</summary>
+internal sealed record EsriGenerateRendererResponse(EsriRenderer Renderer);
