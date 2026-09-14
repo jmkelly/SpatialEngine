@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 
@@ -50,6 +51,37 @@ internal static class MapValidator
         }
 
         ValidateServices(map);
+        ValidateMetadata(map);
+    }
+
+    /// <summary>
+    /// The authored service metadata must be well-formed XML when present
+    /// (ADR-0068): the ImageServer serves these bytes verbatim, so a broken
+    /// document fails here with <c>invalid.arguments</c>, never at request time.
+    /// Whole-store declared maps skip <see cref="Normalize"/>, so
+    /// <see cref="MapRegistry"/> calls this directly for those too.
+    /// </summary>
+    internal static void ValidateMetadata(Map map)
+    {
+        if (string.IsNullOrWhiteSpace(map.MetadataXml))
+        {
+            return;
+        }
+
+        try
+        {
+            using var reader = XmlReader.Create(
+                new StringReader(map.MetadataXml),
+                new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+            while (reader.Read())
+            {
+            }
+        }
+        catch (XmlException exception)
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' has service metadata that is not well-formed XML: {exception.Message}");
+        }
     }
 
     private static void ValidateServices(Map map)

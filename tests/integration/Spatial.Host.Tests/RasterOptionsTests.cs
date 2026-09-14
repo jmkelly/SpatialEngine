@@ -116,6 +116,17 @@ public sealed class RasterOptionsTests
     }
 
     [Fact]
+    public void A_catalog_item_projects_its_authored_metadata()
+    {
+        var options = CatalogOptions();
+        options.Sources[0].Items[0].MetadataXml = "<MD_Metadata><title>Item</title></MD_Metadata>";
+
+        var descriptor = Assert.Single(options.ToDescriptors());
+
+        Assert.Equal("<MD_Metadata><title>Item</title></MD_Metadata>", descriptor.Items![0].MetadataXml);
+    }
+
+    [Fact]
     public void A_malformed_attribute_value_is_rejected()
     {
         var options = CatalogOptions(

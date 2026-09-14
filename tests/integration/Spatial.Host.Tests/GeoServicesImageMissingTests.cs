@@ -261,17 +261,16 @@ public sealed class GeoServicesImageMissingTests : IDisposable
     }
 
     [Fact]
-    public async Task Metadata_returns_the_dataset_record()
+    public async Task Metadata_without_authored_xml_is_not_found()
     {
+        // T-056: the service-level metadata is the map's authored XML
+        // document (ADR-0068), not a JSON dataset projection. Without
+        // authoring the resource is a typed not.found, like the stored
+        // statistics and the raster attribute table.
         await using var factory = new MissingFactory(_directory, _rasterPath, "raster.meta", catalog: false, statistics: true, attributeTable: false);
         var client = await ImageServiceAsync(factory, "metasvc", "raster.meta");
 
-        var metadata = await BodyAsync(await client.GetAsync($"{Root}/metasvc/ImageServer/metadata?f=json"));
-
-        Assert.Equal("Fixture service", metadata.GetProperty("description").GetString());
-        Assert.Equal(1, metadata.GetProperty("bandCount").GetInt32());
-        Assert.Equal("U8", metadata.GetProperty("pixelType").GetString());
-        Assert.Equal(4326, metadata.GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Root}/metasvc/ImageServer/metadata")).StatusCode);
     }
 
     [Fact]

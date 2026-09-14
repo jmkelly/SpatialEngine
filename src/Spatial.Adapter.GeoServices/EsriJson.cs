@@ -62,7 +62,8 @@ internal sealed class EsriJsonBytesResult(byte[] body, int statusCode) : IResult
     }
 }
 
-/// <summary>The <c>f</c> parameter negotiation: this facade serves JSON only, with <c>pjson</c> accepted as a JSON alias.</summary>
+/// <summary>The <c>f</c> parameter negotiation: the JSON resources serve JSON only (with <c>pjson</c> accepted
+/// as a JSON alias); the authored-metadata resources serve their XML document only (ADR-0068).</summary>
 internal static class EsriFormat
 {
     public const string Json = "json";
@@ -81,6 +82,23 @@ internal static class EsriFormat
         }
 
         throw EsriInteropException.Invalid($"Format '{format}' is not supported; supportedQueryFormats is 'JSON' — use f=json (f=pjson is accepted as an alias).");
+    }
+
+    /// <summary>
+    /// Validates the requested format of an authored-metadata resource (ADR-0068):
+    /// the document is served as <c>application/xml</c>, so only an absent
+    /// format or <c>f=xml</c> passes; anything else (including <c>f=json</c>)
+    /// is a typed <c>invalid.arguments</c> failure.
+    /// </summary>
+    public static void EnsureXml(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format)
+            || string.Equals(format, "xml", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw EsriInteropException.Invalid($"Format '{format}' is not supported; the metadata resource serves its authored XML document — use f=xml.");
     }
 }
 

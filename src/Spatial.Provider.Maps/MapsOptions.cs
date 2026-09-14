@@ -45,6 +45,13 @@ public sealed class DeclaredMapOptions
 
     public string? Copyright { get; set; }
 
+    /// <summary>
+    /// The authored service-level metadata document (ISO/FGDC XML) served by
+    /// the ImageServer <c>metadata</c> resource (ADR-0068). Null means the
+    /// service has no authored metadata and its resource answers <c>not.found</c>.
+    /// </summary>
+    public string? MetadataXml { get; set; }
+
     /// <summary>Explicit layers; empty means "every dataset in the store".</summary>
     public IReadOnlyList<DeclaredLayerOptions> Layers { get; set; } = [];
 }

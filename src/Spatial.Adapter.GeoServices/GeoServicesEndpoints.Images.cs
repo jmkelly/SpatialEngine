@@ -1,3 +1,4 @@
+using System.Text;
 using Spatial.Core.Geometry;
 using Spatial.Interop.Esri;
 using Spatial.PluginSdk;
@@ -10,8 +11,10 @@ namespace Spatial.Adapter.GeoServices;
 /// info, catalog item/listing/query, identify, <c>exportImage</c>, the catalog
 /// file surface (<c>download</c>, the Raster Image/Thumbnail/File resources),
 /// and the missing-resource closeout: <c>legend</c>, <c>find</c>, stored
-/// <c>statistics</c>, <c>computeHistograms</c>, <c>rasterAttributeTable</c>
-/// and the service-level <c>thumbnail</c> and <c>metadata</c>, plus the
+/// <c>statistics</c>, <c>computeHistograms</c>, <c>rasterAttributeTable</c>,
+/// the service-level <c>thumbnail</c>, the authored service-level
+/// <c>metadata</c> XML and the per-item <c>{rasterId}/metadata</c> XML
+/// (ADR-0068), plus the
 /// offline rejects <c>exportTiles</c> / <c>estimateExportTileSize</c>
 /// (ADR-0060: packaging needs a job model the host does not have).
 /// The ImageServer is the GeoServices projection of a
@@ -116,6 +119,9 @@ internal static class ImageServerEndpoints
         group.MapMethods("/{service}/ImageServer/{rasterId:long}/thumbnail", ["GET", "POST"], (
             string service, long rasterId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             RasterThumbnail(catalog, registry, service, rasterId, context, stores, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/{rasterId:long}/metadata", ["GET", "POST"], (
+            string service, long rasterId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            RasterMetadata(catalog, registry, service, rasterId, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/{rasterId:long}", ["GET", "POST"], (
             string service, long rasterId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             RasterItem(catalog, registry, service, rasterId, context, stores, cancellationToken));
@@ -409,9 +415,11 @@ internal static class ImageServerEndpoints
     }
 
     /// <summary>
-    /// The service-level Metadata: the described dataset as JSON. The engine
-    /// keeps no authored (ISO/FGDC) metadata store, so unlike the reference
-    /// this is a JSON projection, not an XML document (ADR-0054).
+    /// The service-level Metadata (S3 metadata/): the map's authored XML
+    /// document served byte-faithful as <c>application/xml</c>, like the
+    /// reference. This replaces the T-042 JSON dataset projection (ADR-0068):
+    /// without authoring the resource is a typed <c>not.found</c>, never an
+    /// invented document. Only an absent format or <c>f=xml</c> passes.
     /// </summary>
     private static async Task<IResult> ImageMetadata(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
@@ -420,15 +428,55 @@ internal static class ImageServerEndpoints
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            EsriFormat.Ensure(parameters.Get("f"));
+            EsriFormat.EnsureXml(parameters.Get("f"));
             var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            return EsriJson.Value(ImageService.Metadata(image.Description, image.Copyright));
+            return MetadataDocument(service, image.MetadataXml);
         }
         catch (Exception exception)
         {
             return EsriErrorMapper.Map(exception);
         }
     }
+
+    /// <summary>
+    /// The per-item Raster Metadata (S3 raster-metadata/): the catalog
+    /// item's authored XML document served byte-faithful as
+    /// <c>application/xml</c>, like the reference. An item without authored
+    /// metadata — or an unknown item, or a service without a catalog — is a
+    /// typed <c>not.found</c>/<c>invalid.arguments</c> failure (ADR-0068).
+    /// </summary>
+    private static async Task<IResult> RasterMetadata(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.EnsureXml(parameters.Get("f"));
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            RequireCatalog(image.Description, service);
+            var item = await FindItemAsync(image, rasterId, cancellationToken);
+            return item.MetadataXml is null
+                ? throw new EsriInteropException(
+                    EsriErrorCodes.NotFound, $"Raster catalog item {rasterId} does not have authored metadata.")
+                : Results.Text(item.MetadataXml, "application/xml", Encoding.UTF8);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// Serves one authored metadata document byte-faithful as
+    /// <c>application/xml</c>; a service without authoring answers a typed
+    /// <c>not.found</c> instead of an invented document (ADR-0068).
+    /// </summary>
+    private static IResult MetadataDocument(string service, string? xml) =>
+        xml is null
+            ? throw new EsriInteropException(
+                EsriErrorCodes.NotFound, $"Image Service '{service}' does not have authored service metadata.")
+            : Results.Text(xml, "application/xml", Encoding.UTF8);
 
     private static async Task<IResult> ImageDownload(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
@@ -642,7 +690,7 @@ internal static class ImageServerEndpoints
                 EsriErrorCodes.ServiceUnavailable, $"No raster provider is configured for store '{resolved.Store}'.");
         var dataset = layers.OrderBy(layer => layer.LayerId).First().Dataset;
         var description = await catalogue.DescribeAsync(dataset, cancellationToken);
-        return new ImageContext(catalogue, dataset, description, resolved.Copyright);
+        return new ImageContext(catalogue, dataset, description, resolved.Copyright, resolved.MetadataXml);
     }
 
     private static async Task<RasterCatalogItem> FindItemAsync(ImageContext image, long rasterId, CancellationToken cancellationToken)
@@ -763,9 +811,10 @@ internal static class ImageServerEndpoints
     }
 }
 
-/// <summary>The resolved raster catalogue, dataset name, description and copyright of one request.</summary>
+/// <summary>The resolved raster catalogue, dataset name, description, copyright and authored service metadata of one request.</summary>
 internal sealed record ImageContext(
     IRasterCatalogue Catalogue,
     string Dataset,
     RasterDatasetDescription Description,
-    string? Copyright);
+    string? Copyright,
+    string? MetadataXml = null);

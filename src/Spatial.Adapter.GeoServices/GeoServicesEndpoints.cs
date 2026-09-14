@@ -307,7 +307,7 @@ public static partial class GeoServicesEndpoints
         }
 
         var layers = map.Layers.Where(layer => Feeds(mapService, layer.Kind)).ToArray();
-        return new ResolvedService(map.Store, layers, map.Description, map.Copyright);
+        return new ResolvedService(map.Store, layers, map.Description, map.Copyright, map.MetadataXml);
     }
 
     /// <summary>Whether a layer of <paramref name="kind"/> feeds <paramref name="service"/>.</summary>
@@ -373,12 +373,14 @@ public static partial class GeoServicesEndpoints
 /// <summary>One layer resolved for serving (id via the publication or the whole-store order).</summary>
 internal sealed record PublishedLayer(int Id, string Dataset, string Name, string? Style = null);
 
-/// <summary>A resolved GeoServices server: its store and its explicit layers (null means whole-store).</summary>
+/// <summary>A resolved GeoServices server: its store, its explicit layers (null means whole-store),
+/// and the map's authored service description, copyright and metadata document (ADR-0068).</summary>
 internal sealed record ResolvedService(
     string Store,
     IReadOnlyList<MapLayer>? Layers,
     string? Description = null,
-    string? Copyright = null);
+    string? Copyright = null,
+    string? MetadataXml = null);
 
 /// <summary>The resolved services of one Feature Service layer-metadata request.</summary>
 internal sealed record FeatureLayerContext(

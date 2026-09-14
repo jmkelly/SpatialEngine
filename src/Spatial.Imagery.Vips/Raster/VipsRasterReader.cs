@@ -1,3 +1,4 @@
+using System.Xml;
 using NetVips;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
@@ -87,6 +88,43 @@ internal static class VipsRasterReader
                 throw SpatialException.BadArguments(
                     $"Raster dataset '{descriptor.Name}' raster attribute table row {row} has {table.Rows[row].Count} values " +
                     $"but the table declares {table.Fields.Count} columns.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Authored per-item metadata must be well-formed XML when present
+    /// (ADR-0068): the ImageServer serves these bytes verbatim, so a broken
+    /// document fails at catalogue construction with
+    /// <c>invalid.arguments</c>, like a misconfigured attribute table.
+    /// </summary>
+    public static void ValidateMetadata(RasterDatasetDescriptor descriptor)
+    {
+        if (descriptor.Items is not { } items)
+        {
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.MetadataXml))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var reader = XmlReader.Create(
+                    new StringReader(item.MetadataXml),
+                    new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+                while (reader.Read())
+                {
+                }
+            }
+            catch (XmlException exception)
+            {
+                throw SpatialException.BadArguments(
+                    $"Raster dataset '{descriptor.Name}' catalog item {item.ObjectId} has metadata that is not well-formed XML: {exception.Message}");
             }
         }
     }

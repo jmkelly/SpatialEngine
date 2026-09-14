@@ -125,13 +125,17 @@ public sealed record RasterDatasetDescription(
 /// <summary>
 /// One item of a raster catalog (ADR-0051): its integer identity, core geometry
 /// footprint, its own raster metadata and its attributes in
-/// <see cref="RasterDatasetDescription.CatalogSchema"/> order.
+/// <see cref="RasterDatasetDescription.CatalogSchema"/> order. An item with authored
+/// per-raster metadata carries it as <see cref="MetadataXml"/> (ISO/FGDC XML,
+/// served byte-faithful by the ImageServer <c>{rasterId}/metadata</c> resource);
+/// an item without one answers a typed <c>not.found</c> (ADR-0068).
 /// </summary>
 public sealed record RasterCatalogItem(
     long ObjectId,
     IGeometry Footprint,
     RasterInfo Raster,
-    IReadOnlyList<AttributeValue> Attributes);
+    IReadOnlyList<AttributeValue> Attributes,
+    string? MetadataXml = null);
 
 /// <summary>
 /// A raster identify request (spec §8.0.6): the location geometry and its CRS,

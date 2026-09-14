@@ -200,31 +200,6 @@ internal static class ImageService
     public static EsriRasterHistograms Histograms(IReadOnlyList<RasterHistogram> histograms) => new(histograms);
 
     /// <summary>
-    /// Builds the service metadata record: the described dataset as JSON.
-    /// The engine keeps no authored (ISO/FGDC) metadata store, so unlike the
-    /// Esri <c>metadata</c> resource this is a JSON projection, not XML.
-    /// </summary>
-    public static EsriImageMetadata Metadata(RasterDatasetDescription description, string? copyright)
-    {
-        var info = description.Raster;
-        var srid = MapServerResources.SridOf(info.Crs);
-        var statistics = info.BandStatistics;
-        return new EsriImageMetadata(
-            description.Name,
-            description.Description,
-            Extent(info.Extent, srid),
-            EsriLayerModel.SpatialReference(srid),
-            info.BandCount,
-            PixelType(info.PixelType),
-            ServiceDataType(info),
-            copyright,
-            statistics?.Select(stat => stat.Min).ToArray(),
-            statistics?.Select(stat => stat.Max).ToArray(),
-            statistics?.Select(stat => stat.Mean).ToArray(),
-            statistics?.Select(stat => stat.StandardDeviation).ToArray());
-    }
-
-    /// <summary>
     /// Writes the raster attribute table (S3 raster-attribute-table/): the
     /// NLCD-shaped <c>objectIdFieldName/fields/features</c> body. The first
     /// column is the row identity (<c>esriFieldTypeOID</c>); rows must carry

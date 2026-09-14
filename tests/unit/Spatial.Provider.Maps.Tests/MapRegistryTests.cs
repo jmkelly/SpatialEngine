@@ -423,4 +423,86 @@ public sealed class MapRegistryTests : IDisposable
         var failure = Assert.Throws<SpatialException>(() => Registry(options));
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
+
+    [Fact]
+    public async Task An_image_map_round_trips_its_authored_service_metadata()
+    {
+        const string xml = "<MD_Metadata><title>Fixture</title></MD_Metadata>";
+        using var registry = Registry();
+
+        var stored = await registry.PutAsync(new Map(
+            "ortho",
+            "raster",
+            [new MapLayer("ortho", 0, null, null, MapLayerKind.Image)],
+            [MapService.Image],
+            MetadataXml: xml));
+
+        Assert.Equal(xml, stored.MetadataXml);
+        Assert.Equal(xml, (await registry.GetAsync("ortho")).MetadataXml);
+
+        using var reopened = Registry();
+        Assert.Equal(xml, (await reopened.GetAsync("ortho")).MetadataXml);
+    }
+
+    [Fact]
+    public async Task Malformed_service_metadata_is_rejected()
+    {
+        using var registry = Registry();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => registry.PutAsync(new Map(
+            "ortho",
+            "raster",
+            [new MapLayer("ortho", 0, null, null, MapLayerKind.Image)],
+            [MapService.Image],
+            MetadataXml: "<MD_Metadata><title>unclosed")));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    [Fact]
+    public async Task A_declared_map_carries_its_authored_service_metadata()
+    {
+        const string xml = "<MD_Metadata><title>Declared</title></MD_Metadata>";
+        var options = new MapsOptions
+        {
+            Path = FilePath,
+            Declared =
+            [
+                new DeclaredMapOptions
+                {
+                    Name = "ortho",
+                    Store = "raster",
+                    Services = [nameof(MapService.Image)],
+                    MetadataXml = xml,
+                    Layers = [new DeclaredLayerOptions { Dataset = "ortho", LayerId = 0, Kind = nameof(MapLayerKind.Image) }],
+                },
+            ],
+        };
+
+        using var registry = Registry(options);
+        Assert.Equal(xml, (await registry.GetAsync("ortho")).MetadataXml);
+    }
+
+    [Fact]
+    public void A_declared_map_with_malformed_service_metadata_is_rejected()
+    {
+        var options = new MapsOptions
+        {
+            Path = FilePath,
+            Declared =
+            [
+                new DeclaredMapOptions
+                {
+                    Name = "ortho",
+                    Store = "raster",
+                    Services = [nameof(MapService.Image)],
+                    MetadataXml = "<MD_Metadata><title>unclosed",
+                    Layers = [new DeclaredLayerOptions { Dataset = "ortho", LayerId = 0, Kind = nameof(MapLayerKind.Image) }],
+                },
+            ],
+        };
+
+        var failure = Assert.Throws<SpatialException>(() => Registry(options));
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
 }

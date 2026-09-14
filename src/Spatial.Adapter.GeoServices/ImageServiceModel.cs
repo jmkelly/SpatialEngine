@@ -98,21 +98,6 @@ internal sealed record EsriBandStatistics(
 /// <summary>The computed histograms response (spec §8 computeHistograms): one histogram per band.</summary>
 internal sealed record EsriRasterHistograms(IReadOnlyList<RasterHistogram> Histograms);
 
-/// <summary>The service metadata record: the described dataset as JSON (no authored metadata store).</summary>
-internal sealed record EsriImageMetadata(
-    string Name,
-    string? Description,
-    EsriExtent? Extent,
-    EsriSpatialReferenceDto? SpatialReference,
-    int BandCount,
-    string PixelType,
-    string ServiceDataType,
-    string? CopyrightText,
-    IReadOnlyList<double>? MinValues,
-    IReadOnlyList<double>? MaxValues,
-    IReadOnlyList<double>? MeanValues,
-    IReadOnlyList<double>? StdvValues);
-
 /// <summary>The Download Rasters response (spec §8.0.7): the raw files behind the selected rasters.</summary>
 internal sealed record EsriRasterDownloadResponse(IReadOnlyList<EsriRasterFileEntry> RasterFiles);
 

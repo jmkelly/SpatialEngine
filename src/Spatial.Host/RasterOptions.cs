@@ -105,7 +105,8 @@ internal sealed class RasterOptions
                 ParseAttributes(source.Name, item, attributes),
                 item.Crs,
                 item.PixelSizeX,
-                item.PixelSizeY);
+                item.PixelSizeY,
+                item.MetadataXml);
         }
 
         return items;
@@ -243,5 +244,13 @@ internal sealed class RasterOptions
 
         /// <summary>The values in <see cref="RasterSource.CatalogAttributes"/> order, as invariant strings.</summary>
         public IReadOnlyList<string> Attributes { get; set; } = [];
+
+        /// <summary>
+        /// The authored per-raster metadata document (ISO/FGDC XML) served by
+        /// the ImageServer <c>{rasterId}/metadata</c> resource (ADR-0068).
+        /// Null means the item has no authored metadata and its resource
+        /// answers <c>not.found</c>.
+        /// </summary>
+        public string? MetadataXml { get; set; }
     }
 }
