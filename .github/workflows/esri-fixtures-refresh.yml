@@ -1,0 +1,26 @@
+name: esri-fixtures-refresh
+
+# Nightly/explicit live-fixture drift check (T-065). Read-only: runs the
+# refresh script in --check mode against the public, unauthenticated Esri
+# services and reports the SAME/DRIFT/UNREACHABLE summary. It never writes
+# fixtures, never commits, and never gates a PR — drift is filed via
+# `eng/tasks add --area interop.esri` and lands as a fixture-only refresh PR.
+# The PR gate (ci.yml -> eng/verify.sh) replays checked-in fixtures offline.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# No writes of any kind: read the repo, probe the public internet, report.
+permissions:
+  contents: read
+
+jobs:
+  refresh-check:
+    name: esri fixture drift check (read-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Drift check
+        run: ./eng/refresh-esri-fixtures.sh --check
