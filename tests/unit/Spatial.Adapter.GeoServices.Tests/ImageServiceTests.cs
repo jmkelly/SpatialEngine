@@ -18,7 +18,7 @@ public sealed class ImageServiceTests
     [Fact]
     public void Root_omits_fields_without_a_catalog()
     {
-        var root = ImageService.Root(Description(hasCatalog: false), "ESRI");
+        var root = ImageService.Root(Description(hasCatalog: false), "ESRI", new GeoServicesOptions());
 
         Assert.Equal(3, root.BandCount);
         Assert.Equal("U8", root.PixelType);
@@ -38,7 +38,7 @@ public sealed class ImageServiceTests
     [Fact]
     public void Root_includes_the_catalog_schema_when_present()
     {
-        var root = ImageService.Root(Description(hasCatalog: true), null);
+        var root = ImageService.Root(Description(hasCatalog: true), null, new GeoServicesOptions());
 
         Assert.Equal("OBJECTID", root.ObjectIdField);
         var fields = root.Fields!;
@@ -53,7 +53,7 @@ public sealed class ImageServiceTests
     {
         var description = Description(hasCatalog: false) with { Raster = Raster() with { MaxPyramidLevel = 3 } };
 
-        var root = ImageService.Root(description, null);
+        var root = ImageService.Root(description, null, new GeoServicesOptions());
 
         Assert.Equal(30.386, root.MinPixelSize, 3);
         Assert.Equal(30.386 * 8, root.MaxPixelSize, 3);

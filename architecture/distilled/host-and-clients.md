@@ -84,6 +84,9 @@ GET|POST /arcgis/rest/services/{service}/ImageServer/computeHistograms # per-ban
 GET|POST /arcgis/rest/services/{service}/ImageServer/rasterAttributeTable # class table (ADR-0054)
 GET|POST /arcgis/rest/services/{service}/ImageServer/thumbnail   # dataset thumbnail (ADR-0054)
 GET|POST /arcgis/rest/services/{service}/ImageServer/metadata    # dataset metadata as JSON (ADR-0054)
+GET|POST /arcgis/rest/services/{service}/ImageServer/measure…      # mensuration ops rejected by name (ADR-0057)
+GET|POST /arcgis/rest/services/{service}/ImageServer/multidimensionalInfo|slices # rejected by name (ADR-0057)
+GET|POST /arcgis/rest/services/{service}/ImageServer/addRasters…   # catalog writes rejected by name (ADR-0057)
 GET|POST /arcgis/admin/services                                # admin projection (ADR-0041), token-gated
 GET|POST /arcgis/admin/services/{name}.{type}
 POST   /arcgis/admin/services/{name}.{type}/createService
