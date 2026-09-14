@@ -28,6 +28,18 @@ internal static class WorldCities
 
     private static readonly Lazy<DemoDataset> LazyDataset = new(Load, LazyThreadSafetyMode.ExecutionAndPublication);
 
+    /// <summary>Whether the snapshot has parsed yet — the cold-start tests observe this.</summary>
+    internal static bool IsLoaded => LazyDataset.IsValueCreated;
+
+    /// <summary>
+    /// The catalogue summary without parsing the snapshot: the committed row
+    /// count is the source of truth (the loader asserts it), so cold List
+    /// calls — including the Esri layer-id resolution behind every
+    /// FeatureServer query — stay off the CSV until demo.world_cities is
+    /// actually described, scanned or queried.
+    /// </summary>
+    internal static DatasetSummary Summary { get; } = new(DatasetId, "demo", "world_cities", "geometry", 4326, ExpectedCount);
+
     /// <summary>The parsed world-cities dataset, loaded once from the embedded snapshot.</summary>
     internal static DemoDataset Dataset => LazyDataset.Value;
 

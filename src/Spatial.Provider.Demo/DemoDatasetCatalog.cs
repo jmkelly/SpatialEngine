@@ -29,7 +29,12 @@ internal static class DemoDatasetCatalog
     /// <summary>Eight named points with a population — catalogue pattern filtering practice.</summary>
     private static readonly DemoDataset Cities = BuildCities();
 
-    /// <summary>The three datasets, ordered by id — the catalogue stream order.</summary>
+    /// <summary>
+    /// The three datasets, ordered by id — the catalogue stream order.
+    /// Touching this parses the world-cities snapshot; prefer
+    /// <see cref="Summaries"/> for listings and <see cref="Find"/> for single
+    /// datasets so cold layer-0 traffic stays off the CSV (T-095).
+    /// </summary>
     internal static IReadOnlyList<DemoDataset> Datasets =>
     [
         Cities,
@@ -37,9 +42,28 @@ internal static class DemoDatasetCatalog
         WorldCities.Dataset,
     ];
 
-    /// <summary>The dataset whose id matches, or null when the catalog has no such dataset.</summary>
+    /// <summary>
+    /// The catalogue summaries, ordered by id — cheap: the world-cities entry
+    /// reports the committed snapshot count without parsing the CSV.
+    /// </summary>
+    internal static IReadOnlyList<DatasetSummary> Summaries =>
+    [
+        Cities.ToSummary(),
+        PointsGrid.ToSummary(),
+        WorldCities.Summary,
+    ];
+
+    /// <summary>
+    /// The dataset whose id matches, or null when the catalog has no such dataset.
+    /// The world-cities snapshot parses only when its id is requested; every
+    /// other lookup stays off the CSV (T-095).
+    /// </summary>
     internal static DemoDataset? Find(string id) =>
-        Datasets.FirstOrDefault(dataset => dataset.Id == id);
+        string.Equals(id, WorldCities.DatasetId, StringComparison.Ordinal)
+            ? WorldCities.Dataset
+            : SmallDatasets.FirstOrDefault(dataset => dataset.Id == id);
+
+    private static IReadOnlyList<DemoDataset> SmallDatasets => [Cities, PointsGrid];
 
     private static DemoDataset BuildPointsGrid()
     {
