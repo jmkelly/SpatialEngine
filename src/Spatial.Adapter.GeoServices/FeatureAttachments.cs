@@ -4,12 +4,11 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The attachment surface (S4 query-attachments/add-attachment/…): the
-/// engine has no attachment store — no dataset carries attachment blobs and
-/// no layer advertises <c>hasAttachments</c> — so reads truthfully report
-/// the empty set and writes fail as typed <c>invalid.arguments</c> naming
-/// the missing capability (ADR-0058). The implementation sub-tasks
-/// (a new SDK <c>IFeatureAttachmentStore</c> capability) are tracked
-/// separately; this surface stays honest and unadvertised until one lands.
+/// <c>IFeatureAttachmentStore</c> capability exists (ADR-0064) but no layer
+/// advertises <c>hasAttachments</c> yet — so reads truthfully report the
+/// empty set and writes fail as typed <c>invalid.arguments</c> naming the
+/// missing capability (ADR-0058). Serving the surface on the capability is
+/// T-061; this surface stays honest and unadvertised until it lands.
 /// </summary>
 internal static class FeatureAttachments
 {
