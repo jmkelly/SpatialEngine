@@ -81,9 +81,19 @@ internal static class EsriLayerModel
         return !dataset.Schema.Fields.Any(field => field.Kind == AttributeKind.Geometry);
     }
 
-    /// <summary>Builds the full layer metadata (spec §9.1).</summary>
-    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable, bool isTable = false) =>
-        new(
+    /// <summary>
+    /// Builds the full layer metadata (spec §9.1). Layers with a string
+    /// identity column advertise it as <c>uniqueIdField</c> (11.5+) so
+    /// clients can discover up front the field <c>uniqueIds</c> /
+    /// <c>returnUniqueIdsOnly</c> serve (T-036); every other layer omits it.
+    /// </summary>
+    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable, bool isTable = false)
+    {
+        var uniqueScheme = EsriUniqueIdScheme.For(dataset);
+        EsriUniqueIdField? uniqueIdField = uniqueScheme is null
+            ? null
+            : new(uniqueScheme.FieldName, IsSystemMaintained: false);
+        return new(
             10.0,
             id,
             dataset.Table,
@@ -99,7 +109,9 @@ internal static class EsriLayerModel
             SupportsExceedsLimitStatistics: true,
             SupportsDefaultSR: true,
             SupportsAdvancedQueries: true,
-            QueryCapabilities);
+            QueryCapabilities,
+            uniqueIdField);
+    }
 
     /// <summary>The layer's Esri spatial reference, or null when the SRID is unknown to the map.</summary>
     public static EsriSpatialReferenceDto? SpatialReference(int srid) =>
@@ -162,7 +174,17 @@ internal sealed record EsriLayer(
     bool SupportsExceedsLimitStatistics,
     bool SupportsDefaultSR,
     bool SupportsAdvancedQueries,
-    EsriAdvancedQueryCapabilities AdvancedQueryCapabilities);
+    EsriAdvancedQueryCapabilities AdvancedQueryCapabilities,
+    EsriUniqueIdField? UniqueIdField = null);
+
+/// <summary>
+/// The layer's string unique-id field (spec §9.1 layer resource, 11.5+):
+/// the identity column <c>uniqueIds</c>/<c>returnUniqueIdsOnly</c> serve.
+/// The engine's string identity is client-assigned data, never a
+/// system-maintained GlobalID, so <c>isSystemMaintained</c> is false.
+/// Null (omitted on the wire) when the layer has no string identity.
+/// </summary>
+internal sealed record EsriUniqueIdField(string Name, bool IsSystemMaintained);
 
 /// <summary>
 /// The query flags clients branch on (spec §9.1 layer resource). Every value
