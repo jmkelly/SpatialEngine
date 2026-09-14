@@ -1,0 +1,16 @@
+{
+  "_comment": "Suite D nightly budgets (T-078): documented absolute upper bounds on the full-job (Medium) mean, in nanoseconds. Source: tests/performance/BUDGETS.md. Raw baselines (*_Raw) and the Envelope placeholder carry no budget and are gated on baseline regression only. Update this file only when BUDGETS.md changes, and say so in the commit.",
+  "BufferBenchmarks.Buffer_Engine": { "budgetNs": 150000 },
+  "IntersectionBenchmarks.Intersection_Engine": { "budgetNs": 180000 },
+  "SimplifyBenchmarks.Simplify_Engine": { "budgetNs": 180000 },
+  "TransformPointBenchmarks.TransformPoint_Engine": { "budgetNs": 15000 },
+  "TransformLineBenchmarks.TransformLine_Engine": { "budgetNs": 70000 },
+  "EsriCodecBenchmarks.Encode_Point": { "budgetNs": 5000 },
+  "EsriCodecBenchmarks.Encode_Polygon": { "budgetNs": 150000 },
+  "EsriCodecBenchmarks.Decode_Point": { "budgetNs": 6000 },
+  "EsriCodecBenchmarks.Decode_Polygon": { "budgetNs": 80000 },
+  "FeatureQueryBenchmarks.Scan_All": { "budgetNs": 90000 },
+  "FeatureQueryBenchmarks.Query_Bbox": { "budgetNs": 80000 },
+  "TileRenderBenchmarks.Render_EmptyTile": { "budgetNs": 9000000 },
+  "TileRenderBenchmarks.Render_PointsTile": { "budgetNs": 12000000 }
+}

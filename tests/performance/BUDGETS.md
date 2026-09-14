@@ -90,3 +90,11 @@ Notes:
   full job; with both present the jobs union (this confirmation ran
   19 Medium + 18 Short cases; `EnvelopeBenchmarks` has no job attribute
   so it ran Medium only). The nightly driver should use `--job Medium`.
+
+## Nightly gate (T-078)
+
+Budgets above are enforced nightly by suite D (see `NIGHTLY.md`): the
+full Medium job is compared against `artifacts/bench/baseline.json`
+(gitignored, distributed as a workflow artifact) with a >15% regression
+fail plus an alloc guard, and against the machine budgets in
+`bench-budgets.json` (kept in sync with this file).
