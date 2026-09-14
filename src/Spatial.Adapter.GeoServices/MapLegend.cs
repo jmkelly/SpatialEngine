@@ -4,7 +4,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Projects the MapServer <c>legend</c>, <c>queryDomains</c> and
-/// <c>queryLegends</c> resources (S4, ADR-0054) from the persisted-style
+/// <c>queryLegends</c> resources (S4, ADR-0055) from the persisted-style
 /// projection. Every entry reuses <see cref="MapStyleProjection"/> — the
 /// legend swatch of a renderer entry is a solid square of its symbol colour
 /// — so the legend, the layer metadata and the domain queries always agree.
