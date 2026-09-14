@@ -62,10 +62,12 @@ internal static class StoreServices
 
         builder.Services.AddSingleton(postgisOptions);
         builder.Services.AddSingleton<PostgisStore>();
+        builder.Services.AddSingleton<PostgisAttachmentStore>();
         builder.Services.AddSingleton<PostgisEditStore>();
         builder.Services.AddSingleton<PostgisIngestStore>();
         builder.Services.AddKeyedSingleton<IDataCatalogue>("postgis", (services, _) => services.GetRequiredService<PostgisStore>());
         builder.Services.AddKeyedSingleton<IFeatureStore>("postgis", (services, _) => services.GetRequiredService<PostgisStore>());
+        builder.Services.AddKeyedSingleton<IFeatureAttachmentStore>("postgis", (services, _) => services.GetRequiredService<PostgisAttachmentStore>());
         builder.Services.AddKeyedSingleton<IFeatureEditStore>("postgis", (services, _) => services.GetRequiredService<PostgisEditStore>());
         builder.Services.AddKeyedSingleton<IFeatureLookup>("postgis", (services, _) => services.GetRequiredService<PostgisStore>());
         builder.Services.AddKeyedSingleton<ITransactionStore>("postgis", (services, _) => services.GetRequiredService<PostgisStore>());
