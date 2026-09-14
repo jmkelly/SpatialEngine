@@ -224,8 +224,17 @@ WMS 1.3.0 and WFS 2.0.0 are implemented in `Spatial.Adapter.Ogc`:
 `GetCapabilities`/`DescribeFeatureType`/`GetFeature` (GeoJSON) over the query
 verbs, both mounted under `Spatial:Ogc:Root` at `/{name}/wms` and
 `/{name}/wfs`. GML output is a recorded non-goal and is a typed
-`invalid.arguments` ServiceException. Raster map layers expose ImageServer
-through the `raster` store.
+`invalid.arguments` ServiceException, with the capabilities document
+advertising only the served output formats (`application/geo+json`,
+`application/json`). `GetFeature` pages with `startIndex`/`count` over a
+stable order (the requested `sortBy`, else feature-id order within the
+requested layer order) and reports `numberMatched`/`numberReturned` plus a
+`next` link while features remain; a requested `srsName` reprojects the
+response geometries and `bbox` subsetting is honoured. FES `filter`, CQL
+and resource-id selectors plus the `GetPropertyValue`/stored-query and
+transactional operations reject by name. WFS-T stays a non-goal: the write
+path is the gated Esri edit verbs plus neutral ingest (ADR-0037/0041).
+Raster map layers expose ImageServer through the `raster` store.
 
 ## References
 
