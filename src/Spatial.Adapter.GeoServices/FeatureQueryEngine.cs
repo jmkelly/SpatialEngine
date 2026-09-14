@@ -317,9 +317,10 @@ internal static class FeatureQueryEngine
     /// feature matches when any date value falls inside the (inclusive)
     /// bounds, where a <c>null</c> bound is infinite. A feature with no date
     /// values matches unconditionally — ArcGIS Server ignores <c>time</c> on
-    /// layers without time-aware (date) fields.
+    /// layers without time-aware (date) fields. Shared with the MapServer
+    /// identify path (T-059), which filters dated hits with the same rule.
     /// </summary>
-    private static bool MatchesTime(Feature feature, EsriTimeExtent time)
+    internal static bool MatchesTime(Feature feature, EsriTimeExtent time)
     {
         var dated = false;
         foreach (var attribute in feature.Attributes)

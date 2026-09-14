@@ -234,6 +234,82 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task Identify_accepts_time_on_a_layer_without_date_fields()
+    {
+        var client = await MapServiceAsync();
+
+        var identify = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&tolerance=5&layers=all" +
+            "&mapExtent=" + Uri.EscapeDataString("-20,20,40,70") + "&imageDisplay=" + Uri.EscapeDataString("400,300,96") +
+            "&time=1199145600000"));
+
+        var results = identify.GetProperty("results").EnumerateArray().ToArray();
+        Assert.NotEmpty(results);
+        Assert.Equal("Berlin", results[0].GetProperty("value").GetString());
+    }
+
+    [Fact]
+    public async Task Identify_with_a_malformed_time_is_a_typed_error()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&layers=all" +
+            "&time=yesterday");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, JsonDocument.Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
+    public async Task Identify_with_an_unknown_time_relation_is_a_typed_error()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&layers=all" +
+            "&time=1199145600000&timeRelation=esriTimeRelationFoo");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Identify_accepts_layer_time_options_opting_out()
+    {
+        var client = await MapServiceAsync();
+
+        var identify = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&tolerance=5&layers=all" +
+            "&mapExtent=" + Uri.EscapeDataString("-20,20,40,70") + "&imageDisplay=" + Uri.EscapeDataString("400,300,96") +
+            "&time=1199145600000&layerTimeOptions=" + Uri.EscapeDataString("""[{"id":0,"useTime":false}]""")));
+
+        Assert.NotEmpty(identify.GetProperty("results").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Identify_with_malformed_layer_time_options_is_a_typed_error()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&layers=all" +
+            "&layerTimeOptions=" + Uri.EscapeDataString("not-json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Find_matches_text_over_the_string_fields()
     {
         var client = await MapServiceAsync();

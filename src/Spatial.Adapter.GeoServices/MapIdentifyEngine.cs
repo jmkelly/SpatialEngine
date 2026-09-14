@@ -15,7 +15,11 @@ namespace Spatial.Adapter.GeoServices;
 /// geometry is buffered by the tolerance (map units derived from
 /// <c>mapExtent</c>/<c>imageDisplay</c>) and matched with the engine's
 /// <see cref="IGeometryOperations"/> verbs; attributes and geometry are
-/// written as Esri JSON.
+/// written as Esri JSON. The <c>time</c>/<c>timeRelation</c>/
+/// <c>layerTimeOptions</c> temporal surface (T-059) reuses the export
+/// grammar (<see cref="EsriFeatureQuery.ParseTime"/>, <see
+/// cref="MapExportTime"/>) and the query-path temporal rule, so dated
+/// hits filter exactly as <c>query</c> and <c>export</c> do.
 /// </summary>
 internal static class MapIdentifyEngine
 {
@@ -35,7 +39,13 @@ internal static class MapIdentifyEngine
         var queryGeometry = tolerance > 0 ? operations.Buffer(geometry, tolerance, 8, cancellationToken) : geometry;
         var returnGeometry = parameters.GetBool("returnGeometry", true);
         var layerDefs = MapRenderEngine.ParseLayerDefs(parameters.Get("layerDefs"));
-        var hits = await MatchAsync(store, MapLayerSelection.Select(layers, parameters.Get("layers")), layerDefs, queryGeometry, identifyCrs, returnGeometry, operations, transforms, cancellationToken);
+        var selected = MapLayerSelection.Select(layers, parameters.Get("layers"));
+        var times = MapExportTime.ResolveTimes(
+            [.. selected.Select(layer => layer.Layer)],
+            EsriFeatureQuery.ParseTime(parameters.Get("time")),
+            MapExportTime.ParseLayerTimeOptions(parameters.Get("layerTimeOptions")));
+        _ = MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
+        var hits = await MatchAsync(store, selected, layerDefs, times, queryGeometry, identifyCrs, returnGeometry, operations, transforms, cancellationToken);
         return EsriJson.Write(writer => WriteResults(writer, hits, returnGeometry));
     }
 
@@ -43,6 +53,7 @@ internal static class MapIdentifyEngine
         IFeatureStore store,
         IReadOnlyList<MapLayerInfo> layers,
         IReadOnlyDictionary<int, string>? layerDefs,
+        IReadOnlyDictionary<int, MapTimeExtent>? times,
         IGeometry queryGeometry,
         CoordinateReference? identifyCrs,
         bool returnGeometry,
@@ -67,6 +78,12 @@ internal static class MapIdentifyEngine
                 cancellationToken.ThrowIfCancellationRequested();
                 ordinal++;
                 if (definition is not null && !MatchesDefinition(scheme!, layer.Dataset, definition, feature, ordinal))
+                {
+                    continue;
+                }
+
+                if (times?.GetValueOrDefault(layer.Layer.Id) is { } extent
+                    && !FeatureQueryEngine.MatchesTime(feature, new EsriTimeExtent(extent.StartMs, extent.EndMs)))
                 {
                     continue;
                 }
