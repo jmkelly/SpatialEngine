@@ -67,11 +67,48 @@ public sealed class EsriFilterClause
     /// <summary>Renders the clause as an Esri <c>where</c> string (for the consuming provider).</summary>
     public string ToWhere() => _root.Render();
 
+    /// <summary>
+    /// The field names the clause references, in first-appearance order
+    /// (comparison and <c>IS NULL</c> operands; constant comparisons such as
+    /// <c>1=1</c> reference none). The serving facade validates them against
+    /// the layer schema (<c>validateSQL</c>); the provider renders them into
+    /// a remote <c>where</c>.
+    /// </summary>
+    public IReadOnlyList<string> ReferencedFields => _root.Fields().Distinct(StringComparer.Ordinal).ToArray();
+
+    /// <summary>
+    /// Conjoins two clauses: both must match. Adjacent conjunctions flatten
+    /// so a service-level query can AND a shared <c>where</c> with a per-layer
+    /// <c>layerDefs</c> clause without re-parsing rendered text.
+    /// </summary>
+    public EsriFilterClause And(EsriFilterClause other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        if (_root is AndNode left && other._root is AndNode right)
+        {
+            return new EsriFilterClause(new AndNode([.. left.Terms, .. right.Terms]));
+        }
+
+        if (_root is AndNode single)
+        {
+            return new EsriFilterClause(new AndNode([.. single.Terms, other._root]));
+        }
+
+        if (other._root is AndNode flipped)
+        {
+            return new EsriFilterClause(new AndNode([_root, .. flipped.Terms]));
+        }
+
+        return new EsriFilterClause(new AndNode([_root, other._root]));
+    }
+
     private abstract record Node
     {
         public abstract bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField);
 
         public abstract string Render();
+
+        public virtual IEnumerable<string> Fields() => [];
     }
 
     private sealed record AndNode(IReadOnlyList<Node> Terms) : Node
@@ -90,6 +127,8 @@ public sealed class EsriFilterClause
         }
 
         public override string Render() => "(" + string.Join(" AND ", Terms.Select(term => term.Render())) + ")";
+
+        public override IEnumerable<string> Fields() => Terms.SelectMany(term => term.Fields());
     }
 
     private sealed record OrNode(IReadOnlyList<Node> Terms) : Node
@@ -108,6 +147,8 @@ public sealed class EsriFilterClause
         }
 
         public override string Render() => "(" + string.Join(" OR ", Terms.Select(term => term.Render())) + ")";
+
+        public override IEnumerable<string> Fields() => Terms.SelectMany(term => term.Fields());
     }
 
     private sealed record IsNullNode(string Field, bool Negated) : Node
@@ -116,6 +157,8 @@ public sealed class EsriFilterClause
             EsriFilterLogic.FieldValue(feature, Field, syntheticField).IsNull != Negated;
 
         public override string Render() => $"{Field} IS {(Negated ? "NOT " : string.Empty)}NULL";
+
+        public override IEnumerable<string> Fields() => [Field];
     }
 
     /// <summary>
@@ -146,6 +189,8 @@ public sealed class EsriFilterClause
         }
 
         public override string Render() => $"{Field} {EsriFilterLogic.OperatorText(Operator)} {Value.Render()}";
+
+        public override IEnumerable<string> Fields() => [Field];
     }
 
     private enum TokenKind

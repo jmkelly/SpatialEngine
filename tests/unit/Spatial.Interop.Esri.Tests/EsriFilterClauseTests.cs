@@ -337,4 +337,21 @@ public sealed class EsriFilterClauseTests
     {
         Assert.True(Parse("\"name\" = 'Berlin'").Matches(Feature("Berlin", 1)));
     }
+
+    [Fact]
+    public void Referenced_fields_lists_comparison_and_null_test_fields_once()
+    {
+        Assert.Equal(["population", "name"], Parse("population > 1 AND name IS NOT NULL AND population < 9").ReferencedFields);
+        Assert.Empty(Parse("1=1").ReferencedFields);
+    }
+
+    [Fact]
+    public void And_conjoins_two_clauses()
+    {
+        var both = Parse("population > 1").And(Parse("name = 'Berlin'"));
+
+        Assert.True(both.Matches(Feature("Berlin", 3)));
+        Assert.False(both.Matches(Feature("Paris", 3)));
+        Assert.False(both.Matches(Feature("Berlin", 0)));
+    }
 }

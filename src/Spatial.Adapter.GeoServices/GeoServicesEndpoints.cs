@@ -68,6 +68,11 @@ public static partial class GeoServicesEndpoints
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
             FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Apply), cancellationToken));
 
+        // The Feature write-model operations (T-038, ADR-0058): service-level
+        // query, per-layer generateRenderer, validateSQL, honest aggregation
+        // rejects and the attachment surface.
+        MapFeatureOps(group, catalog, registry);
+
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
         MapServerEndpoints.MapMapServer(group, catalog, registry);
