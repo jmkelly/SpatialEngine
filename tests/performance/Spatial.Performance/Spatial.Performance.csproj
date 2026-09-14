@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Benchmarks are opt-in: this is a console app, not a test project, so
+         `dotnet test` (eng/verify.sh) builds it but never executes benchmarks.
+         Run it via eng/perf.sh. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Structural core values only. The bench project references engine
+         projects directly, never via Spatial.PluginSdk (which takes no
+         packages), and uses no NTS/Npgsql/renderer types. -->
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+  </ItemGroup>
+
+</Project>
