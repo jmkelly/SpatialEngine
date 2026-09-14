@@ -1,0 +1,5 @@
+*.entry.bundle.js
+*.entry.css
+proof-assets/
+test-results/
+playwright-report/
