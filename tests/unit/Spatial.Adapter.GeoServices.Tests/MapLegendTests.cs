@@ -51,6 +51,26 @@ public sealed class MapLegendTests
     }
 
     [Fact]
+    public void Swatch_urls_are_deterministic_across_instances()
+    {
+        static string Url()
+        {
+            var info = new MapLayerInfo(
+                new PublishedLayer(0, "demo.cities", "Cities", """[{"type":"circle","paint":{"circle-color":"#ff0000","circle-radius":6}}]"""),
+                Cities(("population", AttributeValue.FromInt64(1))),
+                Envelope.Empty);
+            return MapLegend.Legend([info]).Layers.Single().Legend.Single().Url;
+        }
+
+        var first = Url();
+        var second = Url();
+
+        Assert.Equal(first, second);
+        Assert.Equal(32, first.Length);
+        Assert.Matches("^[0-9a-f]{32}$", first);
+    }
+
+    [Fact]
     public void A_simple_layer_legends_a_single_png_swatch()
     {
         var info = new MapLayerInfo(

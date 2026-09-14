@@ -195,6 +195,51 @@ public sealed class GeoServicesMapLegendTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// T-085: swatch <c>url</c> tokens must be deterministic across host
+    /// instances (content hash, not a per-process <c>HashCode</c>) so legend
+    /// responses are cacheable and replay-stable across restarts.
+    /// </summary>
+    [Fact]
+    public async Task Legend_swatch_urls_are_identical_across_factory_instances()
+    {
+        static async Task<string> LegendUrlAsync()
+        {
+            var directory = Directory.CreateTempSubdirectory("spatial-map-legend-t085-").FullName;
+            try
+            {
+                using var factory = new MapFactory(Path.Combine(directory, "publications.json"));
+                var client = factory.CreateClient();
+                var body = JsonSerializer.Serialize(new
+                {
+                    name = "world",
+                    store = "demo",
+                    services = MapServices,
+                    layers = new[] { new { dataset = "demo.cities", layerId = 0, name = "Cities", style = CityStyle } },
+                });
+                using var request = new HttpRequestMessage(HttpMethod.Put, "/api/maps/world")
+                {
+                    Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+                Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(request)).StatusCode);
+
+                var legend = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/legend?f=json"));
+                var url = legend.GetProperty("layers").EnumerateArray().Single()
+                    .GetProperty("legend").EnumerateArray().Single()
+                    .GetProperty("url").GetString()!;
+                Assert.Matches("^[0-9a-f]{32}$", url);
+                return url;
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        Assert.Equal(await LegendUrlAsync(), await LegendUrlAsync());
+    }
+
     private sealed class MapFactory(string publicationsPath) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
