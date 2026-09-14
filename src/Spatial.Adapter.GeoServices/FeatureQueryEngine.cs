@@ -57,7 +57,9 @@ internal static class FeatureQueryEngine
 
         if (query.ReturnCountOnly)
         {
-            return EsriJson.Value(new EsriCountResponse(ordered.Count));
+            return query.ReturnDistinctValues
+                ? DistinctCount(dataset, ordered, query)
+                : EsriJson.Value(new EsriCountResponse(ordered.Count));
         }
 
         if (query.ReturnExtentOnly)
@@ -643,6 +645,21 @@ internal static class FeatureQueryEngine
         });
 
     /// <summary>
+    /// The COUNT DISTINCT response (S3): the number of deduplicated
+    /// combinations of the projected fields, the count analogue of
+    /// <see cref="DistinctValues"/>. Backs the advertised
+    /// <c>supportsCountDistinct</c> flag.
+    /// </summary>
+    private static IResult DistinctCount(
+        DatasetDescription dataset,
+        IReadOnlyList<MatchedFeature> matches,
+        EsriFeatureQuery query)
+    {
+        var fields = ResolveDistinctFields(dataset, query.OutFields);
+        return EsriJson.Value(new EsriCountResponse(DistinctRows(matches, fields).Count));
+    }
+
+    /// <summary>
     /// The <c>returnDistinctValues</c> response: the deduplicated combinations
     /// of the projected fields, no geometry. Paging is applied after dedupe.
     /// </summary>
@@ -653,6 +670,21 @@ internal static class FeatureQueryEngine
         CoordinateReference? layerCrs)
     {
         var fields = ResolveDistinctFields(dataset, query.OutFields);
+        var rows = DistinctRows(matches, fields);
+        var offset = Math.Min(ResolveOffset(query), rows.Count);
+        var count = EffectivePageSize(query);
+        var page = rows.Skip(offset).Take(count).ToArray();
+        var exceeded = offset + page.Length < rows.Count;
+        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
+    }
+
+    /// <summary>
+    /// Deduplicates the projected fields over the matched set, preserving
+    /// first-seen order. Shared by the distinct-values response and the
+    /// COUNT DISTINCT response so both agree on what "distinct" means.
+    /// </summary>
+    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<MatchedFeature> matches, IReadOnlyList<DistinctField> fields)
+    {
         var rows = new List<AttributeValue[]>();
         var seen = new HashSet<AttributeValue[]>(AttributeRowComparer.Instance);
         foreach (var match in matches)
@@ -669,11 +701,7 @@ internal static class FeatureQueryEngine
             }
         }
 
-        var offset = Math.Min(ResolveOffset(query), rows.Count);
-        var count = EffectivePageSize(query);
-        var page = rows.Skip(offset).Take(count).ToArray();
-        var exceeded = offset + page.Length < rows.Count;
-        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
+        return rows;
     }
 
     private static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
@@ -739,6 +767,8 @@ internal static class FeatureQueryEngine
     /// <summary>
     /// The <c>outStatistics</c> response (10.x): aggregations over the matched
     /// set, optionally grouped with a <c>having</c> filter on the groups.
+    /// Percentile statistics (S3 <c>percentile_cont</c>/<c>percentile_disc</c>)
+    /// aggregate the same way but never combine with <c>having</c>.
     /// Shape per Koop: <c>{displayFieldName, fields, features: [{attributes}]}</c>
     /// with no geometry. A statistics query over an empty set with no grouping
     /// yields one row of nulls (Esri response example 5).
@@ -833,7 +863,7 @@ internal static class FeatureQueryEngine
                 throw EsriInteropException.Invalid($"Statistic '{statistic.OutStatisticFieldName}' cannot aggregate geometry field '{statistic.OnStatisticField}'.");
             }
 
-            if (statistic.StatisticType is "sum" or "avg" or "stddev" or "var" && kind is not (AttributeKind.Int64 or AttributeKind.Double))
+            if (statistic.StatisticType is "sum" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc" && kind is not (AttributeKind.Int64 or AttributeKind.Double))
             {
                 throw EsriInteropException.Invalid($"Statistic '{statistic.StatisticType}' on field '{statistic.OnStatisticField}' needs a numeric field.");
             }
@@ -921,7 +951,7 @@ internal static class FeatureQueryEngine
     {
         "count" => AttributeKind.Int64,
         "sum" when input.Kind == AttributeKind.Int64 => AttributeKind.Int64,
-        "sum" or "avg" or "stddev" or "var" => AttributeKind.Double,
+        "sum" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc" => AttributeKind.Double,
         "min" or "max" => input.Kind,
         _ => AttributeKind.Double,
     };
@@ -954,6 +984,11 @@ internal static class FeatureQueryEngine
             return AttributeValue.FromInt64(raw.Count);
         }
 
+        if (type is "percentile_cont" or "percentile_disc")
+        {
+            return Percentile(raw, input.Spec);
+        }
+
         if (type is "min" or "max")
         {
             var best = raw[0];
@@ -980,6 +1015,43 @@ internal static class FeatureQueryEngine
             "stddev" => AttributeValue.FromDouble(Math.Sqrt(Variance(numbers))),
             _ => AttributeValue.Null,
         };
+    }
+
+    /// <summary>
+    /// The S3 percentile statistic over the group's non-null numeric
+    /// values, ranked in the requested order: discrete returns the dataset
+    /// value at rank <c>ceil(fraction × n)</c>, continuous linearly
+    /// interpolates at rank <c>fraction × (n − 1)</c>.
+    /// </summary>
+    private static AttributeValue Percentile(List<AttributeValue> raw, EsriOutStatistic spec)
+    {
+        var numbers = raw.Select(ToDouble).ToList();
+        numbers.Sort();
+        if (spec.PercentileDescending)
+        {
+            numbers.Reverse();
+        }
+
+        var fraction = spec.PercentileValue ?? 0;
+        return spec.StatisticType == "percentile_disc"
+            ? AttributeValue.FromDouble(DiscretePercentile(numbers, fraction))
+            : AttributeValue.FromDouble(ContinuousPercentile(numbers, fraction));
+    }
+
+    private static double DiscretePercentile(List<double> sorted, double fraction)
+    {
+        var rank = (int)Math.Ceiling(fraction * sorted.Count);
+        return sorted[Math.Clamp(rank - 1, 0, sorted.Count - 1)];
+    }
+
+    private static double ContinuousPercentile(List<double> sorted, double fraction)
+    {
+        var rank = fraction * (sorted.Count - 1);
+        var lower = (int)Math.Floor(rank);
+        var upper = (int)Math.Ceiling(rank);
+        return lower == upper
+            ? sorted[lower]
+            : sorted[lower] + ((rank - lower) * (sorted[upper] - sorted[lower]));
     }
 
     private static double ToDouble(AttributeValue value) => value.Kind switch

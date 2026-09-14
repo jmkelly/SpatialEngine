@@ -8,6 +8,9 @@ namespace Spatial.Host.Tests;
 /// T-019: outStatistics/groupBy/having over the demo cities (spec §9.1.4,
 /// 10.x statistics). Shape per Koop render-statistics: no geometry,
 /// attributes only.
+/// T-037 adds percentile statistics, COUNT DISTINCT, the statistics
+/// exceeds-limit flag and the capability-flag honesty pass, replaying
+/// research/compat/ground-truth/feature-layer0.DamageAssessment.json.
 /// </summary>
 public sealed class GeoServicesStatisticsTests : IClassFixture<WebApplicationFactory<Program>>
 {
@@ -91,5 +94,96 @@ public sealed class GeoServicesStatisticsTests : IClassFixture<WebApplicationFac
         Assert.True(layer.GetProperty("supportsStatistics").GetBoolean());
         Assert.True(layer.GetProperty("advancedQueryCapabilities").GetProperty("supportsStatistics").GetBoolean());
         Assert.True(layer.GetProperty("advancedQueryCapabilities").GetProperty("supportsHavingClause").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Percentile_cont_interpolates_city_populations()
+    {
+        var stats = Uri.EscapeDataString("""[{"statisticType":"percentile_cont","statisticParameters":{"value":0.5},"onStatisticField":"population","outStatisticFieldName":"p50"}]""");
+        var result = await GetJsonAsync($"{Cities}/query?outStatistics={stats}&f=json");
+        var attributes = Assert.Single(result.GetProperty("features").EnumerateArray()).GetProperty("attributes");
+        Assert.Equal(2510000.0, attributes.GetProperty("p50").GetDouble(), 0.5);
+    }
+
+    [Fact]
+    public async Task Percentile_disc_returns_a_city_population()
+    {
+        var stats = Uri.EscapeDataString("""[{"statisticType":"percentile_disc","statisticParameters":{"value":0.5},"onStatisticField":"population","outStatisticFieldName":"p50"}]""");
+        var result = await GetJsonAsync($"{Cities}/query?outStatistics={stats}&f=json");
+        var attributes = Assert.Single(result.GetProperty("features").EnumerateArray()).GetProperty("attributes");
+        Assert.Equal(2150000.0, attributes.GetProperty("p50").GetDouble(), 0.5);
+    }
+
+    [Fact]
+    public async Task Count_distinct_counts_distinct_names()
+    {
+        var result = await GetJsonAsync($"{Cities}/query?returnCountOnly=true&returnDistinctValues=true&outFields=name&f=json");
+        Assert.Equal(8, result.GetProperty("count").GetInt32());
+    }
+
+    [Fact]
+    public async Task Statistics_pages_report_exceeded_limit()
+    {
+        var stats = Uri.EscapeDataString("""[{"statisticType":"count","onStatisticField":"*","outStatisticFieldName":"n"}]""");
+        var result = await GetJsonAsync($"{Cities}/query?outStatistics={stats}&groupByFieldsForStatistics=name&resultRecordCount=2&orderByFields=name&f=json");
+        Assert.True(result.GetProperty("exceededTransferLimit").GetBoolean());
+        Assert.False(string.IsNullOrWhiteSpace(result.GetProperty("resultPaginationToken").GetString()));
+        Assert.Equal(2, result.GetProperty("features").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Layer_advertises_statistics_honesty_flags()
+    {
+        var layer = await GetJsonAsync($"{Cities}?f=json");
+        Assert.True(layer.GetProperty("supportsExceedsLimitStatistics").GetBoolean());
+        Assert.True(layer.GetProperty("supportsDefaultSR").GetBoolean());
+        var caps = layer.GetProperty("advancedQueryCapabilities");
+        Assert.True(caps.GetProperty("supportsCountDistinct").GetBoolean());
+        Assert.True(caps.GetProperty("supportsPercentileStatistics").GetBoolean());
+        Assert.False(caps.GetProperty("supportsFullTextSearch").GetBoolean());
+        Assert.Empty(caps.GetProperty("fullTextSearchableFields").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Text_full_text_search_stays_rejected()
+    {
+        var error = await GetErrorAsync($"{Cities}/query?text=berlin&f=json");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains("where", error.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task Layer_covers_the_live_capability_keys()
+    {
+        var live = GroundTruthLayer();
+        var ours = await GetJsonAsync($"{Cities}?f=json");
+        Assert.Equal(
+            live.GetProperty("supportsExceedsLimitStatistics").GetBoolean(),
+            ours.GetProperty("supportsExceedsLimitStatistics").GetBoolean());
+        var liveCaps = live.GetProperty("advancedQueryCapabilities");
+        var ourCaps = ours.GetProperty("advancedQueryCapabilities");
+        foreach (var key in new[] { "supportsCountDistinct", "supportsPercentileStatistics" })
+        {
+            Assert.Equal(liveCaps.GetProperty(key).GetBoolean(), ourCaps.GetProperty(key).GetBoolean());
+        }
+    }
+
+    private static JsonElement GroundTruthLayer()
+    {
+        var directory = AppContext.BaseDirectory;
+        for (var depth = 0; depth < 12; depth++)
+        {
+            var candidate = Path.Combine(directory, "research", "compat", "ground-truth", "feature-layer0.DamageAssessment.json");
+            if (File.Exists(candidate))
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(candidate));
+                return document.RootElement.GetProperty("body").Clone();
+            }
+
+            directory = Path.GetDirectoryName(directory)
+                ?? throw new DirectoryNotFoundException("Cannot locate the repository root for the ground-truth replay.");
+        }
+
+        throw new FileNotFoundException("research/compat/ground-truth/feature-layer0.DamageAssessment.json was not found.");
     }
 }
