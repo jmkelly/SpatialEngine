@@ -6,8 +6,9 @@ import { ComposerScreen } from "./screens/ComposerScreen.tsx";
 import { RunScreen } from "./screens/RunScreen.tsx";
 import { RuntimeScreen } from "./screens/RuntimeScreen.tsx";
 import { DataScreen } from "./screens/DataScreen.tsx";
+import { ParityScreen } from "./screens/ParityScreen.tsx";
 
-type Tab = "explore" | "map" | "composer" | "run" | "data" | "runtime";
+type Tab = "explore" | "map" | "composer" | "run" | "data" | "parity" | "runtime";
 
 const Tabs: { id: Tab; label: string; title: string }[] = [
   { id: "explore", label: "Explore", title: "Service catalogue and datasets" },
@@ -15,6 +16,7 @@ const Tabs: { id: Tab; label: string; title: string }[] = [
   { id: "composer", label: "Maps", title: "Compose, style and publish maps with services" },
   { id: "run", label: "Run", title: "Operation forms, cancellation, result preview and persistence" },
   { id: "data", label: "Data", title: "Upload data and publish feature maps" },
+  { id: "parity", label: "Parity", title: "Side-by-side public Esri vs localhost parity panels" },
   { id: "runtime", label: "Runtime", title: "Host health and recent runs" },
 ];
 
@@ -71,6 +73,7 @@ export function App() {
         {tab === "composer" && <ComposerScreen />}
         {tab === "run" && <RunScreen />}
         {tab === "data" && <DataScreen />}
+        {tab === "parity" && <ParityScreen />}
         {tab === "runtime" && <RuntimeScreen />}
       </main>
     </div>
