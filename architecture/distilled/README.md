@@ -105,6 +105,7 @@ shape is noted in brackets.
 | 0052 | The Spatial CLI is a dependency-free public-API client; a versioned declarative project file captures datasets + maps and lowers to publications. |
 | 0053 | A Map is the unit of authoring and exposure; its Feature/Map/Tiles/WMS/WFS/Image services are projections of one map. |
 | 0054 | ImageServer missing resources: legend, find, statistics/histograms, attribute table, thumbnail/metadata. |
+| 0055 | MapServer legend, queryDomains/queryLegends and per-layer generateRenderer are adapter projections of the persisted MapLibre style. |
 
 ## How to change the architecture
 
