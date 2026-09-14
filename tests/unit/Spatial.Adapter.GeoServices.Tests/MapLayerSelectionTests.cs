@@ -36,4 +36,25 @@ public sealed class MapLayerSelectionTests
     [Fact]
     public void A_bare_id_list_selects_those_layers() =>
         Assert.Equal([0], MapLayerSelection.Select(Layers, "0").Select(layer => layer.Id));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("all")]
+    [InlineData("visible")]
+    [InlineData("top")]
+    public void Layer_option_all_visible_and_top_select_everything(string? layerOption) =>
+        Assert.Equal([0, 2, 5], MapLayerSelection.Select(Layers, null, layerOption).Select(layer => layer.Id));
+
+    [Fact]
+    public void Layers_still_refines_a_layer_option_selection() =>
+        Assert.Equal([2], MapLayerSelection.Select(Layers, "show:2", "visible").Select(layer => layer.Id));
+
+    [Fact]
+    public void An_unknown_layer_option_is_a_typed_error()
+    {
+        var failure = Assert.Throws<Spatial.Interop.Esri.EsriInteropException>(() =>
+            MapLayerSelection.Select(Layers, null, "every"));
+        Assert.Equal(Spatial.Interop.Esri.EsriErrorCodes.InvalidParameters, failure.Code);
+    }
 }
