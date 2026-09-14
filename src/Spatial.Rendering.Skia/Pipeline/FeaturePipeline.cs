@@ -32,9 +32,47 @@ internal sealed class FeaturePipeline
         var features = new List<IFeature>();
         foreach (var batch in batches)
         {
-            features.AddRange(batch.Features);
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var feature in batch.Features)
+            {
+                if (source.Time is null || MatchesTime(feature, source.Time))
+                {
+                    features.Add(feature);
+                }
+            }
         }
 
         return new LayerFeatures(description.Srid, description.GeometryColumn, features, sourceBounds);
+    }
+
+    /// <summary>
+    /// Applies the render <see cref="MapTimeExtent"/> to one feature: it
+    /// matches when any date value falls inside the (inclusive) bounds, where
+    /// a <c>null</c> bound is infinite. A feature with no date values matches
+    /// unconditionally. This mirrors the query path's temporal rule
+    /// (<c>FeatureQueryEngine.MatchesTime</c> in the GeoServices adapter,
+    /// which the renderer must not reference); the two are intentionally the
+    /// same rule in the two places the engine reads features.
+    /// </summary>
+    private static bool MatchesTime(Feature feature, MapTimeExtent time)
+    {
+        var dated = false;
+        foreach (var attribute in feature.Attributes)
+        {
+            if (attribute.Kind != AttributeKind.DateTimeOffset)
+            {
+                continue;
+            }
+
+            dated = true;
+            var milliseconds = attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds();
+            if ((time.StartMs is null || milliseconds >= time.StartMs)
+                && (time.EndMs is null || milliseconds <= time.EndMs))
+            {
+                return true;
+            }
+        }
+
+        return !dated;
     }
 }

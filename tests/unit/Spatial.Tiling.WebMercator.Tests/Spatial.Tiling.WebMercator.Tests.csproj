@@ -21,6 +21,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Cached MapServer root replay (T-040, research/compat/tiles.md §2). -->
+    <Content Include="..\..\..\research\compat\ground-truth\map-root-cached.WorldTopo.json">
+      <Link>fixtures\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Tiling.WebMercator\Spatial.Tiling.WebMercator.csproj" />
