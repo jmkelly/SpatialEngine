@@ -6,15 +6,15 @@ namespace Spatial.Imagery.Vips.Raster;
 
 /// <summary>
 /// Computes per-band value histograms over a raster window (spec §8
-/// <c>computeHistograms</c>, ADR-0054). Every NetVips type stays inside this
-/// assembly; the contract carries only the bin counts. Histograms are
-/// computed from the dataset raster over the requested bounds: mosaicking
-/// overlapping catalog items is an explicit non-goal (ADR-0051 I5), so the
-/// caller names the dataset, never a mosaic.
+/// <c>computeHistograms</c>, ADR-0054, T-054). Every NetVips type stays inside
+/// this assembly; the contract carries only the bin edges and counts.
+/// Histograms are computed from the dataset raster over the requested bounds:
+/// mosaicking overlapping catalog items is an explicit non-goal (ADR-0051 I5),
+/// so the caller names the dataset, never a mosaic.
 /// </summary>
 internal static class VipsRasterHistograms
 {
-    /// <summary>The bins of one 8-bit histogram, matching the Esri <c>size</c>.</summary>
+    /// <summary>The bins of one histogram, matching the Esri <c>size</c>.</summary>
     private const int Bins = 256;
 
     /// <summary>The bin edges of a full 8-bit range, as the Esri example reports them.</summary>
@@ -36,10 +36,16 @@ internal static class VipsRasterHistograms
         }
 
         using var image = VipsRasterFiles.Open(descriptor.Path);
-        if (image.Format != Enums.BandFormat.Uchar)
+        if (image.Format is Enums.BandFormat.Complex or Enums.BandFormat.Dpcomplex)
         {
             throw SpatialException.BadArguments(
-                $"Raster dataset '{descriptor.Name}' has {image.Format} bands; histograms are computed for 8-bit rasters only.");
+                $"Raster dataset '{descriptor.Name}' has {image.Format} bands; histograms are not computed for complex rasters.");
+        }
+
+        if (image.Format == Enums.BandFormat.Notset)
+        {
+            throw SpatialException.BadArguments(
+                $"Raster dataset '{descriptor.Name}' has bands of an unknown format; histograms cannot be computed.");
         }
 
         var bounds = RasterEnvelopes.Project(request.Bounds, request.Crs, descriptor.Crs, transforms, cancellationToken);
@@ -51,11 +57,71 @@ internal static class VipsRasterHistograms
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var extracted = cropped.ExtractBand(band);
-            using var histogram = extracted.HistFind();
-            histograms.Add(new RasterHistogram(MinEdge, MaxEdge, Read(histogram)));
+            histograms.Add(extracted.Format == Enums.BandFormat.Uchar
+                ? new RasterHistogram(MinEdge, MaxEdge, Read(extracted))
+                : Scaled(extracted, cancellationToken));
         }
 
         return histograms;
+    }
+
+    /// <summary>
+    /// The 256-bin histogram of one 8-bit band over its full range, as the Esri example reports it.
+    /// </summary>
+    private static long[] Read(Image band)
+    {
+        using var histogram = band.HistFind();
+        var counts = new long[Bins];
+        for (var bin = 0; bin < Bins; bin++)
+        {
+            counts[bin] = (long)histogram.Getpoint(bin, 0)[0];
+        }
+
+        return counts;
+    }
+
+    /// <summary>
+    /// The 256-bin histogram of one non-8-bit real band (T-054): the band's
+    /// data range is scaled onto the 8-bit histogram grid, so the bin edges
+    /// are the data minimum and maximum. Integer bands keep the half-unit
+    /// edges of the 8-bit shape ([min − 0.5, max + 0.5]); floating-point
+    /// bands span [min, max] with the maximum falling in the last bin. A
+    /// flat band (min equals max) has no range to scale, so every pixel
+    /// falls in the middle bin of the half-unit range around the value.
+    /// A fixed <c>hist_find_ndim</c> was probed and rejected: it bins
+    /// floating-point values against the format range, so ordinary data
+    /// collapses into the first bin instead of spreading over the data range.
+    /// </summary>
+    private static RasterHistogram Scaled(Image band, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var min = band.Min();
+        var max = band.Max();
+        if (min == max)
+        {
+            var flat = new long[Bins];
+            flat[Bins / 2] = (long)band.Width * band.Height;
+            return new RasterHistogram(min - 0.5, max + 0.5, flat);
+        }
+
+        var integer = band.Format is Enums.BandFormat.Char
+            or Enums.BandFormat.Ushort
+            or Enums.BandFormat.Short
+            or Enums.BandFormat.Uint
+            or Enums.BandFormat.Int;
+        var minEdge = integer ? min - 0.5 : min;
+        var maxEdge = integer ? max + 0.5 : max;
+        var scale = (MaxEdge - MinEdge) / (maxEdge - minEdge);
+        var offset = MinEdge - (minEdge * scale);
+        using var scaled = band.Linear([scale], [offset], uchar: true);
+        using var histogram = scaled.HistFind();
+        var counts = new long[Bins];
+        for (var bin = 0; bin < Bins; bin++)
+        {
+            counts[bin] = (long)histogram.Getpoint(bin, 0)[0];
+        }
+
+        return new RasterHistogram(minEdge, maxEdge, counts);
     }
 
     /// <summary>The overlap of the requested bounds with the raster extent; disjoint bounds are invalid arguments.</summary>
@@ -74,17 +140,5 @@ internal static class VipsRasterHistograms
             Math.Max(extent.MinY, bounds.MinY),
             Math.Min(extent.MaxX, bounds.MaxX),
             Math.Min(extent.MaxY, bounds.MaxY));
-    }
-
-    /// <summary>Reads the 256 bin counts of a single-band <c>HistFind</c> image.</summary>
-    private static long[] Read(Image histogram)
-    {
-        var counts = new long[Bins];
-        for (var bin = 0; bin < Bins; bin++)
-        {
-            counts[bin] = (long)histogram.Getpoint(bin, 0)[0];
-        }
-
-        return counts;
     }
 }

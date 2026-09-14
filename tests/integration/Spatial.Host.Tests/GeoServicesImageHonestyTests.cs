@@ -100,7 +100,7 @@ public sealed class GeoServicesImageHonestyTests : IDisposable
     }
 
     [Fact]
-    public async Task Root_reports_no_histograms_for_a_float_raster()
+    public async Task Root_reports_histograms_for_a_float_raster()
     {
         await using var factory = new HonestyFactory(
             _directory, _floatPath, "raster.floathist", catalog: false, statistics: false, attributeTable: false);
@@ -109,13 +109,19 @@ public sealed class GeoServicesImageHonestyTests : IDisposable
         var root = await BodyAsync(await client.GetAsync($"{Root}/floathist/ImageServer?f=json"));
 
         Assert.Equal("F32", root.GetProperty("pixelType").GetString());
-        Assert.False(root.GetProperty("hasHistograms").GetBoolean());
+        Assert.True(root.GetProperty("hasHistograms").GetBoolean());
 
         var geometry = Uri.EscapeDataString("{\"xmin\":0,\"ymin\":0,\"xmax\":8,\"ymax\":6,\"spatialReference\":{\"wkid\":4326}}");
-        Assert.Equal(
-            HttpStatusCode.BadRequest,
-            (await client.GetAsync(
-                $"{Root}/floathist/ImageServer/computeHistograms?f=json&geometryType=esriGeometryEnvelope&geometry={geometry}")).StatusCode);
+        var histograms = await BodyAsync(await client.GetAsync(
+            $"{Root}/floathist/ImageServer/computeHistograms?f=json&geometryType=esriGeometryEnvelope&geometry={geometry}"));
+        var band = Assert.Single(histograms.GetProperty("histograms").EnumerateArray());
+        Assert.Equal(256, band.GetProperty("size").GetInt32());
+        Assert.Equal(0, band.GetProperty("min").GetDouble());
+        Assert.Equal(47, band.GetProperty("max").GetDouble());
+        var counts = band.GetProperty("counts").EnumerateArray().Select(value => value.GetInt64()).ToArray();
+        Assert.Equal(Width * Height, counts.Sum());
+        Assert.Equal(1, counts[0]);
+        Assert.Equal(1, counts[255]);
     }
 
     /// <summary>
