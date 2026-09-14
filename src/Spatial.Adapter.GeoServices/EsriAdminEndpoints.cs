@@ -116,20 +116,53 @@ public static class EsriAdminEndpoints
             BatchSize = options.BatchSize,
             IdentityField = identityField,
         });
+        var features = decoded.Pages.Sum(page => (long)page.Count);
+        if (features > options.MaxFeatures)
+        {
+            throw EsriInteropException.Invalid(
+                $"The upload has {features} features, above the configured maximum of {options.MaxFeatures}.");
+        }
+
         var outcome = await target.IngestAsync(new IngestRequest(dataset, srid, IdentityOf(Query(query, "identity")), identityField), decoded.Pages, token);
         var itemId = staging.Stage(outcome, store);
         return EsriJson.Value(new AdminUpload(true, new AdminItem(itemId)));
     }
 
+    /// <summary>
+    /// Merges the staged upload into the named map like the neutral
+    /// <c>?publish=</c> path: the dataset is appended as a new layer (or kept
+    /// once when already mapped) and the Feature service is unioned in, so
+    /// publishing over a multi-layer/multi-service map never clobbers it.
+    /// </summary>
     private static async Task<IResult> PublishAsync(
         IMapRegistry registry, EsriUploadStaging staging, string id, HttpContext context, CancellationToken token)
     {
         var staged = staging.Take(id) ?? throw EsriInteropException.Invalid($"The staged upload '{id}' does not exist or has expired.");
         var form = await context.Request.ReadFormAsync(token);
-        var name = Form(form, "name", context)
+        var rawName = Form(form, "name", context)
             ?? Query(context.Request.Query, "name")
             ?? throw EsriInteropException.Invalid("A 'name' is required to publish the upload.");
-        var map = new Map(name, staged.Store, [new MapLayer(staged.Outcome.Dataset, -1)], [MapService.Feature]);
+        var name = Uri.UnescapeDataString(rawName);
+
+        Map? existing = null;
+        try
+        {
+            existing = await registry.GetAsync(name, token);
+        }
+        catch (SpatialException exception) when (exception.Code == SpatialException.NotFound)
+        {
+        }
+
+        var layers = existing?.Layers.ToList() ?? [];
+        if (layers.TrueForAll(layer => !string.Equals(layer.Dataset, staged.Outcome.Dataset, StringComparison.Ordinal)))
+        {
+            var next = layers.Count == 0 ? 0 : layers.Max(layer => layer.LayerId) + 1;
+            layers.Add(new MapLayer(staged.Outcome.Dataset, next));
+        }
+
+        var map = existing is null
+            ? new Map(name, staged.Store, layers, [MapService.Feature])
+            : existing with { Store = staged.Store, Layers = layers, Services = [.. existing.Services.Union([MapService.Feature])] };
         var stored = await registry.PutAsync(map, token);
         return EsriJson.Value(new AdminSuccess(true, stored.Name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
     }

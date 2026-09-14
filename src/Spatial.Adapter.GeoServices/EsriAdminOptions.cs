@@ -6,7 +6,7 @@ namespace Spatial.Adapter.GeoServices;
 /// gated by <c>Spatial:Admin:Token</c>. With no token the routes answer an
 /// actionable unavailable error rather than disappearing, so Esri tooling
 /// gets a clear failure. Uploads are staged in memory with a TTL and the
-/// configured byte cap.
+/// configured byte and feature caps (mirroring the neutral ingest caps).
 /// </summary>
 public sealed class EsriAdminOptions
 {
@@ -21,6 +21,9 @@ public sealed class EsriAdminOptions
 
     /// <summary>The maximum upload size in bytes.</summary>
     public long MaxBytes { get; set; } = 104_857_600;
+
+    /// <summary>The maximum number of decoded features (mirrors <c>Spatial:Ingest:MaxFeatures</c>).</summary>
+    public int MaxFeatures { get; set; } = 1_000_000;
 
     /// <summary>The decoded page size.</summary>
     public int BatchSize { get; set; } = 10_000;
