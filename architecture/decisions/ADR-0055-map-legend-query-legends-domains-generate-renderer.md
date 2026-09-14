@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0054: MapServer legend, queryDomains/queryLegends and generateRenderer are adapter projections
+# ADR-0055: MapServer legend, queryDomains/queryLegends and generateRenderer are adapter projections
 
 ## Context
 
