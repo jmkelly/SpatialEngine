@@ -164,6 +164,33 @@ table.grid th { color: var(--muted); font-weight: 600; text-transform: uppercase
 
 .recent-control { margin-top: 18px; }
 .recent-control h3 { margin-top: 8px; }
+
+/* Parity harness (T-072): side-by-side Esri vs localhost panels */
+
+.parity-screen { max-width: none; }
+.parity-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 12px 0; }
+.parity-controls .field { min-width: 130px; }
+.parity-controls .field input {
+  background: var(--code-bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 7px 10px; width: 100%;
+}
+.parity-controls .parity-wide { flex: 1; min-width: 280px; }
+.parity-controls .parity-wide input { width: 100%; }
+.parity-tabs { margin: 4px 0 12px; }
+.parity-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+@media (max-width: 900px) { .parity-panels { grid-template-columns: 1fr; } }
+.parity-panel {
+  margin: 0; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; overflow: hidden;
+}
+.parity-panel figcaption { margin-bottom: 8px; }
+.parity-panel figcaption.small { margin: 8px 0 0; }
+.parity-panel img {
+  display: block; width: 100%; height: auto; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--code-bg);
+}
+.parity-table-wrap { overflow: auto; max-height: 420px; border: 1px solid var(--border); border-radius: 6px; }
+.parity-error { color: var(--danger); font-size: 13px; }
 /* Map composer */
 
 .composer-screen { display: flex; flex-direction: column; height: 100%; padding: 12px 16px; max-width: none; }
