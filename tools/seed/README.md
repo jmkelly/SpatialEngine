@@ -47,6 +47,22 @@ source or a service.
   `SeismicMap` — each layer's persisted style (ADR-0047) is lowered to
   `drawingInfo`.
 
+## Conformance host and the qgis map
+
+`eng/conformance.sh` (slice A, T-066) is the one-command entry point for
+visual parity work: it builds the host, starts it on port 5251 when none is
+running (`SPATIAL_CONFORMANCE_PORT` overrides), loads everything above, and
+then wires the `qgis` WMS map (demo `cities` points plus memory `routes`
+lines and `zones` polygons) via [`qgis-map.mjs`](./qgis-map.mjs). The map
+definition is read from `tests/fixtures/qgis/qgis-4.2.2-wms.json` — the same
+fixture `QgisReplayTests` replays — so the replay suite, this seed, and the
+later conformance slices share one map.
+
+```bash
+# One command: host + seed data + qgis map, left running for visual work:
+./eng/conformance.sh
+```
+
 ## How it works
 
 - `seed.mjs` is a **pure client of the public API**; the only spatial logic is
