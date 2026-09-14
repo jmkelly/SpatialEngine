@@ -89,6 +89,55 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Wms_get_capabilities_111_serves_the_legacy_dialect()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities&version=1.1.1");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/xml", response.Content.Headers.ContentType?.MediaType);
+        var document = await XmlAsync(response);
+        Assert.Equal(XNamespace.None, document.Root!.Name.Namespace);
+        Assert.Equal("1.1.1", document.Root!.Attribute("version")!.Value);
+        Assert.NotNull(document.Descendants(XNamespace.None + "LatLonBoundingBox").SingleOrDefault());
+        Assert.Contains("cities", document.Descendants(XNamespace.None + "Name").Select(element => element.Value));
+    }
+
+    [Fact]
+    public async Task Wms_get_map_rejects_sld_body()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var response = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&SLD_BODY=%3CStyledLayerDescriptor%2F%3E");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("OperationNotSupported", await ReportCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Wms_get_map_applies_high_dpi_without_changing_the_frame()
+    {
+        using var factory = Factory();
+        var client = await MapAsync(factory, "world", "wms");
+
+        var plain = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE");
+        var dense = await client.GetAsync(
+            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE&DPI=192&MAP_RESOLUTION=192&FORMAT_OPTIONS=dpi:192");
+
+        Assert.Equal(HttpStatusCode.OK, plain.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, dense.StatusCode);
+        Assert.Equal("image/png", dense.Content.Headers.ContentType?.MediaType);
+        Assert.NotEqual(
+            await plain.Content.ReadAsByteArrayAsync(),
+            await dense.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
     public async Task Wms_get_map_renders_the_requested_bbox()
     {
         using var factory = Factory();

@@ -134,7 +134,17 @@ feature layers:
 - **WMS 1.3.0**: `GetCapabilities` (XML), `GetMap` (renders the map's style
   through `IMapRenderer` over the requested EPSG bbox/size), and
   `GetFeatureInfo` (queries the identified layers through the feature query
-  verbs and returns the requested info format).
+  verbs and returns the requested info format). `GetCapabilities` with
+  `VERSION=1.1.x` serves the legacy 1.1.1 dialect instead (T-045: DTD
+  doctype, the SRS vocabulary, `LatLonBoundingBox` in lon/lat order; no
+  VERSION or 1.3.x serves 1.3.0). `GetMap` honours the QGIS DPI triple
+  (`DPI`, then `MAP_RESOLUTION`, then `FORMAT_OPTIONS` dpi:N; T-045):
+  style pixel sizes are defined at 96 dpi (`MapRenderRequest.ReferenceDpi`)
+  and scale linearly with the request DPI while the output frame keeps the
+  requested size. SLD style overrides (`GetStyles`, `DescribeLayer`,
+  `SLD`/`SLD_BODY` on `GetMap`) are explicit `OperationNotSupported`
+  rejects — no recorded client trace sends them (T-045 diagnostics
+  verdict) — and TIME/WMS-T plus vendor params stay non-goals.
 - **WFS 2.0.0**: `GetCapabilities` (XML), `DescribeFeatureType` (XSD), and
   `GetFeature` (GeoJSON; GML is a recorded non-goal until measured demand).
 
