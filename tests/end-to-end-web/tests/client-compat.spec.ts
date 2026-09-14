@@ -277,11 +277,10 @@ test("OpenLayers renders WMS 1.3.0 + XYZ + WFS vector with a non-blank canvas", 
   expect(state.wmsTiles).toBeGreaterThan(0);
   expect(state.xyzTiles).toBeGreaterThan(0);
   expect(state.vectorCount).not.toBeNull();
-  // Honest count: the server pages all 12 features (asserted above), but
-  // the memory routes/zones reuse ids 1,2 across layers and OpenLayers
-  // documents that a same-id feature is not added — so the genuine client
-  // holds 10 (follow-up T-084 tracks the id scoping).
-  expect(state.vectorCount as number).toBe(10);
+  // Honest count: the server pages all 12 features (asserted above) and
+  // T-084 qualifies WFS ids per typeName, so the genuine client holds all
+  // 12 with no duplicate-id drop.
+  expect(state.vectorCount as number).toBe(12);
   expect(state.gfi).not.toBeNull();
   expect(state.gfi as string).toContain("Amsterdam");
 
