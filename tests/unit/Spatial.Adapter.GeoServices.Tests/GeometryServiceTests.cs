@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Spatial.Core.Geometry;
 using Spatial.Interop.Esri;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.Transformations.ProjNet;
@@ -15,12 +16,16 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// </summary>
 public sealed class GeometryServiceTests
 {
+    private static readonly NtsGeometryOperations Operations = new();
+    private static readonly ProjNetTransforms Transforms = new();
+
     private static readonly GeometryServiceCapabilities Capabilities = new(
-        new NtsGeometryOperations(),
+        Operations,
         new NtsGeometryMeasures(),
         new NtsGeometryProcessing(),
         new NtsGeometryRelations(),
-        new ProjNetTransforms());
+        Transforms,
+        Transforms);
 
     private static async Task<EsriRequestParameters> ParamsAsync(params (string Key, string Value)[] values)
     {
@@ -49,7 +54,10 @@ public sealed class GeometryServiceTests
         var info = await ExecuteAsync(GeometryService.Info());
 
         Assert.Equal(10.0, info.GetProperty("currentVersion").GetDouble());
-        Assert.Contains("AreasAndLengths", info.GetProperty("capabilities").GetString());
+        var capabilities = info.GetProperty("capabilities").GetString();
+        Assert.Contains("AreasAndLengths", capabilities);
+        Assert.Contains("FindTransformations", capabilities);
+        Assert.DoesNotContain("GeoCoordinateString", capabilities);
     }
 
     [Theory]
@@ -131,7 +139,6 @@ public sealed class GeometryServiceTests
     }
 
     [Theory]
-    [InlineData("unit")]
     [InlineData("geodesic")]
     [InlineData("unionResults")]
     public async Task Buffer_rejects_unsupported_modifiers(string name)
@@ -140,6 +147,223 @@ public sealed class GeometryServiceTests
             ("geometries", """[{"x":0,"y":0}]"""),
             ("distances", "1"),
             (name, "x")));
+    }
+
+    [Fact]
+    public async Task Buffer_with_unit_and_buffer_sr_buffers_in_the_projected_crs()
+    {
+        // distances=1000&unit=9001 (metres) against a 4326 point buffered in
+        // 3857 must reproduce the projected result: a ~1000 m planar buffer,
+        // not a 1000-degree planar buffer in the geographic CRS.
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("bufferSR", "3857"),
+            ("outSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var xs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        var ys = ring.EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+        Assert.True(xs.Min() < -900 && xs.Max() > 900);
+        Assert.True(ys.Min() < -900 && ys.Max() > 900);
+        Assert.True(xs.Max() - xs.Min() < 2100);
+        Assert.True(ys.Max() - ys.Min() < 2100);
+    }
+
+    [Fact]
+    public async Task Buffer_with_unit_matches_transform_then_buffer()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":2.3522,"y":48.8566,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("bufferSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var serviceXs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        var serviceYs = ring.EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+
+        var point = new Point(new Coordinate(2.3522, 48.8566), CoordinateReference.Epsg(4326));
+        var projected = Transforms.Transform(point, null, "EPSG:3857", CancellationToken.None);
+        var buffered = Operations.Buffer(projected, 1000, 8, CancellationToken.None);
+        var expected = Transforms.Transform(buffered, null, "EPSG:3857", CancellationToken.None).Envelope!.Value;
+
+        Assert.Equal(expected.MinX, serviceXs.Min(), 3);
+        Assert.Equal(expected.MaxX, serviceXs.Max(), 3);
+        Assert.Equal(expected.MinY, serviceYs.Min(), 3);
+        Assert.Equal(expected.MaxY, serviceYs.Max(), 3);
+    }
+
+    [Fact]
+    public async Task Buffer_without_out_sr_returns_the_buffer_crs()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("bufferSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        Assert.Equal(3857, result.GetProperty("geometries")[0].GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+    }
+
+    [Fact]
+    public async Task Buffer_rejects_an_unknown_unit()
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0}]"""),
+            ("distances", "1"),
+            ("unit", "424242")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+    }
+
+    [Fact]
+    public async Task Buffer_rejects_a_linear_unit_in_a_geographic_buffer_crs()
+    {
+        // The planar engine cannot buffer metres in degrees (no geodesic
+        // verb): the caller must name a projected bufferSR.
+        await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("distances", "1000"),
+            ("unit", "9001")));
+    }
+
+    [Fact]
+    public async Task Buffer_accepts_an_angular_unit_in_a_geographic_crs()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("distances", "1"),
+            ("unit", "9102"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var xs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        Assert.True(xs.Min() < -0.9 && xs.Max() > 0.9);
+    }
+
+    [Fact]
+    public async Task Buffer_accepts_geodesic_false_as_planar()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0}]"""),
+            ("distances", "1"),
+            ("geodesic", "false"));
+
+        Assert.Equal(1, result.GetProperty("geometries").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Buffer_honours_cancellation_on_the_projected_path()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var parameters = await ParamsAsync(
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("bufferSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        Assert.Throws<OperationCanceledException>(() =>
+            GeometryService.Dispatch("buffer", parameters, Capabilities, cancelled.Token));
+    }
+
+    [Fact]
+    public async Task Find_transformations_returns_empty_for_the_same_datum()
+    {
+        var result = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "3857"));
+
+        Assert.Equal(0, result.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Find_transformations_lists_the_curated_catalogue_path()
+    {
+        // 4326 (WGS 84) to 27700 (OSGB36): the engine applies the embedded
+        // Helmert shift, so the listing must name the classic Helmert path.
+        var result = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"));
+
+        Assert.Equal(1, result.GetArrayLength());
+        var steps = result[0].GetProperty("geoTransforms");
+        Assert.Equal(1, steps.GetArrayLength());
+        Assert.True(steps[0].GetProperty("transformForward").GetBoolean());
+        Assert.Contains("Helmert", steps[0].GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Helmert", steps[0].GetProperty("method").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Find_transformations_requires_both_references()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("findTransformations", ("inSR", "4326")));
+    }
+
+    [Fact]
+    public async Task Find_transformations_rejects_unknown_references()
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "4267")));
+    }
+
+    [Theory]
+    [InlineData("vertical", "true")]
+    [InlineData("extentOfInterest", "{\"xmin\":0,\"ymin\":0,\"xmax\":1,\"ymax\":1}")]
+    public async Task Find_transformations_rejects_unsupported_ranking(string name, string value)
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            (name, value)));
+    }
+
+    [Fact]
+    public async Task Find_transformations_honours_num_of_results()
+    {
+        var none = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("numOfResults", "0"));
+        Assert.Equal(0, none.GetArrayLength());
+
+        var all = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("numOfResults", "-1"));
+        Assert.Equal(1, all.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Find_transformations_honours_cancellation()
+    {
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        var parameters = await ParamsAsync(("inSR", "4326"), ("outSR", "27700"));
+
+        Assert.Throws<OperationCanceledException>(() =>
+            GeometryService.Dispatch("findTransformations", parameters, Capabilities, cancelled.Token));
+    }
+
+    [Theory]
+    [InlineData("fromGeoCoordinateString")]
+    [InlineData("toGeoCoordinateString")]
+    public async Task Coordinate_notation_operations_are_honest_non_goals(string operation)
+    {
+        // No MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD codec in the tree and no
+        // engine verb: reject by name rather than half-parse notations.
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync(operation,
+            ("conversionType", "MGRS")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
     }
 
     [Fact]

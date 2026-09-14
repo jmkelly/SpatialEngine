@@ -68,7 +68,7 @@ engine is x-first for every CRS (`contracts.md`).
 | --- | --- | --- |
 | `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string |
 | `simplify` (topological repair; §7.0.5) | `Validate` only | **Missing** — engine has no MakeValid/repair |
-| `buffer` | `IGeometryOperations.Buffer` | **Partial** — planar, single distance, `quadrantSegments`; no `unit`, `bufferSR`, `outSR`, multi-`distances`, `unionResults`, geodesic behaviour |
+| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` | **Partial** — planar transform-then-buffer with `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances`, `quadrantSegments`; `geodesic`/`unionResults` honestly rejected, linear units need a projected buffer CRS |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
 | `lengths` | — | Missing (same) |
 | `relation` (DE-9IM `relationParam`) | — | Missing |
@@ -94,9 +94,11 @@ produces the wrong result.
 
 **Buffer semantics trap:** GeoServices applies a `unit`, can buffer in a
 third CRS (`bufferSR`) and geodesically for points/multipoints in a
-geographic CRS. The engine buffer is planar in the geometry's own CRS. A
-`distances=1000` + `unit=9001` request is not reproducible without
-projection/units.
+geographic CRS. The engine buffer is planar transform-then-buffer: a
+`distances=1000` + `unit=9001` request against a 4326 geometry with a
+projected `bufferSR` reproduces the projected result, but a linear `unit`
+against a geographic buffer CRS stays rejected (no geodesic verb) and an
+angular `unit` buffers planar degrees.
 
 ## 3. Feature Service (spec §9)
 
@@ -220,6 +222,15 @@ Ordered by dependency:
 - Recorded Geometry Service non-goals: `offset`, `cut`, `reshape`,
   `trimExtend` and `autoComplete` have no engine verb; the facade rejects
   them with a typed `invalid.arguments` failure and does not advertise them.
+- Serving status update (T-044): `buffer` honours `unit` (curated linear +
+  angular code table, factors verified against the hosted service) with
+  `bufferSR`/`outSR`/`inSR` chaining per spec §7.0.6 via
+  transform-then-buffer; `geodesic=false` is accepted as planar while
+  `geodesic=true`/`unionResults` stay rejected. `findTransformations`
+  honestly lists the curated catalogue path (same datum → `[]`, datum step →
+  one forward composite with the OSGB36 classic-Helmert note).
+  `fromGeoCoordinateString`/`toGeoCoordinateString` are recorded non-goals
+  (§7.1): rejected by name, unadvertised.
 - Serving status update: `f=pjson` is accepted as a JSON alias everywhere
   `f=json` is (GDAL ESRIJSON driver, pygeoapi metadata fetch); `f=geojson`
   on query is honestly rejected with a typed `invalid.arguments` failure
@@ -278,6 +289,13 @@ is rejected by name (never silently ignored) and named here with its reason:
   `f=geojson` is honestly rejected naming `supportedQueryFormats`, and the
   layer truthfully advertises `'JSON'`. pygeoapi's
   `'geoJSON' in supportedQueryFormats` gate therefore still fails — honestly.
+- Coordinate-notation operations (T-044): `fromGeoCoordinateString` and
+  `toGeoCoordinateString` span 8 conversion types each
+  (MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD) with modes; the tree has no
+  notation codec and the engine has no verb, so the facade rejects both by
+  name with a typed `invalid.arguments` failure and does not advertise them.
+  Half-parsing notations is explicitly out; a real codec needs its own
+  package decision (new ADR) plus an engine verb.
 - `returnZ`/`returnM`: the engine geometry model carries Z/M but the Esri
   codec serves 2D; Z/M output is explicitly rejected rather than silently
   dropped.
