@@ -82,7 +82,7 @@ internal static class EsriLayerModel
     }
 
     /// <summary>
-    /// Builds the full layer metadata (spec §9.1). Layers with a string
+    /// Builds the full layer metadata (spec §9.1). Layers with a string-or-guid
     /// identity column advertise it as <c>uniqueIdField</c> (11.5+) so
     /// clients can discover up front the field <c>uniqueIds</c> /
     /// <c>returnUniqueIdsOnly</c> serve (T-036); every other layer omits it.
@@ -179,10 +179,11 @@ internal sealed record EsriLayer(
 
 /// <summary>
 /// The layer's string unique-id field (spec §9.1 layer resource, 11.5+):
-/// the identity column <c>uniqueIds</c>/<c>returnUniqueIdsOnly</c> serve.
+/// the identity column <c>uniqueIds</c>/<c>returnUniqueIdsOnly</c> serve —
+/// a string column's value, or a guid column's canonical form (T-058).
 /// The engine's string identity is client-assigned data, never a
 /// system-maintained GlobalID, so <c>isSystemMaintained</c> is false.
-/// Null (omitted on the wire) when the layer has no string identity.
+/// Null (omitted on the wire) when the layer has no string-or-guid identity.
 /// </summary>
 internal sealed record EsriUniqueIdField(string Name, bool IsSystemMaintained);
 

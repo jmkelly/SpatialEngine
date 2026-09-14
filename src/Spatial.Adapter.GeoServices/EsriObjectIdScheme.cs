@@ -83,19 +83,33 @@ internal sealed record EsriObjectIdScheme(bool IsIdentity, int FieldIndex)
 /// How a layer maps engine feature identity onto the Esri string
 /// <c>uniqueIds</c> (spec §9.1.4, 11.5+): a layer whose dataset declares
 /// exactly one identity column of kind <see cref="AttributeKind.String"/>
-/// exposes that column's value; every other layer has no string unique-id
-/// model, so <c>uniqueIds</c>/<c>returnUniqueIdsOnly</c> are rejected by name
-/// and integer features stay addressable through <c>objectIds</c>.
+/// exposes that column's value, and a layer with exactly one identity
+/// column of kind <see cref="AttributeKind.Guid"/> exposes the value in
+/// canonical form — lowercase <c>D</c> (<c>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</c>),
+/// the same text the stores render a boxed <see cref="Guid"/> with, so the
+/// served id round-trips through <see cref="FeatureId"/>:
+/// <c>Guid.Parse(new FeatureId(uniqueId).Value).ToString("D") == uniqueId</c>.
+/// Requested ids match the served ids exactly (ordinal); every other layer
+/// has no string unique-id model, so <c>uniqueIds</c>/
+/// <c>returnUniqueIdsOnly</c> are rejected by name and integer features stay
+/// addressable through <c>objectIds</c>.
 /// </summary>
 internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
 {
-    /// <summary>Infers the layer's scheme from its dataset description, or null when the layer has no string identity column.</summary>
+    /// <summary>
+    /// The canonical string form of a guid identity value: lowercase
+    /// <c>D</c>, back through <see cref="Guid.Parse(string)"/> to the same
+    /// <see cref="Guid"/> and through <see cref="FeatureId"/> unchanged.
+    /// </summary>
+    public static string CanonicalForm(Guid value) => value.ToString("D");
+
+    /// <summary>Infers the layer's scheme from its dataset description, or null when the layer has no string-or-guid identity column.</summary>
     public static EsriUniqueIdScheme? For(DatasetDescription dataset)
     {
         if (dataset.IdColumns.Count == 1)
         {
             var index = dataset.Schema.IndexOf(dataset.IdColumns[0]);
-            if (index >= 0 && dataset.Schema[index].Kind == AttributeKind.String)
+            if (index >= 0 && dataset.Schema[index].Kind is AttributeKind.String or AttributeKind.Guid)
             {
                 return new EsriUniqueIdScheme(dataset.Schema[index].Name, index);
             }
@@ -104,7 +118,7 @@ internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
         return null;
     }
 
-    /// <summary>Resolves the unique id of one feature, or false when the identity column is not a non-empty string.</summary>
+    /// <summary>Resolves the unique id of one feature, or false when the identity column carries no (non-empty, non-null) unique id.</summary>
     public bool TryResolve(IFeature feature, out string uniqueId)
     {
         ArgumentNullException.ThrowIfNull(feature);
@@ -115,11 +129,17 @@ internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
             return true;
         }
 
+        if (attribute.Kind == AttributeKind.Guid)
+        {
+            uniqueId = CanonicalForm(attribute.GuidValue);
+            return true;
+        }
+
         uniqueId = string.Empty;
         return false;
     }
 
-    /// <summary>Resolves the unique id of one feature, or a typed server failure when the identity column carries none.</summary>
+    /// <summary>Resolves the unique id of one feature, or a typed server failure when the identity column carries none (null or empty).</summary>
     public string Resolve(IFeature feature, DatasetDescription dataset)
     {
         if (TryResolve(feature, out var uniqueId))
@@ -129,14 +149,14 @@ internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
 
         throw new EsriInteropException(
             EsriErrorCodes.ServerError,
-            $"The identity column '{FieldName}' of layer '{dataset.Id}' is not a string unique id.");
+            $"The identity column '{FieldName}' of layer '{dataset.Id}' carries no unique id value.");
     }
 
     /// <summary>
     /// Resolves the unique id a query needs: null when the query names no
     /// unique-id param, otherwise the feature's id — or a typed
     /// invalid-argument failure naming the param when the layer has no
-    /// string unique-id model.
+    /// string-or-guid unique-id model.
     /// </summary>
     public static string? ResolveFor(EsriFeatureQuery query, DatasetDescription dataset, IFeature feature)
     {
@@ -152,7 +172,7 @@ internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
         {
             var parameter = query.UniqueIds is not null ? "uniqueIds" : "returnUniqueIdsOnly";
             throw EsriInteropException.Invalid(
-                $"The '{parameter}' parameter is not supported on layer '{dataset.Id}': the layer has no string unique-id field; address its integer features with 'objectIds'.");
+                $"The '{parameter}' parameter is not supported on layer '{dataset.Id}': the layer has no string or guid unique-id field; address its integer features with 'objectIds'.");
         }
 
         return scheme.Resolve(feature, dataset);
