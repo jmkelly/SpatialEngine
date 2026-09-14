@@ -9,7 +9,7 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// §8.0.3 vs ground truth <c>image-root.CharlotteLAS.json</c>). Every flag
 /// names behaviour proved by its own test: raster functions and mosaicking
 /// are rejected on export/query, mensuration and multidimensional writes have
-/// no route, histograms compute for 8-bit rasters only, the attribute-table
+/// no route, histograms compute for real-valued rasters (complex excluded), the attribute-table
 /// resource serves a configured table or a typed not.found, and the download
 /// surface enforces the configured caps.
 /// </summary>
@@ -38,7 +38,7 @@ public sealed class ImageCapabilityHonestyTests
     }
 
     [Fact]
-    public void Root_reports_no_histograms_for_non_8bit_bands()
+    public void Root_reports_histograms_for_float_bands()
     {
         var root = ImageService.Root(
             Description(Raster() with { PixelType = RasterPixelType.F32, BandStatistics = null }),
@@ -46,6 +46,18 @@ public sealed class ImageCapabilityHonestyTests
             new GeoServicesOptions());
 
         Assert.Equal("F32", root.PixelType);
+        Assert.True(root.HasHistograms);
+    }
+
+    [Fact]
+    public void Root_reports_no_histograms_for_complex_bands()
+    {
+        var root = ImageService.Root(
+            Description(Raster() with { PixelType = RasterPixelType.C64, BandStatistics = null }),
+            null,
+            new GeoServicesOptions());
+
+        Assert.Equal("C64", root.PixelType);
         Assert.False(root.HasHistograms);
     }
 
