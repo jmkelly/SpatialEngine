@@ -27,6 +27,9 @@ public interface IStoreRegistry
     /// <summary>The keyed editing capability for <paramref name="store"/>, or <c>null</c> when the store is read-only.</summary>
     IFeatureEditStore? EditStore(string store);
 
+    /// <summary>The keyed attachment capability for <paramref name="store"/>, or <c>null</c> when the store holds no attachment blobs.</summary>
+    IFeatureAttachmentStore? AttachmentStore(string store);
+
     /// <summary>The keyed transaction capability for <paramref name="store"/>, or <c>null</c> when the store has none.</summary>
     ITransactionStore? Transactions(string store);
 
