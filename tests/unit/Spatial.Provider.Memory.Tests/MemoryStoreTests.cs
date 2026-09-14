@@ -244,4 +244,76 @@ public sealed class MemoryStoreTests
         Assert.Equal("memory.places", id);
         Assert.Equal(0, (await store.DescribeAsync("memory.places")).EstimatedRowCount);
     }
+
+    [Fact]
+    public async Task Write_round_trips_through_create_and_scan()
+    {
+        var store = new MemoryStore();
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
+
+        var appended = await store.WriteAsync(
+            "memory.places",
+            Batch(Point("1", "Berlin", 13.4, 52.5), Point("2", "Paris", 2.35, 48.85)));
+
+        Assert.Equal(2, appended);
+        var batches = await store.ScanAsync("memory.places");
+        Assert.Equal(["1", "2"], batches.SelectMany(batch => batch.Features).Select(feature => feature.Id.Value).ToArray());
+        Assert.Single(await store.GetAsync("memory.places", [new FeatureId("1")]));
+    }
+
+    [Fact]
+    public async Task Write_rejects_a_null_batch()
+    {
+        var store = new MemoryStore();
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() => store.WriteAsync("memory.places", null!));
+    }
+
+    [Fact]
+    public async Task Write_to_an_unknown_dataset_is_a_not_found()
+    {
+        var store = new MemoryStore();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            store.WriteAsync("memory.nope", Batch(Point("1", "Berlin", 13.4, 52.5))));
+
+        Assert.Equal(SpatialException.NotFound, failure.Code);
+    }
+
+    [Fact]
+    public async Task Write_with_an_unknown_transaction_is_rejected()
+    {
+        var store = new MemoryStore();
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            store.WriteAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), "nope"));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Empty((await store.ScanAsync("memory.places")).SelectMany(batch => batch.Features));
+    }
+
+    [Fact]
+    public async Task Write_inside_a_transaction_rolls_back_with_it()
+    {
+        var store = new MemoryStore();
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
+
+        var handle = await store.BeginAsync();
+        await store.WriteAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), handle);
+        Assert.Single((await store.ScanAsync("memory.places")).SelectMany(batch => batch.Features));
+        Assert.True(await store.RollbackAsync(handle));
+
+        Assert.Empty((await store.ScanAsync("memory.places")).SelectMany(batch => batch.Features));
+    }
+
+    [Fact]
+    public async Task Write_observes_cancellation()
+    {
+        var store = new MemoryStore();
+        var canceled = new CancellationToken(canceled: true);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            store.WriteAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), cancellationToken: canceled));
+    }
 }
