@@ -90,6 +90,119 @@ internal static class FeatureQueryEngine
     }
 
     /// <summary>
+    /// Executes a service-level query (S1 query-feature-service/) and writes
+    /// the <c>{"layers": [...]}</c> response: one feature set, count, or id
+    /// list per layer, in layer-id order. Each layer already carries its
+    /// effective query (shared parameters plus its <c>layerDefs</c>
+    /// overrides), so this method only matches, pages and projects per layer.
+    /// Layer-level result shapes (extent, distinct, statistics, unique ids)
+    /// are rejected by <see cref="FeatureServiceQuery.RejectLayerOnlyShapes"/>
+    /// before this runs; only the full, count and ids shapes arrive here.
+    /// </summary>
+    internal static async Task<IResult> ServiceQueryAsync(
+        IReadOnlyList<ServiceLayerQuery> layers,
+        IFeatureStore store,
+        EsriFeatureQuery shared,
+        IGeometryOperations operations,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(layers);
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(shared);
+        FeatureServiceQuery.RejectLayerOnlyShapes(shared);
+        var ordered = layers.OrderBy(layer => layer.Id).ToArray();
+        var matched = new List<(ServiceLayerQuery Layer, List<MatchedFeature> Matches)>(ordered.Length);
+        foreach (var layer in ordered)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
+            var scheme = EsriObjectIdScheme.For(layer.Description);
+            var queryGeometry = TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
+            matched.Add((layer, await MatchAsync(layer.Description, store, layer.Query, queryGeometry, operations, scheme, cancellationToken)));
+        }
+
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("layers");
+            writer.WriteStartArray();
+            foreach (var (layer, matches) in matched)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                WriteServiceLayer(writer, layer, matches, transforms, cancellationToken);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        });
+    }
+
+    /// <summary>
+    /// Writes one service-query layer entry (S1 response syntax): the full
+    /// feature set, the count, or the id list. Paging applies per layer, and
+    /// tables omit the layer-only <c>geometryType</c>/<c>spatialReference</c>
+    /// keys, exactly as the layer query shapes they mirror.
+    /// </summary>
+    private static void WriteServiceLayer(
+        Utf8JsonWriter writer,
+        ServiceLayerQuery layer,
+        List<MatchedFeature> matches,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var ordered = ApplyOrderBy(matches, CompileOrderBy(layer.Description, layer.Query));
+        writer.WriteStartObject();
+        writer.WriteNumber("id", layer.Id);
+        if (layer.Query.ReturnCountOnly)
+        {
+            writer.WriteNumber("count", ordered.Count);
+            writer.WriteEndObject();
+            return;
+        }
+
+        if (layer.Query.ReturnIdsOnly)
+        {
+            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
+            writer.WritePropertyName("objectIds");
+            writer.WriteStartArray();
+            foreach (var match in ordered)
+            {
+                writer.WriteNumberValue(match.ObjectId);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+            return;
+        }
+
+        var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
+        var page = Page(ordered, layer.Query);
+        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, layer.Query.OutFields, layer.Query.ReturnGeometry, layer.Query.ReturnEnvelope);
+        writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
+        writer.WriteString("globalIdFieldName", string.Empty);
+        if (!layer.IsTable)
+        {
+            writer.WriteString("geometryType", EsriLayerModel.GeometryType(layer.Description.GeometryType));
+            WriteSpatialReference(writer, layer.Query.OutSr ?? layerCrs);
+        }
+
+        WriteFields(writer, layer.Description);
+        writer.WritePropertyName("features");
+        writer.WriteStartArray();
+        foreach (var match in page.Items)
+        {
+            var transformed = TransformFeature(match, layer.Query, layerCrs, transforms, cancellationToken);
+            EsriFeatureCodec.Write(writer, transformed.Feature, options with { ObjectId = transformed.ObjectId });
+        }
+
+        writer.WriteEndArray();
+        writer.WriteBoolean("exceededTransferLimit", page.Exceeded);
+        WritePaginationToken(writer, page.NextToken);
+        writer.WriteEndObject();
+    }
+
+    /// <summary>
     /// Reads one feature by its Esri <c>OBJECTID</c> (the Feature resource,
     /// spec §9.1.2) and writes the <c>{"feature": ...}</c> envelope. The
     /// object id is resolved exactly as <c>query</c> does — the identity

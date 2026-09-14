@@ -107,6 +107,8 @@ shape is noted in brackets.
 | 0054 | ImageServer missing resources: legend, find, statistics/histograms, attribute table, thumbnail/metadata. |
 | 0055 | MapServer legend, queryDomains/queryLegends and per-layer generateRenderer are adapter projections of the persisted MapLibre style. |
 | 0056 | Feature modern query params (`returnEnvelope`, `resultPaginationToken`, `defaultSR`, `uniqueIds`) are an adapter projection; no SDK/Core change. |
+| 0057 | Feature percentile statistics and capability-flag honesty (COUNT DISTINCT, percentile type, five advertised flags). |
+| 0060 | Feature write-model extensions: service-level query, `generateRenderer` reuse, `validateSQL`, aggregation honesty, attachment store-model decision. |
 
 ## How to change the architecture
 
