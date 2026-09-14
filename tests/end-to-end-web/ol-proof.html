@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>OL client-compat proof</title>
+    <link rel="stylesheet" href="./ol-proof.entry.css" />
+    <style>
+      html, body { margin: 0; padding: 0; }
+      #map { width: 960px; height: 600px; }
+    </style>
+    <script>
+      // Initialised before the bundle so the spec can always read status.
+      window.__proof = { ready: false, wmsTiles: 0, xyzTiles: 0, vectorCount: null, gfi: null, errors: [] };
+      window.addEventListener("error", (event) => {
+        window.__proof.errors.push(String(event.message || event.error).slice(0, 300));
+      });
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script src="./ol-proof.entry.bundle.js"></script>
+  </body>
+</html>

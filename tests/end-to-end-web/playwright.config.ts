@@ -8,6 +8,10 @@ import { defineConfig } from "@playwright/test";
  */
 const baseUrl = process.env.WORKBENCH_URL ?? "http://127.0.0.1:5999";
 
+// The T-068 proof pages (static OL/Leaflet scaffolding with npm-bundled
+// clients) are served here, reverse-proxying /ogc + /api to the host so the
+// pages stay same-origin with the services they prove.
+
 export default defineConfig({
   testDir: "./tests",
   timeout: 90_000,
@@ -19,6 +23,12 @@ export default defineConfig({
   use: {
     baseURL: baseUrl,
     trace: "retain-on-failure",
+  },
+  webServer: {
+    command: "node ./proof-server.mjs",
+    port: Number(process.env.PROOF_PORT ?? 5898),
+    timeout: 60_000,
+    reuseExistingServer: !process.env.CI,
   },
   projects: [
     {
