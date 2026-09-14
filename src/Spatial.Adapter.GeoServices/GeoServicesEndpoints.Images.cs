@@ -6,9 +6,12 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The Image Service routes (spec §8, ADR-0051): root metadata, raster info,
-/// catalog item/listing/query, identify, <c>exportImage</c>, and the catalog
-/// file surface (<c>download</c>, the Raster Image/Thumbnail/File resources).
+/// The Image Service routes (spec §8, ADR-0051/0054): root metadata, raster
+/// info, catalog item/listing/query, identify, <c>exportImage</c>, the catalog
+/// file surface (<c>download</c>, the Raster Image/Thumbnail/File resources),
+/// and the missing-resource closeout: <c>legend</c>, <c>find</c>, stored
+/// <c>statistics</c>, <c>computeHistograms</c>, <c>rasterAttributeTable</c>
+/// and the service-level <c>thumbnail</c> and <c>metadata</c>.
 /// The ImageServer is the GeoServices projection of a
 /// <see cref="MapService.Image"/> publication whose layer names a dataset
 /// in the keyed <c>raster</c> store; the adapter consumes only the SDK
@@ -19,6 +22,9 @@ internal static class ImageServerEndpoints
 {
     /// <summary>The longest side of a Raster Thumbnail (spec §8.3); the aspect ratio is preserved.</summary>
     private const int ThumbnailMaxSize = 200;
+
+    /// <summary>The square side of a legend swatch (the reference serves 20x20 symbols).</summary>
+    private const int LegendSwatchSize = 20;
 
     internal static void MapImageServer(
         RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry, GeoServicesOptions options)
@@ -37,6 +43,27 @@ internal static class ImageServerEndpoints
         group.MapMethods("/{service}/ImageServer/download", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageDownload(catalog, registry, service, context, stores, options, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/legend", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageLegend(catalog, registry, service, context, stores, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/find", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            ImageFind(catalog, registry, service, context, stores, transforms, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/statistics", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageStatistics(catalog, registry, service, context, stores, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/computeHistograms", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageComputeHistograms(catalog, registry, service, context, stores, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/rasterAttributeTable", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageAttributeTable(catalog, registry, service, context, stores, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/thumbnail", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageThumbnail(catalog, registry, service, context, stores, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/metadata", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            ImageMetadata(catalog, registry, service, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/file", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageFile(catalog, registry, service, context, stores, options, cancellationToken));
@@ -124,6 +151,225 @@ internal static class ImageServerEndpoints
             var query = EsriFeatureQuery.Parse(parameters, layerCrs);
             var items = await image.Catalogue.ListItemsAsync(image.Dataset, cancellationToken);
             return RasterCatalogQuery.Query(image.Description, items, query, operations, transforms, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The Legend resource (S3 legend-image-service/): one entry per band
+    /// with the 20x20 dataset render as the swatch. The render is what
+    /// <c>exportImage</c> serves; <c>renderingRule</c>/<c>variable</c> would
+    /// change the symbology and are rejected by name.
+    /// </summary>
+    private static async Task<IResult> ImageLegend(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            RejectExportParameter(parameters, "renderingRule", "raster functions are not supported.");
+            RejectExportParameter(parameters, "variable", "multidimensional variables are not supported.");
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            var info = image.Description.Raster;
+            var bandIds = ImageService.ParseLegendBandIds(parameters.Get("bandIds"), info.BandCount);
+            if (info.Extent.IsEmpty)
+            {
+                throw EsriInteropException.Invalid($"Image Service '{service}' has no extent to render a legend from.");
+            }
+
+            var viewport = new RasterViewport(info.Extent, LegendSwatchSize, LegendSwatchSize, info.Crs);
+            var exported = await image.Catalogue.ExportAsync(
+                image.Dataset, new RasterExportRequest(viewport, RasterFormat.Png), cancellationToken);
+            return EsriJson.Value(ImageService.Legend(image.Description, exported.Content, exported.Width, exported.Height, bandIds));
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>The catalog text search over the raster catalog's string fields.</summary>
+    private static async Task<IResult> ImageFind(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            RequireCatalog(image.Description, service);
+            var items = await image.Catalogue.ListItemsAsync(image.Dataset, cancellationToken);
+            return ImageFindEngine.Find(image.Description, items, parameters, transforms, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The stored band statistics resource (S3 statistics/): the dataset's
+    /// configured statistics, or a typed <c>not.found</c> when the dataset
+    /// carries none. Computation is the <c>computeHistograms</c> path.
+    /// </summary>
+    private static async Task<IResult> ImageStatistics(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            var statistics = image.Description.Raster.BandStatistics;
+            if (statistics is not { Count: > 0 })
+            {
+                throw new EsriInteropException(
+                    EsriErrorCodes.NotFound, $"Image Service '{service}' has no stored band statistics.");
+            }
+
+            return EsriJson.Value(ImageService.Statistics(statistics));
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The Compute Histograms operation (spec §8): per-band histograms over
+    /// the requested envelope or polygon. Mosaic, rendering, pixel-size,
+    /// time and multidimensional selectors would change the pixels and are
+    /// rejected by name; the provider projects and clips to the raster.
+    /// </summary>
+    private static async Task<IResult> ImageComputeHistograms(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            var geometryType = parameters.Require("geometryType");
+            if (!string.Equals(geometryType, "esriGeometryEnvelope", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(geometryType, "esriGeometryPolygon", StringComparison.OrdinalIgnoreCase))
+            {
+                throw EsriInteropException.Invalid(
+                    $"'geometryType' must be esriGeometryEnvelope or esriGeometryPolygon, got '{geometryType}'.");
+            }
+
+            RejectExportParameter(parameters, "mosaicRule", "on-the-fly mosaicking is not supported.");
+            RejectExportParameter(parameters, "renderingRule", "raster functions are not supported.");
+            RejectExportParameter(parameters, "pixelSize", "histograms are computed at the base resolution.");
+            RejectExportParameter(parameters, "time", "the raster catalog carries no temporal dimension.");
+            RejectExportParameter(parameters, "processAsMultidimensional", "multidimensional rasters are not supported.");
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            var rasterCrs = image.Description.Raster.Crs;
+            var geometry = EsriValueParser.ParseGeometry(
+                parameters.Require("geometry"), CoordinateReference.Epsg(MapServerResources.SridOf(rasterCrs)));
+            var bounds = geometry.Envelope ?? Envelope.Empty;
+            if (bounds.IsEmpty)
+            {
+                throw EsriInteropException.Invalid("The 'geometry' parameter must cover a non-empty area.");
+            }
+
+            var histograms = await image.Catalogue.ComputeHistogramsAsync(
+                image.Dataset,
+                new RasterHistogramRequest(bounds, geometry.CoordinateReference?.ToString() ?? rasterCrs),
+                cancellationToken);
+            return EsriJson.Value(ImageService.Histograms(histograms));
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The raster attribute table resource (S3 raster-attribute-table/): the
+    /// configured value-frequency table, or a typed <c>not.found</c> when
+    /// the dataset carries none (the resource exists only if the raster has
+    /// a table, like the reference).
+    /// </summary>
+    private static async Task<IResult> ImageAttributeTable(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            RejectExportParameter(parameters, "renderingRule", "raster functions are not supported.");
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            var table = image.Description.Raster.AttributeTable
+                ?? throw new EsriInteropException(
+                    EsriErrorCodes.NotFound, $"Image Service '{service}' does not have a raster attribute table.");
+            return ImageService.AttributeTable(table);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The service-level Thumbnail: the whole dataset reduced like one
+    /// catalog item's thumbnail (spec §8.3), streamed or as a JSON href.
+    /// </summary>
+    private static async Task<IResult> ImageThumbnail(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var format = parameters.Get("f");
+            var stream = string.IsNullOrWhiteSpace(format) || string.Equals(format, "image", StringComparison.OrdinalIgnoreCase);
+            if (!stream)
+            {
+                EsriFormat.Ensure(format);
+            }
+
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            var viewport = ImageService.ThumbnailViewport(image.Description.Raster, ThumbnailMaxSize);
+            var exported = await image.Catalogue.ExportAsync(
+                image.Dataset, new RasterExportRequest(viewport, RasterFormat.Png), cancellationToken);
+            if (stream)
+            {
+                GeoServicesResponses.WriteImageHeaders(context, exported);
+                return Results.Bytes(exported.Content, exported.MediaType);
+            }
+
+            return EsriJson.Value(ImageService.Export(
+                GeoServicesResponses.ExportHref(context), viewport, MapServerResources.SridOf(image.Description.Raster.Crs)));
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The service-level Metadata: the described dataset as JSON. The engine
+    /// keeps no authored (ISO/FGDC) metadata store, so unlike the reference
+    /// this is a JSON projection, not an XML document (ADR-0054).
+    /// </summary>
+    private static async Task<IResult> ImageMetadata(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
+        IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
+            return EsriJson.Value(ImageService.Metadata(image.Description, image.Copyright));
         }
         catch (Exception exception)
         {

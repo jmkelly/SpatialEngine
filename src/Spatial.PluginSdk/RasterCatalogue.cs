@@ -44,10 +44,51 @@ public enum RasterInterpolation
 public sealed record RasterBandStatistics(double Min, double Max, double Mean, double StandardDeviation);
 
 /// <summary>
+/// One value-frequency column of a raster attribute table (the engine analogue
+/// of an ArcGIS VAT): its name, core kind, nullability and, for text columns,
+/// maximum length. The first field is the row identity and renders as
+/// <c>esriFieldTypeOID</c> (ADR-0054).
+/// </summary>
+public sealed record RasterAttributeField(string Name, AttributeKind Kind, bool Nullable = true, int? Length = null);
+
+/// <summary>
+/// The categorical mapping of pixel values of one raster dataset (spec §8,
+/// the <c>rasterAttributeTable</c> resource): the object-id field name, the
+/// ordered columns and one core-typed row per class, each row holding
+/// <see cref="Fields"/>-ordered <see cref="AttributeValue"/> entries (ADR-0054).
+/// A dataset without a table carries <see langword="null"/> and its
+/// resource reports a typed <c>not.found</c> instead of an empty table.
+/// </summary>
+public sealed record RasterAttributeTable(
+    string ObjectIdField,
+    IReadOnlyList<RasterAttributeField> Fields,
+    IReadOnlyList<IReadOnlyList<AttributeValue>> Rows);
+
+/// <summary>
+/// A computed histogram of one raster band (spec §8, the
+/// <c>computeHistograms</c> operation): <see cref="Counts"/> bin counts over
+/// the half-open range [<see cref="Min"/>, <see cref="Max"/>];
+/// <see cref="Size"/> is the bin count (ADR-0054).
+/// </summary>
+public sealed record RasterHistogram(double Min, double Max, IReadOnlyList<long> Counts)
+{
+    /// <summary>The number of bins in <see cref="Counts"/>.</summary>
+    public int Size => Counts.Count;
+}
+
+/// <summary>
+/// A histogram computation request (spec §8 <c>computeHistograms</c>): the
+/// bounds to compute over, in <see cref="Crs"/>. Bounds already lie inside
+/// the raster extent; anything else is <c>invalid.arguments</c> (ADR-0054).
+/// </summary>
+public sealed record RasterHistogramRequest(Envelope Bounds, string Crs);
+
+/// <summary>
 /// Core-typed metadata for one raster (ADR-0051): its georeferenced extent,
 /// CRS identity, pixel size, pixel grid dimensions, band count and pixel type,
-/// with optional stored band statistics. No raster values and no third-party
-/// type cross the contract.
+/// with optional stored band statistics and an optional raster attribute
+/// table (ADR-0054). No raster values and no third-party type cross the
+/// contract.
 /// </summary>
 public sealed record RasterInfo(
     Envelope Extent,
@@ -62,7 +103,8 @@ public sealed record RasterInfo(
     int BlockWidth = 0,
     int BlockHeight = 0,
     int FirstPyramidLevel = 0,
-    int MaxPyramidLevel = 0);
+    int MaxPyramidLevel = 0,
+    RasterAttributeTable? AttributeTable = null);
 
 /// <summary>
 /// The description of one raster dataset (ADR-0051). <see cref="HasCatalog"/>
@@ -191,4 +233,12 @@ public interface IRasterCatalogue
     /// </summary>
     Task<RasterFileContent> ReadFileAsync(
         string dataset, string fileId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Computes one histogram per band over the requested bounds of a dataset
+    /// (spec §8 <c>computeHistograms</c>, ADR-0054). Bounds outside the raster
+    /// extent are <c>invalid.arguments</c>; only 8-bit bands are supported.
+    /// </summary>
+    Task<IReadOnlyList<RasterHistogram>> ComputeHistogramsAsync(
+        string dataset, RasterHistogramRequest request, CancellationToken cancellationToken = default);
 }

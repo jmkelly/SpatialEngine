@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Interop.Esri;
@@ -232,6 +235,158 @@ public sealed class ImageServiceTests
         Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds(null));
         Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds(" "));
         Assert.Throws<EsriInteropException>(() => ImageService.ParseRasterIds("abc"));
+    }
+
+    [Fact]
+    public void Info_includes_stored_statistics_per_band()
+    {
+        var info = ImageService.Info(Raster());
+
+        Assert.Equal(3, info.Statistics!.Count);
+        Assert.Equal([0.0, 255.0, 82.707, 39.838], info.Statistics[0]);
+        Assert.Equal([0.0, 254.0, 107.448, 37.735], info.Statistics[1]);
+    }
+
+    [Fact]
+    public void Info_omits_statistics_when_none_are_stored()
+    {
+        var info = ImageService.Info(Raster() with { BandStatistics = null });
+
+        Assert.Null(info.Statistics);
+    }
+
+    [Fact]
+    public void Legend_labels_one_band_entry_with_a_stable_url()
+    {
+        var legend = ImageService.Legend(Description(hasCatalog: false), [1, 2, 3], 20, 20, [0]);
+
+        var layer = Assert.Single(legend.Layers);
+        Assert.Equal(0, layer.LayerId);
+        Assert.Equal("wsiearth.tif", layer.LayerName);
+        Assert.Equal("Raster Layer", layer.LayerType);
+        Assert.Equal("Stretched", layer.LegendType);
+        var entry = Assert.Single(layer.Legend);
+        Assert.Equal("Band_1", entry.Label);
+        Assert.Equal("image/png", entry.ContentType);
+        Assert.Equal(20, entry.Width);
+        Assert.Equal(20, entry.Height);
+        Assert.Equal(Convert.ToBase64String([1, 2, 3]), entry.ImageData);
+        Assert.Equal(32, entry.Url.Length);
+        Assert.Equal(entry.Url, ImageService.Legend(Description(hasCatalog: false), [9], 20, 20, [0]).Layers[0].Legend[0].Url);
+    }
+
+    [Fact]
+    public void Legend_names_rgb_composites()
+    {
+        var legend = ImageService.Legend(Description(hasCatalog: false), [], 20, 20, [0, 1, 2]);
+
+        Assert.Equal("RGB Composite", Assert.Single(legend.Layers).LegendType);
+        Assert.Equal(["Band_1", "Band_2", "Band_3"], legend.Layers[0].Legend.Select(entry => entry.Label));
+    }
+
+    [Fact]
+    public void Parse_legend_band_ids_defaults_to_all_bands_and_rejects_unknown_ids()
+    {
+        Assert.Equal([0L, 1L, 2L], ImageService.ParseLegendBandIds(null, 3));
+        Assert.Equal([2L, 0L], ImageService.ParseLegendBandIds("2,0", 3));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseLegendBandIds("3", 3));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseLegendBandIds("-1", 3));
+        Assert.Throws<EsriInteropException>(() => ImageService.ParseLegendBandIds("x", 3));
+    }
+
+    [Fact]
+    public void Statistics_maps_stored_bands_with_full_resolution_skips()
+    {
+        var body = ImageService.Statistics(
+        [
+            new RasterBandStatistics(0, 255, 82.707, 39.838),
+            new RasterBandStatistics(1, 254, 10.0, 2.0),
+        ]);
+
+        Assert.Equal(2, body.Statistics.Count);
+        Assert.Equal(0, body.Statistics[0].Min);
+        Assert.Equal(255, body.Statistics[0].Max);
+        Assert.Equal(82.707, body.Statistics[0].Mean, 3);
+        Assert.Equal(39.838, body.Statistics[0].StandardDeviation, 3);
+        Assert.Equal(1, body.Statistics[0].SkipX);
+        Assert.Equal(1, body.Statistics[0].SkipY);
+        Assert.Equal(0, body.Statistics[0].Count);
+    }
+
+    [Fact]
+    public void Histograms_passes_provider_counts_through()
+    {
+        var body = ImageService.Histograms([new RasterHistogram(-0.5, 255.5, [10L, 20L])]);
+
+        var histogram = Assert.Single(body.Histograms);
+        Assert.Equal(2, histogram.Size);
+        Assert.Equal(-0.5, histogram.Min);
+        Assert.Equal(255.5, histogram.Max);
+        Assert.Equal([10L, 20L], histogram.Counts);
+    }
+
+    [Fact]
+    public void Metadata_projects_the_described_dataset()
+    {
+        var metadata = ImageService.Metadata(Description(hasCatalog: false), "ESRI");
+
+        Assert.Equal("wsiearth.tif", metadata.Name);
+        Assert.Equal(3, metadata.BandCount);
+        Assert.Equal("U8", metadata.PixelType);
+        Assert.Equal("esriImageServiceDataTypeRGB", metadata.ServiceDataType);
+        Assert.Equal("ESRI", metadata.CopyrightText);
+        Assert.Equal(4326, metadata.SpatialReference!.Wkid);
+        Assert.Equal([0.0, 0.0, 0.0], metadata.MinValues);
+    }
+
+    [Fact]
+    public void Attribute_table_writes_oid_fields_and_rows()
+    {
+        var result = ImageService.AttributeTable(AttributeTable());
+
+        var body = JsonDocument.Parse(ReadBody(result)).RootElement;
+        Assert.Equal("OBJECTID", body.GetProperty("objectIdFieldName").GetString());
+        var fields = body.GetProperty("fields").EnumerateArray().ToArray();
+        Assert.Equal(["OID", "Value", "ClassName"], fields.Select(field => field.GetProperty("name").GetString()!));
+        Assert.Equal("esriFieldTypeOID", fields[0].GetProperty("type").GetString());
+        Assert.Equal("esriFieldTypeInteger", fields[1].GetProperty("type").GetString());
+        Assert.Equal("esriFieldTypeString", fields[2].GetProperty("type").GetString());
+        Assert.True(fields[0].GetProperty("domain").ValueKind == System.Text.Json.JsonValueKind.Null);
+        var rows = body.GetProperty("features").EnumerateArray().Select(feature => feature.GetProperty("attributes")).ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.Equal(0, rows[0].GetProperty("OID").GetInt64());
+        Assert.Equal("Background", rows[0].GetProperty("ClassName").GetString());
+        Assert.Equal("Bright", rows[1].GetProperty("ClassName").GetString());
+    }
+
+    [Fact]
+    public void Attribute_table_rejects_ragged_rows_and_empty_columns()
+    {
+        var table = AttributeTable();
+        var ragged = table with { Rows = [[AttributeValue.FromInt64(0)]] };
+        Assert.Throws<EsriInteropException>(() => ImageService.AttributeTable(ragged));
+        var empty = table with { Fields = [] };
+        Assert.Throws<EsriInteropException>(() => ImageService.AttributeTable(empty));
+    }
+
+    private static RasterAttributeTable AttributeTable() =>
+        new(
+            "OBJECTID",
+            [new RasterAttributeField("OID", AttributeKind.Int64, Nullable: false),
+             new RasterAttributeField("Value", AttributeKind.Int64, Nullable: false),
+             new RasterAttributeField("ClassName", AttributeKind.String, Length: 50)],
+            [[AttributeValue.FromInt64(0), AttributeValue.FromInt64(0), AttributeValue.FromString("Background")],
+             [AttributeValue.FromInt64(1), AttributeValue.FromInt64(87), AttributeValue.FromString("Bright")]]);
+
+    private static string ReadBody(IResult result)
+    {
+        // The adapter writes RAT bodies through a raw JsonWriter; execute the
+        // result against a default context to capture the payload.
+        var context = new DefaultHttpContext { Response = { Body = new MemoryStream() } };
+        context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
+        result.ExecuteAsync(context).GetAwaiter().GetResult();
+        context.Response.Body.Seek(0, SeekOrigin.Begin);
+        return new StreamReader(context.Response.Body).ReadToEnd();
     }
 
     private static RasterCatalogItem Item()
