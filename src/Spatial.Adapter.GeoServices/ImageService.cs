@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
@@ -99,7 +101,7 @@ internal static class ImageService
     private static double MaxPixelSize(RasterInfo info) =>
         info.MaxPyramidLevel > 0 ? info.PixelSizeX * Math.Pow(2, info.MaxPyramidLevel) : 0;
 
-    /// <summary>Builds the Raster Info resource (spec §8.4.3).</summary>
+    /// <summary>Builds the Raster Info resource (spec §8.4.3), with stored per-band statistics when present.</summary>
     public static EsriRasterInfo Info(RasterInfo info)
     {
         var srid = MapServerResources.SridOf(info.Crs);
@@ -113,8 +115,161 @@ internal static class ImageService
             info.BandCount,
             PixelType(info.PixelType),
             info.FirstPyramidLevel,
-            info.MaxPyramidLevel);
+            info.MaxPyramidLevel,
+            info.BandStatistics?.Select(stat => (IReadOnlyList<double>)new[] { stat.Min, stat.Max, stat.Mean, stat.StandardDeviation }).ToArray());
     }
+
+    /// <summary>
+    /// Builds the Legend resource (S3 legend-image-service/): one entry per
+    /// band labelled <c>Band_N</c> (the Esri <c>bandNames</c> convention),
+    /// each carrying the 20x20 dataset render as base64 <c>imageData</c>.
+    /// The render is what <c>exportImage</c> serves, so the swatch is honest
+    /// without inventing a renderer the engine does not have.
+    /// </summary>
+    public static EsriImageLegend Legend(
+        RasterDatasetDescription description, byte[] swatch, int width, int height, IReadOnlyList<long> bandIds) =>
+        new(
+        [
+            new EsriImageLegendLayer(
+                0,
+                description.Name,
+                "Raster Layer",
+                0,
+                0,
+                LegendType(bandIds.Count),
+                [.. bandIds.Select(id => new EsriImageLegendEntry(
+                    $"Band_{id + 1}",
+                    LegendUrl(description.Dataset, id),
+                    Convert.ToBase64String(swatch),
+                    "image/png",
+                    height,
+                    width))]),
+        ]);
+
+    /// <summary>
+    /// Parses the optional legend <c>bandIds</c> (0-based): all bands by
+    /// default, otherwise the named bands in order. Unknown ids are invalid
+    /// arguments rather than silently dropped entries.
+    /// </summary>
+    public static IReadOnlyList<long> ParseLegendBandIds(string? value, int bandCount)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [.. Enumerable.Range(0, bandCount).Select(id => (long)id)];
+        }
+
+        var ids = EsriValueParser.ParseInt64s(value, "bandIds");
+        foreach (var id in ids)
+        {
+            if (id < 0 || id >= bandCount)
+            {
+                throw EsriInteropException.Invalid(
+                    $"Band id {id} is out of range: the service has {bandCount} band(s) and bandIds are 0-based.");
+            }
+        }
+
+        return ids;
+    }
+
+    /// <summary>Builds the stored band statistics resource (S3 statistics/).</summary>
+    public static EsriImageStatistics Statistics(IReadOnlyList<RasterBandStatistics> statistics) =>
+        new([.. statistics.Select(stat => new EsriBandStatistics(
+            stat.Min, stat.Max, stat.Mean, stat.StandardDeviation, SkipX: 1, SkipY: 1, Count: 0))]);
+
+    /// <summary>Builds the computed histograms response (spec §8 computeHistograms).</summary>
+    public static EsriRasterHistograms Histograms(IReadOnlyList<RasterHistogram> histograms) => new(histograms);
+
+    /// <summary>
+    /// Builds the service metadata record: the described dataset as JSON.
+    /// The engine keeps no authored (ISO/FGDC) metadata store, so unlike the
+    /// Esri <c>metadata</c> resource this is a JSON projection, not XML.
+    /// </summary>
+    public static EsriImageMetadata Metadata(RasterDatasetDescription description, string? copyright)
+    {
+        var info = description.Raster;
+        var srid = MapServerResources.SridOf(info.Crs);
+        var statistics = info.BandStatistics;
+        return new EsriImageMetadata(
+            description.Name,
+            description.Description,
+            Extent(info.Extent, srid),
+            EsriLayerModel.SpatialReference(srid),
+            info.BandCount,
+            PixelType(info.PixelType),
+            ServiceDataType(info),
+            copyright,
+            statistics?.Select(stat => stat.Min).ToArray(),
+            statistics?.Select(stat => stat.Max).ToArray(),
+            statistics?.Select(stat => stat.Mean).ToArray(),
+            statistics?.Select(stat => stat.StandardDeviation).ToArray());
+    }
+
+    /// <summary>
+    /// Writes the raster attribute table (S3 raster-attribute-table/): the
+    /// NLCD-shaped <c>objectIdFieldName/fields/features</c> body. The first
+    /// column is the row identity (<c>esriFieldTypeOID</c>); rows must carry
+    /// one value per column.
+    /// </summary>
+    public static IResult AttributeTable(RasterAttributeTable table) => EsriJson.Write(writer =>
+    {
+        if (table.Fields.Count == 0)
+        {
+            throw EsriInteropException.Invalid("The raster attribute table has no columns.");
+        }
+
+        writer.WriteStartObject();
+        writer.WriteString("objectIdFieldName", table.ObjectIdField);
+        writer.WritePropertyName("fields");
+        writer.WriteStartArray();
+        for (var i = 0; i < table.Fields.Count; i++)
+        {
+            var field = table.Fields[i];
+            writer.WriteStartObject();
+            writer.WriteString("name", field.Name);
+            writer.WriteString("type", i == 0 ? EsriFieldType.Oid : EsriFieldType.FromAttributeKind(field.Kind));
+            writer.WriteString("alias", field.Name);
+            if (field.Length.HasValue)
+            {
+                writer.WriteNumber("length", field.Length.Value);
+            }
+
+            writer.WriteNull("domain");
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WritePropertyName("features");
+        writer.WriteStartArray();
+        foreach (var row in table.Rows)
+        {
+            if (row.Count != table.Fields.Count)
+            {
+                throw EsriInteropException.Invalid(
+                    $"The raster attribute table row has {row.Count} values but the table declares {table.Fields.Count} columns.");
+            }
+
+            writer.WriteStartObject();
+            writer.WritePropertyName("attributes");
+            writer.WriteStartObject();
+            for (var i = 0; i < table.Fields.Count; i++)
+            {
+                EsriAttributeCodec.Write(writer, table.Fields[i].Name, row[i]);
+            }
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    });
+
+    /// <summary>The renderer flavour the legend describes: raw multi-band renders read as RGB composites.</summary>
+    private static string LegendType(int selected) => selected is 3 or 4 ? "RGB Composite" : "Stretched";
+
+    /// <summary>A stable opaque swatch id: 32 hex chars like the Esri reference.</summary>
+    private static string LegendUrl(string dataset, long bandId) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{dataset}:{bandId}")).AsSpan(0, 16)).ToLowerInvariant();
 
     /// <summary>Builds the Export Image JSON response (spec §8.0.4); the adapter owns the href.</summary>
     public static EsriImageExportResponse Export(string href, RasterViewport viewport, int srid) =>

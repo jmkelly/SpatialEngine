@@ -41,8 +41,8 @@ internal sealed class RasterOptions
                 source.PixelSizeY,
                 source.Description,
                 Statistics(source.Statistics),
-                attributes,
-                Items(source, attributes)));
+                CatalogAttributes: attributes,
+                Items: Items(source, attributes)));
         }
 
         return descriptors;

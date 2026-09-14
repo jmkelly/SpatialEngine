@@ -31,10 +31,10 @@ public sealed record RasterCatalogItemDescriptor(
 /// <summary>
 /// A configured raster dataset (ADR-0051): the georeferencing the managed
 /// NetVips path cannot read from the file (CRS, extent, pixel size), an
-/// optional description and stored band statistics, and an optional catalog.
-/// Width/height/band count/pixel type are read from <see cref="Path"/>. A
-/// dataset with <see cref="Items"/> is a raster catalog; a dataset without is
-/// a single raster.
+/// optional description, stored band statistics, an optional raster attribute
+/// table (ADR-0054) and an optional catalog. Width/height/band count/pixel
+/// type are read from <see cref="Path"/>. A dataset with <see cref="Items"/>
+/// is a raster catalog; a dataset without is a single raster.
 /// </summary>
 public sealed record RasterDatasetDescriptor(
     string Name,
@@ -45,5 +45,6 @@ public sealed record RasterDatasetDescriptor(
     double PixelSizeY,
     string? Description = null,
     IReadOnlyList<RasterBandStatistics>? Statistics = null,
+    RasterAttributeTable? AttributeTable = null,
     IReadOnlyList<RasterAttributeDescriptor>? CatalogAttributes = null,
     IReadOnlyList<RasterCatalogItemDescriptor>? Items = null);
