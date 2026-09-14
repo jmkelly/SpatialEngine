@@ -106,6 +106,7 @@ shape is noted in brackets.
 | 0053 | A Map is the unit of authoring and exposure; its Feature/Map/Tiles/WMS/WFS/Image services are projections of one map. |
 | 0054 | ImageServer missing resources: legend, find, statistics/histograms, attribute table, thumbnail/metadata. |
 | 0055 | MapServer legend, queryDomains/queryLegends and per-layer generateRenderer are adapter projections of the persisted MapLibre style. |
+| 0056 | Feature modern query params (`returnEnvelope`, `resultPaginationToken`, `defaultSR`, `uniqueIds`) are an adapter projection; no SDK/Core change. |
 
 ## How to change the architecture
 

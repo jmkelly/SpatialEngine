@@ -75,11 +75,16 @@ internal static class FeatureQueryEngine
             return Statistics(dataset, ordered, query);
         }
 
+        if (query.ReturnUniqueIdsOnly)
+        {
+            return UniqueIdsOnly(dataset, ordered);
+        }
+
         var page = Page(ordered, query);
         var features = page.Items
             .Select(item => TransformFeature(item, query, layerCrs, transforms, cancellationToken))
             .ToArray();
-        return WriteFeatures(dataset, layerCrs, query, features, page.Exceeded);
+        return WriteFeatures(dataset, layerCrs, query, features, page.Exceeded, page.NextToken);
     }
 
     /// <summary>
@@ -145,7 +150,8 @@ internal static class FeatureQueryEngine
                     $"The identity column of layer '{dataset.Id}' is not an integer.");
             }
 
-            if (Matches(query, feature, objectId, queryGeometry, operations, cancellationToken))
+            var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
+            if (Matches(query, feature, objectId, queryGeometry, operations, cancellationToken, uniqueId))
             {
                 matches.Add(new MatchedFeature(objectId, feature));
             }
@@ -160,9 +166,19 @@ internal static class FeatureQueryEngine
         long objectId,
         IGeometry? queryGeometry,
         IGeometryOperations operations,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? uniqueId = null)
     {
         if (query.ObjectIds is { } ids && !ids.Contains(objectId))
+        {
+            return false;
+        }
+
+        // T-036: the string-ID filter (spec §9.1.4, 11.5+). A null unique id
+        // never equals a requested id; layers without a string unique-id
+        // model are rejected when the match loops resolve the id.
+        if (query.UniqueIds is { } wanted
+            && (uniqueId is null || !wanted.Contains(uniqueId, StringComparer.Ordinal)))
         {
             return false;
         }
@@ -421,10 +437,46 @@ internal static class FeatureQueryEngine
 
     private static PageResult Page(List<MatchedFeature> matches, EsriFeatureQuery query)
     {
-        var offset = Math.Min(query.ResultOffset ?? 0, matches.Count);
+        var offset = Math.Min(ResolveOffset(query), matches.Count);
         var count = EffectivePageSize(query);
         var items = matches.Skip(offset).Take(count).ToArray();
-        return new PageResult(items, offset + items.Length < matches.Count);
+        var exceeded = offset + items.Length < matches.Count;
+        return new PageResult(items, exceeded, exceeded ? ResultPagination.Encode(offset + items.Length) : null);
+    }
+
+    /// <summary>
+    /// The page start: the opaque <c>resultPaginationToken</c> cursor when
+    /// the client continues a token workflow, else <c>resultOffset</c>. Parse
+    /// already rejects the combination, so the token simply wins by presence.
+    /// </summary>
+    private static int ResolveOffset(EsriFeatureQuery query) =>
+        query.ResultPaginationToken is { } token ? ResultPagination.Decode(token) : query.ResultOffset ?? 0;
+
+    /// <summary>
+    /// The <c>returnUniqueIdsOnly</c> response (spec §9.1.4, 11.5+): the
+    /// string-ID analogue of <see cref="IdsOnly"/>, symmetric in shape.
+    /// Layers without a string unique-id model never reach here — the match
+    /// loops reject the param first — so a missing scheme is defensive.
+    /// </summary>
+    private static IResult UniqueIdsOnly(DatasetDescription dataset, IReadOnlyList<MatchedFeature> matches)
+    {
+        var scheme = EsriUniqueIdScheme.For(dataset)
+            ?? throw EsriInteropException.Invalid(
+                $"The 'returnUniqueIdsOnly' parameter is not supported on layer '{dataset.Id}': the layer has no string unique-id field; address its integer features with 'objectIds'.");
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("uniqueIdFieldName", scheme.FieldName);
+            writer.WritePropertyName("uniqueIds");
+            writer.WriteStartArray();
+            foreach (var match in matches)
+            {
+                writer.WriteStringValue(scheme.Resolve(match.Feature, dataset));
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        });
     }
 
     /// <summary>
@@ -524,7 +576,7 @@ internal static class FeatureQueryEngine
 
     private static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query)
     {
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, feature.ObjectId, query.OutFields, query.ReturnGeometry);
+        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, feature.ObjectId, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -617,10 +669,11 @@ internal static class FeatureQueryEngine
             }
         }
 
-        var offset = Math.Min(query.ResultOffset ?? 0, rows.Count);
+        var offset = Math.Min(ResolveOffset(query), rows.Count);
         var count = EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
-        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, offset + page.Length < rows.Count);
+        var exceeded = offset + page.Length < rows.Count;
+        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
     }
 
     private static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
@@ -650,7 +703,8 @@ internal static class FeatureQueryEngine
         CoordinateReference? coordinateReference,
         IReadOnlyList<DistinctField> fields,
         IReadOnlyList<AttributeValue[]> rows,
-        bool exceeded)
+        bool exceeded,
+        string? nextToken)
     {
         return EsriJson.Write(writer =>
         {
@@ -677,6 +731,7 @@ internal static class FeatureQueryEngine
 
             writer.WriteEndArray();
             writer.WriteBoolean("exceededTransferLimit", exceeded);
+            WritePaginationToken(writer, nextToken);
             writer.WriteEndObject();
         });
     }
@@ -716,10 +771,11 @@ internal static class FeatureQueryEngine
         }
 
         rows = ApplyStatisticOrder(rows, groupFields, statistics, query.OrderByFields, dataset);
-        var offset = Math.Min(query.ResultOffset ?? 0, rows.Count);
+        var offset = Math.Min(ResolveOffset(query), rows.Count);
         var count = EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
-        return WriteStatistics(dataset, groupFields, statistics, statInputs, page, offset + page.Length < rows.Count);
+        var exceeded = offset + page.Length < rows.Count;
+        return WriteStatistics(dataset, groupFields, statistics, statInputs, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
     }
 
     private static List<GroupField> ResolveGroupFields(DatasetDescription dataset, IReadOnlyList<string>? names)
@@ -1028,7 +1084,8 @@ internal static class FeatureQueryEngine
         IReadOnlyList<EsriOutStatistic> statistics,
         IReadOnlyList<StatisticInput> inputs,
         IReadOnlyList<StatisticRow> rows,
-        bool exceeded)
+        bool exceeded,
+        string? nextToken)
     {
         return EsriJson.Write(writer =>
         {
@@ -1070,6 +1127,7 @@ internal static class FeatureQueryEngine
 
             writer.WriteEndArray();
             writer.WriteBoolean("exceededTransferLimit", exceeded);
+            WritePaginationToken(writer, nextToken);
             writer.WriteEndObject();
         });
     }
@@ -1111,9 +1169,10 @@ internal static class FeatureQueryEngine
         CoordinateReference? layerCrs,
         EsriFeatureQuery query,
         IReadOnlyList<MatchedFeature> features,
-        bool exceeded)
+        bool exceeded,
+        string? nextToken)
     {
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, query.OutFields, query.ReturnGeometry);
+        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -1130,6 +1189,7 @@ internal static class FeatureQueryEngine
 
             writer.WriteEndArray();
             writer.WriteBoolean("exceededTransferLimit", exceeded);
+            WritePaginationToken(writer, nextToken);
             writer.WriteEndObject();
         });
     }
@@ -1234,7 +1294,16 @@ internal static class FeatureQueryEngine
         };
     }
 
-    private sealed record PageResult(IReadOnlyList<MatchedFeature> Items, bool Exceeded);
+    private sealed record PageResult(IReadOnlyList<MatchedFeature> Items, bool Exceeded, string? NextToken);
+
+    /// <summary>Writes the next-page cursor when the page filled up; the final page carries none.</summary>
+    private static void WritePaginationToken(Utf8JsonWriter writer, string? nextToken)
+    {
+        if (nextToken is not null)
+        {
+            writer.WriteString("resultPaginationToken", nextToken);
+        }
+    }
 
     /// <summary>One projected field of a distinct-values request.</summary>
     private readonly record struct DistinctField(string Name, int Index);
