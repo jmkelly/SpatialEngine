@@ -28,11 +28,12 @@ internal static class RasterCatalogQuery
         var dataset = Describe(description, items.Count);
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
         var queryGeometry = FeatureQueryEngine.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
-        var matches = Match(description, items, query, queryGeometry, operations, cancellationToken);
+        var matches = Match(dataset, description, items, query, queryGeometry, operations, cancellationToken);
         return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
     }
 
     private static List<FeatureQueryEngine.MatchedFeature> Match(
+        DatasetDescription dataset,
         RasterDatasetDescription description,
         IReadOnlyList<RasterCatalogItem> items,
         EsriFeatureQuery query,
@@ -47,7 +48,8 @@ internal static class RasterCatalogQuery
         {
             cancellationToken.ThrowIfCancellationRequested();
             var feature = ImageService.Feature(item, schema);
-            if (FeatureQueryEngine.Matches(query, feature, item.ObjectId, queryGeometry, operations, cancellationToken))
+            var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
+            if (FeatureQueryEngine.Matches(query, feature, item.ObjectId, queryGeometry, operations, cancellationToken, uniqueId))
             {
                 matches.Add(new FeatureQueryEngine.MatchedFeature(item.ObjectId, feature));
             }
