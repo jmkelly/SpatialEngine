@@ -8,9 +8,10 @@ namespace Spatial.Host.Tests;
 /// <summary>
 /// T-060 host wiring: the additive <c>IFeatureAttachmentStore</c> capability
 /// resolves for the memory store and is absent everywhere else (demo is
-/// read-only, PostGIS persistence is a follow-up track). The HTTP surface
-/// stays exactly as ADR-0061 §5 left it — empty reads, typed write rejects,
-/// unadvertised — until T-061 serves it.
+/// read-only, PostGIS persistence is a follow-up track). T-061 serves the
+/// HTTP surface on the capability: layers backed by the memory store
+/// advertise <c>hasAttachments</c>, while capability-less stores keep the
+/// ADR-0061 honesty (empty reads, typed write rejects, unadvertised).
 /// </summary>
 public sealed class AttachmentStoreWiringTests : IDisposable
 {

@@ -11,12 +11,13 @@ namespace Spatial.Adapter.GeoServices;
 /// rather than duplicating it), <c>validateSQL</c> (S4), the honestly
 /// rejected aggregation extensions (<c>queryBins</c>,
 /// <c>queryTopFeatures</c>, <c>queryAnalytic</c>), and the attachment
-/// surface (empty reads, typed write rejects until an attachment store
-/// lands).
+/// surface served on the <c>IFeatureAttachmentStore</c> capability (T-061,
+/// ADR-0066): reads follow feature-query auth (public), writes require the
+/// single admin token (ADR-0065 §3).
 /// </summary>
 public static partial class GeoServicesEndpoints
 {
-    internal static void MapFeatureOps(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
+    internal static void MapFeatureOps(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry, string? adminToken = null)
     {
         group.MapMethods("/{service}/FeatureServer/query", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores,
@@ -53,24 +54,29 @@ public static partial class GeoServicesEndpoints
                 "analytic aggregation has no engine model; use 'query' with 'outStatistics' instead.",
                 cancellationToken));
 
-        // Attachments (ADR-0058 §5): reads report the truthful empty set,
-        // writes fail as typed invalid-arguments until an attachment store
-        // lands. The layer never advertises hasAttachments.
+        // Attachments (T-061, ADR-0066): reads are served on the store's
+        // attachment capability (public, like the features they annotate),
+        // writes require the single admin token (ADR-0065 §3). Layers whose
+        // store exposes no capability keep the honest surface: empty reads
+        // and typed write rejects naming the missing capability.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryAttachments", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             FeatureQueryAttachments(catalog, registry, service, layerId, context, stores, cancellationToken));
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/{objectId:long}/attachments", ["GET", "POST"], (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentInfos(catalog, registry, service, layerId, context, stores, cancellationToken));
+            FeatureAttachmentInfos(catalog, registry, service, layerId, objectId, context, stores, cancellationToken));
+        group.MapGet("/{service}/FeatureServer/{layerId:int}/{objectId:long}/attachments/{attachmentId:long}", (
+            string service, int layerId, long objectId, long attachmentId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            FeatureAttachmentContent(catalog, registry, service, layerId, objectId, attachmentId, context, stores, cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/addAttachment", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentWrite(catalog, registry, service, layerId, context, stores, "addAttachment", cancellationToken));
+            FeatureAddAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/deleteAttachments", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentWrite(catalog, registry, service, layerId, context, stores, "deleteAttachments", cancellationToken));
+            FeatureDeleteAttachments(catalog, registry, service, layerId, objectId, context, stores, adminToken, cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/updateAttachment", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentWrite(catalog, registry, service, layerId, context, stores, "updateAttachment", cancellationToken));
+            FeatureUpdateAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, cancellationToken));
     }
 
     /// <summary>
@@ -233,7 +239,7 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    /// <summary>The layer-level <c>queryAttachments</c>: the truthful empty set (ADR-0058 §5).</summary>
+    /// <summary>The layer-level <c>queryAttachments</c> (S4): one group per requested feature over the store's capability.</summary>
     private static async Task<IResult> FeatureQueryAttachments(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId,
         HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
@@ -243,8 +249,10 @@ public static partial class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            _ = await DescribeAsync(stores, resolved, layerId, cancellationToken);
-            return FeatureAttachments.Empty();
+            var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
+            var objectIds = FeatureAttachments.ParseIds(parameters.Get("objectIds"), "objectIds");
+            return await FeatureAttachments.QueryAsync(
+                layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store), objectIds, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -252,9 +260,9 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    /// <summary>The per-feature <c>attachments</c> resource: the truthful empty set (ADR-0058 §5).</summary>
+    /// <summary>The per-feature <c>attachments</c> resource: the stored attachment infos for one feature.</summary>
     private static async Task<IResult> FeatureAttachmentInfos(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId,
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
         HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
@@ -262,8 +270,9 @@ public static partial class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            _ = await DescribeAsync(stores, resolved, layerId, cancellationToken);
-            return FeatureAttachments.Empty();
+            var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
+            return await FeatureAttachments.InfosAsync(
+                layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store), objectId, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -271,22 +280,192 @@ public static partial class GeoServicesEndpoints
         }
     }
 
-    /// <summary>An attachment write: the layer must exist, then the write is rejected (ADR-0058 §5).</summary>
-    private static async Task<IResult> FeatureAttachmentWrite(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId,
-        HttpContext context, IStoreRegistry stores, string operation, CancellationToken cancellationToken)
+    /// <summary>The per-attachment content resource: the stored bytes with their content type.</summary>
+    private static async Task<IResult> FeatureAttachmentContent(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId, long attachmentId,
+        HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            EsriFormat.Ensure(parameters.Get("f"));
             var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            _ = await DescribeAsync(stores, resolved, layerId, cancellationToken);
-            throw FeatureAttachments.WriteError(operation);
+            var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
+            return await FeatureAttachments.ContentAsync(
+                layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store),
+                objectId, attachmentId, cancellationToken);
         }
         catch (Exception exception)
         {
             return EsriErrorMapper.Map(exception);
         }
     }
+
+    /// <summary>The per-feature <c>addAttachment</c>: an admin-gated multipart upload stored on the capability.</summary>
+    private static async Task<IResult> FeatureAddAttachment(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
+        HttpContext context, IStoreRegistry stores, string? adminToken, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            EnsureAttachmentAuthorized(adminToken, context, parameters);
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
+            var upload = await ReadAttachmentUploadAsync(context, "addAttachment", parameters.Get("keywords"), cancellationToken);
+            return await FeatureAttachments.AddAsync(
+                layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store),
+                objectId, upload, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>The per-feature <c>deleteAttachments</c>: an admin-gated batch delete with per-id results.</summary>
+    private static async Task<IResult> FeatureDeleteAttachments(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
+        HttpContext context, IStoreRegistry stores, string? adminToken, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            EnsureAttachmentAuthorized(adminToken, context, parameters);
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
+            var attachmentIds = FeatureAttachments.ParseIds(parameters.Get("attachmentIds"), "attachmentIds")
+                ?? throw EsriInteropException.Invalid("The 'attachmentIds' parameter is required.");
+            return await FeatureAttachments.DeleteAsync(
+                layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store),
+                objectId, attachmentIds, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>The per-feature <c>updateAttachment</c>: an admin-gated multipart replacement keeping the identity.</summary>
+    private static async Task<IResult> FeatureUpdateAttachment(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
+        HttpContext context, IStoreRegistry stores, string? adminToken, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            EsriFormat.Ensure(parameters.Get("f"));
+            EnsureAttachmentAuthorized(adminToken, context, parameters);
+            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
+            var attachmentId = ParseAttachmentId(parameters.Get("attachmentId"));
+            var upload = await ReadAttachmentUploadAsync(context, "updateAttachment", parameters.Get("keywords"), cancellationToken);
+            return await FeatureAttachments.UpdateAsync(
+                layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store),
+                objectId, attachmentId, upload, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// Resolves one layer's dataset for serving: the published layer and its
+    /// catalogue description. An unknown layer id is <c>not.found</c>, never
+    /// silently dropped.
+    /// </summary>
+    internal static async Task<ResolvedLayer> ResolveLayerAsync(
+        IStoreRegistry stores, ResolvedService resolved, int layerId, CancellationToken cancellationToken)
+    {
+        var layers = await ListLayersAsync(stores, resolved, cancellationToken);
+        var layer = layers.FirstOrDefault(candidate => candidate.Id == layerId)
+            ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in the service.");
+        var description = await stores.Catalogue(resolved.Store).DescribeAsync(layer.Dataset, cancellationToken);
+        return new ResolvedLayer(layer, description);
+    }
+
+    private static long ParseAttachmentId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || !long.TryParse(value.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var attachmentId))
+        {
+            throw EsriInteropException.Invalid("The 'attachmentId' parameter is required and must be an integer.");
+        }
+
+        return attachmentId;
+    }
+
+    /// <summary>
+    /// Gates an attachment write on the single admin token (ADR-0065 §3),
+    /// exactly like the Esri admin projection gate: unconfigured means
+    /// unavailable, a missing token is required, a wrong token is invalid.
+    /// The token travels as a Bearer header or a <c>token</c> parameter.
+    /// </summary>
+    private static void EnsureAttachmentAuthorized(string? configuredToken, HttpContext context, EsriRequestParameters parameters)
+    {
+        if (string.IsNullOrWhiteSpace(configuredToken))
+        {
+            throw new EsriInteropException(
+                EsriErrorCodes.ServiceUnavailable,
+                "Attachment writes are not configured; set Spatial:Admin:Token or SPATIAL_ADMIN_TOKEN.");
+        }
+
+        var presented = PresentedAttachmentToken(context, parameters) ?? throw new EsriInteropException(
+            EsriErrorCodes.TokenRequired, "An admin token is required to modify attachments.");
+        if (!FixedTimeEquals(presented, configuredToken))
+        {
+            throw new EsriInteropException(EsriErrorCodes.InvalidToken, "The admin token is not valid.");
+        }
+    }
+
+    private static string? PresentedAttachmentToken(HttpContext context, EsriRequestParameters parameters)
+    {
+        var header = context.Request.Headers.Authorization.ToString();
+        if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return header["Bearer ".Length..].Trim();
+        }
+
+        return parameters.Get("token");
+    }
+
+    private static bool FixedTimeEquals(string left, string right) =>
+        System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            System.Text.Encoding.UTF8.GetBytes(left), System.Text.Encoding.UTF8.GetBytes(right));
+
+    /// <summary>
+    /// Reads the multipart upload of an attachment write: the file part named
+    /// <c>attachment</c> (the single file part when unnamed). Anything else
+    /// is a typed <c>invalid.arguments</c> failure naming the expectation.
+    /// </summary>
+    private static async Task<AttachmentUpload> ReadAttachmentUploadAsync(
+        HttpContext context, string operation, string? keywords, CancellationToken cancellationToken)
+    {
+        if (!context.Request.HasFormContentType)
+        {
+            throw EsriInteropException.Invalid(
+                $"The '{operation}' operation requires a multipart form upload with a file part named 'attachment'.");
+        }
+
+        // EsriRequestParameters already consumed the form fields; re-reading
+        // the form reuses the parsed collection rather than the body stream.
+        var form = await context.Request.ReadFormAsync(cancellationToken);
+        var file = form.Files["attachment"] ?? (form.Files.Count == 1 ? form.Files[0] : null)
+            ?? throw EsriInteropException.Invalid(
+                $"The '{operation}' operation requires a file part named 'attachment'.");
+        if (string.IsNullOrWhiteSpace(file.FileName))
+        {
+            throw EsriInteropException.Invalid($"The '{operation}' upload requires a file name.");
+        }
+
+        await using var source = file.OpenReadStream();
+        using var buffer = new MemoryStream();
+        await source.CopyToAsync(buffer, cancellationToken);
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+        return new AttachmentUpload(file.FileName, contentType, buffer.ToArray(), keywords);
+    }
 }
+
+/// <summary>One layer resolved for attachment serving: the published layer and its catalogue description.</summary>
+internal sealed record ResolvedLayer(PublishedLayer Layer, DatasetDescription Description);

@@ -48,9 +48,9 @@ internal static class FeatureService
             EsriLayerModel.QueryCapabilities);
     }
 
-    /// <summary>Builds one layer's metadata (spec §9.1).</summary>
-    public static EsriLayer Layer(int layerId, DatasetDescription dataset, bool editable, bool isTable = false) =>
-        EsriLayerModel.Describe(layerId, dataset, editable, isTable);
+    /// <summary>Builds one layer's metadata (spec §9.1), advertising attachments exactly when the store serves them.</summary>
+    public static EsriLayer Layer(int layerId, DatasetDescription dataset, bool editable, bool isTable = false, bool hasAttachments = false) =>
+        EsriLayerModel.Describe(layerId, dataset, editable, hasAttachments, isTable);
 
     /// <summary>Executes a query and writes the spec §9.1.4.3 response.</summary>
     public static Task<IResult> QueryAsync(
