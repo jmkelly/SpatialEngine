@@ -19,11 +19,12 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoJobs
     /// <summary>
     /// The unfiltered summaries, built once: the catalog is static and
     /// read-only (ADR-0031/ADR-0033), so the summaries are immutable and
-    /// safe to share across requests. Lazy so first-load timing (including
-    /// the world-cities snapshot parse) matches the uncached path.
+    /// safe to share across requests. Cheap (T-095): the world-cities entry
+    /// reports the committed snapshot count without parsing the CSV, so cold
+    /// listings stay fast until demo.world_cities is actually requested.
     /// </summary>
     private static readonly Lazy<IReadOnlyList<DatasetSummary>> CachedSummaries = new(
-        () => DemoDatasetCatalog.Datasets.Select(dataset => dataset.ToSummary()).ToArray(),
+        () => DemoDatasetCatalog.Summaries.ToArray(),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
