@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { hostBaseUrl } from "../api.ts";
+import { ChaosPanels } from "./ChaosPanels.tsx";
 import {
   EsriGeometryRoot,
   GeometryOperations,
@@ -22,7 +23,7 @@ import {
   type ParitySize,
 } from "../parity.ts";
 
-type ParityTab = "map" | "feature" | "image" | "geometry";
+type ParityTab = "map" | "feature" | "image" | "geometry" | "chaos";
 
 interface AppliedSettings {
   bbox: ParityBbox;
@@ -60,7 +61,8 @@ const idlePanel: FeaturePanelState = {
 
 /**
  * Visual parity harness (T-072/T-073): side-by-side public Esri vs localhost
- * panels for the same bbox. The Map and Image tabs compare MapServer/export
+ * panels for the same bbox. The Chaos tab (T-074) flips simulation toggles
+ * proving the typed error mapping over the public host API. The Map and Image tabs compare MapServer/export
  * and ImageServer/exportImage pictures through plain `<img>` tags
  * (`f=image` needs no CORS fetch); the Feature tab compares
  * FeatureServer/query counts and sample attributes fetched as JSON; the
@@ -174,6 +176,8 @@ export function ParityScreen() {
           data-testid="parity-tab-image" onClick={() => setTab("image")}>Image</button>
         <button role="tab" aria-selected={tab === "geometry"} className={`tab${tab === "geometry" ? " active" : ""}`}
           data-testid="parity-tab-geometry" onClick={() => setTab("geometry")}>Geometry</button>
+        <button role="tab" aria-selected={tab === "chaos"} className={`tab${tab === "chaos" ? " active" : ""}`}
+          data-testid="parity-tab-chaos" onClick={() => setTab("chaos")}>Chaos</button>
       </div>
 
       {applied !== null && tab === "map" && (
@@ -221,6 +225,7 @@ export function ParityScreen() {
         />
       )}
       {tab === "geometry" && <GeometryPanels />}
+      {tab === "chaos" && <ChaosPanels />}
     </section>
   );
 }
