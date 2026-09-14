@@ -40,8 +40,18 @@ internal static class GeoJson
         [typeof(GeometryCollection)] = (writer, geometry) => WriteCollection(writer, (GeometryCollection)geometry),
     };
 
-    /// <summary>Serialises a set of features, each with its own dataset description, as a FeatureCollection.</summary>
-    public static byte[] FeatureCollection(IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> features)
+    /// <summary>
+    /// Serialises a set of features, each with its own dataset description, as a FeatureCollection.
+    /// The WFS paging envelope (<c>numberMatched</c>, <c>numberReturned</c> and,
+    /// while features remain, <c>next</c>) is written only when the caller passes
+    /// it, so the WMS identify shape stays unchanged while a WFS client paging
+    /// with <c>startIndex</c> can terminate without a further request.
+    /// </summary>
+    public static byte[] FeatureCollection(
+        IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> features,
+        int? numberMatched = null,
+        int? numberReturned = null,
+        string? next = null)
     {
         ArgumentNullException.ThrowIfNull(features);
         using var stream = new MemoryStream();
@@ -49,6 +59,21 @@ internal static class GeoJson
         {
             writer.WriteStartObject();
             writer.WriteString("type", "FeatureCollection");
+            if (numberMatched.HasValue)
+            {
+                writer.WriteNumber("numberMatched", numberMatched.Value);
+            }
+
+            if (numberReturned.HasValue)
+            {
+                writer.WriteNumber("numberReturned", numberReturned.Value);
+            }
+
+            if (next is not null)
+            {
+                writer.WriteString("next", next);
+            }
+
             writer.WriteStartArray("features");
             foreach (var (dataset, feature) in features)
             {
