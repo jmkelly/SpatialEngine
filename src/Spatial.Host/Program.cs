@@ -116,6 +116,7 @@ internal static class HostComposition
             Root = configuration["Spatial:GeoServices:AdminRoot"] ?? "/arcgis/admin",
             Token = adminOptions.Token,
             MaxBytes = ingestOptions.MaxBytes,
+            MaxFeatures = ingestOptions.MaxFeatures,
             BatchSize = ingestOptions.BatchSize,
         }, maps);
 

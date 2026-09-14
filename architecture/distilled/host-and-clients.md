@@ -128,12 +128,14 @@ served types (`GeometryServer`/`FeatureServer`/`MapServer`/`ImageServer`);
 (T-049 honesty tests pin this with the sampleserver6 replay).
 
 The admin projection is narrower than the neutral surface by design (T-049
-dry-run): `createService`/`publish` build single-layer Feature-only maps
-(no styles, descriptions, or multi-service maps — use `PUT /api/maps` for
-those), `publish` replaces the named map while neutral `?publish=` merges
-into it, and `uploads` is multipart-only with no `MaxFeatures` cap and no
-`sourceSrid` reprojection (neutral `/api/ingest` also takes raw bodies,
-enforces both caps, and supports `sourceSrid`). Neither projection path
+dry-run, deltas aligned by T-062): `createService` builds single-layer
+Feature-only maps (no styles, descriptions, or multi-service maps — use
+`PUT /api/maps` for those), and `uploads` is multipart-only with no
+`sourceSrid` reprojection (neutral `/api/ingest` also takes raw bodies and
+supports `sourceSrid`). Aligned: `publish` merges the uploaded layer into
+the named map like neutral `?publish=` (appends the layer, unions the
+Feature service), and `uploads` enforces the same `MaxBytes`/`MaxFeatures`
+caps as neutral `/api/ingest`. Neither projection path
 pre-validates dataset servability the way `PUT /api/maps` does, and the
 error shape differs: the projection returns the Esri envelope (503 when
 unconfigured) while the neutral surface returns `{code,message}` with

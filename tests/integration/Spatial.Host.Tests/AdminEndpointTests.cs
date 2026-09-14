@@ -18,12 +18,13 @@ public sealed class AdminEndpointTests : IDisposable
     private const string Token = "test-admin-token";
 
     private static readonly string[] MapServices = ["map"];
+    private static readonly string[] FeatureAndMapServices = ["feature", "map"];
     private static readonly string[] ImageServices = ["image"];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-admin-").FullName;
 
-    private WebApplicationFactory<Program> Factory(long maxBytes = 100_000_000) =>
-        new AdminFactory(Path.Combine(_directory, "publications.json"), maxBytes);
+    private WebApplicationFactory<Program> Factory(long maxBytes = 100_000_000, int maxFeatures = 1_000_000) =>
+        new AdminFactory(Path.Combine(_directory, "publications.json"), maxBytes, maxFeatures);
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
@@ -479,14 +480,121 @@ public sealed class AdminEndpointTests : IDisposable
         Assert.InRange(geometry.GetProperty("y").GetDouble(), 52.4, 52.6);
     }
 
+    [Fact]
+    public async Task The_esri_admin_upload_enforces_the_feature_cap()
+    {
+        using var factory = Factory(maxFeatures: 1);
+        var client = factory.CreateClient();
+
+        // The fixture carries two features, above the configured cap of one:
+        // the small-bytes bypass the neutral surface closes (T-062) must
+        // close on the Esri path too.
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(GeoJson, Encoding.UTF8, "application/geo+json"), "file", "parks.geojson");
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.capped&srid=4326&format=geojson", content));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = (await BodyAsync(response)).GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains("above the configured maximum", error.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task The_esri_admin_publish_merges_into_an_existing_map()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        // Seed a two-service map through the neutral surface: publish the
+        // first dataset, then widen its services so the merge has something
+        // to preserve.
+        var seed = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.first&srid=4326&format=geojson&publish=merged",
+            new StringContent(GeoJson, Encoding.UTF8, "application/json")));
+        Assert.Equal(HttpStatusCode.OK, seed.StatusCode);
+        var widen = JsonSerializer.Serialize(new
+        {
+            name = "merged",
+            store = "memory",
+            services = FeatureAndMapServices,
+            layers = new[] { new { dataset = "public.first", layerId = 0, kind = "feature" } },
+        });
+        var put = await client.SendAsync(Authorized(HttpMethod.Put, "/api/maps/merged", Json(widen)));
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        // Publish a second dataset over the same map through the Esri path.
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(GeoJson, Encoding.UTF8, "application/geo+json"), "file", "second.geojson");
+        var upload = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.second&srid=4326&format=geojson", content));
+        Assert.Equal(HttpStatusCode.OK, upload.StatusCode);
+        var itemId = (await BodyAsync(upload)).GetProperty("item").GetProperty("itemId").GetString();
+
+        var published = await client.SendAsync(Authorized(
+            HttpMethod.Post, $"/arcgis/admin/uploads/{itemId}/publish",
+            new FormUrlEncodedContent([new("name", "merged")])));
+        Assert.Equal(HttpStatusCode.OK, published.StatusCode);
+
+        // Merge, not clobber: both layers present, both services kept, and
+        // the appended layer takes the next stable id.
+        var map = await BodyAsync(await client.GetAsync("/api/maps/merged"));
+        var layers = map.GetProperty("layers").EnumerateArray().ToArray();
+        Assert.Equal(2, layers.Length);
+        Assert.Equal(["public.first", "public.second"],
+            layers.Select(layer => layer.GetProperty("dataset").GetString() ?? string.Empty).ToArray());
+        Assert.Equal([0, 1], layers.Select(layer => layer.GetProperty("layerId").GetInt32()).ToArray());
+        var services = map.GetProperty("services").EnumerateArray()
+            .Select(service => service.GetString() ?? string.Empty).ToArray();
+        Assert.Contains("feature", services);
+        Assert.Contains("map", services);
+    }
+
+    [Fact]
+    public async Task The_esri_admin_publish_without_a_name_is_a_bad_request()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(GeoJson, Encoding.UTF8, "application/geo+json"), "file", "parks.geojson");
+        var upload = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.noname&srid=4326&format=geojson", content));
+        Assert.Equal(HttpStatusCode.OK, upload.StatusCode);
+        var itemId = (await BodyAsync(upload)).GetProperty("item").GetProperty("itemId").GetString();
+
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, $"/arcgis/admin/uploads/{itemId}/publish",
+            new FormUrlEncodedContent([])));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, (await BodyAsync(response)).GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
+    public async Task The_esri_admin_publish_of_an_unknown_upload_is_a_bad_request()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/arcgis/admin/uploads/doesnotexist/publish",
+            new FormUrlEncodedContent([new("name", "ghost")])));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, (await BodyAsync(response)).GetProperty("error").GetProperty("code").GetInt32());
+    }
+
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class AdminFactory(string mapsPath, long maxBytes) : WebApplicationFactory<Program>
+    private sealed class AdminFactory(string mapsPath, long maxBytes, int maxFeatures = 1_000_000) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
             builder.UseSetting("Spatial:Maps:Path", mapsPath);
             builder.UseSetting("Spatial:Ingest:MaxBytes", maxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            builder.UseSetting("Spatial:Ingest:MaxFeatures", maxFeatures.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
     }
 }
