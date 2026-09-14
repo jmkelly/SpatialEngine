@@ -16,7 +16,7 @@
   "expect": {
     "currentVersion": 10,
     "serviceDescription": "SpatialEngine Geometry Service",
-    "capabilities": "Project,Generalize,Buffer,Intersect,AreasAndLengths,Lengths,Distance,ConvexHull,Difference,Union,Simplify,Relation,Densify,LabelPoints"
+    "capabilities": "Project,Generalize,Buffer,Intersect,AreasAndLengths,Lengths,Distance,ConvexHull,Difference,Union,Simplify,Relation,Densify,LabelPoints,FindTransformations"
   },
   "notes": "Resource metadata: version + capability list. Our version/capabilities honestly describe this engine, not Esri's.",
   "knownDeltas": [
