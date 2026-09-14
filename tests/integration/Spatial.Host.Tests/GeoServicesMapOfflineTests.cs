@@ -176,6 +176,16 @@ public sealed class GeoServicesMapOfflineTests : IDisposable
     }
 
     [Fact]
+    public async Task A_wmts_tile_address_is_rejected_by_name()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/world/MapServer/WMTS/tile/1.0.0/default/0/0/0.png");
+
+        await RejectAsync(response, "WMTS");
+    }
+
+    [Fact]
     public async Task Generate_kml_is_rejected_by_name()
     {
         var client = await MapServiceAsync();
