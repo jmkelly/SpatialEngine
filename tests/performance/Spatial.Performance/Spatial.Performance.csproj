@@ -9,13 +9,26 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <!-- Raw baselines for the engine-vs-direct comparisons (T-076): the
+         bench project recreates the same operations straight on NTS/ProjNet
+         types, so the delta against the engine verbs is the adapter cost.
+         Versions stay centrally pinned (No_inline_package_versions). -->
+    <PackageReference Include="NetTopologySuite" />
+    <PackageReference Include="ProjNET" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Structural core values only. The bench project references engine
+    <!-- T-076 micros: the bench project references engine implementation
          projects directly, never via Spatial.PluginSdk (which takes no
-         packages), and uses no NTS/Npgsql/renderer types. -->
+         packages). NTS/ProjNet/Skia types stay inside the bench methods;
+         nothing crosses a contract. -->
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Provider.Memory\Spatial.Provider.Memory.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
   </ItemGroup>
 
 </Project>
