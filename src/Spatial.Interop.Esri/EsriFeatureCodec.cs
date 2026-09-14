@@ -4,12 +4,18 @@ using Spatial.Core.Geometry;
 
 namespace Spatial.Interop.Esri;
 
-/// <summary>How to render one feature as an Esri JSON object (query options).</summary>
+/// <summary>
+/// How to render one feature as an Esri JSON object (query options).
+/// <c>ReturnEnvelope</c> (spec §9.1.4, 11.4+) writes each geometry as its
+/// <c>{xmin..ymax}</c> envelope instead of the full shape; it only applies
+/// when <c>ReturnGeometry</c> is true.
+/// </summary>
 public sealed record EsriFeatureWriteOptions(
     string ObjectIdField,
     long ObjectId,
     IReadOnlyList<string>? OutFields = null,
-    bool ReturnGeometry = true);
+    bool ReturnGeometry = true,
+    bool ReturnEnvelope = false);
 
 /// <summary>
 /// The Esri feature JSON codec (spec §9.1.4): a feature is
@@ -31,7 +37,14 @@ public static class EsriFeatureCodec
         WriteAttributes(writer, feature, options);
         if (options.ReturnGeometry)
         {
-            WriteGeometry(writer, feature);
+            if (options.ReturnEnvelope)
+            {
+                WriteEnvelope(writer, feature);
+            }
+            else
+            {
+                WriteGeometry(writer, feature);
+            }
         }
 
         writer.WriteEndObject();
@@ -125,6 +138,31 @@ public static class EsriFeatureCodec
 
         writer.WritePropertyName("geometry");
         EsriGeometryCodec.Write(writer, geometry);
+    }
+
+    /// <summary>
+    /// Writes the feature's envelope (<c>{xmin,ymin,xmax,ymax}</c> in the
+    /// geometry's CRS) instead of its full geometry. A feature with no (or
+    /// an empty) geometry writes <c>"geometry": null</c>, exactly as the
+    /// full-geometry form does.
+    /// </summary>
+    private static void WriteEnvelope(Utf8JsonWriter writer, IFeature feature)
+    {
+        var geometry = FindGeometry(feature);
+        if (geometry?.Envelope is not { } envelope || envelope.IsEmpty)
+        {
+            writer.WriteNull("geometry");
+            return;
+        }
+
+        writer.WritePropertyName("geometry");
+        writer.WriteStartObject();
+        writer.WriteNumber("xmin", envelope.MinX);
+        writer.WriteNumber("ymin", envelope.MinY);
+        writer.WriteNumber("xmax", envelope.MaxX);
+        writer.WriteNumber("ymax", envelope.MaxY);
+        EsriSpatialReference.Write(writer, geometry.CoordinateReference);
+        writer.WriteEndObject();
     }
 
     private static IGeometry? FindGeometry(IFeature feature)
