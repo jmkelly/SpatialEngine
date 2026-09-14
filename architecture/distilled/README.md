@@ -104,6 +104,7 @@ shape is noted in brackets.
 | 0051 | Rasters are provider-owned; contracts carry only encoded images and core-typed metadata/geometry, never raster values or third-party types. NetVips is the engine; GDAL needs measured demand. |
 | 0052 | The Spatial CLI is a dependency-free public-API client; a versioned declarative project file captures datasets + maps and lowers to publications. |
 | 0053 | A Map is the unit of authoring and exposure; its Feature/Map/Tiles/WMS/WFS/Image services are projections of one map. |
+| 0054 | Feature modern query params (`returnEnvelope`, `resultPaginationToken`, `defaultSR`, `uniqueIds`) are an adapter projection; no SDK/Core change. |
 
 ## How to change the architecture
 
