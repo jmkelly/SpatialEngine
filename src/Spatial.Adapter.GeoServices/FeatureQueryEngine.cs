@@ -201,7 +201,6 @@ internal static class FeatureQueryEngine
         WritePaginationToken(writer, page.NextToken);
         writer.WriteEndObject();
     }
-    }
 
     /// <summary>
     /// Reads one feature by its Esri <c>OBJECTID</c> (the Feature resource,
