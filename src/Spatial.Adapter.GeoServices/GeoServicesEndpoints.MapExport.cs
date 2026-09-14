@@ -33,7 +33,15 @@ internal static class MapExportEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             var resolved = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
-            var selected = MapLayerSelection.Select(await GeoServicesEndpoints.ListLayersAsync(stores, resolved, cancellationToken), parameters.Get("layers"));
+            var effective = MapDynamicLayers.Apply(
+                await GeoServicesEndpoints.ListLayersAsync(stores, resolved, cancellationToken),
+                MapDynamicLayers.Parse(parameters.Get("dynamicLayers")),
+                service);
+            var selected = MapLayerSelection.Select(effective, parameters.Get("layers"), parameters.Get("layerOption"));
+            var time = EsriFeatureQuery.ParseTime(parameters.Get("time"));
+            _ = MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
+            var times = MapExportTime.ResolveTimes(
+                selected, time, MapExportTime.ParseLayerTimeOptions(parameters.Get("layerTimeOptions")));
             var bbox = MapRenderEngine.ParseBbox(parameters.Get("bbox"));
             var (width, height) = MapRenderEngine.ParseSize(parameters.Get("size"));
             var bboxCrs = EsriValueParser.ParseSpatialReference(parameters.Get("bboxSR")) ?? await MapCrsAsync(stores, resolved, selected, cancellationToken);
@@ -44,7 +52,7 @@ internal static class MapExportEndpoints
                 height,
                 (imageCrs ?? bboxCrs)?.ToString() ?? "EPSG:4326");
             var style = MapRenderEngine.Style(service, selected);
-            var sources = MapRenderEngine.Sources(stores, resolved.Store, selected, MapRenderEngine.ParseLayerDefs(parameters.Get("layerDefs")));
+            var sources = MapRenderEngine.Sources(stores, resolved.Store, selected, MapRenderEngine.ParseLayerDefs(parameters.Get("layerDefs")), times);
             var format = MapRenderEngine.ParseFormat(parameters.Get("format"));
             var request = new MapRenderRequest(viewport, style, sources, null, format, 90, null, parameters.GetBool("transparent", true), 1.0);
             if (string.Equals(parameters.Get("f"), "image", StringComparison.OrdinalIgnoreCase))
