@@ -31,7 +31,10 @@ internal static class EsriLayerModel
     /// <summary>
     /// The truthful query flags: pagination/orderBy honoured,
     /// distinct values, query extent and statistics/having served,
-    /// closed where-grammar (not standardized queries).
+    /// COUNT DISTINCT and percentile statistics served, defaultSR
+    /// honoured (T-036), closed where-grammar (not standardized queries),
+    /// and no full-text search (no full-text indexes, so the searchable
+    /// list is empty).
     /// </summary>
     public static readonly EsriAdvancedQueryCapabilities QueryCapabilities = new(
         SupportsPagination: true,
@@ -40,7 +43,11 @@ internal static class EsriLayerModel
         SupportsDistinct: true,
         SupportsHavingClause: true,
         SupportsReturningQueryExtent: true,
-        UseStandardizedQueries: false);
+        UseStandardizedQueries: false,
+        SupportsCountDistinct: true,
+        SupportsPercentileStatistics: true,
+        SupportsFullTextSearch: false,
+        FullTextSearchableFields: []);
 
     private static readonly Dictionary<string, string> GeometryTypeMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -89,6 +96,8 @@ internal static class EsriLayerModel
             SpatialReference(dataset.Srid),
             SupportedQueryFormats,
             SupportsStatistics: true,
+            SupportsExceedsLimitStatistics: true,
+            SupportsDefaultSR: true,
             SupportsAdvancedQueries: true,
             QueryCapabilities);
 
@@ -150,6 +159,8 @@ internal sealed record EsriLayer(
     EsriSpatialReferenceDto? SpatialReference,
     string SupportedQueryFormats,
     bool SupportsStatistics,
+    bool SupportsExceedsLimitStatistics,
+    bool SupportsDefaultSR,
     bool SupportsAdvancedQueries,
     EsriAdvancedQueryCapabilities AdvancedQueryCapabilities);
 
@@ -157,8 +168,12 @@ internal sealed record EsriLayer(
 /// The query flags clients branch on (spec §9.1 layer resource). Every value
 /// is proved by the behaviour it names: pagination and orderBy are honoured
 /// by <c>FeatureQueryEngine</c>, distinct values, query extent and
-/// statistics/having are served, and the closed where-grammar is
-/// not the standardized SQL the flag names.
+/// statistics/having are served, COUNT DISTINCT (returnCountOnly with
+/// returnDistinctValues) and percentile statistics are served, defaultSR is
+/// honoured on both sides of the request (T-036), full-text search is
+/// rejected by name so the flag is false and the searchable-fields list is
+/// empty, and the closed where-grammar is not the standardized SQL the flag
+/// names.
 /// </summary>
 internal sealed record EsriAdvancedQueryCapabilities(
     bool SupportsPagination,
@@ -167,7 +182,11 @@ internal sealed record EsriAdvancedQueryCapabilities(
     bool SupportsDistinct,
     bool SupportsHavingClause,
     bool SupportsReturningQueryExtent,
-    bool UseStandardizedQueries);
+    bool UseStandardizedQueries,
+    bool SupportsCountDistinct,
+    bool SupportsPercentileStatistics,
+    bool SupportsFullTextSearch,
+    IReadOnlyList<string> FullTextSearchableFields);
 
 /// <summary>One Esri field definition; <c>domain</c> is emitted only when the catalogue backs one (spec §13).</summary>
 internal sealed record EsriField(string Name, string Type, string Alias, bool Nullable, bool Editable, EsriDomain? Domain = null);
