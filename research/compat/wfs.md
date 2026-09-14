@@ -39,13 +39,18 @@ Our surface: `src/Spatial.Adapter.Ogc/WfsService.cs` (3 ops),
 | `outputFormat` GML in `DescribeFeatureType` variants, `aliases`, `resolve`/`resolveDepth`, `paging` (`next` links) | — | **Missing** | minimal XSD + bare GeoJSON collection, no `numberMatched/numberReturned/next` envelope |
 | WFS 1.0.0/1.1.0 dialects (`maxFeatures`, `SRSNAME`, GML2) | — | **Non-goal** | we advertise 2.0.0 only; GDAL negotiates down at its own risk — revisit on trace |
 
-## 2. Same-data proof (to be wired by T-L)
+## 2. Same-data proof (wired by T-047)
 
-- QGIS WFS provider trace (S4): `GetCapabilities` → `DescribeFeatureType` →
-  paged `GetFeature&outputFormat=application/json&STARTINDEX=n` — today page 2+
-  is unservable (`startIndex` ignored), which bounds the proof to page 1.
-- GDAL WFS driver (S5) pages identically; CITE ets-wfs20 `getfeature` suite is
-  the replay corpus for the follow-ups.
+- QGIS WFS provider replay (S4): `WfsPageThroughTests.Qgis_provider_page_through`
+  issues `GetFeature&outputFormat=application/json&count=<max>&STARTINDEX=n`
+  against a 7-feature layer with `MaxFeatures=3` and terminates with the
+  exact `numberMatched` total in stable feature-id order, no duplicates.
+- GDAL WFS driver replay (S5): `WfsPageThroughTests.Gdal_driver_page_through`
+  pages the same layer driving the loop off the envelope `next` links and
+  terminates with the same total, order and duplicate-free set; a `count`
+  above the max clamps to `MaxFeatures` with `next` present, so an
+  ask-for-everything client still pages. CITE ets-wfs20 `getfeature` remains
+  the replay corpus for any follow-up.
 
 ## 3. Follow-ups (filed)
 
