@@ -80,7 +80,7 @@ public sealed class WfsServiceTests
         var ids = root.GetProperty("features").EnumerateArray()
             .Select(feature => feature.GetProperty("id").GetString()).ToArray();
 
-        Assert.True(ids.SequenceEqual(["cairo", "dublin"]), $"Unexpected page order: {string.Join(',', ids)}");
+        Assert.True(ids.SequenceEqual(["Cities.cairo", "Cities.dublin"]), $"Unexpected page order: {string.Join(',', ids)}");
         Assert.Equal(5, root.GetProperty("numberMatched").GetInt32());
         Assert.Equal(2, root.GetProperty("numberReturned").GetInt32());
         Assert.True(root.TryGetProperty("next", out var next) && next.GetString()!.Contains("startIndex=4"));

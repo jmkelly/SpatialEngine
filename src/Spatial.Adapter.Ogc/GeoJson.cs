@@ -54,6 +54,41 @@ internal static class GeoJson
         string? next = null)
     {
         ArgumentNullException.ThrowIfNull(features);
+        return WriteCollection(
+            features.Select(item => (Id: item.Feature.Id.Value, item.Dataset, item.Feature)).ToArray(),
+            numberMatched,
+            numberReturned,
+            next);
+    }
+
+    /// <summary>
+    /// Serialises a WFS GetFeature response: each feature id is scoped per
+    /// typeName as <c>&lt;typeName&gt;.&lt;id&gt;</c> (ADR-0064), so a
+    /// multi-typename collection carries no duplicate ids and a genuine
+    /// client (OpenLayers drops same-id features) addresses every feature.
+    /// The WMS identify shape keeps the raw store ids; only the WFS path
+    /// qualifies.
+    /// </summary>
+    public static byte[] WfsFeatureCollection(
+        IReadOnlyList<(string TypeName, DatasetDescription Dataset, Feature Feature)> features,
+        int? numberMatched = null,
+        int? numberReturned = null,
+        string? next = null)
+    {
+        ArgumentNullException.ThrowIfNull(features);
+        return WriteCollection(
+            features.Select(item => (Id: $"{item.TypeName}.{item.Feature.Id.Value}", item.Dataset, item.Feature)).ToArray(),
+            numberMatched,
+            numberReturned,
+            next);
+    }
+
+    private static byte[] WriteCollection(
+        IReadOnlyList<(string Id, DatasetDescription Dataset, Feature Feature)> features,
+        int? numberMatched,
+        int? numberReturned,
+        string? next)
+    {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
         {
@@ -75,9 +110,9 @@ internal static class GeoJson
             }
 
             writer.WriteStartArray("features");
-            foreach (var (dataset, feature) in features)
+            foreach (var (id, dataset, feature) in features)
             {
-                WriteFeature(writer, dataset, feature);
+                WriteFeature(writer, id, dataset, feature);
             }
 
             writer.WriteEndArray();
@@ -117,11 +152,11 @@ internal static class GeoJson
         write(writer, value);
     }
 
-    private static void WriteFeature(Utf8JsonWriter writer, DatasetDescription dataset, Feature feature)
+    private static void WriteFeature(Utf8JsonWriter writer, string id, DatasetDescription dataset, Feature feature)
     {
         writer.WriteStartObject();
         writer.WriteString("type", "Feature");
-        writer.WriteString("id", feature.Id.Value);
+        writer.WriteString("id", id);
         var geometryIndex = dataset.Schema.IndexOf(dataset.GeometryColumn);
         writer.WriteStartObject("properties");
         for (var index = 0; index < feature.Schema.Count; index++)

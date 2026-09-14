@@ -109,7 +109,7 @@ public sealed class WfsPageThroughTests
 
         Assert.Equal(Names.Length, numberMatched);
         Assert.Equal(Names.Length, collected.Count);
-        Assert.Equal(Names.OrderBy(name => name, StringComparer.Ordinal).ToArray(), collected.ToArray());
+        Assert.Equal(Names.OrderBy(name => name, StringComparer.Ordinal).Select(name => $"Cities.{name}").ToArray(), collected.ToArray());
         Assert.Equal(collected.Count, collected.Distinct().Count());
     }
 
@@ -158,7 +158,7 @@ public sealed class WfsPageThroughTests
         Assert.Equal(Names.Length, numberMatched);
         Assert.Equal(3, pages);
         Assert.Equal(Names.Length, collected.Count);
-        Assert.Equal(Names.OrderBy(name => name, StringComparer.Ordinal).ToArray(), collected.ToArray());
+        Assert.Equal(Names.OrderBy(name => name, StringComparer.Ordinal).Select(name => $"Cities.{name}").ToArray(), collected.ToArray());
         Assert.Equal(collected.Count, collected.Distinct().Count());
     }
 

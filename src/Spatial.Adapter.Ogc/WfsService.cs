@@ -8,12 +8,16 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// The OGC Web Feature Service 2.0.0 projection (ADR-0053 §3):
+/// The OGC Web Feature Service 2.0.0 projection (ADR-0053 §3, ADR-0064):
 /// GetCapabilities, DescribeFeatureType and GetFeature over a map's feature
 /// layers. GetFeature returns GeoJSON (<c>application/geo+json</c>); GML is an
 /// explicit non-goal and is rejected with a typed <c>InvalidParameterValue</c>
 /// ServiceException, with the capabilities document advertising only the
-/// served output formats. Queries go through <see cref="IFeatureStore.QueryAsync"/>.
+/// served output formats. Feature ids are scoped per typeName as
+/// <c>&lt;typeName&gt;.&lt;id&gt;</c>: store identities repeat across datasets
+/// (the memory ingest numbers each dataset from 1), so raw store ids would
+/// collide in a multi-typename collection and genuine clients (OpenLayers
+/// drops same-id features) would lose features. Queries go through <see cref="IFeatureStore.QueryAsync"/>.
 /// Paging is <c>startIndex</c>/<c>count</c> over a stable order (the requested
 /// <c>sortBy</c>, else feature-id order within the requested layer order), so
 /// a client can page through the whole result and terminate; the GeoJSON
@@ -112,7 +116,7 @@ internal static class WfsService
             var features = await ReadAsync(services, loaded[index], bbox, cancellationToken);
             foreach (var feature in features)
             {
-                matched.Add(new MatchedFeature(loaded[index].Description, feature, index));
+                matched.Add(new MatchedFeature(loaded[index].Name, loaded[index].Description, feature, index));
             }
         }
 
@@ -125,7 +129,7 @@ internal static class WfsService
             : null;
 
         return Results.Bytes(
-            GeoJson.FeatureCollection(projected, numberMatched, page.Length, next), "application/geo+json");
+            GeoJson.WfsFeatureCollection(projected, numberMatched, page.Length, next), "application/geo+json");
     }
 
     private static async Task<IReadOnlyList<Feature>> ReadAsync(
@@ -383,19 +387,19 @@ internal static class WfsService
         };
     }
 
-    private static IReadOnlyList<(DatasetDescription Dataset, Feature Feature)> ReprojectPage(
+    private static IReadOnlyList<(string TypeName, DatasetDescription Dataset, Feature Feature)> ReprojectPage(
         OgcRequestServices services, MatchedFeature[] page, string? targetCrs, CancellationToken cancellationToken)
     {
         if (targetCrs is null)
         {
-            return page.Select(match => (match.Dataset, match.Feature)).ToArray();
+            return page.Select(match => (match.TypeName, match.Dataset, match.Feature)).ToArray();
         }
 
-        var projected = new List<(DatasetDescription Dataset, Feature Feature)>(page.Length);
+        var projected = new List<(string TypeName, DatasetDescription Dataset, Feature Feature)>(page.Length);
         foreach (var match in page)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            projected.Add((match.Dataset, ReprojectFeature(services, match.Dataset, match.Feature, targetCrs, cancellationToken)));
+            projected.Add((match.TypeName, match.Dataset, ReprojectFeature(services, match.Dataset, match.Feature, targetCrs, cancellationToken)));
         }
 
         return projected;
@@ -468,8 +472,8 @@ internal static class WfsService
     /// <summary>A parsed WFS bbox in x-first coordinates plus its CRS identity.</summary>
     private sealed record WfsBbox(Envelope Envelope, string Crs);
 
-    /// <summary>A bbox-matched feature plus its requested layer order.</summary>
-    private sealed record MatchedFeature(DatasetDescription Dataset, Feature Feature, int LayerIndex);
+    /// <summary>A bbox-matched feature plus its OGC typeName and requested layer order.</summary>
+    private sealed record MatchedFeature(string TypeName, DatasetDescription Dataset, Feature Feature, int LayerIndex);
 
     /// <summary>One parsed <c>sortBy</c> entry: the property plus its direction.</summary>
     private sealed record SortKey(string Property, bool Descending);
