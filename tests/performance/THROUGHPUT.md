@@ -73,6 +73,40 @@ paths as required before budgets were set:
   Follow-ups: T-091 (nightly sustained-rate driver + budget confirmation),
   T-092 (query burst-tail diagnosis). No product code touched.
 
+## Burst-tail diagnosis (T-092)
+
+Re-measured with the T-087 per-pair MathTransform cache on main: query
+still reads p50 0.3–1.3 ms vs p95 17–30 ms across runs (pre-mitigation
+sample 0.7/17.9 ms; post-mitigation 1.3/17.6, 0.7/30.3, 1.1/26.2,
+1.3/24.5 ms — run-to-run noise on a shared box, budgets untouched). T-087
+is not implicated: the smoke URL carries no `outSR`, so `TransformFeature`
+returns the match by reference and the transform path never runs.
+
+Server-side endpoint timings mirror the client shape (p50 0.34 ms,
+p95 18.5 ms, ~7 % of 332 samples > 5 ms), so the stall is server-side
+under the 16-way burst, not harness JSON parsing. Per-request product
+work is genuinely sub-millisecond (the p50 proves it); the ~15–25 ms
+outliers are burst scheduling/GC contention, consistent with the suite-D
+sustained driver holding query p95 0.8 ms at a constant 200 rps.
+
+Minimal mitigation (this task): `EsriJson.Write` now sends the writer
+bytes straight to the body instead of decoding to a UTF-16 string and
+re-encoding (all 17 writer-body call sites: query, geometry service, map
+find/identify, image catalog). Wire shape is pinned by
+`EsriJsonWriteTests` (status, `application/json; charset=utf-8`, exact
+writer bytes) — no API or threshold change. Effect: roughly half the
+response-body garbage; p95 unchanged within run noise, as expected for a
+scheduling/GC tail rather than a per-request alloc tail.
+
+Cold-start note: the first request in every run takes ~790 ms — the
+eager `WorldCities` snapshot parse (34k CSV rows) on the first catalog
+`List`, even for layer-0 queries. The smoke warmup absorbs it; real
+cold starts pay it. Filed separately (see below), not fixed here.
+
+Product follow-ups filed separately: T-095 (eager world-cities load on
+first catalog list), T-096 (per-request catalog list/describe allocations
+on the query path). No benchmark retuning, no API changes in this slice.
+
 ## Sustained confirmation (T-078, folds T-091)
 
 The burst shape above is complemented by the suite-D sustained driver

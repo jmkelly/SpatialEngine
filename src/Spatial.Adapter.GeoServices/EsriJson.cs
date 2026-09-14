@@ -23,16 +23,42 @@ internal static class EsriJson
     public static IResult Value(object value, int statusCode = StatusCodes.Status200OK) =>
         Results.Json(value, Options, contentType: "application/json", statusCode: statusCode);
 
-    /// <summary>Writes a response with a raw <see cref="Utf8JsonWriter"/> (for nested feature/geometry bodies).</summary>
+    /// <summary>
+    /// Writes a response with a raw <see cref="Utf8JsonWriter"/> (for nested feature/geometry bodies).
+    /// The writer bytes go straight to the body: an earlier shape decoded them
+    /// to a UTF-16 string and re-encoded on write, doubling the per-response
+    /// garbage on this hot path (T-092 burst-tail mitigation). Wire shape is
+    /// unchanged (status, <c>application/json; charset=utf-8</c>, exact writer bytes).
+    /// </summary>
     public static IResult Write(Action<Utf8JsonWriter> write, int statusCode = StatusCodes.Status200OK)
     {
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream))
+        byte[] bytes;
+        using (var stream = new MemoryStream())
         {
-            write(writer);
+            using (var writer = new Utf8JsonWriter(stream))
+            {
+                write(writer);
+            }
+
+            bytes = stream.ToArray();
         }
 
-        return Results.Text(Encoding.UTF8.GetString(stream.ToArray()), "application/json", Encoding.UTF8, statusCode);
+        return new EsriJsonBytesResult(bytes, statusCode);
+    }
+}
+
+/// <summary>
+/// A pre-rendered Esri JSON body: status, JSON content type and an exact
+/// content length, with the writer bytes copied once to the response stream.
+/// </summary>
+internal sealed class EsriJsonBytesResult(byte[] body, int statusCode) : IResult
+{
+    public Task ExecuteAsync(HttpContext httpContext)
+    {
+        httpContext.Response.StatusCode = statusCode;
+        httpContext.Response.ContentType = "application/json; charset=utf-8";
+        httpContext.Response.ContentLength = body.Length;
+        return httpContext.Response.Body.WriteAsync(body).AsTask();
     }
 }
 
