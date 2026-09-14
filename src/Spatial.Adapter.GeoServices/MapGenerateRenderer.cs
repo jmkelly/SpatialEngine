@@ -9,7 +9,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The per-layer <c>generateRenderer</c> classification (S4
-/// generate-renderer-map-service-layer/, ADR-0054): a server-side renderer
+/// generate-renderer-map-service-layer/, ADR-0055): a server-side renderer
 /// derived from the layer's data for one request. It supports the two
 /// classification definitions ArcGIS clients send:
 /// <list type="bullet">
