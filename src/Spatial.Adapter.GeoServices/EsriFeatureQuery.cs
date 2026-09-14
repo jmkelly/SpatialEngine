@@ -79,6 +79,13 @@ internal sealed record EsriFeatureQuery(
             throw EsriInteropException.Invalid("'having' requires 'outStatistics'.");
         }
 
+        if (having is not null && outStatistics is { } stats
+            && stats.Any(statistic => statistic.StatisticType is "percentile_cont" or "percentile_disc"))
+        {
+            throw EsriInteropException.Invalid(
+                "Percentile statistics ('percentile_cont', 'percentile_disc') cannot be combined with 'having' (S3 percentile type).");
+        }
+
         var returnUniqueIdsOnly = parameters.GetBool("returnUniqueIdsOnly", false);
         ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null, returnUniqueIdsOnly);
         var paginationToken = ParsePaginationToken(parameters.Get("resultPaginationToken"));
@@ -330,9 +337,12 @@ internal sealed record EsriFeatureQuery(
     }
 
     /// <summary>
-    /// The result-shape selectors are mutually exclusive. Choosing one
-    /// explicitly avoids silently dropping a client's request; an ambiguous
-    /// combination is a typed <c>invalid.arguments</c> failure.
+    /// The result-shape selectors are mutually exclusive, with one honest
+    /// exception: <c>returnCountOnly</c> with <c>returnDistinctValues</c>
+    /// is COUNT DISTINCT (S3), served by counting the deduplicated
+    /// projection. Choosing any other combination explicitly avoids silently
+    /// dropping a client's request; an ambiguous combination is a typed
+    /// <c>invalid.arguments</c> failure.
     /// </summary>
     private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues, bool statistics = false, bool uniqueIdsOnly = false)
     {
@@ -367,10 +377,10 @@ internal sealed record EsriFeatureQuery(
             requested.Add("returnUniqueIdsOnly");
         }
 
-        if (requested.Count > 1)
+        if (requested.Count > 1 && !(requested.Count == 2 && countOnly && distinctValues))
         {
             throw EsriInteropException.Invalid(
-                $"The parameters {string.Join(", ", requested)} are mutually exclusive; request at most one result shape.");
+                $"The parameters {string.Join(", ", requested)} are mutually exclusive; request at most one result shape (returnCountOnly with returnDistinctValues is COUNT DISTINCT).");
         }
     }
 
@@ -430,9 +440,26 @@ internal sealed record EsriFeatureQuery(
             throw EsriInteropException.Invalid("'outStatistics' entries need a non-empty statisticType, onStatisticField and outStatisticFieldName.");
         }
 
-        if (type is not ("count" or "sum" or "min" or "max" or "avg" or "stddev" or "var"))
+        if (type is not ("count" or "sum" or "min" or "max" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc"))
         {
-            throw EsriInteropException.Invalid($"Statistic type '{type}' is not supported; use count, sum, min, max, avg, stddev or var.");
+            throw EsriInteropException.Invalid($"Statistic type '{type}' is not supported; use count, sum, min, max, avg, stddev, var, percentile_cont or percentile_disc.");
+        }
+
+        if (type is "percentile_cont" or "percentile_disc")
+        {
+            var (value, descending) = ParsePercentileParameters(element, type);
+            if (!seen.Add(outName!))
+            {
+                throw EsriInteropException.Invalid($"Duplicate outStatisticFieldName '{outName}'.");
+            }
+
+            return new EsriOutStatistic(type!, onField!, outName!, value, descending);
+        }
+
+        if (element.TryGetProperty("statisticParameters", out _))
+        {
+            throw EsriInteropException.Invalid(
+                $"'statisticParameters' is only supported for 'percentile_cont' and 'percentile_disc' (statistic '{outName}'); the '{type}' statistic takes no parameters.");
         }
 
         if (!seen.Add(outName!))
@@ -441,6 +468,44 @@ internal sealed record EsriFeatureQuery(
         }
 
         return new EsriOutStatistic(type!, onField!, outName!);
+    }
+
+    /// <summary>
+    /// Parses the S3 percentile parameters: <c>statisticParameters.value</c>
+    /// is the fraction 0..1 (0.9 is the ninetieth percentile) and the
+    /// optional <c>orderBy</c> ranks ascending (default) or descending.
+    /// </summary>
+    private static (double Value, bool Descending) ParsePercentileParameters(System.Text.Json.JsonElement element, string type)
+    {
+        if (!element.TryGetProperty("statisticParameters", out var parameters)
+            || parameters.ValueKind != System.Text.Json.JsonValueKind.Object
+            || !parameters.TryGetProperty("value", out var valueElement)
+            || valueElement.ValueKind != System.Text.Json.JsonValueKind.Number
+            || !valueElement.TryGetDouble(out var value)
+            || double.IsNaN(value)
+            || value < 0
+            || value > 1)
+        {
+            throw EsriInteropException.Invalid(
+                $"Statistic type '{type}' needs 'statisticParameters' with a numeric 'value' between 0 and 1 (0.9 is the ninetieth percentile).");
+        }
+
+        var descending = false;
+        if (parameters.TryGetProperty("orderBy", out var orderElement))
+        {
+            descending = orderElement.ValueKind == System.Text.Json.JsonValueKind.String
+                && orderElement.GetString() is { } order
+                ? order.Trim().ToUpperInvariant() switch
+                {
+                    "ASC" => false,
+                    "DESC" => true,
+                    _ => throw EsriInteropException.Invalid(
+                        $"'statisticParameters.orderBy' must be ASC or DESC, got '{order}'."),
+                }
+                : throw EsriInteropException.Invalid("'statisticParameters.orderBy' must be ASC or DESC.");
+        }
+
+        return (value, descending);
     }
 
     private static string[]? ParseGroupByFields(string? value)
@@ -567,9 +632,15 @@ internal sealed record EsriFeatureQuery(
 
 /// <summary>
 /// One <c>outStatistics</c> entry: the aggregation, its input field and
-/// the output alias (spec §9.1.4, 10.x statistics).
+/// the output alias (spec §9.1.4, 10.x statistics). Percentile statistics
+/// (S3 percentile type) also carry the fraction 0..1 and the rank order.
 /// </summary>
-internal sealed record EsriOutStatistic(string StatisticType, string OnStatisticField, string OutStatisticFieldName);
+internal sealed record EsriOutStatistic(
+    string StatisticType,
+    string OnStatisticField,
+    string OutStatisticFieldName,
+    double? PercentileValue = null,
+    bool PercentileDescending = false);
 
 /// <summary>
 /// One <c>orderByFields</c> entry: the field name (validated against the
