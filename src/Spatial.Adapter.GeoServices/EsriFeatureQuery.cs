@@ -30,7 +30,12 @@ internal sealed record EsriFeatureQuery(
     int? MaxRecordCountFactor,
     int? GeometryPrecision,
     double? MaxAllowableOffset,
-    EsriTimeExtent? Time)
+    EsriTimeExtent? Time,
+    bool ReturnEnvelope,
+    CoordinateReference? DefaultSr,
+    string? ResultPaginationToken,
+    IReadOnlyList<string>? UniqueIds,
+    bool ReturnUniqueIdsOnly)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
@@ -74,7 +79,11 @@ internal sealed record EsriFeatureQuery(
             throw EsriInteropException.Invalid("'having' requires 'outStatistics'.");
         }
 
-        ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null);
+        var returnUniqueIdsOnly = parameters.GetBool("returnUniqueIdsOnly", false);
+        ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null, returnUniqueIdsOnly);
+        var paginationToken = ParsePaginationToken(parameters.Get("resultPaginationToken"));
+        ValidatePagination(paginationToken, parameters.Get("resultOffset"), returnIdsOnly, returnCountOnly, returnExtentOnly, returnUniqueIdsOnly);
+        var defaultSr = EsriValueParser.ParseSpatialReference(parameters.Get("defaultSR"));
         var inSr = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         var maxRecordCountFactor = ParseMaxRecordCountFactor(parameters.Get("maxRecordCountFactor"));
         RejectQuantization(parameters);
@@ -83,12 +92,12 @@ internal sealed record EsriFeatureQuery(
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
-            ParseGeometry(parameters.Get("geometry"), inSr ?? fallback),
+            ParseGeometry(parameters.Get("geometry"), inSr ?? defaultSr ?? fallback),
             ParseSpatialRel(parameters.Get("spatialRel")),
             ParseOutFields(parameters.Get("outFields")),
             ParseOrderByFields(parameters.Get("orderByFields")),
             parameters.GetBool("returnGeometry", true),
-            EsriValueParser.ParseSpatialReference(parameters.Get("outSR")),
+            EsriValueParser.ParseSpatialReference(parameters.Get("outSR")) ?? defaultSr,
             returnIdsOnly,
             returnCountOnly,
             returnExtentOnly,
@@ -102,7 +111,12 @@ internal sealed record EsriFeatureQuery(
             maxRecordCountFactor,
             geometryPrecision,
             maxAllowableOffset,
-            ParseTime(parameters.Get("time")));
+            ParseTime(parameters.Get("time")),
+            parameters.GetBool("returnEnvelope", false),
+            defaultSr,
+            paginationToken,
+            ParseUniqueIds(parameters.Get("uniqueIds")),
+            returnUniqueIdsOnly);
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -270,13 +284,59 @@ internal sealed record EsriFeatureQuery(
     }
 
     /// <summary>
-    /// The four result-shape selectors are mutually exclusive. Choosing one
+    /// Rejects a <c>resultPaginationToken</c> that cannot page: the token
+    /// carries the page position, so <c>resultOffset</c> must be absent, and
+    /// only the paged result shapes (features, distinct values, statistics)
+    /// honour it.
+    /// </summary>
+    private static void ValidatePagination(string? token, string? offset, bool idsOnly, bool countOnly, bool extentOnly, bool uniqueIdsOnly)
+    {
+        if (token is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(offset))
+        {
+            throw EsriInteropException.Invalid(
+                "The parameters resultOffset, resultPaginationToken are mutually exclusive; the token carries the page position — drop 'resultOffset' to continue a token workflow.");
+        }
+
+        var shape = idsOnly ? "returnIdsOnly"
+            : countOnly ? "returnCountOnly"
+            : extentOnly ? "returnExtentOnly"
+            : uniqueIdsOnly ? "returnUniqueIdsOnly" : null;
+        if (shape is not null)
+        {
+            throw EsriInteropException.Invalid(
+                $"The 'resultPaginationToken' parameter pages feature results; it cannot be combined with '{shape}'.");
+        }
+    }
+
+    private static string? ParsePaginationToken(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string[]? ParseUniqueIds(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var ids = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return ids.Length == 0
+            ? throw EsriInteropException.Invalid("'uniqueIds' must name at least one id.")
+            : ids;
+    }
+
+    /// <summary>
+    /// The result-shape selectors are mutually exclusive. Choosing one
     /// explicitly avoids silently dropping a client's request; an ambiguous
     /// combination is a typed <c>invalid.arguments</c> failure.
     /// </summary>
-    private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues, bool statistics = false)
+    private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues, bool statistics = false, bool uniqueIdsOnly = false)
     {
-        var requested = new List<string>(5);
+        var requested = new List<string>(6);
         if (idsOnly)
         {
             requested.Add("returnIdsOnly");
@@ -300,6 +360,11 @@ internal sealed record EsriFeatureQuery(
         if (statistics)
         {
             requested.Add("outStatistics");
+        }
+
+        if (uniqueIdsOnly)
+        {
+            requested.Add("returnUniqueIdsOnly");
         }
 
         if (requested.Count > 1)
