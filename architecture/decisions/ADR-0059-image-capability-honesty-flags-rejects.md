@@ -52,8 +52,10 @@ it names (the T-019 pattern):
 4. **`hasColormap: false`** — no colormap is applied: `renderingRule` is
    rejected and legend swatches are raw export renders (ADR-0054).
 5. **`hasHistograms`** — true exactly when `computeHistograms` can serve
-   the dataset, i.e. its pixel type is 8-bit (`RasterPixelType.U8`), the
-   only format the v1 provider path computes (ADR-0054). A float raster
+   the dataset, i.e. every real-valued band format (T-054 widened the
+   provider path beyond 8-bit: 8-bit bands keep full-range 256-bin
+   histograms, other real-valued bands report data-driven 256-bin
+   histograms over their data range). A complex raster (`C64`/`C128`)
    reports `false` and its `computeHistograms` answers 400.
 6. **`hasRasterAttributeTable`** — true exactly when the dataset carries a
    configured table (`RasterInfo.AttributeTable`), mirroring the resource
