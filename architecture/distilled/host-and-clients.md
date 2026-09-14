@@ -67,6 +67,12 @@ GET|POST /arcgis/rest/services/{service}/MapServer/identify
 GET|POST /arcgis/rest/services/{service}/MapServer/find
 GET|POST /arcgis/rest/services/{service}/MapServer/export            # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator tile
+GET|POST /arcgis/rest/services/{service}/MapServer/exportTiles      # reject by name (ADR-0059)
+GET|POST /arcgis/rest/services/{service}/MapServer/estimateExportTileSize # reject by name (ADR-0059)
+GET|POST /arcgis/rest/services/{service}/MapServer/WMTS[{/*rest}]    # reject by name (ADR-0059)
+GET|POST /arcgis/rest/services/{service}/MapServer/generateKml      # reject by name (ADR-0059)
+GET|POST /arcgis/rest/services/{service}/MapServer/kml/{*rest}      # reject by name (ADR-0059)
+GET|POST /arcgis/rest/services/{service}/MapServer/jobs[{/*rest}]   # reject by name (ADR-0059)
 GET|POST /arcgis/rest/services/{service}/ImageServer                 # ImageServer root (spec §8, ADR-0051)
 GET|POST /arcgis/rest/services/{service}/ImageServer/exportImage    # f=image bytes or {href}
 GET|POST /arcgis/rest/services/{service}/ImageServer/identify       # pixel values + catalog items
