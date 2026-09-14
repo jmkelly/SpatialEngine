@@ -45,8 +45,45 @@ internal static class MapServerEndpoints
         group.MapMethods("/{service}/MapServer/find", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
             MapFind(catalog, registry, service, context, stores, transforms, cancellationToken));
+        MapOfflineEndpoints(catalog, registry, group);
 
         MapExportEndpoints.MapExportRoutes(group, catalog, registry);
+    }
+
+    /// <summary>
+    /// The offline/async reject surface (ADR-0059): <c>exportTiles</c> +
+    /// <c>estimateExportTileSize</c>, WMTS (base plus the capabilities/tile
+    /// remainder), KML (<c>generateKml</c> plus the <c>kml</c> image
+    /// remainder) and async <c>jobs</c> (collection plus one job, its results
+    /// and its inputs). Named non-goals rejected by name; T-048 builds on
+    /// this scope instead of re-deciding it.
+    /// </summary>
+    private static void MapOfflineEndpoints(GeoServicesCatalog catalog, IMapRegistry registry, RouteGroupBuilder group)
+    {
+        group.MapMethods("/{service}/MapServer/exportTiles", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.MapExportTiles(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/estimateExportTileSize", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.MapEstimateExportTileSize(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/WMTS", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.Wmts(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/WMTS/{*rest}", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.Wmts(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/generateKml", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.GenerateKml(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/kml/{*rest}", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.KmlImage(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/jobs", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.Jobs(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/MapServer/jobs/{*rest}", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.Jobs(catalog, registry, service, cancellationToken));
     }
 
     private static async Task<IResult> MapServerRoot(

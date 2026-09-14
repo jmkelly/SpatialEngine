@@ -11,7 +11,9 @@ namespace Spatial.Adapter.GeoServices;
 /// file surface (<c>download</c>, the Raster Image/Thumbnail/File resources),
 /// and the missing-resource closeout: <c>legend</c>, <c>find</c>, stored
 /// <c>statistics</c>, <c>computeHistograms</c>, <c>rasterAttributeTable</c>
-/// and the service-level <c>thumbnail</c> and <c>metadata</c>.
+/// and the service-level <c>thumbnail</c> and <c>metadata</c>, plus the
+/// offline rejects <c>exportTiles</c> / <c>estimateExportTileSize</c>
+/// (ADR-0059: packaging needs a job model the host does not have).
 /// The ImageServer is the GeoServices projection of a
 /// <see cref="MapService.Image"/> publication whose layer names a dataset
 /// in the keyed <c>raster</c> store; the adapter consumes only the SDK
@@ -34,6 +36,12 @@ internal static class ImageServerEndpoints
         group.MapMethods("/{service}/ImageServer/exportImage", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
             ImageExport(catalog, registry, service, context, stores, transforms, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/exportTiles", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.ImageExportTiles(catalog, registry, service, cancellationToken));
+        group.MapMethods("/{service}/ImageServer/estimateExportTileSize", ["GET", "POST"], (
+            string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            MapOfflineRejects.ImageEstimateExportTileSize(catalog, registry, service, cancellationToken));
         group.MapMethods("/{service}/ImageServer/identify", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageIdentify(catalog, registry, service, context, stores, cancellationToken));
         group.MapMethods("/{service}/ImageServer/query", ["GET", "POST"], (
