@@ -26,24 +26,32 @@ Our surface: `src/Spatial.Host/Api/MapTileEndpoints.cs`
 |---|---|---|---|
 | Live XYZ raster tiles (Web-Mercator, png/jpg/…) per map | served | **Have** | `MapTileEndpoints.cs:21`; MapServer `tile/{z}/{y}/{x}` |
 | Pluggable schemes + LRU cache (+ persistent cache T-001) | served | **Have** | ADR-0046; `ITileScheme`/`ITileCache` |
-| `tileInfo` LODs on the MapServer root matching the served scheme | served | **Partial** | `MapTileScheme(schemes)` in `Maps.cs:Root`; single Web-Mercator scheme only — G1 advertises 24 LODs over the same scheme family, but ArcGIS LOD `scale/resolution` tables are not byte-compared |
-| `exportTiles` (offline tile packages) + `estimateExportTileSize` | — | **Missing** | S2; no packaging route; no job model (ADR-0033) |
-| WMTS (`WMTSCapabilities.xml`, `.../tile/{z}/{y}/{x}` WMTS addressing, RESTful + KVP) | — | **Missing** | S3; zero WMTS routes in tree |
-| Vector tiles (`.vtpk`, MVT endpoints) | — | **Missing** | S2 `v inequality`; we render raster tiles only |
-| OGC API Tiles (`/tiles`, TileJSON, `capabilities` doc) | — | **Partial** | neutral `GET /api/maps/{name}/tiles/0/0/0.png` discovery link exists (`DiscoveryPage.cs:214`); no OGC-API-Tiles JSON |
-| `storageInfo` / `exportTilesAllowed` / `maxExportTilesCount` honesty on root | — | **Partial** | G1 lists them; we don't emit packaging fields (correctly absent, but not advertised as unsupported) |
+| `tileInfo` LODs on the MapServer root matching the served scheme | served | **Have** | `MapTileScheme(schemes)` in `Maps.cs:Root`; single Web-Mercator scheme — the 24 served LODs replay G1's rows (resolution/scale in `CachedLodReplayTests`, envelope-equality in `TileEnvelopeProofTests`, T-048) |
+| `exportTiles` (offline tile packages) + `estimateExportTileSize` | rejected | **Non-goal** | S2; mounted and rejected by name with typed `invalid.arguments` (ADR-0059); no packaging route, no job model (ADR-0033); root advertises `exportTilesAllowed:false` |
+| WMTS (`WMTSCapabilities.xml`, `.../tile/{z}/{y}/{x}` WMTS addressing, RESTful + KVP) | rejected | **Non-goal** | S3 triple (base, capabilities, tile) mounted and rejected by name with typed `invalid.arguments` (ADR-0059); live tiles come from `tile/{z}/{y}/{x}` |
+| Vector tiles (`.vtpk`, MVT endpoints) | — | **Non-goal** | raster tiles only; no MVT encoder, no `VectorTileServer`, no `.vtpk` packaging (ADR-0062; reconciles with ADR-0044/0033 first if ever reopened) |
+| OGC API Tiles (`/tiles`, TileJSON, `capabilities` doc) | — | **Non-goal** | no TileJSON/landing-page/collections-tiles JSON; neutral tile routes + MapServer `tile/{z}/{y}/{x}` stay the surface (ADR-0062) |
+| `storageInfo` / `exportTilesAllowed` / `maxExportTilesCount` honesty on root | served | **Have** | `exportTilesAllowed:false` on the root (ADR-0056); packaging fields correctly absent and the operations reject by name (ADR-0059) |
 
-## 2. Same-data proof (to be wired by T-M)
+## 2. Same-data proof (wired by T-048)
 
-- Byte-compare our `tile/{z}/{y}/{x}` against G1's cached LOD grid for the
-  matching z/x/y (same Web-Mercator origin): envelopes must agree; pixels
-  differ by style (ours) vs Esri cartography — envelope-equality, not
-  pixel-equality, is the assertion.
-- `tileInfo` LOD table replay: our advertised LOD `resolution/scale` values
-  must reproduce G1's row for the overlapping levels.
+- Envelope-equality of our `tile/{z}/{y}/{x}` against G1's cached LOD
+  grid for the matching z/x/y (same Web-Mercator origin) is proven in
+  `TileEnvelopeProofTests`: expected envelopes are derived from G1's own
+  `tileInfo` (origin + LOD resolution × 256 px) and agree with
+  `WebMercatorTileScheme.Bounds` to within half a pixel per zoom — pixels
+  differ by style (ours) vs Esri cartography, so pixel-equality is never
+  asserted. The MapServer tile route renders `ITileScheme.Bounds`
+  directly, so the scheme-level proof covers the served envelope.
+- `tileInfo` LOD table replay is proven in `CachedLodReplayTests`: our 24
+  advertised LOD `resolution` values reproduce G1's rows tightly and the
+  `scale` values within Esri's display rounding.
 
-## 3. Follow-ups (filed)
+## 3. Follow-ups (closed by T-041/T-048)
 
 - T-M Tiles parity: LOD table byte-proof vs G1, `exportTiles`+estimate scope
   (likely documented non-goal + honest reject, given no-job architecture),
   WMTS capabilities+tile scope, vector-tiles decision.
+  Closed: LOD proof landed (`CachedLodReplayTests` + `TileEnvelopeProofTests`);
+  `exportTiles`+estimate/WMTS/KML/jobs reject by name (ADR-0059, T-041);
+  vector-tiles/MVT + OGC API Tiles are documented non-goals (ADR-0062).

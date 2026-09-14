@@ -142,7 +142,8 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   TypeScript `render` / `renderCapabilities` (binary via `arrayBuffer`).
 - `Spatial.Imagery.Vips` un-premultiplies the vector buffer so every layer in
   the libvips chain is straight (non-premultiplied) before compositing.
-- Tiles: Web-Mercator LOD math, cache get/set/eviction/invalidation, the tile
+- Tiles: Web-Mercator LOD math, the G1 LOD replay (resolution/scale) and
+  envelope-equality proof, cache get/set/eviction/invalidation, the tile
   version fingerprint, `TileService` order/batch-cap/cancellation, and the
   HTTP tile routes (hit/miss, formats, schemes, batch).
 - Global data: a dataset whose extent reaches a pole is clipped to the
@@ -159,7 +160,9 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 ## Not implemented
 
 A persistent/shared tile cache (the `ITileCache` contract is ready for it);
-a GPU backend is not planned. The GeoServices MapServer (`export`/`tile`,
+a GPU backend is not planned. Vector tiles (MVT/`.vtpk`) and OGC API Tiles
+are documented non-goals (ADR-0062): the engine serves pre-styled raster
+tiles only. The GeoServices MapServer (`export`/`tile`,
 ADR-0048) is implemented; a neutral `/api/publications/{name}/tiles` route is
 not. Within the symbol subset, line placement, expressions, sprite sheets and
 text transforms are not claimed.
