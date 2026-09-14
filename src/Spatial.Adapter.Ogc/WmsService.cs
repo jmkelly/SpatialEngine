@@ -11,11 +11,15 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// The OGC Web Map Service 1.3.0 projection (ADR-0053 §3): GetCapabilities,
-/// GetMap, GetLegendGraphic and GetFeatureInfo over a map's feature layers. GetMap renders the
+/// The OGC Web Map Service projection (ADR-0053 §3): GetCapabilities (1.3.0
+/// and 1.1.1 dialects), GetMap, GetLegendGraphic and GetFeatureInfo over a
+/// map's feature layers. GetMap renders the
 /// map's persisted style through <see cref="IMapRenderer"/> in the requested
 /// CRS/bbox/size; GetFeatureInfo queries the selected layers through
-/// <see cref="IFeatureStore.QueryAsync"/> near the clicked pixel. The
+/// <see cref="IFeatureStore.QueryAsync"/> near the clicked pixel. SLD style
+/// overrides (GetStyles, DescribeLayer, SLD/SLD_BODY) are rejected: the
+/// service renders the persisted default style only (T-045 diagnostics
+/// verdict — no recorded client trace sends them). The
 /// projection is read-only and never sees a protocol type outside this file.
 /// </summary>
 internal static class WmsService
@@ -38,7 +42,7 @@ internal static class WmsService
         var request = parameters.RequiredRequest();
         return request.ToUpperInvariant() switch
         {
-            "GETCAPABILITIES" => await CapabilitiesAsync(map, services, options, context, cancellationToken),
+            "GETCAPABILITIES" => await CapabilitiesAsync(map, parameters, services, options, context, cancellationToken),
             "GETMAP" => await GetMapAsync(map, parameters, services, cancellationToken),
             "GETFEATUREINFO" => await GetFeatureInfoAsync(map, parameters, services, cancellationToken),
             "GETLEGENDGRAPHIC" => await GetLegendGraphicAsync(map, parameters, services, cancellationToken),
@@ -47,8 +51,9 @@ internal static class WmsService
     }
 
     private static async Task<IResult> CapabilitiesAsync(
-        Map map, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+        Map map, OgcParameters parameters, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
     {
+        var version = NegotiateCapabilitiesVersion(parameters.Get("version"));
         var layers = new List<OgcLayer>();
         foreach (var layer in OgcLayers.FeatureLayers(map))
         {
@@ -56,8 +61,36 @@ internal static class WmsService
         }
 
         var baseUrl = BaseUrl(context, options, map.Name);
-        var xml = await WmsCapabilities.BuildAsync(map, layers, baseUrl, services, options, cancellationToken);
+        var xml = await WmsCapabilities.BuildAsync(map, layers, baseUrl, services, options, cancellationToken, version);
         return Results.Text(xml, "application/xml");
+    }
+
+    /// <summary>
+    /// Selects the capabilities dialect (T-045 item 2): no VERSION (what QGIS
+    /// sends on add-layer) and 1.3.x serve the 1.3.0 dialect; 1.1.x serves
+    /// the 1.1.1 dialect (SRS vocabulary, LatLonBoundingBox); anything else
+    /// is <c>InvalidParameterValue</c>.
+    /// </summary>
+    private static string NegotiateCapabilitiesVersion(string? version)
+    {
+        if (version is null)
+        {
+            return "1.3.0";
+        }
+
+        var trimmed = version.Trim();
+        if (trimmed.StartsWith("1.3", StringComparison.Ordinal))
+        {
+            return "1.3.0";
+        }
+
+        if (trimmed.StartsWith("1.1", StringComparison.Ordinal))
+        {
+            return "1.1.1";
+        }
+
+        throw OgcServiceException.Invalid(
+            $"Unsupported WMS version '{version}'; supported versions are 1.3.0 and 1.1.1.");
     }
 
     private static async Task<IResult> GetMapAsync(
@@ -78,6 +111,7 @@ internal static class WmsService
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
         RequireDefaultStyles(parameters.List("styles"));
+        RequireNoSld(parameters);
         var layers = OgcLayers.Select(map, parameters.List("layers"));
         var request = new MapRenderRequest(
             ParseViewport(parameters, requireVersion: true),
@@ -88,9 +122,85 @@ internal static class WmsService
             90,
             ParseColor(parameters.Get("bgcolor")),
             ParseTransparent(parameters.Get("transparent")),
-            1.0);
+            1.0,
+            ParseDpi(parameters));
         var image = await services.Renderer.RenderAsync(request, cancellationToken);
         return Results.Bytes(image.Content, image.MediaType);
+    }
+
+    /// <summary>
+    /// Rejects an SLD style override (T-045 item 1): the service renders the
+    /// persisted default style only, so a client-supplied SLD/SLD_BODY must
+    /// fail loudly instead of rendering the wrong style with a 200. No
+    /// recorded client trace has ever sent these parameters; GetStyles and
+    /// DescribeLayer keep the default-arm OperationNotSupported reject.
+    /// </summary>
+    private static void RequireNoSld(OgcParameters parameters)
+    {
+        var source = parameters.Get("sld") is not null
+            ? "sld"
+            : parameters.Get("sld_body") is not null ? "sld_body" : null;
+        if (source is not null)
+        {
+            throw OgcServiceException.NotSupported(
+                $"The '{source}' parameter is not supported; this service renders the persisted default style only.");
+        }
+    }
+
+    /// <summary>
+    /// Reads the QGIS dpiMode=7 triple (T-045 item 3): DPI wins, then
+    /// MAP_RESOLUTION (MapServer), then FORMAT_OPTIONS dpi:N (GeoServer).
+    /// Absent means the style reference DPI the renderer defines
+    /// (<see cref="MapRenderRequest.ReferenceDpi"/>); a present-but-malformed
+    /// DPI or MAP_RESOLUTION is InvalidParameterValue, while a malformed dpi
+    /// inside the multi-value FORMAT_OPTIONS bag is skipped.
+    /// </summary>
+    internal static double ParseDpi(OgcParameters parameters)
+    {
+        var dpi = parameters.Get("dpi");
+        if (dpi is not null)
+        {
+            return RequireDpi(dpi, "dpi");
+        }
+
+        var resolution = parameters.Get("map_resolution");
+        if (resolution is not null)
+        {
+            return RequireDpi(resolution, "map_resolution");
+        }
+
+        var options = parameters.Get("format_options");
+        if (options is not null && TryFormatOptionsDpi(options, out var value))
+        {
+            return value;
+        }
+
+        return MapRenderRequest.ReferenceDpi;
+    }
+
+    private static double RequireDpi(string text, string name) =>
+        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+        && double.IsFinite(value) && value > 0
+            ? value
+            : throw OgcServiceException.Invalid($"The '{name}' parameter must be a positive number, got '{text}'.");
+
+    private static bool TryFormatOptionsDpi(string options, out double value)
+    {
+        value = MapRenderRequest.ReferenceDpi;
+        foreach (var token in options.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var pair = token.Split(':', 2, StringSplitOptions.TrimEntries);
+            if (pair.Length == 2
+                && string.Equals(pair[0], "dpi", StringComparison.OrdinalIgnoreCase)
+                && double.TryParse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+                && double.IsFinite(parsed) && parsed > 0)
+            {
+                value = parsed;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -226,7 +336,8 @@ internal static class WmsService
             90,
             ParseColor(parameters.Get("bgcolor")),
             ParseTransparent(parameters.Get("transparent")),
-            1.0);
+            1.0,
+            ParseDpi(parameters));
         var image = await services.Renderer.RenderAsync(request, cancellationToken);
         return Results.Bytes(image.Content, image.MediaType);
     }

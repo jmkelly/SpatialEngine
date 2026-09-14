@@ -7,13 +7,28 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Writes the WMS 1.3.0 capabilities document (ADR-0053 §3): service
+/// Writes the WMS capabilities document (ADR-0053 §3): service
 /// metadata, the request verbs with their formats, and one queryable layer
 /// per feature layer carrying EPSG:4326/CRS:84/EPSG:3857 bounding boxes.
+/// VERSION 1.1.x serves the legacy 1.1.1 dialect instead: unqualified
+/// <c>WMS_Capabilities</c> with the 1.1.1 DTD, the SRS vocabulary and
+/// <c>LatLonBoundingBox</c> (lon/lat, never swapped); anything else serves
+/// the 1.3.0 dialect.
 /// </summary>
 internal static class WmsCapabilities
 {
     public static async Task<string> BuildAsync(
+        Map map, IReadOnlyList<OgcLayer> layers, string baseUrl, OgcRequestServices services, OgcOptions options, CancellationToken cancellationToken, string version = "1.3.0")
+    {
+        if (version.StartsWith("1.1", StringComparison.Ordinal))
+        {
+            return await Build111Async(map, layers, baseUrl, services, options, cancellationToken);
+        }
+
+        return await Build130Async(map, layers, baseUrl, services, options, cancellationToken);
+    }
+
+    private static async Task<string> Build130Async(
         Map map, IReadOnlyList<OgcLayer> layers, string baseUrl, OgcRequestServices services, OgcOptions options, CancellationToken cancellationToken)
     {
         var rootLayer = new XElement(
@@ -152,4 +167,140 @@ internal static class WmsCapabilities
     private static XElement Number(XName name, double value) => new(name, Double(value));
 
     private static string Double(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// The WMS 1.1.1 capabilities dialect (T-045 item 2): DTD-validated,
+    /// unqualified elements, the SRS vocabulary (CRS:84 is a 1.3.0-ism and
+    /// stays out) and lon/lat boxes only — LatLonBoundingBox plus one
+    /// BoundingBox per SRS, both in axis order. The layer
+    /// content (one default style with its LegendURL) matches the 1.3.0
+    /// dialect.
+    /// </summary>
+    private static async Task<string> Build111Async(
+        Map map, IReadOnlyList<OgcLayer> layers, string baseUrl, OgcRequestServices services, OgcOptions options, CancellationToken cancellationToken)
+    {
+        var rootLayer = new XElement(
+            "Layer",
+            new XElement("Title", map.Name),
+            SrsElement("EPSG:4326"),
+            SrsElement("EPSG:3857"));
+        foreach (var layer in layers)
+        {
+            rootLayer.Add(await Layer111Async(layer, baseUrl, services, cancellationToken));
+        }
+
+        var document = new XDocument(
+            new XDeclaration("1.0", "utf-8", null),
+            new XDocumentType(
+                "WMS_Capabilities",
+                null,
+                "http://schemas.opengis.net/wms/1.1.1/WMS_MS_Capabilities.dtd",
+                null),
+            new XElement(
+                "WMS_Capabilities",
+                new XAttribute("version", "1.1.1"),
+                Service111(options, baseUrl),
+                new XElement(
+                    "Capability",
+                    Request111(baseUrl),
+                    new XElement(
+                        "Exception",
+                        new XElement("Format", "application/vnd.ogc.se_xml"),
+                        new XElement("Format", "application/vnd.ogc.se_inimage"),
+                        new XElement("Format", "application/vnd.ogc.se_blank")),
+                    rootLayer)));
+        return OgcXml.Write(document);
+    }
+
+    private static async Task<XElement> Layer111Async(OgcLayer layer, string baseUrl, OgcRequestServices services, CancellationToken cancellationToken)
+    {
+        var element = new XElement(
+            "Layer",
+            new XAttribute("queryable", "1"),
+            new XElement("Name", layer.Name),
+            new XElement("Title", layer.Name),
+            SrsElement("EPSG:4326"),
+            SrsElement("EPSG:3857"),
+            new XElement(
+                "Style",
+                new XElement("Name", "default"),
+                new XElement("Title", "Default"),
+                new XElement(
+                    "LegendURL",
+                    new XAttribute("width", WmsService.LegendWidth),
+                    new XAttribute("height", WmsService.LegendHeight),
+                    new XElement("Format", "image/png"),
+                    OnlineResource111(LegendUrl(baseUrl, layer.Name)))));
+        var extent = await OgcGeometry.ExtentAsync(services.Features(layer.Store), layer.Layer.Dataset, cancellationToken);
+        if (extent is { } bounds)
+        {
+            var source = $"EPSG:{layer.Description.Srid.ToString(CultureInfo.InvariantCulture)}";
+            var wgs84 = OgcGeometry.Transform(bounds, source, "EPSG:4326", services.Transforms, cancellationToken);
+            var mercator = OgcGeometry.ToWebMercator(wgs84, services.Transforms, cancellationToken);
+            element.Add(LatLonBoundingBox(wgs84));
+            element.Add(BoundingBox111("EPSG:4326", wgs84));
+            element.Add(BoundingBox111("EPSG:3857", mercator));
+        }
+
+        return element;
+    }
+
+    private static XElement Service111(OgcOptions options, string baseUrl) =>
+        new(
+            "Service",
+            new XElement("Name", "WMS"),
+            new XElement("Title", options.ServiceTitle),
+            new XElement("Abstract", "OGC Web Map Service over the Spatial Engine map registry."),
+            OnlineResource111(baseUrl));
+
+    private static XElement Request111(string baseUrl) =>
+        new(
+            "Request",
+            Operation111("GetCapabilities", Endpoint(baseUrl), "application/vnd.ogc.wms_xml"),
+            Operation111("GetMap", Endpoint(baseUrl), "image/png", "image/jpeg"),
+            Operation111("GetLegendGraphic", Endpoint(baseUrl), "image/png", "image/jpeg"),
+            Operation111(
+                "GetFeatureInfo",
+                Endpoint(baseUrl),
+                "text/plain",
+                "text/html",
+                "text/xml",
+                "application/json",
+                "application/vnd.ogc.gml"));
+
+    private static XElement Operation111(string name, string href, params string[] formats) =>
+        new(
+            name,
+            formats.Select(format => new XElement("Format", format)),
+            new XElement(
+                "DCPType",
+                new XElement(
+                    "HTTP",
+                    new XElement("Get", OnlineResource111(href)))));
+
+    private static XElement OnlineResource111(string href) =>
+        new(
+            "OnlineResource",
+            new XAttribute(XNamespace.Xmlns + "xlink", OgcXml.Xlink.NamespaceName),
+            new XAttribute(OgcXml.Xlink + "type", "simple"),
+            new XAttribute(OgcXml.Xlink + "href", href));
+
+    private static XElement SrsElement(string srs) => new("SRS", srs);
+
+    private static XElement LatLonBoundingBox(Envelope wgs84) =>
+        new(
+            "LatLonBoundingBox",
+            new XAttribute("minx", Double(wgs84.MinX)),
+            new XAttribute("miny", Double(wgs84.MinY)),
+            new XAttribute("maxx", Double(wgs84.MaxX)),
+            new XAttribute("maxy", Double(wgs84.MaxY)));
+
+    private static XElement BoundingBox111(string srs, Envelope bounds) =>
+        new(
+            "BoundingBox",
+            new XAttribute("SRS", srs),
+            new XAttribute("minx", Double(bounds.MinX)),
+            new XAttribute("miny", Double(bounds.MinY)),
+            new XAttribute("maxx", Double(bounds.MaxX)),
+            new XAttribute("maxy", Double(bounds.MaxY)));
 }

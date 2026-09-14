@@ -4,12 +4,19 @@ namespace Spatial.Rendering.Skia;
 
 /// <summary>
 /// Resolves the effective viewport (applying the device pixel ratio) and
-/// enforces the request's resource caps before any work is done.
+/// enforces the request's resource caps before any work is done. The DPI
+/// is validated here as well: unlike <see cref="MapRenderRequest.Scale"/>
+/// it never changes the output frame, it only scales symbology.
 /// </summary>
 internal static class RenderValidator
 {
     public static RasterViewport Resolve(MapRenderRequest request, RenderLimits limits)
     {
+        if (!double.IsFinite(request.Dpi) || request.Dpi <= 0)
+        {
+            throw SpatialException.BadArguments("'dpi' must be a positive number.");
+        }
+
         var viewport = Scale(request);
         if (!viewport.IsValid)
         {

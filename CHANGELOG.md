@@ -11,6 +11,17 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **WMS 1.1.1 capabilities dialect** (ADR-0053, T-045). `GetCapabilities`
+  with `VERSION=1.1.x` serves the legacy dialect: DTD doctype, unqualified
+  `WMS_Capabilities`, the SRS vocabulary and `LatLonBoundingBox` in lon/lat
+  order with one `BoundingBox` per SRS. Absent or 1.3.x versions keep the
+  1.3.0 dialect (what QGIS sends on add-layer); anything else is
+  `InvalidParameterValue`. 1.1.1 `GetMap`/`GetFeatureInfo` KVP already
+  worked; now 1.1.1 clients (GDAL, OWSLib) can negotiate from capabilities.
+  `GetStyles`, `DescribeLayer` and `SLD`/`SLD_BODY` stay explicit
+  `OperationNotSupported` rejects — the recorded client corpus carries no
+  trace of them.
+
 - **OGC failure diagnostics** (ADR-0045). The WMS/WFS adapter now logs one
   structured event per operation with the `request` operation and the merged
   request parameters, and logs a rejected operation at `Warning` with the
@@ -158,6 +169,15 @@ this file together, then tag the release (`RELEASING.md`).
   admin API and the Esri admin projection land in later phases (ADR-0041).
 
 ### Changed
+
+- **Scale-aware WMS DPI** (ADR-0053, T-045). The QGIS `dpiMode=7` triple
+  (`DPI`, then `MAP_RESOLUTION`, then `FORMAT_OPTIONS` dpi:N) now drives
+  rendering instead of being accepted and ignored: `MapRenderRequest`
+  gains a `Dpi` member (default 96, the CSS reference pixel style sizes are
+  defined at) and the Skia pipeline scales paint sizes linearly with it
+  while the output frame keeps the requested size. A malformed `DPI` or
+  `MAP_RESOLUTION` is `InvalidParameterValue`; 96 dpi renders byte-identical
+  to before, so existing QGIS traffic is unaffected.
 
 - **Quality loop cleared to green** (ADR-0040): the raster/MapServer/
   ImageServer work plus pre-existing baseline debt were paid down in one
