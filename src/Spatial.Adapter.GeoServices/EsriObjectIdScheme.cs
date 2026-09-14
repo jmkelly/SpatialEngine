@@ -3,6 +3,7 @@ using Spatial.Core.Features;
 using Spatial.Interop.Esri;
 using Spatial.PluginSdk.Providers;
 
+
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
@@ -75,5 +76,85 @@ internal sealed record EsriObjectIdScheme(bool IsIdentity, int FieldIndex)
 
         throw EsriInteropException.Invalid(
             $"The store assigned feature identity '{id.Value}', which is not a numeric OBJECTID.");
+    }
+}
+
+/// <summary>
+/// How a layer maps engine feature identity onto the Esri string
+/// <c>uniqueIds</c> (spec §9.1.4, 11.5+): a layer whose dataset declares
+/// exactly one identity column of kind <see cref="AttributeKind.String"/>
+/// exposes that column's value; every other layer has no string unique-id
+/// model, so <c>uniqueIds</c>/<c>returnUniqueIdsOnly</c> are rejected by name
+/// and integer features stay addressable through <c>objectIds</c>.
+/// </summary>
+internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
+{
+    /// <summary>Infers the layer's scheme from its dataset description, or null when the layer has no string identity column.</summary>
+    public static EsriUniqueIdScheme? For(DatasetDescription dataset)
+    {
+        if (dataset.IdColumns.Count == 1)
+        {
+            var index = dataset.Schema.IndexOf(dataset.IdColumns[0]);
+            if (index >= 0 && dataset.Schema[index].Kind == AttributeKind.String)
+            {
+                return new EsriUniqueIdScheme(dataset.Schema[index].Name, index);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Resolves the unique id of one feature, or false when the identity column is not a non-empty string.</summary>
+    public bool TryResolve(IFeature feature, out string uniqueId)
+    {
+        ArgumentNullException.ThrowIfNull(feature);
+        var attribute = feature[FieldIndex];
+        if (attribute.Kind == AttributeKind.String && !string.IsNullOrEmpty(attribute.StringValue))
+        {
+            uniqueId = attribute.StringValue;
+            return true;
+        }
+
+        uniqueId = string.Empty;
+        return false;
+    }
+
+    /// <summary>Resolves the unique id of one feature, or a typed server failure when the identity column carries none.</summary>
+    public string Resolve(IFeature feature, DatasetDescription dataset)
+    {
+        if (TryResolve(feature, out var uniqueId))
+        {
+            return uniqueId;
+        }
+
+        throw new EsriInteropException(
+            EsriErrorCodes.ServerError,
+            $"The identity column '{FieldName}' of layer '{dataset.Id}' is not a string unique id.");
+    }
+
+    /// <summary>
+    /// Resolves the unique id a query needs: null when the query names no
+    /// unique-id param, otherwise the feature's id — or a typed
+    /// invalid-argument failure naming the param when the layer has no
+    /// string unique-id model.
+    /// </summary>
+    public static string? ResolveFor(EsriFeatureQuery query, DatasetDescription dataset, IFeature feature)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(dataset);
+        if (query.UniqueIds is null && !query.ReturnUniqueIdsOnly)
+        {
+            return null;
+        }
+
+        var scheme = For(dataset);
+        if (scheme is null)
+        {
+            var parameter = query.UniqueIds is not null ? "uniqueIds" : "returnUniqueIdsOnly";
+            throw EsriInteropException.Invalid(
+                $"The '{parameter}' parameter is not supported on layer '{dataset.Id}': the layer has no string unique-id field; address its integer features with 'objectIds'.");
+        }
+
+        return scheme.Resolve(feature, dataset);
     }
 }
