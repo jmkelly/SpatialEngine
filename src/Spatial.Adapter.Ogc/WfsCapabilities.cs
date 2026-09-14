@@ -49,7 +49,8 @@ internal static class WfsCapabilities
             new XElement(OgcXml.Wfs + "OtherCRS", "urn:ogc:def:crs:EPSG::3857"),
             new XElement(
                 OgcXml.Wfs + "OutputFormats",
-                new XElement(OgcXml.Wfs + "Format", "application/geo+json")));
+                new XElement(OgcXml.Wfs + "Format", "application/geo+json"),
+                new XElement(OgcXml.Wfs + "Format", "application/json")));
         var extent = await OgcGeometry.ExtentAsync(services.Features(layer.Store), layer.Layer.Dataset, cancellationToken);
         if (extent is { } bounds)
         {
@@ -77,7 +78,21 @@ internal static class WfsCapabilities
             OgcXml.Ows + "OperationsMetadata",
             Operation("GetCapabilities", baseUrl),
             Operation("DescribeFeatureType", baseUrl),
-            Operation("GetFeature", baseUrl));
+            new XElement(
+                OgcXml.Ows + "Operation",
+                new XAttribute("name", "GetFeature"),
+                new XElement(
+                    OgcXml.Ows + "DCP",
+                    new XElement(
+                        OgcXml.Ows + "HTTP",
+                        new XElement(OgcXml.Ows + "Get", new XAttribute(OgcXml.Xlink + "href", baseUrl)))),
+                new XElement(
+                    OgcXml.Ows + "Parameter",
+                    new XAttribute("name", "outputFormat"),
+                    new XElement(
+                        OgcXml.Ows + "AllowedValues",
+                        new XElement(OgcXml.Ows + "Value", "application/geo+json"),
+                        new XElement(OgcXml.Ows + "Value", "application/json")))));
 
     private static XElement Operation(string name, string href) =>
         new(
