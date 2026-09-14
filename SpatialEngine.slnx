@@ -42,6 +42,9 @@
   <Folder Name="/tests/architecture/">
     <Project Path="tests/architecture/Spatial.Architecture.Tests/Spatial.Architecture.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests/performance/">
+    <Project Path="tests/performance/Spatial.Performance/Spatial.Performance.csproj" />
+  </Folder>
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj" />
     <Project Path="tests/integration/Spatial.PostGIS.Tests/Spatial.PostGIS.Tests.csproj" />
