@@ -26,7 +26,22 @@ internal sealed record EsriImageServerRoot(
     IReadOnlyList<double>? MeanValues,
     IReadOnlyList<double>? StdvValues,
     string? ObjectIdField,
-    IReadOnlyList<EsriField>? Fields);
+    IReadOnlyList<EsriField>? Fields,
+    bool AllowRasterFunction,
+    IReadOnlyList<EsriRasterFunctionInfo> RasterFunctionInfos,
+    string AllowedMosaicMethods,
+    string DefaultMosaicMethod,
+    string MosaicOperator,
+    string MensurationCapabilities,
+    bool HasColormap,
+    bool HasHistograms,
+    bool HasRasterAttributeTable,
+    int MaxDownloadImageCount,
+    long MaxDownloadSizeLimit,
+    string ServiceSourceType);
+
+/// <summary>One raster function template of the service (spec §8 <c>rasterFunctionInfos</c>).</summary>
+internal sealed record EsriRasterFunctionInfo(string Name, string? Description, string? Help);
 
 /// <summary>The Raster Info resource (spec §8.4): grid, pyramid and the stored per-band statistics.</summary>
 internal sealed record EsriRasterInfo(
