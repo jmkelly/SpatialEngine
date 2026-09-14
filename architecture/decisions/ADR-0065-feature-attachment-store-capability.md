@@ -4,7 +4,7 @@ date: 2026-09-14
 deciders: maintainer + agent
 ---
 
-# ADR-0064: Feature attachments are an additive SDK capability with provider-owned bytes
+# ADR-0065: Feature attachments are an additive SDK capability with provider-owned bytes
 
 ## Context
 

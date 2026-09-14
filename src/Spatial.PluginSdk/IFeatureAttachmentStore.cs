@@ -49,7 +49,7 @@ public sealed record FeatureAttachmentOutcome(long Id, bool Succeeded, string? E
 /// per-id <see cref="FeatureAttachmentOutcome"/> failure. Every method
 /// observes its <see cref="CancellationToken"/> before touching state.
 /// Authentication and quota values are host concerns layered above this
-/// contract (ADR-0064): the store enforces its own byte cap, the adapter
+/// contract (ADR-0065): the store enforces its own byte cap, the adapter
 /// gates the writes.</para>
 /// </summary>
 public interface IFeatureAttachmentStore
