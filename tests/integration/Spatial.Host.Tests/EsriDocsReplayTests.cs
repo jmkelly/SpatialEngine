@@ -119,6 +119,9 @@ public sealed class EsriDocsReplayTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     /// <summary>The recorded Esri answers are intact reference data.</summary>
+    /// <remarks>Live drift 2026-09-14 (T-093): the sampleserver6
+    /// GeometryServer root answers only <c>serviceDescription</c>, so the
+    /// metadata reference shape is that single key.</remarks>
     [Theory]
     [MemberData(nameof(CaseNames))]
     public void The_recorded_esri_response_has_its_documented_shape(string name)
@@ -129,7 +132,8 @@ public sealed class EsriDocsReplayTests : IClassFixture<WebApplicationFactory<Pr
         {
             Assert.True(
                 esri.TryGetProperty("geometries", out _) || esri.TryGetProperty("areas", out _)
-                || esri.TryGetProperty("lengths", out _) || esri.TryGetProperty("capabilities", out _),
+                || esri.TryGetProperty("lengths", out _) || esri.TryGetProperty("capabilities", out _)
+                || esri.TryGetProperty("serviceDescription", out _),
                 $"Case '{name}' records no recognisable Esri answer shape.");
         }
     }

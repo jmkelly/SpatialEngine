@@ -1,7 +1,7 @@
 {
   "name": "metadata",
   "operation": "#info",
-  "source": "Esri REST docs: Geometry Service resource (https://developers.arcgis.com/rest/services-reference/enterprise/geometry-service.htm); sampleserver6/Geometry/GeometryServer pattern",
+  "source": "Esri REST docs: Geometry Service resource (https://developers.arcgis.com/rest/services-reference/enterprise/geometry-service.htm); live root probe https://sampleserver6.arcgisonline.com/arcgis/rest/services/Utilities/Geometry/GeometryServer?f=json refreshed 2026-09-14",
   "request": {
     "method": "GET",
     "path": "/arcgis/rest/services/Geometry/GeometryServer",
@@ -9,17 +9,16 @@
   },
   "expectStatus": 200,
   "esriResponse": {
-    "currentVersion": 11.1,
-    "serviceDescription": "Geometry Service",
-    "capabilities": "Project,Generalize,Buffer,Intersect,AreasAndLengths,Lengths,Distance,ConvexHull,Difference,Union,Simplify,Relation,Densify,LabelPoints,FindTransformations"
+    "serviceDescription": "The Geometry service is used by application developers to perform geometric calculations and web editing   "
   },
   "expect": {
     "currentVersion": 10,
     "serviceDescription": "SpatialEngine Geometry Service",
     "capabilities": "Project,Generalize,Buffer,Intersect,AreasAndLengths,Lengths,Distance,ConvexHull,Difference,Union,Simplify,Relation,Densify,LabelPoints,FindTransformations"
   },
-  "notes": "Resource metadata: version + capability list. Our version/capabilities honestly describe this engine, not Esri's.",
+  "notes": "Resource metadata: version + capability list. Our version/capabilities honestly describe this engine, not Esri's. Live refresh 2026-09-14: the sampleserver6 GeometryServer root now answers only serviceDescription (transcribed verbatim, trailing spaces kept); currentVersion/capabilities no longer appear live. Our expect stays pinned to what the host honestly serves.",
   "knownDeltas": [
+    "Live drift 2026-09-14 (T-093): the sampleserver6 GeometryServer root answers only serviceDescription; esriResponse records that live shape verbatim while expect keeps the version + capability list the host honestly serves.",
     "currentVersion/serviceDescription describe the SpatialEngine build, not Esri's; the capability verb list is the parity contract.",
     "FindTransformations is documented by Esri but this host does not advertise it (no datum tables by design, ADR-0009); dispatching it is an honest invalid.arguments reject."
   ]
