@@ -20,7 +20,9 @@ namespace Spatial.Adapter.Ogc;
 /// envelope carries <c>numberMatched</c>, <c>numberReturned</c> and, while
 /// features remain, <c>next</c>. A requested <c>srsName</c> reprojects the
 /// response geometries. Unimplemented selectors (FES <c>filter</c>, CQL,
-/// resource id) and the value/stored-query and transactional operations are
+/// resource id), property projection (<c>propertyName</c>/<c>aliases</c>),
+/// xlink resolution (<c>resolve</c>/<c>resolveDepth</c>/<c>resolveTimeout</c>)
+/// and the value/stored-query and transactional operations are
 /// rejected by name rather than silently ignored.
 /// </summary>
 internal static class WfsService
@@ -175,6 +177,24 @@ internal static class WfsService
             {
                 throw OgcServiceException.Invalid(
                     $"The '{name}' parameter is not supported; only 'bbox' subsetting is implemented.");
+            }
+        }
+
+        foreach (var name in new[] { "propertyname", "aliases", "alias" })
+        {
+            if (parameters.Get(name) is not null)
+            {
+                throw OgcServiceException.Invalid(
+                    $"The '{name}' parameter is not supported; full features are always returned.");
+            }
+        }
+
+        foreach (var name in new[] { "resolve", "resolvedepth", "resolvetimeout" })
+        {
+            if (parameters.Get(name) is not null)
+            {
+                throw OgcServiceException.Invalid(
+                    $"The '{name}' parameter is not supported; xlink resolution is not implemented.");
             }
         }
     }
