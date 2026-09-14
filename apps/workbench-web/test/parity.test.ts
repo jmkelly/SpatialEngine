@@ -3,14 +3,24 @@ import assert from "node:assert/strict";
 import {
   EsriCensusMapRoot,
   EsriDamageFeatureRoot,
+  EsriGeometryRoot,
+  EsriImageRoot,
+  GeometryOperations,
+  GeometrySamples,
   ParityDefaults,
   buildFeatureCountUrl,
   buildFeatureQueryUrl,
+  buildGeometryUrl,
+  buildImageExportUrl,
   buildMapExportUrl,
+  diffIsClean,
+  diffJsonLines,
   formatBbox,
+  localGeometryRoot,
   localServiceRoots,
   parseBbox,
   parseSize,
+  prettyJson,
 } from "../src/parity.ts";
 
 test("parseBbox accepts comma-separated bounds", () => {
@@ -91,6 +101,73 @@ test("localServiceRoots points both panels at the host's public GeoServices surf
   const roots = localServiceRoots("http://127.0.0.1:5199/", "WorldReference");
   assert.equal(roots.map, "http://127.0.0.1:5199/arcgis/rest/services/WorldReference/MapServer");
   assert.equal(roots.feature, "http://127.0.0.1:5199/arcgis/rest/services/WorldReference/FeatureServer");
+  assert.equal(roots.image, "http://127.0.0.1:5199/arcgis/rest/services/WorldReference/ImageServer");
+});
+
+test("localGeometryRoot points the playground at the host's Geometry Service", () => {
+  assert.equal(
+    localGeometryRoot("http://127.0.0.1:5199/"),
+    "http://127.0.0.1:5199/arcgis/rest/services/Geometry/GeometryServer",
+  );
+});
+
+test("buildImageExportUrl targets exportImage with the same bbox, sr and size", () => {
+  const url = new URL(buildImageExportUrl(EsriImageRoot, parseBbox("1440000,535000,1455000,550000")!, 2264, { width: 800, height: 600 }));
+  assert.equal(`${url.origin}${url.pathname}`, `${EsriImageRoot}/exportImage`);
+  assert.equal(url.searchParams.get("bbox"), "1440000,535000,1455000,550000");
+  assert.equal(url.searchParams.get("bboxSR"), "2264");
+  assert.equal(url.searchParams.get("imageSR"), "2264");
+  assert.equal(url.searchParams.get("size"), "800,600");
+  assert.equal(url.searchParams.get("f"), "image");
+});
+
+test("the default image bbox parses and the Esri image root names CharlotteLAS", () => {
+  assert.notEqual(parseBbox(ParityDefaults.imageBbox), null);
+  assert.equal(ParityDefaults.imageSr, 2264);
+  assert.ok(EsriImageRoot.endsWith("/CharlotteLAS/ImageServer"));
+});
+
+test("the playground covers every host-served geometry operation with a sample", () => {
+  const served = ["project", "generalize", "buffer", "intersect", "areasAndLengths", "lengths", "distance", "convexHull", "difference", "union", "simplify", "relation", "densify", "labelPoints", "findTransformations"];
+  for (const operation of served) {
+    assert.ok((GeometryOperations as readonly string[]).includes(operation), `missing ${operation}`);
+    const sample = GeometrySamples[operation as keyof typeof GeometrySamples];
+    assert.ok(sample.length > 0, `missing sample for ${operation}`);
+    const url = new URL(buildGeometryUrl(EsriGeometryRoot, operation, sample)!);
+    assert.equal(`${url.origin}${url.pathname}`, `${EsriGeometryRoot}/${operation}`);
+    assert.equal(url.searchParams.get("f"), "json");
+  }
+});
+
+test("buildGeometryUrl forces f=json and blanks out to null", () => {
+  const url = new URL(buildGeometryUrl(EsriGeometryRoot, "project", "inSR=4326&outSR=3857&f=html")!);
+  assert.equal(url.searchParams.get("f"), "json");
+  assert.equal(buildGeometryUrl(EsriGeometryRoot, "project", "   "), null);
+});
+
+test("prettyJson canonicalises answers and keeps parse failures a value", () => {
+  const pretty = prettyJson('{"b":1,"a":2}');
+  assert.equal(pretty.ok, true);
+  assert.equal(pretty.ok && pretty.pretty, '{\n  "b": 1,\n  "a": 2\n}');
+  const bad = prettyJson("<html>nope</html>");
+  assert.equal(bad.ok, false);
+});
+
+test("diffJsonLines marks identical answers clean and surfaces both sides", () => {
+  const clean = diffJsonLines('a\nb', 'a\nb');
+  assert.ok(diffIsClean(clean));
+  const dirty = diffJsonLines('{\n  "x": 1\n}', '{\n  "x": 2\n}');
+  assert.ok(!diffIsClean(dirty));
+  assert.deepEqual(dirty.map((line) => line.kind), ["same", "left", "right", "same"]);
+  assert.ok(dirty.some((line) => line.kind === "left" && line.text.includes("1")));
+  assert.ok(dirty.some((line) => line.kind === "right" && line.text.includes("2")));
+});
+
+test("diffJsonLines falls back to a block change on oversized answers", () => {
+  const big = Array.from({ length: 2500 }, (_, i) => `line ${i}`).join("\n");
+  const fallback = diffJsonLines(big, `${big}\nline 2500`);
+  assert.ok(!diffIsClean(fallback));
+  assert.equal(fallback.length, 2);
 });
 
 test("formatBbox round-trips through parseBbox", () => {
