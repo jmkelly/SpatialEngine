@@ -19,14 +19,20 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class MapRenderEngine
 {
-    /// <summary>Resolves each selected layer's keyed store and catalogue into render sources.</summary>
+    /// <summary>
+    /// Resolves each selected layer's keyed store and catalogue into render
+    /// sources, carrying the layer's <c>layerDefs</c> filter and its export
+    /// <c>time</c> extent (T-040) when the layer honours time.
+    /// </summary>
     public static IReadOnlyList<MapLayerSource> Sources(
-        IStoreRegistry stores, string store, IReadOnlyList<PublishedLayer> layers, IReadOnlyDictionary<int, string>? layerDefs)
+        IStoreRegistry stores, string store, IReadOnlyList<PublishedLayer> layers, IReadOnlyDictionary<int, string>? layerDefs,
+        IReadOnlyDictionary<int, MapTimeExtent>? times = null)
     {
         var features = stores.Features(store);
         var catalogue = stores.Catalogue(store);
         return layers
-            .Select(layer => new MapLayerSource(layer.Dataset, features, catalogue, layerDefs?.GetValueOrDefault(layer.Id)))
+            .Select(layer => new MapLayerSource(
+                layer.Dataset, features, catalogue, layerDefs?.GetValueOrDefault(layer.Id), times?.GetValueOrDefault(layer.Id)))
             .ToArray();
     }
 
