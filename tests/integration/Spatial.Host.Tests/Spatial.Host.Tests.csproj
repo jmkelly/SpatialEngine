@@ -10,6 +10,11 @@
       <Link>qgis-fixtures\%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Esri-docs parity replay corpus, GeometryServer slice (T-064). -->
+    <Content Include="..\..\fixtures\esri-docs\**\*.json">
+      <Link>esri-docs-fixtures\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
