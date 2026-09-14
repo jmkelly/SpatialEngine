@@ -200,6 +200,34 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     }
 
     [SkippableFact]
+    public async Task Write_with_an_unknown_transaction_is_rejected()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("id", AttributeKind.Int64, false),
+            new FieldDefinition("name", AttributeKind.String, true),
+            new FieldDefinition("geom", AttributeKind.Geometry, true),
+        ]);
+        var batch = new FeatureBatch(schema,
+        [
+            new Feature(new FeatureId("10"), schema,
+            [
+                AttributeValue.FromInt64(10),
+                AttributeValue.FromString("ten"),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(10, 10, CoordinateReference.Epsg(4326))),
+            ]),
+        ]);
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Store.WriteAsync("public.places", batch, "missing"));
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("Unknown transaction", failure.Message);
+    }
+
+    [SkippableFact]
     public async Task Create_builds_a_result_table_from_a_defining_batch()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
@@ -430,6 +458,18 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
         Assert.Empty(await context.Store.GetAsync("public.roads", [new FeatureId("1")]));
+    }
+
+    [SkippableFact]
+    public async Task Lookup_by_a_malformed_identity_is_rejected()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Store.GetAsync("public.places", [new FeatureId("1|2")]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
 
     private static Feature FeatureWithId(string id, FeatureSchema schema) =>

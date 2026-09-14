@@ -102,6 +102,11 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
         return Task.FromResult(_catalog.WithLock(() =>
         {
             var found = _catalog.Find(dataset);
+            if (transaction is not null && !_catalog.IsTransaction(transaction))
+            {
+                throw SpatialException.BadArguments($"Unknown transaction '{transaction}'.");
+            }
+
             foreach (var feature in batch.Features)
             {
                 found.Features.Add(MemorySchema.BuildStored(found, feature, assignedId: null));
