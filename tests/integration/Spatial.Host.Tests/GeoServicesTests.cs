@@ -126,10 +126,50 @@ public sealed class GeoServicesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task A_buffer_with_units_is_rejected()
+    public async Task A_buffer_with_units_buffers_in_the_projected_crs()
+    {
+        // distances=1000&unit=9001 (metres) against a 4326 point buffered in
+        // 3857: a ~1000 m planar buffer returned in 4326.
+        var geometries = await GetJsonAsync(
+            $"{Root}/Geometry/GeometryServer/buffer?geometries=" +
+            Uri.EscapeDataString("""[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]""") +
+            "&inSR=4326&bufferSR=3857&outSR=4326&distances=1000&unit=9001&f=json");
+
+        var ring = geometries.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var xs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        var width = xs.Max() - xs.Min();
+        Assert.True(width > 0.015 && width < 0.022, $"Unexpected buffer width {width} degrees for 1000 m at the equator.");
+        Assert.Equal(4326, geometries.GetProperty("geometries")[0].GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+    }
+
+    [Fact]
+    public async Task A_buffer_with_an_unknown_unit_is_a_typed_failure()
     {
         var response = await _client.GetAsync(
-            $"{Root}/Geometry/GeometryServer/buffer?geometries=" + Uri.EscapeDataString("""[{"x":0,"y":0}]""") + "&distances=1&unit=9001&f=json");
+            $"{Root}/Geometry/GeometryServer/buffer?geometries=" + Uri.EscapeDataString("""[{"x":0,"y":0}]""") + "&distances=1&unit=424242&f=json");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, (await ErrorAsync(response)).GetProperty("code").GetInt32());
+    }
+
+    [Fact]
+    public async Task Find_transformations_lists_the_catalogue_path()
+    {
+        var same = await GetJsonAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=3857&f=json");
+        Assert.Equal(0, same.GetArrayLength());
+
+        var stepped = await GetJsonAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=27700&f=json");
+        Assert.Equal(1, stepped.GetArrayLength());
+        Assert.True(stepped[0].GetProperty("geoTransforms")[0].GetProperty("transformForward").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("fromGeoCoordinateString")]
+    [InlineData("toGeoCoordinateString")]
+    public async Task Coordinate_notation_operations_are_typed_failures(string operation)
+    {
+        var response = await _client.GetAsync(
+            $"{Root}/Geometry/GeometryServer/{operation}?conversionType=MGRS&f=json");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal(400, (await ErrorAsync(response)).GetProperty("code").GetInt32());

@@ -39,13 +39,14 @@ internal static class GeometryServerEndpoints
         IGeometryProcessing processing,
         IGeometryRelations relations,
         ICoordinateTransforms transforms,
+        ICrsDirectory catalogue,
         CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var capabilities = new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms);
+            var capabilities = new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms, catalogue);
             return GeometryService.Dispatch(operation, parameters, capabilities, cancellationToken);
         }
         catch (Exception exception)
