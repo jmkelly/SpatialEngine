@@ -47,7 +47,13 @@ internal static class MapServerResources
         return infos;
     }
 
-    /// <summary>Builds the MapServer root (spec §4.0).</summary>
+    /// <summary>
+    /// Builds the MapServer root (spec §4.0, T-040): the service advertises
+    /// exactly what export honours — dynamic layers and time relations — and
+    /// the fused-cache fields follow the served scheme (tiles are
+    /// live-rendered per scheme, so <c>exportTilesAllowed</c> stays false;
+    /// offline packaging is T-041's scope).
+    /// </summary>
     public static EsriMapServerRoot Root(
         string mapName, IReadOnlyList<MapLayerInfo> layers, ITileScheme? scheme, string? description, string? copyright)
     {
@@ -68,7 +74,10 @@ internal static class MapServerResources
             Capabilities,
             SupportedImageFormatTypes,
             [.. layers.Select(Reference)],
-            []);
+            [],
+            SupportsDynamicLayers: true,
+            SupportsTimeRelation: true,
+            ExportTilesAllowed: false);
     }
 
     /// <summary>Builds the all-layers resource (spec §4.8).</summary>
