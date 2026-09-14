@@ -40,6 +40,23 @@ Partial pages pin `features` + `exceededTransferLimit`, never the opaque
 `resultPaginationToken`. No FeatureServer behaviour was changed for this
 slice.
 
+## MapServer slice (T-070)
+
+Eight cases over a runtime `world` map published on demo.cities (layer 0)
+by the replay suite itself (the default test host serves no MapServer):
+`root`, `layers`, single `layer` (fields + `drawingInfo`), `legend`,
+`find` (`searchText=Ber`), `identify` (doc-pattern point probe with pixel
+tolerance) and `export` as JSON envelope plus `f=image`. The wire shape is
+Esri's; rows, styles and renders are ours. Images are never byte-compared:
+the legend swatch `imageData` is excluded from the semantic diff and gated
+structurally (valid PNG at the pinned 20x20 swatch size), and the export
+image gets a structural PNG gate (media type, raster headers, IHDR
+dimensions, non-trivial body) — renderers are never pixel-equal across
+engines, so there is no Esri reference image to hash. The legend swatch
+`url` is a per-process `HashCode` token, hence nondeterministic across
+restarts: pinned non-empty only, with follow-up T-085 for a stable hash.
+No MapServer behaviour was changed for this slice.
+
 ## Honest deltas (no parity chasing in this slice)
 
 - `areasAndLengths` / `lengths`: the docs name the inputs `polygons` /
