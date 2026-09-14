@@ -107,6 +107,7 @@ shape is noted in brackets.
 | 0054 | ImageServer missing resources: legend, find, statistics/histograms, attribute table, thumbnail/metadata. |
 | 0055 | MapServer legend, queryDomains/queryLegends and per-layer generateRenderer are adapter projections of the persisted MapLibre style. |
 | 0056 | Feature modern query params (`returnEnvelope`, `resultPaginationToken`, `defaultSR`, `uniqueIds`) are an adapter projection; no SDK/Core change. |
+| 0057 | ImageServer capability flags (raster-function/mosaic/mensuration/download honesty) plus reject-by-name for mensuration/multidimensional/catalog-write ops. |
 | 0058 | MapServer export reads time/timeRelation/layerTimeOptions, dynamicLayers and layerOption; cached-root fields follow the served scheme. |
 
 ## How to change the architecture
