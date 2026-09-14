@@ -60,8 +60,15 @@ internal static class ImageService
             ["UNKNOWN"] = RasterPixelType.Unknown,
         };
 
-    /// <summary>Builds the Image Service root (spec §8.0.3).</summary>
-    public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright)
+    /// <summary>
+    /// Builds the Image Service root (spec §8.0.3), with the truthful capability flags (T-043, ADR-0057).
+    /// Raster functions and mosaicking read <c>None</c>/<c>First</c> because <c>renderingRule</c>,
+    /// <c>mosaicRule</c> and multi-raster <c>rasterIds</c> are rejected and one raster's native bands
+    /// are served; mensuration reads <c>None</c> for lack of sensor models; <c>hasHistograms</c>
+    /// follows the 8-bit-only <c>computeHistograms</c> provider path; <c>hasRasterAttributeTable</c>
+    /// follows the configured table; the download caps are the enforced host options.
+    /// </summary>
+    public static EsriImageServerRoot Root(RasterDatasetDescription description, string? copyright, GeoServicesOptions options)
     {
         var info = description.Raster;
         var srid = MapServerResources.SridOf(info.Crs);
@@ -85,7 +92,19 @@ internal static class ImageService
             statistics?.Select(stat => stat.Mean).ToArray(),
             statistics?.Select(stat => stat.StandardDeviation).ToArray(),
             description.HasCatalog ? description.ObjectIdField : null,
-            description.HasCatalog && description.CatalogSchema is { } schema ? Fields(schema, description.ObjectIdField!) : null);
+            description.HasCatalog && description.CatalogSchema is { } schema ? Fields(schema, description.ObjectIdField!) : null,
+            AllowRasterFunction: false,
+            RasterFunctionInfos: [],
+            AllowedMosaicMethods: "None",
+            DefaultMosaicMethod: "None",
+            MosaicOperator: "First",
+            MensurationCapabilities: "None",
+            HasColormap: false,
+            HasHistograms: info.PixelType == RasterPixelType.U8,
+            HasRasterAttributeTable: info.AttributeTable is not null,
+            MaxDownloadImageCount: options.MaxRasterDownloadFiles,
+            MaxDownloadSizeLimit: options.MaxRasterDownloadBytes,
+            ServiceSourceType: "esriImageServiceSourceTypeDataset");
     }
 
     /// <summary>
