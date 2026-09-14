@@ -107,16 +107,13 @@ angular `unit` buffers planar degrees.
 | Catalog (§3): folders + `services[{name,type}]` | `GET /api/catalogue`: spatial `DatasetSummary[]` | Different concept |
 | `FeatureServer` root: `layers[]`, `tables[]` (§9.0) | — | **Served** — spatial datasets under `layers`, datasets without a geometry field under `tables` (stable ids from the single id space; table metadata reports `type: Table` and supports the safe query subset) |
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
-| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served, only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate). The service-level `FeatureServer/query` (S1) fans the same subset across layers and tables with `layerDefs` (all three syntaxes) and returns one feature set, count, or id list per layer (ADR-0060); layer-only shapes (extent, distinct, statistics, unique ids) name the layer route instead |
-| `generateRenderer` (S4, feature-service layer) | — | **Served** — the single T-039 classifier (`MapGenerateRenderer`, ADR-0055) reused on the FeatureServer surface; byte-identical renderers on both surfaces (ADR-0060) |
-| `validateSQL` (S4, feature-service layer) | — | **Served** — server-side WHERE validation returning the S4 `isValidSQL` shape with 3001/3002/3008 codes; `expression`/`statement` validate as not-supported, never run (ADR-0060) |
-| `queryBins` / `queryTopFeatures` / `queryAnalytic` (S4) | — | Honestly rejected — mounted typed `invalid.arguments` naming the served alternative (`outStatistics`+`groupByFieldsForStatistics`; `orderByFields`+`resultRecordCount`); unadvertised (ADR-0060) |
+| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served, only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate) |
 | `queryRelatedRecords` (§9.1.5) | — | Missing (no relationship model) |
 | `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only through the API; the GeoServices facade now maps `addFeatures` onto `IFeatureEditStore.AddAsync` (ADR-0037) |
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
 | `deleteFeatures` (§9.1.8) | — | Implemented via `IFeatureEditStore.DeleteAsync` (ADR-0037) |
 | `applyEdits` (§9.1.9) | transactions (`begin`/`commit`/`rollback`) + write | Implemented at layer level; `rollbackOnFailure` maps to `ITransactionStore`; service-level `applyEdits` out of scope |
-| attachments, `htmlPopup`, `image` (§9.2–9.6) | — | Attachments honestly surfaced, unadvertised: reads report the empty set, writes are typed `invalid.arguments` until an attachment store lands (ADR-0060 tunneled through `IFeatureAttachmentStore` sub-tasks); `htmlPopup`/`image` stay non-goals (§7.1) |
+| attachments, `htmlPopup`, `image` (§9.2–9.6) | — | Missing |
 
 Result-shape additions: `returnExtentOnly` returns the envelope of the full
 matched set (computed before paging) in `outSR` or the layer SR, or
@@ -138,7 +135,7 @@ and date encoding differ.
 
 | Service | Spec | Engine |
 | --- | --- | --- |
-pointing at the live alternative (ADR-0059; no packaging or job model). The image (§4.7) resource is mounted and returns a typed `not.found`: it exists only for picture marker/fill symbols, which the engine's dialect has no model for. Vector tiles (MVT/`.vtpk`, `VectorTileServer`) and OGC API Tiles stay unserved non-goals: no MVT encoder, no packaging model, no TileJSON (ADR-0061) |
+| Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a `simple`/`uniqueValue`/`classBreaks` `drawingInfo`, `labelingInfo` and `domains` derived from the persisted MapLibre fragment (ADR-0050). `legend`, `queryDomains` and `queryLegends` project the same persisted style (ADR-0054), and each layer serves `generateRenderer` (equal-interval `classBreaksDef`, single-field `uniqueValueDef`). Vector tiles (MVT/`.vtpk`, `VectorTileServer`) and OGC API Tiles stay unserved non-goals: no MVT encoder, no packaging model, no TileJSON (ADR-0061). The image (§4.7) resource is mounted and returns a typed `not.found`: it exists only for picture marker/fill symbols, which the engine's dialect has no model for |
 | Geocode Service (§5) | — | Absent |
 | GP Service (§6): tasks, `submitJob`, job polling, results | — | Absent; no job model (ADR-0033 removed jobs) |
 | Image Service (§8): export, raster functions, download | `/arcgis/rest/services/{service}/ImageServer` (ADR-0051) | **Implemented** as a projection of a `PublicationKind.Image` publication over the SDK `IRasterCatalogue` contract: root metadata (extent, pixel size, band count, pixel type, service data type, catalog fields/objectIdField), raster info, catalog item/listing and §8.0.5 `query` (the safe `where` subset, `objectIds`, geometry, `outFields`, ordering, paging, ids/count/extent/distinct and `outSR`), identify and `exportImage` (png/jpg/tiff, `f=image` bytes or JSON `href`, bbox/image SR, interpolation, compression, pixelType, noData), plus the §8.2 Raster Image, §8.3 Thumbnail, §8.0.7 Download Rasters and §8.5 Raster File resources (opt-in via `Spatial:GeoServices:AllowRasterDownload`, size/file-capped, opaque provider file ids, range-capable file streaming). Tiled/pyramidal GeoTIFFs (COG) report their block size and pyramid levels and export from the chosen overview. Download clipping/re-encoding and raster functions remain absent (I5/I6); provider-owned rasters keep encoded images + core-typed metadata/geometry on the wire |
@@ -277,21 +274,6 @@ Ordered by dependency:
   the 34k world-cities layer and terminates with the exact `returnCountOnly`
   total in stable `OBJECTID` order with no duplicates — the stopping rule
   the real client branches on is pinned.
-- Serving status update (T-040, ADR-0058): MapServer `export` honours
-  `time` (the query grammar, filtered in-renderer against each layer's
-  date fields so every store behaves the same), `timeRelation`
-  (`esriTimeRelationOverlaps`/`Contains`/`Within`, equivalent for instant
-  date values), `layerTimeOptions` (per-layer `useTime` opt-out and
-  `timeDataCumulative`; non-zero `timeOffset` is honestly rejected),
-  `dynamicLayers` (`mapLayer` rebind plus a `drawingInfo` override over
-  the projected renderer subset; new data sources, picture/text symbols,
-  label overrides and fades are honestly rejected) and `layerOption`
-  (`all`/`visible`/`top`, equivalent over the flat always-visible layer
-  model). The root advertises `supportsTimeRelation`,
-  `supportsDynamicLayers`, `singleFusedMapCache`+`tileInfo` per served
-  scheme (LOD rows replayed against the G1 cached root) and
-  `exportTilesAllowed:false` — offline packaging is a closed non-goal with
-  named rejects (ADR-0059); T-048 builds on that scope.
 
 ## 7.1. Deliberate non-goals (T-015 closeout audit)
 
