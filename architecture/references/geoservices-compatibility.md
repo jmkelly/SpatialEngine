@@ -135,7 +135,7 @@ and date encoding differ.
 
 | Service | Spec | Engine |
 | --- | --- | --- |
-| Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a `simple`/`uniqueValue`/`classBreaks` `drawingInfo`, `labelingInfo` and `domains` derived from the persisted MapLibre fragment (ADR-0050). `legend`, `queryDomains` and `queryLegends` project the same persisted style (ADR-0055), and each layer serves `generateRenderer` (equal-interval `classBreaksDef`, single-field `uniqueValueDef`). Vector tiles (MVT/`.vtpk`, `VectorTileServer`) and OGC API Tiles stay unserved non-goals: no MVT encoder, no packaging model, no TileJSON (ADR-0061). The image (§4.7) resource is mounted and returns a typed `not.found`: it exists only for picture marker/fill symbols, which the engine's dialect has no model for |
+| Map Service (§4): export, identify, find, tiles, layer query, image | `/arcgis/rest/services/{service}/MapServer` (ADR-0048) | **Implemented** as a projection of a `PublicationKind.Map` publication over the SDK render/tile contracts: root/layers/layer/query/identify/find, `export` (png/jpg/webp/tiff) and Web-Mercator tiles, with a `simple`/`uniqueValue`/`classBreaks` `drawingInfo`, `labelingInfo` and `domains` derived from the persisted MapLibre fragment (ADR-0050). `legend`, `queryDomains` and `queryLegends` project the same persisted style (ADR-0055), and each layer serves `generateRenderer` (equal-interval `classBreaksDef`, single-field `uniqueValueDef`). `export` honours `time`/`timeRelation`/`layerTimeOptions` (per-layer opt-out, cumulative display; non-zero offsets rejected), `dynamicLayers` (mapLayer rebind plus a `drawingInfo` override over the projected renderer subset) and `layerOption` (`all`/`visible`/`top`), and the root advertises `supportsTimeRelation`, `supportsDynamicLayers`, `singleFusedMapCache`+`tileInfo` per served scheme and `exportTilesAllowed:false` (ADR-0056). Vector tiles (MVT/`.vtpk`, `VectorTileServer`) and OGC API Tiles stay unserved non-goals: no MVT encoder, no packaging model, no TileJSON (ADR-0061). The image (§4.7) resource is mounted and returns a typed `not.found`: it exists only for picture marker/fill symbols, which the engine's dialect has no model for |
 | Geocode Service (§5) | — | Absent |
 | GP Service (§6): tasks, `submitJob`, job polling, results | — | Absent; no job model (ADR-0033 removed jobs) |
 | Image Service (§8): export, raster functions, download | `/arcgis/rest/services/{service}/ImageServer` (ADR-0051) | **Implemented** as a projection of a `PublicationKind.Image` publication over the SDK `IRasterCatalogue` contract: root metadata (extent, pixel size, band count, pixel type, service data type, catalog fields/objectIdField), raster info, catalog item/listing and §8.0.5 `query` (the safe `where` subset, `objectIds`, geometry, `outFields`, ordering, paging, ids/count/extent/distinct and `outSR`), identify and `exportImage` (png/jpg/tiff, `f=image` bytes or JSON `href`, bbox/image SR, interpolation, compression, pixelType, noData), plus the §8.2 Raster Image, §8.3 Thumbnail, §8.0.7 Download Rasters and §8.5 Raster File resources (opt-in via `Spatial:GeoServices:AllowRasterDownload`, size/file-capped, opaque provider file ids, range-capable file streaming). Tiled/pyramidal GeoTIFFs (COG) report their block size and pyramid levels and export from the chosen overview. Download clipping/re-encoding and raster functions remain absent (I5/I6); provider-owned rasters keep encoded images + core-typed metadata/geometry on the wire |
@@ -274,6 +274,20 @@ Ordered by dependency:
   the 34k world-cities layer and terminates with the exact `returnCountOnly`
   total in stable `OBJECTID` order with no duplicates — the stopping rule
   the real client branches on is pinned.
+- Serving status update (T-040, ADR-0056): MapServer `export` honours
+  `time` (the query grammar, filtered in-renderer against each layer's
+  date fields so every store behaves the same), `timeRelation`
+  (`esriTimeRelationOverlaps`/`Contains`/`Within`, equivalent for instant
+  date values), `layerTimeOptions` (per-layer `useTime` opt-out and
+  `timeDataCumulative`; non-zero `timeOffset` is honestly rejected),
+  `dynamicLayers` (`mapLayer` rebind plus a `drawingInfo` override over
+  the projected renderer subset; new data sources, picture/text symbols,
+  label overrides and fades are honestly rejected) and `layerOption`
+  (`all`/`visible`/`top`, equivalent over the flat always-visible layer
+  model). The root advertises `supportsTimeRelation`,
+  `supportsDynamicLayers`, `singleFusedMapCache`+`tileInfo` per served
+  scheme (LOD rows replayed against the G1 cached root) and
+  `exportTilesAllowed:false` — offline packaging stays T-041's scope.
 
 ## 7.1. Deliberate non-goals (T-015 closeout audit)
 
