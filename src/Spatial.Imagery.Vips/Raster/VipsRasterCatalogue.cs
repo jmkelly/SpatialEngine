@@ -26,6 +26,10 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         _transforms = transforms ?? throw new ArgumentNullException(nameof(transforms));
         _exporter = new VipsRasterExporter(_transforms);
         _datasets = datasets.ToDictionary(dataset => dataset.Name, StringComparer.Ordinal);
+        foreach (var descriptor in _datasets.Values)
+        {
+            VipsRasterReader.ValidateAttributeTable(descriptor);
+        }
     }
 
     /// <inheritdoc />
@@ -69,6 +73,15 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<RasterHistogram>> ComputeHistogramsAsync(
+        string dataset, RasterHistogramRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(dataset);
+        ArgumentNullException.ThrowIfNull(request);
+        return Task.Run(() => VipsRasterHistograms.Compute(Resolve(dataset), request, _transforms, cancellationToken), cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<RasterFileContent> ReadFileAsync(
         string dataset, string fileId, CancellationToken cancellationToken = default)
     {
@@ -100,7 +113,7 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         var hasCatalog = VipsRasterReader.HasCatalog(descriptor);
         var extent = hasCatalog ? VipsRasterReader.Union(descriptor.Items!) : descriptor.Extent;
         var info = VipsRasterReader.ReadInfo(
-            descriptor.Path, extent, descriptor.Crs, descriptor.PixelSizeX, descriptor.PixelSizeY, descriptor.Statistics);
+            descriptor.Path, extent, descriptor.Crs, descriptor.PixelSizeX, descriptor.PixelSizeY, descriptor.Statistics, descriptor.AttributeTable);
         var schema = hasCatalog ? VipsRasterReader.BuildSchema(descriptor.CatalogAttributes ?? []) : null;
         return new RasterDatasetDescription(
             dataset, descriptor.Name, descriptor.Description, info, hasCatalog, hasCatalog ? IdentityField : null, schema);
