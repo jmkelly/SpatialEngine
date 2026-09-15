@@ -86,7 +86,7 @@ shape is noted in brackets.
 | 0031 | ~~Workbench hosting + plugin control~~ — superseded by 0033 (static serving stays, control endpoints removed). |
 | 0032 | Geometry contract faces (`IPoint`…`IGeometryFactory`); `GeometryCodec` → `Core.Geometry.Codec`. |
 | 0033 | In-process service interfaces + DI replace worker plugins. |
-| 0034 | Aspire AppHost composes the local development profile. |
+| 0034 | Aspire DevHost composes the local development profile. |
 | 0035 | GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider. |
 | 0036 | Geometry measurement, processing and relation verbs are separate SDK interfaces. |
 | 0037 | Feature editing is a gated, per-feature `IFeatureEditStore` face. |

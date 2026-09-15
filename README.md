@@ -82,11 +82,11 @@ Spatial__WebRoot="$(pwd)/apps/workbench-web/dist" \
 # → open http://localhost:5201
 ```
 
-**3. Bring a real store.** With Docker available, the Aspire AppHost starts
+**3. Bring a real store.** With Docker available, the Aspire dev host starts
 PostGIS, the Seq log server and the Vite dev server:
 
 ```bash
-dotnet run --project src/Spatial.AppHost
+dotnet run --project src/Spatial.DevHost
 ```
 
 The Aspire dashboard prints the workbench, host and Seq endpoints; host logs
@@ -226,7 +226,7 @@ shipped.
 | `src/Spatial.Stores.PostGIS` | PostGIS store: catalogue, features, transactions, editing |
 | `src/Spatial.Stores.Demo` | Docker-free demo store and cancellable sleep |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host (DI composition) |
-| `src/Spatial.AppHost` | Aspire AppHost for the local development profile |
+| `src/Spatial.DevHost` | Aspire dev host for the local development profile |
 | `clients/`, `apps/` | SDKs and the browser workbench |
 | `tests/` | Unit, architecture and integration suites |
 | `architecture/` | Principles, ADRs, boundary docs and reference specs |

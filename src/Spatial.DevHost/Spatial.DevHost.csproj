@@ -1,19 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Aspire AppHost (ADR-0034): the local development composition root. It
-    orchestrates the PostGIS container, the Seq log server (ADR-0045),
+    The Aspire development host (ADR-0034): the local development composition
+    root. It orchestrates the PostGIS container, the Seq log server (ADR-0045),
     Spatial.Host and the Vite workbench dev server, and owns no spatial logic.
-    The engine never references it. The Aspire.AppHost.Sdk version is pinned
-    in global.json (msbuild-sdks).
+    The engine never references it. Named DevHost (not AppHost) so it cannot
+    be mistaken for the product server Spatial.Host. The Aspire.AppHost.Sdk
+    version is pinned in global.json (msbuild-sdks).
   -->
 
   <Sdk Name="Aspire.AppHost.Sdk" />
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <AssemblyName>Spatial.AppHost</AssemblyName>
-    <RootNamespace>Spatial.AppHost</RootNamespace>
+    <AssemblyName>Spatial.DevHost</AssemblyName>
+    <RootNamespace>Spatial.DevHost</RootNamespace>
     <IsAspireHost>true</IsAspireHost>
     <!--
       Keep the Aspire CLI bundle enabled so the AppHost builds with zero

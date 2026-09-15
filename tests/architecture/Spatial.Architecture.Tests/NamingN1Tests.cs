@@ -96,7 +96,8 @@ public sealed class NamingN1Tests
     private static bool IsExcluded(string path)
     {
         // The guard pins the stale strings as literals, so it never scans itself.
-        if (string.Equals(Path.GetFileName(path), "NamingN1Tests.cs", StringComparison.Ordinal))
+        var file = Path.GetFileName(path);
+        if (file.StartsWith("NamingN", StringComparison.Ordinal) && file.EndsWith("Tests.cs", StringComparison.Ordinal))
         {
             return true;
         }

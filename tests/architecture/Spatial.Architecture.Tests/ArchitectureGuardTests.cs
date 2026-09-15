@@ -168,18 +168,18 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// ADR-0034: the Aspire AppHost is a development composition root — it
+    /// ADR-0034: the Aspire DevHost is a development composition root — it
     /// orchestrates the host and infrastructure and links no engine project
     /// directly (no spatial logic, no contracts).
     /// </summary>
     [Fact]
-    public void AppHost_references_only_the_host()
+    public void DevHost_references_only_the_host()
     {
         var allowed = new[] { "Spatial.Host" };
-        var appHost = PlatformProject("Spatial.AppHost");
-        var violations = appHost.ProjectReferences
+        var devHost = PlatformProject("Spatial.DevHost");
+        var violations = devHost.ProjectReferences
             .Where(r => !allowed.Contains(r))
-            .Select(r => $"{appHost.RelativePath} must reference only {string.Join(", ", allowed)}, but references {r}.")
+            .Select(r => $"{devHost.RelativePath} must reference only {string.Join(", ", allowed)}, but references {r}.")
             .ToList();
 
         Assert.Empty(violations);
@@ -257,7 +257,7 @@ public sealed class ArchitectureGuardTests
 
     private static readonly string[] PlatformProjectNames =
     [
-        "Spatial.AppHost",
+        "Spatial.DevHost",
         "Spatial.Core",
         "Spatial.Contracts",
         "Spatial.Esri.Codec",
@@ -306,7 +306,7 @@ public sealed class ArchitectureGuardTests
     private static readonly IReadOnlyDictionary<string, string[]> AllowedPackages =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["Spatial.AppHost"] =
+            ["Spatial.DevHost"] =
             [
                 "Aspire.Hosting.AppHost",
                 "Aspire.Hosting.JavaScript",

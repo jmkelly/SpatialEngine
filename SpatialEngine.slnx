@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/Spatial.AppHost/Spatial.AppHost.csproj" />
+    <Project Path="src/Spatial.DevHost/Spatial.DevHost.csproj" />
     <Project Path="src/Spatial.Adapter.GeoServices/Spatial.Adapter.GeoServices.csproj" />
     <Project Path="src/Spatial.Adapter.Ogc/Spatial.Adapter.Ogc.csproj" />
     <Project Path="src/Spatial.Core/Spatial.Core.csproj" />

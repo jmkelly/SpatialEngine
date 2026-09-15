@@ -65,16 +65,10 @@ public sealed class NamingN6Tests
 
     private static bool IsExcluded(string path)
     {
-        foreach (var guard in new[]
-                 {
-                     "NamingN1Tests.cs", "NamingN2Tests.cs", "NamingN3Tests.cs",
-                     "NamingN4Tests.cs", "NamingN5Tests.cs", "NamingN6Tests.cs",
-                 })
+        var file = Path.GetFileName(path);
+        if (file.StartsWith("NamingN", StringComparison.Ordinal) && file.EndsWith("Tests.cs", StringComparison.Ordinal))
         {
-            if (string.Equals(Path.GetFileName(path), guard, StringComparison.Ordinal))
-            {
-                return true;
-            }
+            return true;
         }
 
         var relative = Path.GetRelativePath(Root.Value, path);

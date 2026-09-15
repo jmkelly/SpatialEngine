@@ -5,7 +5,7 @@
 // never from the repo.
 //
 // The composition is a static class rather than top-level statements so each
-// branch is a named, low-complexity method (the AppHost is orchestration, not
+// branch is a named, low-complexity method (the DevHost is orchestration, not
 // behaviour; see the quality-loop note on Program.<Main>$).
 return AppComposition.Run(args);
 
