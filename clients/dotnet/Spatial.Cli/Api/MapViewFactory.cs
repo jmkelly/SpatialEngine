@@ -88,5 +88,17 @@ public static class MapViewFactory
     private static string KindName(IReadOnlyList<MapServiceKind> services) =>
         services.Count == 0
             ? "none"
-            : string.Join("+", services.Select(service => service.ToString().ToLowerInvariant()));
+            : string.Join("+", services.Select(WireKey));
+
+    /// <summary>The pinned JSON wire key for a service (see <see cref="MapServiceKind"/>).</summary>
+    private static string WireKey(MapServiceKind service) => service switch
+    {
+        MapServiceKind.FeatureServer => "feature",
+        MapServiceKind.MapServer => "map",
+        MapServiceKind.Tiles => "tiles",
+        MapServiceKind.Wms => "wms",
+        MapServiceKind.Wfs => "wfs",
+        MapServiceKind.ImageServer => "image",
+        _ => service.ToString().ToLowerInvariant(),
+    };
 }

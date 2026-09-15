@@ -274,7 +274,19 @@ public static class ProjectApplier
 
     /// <summary>The project file records one kind; the first GeoServices service is the map's representative.</summary>
     private static string PrimaryKind(IReadOnlyList<MapServiceKind> services) =>
-        services.Select(service => service.ToString().ToLowerInvariant()).FirstOrDefault() ?? "feature";
+        services.Select(WireKey).FirstOrDefault() ?? "feature";
+
+    /// <summary>The pinned JSON wire key for a service (see <see cref="MapServiceKind"/>).</summary>
+    private static string WireKey(MapServiceKind service) => service switch
+    {
+        MapServiceKind.FeatureServer => "feature",
+        MapServiceKind.MapServer => "map",
+        MapServiceKind.Tiles => "tiles",
+        MapServiceKind.Wms => "wms",
+        MapServiceKind.Wfs => "wfs",
+        MapServiceKind.ImageServer => "image",
+        _ => service.ToString().ToLowerInvariant(),
+    };
 
     private static ProjectLayer ToProjectLayer(MapLayer layer)
     {
