@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The demo data store (ADR-0033): a Docker-free, read-only in-process
+    implementation of IDataCatalogue, IFeatureStore and IDemoWork over
+    procedurally generated point datasets — the browser workbench's
+    dataset-browser/map/selection vehicle in Playwright and local demos,
+    where PostGIS is unavailable.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Stores.Demo</AssemblyName>
+    <RootNamespace>Spatial.Stores.Demo</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+  </ItemGroup>
+
+  <!--
+    The GeoNames world-cities snapshot (Data/world-cities.tsv, CC-BY 4.0):
+    embedded so the demo store serves real cities without network access.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data/world-cities.tsv">
+      <LogicalName>world-cities.tsv</LogicalName>
+    </EmbeddedResource>
+    <None Include="Data/world-cities-attribution.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.Stores.Demo.Tests" />
+  </ItemGroup>
+
+</Project>

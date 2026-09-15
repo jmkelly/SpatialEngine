@@ -6,7 +6,7 @@
     Esri error model. References Spatial.Core only — no algorithms, no NTS,
     no ASP.NET, no HttpClient. Both the serving facade
     (Spatial.Adapter.GeoServices) and the consuming provider
-    (Spatial.Provider.ArcGisRest) depend on this project and nothing else of
+    (Spatial.Stores.ArcGisRest) depend on this project and nothing else of
     each other.
   -->
 
@@ -23,7 +23,7 @@
     <!-- The unit tests pin the wire codec's conversion behaviour. -->
     <InternalsVisibleTo Include="Spatial.Interop.Esri.Tests" />
     <InternalsVisibleTo Include="Spatial.Adapter.GeoServices.Tests" />
-    <InternalsVisibleTo Include="Spatial.Provider.ArcGisRest.Tests" />
+    <InternalsVisibleTo Include="Spatial.Stores.ArcGisRest.Tests" />
   </ItemGroup>
 
 </Project>

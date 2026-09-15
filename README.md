@@ -184,7 +184,7 @@ geometry values in and out).
 (`project`, `generalize`, `buffer`, `intersect`, `simplify`, `union`,
 `difference`, `convexHull`, `densify`, `relation`, measures) and a
 FeatureServer over your keyed stores, with editing gated per layer. In the
-other direction, `Spatial.Provider.ArcGisRest` reads a configured remote
+other direction, `Spatial.Stores.ArcGisRest` reads a configured remote
 ArcGIS REST service through the same store interfaces, with pagination and
 `where` pushdown.
 
@@ -221,9 +221,9 @@ shipped.
 | `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
 | `src/Spatial.Interop.Esri` | Shared Esri JSON codec, WKID map, error model, filter grammar |
 | `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade |
-| `src/Spatial.Provider.ArcGisRest` | ArcGIS REST consuming provider |
-| `src/Spatial.Provider.PostGIS` | PostGIS store: catalogue, features, transactions, editing |
-| `src/Spatial.Provider.Demo` | Docker-free demo store and cancellable sleep |
+| `src/Spatial.Stores.ArcGisRest` | ArcGIS REST consuming store |
+| `src/Spatial.Stores.PostGIS` | PostGIS store: catalogue, features, transactions, editing |
+| `src/Spatial.Stores.Demo` | Docker-free demo store and cancellable sleep |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host (DI composition) |
 | `src/Spatial.AppHost` | Aspire AppHost for the local development profile |
 | `clients/`, `apps/` | SDKs and the browser workbench |

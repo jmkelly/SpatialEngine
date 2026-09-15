@@ -2,7 +2,7 @@
 """Coverage report + gap detection for the recorded ArcGIS corpus.
 
 Reads ``tests/fixtures/arcgis/captured/index.json`` and measures it against the
-dimensions the ArcGIS REST provider (`Spatial.Provider.ArcGisRest`) and the
+dimensions the ArcGIS REST provider (`Spatial.Stores.ArcGisRest`) and the
 Esri interop codec (`Spatial.Interop.Esri`) actually branch on. The point is
 not "how many endpoints" but "which real-world shapes are we *not* proving we
 handle". Gaps printed at the end are the next harvest iteration's shopping
@@ -11,7 +11,7 @@ list.
 Keep the supported sets below in sync with:
 - ``src/Spatial.Interop.Esri/EsriFieldType.cs``  (field type map)
 - ``src/Spatial.Interop.Esri/WkidMap.cs``        (curated WKID -> EPSG map)
-- ``src/Spatial.Provider.ArcGisRest/ArcGisRestMapper.cs`` (geometry type names)
+- ``src/Spatial.Stores.ArcGisRest/ArcGisRestMapper.cs`` (geometry type names)
 """
 
 from __future__ import annotations

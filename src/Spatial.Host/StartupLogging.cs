@@ -1,7 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Spatial.Host.Api;
-using Spatial.Provider.PostGIS;
+using Spatial.Stores.PostGIS;
 
 namespace Spatial.Host;
 

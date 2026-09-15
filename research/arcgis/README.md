@@ -8,10 +8,10 @@
 
 Ground-truth corpus for the GeoServices work (ADR-0035):
 
-- **consume:** `Spatial.Provider.ArcGisRest` (the engine reads ArcGIS REST), and
+- **consume:** `Spatial.Stores.ArcGisRest` (the engine reads ArcGIS REST), and
 - **codec:** `Spatial.Interop.Esri` (the shape of Esri JSON itself).
 
-The suite in `tests/unit/Spatial.Provider.ArcGisRest.Tests/RealWorldFixtureTests.cs`
+The suite in `tests/unit/Spatial.Stores.ArcGisRest.Tests/RealWorldFixtureTests.cs`
 replays responses recorded from **real, public ArcGIS services** and checks the
 provider against them. The corpus is how we know the provider speaks the dialect
 real servers speak, not just the shapes we happened to hand-write.
@@ -162,6 +162,6 @@ fixed here:
 - `A_token_required_error_maps_to_store_unavailable` — ArcGIS `499`.
 
 The fixtures are copied into the test output as `arcgis-fixtures/` by
-`Spatial.Provider.ArcGisRest.Tests.csproj`. To add a corpus, refresh the
+`Spatial.Stores.ArcGisRest.Tests.csproj`. To add a corpus, refresh the
 fixtures and re-run `dotnet test`; no test code changes are needed for new
 layers.

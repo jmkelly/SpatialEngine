@@ -1,8 +1,8 @@
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
-using Spatial.Provider.Demo;
-using Spatial.Provider.Memory;
-using Spatial.Provider.PostGIS;
+using Spatial.Stores.Demo;
+using Spatial.Stores.Memory;
+using Spatial.Stores.PostGIS;
 
 namespace Spatial.Host;
 

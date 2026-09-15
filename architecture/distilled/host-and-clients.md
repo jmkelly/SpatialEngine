@@ -154,7 +154,7 @@ column — the editing operations `addFeatures`/`updateFeatures`/
 via `capabilities` and field `editable`; `rollbackOnFailure` uses the
 store's `ITransactionStore`. The engine API above is unchanged. Track C
 consumes a remote ArcGIS REST service as a keyed
-`IDataCatalogue`/`IFeatureStore` (`Spatial.Provider.ArcGisRest`).
+`IDataCatalogue`/`IFeatureStore` (`Spatial.Stores.ArcGisRest`).
 
 The `store` query selects `demo` (default, always available), `memory`
 (writable, ephemeral, ADR-0042) or `postgis` (needs configuration). Ingest

@@ -27,7 +27,7 @@
     <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.Provider.Memory\Spatial.Provider.Memory.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
   </ItemGroup>
 

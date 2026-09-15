@@ -14,12 +14,12 @@
     <ProjectReference Include="..\Spatial.Adapter.Ogc\Spatial.Adapter.Ogc.csproj" />
     <ProjectReference Include="..\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
-    <ProjectReference Include="..\Spatial.Provider.Demo\Spatial.Provider.Demo.csproj" />
-    <ProjectReference Include="..\Spatial.Provider.Memory\Spatial.Provider.Memory.csproj" />
-    <ProjectReference Include="..\Spatial.Provider.PostGIS\Spatial.Provider.PostGIS.csproj" />
-    <ProjectReference Include="..\Spatial.Provider.Maps\Spatial.Provider.Maps.csproj" />
+    <ProjectReference Include="..\Spatial.Stores.Demo\Spatial.Stores.Demo.csproj" />
+    <ProjectReference Include="..\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
+    <ProjectReference Include="..\Spatial.Stores.PostGIS\Spatial.Stores.PostGIS.csproj" />
+    <ProjectReference Include="..\Spatial.Maps\Spatial.Maps.csproj" />
     <ProjectReference Include="..\Spatial.Interop.Ingest\Spatial.Interop.Ingest.csproj" />
-    <ProjectReference Include="..\Spatial.Provider.ArcGisRest\Spatial.Provider.ArcGisRest.csproj" />
+    <ProjectReference Include="..\Spatial.Stores.ArcGisRest\Spatial.Stores.ArcGisRest.csproj" />
     <ProjectReference Include="..\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
     <ProjectReference Include="..\Spatial.Imagery.Vips\Spatial.Imagery.Vips.csproj" />
     <ProjectReference Include="..\Spatial.Tiling.WebMercator\Spatial.Tiling.WebMercator.csproj" />

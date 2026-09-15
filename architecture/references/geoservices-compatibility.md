@@ -197,7 +197,7 @@ Ordered by dependency:
 ## 7. Recommendation
 
 - If the goal is **ingesting Esri data**: implement ArcGIS REST as a
-  `Spatial.Provider.*` over the existing `IDataCatalogue`/`IFeatureStore`
+  `Spatial.Stores.*` over the existing `IDataCatalogue`/`IFeatureStore`
   contracts. Keep the JSON in the provider (ADR-0005 spirit), translate to
   core geometry there, and push down the supported query subset. Minimal
   architectural friction; matches §5.

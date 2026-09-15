@@ -58,7 +58,7 @@ public sealed class NamingN5Tests
     [Fact]
     public void Declared_config_keeps_legacy_names()
     {
-        var path = Path.Combine(Root.Value, "src", "Spatial.Provider.Maps", "MapRegistry.cs");
+        var path = Path.Combine(Root.Value, "src", "Spatial.Maps", "MapRegistry.cs");
         var text = File.ReadAllText(path);
 
         Assert.Contains("FeatureServer", text, StringComparison.Ordinal);

@@ -1,6 +1,6 @@
 using Spatial.Core.Features;
 using Spatial.PluginSdk;
-using Spatial.Provider.PostGIS;
+using Spatial.Stores.PostGIS;
 
 namespace Spatial.PostGIS.Tests;
 

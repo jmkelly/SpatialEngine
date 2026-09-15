@@ -39,7 +39,7 @@ public sealed class NamingN2Tests
     [Fact]
     public void Legacy_wire_key_is_preserved()
     {
-        var path = Path.Combine(Root.Value, "src", "Spatial.Provider.Maps", "MapRegistry.cs");
+        var path = Path.Combine(Root.Value, "src", "Spatial.Maps", "MapRegistry.cs");
         var text = File.ReadAllText(path);
 
         Assert.Contains("LegacyMapFile", text, StringComparison.Ordinal);

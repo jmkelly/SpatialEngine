@@ -3,7 +3,7 @@
   "waivers": [
     {
       "method": "PostgisEwkb.WritePoint",
-      "file": "src/Spatial.Provider.PostGIS/Geometry/PostgisEwkb.cs",
+      "file": "src/Spatial.Stores.PostGIS/Geometry/PostgisEwkb.cs",
       "gate": "CRAP < 10 per method (crap4dotnet)",
       "reason": "crap4dotnet coverage-matching artifact, not a real gap. The tool reported CRAP 10.5 while the merged cobertura showed the method fully line-covered with every branch taken. The if/else layout chain (empty, XYZM, XYZ, XYM, XY) mirrors WriteSequence and the table-driven body dispatch is intentional under the ADR-0028 fan-in budget; splitting it would add indirection without reducing real risk. Do NOT rewrite this method to satisfy the tool.",
       "evidence": "Merged cobertura (artifacts/test-results/merged.cobertura.xml): WritePoint line-rate 1.0; every layout arm and the NaN-sentinel empty-point arm hit by PostgisEwkbTests round trips (XY/XYZ/XYM/XYZM plus empty). Re-scored at CRAP 7.33 once later tests raised branch coverage; this waiver guards against re-flagging on coverage fluctuation. Before any future action, cross-check the method against the merged cobertura first.",

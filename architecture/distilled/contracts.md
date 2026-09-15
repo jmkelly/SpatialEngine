@@ -145,7 +145,7 @@ process-local and non-durable; an `Auto`/`Source` dataset is editable and
 lookup-able, a `None` dataset is query-only; bbox queries only (attribute
 filters rejected).
 
-**Map registry specifics (ADR-0053):** `Spatial.Provider.Maps`
+**Map registry specifics (ADR-0053):** `Spatial.Maps`
 composes immutable declared entries (config-seeded, whole-store entries
 expand to the sorted dataset list with stable ids) with runtime entries in a
 versioned JSON file written atomically, and reads a pre-ADR-0053 legacy map file

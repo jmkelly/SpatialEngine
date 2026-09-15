@@ -130,7 +130,7 @@ compatibility claim is now proven against a real Esri client. Completed:
    compatibility review, rejected with a typed `invalid.arguments` failure
    and pinned by `GeometryServiceTests`.
 4. The `research/arcgis` corpus is a provider regression gate: the recorded
-   fixtures are copied into `Spatial.Provider.ArcGisRest.Tests` and run by
+   fixtures are copied into `Spatial.Stores.ArcGisRest.Tests` and run by
    `eng/verify.sh`.
 
 `eng/verify.sh` is green, and so are all four quality-loop gates

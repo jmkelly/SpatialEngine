@@ -6,7 +6,7 @@ source URLs, mined client test suites/fixtures, and the recorded corpus in
 request, expected response/assertion, real-client dependency, current engine
 behaviour with a `file:line` pointer, and rough effort (S < 1 day, M 1–3 days,
 L > 3 days). Serve side = `src/Spatial.Adapter.GeoServices` (+ codec
-`src/Spatial.Interop.Esri`); consume side = `src/Spatial.Provider.ArcGisRest`.
+`src/Spatial.Interop.Esri`); consume side = `src/Spatial.Stores.ArcGisRest`.
 
 Existing narrow proof (do not duplicate): `clients/typescript/test/geoservices-e2e.test.ts`
 drives the live host with unmodified `@esri/arcgis-rest-feature-service`
@@ -329,14 +329,14 @@ with pointer). Follow-up tasks must land the red test before the fix.
 - Real-client dependency: ArcGIS Online token flow (pygeoapi `generateToken`,
   §1.4); corpus already records `499` services.
 - Current behaviour: `ArcGisRestMapper.MapError`
-  (`src/Spatial.Provider.ArcGisRest/ArcGisRestMapper.cs:99-113`) maps 400→
+  (`src/Spatial.Stores.ArcGisRest/ArcGisRestMapper.cs:99-113`) maps 400→
   `invalid.arguments`, 404→`not.found`, everything else → `store.unavailable`;
   pinned by `A_token_required_error_maps_to_store_unavailable`.
 - Effort: **—** (no change; keep the characterisation test).
 
 ### T13. Consume + serve: ordered paging and ImageServer query surface
 - Provider request: today's `QueryParameters`
-  (`src/Spatial.Provider.ArcGisRest/ArcGisRestStore.cs:QueryParameters`)
+  (`src/Spatial.Stores.ArcGisRest/ArcGisRestStore.cs:QueryParameters`)
   sends `resultOffset`/`resultRecordCount` with **no `orderByFields`** — a
   remote that does not stabilise order can overlap/drop rows across pages.
   pygeoapi always sends `orderByFields` (§1.4). Fix: send

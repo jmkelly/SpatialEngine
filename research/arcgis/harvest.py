@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Autoresearch harvester for public ESRI ArcGIS REST (GeoServices) endpoints.
 
-The SpatialEngine ArcGIS REST provider (`Spatial.Provider.ArcGisRest`) and the
+The SpatialEngine ArcGIS REST provider (`Spatial.Stores.ArcGisRest`) and the
 GeoServices facade (`Spatial.Adapter.GeoServices`) are both compliance claims:
 they claim to speak the dialect real ArcGIS servers speak. This script builds
 the ground-truth corpus for those claims by crawling public, unauthenticated

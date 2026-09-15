@@ -1,5 +1,5 @@
 using Npgsql;
-using Spatial.Provider.PostGIS;
+using Spatial.Stores.PostGIS;
 
 namespace Spatial.PostGIS.Tests;
 

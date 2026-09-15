@@ -48,12 +48,12 @@ In order of preference for new implementations:
 - `Spatial.Interop.Esri` — the shared Esri wire codec: Core only, no NTS,
   ASP.NET or HttpClient (ADR-0035).
 - Implementations (`Spatial.Operations.*`, `Spatial.Transformations.*`,
-  `Spatial.Provider.*`, `Spatial.Rendering.*`, `Spatial.Imagery.*`,
+  `Spatial.Stores.*`, `Spatial.Maps`, `Spatial.Rendering.*`, `Spatial.Imagery.*`,
   `Spatial.Tiling.*`) — reference Core + SDK only; third-party packages
   (NTS, ProjNET, Npgsql, SkiaSharp, NetVips) stay inside the owning
   implementation (ADR-0005).
 - Boundary projects (`Spatial.Adapter.GeoServices`,
-  `Spatial.Provider.ArcGisRest`) additionally reference only
+  `Spatial.Stores.ArcGisRest`) additionally reference only
   `Spatial.Interop.Esri`; the adapter owns ASP.NET Core, the provider owns
   `HttpClient` (ADR-0035).
 - `Spatial.Host` — the only project that references implementations.

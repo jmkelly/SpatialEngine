@@ -30,7 +30,7 @@ ADR-0029), `GeometryFactory`, `GeometryTraversal`.
 Buffer, intersection, union, predicates, distance, area, length, centroid,
 simplification, validation/repair, transformation, indexing, SQL/store
 behaviour, rendering, tiling, persistence, workflow. Those ship in implementation projects
-under `src/Spatial.Operations.*`, `src/Spatial.Provider.*`, etc. (ADR-0033).
+under `src/Spatial.Operations.*`, `src/Spatial.Stores.*` + `src/Spatial.Maps`, etc. (ADR-0033).
 
 ## Rules
 
