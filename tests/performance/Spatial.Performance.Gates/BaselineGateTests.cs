@@ -175,4 +175,44 @@ public sealed class BaselineGateTests
         Assert.Contains("BufferBenchmarks.Buffer_Raw", verdict.NewBenches);
         Assert.DoesNotContain(verdict.Failures, f => f.Contains("Buffer_Raw"));
     }
+
+    [Fact]
+    public void Bench_directory_resolves_relative_config_against_repo_root()
+    {
+        // perf-nightly sets SPATIAL_BENCH_DIR=artifacts/bench (relative to
+        // the repo root, where the shell steps run). The testhost CWD is the
+        // test binaries directory, so returning the value verbatim makes the
+        // gate look in bin/.../artifacts/bench/raw and report no samples.
+        var previous = Environment.GetEnvironmentVariable("SPATIAL_BENCH_DIR");
+        try
+        {
+            Environment.SetEnvironmentVariable("SPATIAL_BENCH_DIR", "artifacts/bench");
+            var resolved = BaselineStore.FindBenchDirectory();
+            var expected = Path.Combine(BaselineStore.FindRepositoryRoot(), "artifacts", "bench");
+            Assert.Equal(expected, resolved);
+            Assert.True(Path.IsPathRooted(resolved));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SPATIAL_BENCH_DIR", previous);
+        }
+    }
+
+    [Fact]
+    public void Budgets_file_resolves_relative_config_against_repo_root()
+    {
+        var previous = Environment.GetEnvironmentVariable("SPATIAL_BENCH_BUDGETS");
+        try
+        {
+            Environment.SetEnvironmentVariable("SPATIAL_BENCH_BUDGETS", Path.Combine("tests", "performance", "bench-budgets.json"));
+            var resolved = BaselineStore.FindBudgetsFile();
+            var expected = Path.Combine(BaselineStore.FindRepositoryRoot(), "tests", "performance", "bench-budgets.json");
+            Assert.Equal(expected, resolved);
+            Assert.True(Path.IsPathRooted(resolved));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SPATIAL_BENCH_BUDGETS", previous);
+        }
+    }
 }

@@ -15,25 +15,37 @@ public static class BaselineStore
 
     public const string RawResultsDirectoryName = "raw";
 
-    /// <summary>Bench directory: <c>SPATIAL_BENCH_DIR</c>, else <c>&lt;repo&gt;/artifacts/bench</c>.</summary>
+    /// <summary>Bench directory: <c>SPATIAL_BENCH_DIR</c>, else <c>&lt;repo&gt;/artifacts/bench</c>. A relative configured value resolves against the repository root, since the testhost CWD is the test binaries directory while the shell steps run from the root.</summary>
     public static string FindBenchDirectory()
     {
         var configured = Environment.GetEnvironmentVariable("SPATIAL_BENCH_DIR");
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            return configured;
+            var trimmed = configured.Trim();
+            if (Path.IsPathRooted(trimmed))
+            {
+                return trimmed;
+            }
+
+            return Path.GetFullPath(Path.Combine(FindRepositoryRoot(), trimmed));
         }
 
         return Path.Combine(FindRepositoryRoot(), "artifacts", "bench");
     }
 
-    /// <summary>Committed budgets file: <c>SPATIAL_BENCH_BUDGETS</c>, else <c>&lt;repo&gt;/tests/performance/bench-budgets.json</c>.</summary>
+    /// <summary>Committed budgets file: <c>SPATIAL_BENCH_BUDGETS</c>, else <c>&lt;repo&gt;/tests/performance/bench-budgets.json</c>. Relative values resolve against the repository root, matching <see cref="FindBenchDirectory"/>.</summary>
     public static string FindBudgetsFile()
     {
         var configured = Environment.GetEnvironmentVariable("SPATIAL_BENCH_BUDGETS");
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            return configured;
+            var trimmed = configured.Trim();
+            if (Path.IsPathRooted(trimmed))
+            {
+                return trimmed;
+            }
+
+            return Path.GetFullPath(Path.Combine(FindRepositoryRoot(), trimmed));
         }
 
         return Path.Combine(FindRepositoryRoot(), "tests", "performance", "bench-budgets.json");
