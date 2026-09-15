@@ -12,7 +12,8 @@ namespace Spatial.Host;
 /// neutral <c>Spatial:Maps:Declared</c> list plus every legacy
 /// <c>Spatial:GeoServices:Services</c> entry projected to a Feature-only map,
 /// so the config shape is preserved while every map has stable layer ids. A
-/// pre-ADR-0053 <c>Spatial:Publications:Path</c> is read once and migrated.
+/// pre-ADR-0053 legacy map path (<c>Spatial:Publications:Path</c>, kept as a deprecated alias)
+/// is read once and migrated.
 /// Split from the composition root so its fan-out stays deliberate (ADR-0040).
 /// </summary>
 internal static class MapServices
@@ -38,7 +39,7 @@ internal static class MapServices
         var options = configuration.GetSection("Spatial:Maps").Get<MapsOptions>()
             ?? new MapsOptions();
 
-        // A pre-ADR-0053 publications file migrates on first read when the new
+        // A pre-ADR-0053 legacy map file migrates on first read when the new
         // path does not exist; the legacy file is never rewritten.
         if (string.IsNullOrWhiteSpace(options.LegacyPath))
         {

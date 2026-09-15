@@ -6,7 +6,7 @@ namespace Spatial.Adapter.GeoServices;
 /// The MapServer <c>layers</c> selection parameter (spec §4): empty, <c>all</c>,
 /// <c>visible</c> or <c>top</c> select every layer; <c>show:id,id</c> selects
 /// only those; <c>hide:id,id</c> selects all but those; a bare id list selects
-/// those. Selection is by stable publication layer id.
+/// those. Selection is by stable map layer id.
 /// </summary>
 internal static class MapLayerSelection
 {

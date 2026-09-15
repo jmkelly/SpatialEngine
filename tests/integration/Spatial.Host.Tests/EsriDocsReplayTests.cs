@@ -288,7 +288,7 @@ public sealed class EsriDocsReplayTests : IClassFixture<WebApplicationFactory<Pr
 /// Slice C (T-070): MapServer replay over a runtime <c>world</c> map
 /// published on the fixed 8-city demo.cities snapshot (layer 0). The
 /// default test host serves no MapServer, so this class carries its own
-/// factory (admin token plus an isolated publications file) and publishes
+/// factory (admin token plus an isolated maps file) and publishes
 /// the map once per test; the JSON cases then replay their stored query
 /// strings verbatim with the shared semantic diff
 /// (<see cref="EsriDocsReplayTests.Compare"/>). No MapServer behaviour was

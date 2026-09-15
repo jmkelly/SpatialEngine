@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// Projects a publication layer's persisted MapLibre style fragment
+/// Projects a map layer's persisted MapLibre style fragment
 /// (ADR-0047, dialect ADR-0044) onto the Esri <c>drawingInfo</c>,
 /// <c>labelingInfo</c> and <c>domains</c> shapes (spec §12–15, ADR-0050).
 ///

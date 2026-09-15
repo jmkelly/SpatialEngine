@@ -173,7 +173,7 @@ defaults to `memory` so the database-free upload path works out of the box.
 | `Spatial:Admin:Token` | Admin token for the mutation routes; empty disables them |
 | `SPATIAL_ADMIN_TOKEN` | Env fallback for the admin token — a secret channel alongside the connection string |
 | `Spatial:Maps:Path` | Runtime map JSON file (default `./data/maps.json`) |
-| `Spatial:Maps:LegacyPath` | Pre-ADR-0053 publications JSON read once for migration (default `./data/publications.json`) |
+| `Spatial:Maps:LegacyPath` | Pre-ADR-0053 legacy map file (`publications.json` wire shape) read once for migration |
 | `Spatial:Maps:Declared` | Config-seeded immutable maps (`{name, store, services[], layers[]}`) |
 | `Spatial:Ogc:Root` | OGC WMS/WFS URL prefix (default `/ogc`) |
 | `Spatial:Ogc:ServiceTitle` | Capabilities title shared by WMS and WFS |

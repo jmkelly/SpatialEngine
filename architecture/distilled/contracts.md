@@ -142,8 +142,8 @@ filters rejected).
 **Map registry specifics (ADR-0053):** `Spatial.Provider.Maps`
 composes immutable declared entries (config-seeded, whole-store entries
 expand to the sorted dataset list with stable ids) with runtime entries in a
-versioned JSON file written atomically, and reads a pre-ADR-0053
-`publications.json` once for migration. `MapLayer` optionally carries
+versioned JSON file written atomically, and reads a pre-ADR-0053 legacy map file
+(`publications.json` wire shape) once for migration. `MapLayer` optionally carries
 `Style`, a JSON array of MapLibre style-layer objects in the ADR-0044 subset,
 persisted verbatim (ADR-0047); the dataset is not repeated inside it — the
 host injects `source-layer` when it assembles a render document. The OGC

@@ -7,7 +7,7 @@ namespace Spatial.Provider.Maps.Tests;
 /// <summary>
 /// The map registry (ADR-0053 §2): declared immutability, whole-store
 /// expansion, runtime persistence, atomic replace, collisions, corrupt-file
-/// diagnostics and legacy publication migration. The file lives under a
+/// diagnostics and legacy map migration. The file lives under a
 /// per-test temporary directory.
 /// </summary>
 public sealed class MapRegistryTests : IDisposable
@@ -366,7 +366,7 @@ public sealed class MapRegistryTests : IDisposable
         var failure = await Assert.ThrowsAsync<SpatialException>(() => registry.ListAsync());
 
         Assert.Equal(SpatialException.StoreUnavailable, failure.Code);
-        Assert.Contains("legacy publication file", failure.Message);
+        Assert.Contains("legacy map file", failure.Message);
     }
 
     [Fact]

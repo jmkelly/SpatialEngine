@@ -11,8 +11,8 @@ namespace Spatial.Provider.Maps;
 /// versioned JSON file written atomically (temp file + replace) under a
 /// single-writer lock. A whole-store declared map resolves its layers once
 /// from the backing store's dataset list and caches them, so its layer ids
-/// stay stable for the process lifetime. A pre-ADR-0053 publications file is
-/// read once and migrated. A name collision with a declared entry is
+/// stay stable for the process lifetime. A pre-ADR-0053 legacy map file (a
+/// <c>publications.json</c>) is read once and migrated. A name collision with a declared entry is
 /// <c>invalid.arguments</c>, a missing runtime name is <c>not.found</c> and a
 /// corrupt file is <c>store.unavailable</c>.
 /// </summary>
@@ -207,7 +207,7 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
         return loaded;
     }
 
-    /// <summary>Reads a pre-ADR-0053 publications file and projects each record onto a map.</summary>
+    /// <summary>Reads a pre-ADR-0053 legacy map file and projects each record onto a map.</summary>
     private static async Task<Dictionary<string, Map>> ReadLegacyAsync(string path, CancellationToken cancellationToken)
     {
         string text;
@@ -218,22 +218,22 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw SpatialException.Unavailable(
-                $"The legacy publication file '{path}' cannot be read: {exception.Message}", exception);
+                $"The legacy map file '{path}' cannot be read: {exception.Message}", exception);
         }
 
-        LegacyPublicationFile? file;
+        LegacyMapFile? file;
         try
         {
-            file = JsonSerializer.Deserialize<LegacyPublicationFile>(text, Json);
+            file = JsonSerializer.Deserialize<LegacyMapFile>(text, Json);
         }
         catch (JsonException exception)
         {
             throw SpatialException.Unavailable(
-                $"The legacy publication file '{path}' is not valid JSON: {exception.Message}", exception);
+                $"The legacy map file '{path}' is not valid JSON: {exception.Message}", exception);
         }
 
         var loaded = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
-        foreach (var legacy in file?.Publications ?? [])
+        foreach (var legacy in file?.Maps ?? [])
         {
             if (ProjectLegacy(legacy) is { } map)
             {
@@ -245,7 +245,7 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
     }
 
     /// <summary>Projects one legacy record onto a map, or null when it carries no servable layer or has an unknown kind.</summary>
-    private static Map? ProjectLegacy(LegacyPublication legacy)
+    private static Map? ProjectLegacy(LegacyMap legacy)
     {
         if (legacy.Layers.Count == 0 || LegacyService(legacy.Kind) is not { } service)
         {
@@ -351,17 +351,18 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
 /// <summary>The versioned on-disk map document (ADR-0053 §2).</summary>
 internal sealed record MapFile(int Version, IReadOnlyList<Map> Maps);
 
-/// <summary>The pre-ADR-0053 publications document, read only for migration.</summary>
-internal sealed record LegacyPublicationFile(int Version, IReadOnlyList<LegacyPublication> Publications);
+/// <summary>The pre-ADR-0053 legacy map document, read only for migration. The wire key stays
+/// <c>publications</c> so real legacy files still deserialize.</summary>
+internal sealed record LegacyMapFile(int Version, [property: JsonPropertyName("publications")] IReadOnlyList<LegacyMap> Maps);
 
-/// <summary>One pre-ADR-0053 publication record.</summary>
-internal sealed record LegacyPublication(
+/// <summary>One pre-ADR-0053 legacy map record.</summary>
+internal sealed record LegacyMap(
     string Name,
     string? Kind,
     string Store,
-    IReadOnlyList<LegacyPublicationLayer> Layers,
+    IReadOnlyList<LegacyMapLayer> Layers,
     string? Description = null,
     string? Copyright = null);
 
-/// <summary>One pre-ADR-0053 publication layer.</summary>
-internal sealed record LegacyPublicationLayer(string Dataset, int LayerId, string? Name = null, string? Style = null);
+/// <summary>One pre-ADR-0053 legacy map layer.</summary>
+internal sealed record LegacyMapLayer(string Dataset, int LayerId, string? Name = null, string? Style = null);

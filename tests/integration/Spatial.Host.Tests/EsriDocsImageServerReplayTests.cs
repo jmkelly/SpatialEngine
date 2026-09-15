@@ -13,7 +13,7 @@ namespace Spatial.Host.Tests;
 /// Slice D part 1 (T-071): ImageServer replay over a runtime
 /// <c>wsiearth</c> image service published on an 8x6 U8 gradient raster
 /// (EPSG:4326). The default test host serves no ImageServer, so this class
-/// carries its own factory (admin token, isolated publications file and an
+/// carries its own factory (admin token, isolated maps file and an
 /// inline raster source) and publishes the service once per test; the JSON
 /// cases then replay their stored query strings verbatim with the shared
 /// semantic diff (<see cref="EsriDocsReplayTests.Compare"/>). No
