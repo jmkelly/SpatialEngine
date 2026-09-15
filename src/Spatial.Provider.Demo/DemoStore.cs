@@ -8,7 +8,7 @@ namespace Spatial.Provider.Demo;
 /// <summary>
 /// The demo store (ADR-0033): a direct, in-process implementation of
 /// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/> and
-/// <see cref="IDemoWork"/> over the procedural <see cref="DemoDatasetCatalog"/>.
+/// <see cref="IDemoWork"/> over the procedural <see cref="DemoDatasetCatalogue"/>.
 /// Read-only (writes and dataset creation throw <c>invalid.arguments</c>);
 /// the demo sleep is a cancellable delay reporting progress.
 /// </summary>
@@ -24,7 +24,7 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
     /// listings stay fast until demo.world_cities is actually requested.
     /// </summary>
     private static readonly Lazy<IReadOnlyList<DatasetSummary>> CachedSummaries = new(
-        () => DemoDatasetCatalog.Summaries.ToArray(),
+        () => DemoDatasetCatalogue.Summaries.ToArray(),
         LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>
@@ -122,7 +122,7 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
             throw SpatialException.BadArguments("A dataset identifier is required.");
         }
 
-        return DemoDatasetCatalog.Find(dataset)
+        return DemoDatasetCatalogue.Find(dataset)
             ?? throw SpatialException.Missing($"Unknown dataset '{dataset}'.");
     }
 

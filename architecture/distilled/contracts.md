@@ -58,6 +58,12 @@ protocol adapter reads a mixed map's layers from their own stores without
 holding the DI container. Required reads are `invalid.arguments` for an
 unknown store; additive faces return `null`.
 
+**Spelling and ladder.** `Catalogue` = datasets in one store
+(`IDataCatalogue`, `IRasterCatalogue`, `GET /api/catalogue`); `Registry` =
+stores and maps across the engine (`IStoreRegistry`, `IMapRegistry`).
+Esri-protocol catalog concepts keep Esri's `Catalog` spelling
+(`GeoServicesCatalog`, raster catalog items) — both spellings are deliberate.
+
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |

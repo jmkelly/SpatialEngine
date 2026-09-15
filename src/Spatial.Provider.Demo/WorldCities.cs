@@ -82,7 +82,7 @@ internal static class WorldCities
             "Point",
             features,
             schema,
-            DemoDatasetCatalog.BoxesFor(features));
+            DemoDatasetCatalogue.BoxesFor(features));
     }
 
     private static DemoDataset Load()
@@ -120,7 +120,7 @@ internal static class WorldCities
                 $"The embedded '{ResourceName}' snapshot has a malformed row {lineNumber}; expected 'geonameid, name, country, population, latitude, longitude'.");
         }
 
-        var geometry = GeometryFactory.CreatePoint(row.Longitude, row.Latitude, DemoDatasetCatalog.Wgs84);
+        var geometry = GeometryFactory.CreatePoint(row.Longitude, row.Latitude, DemoDatasetCatalogue.Wgs84);
         return new Feature(
             new FeatureId($"wd-{row.Id}"),
             schema,

@@ -5,9 +5,10 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Demo;
 
 /// <summary>
-/// The demo provider's in-memory dataset catalog (ADR-0031): two
+/// The demo store's in-memory dataset catalogue (ADR-0033): two
 /// procedurally generated point datasets plus the GeoNames world-cities
-/// snapshot (see <see cref="WorldCities"/>), served by <c>demo@1</c> so the
+/// snapshot (see <see cref="WorldCities"/>), served through the keyed
+/// <c>demo</c> store so the
 /// browser workbench can browse, map and select real features without a
 /// database. Geometry is produced from <c>Spatial.Core</c> factory types
 /// (points at <see cref="Wgs84"/>), stamped with an EPSG:4326 identity like
@@ -15,7 +16,7 @@ namespace Spatial.Provider.Demo;
 /// or committed snapshots (world cities), stable and deterministic so
 /// automated tests can assert exact feature counts and shapes.
 /// </summary>
-internal static class DemoDatasetCatalog
+internal static class DemoDatasetCatalogue
 {
     /// <summary>The WGS 84 identity the demo geometries carry (SRID 4326).</summary>
     internal static readonly CoordinateReference Wgs84 = CoordinateReference.Epsg(4326);
@@ -30,7 +31,7 @@ internal static class DemoDatasetCatalog
     private static readonly DemoDataset Cities = BuildCities();
 
     /// <summary>
-    /// The three datasets, ordered by id — the catalogue stream order.
+    /// The three datasets, ordered by id — the catalogue listing order.
     /// Touching this parses the world-cities snapshot; prefer
     /// <see cref="Summaries"/> for listings and <see cref="Find"/> for single
     /// datasets so cold layer-0 traffic stays off the CSV (T-095).
@@ -54,7 +55,7 @@ internal static class DemoDatasetCatalog
     ];
 
     /// <summary>
-    /// The dataset whose id matches, or null when the catalog has no such dataset.
+    /// The dataset whose id matches, or null when the catalogue has no such dataset.
     /// The world-cities snapshot parses only when its id is requested; every
     /// other lookup stays off the CSV (T-095).
     /// </summary>
