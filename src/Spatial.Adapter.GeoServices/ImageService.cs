@@ -139,57 +139,7 @@ internal static class ImageService
             info.BandStatistics?.Select(stat => (IReadOnlyList<double>)new[] { stat.Min, stat.Max, stat.Mean, stat.StandardDeviation }).ToArray());
     }
 
-    /// <summary>
-    /// Builds the Legend resource (S3 legend-image-service/): one entry per
-    /// band labelled <c>Band_N</c> (the Esri <c>bandNames</c> convention),
-    /// each carrying the 20x20 dataset render as base64 <c>imageData</c>.
-    /// The render is what <c>exportImage</c> serves, so the swatch is honest
-    /// without inventing a renderer the engine does not have.
-    /// </summary>
-    public static EsriImageLegend Legend(
-        RasterDatasetDescription description, byte[] swatch, int width, int height, IReadOnlyList<long> bandIds) =>
-        new(
-        [
-            new EsriImageLegendLayer(
-                0,
-                description.Name,
-                "Raster Layer",
-                0,
-                0,
-                LegendType(bandIds.Count),
-                [.. bandIds.Select(id => new EsriImageLegendEntry(
-                    $"Band_{id + 1}",
-                    LegendUrl(description.Dataset, id),
-                    Convert.ToBase64String(swatch),
-                    "image/png",
-                    height,
-                    width))]),
-        ]);
 
-    /// <summary>
-    /// Parses the optional legend <c>bandIds</c> (0-based): all bands by
-    /// default, otherwise the named bands in order. Unknown ids are invalid
-    /// arguments rather than silently dropped entries.
-    /// </summary>
-    public static IReadOnlyList<long> ParseLegendBandIds(string? value, int bandCount)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return [.. Enumerable.Range(0, bandCount).Select(id => (long)id)];
-        }
-
-        var ids = EsriValueParser.ParseInt64s(value, "bandIds");
-        foreach (var id in ids)
-        {
-            if (id < 0 || id >= bandCount)
-            {
-                throw EsriInteropException.Invalid(
-                    $"Band id {id} is out of range: the service has {bandCount} band(s) and bandIds are 0-based.");
-            }
-        }
-
-        return ids;
-    }
 
     /// <summary>Builds the stored band statistics resource (S3 statistics/).</summary>
     public static EsriImageStatistics Statistics(IReadOnlyList<RasterBandStatistics> statistics) =>
@@ -209,11 +159,18 @@ internal static class ImageService
     {
         if (table.Fields.Count == 0)
         {
-            throw EsriInteropException.Invalid("The raster attribute table has no columns.");
+            throw GeoServicesErrors.Invalid("The raster attribute table has no columns.");
         }
 
         writer.WriteStartObject();
         writer.WriteString("objectIdFieldName", table.ObjectIdField);
+        WriteAttributeFields(writer, table);
+        WriteAttributeRows(writer, table);
+        writer.WriteEndObject();
+    });
+
+    private static void WriteAttributeFields(Utf8JsonWriter writer, RasterAttributeTable table)
+    {
         writer.WritePropertyName("fields");
         writer.WriteStartArray();
         for (var i = 0; i < table.Fields.Count; i++)
@@ -233,13 +190,17 @@ internal static class ImageService
         }
 
         writer.WriteEndArray();
+    }
+
+    private static void WriteAttributeRows(Utf8JsonWriter writer, RasterAttributeTable table)
+    {
         writer.WritePropertyName("features");
         writer.WriteStartArray();
         foreach (var row in table.Rows)
         {
             if (row.Count != table.Fields.Count)
             {
-                throw EsriInteropException.Invalid(
+                throw GeoServicesErrors.Invalid(
                     $"The raster attribute table row has {row.Count} values but the table declares {table.Fields.Count} columns.");
             }
 
@@ -256,15 +217,9 @@ internal static class ImageService
         }
 
         writer.WriteEndArray();
-        writer.WriteEndObject();
-    });
+    }
 
-    /// <summary>The renderer flavour the legend describes: raw multi-band renders read as RGB composites.</summary>
-    private static string LegendType(int selected) => selected is 3 or 4 ? "RGB Composite" : "Stretched";
 
-    /// <summary>A stable opaque swatch id: 32 hex chars like the Esri reference.</summary>
-    private static string LegendUrl(string dataset, long bandId) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{dataset}:{bandId}")).AsSpan(0, 16)).ToLowerInvariant();
 
     /// <summary>Builds the Export Image JSON response (spec §8.0.4); the adapter owns the href.</summary>
     public static EsriImageExportResponse Export(string href, RasterViewport viewport, int srid) =>
@@ -363,27 +318,51 @@ internal static class ImageService
 
         return PixelTypesByName.TryGetValue(value.Trim().ToUpperInvariant(), out var type)
             ? type
-            : throw EsriInteropException.Invalid($"Pixel type '{value}' is not supported.");
+            : throw GeoServicesErrors.Invalid($"Pixel type '{value}' is not supported.");
     }
 
-    /// <summary>Parses the Esri <c>interpolation</c> parameter (spec §8.0.4.2).</summary>
-    public static RasterInterpolation ParseInterpolation(string? value) => value?.Trim() switch
+    private static readonly Dictionary<string, RasterInterpolation> InterpolationByName = new(StringComparer.Ordinal)
     {
-        null or "" or "RSP_NearestNeighbor" => RasterInterpolation.NearestNeighbor,
-        "RSP_BilinearInterpolation" => RasterInterpolation.Bilinear,
-        "RSP_CubicConvolution" => RasterInterpolation.CubicConvolution,
-        "RSP_Majority" => RasterInterpolation.Majority,
-        _ => throw EsriInteropException.Invalid($"Interpolation '{value}' is not supported."),
+        [""] = RasterInterpolation.NearestNeighbor,
+        ["RSP_NearestNeighbor"] = RasterInterpolation.NearestNeighbor,
+        ["RSP_BilinearInterpolation"] = RasterInterpolation.Bilinear,
+        ["RSP_CubicConvolution"] = RasterInterpolation.CubicConvolution,
+        ["RSP_Majority"] = RasterInterpolation.Majority,
     };
 
-    /// <summary>Parses the Esri export <c>format</c> parameter (spec §8.0.4.2).</summary>
-    public static RasterFormat ParseFormat(string? value) => value?.Trim().ToLowerInvariant() switch
+    /// <summary>Parses the Esri <c>interpolation</c> parameter (spec §8.0.4.2).</summary>
+    public static RasterInterpolation ParseInterpolation(string? value)
     {
-        null or "" or "jpgpng" or "png" or "png8" or "png24" or "png32" => RasterFormat.Png,
-        "jpg" or "jpeg" => RasterFormat.Jpeg,
-        "tif" or "tiff" => RasterFormat.Tiff,
-        _ => throw EsriInteropException.Invalid($"Image format '{value}' is not supported (png, jpg, tiff)."),
-    };
+        var key = value?.Trim() ?? string.Empty;
+        return InterpolationByName.TryGetValue(key, out var parsed)
+            ? parsed
+            : throw GeoServicesErrors.Invalid($"Interpolation '{value}' is not supported.");
+    }
+
+    /// <summary>The raster format named by every supported Esri export <c>format</c> value (spec §8.0.4.2).</summary>
+    private static readonly Dictionary<string, RasterFormat> FormatsByName =
+        new Dictionary<string, RasterFormat>(StringComparer.OrdinalIgnoreCase)
+        {
+            [""] = RasterFormat.Png,
+            ["jpgpng"] = RasterFormat.Png,
+            ["png"] = RasterFormat.Png,
+            ["png8"] = RasterFormat.Png,
+            ["png24"] = RasterFormat.Png,
+            ["png32"] = RasterFormat.Png,
+            ["jpg"] = RasterFormat.Jpeg,
+            ["jpeg"] = RasterFormat.Jpeg,
+            ["tif"] = RasterFormat.Tiff,
+            ["tiff"] = RasterFormat.Tiff,
+        };
+
+    /// <summary>Parses the Esri export <c>format</c> parameter (spec §8.0.4.2).</summary>
+    public static RasterFormat ParseFormat(string? value)
+    {
+        var key = value?.Trim() ?? string.Empty;
+        return FormatsByName.TryGetValue(key, out var format)
+            ? format
+            : throw GeoServicesErrors.Invalid($"Image format '{value}' is not supported (png, jpg, tiff).");
+    }
 
     /// <summary>Parses the optional <c>noData</c> parameter.</summary>
     public static double? ParseNoData(string? value)
@@ -395,7 +374,7 @@ internal static class ImageService
 
         if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var noData) || !double.IsFinite(noData))
         {
-            throw EsriInteropException.Invalid($"'noData' must be a finite number, got '{value}'.");
+            throw GeoServicesErrors.Invalid($"'noData' must be a finite number, got '{value}'.");
         }
 
         return noData;
@@ -411,7 +390,7 @@ internal static class ImageService
 
         if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var quality) || quality is < 0 or > 100)
         {
-            throw EsriInteropException.Invalid($"'compressionQuality' must be an integer between 0 and 100, got '{value}'.");
+            throw GeoServicesErrors.Invalid($"'compressionQuality' must be an integer between 0 and 100, got '{value}'.");
         }
 
         return quality;
@@ -422,11 +401,11 @@ internal static class ImageService
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw EsriInteropException.Invalid("The 'rasterIds' parameter is required.");
+            throw GeoServicesErrors.Invalid("The 'rasterIds' parameter is required.");
         }
 
         var ids = EsriValueParser.ParseInt64s(value, "rasterIds");
-        return ids.Count == 0 ? throw EsriInteropException.Invalid("The 'rasterIds' parameter is required.") : ids;
+        return ids.Count == 0 ? throw GeoServicesErrors.Invalid("The 'rasterIds' parameter is required.") : ids;
     }
 
     private static void WriteFeatureSetBody(

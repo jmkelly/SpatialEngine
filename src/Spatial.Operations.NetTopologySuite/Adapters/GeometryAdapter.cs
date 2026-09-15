@@ -241,13 +241,16 @@ internal static class GeometryAdapter
             crs);
 
     /// <summary>The layout that can represent every ordinate the sequence stores.</summary>
-    private static CoordinateLayout LayoutFor(NtsSequence sequence) => (sequence.HasZ, sequence.HasM) switch
+    private static readonly Dictionary<(bool HasZ, bool HasM), CoordinateLayout> LayoutByOrdinates = new()
     {
-        (true, true) => CoordinateLayout.Xyzm,
-        (true, false) => CoordinateLayout.Xyz,
-        (false, true) => CoordinateLayout.Xym,
-        (false, false) => CoordinateLayout.Xy,
+        [(true, true)] = CoordinateLayout.Xyzm,
+        [(true, false)] = CoordinateLayout.Xyz,
+        [(false, true)] = CoordinateLayout.Xym,
+        [(false, false)] = CoordinateLayout.Xy,
     };
+
+    private static CoordinateLayout LayoutFor(NtsSequence sequence) =>
+        LayoutByOrdinates[(sequence.HasZ, sequence.HasM)];
 
     private static Span<Coordinate> AsSpan(List<Coordinate> coordinates) =>
         CollectionsMarshal.AsSpan(coordinates);

@@ -228,10 +228,7 @@ internal sealed class FileTileCache : ITileCache
             File.Delete(dataPath);
             File.Delete(metaPath);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
         }
     }

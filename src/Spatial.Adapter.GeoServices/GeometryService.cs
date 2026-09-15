@@ -29,7 +29,7 @@ internal static class GeometryService
         CancellationToken cancellationToken) =>
         Operations.TryGetValue(operation, out var handler)
             ? handler(parameters, capabilities, cancellationToken)
-            : throw EsriInteropException.Invalid($"The Geometry Service operation '{operation}' is not supported.");
+            : throw GeoServicesErrors.Invalid($"The Geometry Service operation '{operation}' is not supported.");
 
     private static readonly Dictionary<string, Func<EsriRequestParameters, GeometryServiceCapabilities, CancellationToken, IResult>> Operations =
         new(StringComparer.OrdinalIgnoreCase)
@@ -49,10 +49,10 @@ internal static class GeometryService
             ["densify"] = (parameters, capabilities, token) => Densify(parameters, capabilities.Processing, token),
             ["labelpoints"] = (parameters, capabilities, token) => LabelPoints(parameters, capabilities.Measures, token),
             ["findtransformations"] = (parameters, capabilities, token) => FindTransformations(parameters, capabilities.Catalogue, token),
-            ["fromgeocoordinatestring"] = (_, _, _) => throw EsriInteropException.Invalid(
+            ["fromgeocoordinatestring"] = (_, _, _) => throw GeoServicesErrors.Invalid(
                 "The 'fromGeoCoordinateString' operation is not supported: the engine has no coordinate-notation codec " +
                 "(MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD) and half-parsing notations is a deliberate non-goal."),
-            ["togeocoordinatestring"] = (_, _, _) => throw EsriInteropException.Invalid(
+            ["togeocoordinatestring"] = (_, _, _) => throw GeoServicesErrors.Invalid(
                 "The 'toGeoCoordinateString' operation is not supported: the engine has no coordinate-notation codec " +
                 "(MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD) and half-parsing notations is a deliberate non-goal."),
         };
@@ -73,7 +73,7 @@ internal static class GeometryService
         Reject(parameters, "datumTransformation", "datum transformations are not supported; reprojection uses the registered transforms.");
         var source = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         var target = EsriValueParser.ParseSpatialReference(parameters.Require("outSR"))
-            ?? throw EsriInteropException.Invalid("'outSR' is required for project.");
+            ?? throw GeoServicesErrors.Invalid("'outSR' is required for project.");
         var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), source);
         var results = geometries
             .Select(geometry => transforms.Transform(geometry, source?.ToString(), target.ToString(), cancellationToken))
@@ -96,9 +96,36 @@ internal static class GeometryService
         // unit against a geographic buffer CRS stays rejected (no geodesic
         // verb); with a projected bufferSR the request is a
         // transform-then-buffer via ICoordinateTransforms.
+        RejectUnsupportedBufferOptions(parameters);
+        var fallback = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"))
+            ?? EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
+        var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), fallback);
+        var work = new BufferWork(
+            geometries,
+            fallback,
+            EsriValueParser.ParseSpatialReference(parameters.Get("bufferSR")),
+            EsriValueParser.ParseSpatialReference(parameters.Get("outSR")),
+            EsriValueParser.ParseDoubles(parameters.Require("distances"), "distances"),
+            ParseOptionalInt(parameters, "quadrantSegments", 8));
+        if (work.Distances.Count != 1 && work.Distances.Count != work.Geometries.Count)
+        {
+            throw GeoServicesErrors.Invalid("'distances' must hold one value or one value per input geometry.");
+        }
+
+        var results = new IGeometry[work.Geometries.Count];
+        for (var i = 0; i < work.Geometries.Count; i++)
+        {
+            results[i] = BufferOne(work, i, parameters, capabilities, cancellationToken);
+        }
+
+        return Geometries(results);
+    }
+
+    private static void RejectUnsupportedBufferOptions(EsriRequestParameters parameters)
+    {
         if (parameters.GetBool("geodesic", false))
         {
-            throw EsriInteropException.Invalid("The 'geodesic' parameter is not supported: the engine buffers planar; project first (bufferSR) and buffer without geodesic.");
+            throw GeoServicesErrors.Invalid("The 'geodesic' parameter is not supported: the engine buffers planar; project first (bufferSR) and buffer without geodesic.");
         }
 
         // unionResults=false is the Esri default and matches engine behavior
@@ -107,40 +134,43 @@ internal static class GeometryService
         // rejected by name.
         if (parameters.GetBool("unionResults", false))
         {
-            throw EsriInteropException.Invalid("The 'unionResults' parameter is not supported: unionResults is not supported; the result is an array per input.");
+            throw GeoServicesErrors.Invalid("The 'unionResults' parameter is not supported: unionResults is not supported; the result is an array per input.");
         }
-        var fallback = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"))
-            ?? EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
-        var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), fallback);
-        var bufferSr = EsriValueParser.ParseSpatialReference(parameters.Get("bufferSR"));
-        var outSr = EsriValueParser.ParseSpatialReference(parameters.Get("outSR"));
-        var distances = EsriValueParser.ParseDoubles(parameters.Require("distances"), "distances");
-        if (distances.Count != 1 && distances.Count != geometries.Count)
-        {
-            throw EsriInteropException.Invalid("'distances' must hold one value or one value per input geometry.");
-        }
-
-        var segments = ParseOptionalInt(parameters, "quadrantSegments", 8);
-        var results = new IGeometry[geometries.Count];
-        for (var i = 0; i < geometries.Count; i++)
-        {
-            // CRS-less inputs are interpreted in the buffer CRS, as before.
-            var source = geometries[i].CoordinateReference ?? fallback ?? bufferSr ?? outSr;
-            var bufferCrs = bufferSr ?? outSr ?? source;
-            var distance = (distances.Count == 1 ? distances[0] : distances[i])
-                * BufferDistanceFactor(parameters, capabilities.Catalogue, bufferCrs, cancellationToken);
-            var working = bufferCrs.HasValue && bufferCrs.Value != source
-                ? capabilities.Transforms.Transform(geometries[i], source?.ToString(), bufferCrs.Value.ToString(), cancellationToken)
-                : geometries[i];
-            var buffered = capabilities.Operations.Buffer(working, distance, segments, cancellationToken);
-            var target = outSr ?? bufferSr ?? source;
-            results[i] = target.HasValue && target.Value != bufferCrs
-                ? capabilities.Transforms.Transform(buffered, bufferCrs?.ToString(), target.Value.ToString(), cancellationToken)
-                : buffered;
-        }
-
-        return Geometries(results);
     }
+
+    private sealed record BufferWork(
+        IReadOnlyList<IGeometry> Geometries,
+        CoordinateReference? Fallback,
+        CoordinateReference? BufferSr,
+        CoordinateReference? OutSr,
+        IReadOnlyList<double> Distances,
+        int Segments);
+
+    private static IGeometry BufferOne(BufferWork work, int index, EsriRequestParameters parameters, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
+    {
+        // CRS-less inputs are interpreted in the buffer CRS, as before.
+        var source = BufferSource(work, index);
+        var bufferCrs = work.BufferSr ?? work.OutSr ?? source;
+        var distance = (work.Distances.Count == 1 ? work.Distances[0] : work.Distances[index])
+            * BufferDistanceFactor(parameters, capabilities.Catalogue, bufferCrs, cancellationToken);
+        var working = DiffersFrom(bufferCrs, source)
+            ? capabilities.Transforms.Transform(work.Geometries[index], source?.ToString(), bufferCrs!.Value.ToString(), cancellationToken)
+            : work.Geometries[index];
+        var buffered = capabilities.Operations.Buffer(working, distance, work.Segments, cancellationToken);
+        var target = BufferTarget(work, source);
+        return DiffersFrom(target, bufferCrs)
+            ? capabilities.Transforms.Transform(buffered, bufferCrs?.ToString(), target!.Value.ToString(), cancellationToken)
+            : buffered;
+    }
+
+    private static CoordinateReference? BufferTarget(BufferWork work, CoordinateReference? source) =>
+        work.OutSr ?? work.BufferSr ?? source;
+
+    private static CoordinateReference? BufferSource(BufferWork work, int index) =>
+        work.Geometries[index].CoordinateReference ?? work.Fallback ?? work.BufferSr ?? work.OutSr;
+
+    private static bool DiffersFrom(CoordinateReference? left, CoordinateReference? right) =>
+        left.HasValue && left.Value != right;
 
     /// <summary>
     /// Converts one raw <c>distances</c> value into buffer-CRS units. Without
@@ -157,24 +187,40 @@ internal static class GeometryService
             return 1.0;
         }
 
+        var code = ParseUnitCode(raw);
+        if (bufferCrs is null)
+        {
+            throw GeoServicesErrors.Invalid("'unit' requires a spatial reference: name 'bufferSR' (or 'inSR'/'sr') so distances have units.");
+        }
+
+        var kind = catalogue.Describe(bufferCrs.Value.ToString(), cancellationToken).Kind;
+        return ResolveUnitFactor(code, bufferCrs, kind);
+    }
+
+    /// <summary>
+    /// Parses the <c>unit</c> parameter to a curated Esri unit code, rejecting
+    /// non-numeric codes and codes outside the curated linear/angular tables.
+    /// </summary>
+    internal static int ParseUnitCode(string raw)
+    {
         if (!int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var code))
         {
-            throw EsriInteropException.Invalid($"'unit' must be a numeric Esri unit code, got '{raw}'. Supported: {EsriUnits.DescribeSupported()}.");
+            throw GeoServicesErrors.Invalid($"'unit' must be a numeric Esri unit code, got '{raw}'. Supported: {EsriUnits.DescribeSupported()}.");
         }
 
         var angular = EsriUnits.IsAngular(code);
         if (!angular && !EsriUnits.TryGetLinear(code, out _, out _)
             || angular && !EsriUnits.TryGetAngular(code, out _, out _))
         {
-            throw EsriInteropException.Invalid($"Unit code {code} is not in the curated unit table. Supported: {EsriUnits.DescribeSupported()}.");
+            throw GeoServicesErrors.Invalid($"Unit code {code} is not in the curated unit table. Supported: {EsriUnits.DescribeSupported()}.");
         }
 
-        if (bufferCrs is null)
-        {
-            throw EsriInteropException.Invalid("'unit' requires a spatial reference: name 'bufferSR' (or 'inSR'/'sr') so distances have units.");
-        }
+        return code;
+    }
 
-        var kind = catalogue.Describe(bufferCrs.Value.ToString(), cancellationToken).Kind;
+    private static double ResolveUnitFactor(int code, CoordinateReference? bufferCrs, CrsKind kind)
+    {
+        var angular = EsriUnits.IsAngular(code);
         if (!angular && kind == CrsKind.Projected && EsriUnits.TryGetLinear(code, out _, out var metres))
         {
             // Every projected CRS in the curated catalogue is metre-based.
@@ -188,12 +234,12 @@ internal static class GeometryService
 
         if (!angular)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"Unit code {code} is linear but the buffer CRS {bufferCrs} is {kind}: " +
                 "the planar engine cannot buffer metres in degrees (no geodesic verb). Name a projected 'bufferSR'.");
         }
 
-        throw EsriInteropException.Invalid(
+        throw GeoServicesErrors.Invalid(
             $"Unit code {code} is angular but the buffer CRS {bufferCrs} is {kind}: " +
             "name a geographic 'bufferSR' or a linear unit with a projected 'bufferSR'.");
     }
@@ -209,43 +255,58 @@ internal static class GeometryService
     private static IResult FindTransformations(EsriRequestParameters parameters, ICrsDirectory catalogue, CancellationToken cancellationToken)
     {
         var source = EsriValueParser.ParseSpatialReference(parameters.Require("inSR"))
-            ?? throw EsriInteropException.Invalid("'inSR' must be a spatial reference (a WKID or {wkid} object).");
+            ?? throw GeoServicesErrors.Invalid("'inSR' must be a spatial reference (a WKID or {wkid} object).");
         var target = EsriValueParser.ParseSpatialReference(parameters.Require("outSR"))
-            ?? throw EsriInteropException.Invalid("'outSR' must be a spatial reference (a WKID or {wkid} object).");
-        if (parameters.GetBool("vertical", false))
-        {
-            throw EsriInteropException.Invalid("The 'vertical' parameter is not supported: the curated catalogue carries horizontal CRSs only.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(parameters.Get("extentOfInterest")))
-        {
-            throw EsriInteropException.Invalid("The 'extentOfInterest' parameter is not supported: the catalogue has no area-of-use model to rank transformations; omit it.");
-        }
-
-        var count = ParseOptionalInt(parameters, "numOfResults", 1);
-        if (count < -1)
-        {
-            throw EsriInteropException.Invalid($"'numOfResults' must be -1 (all) or a non-negative count, got '{parameters.Get("numOfResults")}'.");
-        }
-
+            ?? throw GeoServicesErrors.Invalid("'outSR' must be a spatial reference (a WKID or {wkid} object).");
+        RejectUnsupportedTransformationOptions(parameters);
+        var count = ParseTransformationCount(parameters);
         var from = catalogue.Describe(source!.ToString(), cancellationToken);
         var to = catalogue.Describe(target!.ToString(), cancellationToken);
-        if (source == target
-            || (from.Datum is not null && string.Equals(from.Datum, to.Datum, StringComparison.OrdinalIgnoreCase)))
+        if (source == target || SameDatum(from.Datum, to.Datum))
         {
             return EsriJson.Value(Array.Empty<TransformationEntry>());
         }
 
-        var method = "Helmert datum shift on the transform path via the WGS 84 pivot (embedded TOWGS84 parameters; zero for modern datums)."
-            + (IsOrdnanceSurvey(from.Datum) || IsOrdnanceSurvey(to.Datum)
+        return EsriJson.Value(SliceTransformations(TransformationEntries(from.Datum, to.Datum), count));
+    }
+
+    private static void RejectUnsupportedTransformationOptions(EsriRequestParameters parameters)
+    {
+        if (parameters.GetBool("vertical", false))
+        {
+            throw GeoServicesErrors.Invalid("The 'vertical' parameter is not supported: the curated catalogue carries horizontal CRSs only.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(parameters.Get("extentOfInterest")))
+        {
+            throw GeoServicesErrors.Invalid("The 'extentOfInterest' parameter is not supported: the catalogue has no area-of-use model to rank transformations; omit it.");
+        }
+    }
+
+    private static int ParseTransformationCount(EsriRequestParameters parameters)
+    {
+        var count = ParseOptionalInt(parameters, "numOfResults", 1);
+        return count < -1
+            ? throw GeoServicesErrors.Invalid($"'numOfResults' must be -1 (all) or a non-negative count, got '{parameters.Get("numOfResults")}'.")
+            : count;
+    }
+
+    private static bool SameDatum(string? from, string? to) =>
+        from is not null && string.Equals(from, to, StringComparison.OrdinalIgnoreCase);
+
+    private static TransformationEntry[] TransformationEntries(string? from, string? to) =>
+        [
+            new([new TransformationStep($"{DatumName(from)}_To_{DatumName(to)}_Helmert", true, TransformationMethod(from, to))]),
+        ];
+
+    private static string TransformationMethod(string? from, string? to) =>
+        "Helmert datum shift on the transform path via the WGS 84 pivot (embedded TOWGS84 parameters; zero for modern datums)."
+            + (IsOrdnanceSurvey(from) || IsOrdnanceSurvey(to)
                 ? " OSGB36 uses the classic Helmert approximation: no OSTN grid support, metre-level accuracy."
                 : string.Empty);
-        TransformationEntry[] entries =
-        [
-            new([new TransformationStep($"{DatumName(from.Datum)}_To_{DatumName(to.Datum)}_Helmert", true, method)]),
-        ];
-        return EsriJson.Value(count == -1 ? entries : entries.Take(Math.Max(count, 0)).ToArray());
-    }
+
+    private static TransformationEntry[] SliceTransformations(TransformationEntry[] entries, int count) =>
+        count == -1 ? entries : entries.Take(Math.Max(count, 0)).ToArray();
 
     private static bool IsOrdnanceSurvey(string? datum) =>
         datum?.Contains("Ordnance Survey", StringComparison.OrdinalIgnoreCase) == true;
@@ -381,7 +442,7 @@ internal static class GeometryService
             return EsriValueParser.ParseGeometries(raw, spatialReference);
         }
 
-        throw EsriInteropException.Invalid(aliases.Length == 0
+        throw GeoServicesErrors.Invalid(aliases.Length == 0
             ? "The 'geometries' parameter is required."
             : $"The 'geometries' parameter is required (aliases '{string.Join("', '", aliases)}' are also accepted).");
     }
@@ -401,7 +462,7 @@ internal static class GeometryService
             return;
         }
 
-        throw EsriInteropException.Invalid(
+        throw GeoServicesErrors.Invalid(
             $"The 'calculationType' value '{raw}' is not supported: the engine measures planar (no geodesic verb); omit 'calculationType' or pass 'planar'.");
     }
 
@@ -435,14 +496,14 @@ internal static class GeometryService
     {
         if (parameters.Has(name))
         {
-            throw EsriInteropException.Invalid($"The '{name}' parameter is not supported: {message}");
+            throw GeoServicesErrors.Invalid($"The '{name}' parameter is not supported: {message}");
         }
     }
 
     private static double ParseDouble(string value, string name) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && double.IsFinite(number)
             ? number
-            : throw EsriInteropException.Invalid($"'{name}' must be a finite number, got '{value}'.");
+            : throw GeoServicesErrors.Invalid($"'{name}' must be a finite number, got '{value}'.");
 
     private static int ParseOptionalInt(EsriRequestParameters parameters, string name, int fallback) =>
         int.TryParse(parameters.Get(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)

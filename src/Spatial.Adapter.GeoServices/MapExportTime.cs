@@ -42,7 +42,7 @@ internal static class MapExportTime
         var relation = Relations.FirstOrDefault(candidate =>
             string.Equals(candidate, value.Trim(), StringComparison.OrdinalIgnoreCase));
         return relation
-            ?? throw EsriInteropException.Invalid(
+            ?? throw GeoServicesErrors.Invalid(
                 $"The 'timeRelation' value '{value}' is not supported (esriTimeRelationOverlaps, esriTimeRelationContains, esriTimeRelationWithin).");
     }
 
@@ -64,7 +64,7 @@ internal static class MapExportTime
         using var document = ParseDocument(value);
         if (document.RootElement.ValueKind != JsonValueKind.Array)
         {
-            throw EsriInteropException.Invalid("'layerTimeOptions' must be a JSON array of per-layer time options.");
+            throw GeoServicesErrors.Invalid("'layerTimeOptions' must be a JSON array of per-layer time options.");
         }
 
         var options = new Dictionary<int, MapLayerTimeOption>();
@@ -72,7 +72,7 @@ internal static class MapExportTime
         {
             if (element.ValueKind != JsonValueKind.Object)
             {
-                throw EsriInteropException.Invalid("'layerTimeOptions' entries must be objects with an integer 'id'.");
+                throw GeoServicesErrors.Invalid("'layerTimeOptions' entries must be objects with an integer 'id'.");
             }
 
             var id = OptionId(element);
@@ -124,7 +124,7 @@ internal static class MapExportTime
         }
         catch (JsonException)
         {
-            throw EsriInteropException.Invalid("'layerTimeOptions' must be a JSON array of per-layer time options.");
+            throw GeoServicesErrors.Invalid("'layerTimeOptions' must be a JSON array of per-layer time options.");
         }
     }
 
@@ -144,7 +144,7 @@ internal static class MapExportTime
             }
         }
 
-        throw EsriInteropException.Invalid("'layerTimeOptions' entries must carry an integer 'id'.");
+        throw GeoServicesErrors.Invalid("'layerTimeOptions' entries must carry an integer 'id'.");
     }
 
     private static bool OptionBool(JsonElement element, string name, bool fallback)
@@ -158,7 +158,7 @@ internal static class MapExportTime
         {
             JsonValueKind.True => true,
             JsonValueKind.False => false,
-            _ => throw EsriInteropException.Invalid($"'layerTimeOptions' entry '{name}' must be a boolean."),
+            _ => throw GeoServicesErrors.Invalid($"'layerTimeOptions' entry '{name}' must be a boolean."),
         };
     }
 
@@ -173,12 +173,12 @@ internal static class MapExportTime
         var shift = offset.ValueKind == JsonValueKind.Number ? offset.GetDouble() : double.NaN;
         if (!double.IsFinite(shift))
         {
-            throw EsriInteropException.Invalid("'layerTimeOptions' entry 'timeOffset' must be a number.");
+            throw GeoServicesErrors.Invalid("'layerTimeOptions' entry 'timeOffset' must be a number.");
         }
 
         if (shift != 0)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 "The 'layerTimeOptions' entry 'timeOffset' is not supported: the engine has no per-layer time-shift model, so a shifted layer cannot be rendered honestly.");
         }
     }

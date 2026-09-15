@@ -81,7 +81,7 @@ internal static class EsriFormat
             return;
         }
 
-        throw EsriInteropException.Invalid($"Format '{format}' is not supported; supportedQueryFormats is 'JSON' — use f=json (f=pjson is accepted as an alias).");
+        throw GeoServicesErrors.Invalid($"Format '{format}' is not supported; supportedQueryFormats is 'JSON' — use f=json (f=pjson is accepted as an alias).");
     }
 
     /// <summary>
@@ -98,7 +98,7 @@ internal static class EsriFormat
             return;
         }
 
-        throw EsriInteropException.Invalid($"Format '{format}' is not supported; the metadata resource serves its authored XML document — use f=xml.");
+        throw GeoServicesErrors.Invalid($"Format '{format}' is not supported; the metadata resource serves its authored XML document — use f=xml.");
     }
 }
 

@@ -32,14 +32,19 @@ internal static class OgcErrorMapper
             : Report(Describe(exception));
 
     /// <summary>The OGC code, reason and HTTP status a failure maps to.</summary>
-    internal static OgcFailure Describe(Exception exception) => exception switch
-    {
-        OgcServiceException ogc => new OgcFailure(ogc.Code, ogc.Message, ogc.Status),
-        SpatialException spatial => DescribeSpatial(spatial),
-        OperationCanceledException => new OgcFailure(
-            "ClientClosedRequest", exception.Message, StatusCodes.Status499ClientClosedRequest),
-        _ => new OgcFailure("NoApplicableCode", exception.Message, StatusCodes.Status500InternalServerError),
-    };
+    internal static OgcFailure Describe(Exception exception) => exception is OgcServiceException ogc
+        ? ForOgc(ogc)
+        : DescribeNonOgc(exception);
+
+    private static OgcFailure DescribeNonOgc(Exception exception) => exception is SpatialException spatial
+        ? DescribeSpatial(spatial)
+        : DescribeGeneric(exception);
+
+    private static OgcFailure DescribeGeneric(Exception exception) => exception is OperationCanceledException
+        ? new OgcFailure("ClientClosedRequest", exception.Message, StatusCodes.Status499ClientClosedRequest)
+        : new OgcFailure("NoApplicableCode", exception.Message, StatusCodes.Status500InternalServerError);
+
+    private static OgcFailure ForOgc(OgcServiceException ogc) => new(ogc.Code, ogc.Message, ogc.Status);
 
     /// <summary>Maps one engine <see cref="SpatialException"/> by its stable code.</summary>
     internal static IResult MapSpatial(SpatialException exception) => Report(DescribeSpatial(exception));

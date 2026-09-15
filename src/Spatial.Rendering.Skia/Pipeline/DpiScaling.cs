@@ -25,23 +25,35 @@ internal static class DpiScaling
         return new CompiledStyle(style.Layers.Select(layer => layer with { Paint = Scale(layer.Paint, ratio) }).ToArray());
     }
 
-    private static PaintRecipe Scale(PaintRecipe paint, double ratio) => paint switch
+    private static readonly Dictionary<Type, Func<PaintRecipe, double, PaintRecipe>> Scalers = new()
     {
-        BackgroundPaint => paint,
-        FillPaint fill => fill with { OutlineWidth = fill.OutlineWidth * ratio },
-        LinePaint line => line with
-        {
-            Width = line.Width * ratio,
-            Dash = line.Dash.Select(dash => dash * ratio).ToArray(),
-        },
-        CirclePaint circle => circle with
-        {
-            Radius = circle.Radius * ratio,
-            StrokeWidth = circle.StrokeWidth * ratio,
-        },
-        SymbolPaint symbol => symbol with { Options = Scale(symbol.Options, ratio) },
-        _ => paint,
+        [typeof(BackgroundPaint)] = (paint, _) => paint,
+        [typeof(FillPaint)] = (paint, ratio) => ScaleFill((FillPaint)paint, ratio),
+        [typeof(LinePaint)] = (paint, ratio) => ScaleLine((LinePaint)paint, ratio),
+        [typeof(CirclePaint)] = (paint, ratio) => ScaleCircle((CirclePaint)paint, ratio),
+        [typeof(SymbolPaint)] = (paint, ratio) => ScaleSymbol((SymbolPaint)paint, ratio),
     };
+
+    private static PaintRecipe Scale(PaintRecipe paint, double ratio) =>
+        Scalers.TryGetValue(paint.GetType(), out var scale) ? scale(paint, ratio) : paint;
+
+    private static FillPaint ScaleFill(FillPaint fill, double ratio) =>
+        fill with { OutlineWidth = fill.OutlineWidth * ratio };
+
+    private static LinePaint ScaleLine(LinePaint line, double ratio) => line with
+    {
+        Width = line.Width * ratio,
+        Dash = line.Dash.Select(dash => dash * ratio).ToArray(),
+    };
+
+    private static CirclePaint ScaleCircle(CirclePaint circle, double ratio) => circle with
+    {
+        Radius = circle.Radius * ratio,
+        StrokeWidth = circle.StrokeWidth * ratio,
+    };
+
+    private static SymbolPaint ScaleSymbol(SymbolPaint symbol, double ratio) =>
+        symbol with { Options = Scale(symbol.Options, ratio) };
 
     private static SymbolOptions Scale(SymbolOptions options, double ratio) => options with
     {

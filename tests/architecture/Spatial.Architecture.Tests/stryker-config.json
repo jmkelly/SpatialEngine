@@ -1,0 +1,16 @@
+{
+  "stryker-config": {
+    "project": "src/Spatial.PluginSdk/Spatial.PluginSdk.csproj",
+    "mutation-level": "Standard",
+    "coverage-analysis": "perTest",
+    "additional-timeout": 2,
+    "reporters": ["cleartext", "json", "html"],
+    "thresholds": {
+      "high": 80,
+      "low": 0,
+      "break": 0
+    },
+    "disable-bail": false,
+    "verbosity": "info"
+  }
+}

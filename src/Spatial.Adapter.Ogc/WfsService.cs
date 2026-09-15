@@ -42,25 +42,31 @@ internal static class WfsService
             "GETCAPABILITIES" => await CapabilitiesAsync(map, services, options, context, cancellationToken),
             "DESCRIBEFEATURETYPE" => await DescribeAsync(map, parameters, services, cancellationToken),
             "GETFEATURE" => await GetFeatureAsync(map, parameters, services, options, context, cancellationToken),
-            "GETPROPERTYVALUE" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'GetPropertyValue' is not supported; request GetFeature instead."),
-            "LISTSTOREDQUERIES" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'ListStoredQueries' is not supported; this service exposes no stored queries."),
-            "DESCRIBESTOREDQUERIES" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'DescribeStoredQueries' is not supported; this service exposes no stored queries."),
-            "CREATESTOREDQUERY" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'CreateStoredQuery' is not supported; this service exposes no stored queries."),
-            "DROPSTOREDQUERY" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'DropStoredQuery' is not supported; this service exposes no stored queries."),
-            "TRANSACTION" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'Transaction' is not supported; the write path is the gated Esri edit verbs plus neutral ingest."),
-            "LOCKFEATURE" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'LockFeature' is not supported; the write path is the gated Esri edit verbs plus neutral ingest."),
-            "GETFEATUREWITHLOCK" => throw OgcServiceException.NotSupported(
-                "The WFS operation 'GetFeatureWithLock' is not supported; the write path is the gated Esri edit verbs plus neutral ingest."),
-            _ => throw OgcServiceException.NotSupported($"The WFS operation '{request}' is not supported."),
+            _ => throw OgcServiceException.NotSupported(UnsupportedOperationMessage(request)),
         };
     }
+
+    /// <summary>Explains why a WFS operation other than the three served ones is rejected.</summary>
+    internal static string UnsupportedOperationMessage(string request) => request.ToUpperInvariant() switch
+    {
+        "GETPROPERTYVALUE" =>
+            "The WFS operation 'GetPropertyValue' is not supported; request GetFeature instead.",
+        "LISTSTOREDQUERIES" =>
+            "The WFS operation 'ListStoredQueries' is not supported; this service exposes no stored queries.",
+        "DESCRIBESTOREDQUERIES" =>
+            "The WFS operation 'DescribeStoredQueries' is not supported; this service exposes no stored queries.",
+        "CREATESTOREDQUERY" =>
+            "The WFS operation 'CreateStoredQuery' is not supported; this service exposes no stored queries.",
+        "DROPSTOREDQUERY" =>
+            "The WFS operation 'DropStoredQuery' is not supported; this service exposes no stored queries.",
+        "TRANSACTION" =>
+            "The WFS operation 'Transaction' is not supported; the write path is the gated Esri edit verbs plus neutral ingest.",
+        "LOCKFEATURE" =>
+            "The WFS operation 'LockFeature' is not supported; the write path is the gated Esri edit verbs plus neutral ingest.",
+        "GETFEATUREWITHLOCK" =>
+            "The WFS operation 'GetFeatureWithLock' is not supported; the write path is the gated Esri edit verbs plus neutral ingest.",
+        _ => $"The WFS operation '{request}' is not supported.",
+    };
 
     private static async Task<IResult> CapabilitiesAsync(
         Map map, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
@@ -247,39 +253,47 @@ internal static class WfsService
 
     private static SortKey ParseSortKey(string token, IReadOnlyList<OgcLayer> loaded)
     {
-        string property;
-        string? order;
+        var (property, order) = SplitSortToken(token);
+        var descending = ParseSortOrder(token, order);
+        ValidateSortProperty(token, property, loaded);
+        return new SortKey(property, descending);
+    }
+
+    /// <summary>Splits a <c>sortBy</c> entry into its property name and optional order suffix.</summary>
+    internal static (string Property, string? Order) SplitSortToken(string token)
+    {
         var plus = token.LastIndexOf('+');
         if (plus >= 0)
         {
-            property = token[..plus].Trim();
-            order = token[(plus + 1)..].Trim();
+            return (token[..plus].Trim(), token[(plus + 1)..].Trim());
         }
-        else
+
+        var parts = token.Split([' ', '\t'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length is not (1 or 2))
         {
-            var parts = token.Split([' ', '\t'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length is not (1 or 2))
-            {
-                throw OgcServiceException.Invalid(
-                    $"The 'sortBy' entry '{token}' must be a property name with an optional A/D or ASC/DESC order.");
-            }
-
-            property = parts[0];
-            order = parts.Length == 2 ? parts[1] : null;
+            throw OgcServiceException.Invalid(
+                $"The 'sortBy' entry '{token}' must be a property name with an optional A/D or ASC/DESC order.");
         }
 
+        return (parts[0], parts.Length == 2 ? parts[1] : null);
+    }
+
+    /// <summary>Maps a <c>sortBy</c> order suffix to its direction flag.</summary>
+    internal static bool ParseSortOrder(string token, string? order) => order?.ToUpperInvariant() switch
+    {
+        null or "" or "A" or "ASC" => false,
+        "D" or "DESC" => true,
+        _ => throw OgcServiceException.Invalid(
+            $"The 'sortBy' entry '{token}' has an unknown sort order '{order}'; use A/D or ASC/DESC."),
+    };
+
+    /// <summary>Ensures a <c>sortBy</c> property names an orderable field on every selected layer.</summary>
+    internal static void ValidateSortProperty(string token, string property, IReadOnlyList<OgcLayer> loaded)
+    {
         if (string.IsNullOrEmpty(property))
         {
             throw OgcServiceException.Invalid($"The 'sortBy' entry '{token}' must name a property.");
         }
-
-        var descending = order?.ToUpperInvariant() switch
-        {
-            null or "" or "A" or "ASC" => false,
-            "D" or "DESC" => true,
-            _ => throw OgcServiceException.Invalid(
-                $"The 'sortBy' entry '{token}' has an unknown sort order '{order}'; use A/D or ASC/DESC."),
-        };
 
         var found = false;
         foreach (var layer in loaded)
@@ -304,8 +318,6 @@ internal static class WfsService
         {
             throw OgcServiceException.Invalid("The 'sortBy' parameter names no selectable layer.");
         }
-
-        return new SortKey(property, descending);
     }
 
     private static int FieldIndex(FeatureSchema schema, string property)
@@ -329,22 +341,29 @@ internal static class WfsService
 
     private static void SortMatched(List<MatchedFeature> matched, IReadOnlyList<SortKey> sort)
     {
-        matched.Sort((left, right) =>
-        {
-            foreach (var key in sort)
-            {
-                var comparison = CompareAttribute(ValueOf(left, key.Property), ValueOf(right, key.Property));
-                if (comparison != 0)
-                {
-                    return key.Descending ? -comparison : comparison;
-                }
-            }
+        matched.Sort((left, right) => CompareMatched(left, right, sort));
+    }
 
-            var layer = left.LayerIndex.CompareTo(right.LayerIndex);
-            return layer != 0
-                ? layer
-                : string.CompareOrdinal(left.Feature.Id.Value, right.Feature.Id.Value);
-        });
+    private static int CompareMatched(MatchedFeature left, MatchedFeature right, IReadOnlyList<SortKey> sort)
+    {
+        foreach (var key in sort)
+        {
+            var comparison = CompareAttribute(ValueOf(left, key.Property), ValueOf(right, key.Property));
+            if (comparison != 0)
+            {
+                return key.Descending ? -comparison : comparison;
+            }
+        }
+
+        return TieBreak(left, right);
+    }
+
+    private static int TieBreak(MatchedFeature left, MatchedFeature right)
+    {
+        var layer = left.LayerIndex.CompareTo(right.LayerIndex);
+        return layer != 0
+            ? layer
+            : string.CompareOrdinal(left.Feature.Id.Value, right.Feature.Id.Value);
     }
 
     private static AttributeValue ValueOf(MatchedFeature matched, string property)
@@ -353,21 +372,11 @@ internal static class WfsService
         return index < 0 ? AttributeValue.Null : matched.Feature[index];
     }
 
-    private static int CompareAttribute(AttributeValue left, AttributeValue right)
+    internal static int CompareAttribute(AttributeValue left, AttributeValue right)
     {
-        if (left.IsNull && right.IsNull)
+        if (TryRankNulls(left, right, out var rank))
         {
-            return 0;
-        }
-
-        if (left.IsNull)
-        {
-            return 1;
-        }
-
-        if (right.IsNull)
-        {
-            return -1;
+            return rank;
         }
 
         if (left.Kind != right.Kind)
@@ -375,17 +384,43 @@ internal static class WfsService
             return left.Kind.CompareTo(right.Kind);
         }
 
-        return left.Kind switch
-        {
-            AttributeKind.Boolean => left.BooleanValue.CompareTo(right.BooleanValue),
-            AttributeKind.Int64 => left.Int64Value.CompareTo(right.Int64Value),
-            AttributeKind.Double => left.DoubleValue.CompareTo(right.DoubleValue),
-            AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
-            AttributeKind.DateTimeOffset => left.DateTimeOffsetValue.CompareTo(right.DateTimeOffsetValue),
-            AttributeKind.Guid => left.GuidValue.CompareTo(right.GuidValue),
-            _ => throw OgcServiceException.Invalid("The 'sortBy' property cannot order geometry values."),
-        };
+        return CompareSameKind(left, right);
     }
+
+    private static bool TryRankNulls(AttributeValue left, AttributeValue right, out int rank)
+    {
+        if (left.IsNull && right.IsNull)
+        {
+            rank = 0;
+            return true;
+        }
+
+        if (left.IsNull)
+        {
+            rank = 1;
+            return true;
+        }
+
+        if (right.IsNull)
+        {
+            rank = -1;
+            return true;
+        }
+
+        rank = 0;
+        return false;
+    }
+
+    private static int CompareSameKind(AttributeValue left, AttributeValue right) => left.Kind switch
+    {
+        AttributeKind.Boolean => left.BooleanValue.CompareTo(right.BooleanValue),
+        AttributeKind.Int64 => left.Int64Value.CompareTo(right.Int64Value),
+        AttributeKind.Double => left.DoubleValue.CompareTo(right.DoubleValue),
+        AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
+        AttributeKind.DateTimeOffset => left.DateTimeOffsetValue.CompareTo(right.DateTimeOffsetValue),
+        AttributeKind.Guid => left.GuidValue.CompareTo(right.GuidValue),
+        _ => throw OgcServiceException.Invalid("The 'sortBy' property cannot order geometry values."),
+    };
 
     private static IReadOnlyList<(string TypeName, DatasetDescription Dataset, Feature Feature)> ReprojectPage(
         OgcRequestServices services, MatchedFeature[] page, string? targetCrs, CancellationToken cancellationToken)

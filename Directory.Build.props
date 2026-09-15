@@ -5,7 +5,7 @@
     <!-- Product version, single-sourced here (Central Package Management
          holds package versions in Directory.Packages.props). Update this and
          CHANGELOG.md together when tagging a release. -->
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Product>Spatial Engine</Product>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

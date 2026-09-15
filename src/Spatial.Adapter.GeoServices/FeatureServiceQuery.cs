@@ -72,17 +72,36 @@ internal static class FeatureServiceQuery
     internal static void RejectLayerOnlyShapes(EsriFeatureQuery query)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var shape = query.ReturnExtentOnly ? "returnExtentOnly"
-            : query.ReturnDistinctValues ? "returnDistinctValues"
-            : query.OutStatistics is not null ? "outStatistics"
-            : query.ReturnUniqueIdsOnly ? "returnUniqueIdsOnly"
-            : query.UniqueIds is not null ? "uniqueIds"
-            : null;
-        if (shape is not null)
+        if (LayerOnlyShape(query) is { } shape)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The '{shape}' parameter is not supported on 'FeatureServer/query': query one layer ('.../<layerId>/query') for the per-layer result shape.");
         }
+    }
+
+    private static string? LayerOnlyShape(EsriFeatureQuery query)
+    {
+        if (query.ReturnExtentOnly)
+        {
+            return "returnExtentOnly";
+        }
+
+        if (query.ReturnDistinctValues)
+        {
+            return "returnDistinctValues";
+        }
+
+        if (query.OutStatistics is not null)
+        {
+            return "outStatistics";
+        }
+
+        if (query.ReturnUniqueIdsOnly)
+        {
+            return "returnUniqueIdsOnly";
+        }
+
+        return query.UniqueIds is not null ? "uniqueIds" : null;
     }
 
     private static Dictionary<int, LayerDef> ParseSimpleLayerDefs(string text)
@@ -90,31 +109,45 @@ internal static class FeatureServiceQuery
         var defs = new Dictionary<int, LayerDef>();
         foreach (var entry in text.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
-            var separator = entry.IndexOf(':');
-            if (separator < 0
-                || !int.TryParse(entry[..separator].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var layerId)
-                || layerId < 0)
-            {
-                throw EsriInteropException.Invalid(
-                    $"The 'layerDefs' entry '{entry}' is not '<layerId>:<where clause>'; use the S1 simple syntax (for example '0:POP2000 > 1000000').");
-            }
-
-            var where = entry[(separator + 1)..].Trim();
-            if (string.IsNullOrEmpty(where))
-            {
-                throw EsriInteropException.Invalid(
-                    $"The 'layerDefs' entry '{entry}' names no WHERE clause for layer {layerId}.");
-            }
-
-            defs[layerId] = new LayerDef(ParseWhere(where, layerId), null);
+            ParseSimpleEntry(defs, entry);
         }
 
         if (defs.Count == 0)
         {
-            throw EsriInteropException.Invalid("The 'layerDefs' parameter names no layers.");
+            throw GeoServicesErrors.Invalid("The 'layerDefs' parameter names no layers.");
         }
 
         return defs;
+    }
+
+    private static void ParseSimpleEntry(Dictionary<int, LayerDef> defs, string entry)
+    {
+        var separator = entry.IndexOf(':');
+        var layerId = RequireSimpleLayerId(entry, separator);
+        var where = RequireSimpleWhere(entry, separator, layerId);
+        defs[layerId] = new LayerDef(ParseWhere(where, layerId), null);
+    }
+
+    private static int RequireSimpleLayerId(string entry, int separator)
+    {
+        if (separator >= 0
+            && int.TryParse(entry[..separator].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var layerId)
+            && layerId >= 0)
+        {
+            return layerId;
+        }
+
+        throw GeoServicesErrors.Invalid(
+            $"The 'layerDefs' entry '{entry}' is not '<layerId>:<where clause>'; use the S1 simple syntax (for example '0:POP2000 > 1000000').");
+    }
+
+    private static string RequireSimpleWhere(string entry, int separator, int layerId)
+    {
+        var where = entry[(separator + 1)..].Trim();
+        return string.IsNullOrEmpty(where)
+            ? throw GeoServicesErrors.Invalid(
+                $"The 'layerDefs' entry '{entry}' names no WHERE clause for layer {layerId}.")
+            : where;
     }
 
     private static Dictionary<int, LayerDef> ParseJsonLayerDefs(string text)
@@ -126,7 +159,7 @@ internal static class FeatureServiceQuery
         }
         catch (JsonException exception)
         {
-            throw EsriInteropException.Invalid($"The 'layerDefs' parameter is not valid JSON: {exception.Message}");
+            throw GeoServicesErrors.Invalid($"The 'layerDefs' parameter is not valid JSON: {exception.Message}");
         }
 
         using (document)
@@ -135,7 +168,7 @@ internal static class FeatureServiceQuery
             {
                 JsonValueKind.Object => ParseObjectLayerDefs(document.RootElement),
                 JsonValueKind.Array => ParseArrayLayerDefs(document.RootElement),
-                _ => throw EsriInteropException.Invalid(
+                _ => throw GeoServicesErrors.Invalid(
                     "The 'layerDefs' parameter must be the simple '<layerId>:<where>' list, a JSON object of '<layerId>': '<where>', or a JSON array of {'layerId', 'where', 'outFields'}."),
             };
         }
@@ -146,90 +179,113 @@ internal static class FeatureServiceQuery
         var defs = new Dictionary<int, LayerDef>();
         foreach (var property in root.EnumerateObject())
         {
-            if (!int.TryParse(property.Name, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var layerId) || layerId < 0)
-            {
-                throw EsriInteropException.Invalid(
-                    $"The 'layerDefs' layer id '{property.Name}' is not a non-negative integer.");
-            }
-
-            if (property.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(property.Value.GetString()))
-            {
-                throw EsriInteropException.Invalid(
-                    $"The 'layerDefs' entry for layer {layerId} must be a non-empty WHERE clause string.");
-            }
-
-            defs[layerId] = new LayerDef(ParseWhere(property.Value.GetString()!, layerId), null);
+            var layerId = RequireObjectLayerId(property.Name);
+            var where = RequireObjectWhere(property, layerId);
+            defs[layerId] = new LayerDef(ParseWhere(where, layerId), null);
         }
 
         if (defs.Count == 0)
         {
-            throw EsriInteropException.Invalid("The 'layerDefs' parameter names no layers.");
+            throw GeoServicesErrors.Invalid("The 'layerDefs' parameter names no layers.");
         }
 
         return defs;
     }
+
+    private static int RequireObjectLayerId(string name) =>
+        int.TryParse(name, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var layerId) && layerId >= 0
+            ? layerId
+            : throw GeoServicesErrors.Invalid(
+                $"The 'layerDefs' layer id '{name}' is not a non-negative integer.");
+
+    private static string RequireObjectWhere(JsonProperty property, int layerId) =>
+        property.Value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(property.Value.GetString())
+            ? property.Value.GetString()!
+            : throw GeoServicesErrors.Invalid(
+                $"The 'layerDefs' entry for layer {layerId} must be a non-empty WHERE clause string.");
 
     private static Dictionary<int, LayerDef> ParseArrayLayerDefs(JsonElement root)
     {
         var defs = new Dictionary<int, LayerDef>();
         foreach (var element in root.EnumerateArray())
         {
-            if (element.ValueKind != JsonValueKind.Object
-                || !element.TryGetProperty("layerId", out var idElement)
-                || idElement.ValueKind != JsonValueKind.Number
-                || !idElement.TryGetInt32(out var layerId)
-                || layerId < 0)
-            {
-                throw EsriInteropException.Invalid(
-                    "Each 'layerDefs' array entry needs a non-negative integer 'layerId'.");
-            }
-
-            EsriFilterClause? where = null;
-            if (element.TryGetProperty("where", out var whereElement))
-            {
-                if (whereElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(whereElement.GetString()))
-                {
-                    throw EsriInteropException.Invalid(
-                        $"The 'layerDefs' entry for layer {layerId} has a 'where' that is not a non-empty string.");
-                }
-
-                where = ParseWhere(whereElement.GetString()!, layerId);
-            }
-
-            string[]? outFields = null;
-            if (element.TryGetProperty("outFields", out var fieldsElement))
-            {
-                if (fieldsElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(fieldsElement.GetString()))
-                {
-                    throw EsriInteropException.Invalid(
-                        $"The 'layerDefs' entry for layer {layerId} has an 'outFields' that is not a non-empty string.");
-                }
-
-                outFields = fieldsElement.GetString()!
-                    .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                if (outFields.Length == 0)
-                {
-                    throw EsriInteropException.Invalid(
-                        $"The 'layerDefs' entry for layer {layerId} has an 'outFields' that names no fields.");
-                }
-            }
-
+            var layerId = RequireArrayLayerId(element);
+            var where = ParseArrayEntryWhere(element, layerId);
+            var outFields = ParseArrayEntryOutFields(element, layerId);
             defs[layerId] = new LayerDef(where, outFields);
         }
 
         if (defs.Count == 0)
         {
-            throw EsriInteropException.Invalid("The 'layerDefs' parameter names no layers.");
+            throw GeoServicesErrors.Invalid("The 'layerDefs' parameter names no layers.");
         }
 
         return defs;
+    }
+
+    /// <summary>Reads the non-negative integer <c>layerId</c> of one array-syntax <c>layerDefs</c> entry.</summary>
+    private static int RequireArrayLayerId(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object
+            && element.TryGetProperty("layerId", out var idElement)
+            && idElement.ValueKind == JsonValueKind.Number
+            && idElement.TryGetInt32(out var layerId)
+            && layerId >= 0)
+        {
+            return layerId;
+        }
+
+        throw GeoServicesErrors.Invalid(
+            "Each 'layerDefs' array entry needs a non-negative integer 'layerId'.");
+    }
+
+    /// <summary>Parses the optional <c>where</c> of one array-syntax <c>layerDefs</c> entry.</summary>
+    private static EsriFilterClause? ParseArrayEntryWhere(JsonElement element, int layerId)
+    {
+        if (!element.TryGetProperty("where", out var whereElement))
+        {
+            return null;
+        }
+
+        if (whereElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(whereElement.GetString()))
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'layerDefs' entry for layer {layerId} has a 'where' that is not a non-empty string.");
+        }
+
+        return ParseWhere(whereElement.GetString()!, layerId);
+    }
+
+    /// <summary>Parses the optional <c>outFields</c> of one array-syntax <c>layerDefs</c> entry.</summary>
+    private static string[]? ParseArrayEntryOutFields(JsonElement element, int layerId)
+    {
+        if (!element.TryGetProperty("outFields", out var fieldsElement))
+        {
+            return null;
+        }
+
+        if (fieldsElement.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(fieldsElement.GetString()))
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'layerDefs' entry for layer {layerId} has an 'outFields' that is not a non-empty string.");
+        }
+
+        var outFields = fieldsElement.GetString()!
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (outFields.Length == 0)
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'layerDefs' entry for layer {layerId} has an 'outFields' that names no fields.");
+        }
+
+        return outFields;
     }
 
     private static EsriFilterClause ParseWhere(string where, int layerId)
     {
         if (!EsriFilterClause.TryParse(where, out var clause, out var error))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The 'layerDefs' WHERE clause for layer {layerId} is not supported: {error}.");
         }
 

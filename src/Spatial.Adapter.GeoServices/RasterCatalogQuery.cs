@@ -41,7 +41,7 @@ internal static class RasterCatalogQuery
         IGeometryOperations operations,
         CancellationToken cancellationToken)
     {
-        var schema = description.CatalogSchema ?? throw EsriInteropException.Invalid(
+        var schema = description.CatalogSchema ?? throw GeoServicesErrors.Invalid(
             $"Image Service '{description.Dataset}' does not include an accessible raster catalog.");
         var matches = new List<FeatureQueryEngine.MatchedFeature>(items.Count);
         foreach (var item in items)
@@ -49,7 +49,7 @@ internal static class RasterCatalogQuery
             cancellationToken.ThrowIfCancellationRequested();
             var feature = ImageService.Feature(item, schema);
             var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
-            if (FeatureQueryEngine.Matches(new FeatureQueryEngine.MatchCandidate(query, feature, item.ObjectId, queryGeometry, operations, uniqueId), cancellationToken))
+            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, operations, uniqueId), cancellationToken))
             {
                 matches.Add(new FeatureQueryEngine.MatchedFeature(item.ObjectId, feature));
             }

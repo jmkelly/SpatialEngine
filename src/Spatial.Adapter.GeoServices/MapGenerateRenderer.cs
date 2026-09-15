@@ -59,7 +59,7 @@ internal static class MapGenerateRenderer
         ArgumentNullException.ThrowIfNull(dataset);
         if (EsriLayerModel.IsTable(dataset))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"Layer '{dataset.Id}' has no geometry, so no renderer can be generated for it.");
         }
 
@@ -69,7 +69,7 @@ internal static class MapGenerateRenderer
         {
             "classbreaksdef" => await ClassBreaksAsync(store, dataset, definition, filter, cancellationToken),
             "uniquevaluedef" => await UniqueValuesAsync(store, dataset, definition, filter, cancellationToken),
-            _ => throw EsriInteropException.Invalid(
+            _ => throw GeoServicesErrors.Invalid(
                 $"The classification type '{definition.RawType}' is not supported; use 'classBreaksDef' or 'uniqueValueDef'."),
         };
     }
@@ -78,7 +78,7 @@ internal static class MapGenerateRenderer
     {
         if (string.IsNullOrWhiteSpace(json))
         {
-            throw EsriInteropException.Invalid("The 'classificationDef' parameter is required.");
+            throw GeoServicesErrors.Invalid("The 'classificationDef' parameter is required.");
         }
 
         JsonElement root;
@@ -88,14 +88,14 @@ internal static class MapGenerateRenderer
         }
         catch (JsonException exception)
         {
-            throw EsriInteropException.Invalid($"The 'classificationDef' parameter is not valid JSON: {exception.Message}");
+            throw GeoServicesErrors.Invalid($"The 'classificationDef' parameter is not valid JSON: {exception.Message}");
         }
 
         if (root.ValueKind != JsonValueKind.Object
             || !root.TryGetProperty("type", out var type)
             || type.ValueKind != JsonValueKind.String)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 "The 'classificationDef' parameter needs a 'type' of 'classBreaksDef' or 'uniqueValueDef'.");
         }
 
@@ -111,7 +111,7 @@ internal static class MapGenerateRenderer
 
         if (!EsriFilterClause.TryParse(where, out var clause, out var error))
         {
-            throw EsriInteropException.Invalid($"The 'where' parameter is not supported: {error}");
+            throw GeoServicesErrors.Invalid($"The 'where' parameter is not supported: {error}");
         }
 
         return clause;
@@ -129,28 +129,28 @@ internal static class MapGenerateRenderer
         var kind = dataset.Schema[index].Kind;
         if (kind is not (AttributeKind.Int64 or AttributeKind.Double))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The classification field '{field}' is {kind}, but 'classBreaksDef' needs a numeric field.");
         }
 
         var method = OptionalString(definition.Root, "classificationMethod") ?? "esriClassifyEqualInterval";
         if (!string.Equals(method, "esriClassifyEqualInterval", StringComparison.Ordinal))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The classification method '{method}' is not supported; use 'esriClassifyEqualInterval'.");
         }
 
         var breakCount = OptionalInt(definition.Root, "breakCount") ?? 5;
         if (breakCount < 1 || breakCount > MaxBreaks)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The 'breakCount' value '{breakCount}' is out of range; use 1 to {MaxBreaks}.");
         }
 
         var values = await NumericValuesAsync(store, dataset, index, filter, field, cancellationToken);
         if (values.Count == 0)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"No features of layer '{dataset.Id}' match, so no breaks can be classified for field '{field}'.");
         }
 
@@ -177,12 +177,12 @@ internal static class MapGenerateRenderer
         var fields = Fields(definition.Root);
         if (fields.Count == 0)
         {
-            throw EsriInteropException.Invalid("The 'uniqueValueFields' parameter needs exactly one field.");
+            throw GeoServicesErrors.Invalid("The 'uniqueValueFields' parameter needs exactly one field.");
         }
 
         if (fields.Count > 1)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 "Multi-field unique values are not supported; use exactly one 'uniqueValueFields' entry.");
         }
 
@@ -191,13 +191,13 @@ internal static class MapGenerateRenderer
         var values = await DistinctValuesAsync(store, dataset, index, filter, cancellationToken);
         if (values.Count == 0)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"No features of layer '{dataset.Id}' match, so no unique values can be enumerated for field '{field}'.");
         }
 
         if (values.Count > MaxUniqueValues)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"Field '{field}' has {values.Count} distinct values (at most {MaxUniqueValues} supported); narrow the request with 'where'.");
         }
 
@@ -224,28 +224,27 @@ internal static class MapGenerateRenderer
         {
             cancellationToken.ThrowIfCancellationRequested();
             ordinal++;
-            if (!Matches(feature, ordinal, scheme, filter))
+            if (!MatchesFilter(feature, ordinal, scheme, filter, index))
             {
                 continue;
             }
 
-            var value = feature[index];
-            if (value.IsNull)
-            {
-                continue;
-            }
-
-            values.Add(value.Kind switch
-            {
-                AttributeKind.Int64 => value.Int64Value,
-                AttributeKind.Double => value.DoubleValue,
-                _ => throw EsriInteropException.Invalid(
-                    $"The classification field '{field}' holds {value.Kind} values, but 'classBreaksDef' needs numbers."),
-            });
+            values.Add(StatisticNumber(feature[index], field));
         }
 
         return values;
     }
+
+    private static bool MatchesFilter(Feature feature, long ordinal, EsriObjectIdScheme scheme, EsriFilterClause? filter, int index) =>
+        Matches(feature, ordinal, scheme, filter) && !feature[index].IsNull;
+
+    private static double StatisticNumber(AttributeValue value, string field) => value.Kind switch
+    {
+        AttributeKind.Int64 => value.Int64Value,
+        AttributeKind.Double => value.DoubleValue,
+        _ => throw GeoServicesErrors.Invalid(
+            $"The classification field '{field}' holds {value.Kind} values, but 'classBreaksDef' needs numbers."),
+    };
 
     private static async Task<List<string>> DistinctValuesAsync(
         IFeatureStore store,
@@ -286,8 +285,7 @@ internal static class MapGenerateRenderer
 
         if (!scheme.TryResolve(feature, ordinal, out var objectId))
         {
-            throw new EsriInteropException(
-                EsriErrorCodes.ServerError,
+            throw GeoServicesErrors.ServerError(
                 "The identity column of the layer is not an integer.");
         }
 
@@ -299,7 +297,7 @@ internal static class MapGenerateRenderer
         var index = dataset.Schema.IndexOf(field);
         if (index < 0)
         {
-            throw EsriInteropException.Invalid($"The field '{field}' does not exist in layer '{dataset.Id}'.");
+            throw GeoServicesErrors.Invalid($"The field '{field}' does not exist in layer '{dataset.Id}'.");
         }
 
         return index;
@@ -314,7 +312,7 @@ internal static class MapGenerateRenderer
             return value.GetString()!;
         }
 
-        throw EsriInteropException.Invalid($"The '{type}' classification needs a non-empty '{name}'.");
+        throw GeoServicesErrors.Invalid($"The '{type}' classification needs a non-empty '{name}'.");
     }
 
     private static string? OptionalString(JsonElement root, string name) =>
@@ -339,15 +337,28 @@ internal static class MapGenerateRenderer
             .Select(field => field.GetString()!)];
     }
 
-    private static string Format(AttributeValue value) => value.Kind switch
+    private static readonly Dictionary<AttributeKind, Func<AttributeValue, string>> Formatters = new()
+    {
+        [AttributeKind.Int64] = FormatNumber,
+        [AttributeKind.Double] = FormatNumber,
+        [AttributeKind.String] = value => value.StringValue,
+        [AttributeKind.Boolean] = FormatBoolean,
+        [AttributeKind.DateTimeOffset] = FormatTimestamp,
+        [AttributeKind.Guid] = value => value.GuidValue.ToString(),
+    };
+
+    internal static string Format(AttributeValue value) =>
+        Formatters.TryGetValue(value.Kind, out var format) ? format(value) : string.Empty;
+
+    private static string FormatBoolean(AttributeValue value) => value.BooleanValue ? "true" : "false";
+
+    private static string FormatTimestamp(AttributeValue value) =>
+        value.DateTimeOffsetValue.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture);
+
+    private static string FormatNumber(AttributeValue value) => value.Kind switch
     {
         AttributeKind.Int64 => value.Int64Value.ToString(CultureInfo.InvariantCulture),
-        AttributeKind.Double => value.DoubleValue.ToString(CultureInfo.InvariantCulture),
-        AttributeKind.String => value.StringValue,
-        AttributeKind.Boolean => value.BooleanValue ? "true" : "false",
-        AttributeKind.DateTimeOffset => value.DateTimeOffsetValue.ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture),
-        AttributeKind.Guid => value.GuidValue.ToString(),
-        _ => string.Empty,
+        _ => value.DoubleValue.ToString(CultureInfo.InvariantCulture),
     };
 
     private static string Format(double value) => value.ToString(CultureInfo.InvariantCulture);

@@ -69,7 +69,7 @@ public static class EsriAdminEndpoints
         var map = await registry.GetAsync(name, token);
         if (!map.Exposes(MapService.Feature))
         {
-            throw EsriInteropException.Invalid($"Map '{name}' does not expose a FeatureServer.");
+            throw GeoServicesErrors.Invalid($"Map '{name}' does not expose a FeatureServer.");
         }
 
         var layers = map.Layers
@@ -84,8 +84,8 @@ public static class EsriAdminEndpoints
     {
         var name = ServiceName(service);
         var form = await context.Request.ReadFormAsync(token);
-        var store = Form(form, "store", context) ?? throw EsriInteropException.Invalid("A 'store' is required.");
-        var dataset = Form(form, "dataset", context) ?? throw EsriInteropException.Invalid("A 'dataset' is required.");
+        var store = Form(form, "store", context) ?? throw GeoServicesErrors.Invalid("A 'store' is required.");
+        var dataset = Form(form, "dataset", context) ?? throw GeoServicesErrors.Invalid("A 'dataset' is required.");
         var map = new Map(name, store, [new MapLayer(dataset, -1)], [MapService.Feature]);
         var stored = await registry.PutAsync(map, token);
         return EsriJson.Value(new AdminSuccess(true, name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
@@ -102,12 +102,12 @@ public static class EsriAdminEndpoints
     {
         var query = context.Request.Query;
         var store = Query(query, "store") ?? "memory";
-        var dataset = Query(query, "dataset") ?? throw EsriInteropException.Invalid("A 'dataset' query parameter is required.");
+        var dataset = Query(query, "dataset") ?? throw GeoServicesErrors.Invalid("A 'dataset' query parameter is required.");
         var format = ParseFormat(Query(query, "format") ?? "geojson");
         var srid = ParseSrid(Query(query, "srid"));
         var identityField = Query(query, "identityField");
         var target = stores.Ingest(store)
-            ?? throw EsriInteropException.Invalid($"Store '{store}' does not support ingest.");
+            ?? throw GeoServicesErrors.Invalid($"Store '{store}' does not support ingest.");
 
         await using var body = await ReadUploadAsync(context.Request, options.MaxBytes);
         var decoded = DatasetDecoder.Decode(body, format, new DecodeOptions
@@ -119,7 +119,7 @@ public static class EsriAdminEndpoints
         var features = decoded.Pages.Sum(page => (long)page.Count);
         if (features > options.MaxFeatures)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The upload has {features} features, above the configured maximum of {options.MaxFeatures}.");
         }
 
@@ -137,11 +137,11 @@ public static class EsriAdminEndpoints
     private static async Task<IResult> PublishAsync(
         IMapRegistry registry, EsriUploadStaging staging, string id, HttpContext context, CancellationToken token)
     {
-        var staged = staging.Take(id) ?? throw EsriInteropException.Invalid($"The staged upload '{id}' does not exist or has expired.");
+        var staged = staging.Take(id) ?? throw GeoServicesErrors.Invalid($"The staged upload '{id}' does not exist or has expired.");
         var form = await context.Request.ReadFormAsync(token);
         var rawName = Form(form, "name", context)
             ?? Query(context.Request.Query, "name")
-            ?? throw EsriInteropException.Invalid("A 'name' is required to publish the upload.");
+            ?? throw GeoServicesErrors.Invalid("A 'name' is required to publish the upload.");
         var name = Uri.UnescapeDataString(rawName);
 
         Map? existing = null;
@@ -172,16 +172,14 @@ public static class EsriAdminEndpoints
     {
         if (!options.Enabled)
         {
-            throw new EsriInteropException(
-                EsriErrorCodes.ServiceUnavailable,
+            throw GeoServicesErrors.ServiceUnavailable(
                 "The Esri admin projection is not configured; set Spatial:Admin:Token or SPATIAL_ADMIN_TOKEN.");
         }
 
-        var presented = PresentedToken(context) ?? throw new EsriInteropException(
-            EsriErrorCodes.TokenRequired, "An admin token is required.");
+        var presented = PresentedToken(context) ?? throw GeoServicesErrors.TokenRequired("An admin token is required.");
         if (!FixedTimeEquals(presented, options.Token))
         {
-            throw new EsriInteropException(EsriErrorCodes.InvalidToken, "The admin token is not valid.");
+            throw GeoServicesErrors.InvalidToken("The admin token is not valid.");
         }
     }
 
@@ -205,14 +203,14 @@ public static class EsriAdminEndpoints
         var dot = service.IndexOf('.');
         if (dot <= 0 || dot == service.Length - 1)
         {
-            throw EsriInteropException.Invalid($"Service '{service}' must be named as '<name>.<type>'.");
+            throw GeoServicesErrors.Invalid($"Service '{service}' must be named as '<name>.<type>'.");
         }
 
         var name = service[..dot];
         var type = service[(dot + 1)..];
         if (!string.Equals(type, "FeatureServer", StringComparison.OrdinalIgnoreCase))
         {
-            throw EsriInteropException.Invalid($"Service type '{type}' is not supported; only FeatureServer is exposed.");
+            throw GeoServicesErrors.Invalid($"Service type '{type}' is not supported; only FeatureServer is exposed.");
         }
 
         return name;
@@ -227,16 +225,16 @@ public static class EsriAdminEndpoints
         }
         catch (Exception exception) when (exception is InvalidDataException or IOException or BadHttpRequestException)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The multipart upload is malformed and the 'file' part could not be read: {exception.Message}");
         }
 
         var file = form.Files.Count > 0
             ? form.Files[0]
-            : throw EsriInteropException.Invalid("The multipart upload carries no file part.");
+            : throw GeoServicesErrors.Invalid("The multipart upload carries no file part.");
         if (file.Length > maxBytes)
         {
-            throw EsriInteropException.Invalid($"The upload is {file.Length} bytes, above the configured maximum of {maxBytes}.");
+            throw GeoServicesErrors.Invalid($"The upload is {file.Length} bytes, above the configured maximum of {maxBytes}.");
         }
 
         var buffer = new MemoryStream();
@@ -264,19 +262,19 @@ public static class EsriAdminEndpoints
     private static IngestFormat ParseFormat(string name) =>
         Formats.TryGetValue(name, out var format)
             ? format
-            : throw EsriInteropException.Invalid($"Format '{name}' is not a supported ingest format.");
+            : throw GeoServicesErrors.Invalid($"Format '{name}' is not a supported ingest format.");
 
     private static int ParseSrid(string? value) =>
         int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var srid) && srid > 0
             ? srid
-            : throw EsriInteropException.Invalid($"The 'srid' query parameter must be a positive integer, got '{value}'.");
+            : throw GeoServicesErrors.Invalid($"The 'srid' query parameter must be a positive integer, got '{value}'.");
 
     private static IngestIdentity IdentityOf(string? name) =>
         string.IsNullOrEmpty(name)
             ? IngestIdentity.Auto
             : Identities.TryGetValue(name, out var identity)
                 ? identity
-                : throw EsriInteropException.Invalid($"Unknown identity mode '{name}'.");
+                : throw GeoServicesErrors.Invalid($"Unknown identity mode '{name}'.");
 
     private static string? Query(IQueryCollection query, string key)
     {

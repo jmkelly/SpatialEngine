@@ -136,6 +136,7 @@ export interface Map {
   services: MapService[];
   description?: null | string;
   copyright?: null | string;
+  metadataXml?: null | string;
 }
 
 export interface MapLayer {

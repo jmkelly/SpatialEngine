@@ -258,7 +258,7 @@ public sealed class ImageServiceTests
     [Fact]
     public void Legend_labels_one_band_entry_with_a_stable_url()
     {
-        var legend = ImageService.Legend(Description(hasCatalog: false), [1, 2, 3], 20, 20, [0]);
+        var legend = ImageLegendBuilder.Legend(Description(hasCatalog: false), [1, 2, 3], 20, 20, [0]);
 
         var layer = Assert.Single(legend.Layers);
         Assert.Equal(0, layer.LayerId);
@@ -272,13 +272,13 @@ public sealed class ImageServiceTests
         Assert.Equal(20, entry.Height);
         Assert.Equal(Convert.ToBase64String([1, 2, 3]), entry.ImageData);
         Assert.Equal(32, entry.Url.Length);
-        Assert.Equal(entry.Url, ImageService.Legend(Description(hasCatalog: false), [9], 20, 20, [0]).Layers[0].Legend[0].Url);
+        Assert.Equal(entry.Url, ImageLegendBuilder.Legend(Description(hasCatalog: false), [9], 20, 20, [0]).Layers[0].Legend[0].Url);
     }
 
     [Fact]
     public void Legend_names_rgb_composites()
     {
-        var legend = ImageService.Legend(Description(hasCatalog: false), [], 20, 20, [0, 1, 2]);
+        var legend = ImageLegendBuilder.Legend(Description(hasCatalog: false), [], 20, 20, [0, 1, 2]);
 
         Assert.Equal("RGB Composite", Assert.Single(legend.Layers).LegendType);
         Assert.Equal(["Band_1", "Band_2", "Band_3"], legend.Layers[0].Legend.Select(entry => entry.Label));
@@ -287,11 +287,11 @@ public sealed class ImageServiceTests
     [Fact]
     public void Parse_legend_band_ids_defaults_to_all_bands_and_rejects_unknown_ids()
     {
-        Assert.Equal([0L, 1L, 2L], ImageService.ParseLegendBandIds(null, 3));
-        Assert.Equal([2L, 0L], ImageService.ParseLegendBandIds("2,0", 3));
-        Assert.Throws<EsriInteropException>(() => ImageService.ParseLegendBandIds("3", 3));
-        Assert.Throws<EsriInteropException>(() => ImageService.ParseLegendBandIds("-1", 3));
-        Assert.Throws<EsriInteropException>(() => ImageService.ParseLegendBandIds("x", 3));
+        Assert.Equal([0L, 1L, 2L], ImageLegendBuilder.ParseLegendBandIds(null, 3));
+        Assert.Equal([2L, 0L], ImageLegendBuilder.ParseLegendBandIds("2,0", 3));
+        Assert.Throws<EsriInteropException>(() => ImageLegendBuilder.ParseLegendBandIds("3", 3));
+        Assert.Throws<EsriInteropException>(() => ImageLegendBuilder.ParseLegendBandIds("-1", 3));
+        Assert.Throws<EsriInteropException>(() => ImageLegendBuilder.ParseLegendBandIds("x", 3));
     }
 
     [Fact]

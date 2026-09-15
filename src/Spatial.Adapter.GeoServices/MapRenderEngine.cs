@@ -63,7 +63,7 @@ internal static class MapRenderEngine
         using var document = ParseDocument(value);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
         {
-            throw EsriInteropException.Invalid(InvalidLayerDefs);
+            throw GeoServicesErrors.Invalid(InvalidLayerDefs);
         }
 
         var defs = new Dictionary<int, string>();
@@ -88,7 +88,7 @@ internal static class MapRenderEngine
         }
         catch (JsonException)
         {
-            throw EsriInteropException.Invalid(InvalidLayerDefs);
+            throw GeoServicesErrors.Invalid(InvalidLayerDefs);
         }
     }
 
@@ -101,7 +101,7 @@ internal static class MapRenderEngine
         where = string.Empty;
         if (!int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
         {
-            throw EsriInteropException.Invalid($"'layerDefs' names layer '{property.Name}', which is not an integer id.");
+            throw GeoServicesErrors.Invalid($"'layerDefs' names layer '{property.Name}', which is not an integer id.");
         }
 
         if (property.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(property.Value.GetString()))
@@ -111,34 +111,47 @@ internal static class MapRenderEngine
 
         if (!EsriFilterClause.TryParse(property.Value.GetString()!, out var clause, out var error))
         {
-            throw EsriInteropException.Invalid($"'layerDefs' clause for layer {id} is not supported: {error}.");
+            throw GeoServicesErrors.Invalid($"'layerDefs' clause for layer {id} is not supported: {error}.");
         }
 
         where = clause!.ToWhere();
         return true;
     }
 
-    /// <summary>Parses the MapServer <c>format</c> parameter to an engine raster format.</summary>
-    public static RasterFormat ParseFormat(string? format) => format?.Trim().ToLowerInvariant() switch
+    private static readonly Dictionary<string, RasterFormat> FormatByName = new(StringComparer.OrdinalIgnoreCase)
     {
-        null or "" or "png" or "png8" or "png24" or "png32" => RasterFormat.Png,
-        "jpg" or "jpeg" => RasterFormat.Jpeg,
-        "webp" => RasterFormat.Webp,
-        "tif" or "tiff" => RasterFormat.Tiff,
-        _ => throw EsriInteropException.Invalid($"Image format '{format}' is not supported (png, jpg, webp, tiff)."),
+        [""] = RasterFormat.Png,
+        ["png"] = RasterFormat.Png,
+        ["png8"] = RasterFormat.Png,
+        ["png24"] = RasterFormat.Png,
+        ["png32"] = RasterFormat.Png,
+        ["jpg"] = RasterFormat.Jpeg,
+        ["jpeg"] = RasterFormat.Jpeg,
+        ["webp"] = RasterFormat.Webp,
+        ["tif"] = RasterFormat.Tiff,
+        ["tiff"] = RasterFormat.Tiff,
     };
+
+    /// <summary>Parses the MapServer <c>format</c> parameter to an engine raster format.</summary>
+    public static RasterFormat ParseFormat(string? format)
+    {
+        var key = format?.Trim() ?? string.Empty;
+        return FormatByName.TryGetValue(key, out var parsed)
+            ? parsed
+            : throw GeoServicesErrors.Invalid($"Image format '{format}' is not supported (png, jpg, webp, tiff).");
+    }
 
     /// <summary>Parses the <c>bbox</c> parameter (four comma-separated numbers).</summary>
     public static Envelope ParseBbox(string? value) =>
-        Envelope(EsriValueParser.ParseDoubles(value ?? throw EsriInteropException.Invalid("The 'bbox' parameter is required."), "bbox"));
+        Envelope(EsriValueParser.ParseDoubles(value ?? throw GeoServicesErrors.Invalid("The 'bbox' parameter is required."), "bbox"));
 
     /// <summary>Parses the <c>size</c> parameter (<c>width,height</c>).</summary>
     public static (int Width, int Height) ParseSize(string? value)
     {
-        var values = EsriValueParser.ParseDoubles(value ?? throw EsriInteropException.Invalid("The 'size' parameter is required."), "size");
+        var values = EsriValueParser.ParseDoubles(value ?? throw GeoServicesErrors.Invalid("The 'size' parameter is required."), "size");
         if (values.Count < 2 || values[0] < 1 || values[1] < 1)
         {
-            throw EsriInteropException.Invalid("'size' must be width,height with positive values.");
+            throw GeoServicesErrors.Invalid("'size' must be width,height with positive values.");
         }
 
         return ((int)values[0], (int)values[1]);
@@ -176,6 +189,6 @@ internal static class MapRenderEngine
 
     private static Envelope Envelope(IReadOnlyList<double> values) =>
         values.Count < 4
-            ? throw EsriInteropException.Invalid("'bbox' must be xmin,ymin,xmax,ymax.")
+            ? throw GeoServicesErrors.Invalid("'bbox' must be xmin,ymin,xmax,ymax.")
             : new Envelope(values[0], values[1], values[2], values[3]);
 }

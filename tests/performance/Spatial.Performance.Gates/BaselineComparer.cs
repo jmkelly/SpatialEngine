@@ -37,52 +37,99 @@ public static class BaselineComparer
 
         foreach (var (name, reference) in baseline)
         {
-            if (!current.TryGetValue(name, out var sample))
-            {
-                failures.Add($"{name} is missing from the current results (bench removed or renamed?).");
-                continue;
-            }
-
-            if (sample.MeanNanoseconds > reference.MeanNanoseconds * (1 + RegressionTolerance))
-            {
-                var growth = (sample.MeanNanoseconds / reference.MeanNanoseconds - 1) * 100;
-                failures.Add(
-                    $"{name} regression +{growth:F1}% over baseline " +
-                    $"({sample.MeanNanoseconds:F0}ns vs {reference.MeanNanoseconds:F0}ns, bar +{RegressionTolerance * 100:F0}%).");
-            }
-
-            if (reference.AllocatedBytes > 0
-                && sample.AllocatedBytes > reference.AllocatedBytes * (1 + AllocTolerance))
-            {
-                var growth = (sample.AllocatedBytes / reference.AllocatedBytes - 1) * 100;
-                failures.Add(
-                    $"{name} alloc guard +{growth:F1}% over baseline " +
-                    $"({sample.AllocatedBytes:F0}B vs {reference.AllocatedBytes:F0}B, bar +{AllocTolerance * 100:F0}%).");
-            }
-            else if (reference.AllocatedBytes == 0 && sample.AllocatedBytes > 0)
-            {
-                warnings.Add($"{name} allocates {sample.AllocatedBytes:F0}B/op where the baseline allocates nothing; watch, not fail.");
-            }
+            CheckBench(name, reference, current, failures, warnings);
         }
 
         foreach (var (name, budget) in budgets)
         {
-            if (current.TryGetValue(name, out var sample)
-                && sample.MeanNanoseconds > budget.BudgetNanoseconds)
+            CheckBudget(name, budget, current, baseline, failures, warnings);
+        }
+
+        CollectNewBenches(baseline, current, fresh, warnings);
+
+        return new BaselineVerdict(failures, warnings, fresh);
+    }
+
+    private static void CheckBench(
+        string name,
+        BenchSample reference,
+        IReadOnlyDictionary<string, BenchSample> current,
+        List<string> failures,
+        List<string> warnings)
+    {
+        if (!current.TryGetValue(name, out var sample))
+        {
+            failures.Add($"{name} is missing from the current results (bench removed or renamed?).");
+            return;
+        }
+
+        CheckRegression(name, reference, sample, failures);
+        CheckAllocGuard(name, reference, sample, failures, warnings);
+    }
+
+    private static void CheckRegression(string name, BenchSample reference, BenchSample sample, List<string> failures)
+    {
+        if (sample.MeanNanoseconds > reference.MeanNanoseconds * (1 + RegressionTolerance))
+        {
+            var growth = (sample.MeanNanoseconds / reference.MeanNanoseconds - 1) * 100;
+            failures.Add(
+                $"{name} regression +{growth:F1}% over baseline " +
+                $"({sample.MeanNanoseconds:F0}ns vs {reference.MeanNanoseconds:F0}ns, bar +{RegressionTolerance * 100:F0}%).");
+        }
+    }
+
+    private static void CheckAllocGuard(
+        string name,
+        BenchSample reference,
+        BenchSample sample,
+        List<string> failures,
+        List<string> warnings)
+    {
+        if (reference.AllocatedBytes > 0
+            && sample.AllocatedBytes > reference.AllocatedBytes * (1 + AllocTolerance))
+        {
+            var growth = (sample.AllocatedBytes / reference.AllocatedBytes - 1) * 100;
+            failures.Add(
+                $"{name} alloc guard +{growth:F1}% over baseline " +
+                $"({sample.AllocatedBytes:F0}B vs {reference.AllocatedBytes:F0}B, bar +{AllocTolerance * 100:F0}%).");
+        }
+        else if (reference.AllocatedBytes == 0 && sample.AllocatedBytes > 0)
+        {
+            warnings.Add($"{name} allocates {sample.AllocatedBytes:F0}B/op where the baseline allocates nothing; watch, not fail.");
+        }
+    }
+
+    private static void CheckBudget(
+        string name,
+        BenchBudget budget,
+        IReadOnlyDictionary<string, BenchSample> current,
+        IReadOnlyDictionary<string, BenchSample> baseline,
+        List<string> failures,
+        List<string> warnings)
+    {
+        if (current.TryGetValue(name, out var sample))
+        {
+            if (sample.MeanNanoseconds > budget.BudgetNanoseconds)
             {
                 failures.Add(
                     $"{name} over budget ({sample.MeanNanoseconds:F0}ns vs {budget.BudgetNanoseconds:F0}ns).");
             }
-            else if (!current.ContainsKey(name) && baseline.ContainsKey(name))
-            {
-                // Already a missing-bench failure above; no double report.
-            }
-            else if (!current.ContainsKey(name))
-            {
-                warnings.Add($"budget for {name} matches no current bench (renamed?).");
-            }
+
+            return;
         }
 
+        if (!baseline.ContainsKey(name))
+        {
+            warnings.Add($"budget for {name} matches no current bench (renamed?).");
+        }
+    }
+
+    private static void CollectNewBenches(
+        IReadOnlyDictionary<string, BenchSample> baseline,
+        IReadOnlyDictionary<string, BenchSample> current,
+        List<string> fresh,
+        List<string> warnings)
+    {
         foreach (var name in current.Keys)
         {
             if (!baseline.ContainsKey(name))
@@ -91,7 +138,5 @@ public static class BaselineComparer
                 warnings.Add($"{name} is new since the baseline; seed it with the baseline update flow.");
             }
         }
-
-        return new BaselineVerdict(failures, warnings, fresh);
     }
 }

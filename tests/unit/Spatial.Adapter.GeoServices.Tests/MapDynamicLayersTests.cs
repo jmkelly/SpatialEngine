@@ -167,6 +167,62 @@ public sealed class MapDynamicLayersTests
     }
 
     [Fact]
+    public void Parse_converts_a_simple_line_override()
+    {
+        var overrides = MapDynamicLayers.Parse(
+            """[{"id":1,"source":{"type":"mapLayer","mapLayerId":1},"drawingInfo":{"renderer":{"type":"simple","symbol":{"type":"esriSLS","style":"esriSLSSolid","color":[0,0,255,255],"width":3}}}}]""");
+
+        Assert.NotNull(overrides);
+        var style = Assert.Single(overrides).StyleOverride;
+        Assert.NotNull(style);
+        Assert.Contains("\"line-color\":\"#0000ff\"", style);
+        Assert.Contains("\"line-width\":3", style);
+        Assert.Contains("\"line-opacity\":1", style);
+    }
+
+    [Fact]
+    public void Parse_rejects_non_solid_line_styles()
+    {
+        var failure = Assert.Throws<EsriInteropException>(() => MapDynamicLayers.Parse(
+            """[{"id":1,"source":{"type":"mapLayer","mapLayerId":1},"drawingInfo":{"renderer":{"type":"simple","symbol":{"type":"esriSLS","style":"esriSLSDash","color":[0,0,0,255]}}}}]"""));
+        Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+    }
+
+    [Fact]
+    public void Parse_converts_a_simple_fill_override()
+    {
+        var overrides = MapDynamicLayers.Parse(
+            """[{"id":0,"source":{"type":"mapLayer","mapLayerId":0},"drawingInfo":{"renderer":{"type":"simple","symbol":{"type":"esriSFS","style":"esriSFSSolid","color":[0,128,0,128]}}}}]""");
+
+        Assert.NotNull(overrides);
+        var style = Assert.Single(overrides).StyleOverride;
+        Assert.NotNull(style);
+        Assert.Contains("\"fill-color\":\"#008000\"", style);
+        Assert.Contains("\"fill-opacity\":0.502", style);
+    }
+
+    [Fact]
+    public void Parse_converts_a_fill_outline_override()
+    {
+        var overrides = MapDynamicLayers.Parse(
+            """[{"id":0,"source":{"type":"mapLayer","mapLayerId":0},"drawingInfo":{"renderer":{"type":"simple","symbol":{"type":"esriSFS","style":"esriSFSSolid","color":[0,0,255,255],"outline":{"color":[255,0,0,255],"width":2}}}}}]""");
+
+        Assert.NotNull(overrides);
+        var style = Assert.Single(overrides).StyleOverride;
+        Assert.NotNull(style);
+        Assert.Contains("\"fill-outline-color\":\"#ff0000\"", style);
+        Assert.Contains("\"fill-outline-width\":2", style);
+    }
+
+    [Fact]
+    public void Parse_rejects_non_solid_fill_styles()
+    {
+        var failure = Assert.Throws<EsriInteropException>(() => MapDynamicLayers.Parse(
+            """[{"id":0,"source":{"type":"mapLayer","mapLayerId":0},"drawingInfo":{"renderer":{"type":"simple","symbol":{"type":"esriSFS","style":"esriSFSNull","color":[0,0,0,255]}}}}]"""));
+        Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+    }
+
+    [Fact]
     public void Apply_naming_an_unknown_layer_is_not_found()
     {
         var overrides = MapDynamicLayers.Parse("""[{"id":7,"source":{"type":"mapLayer","mapLayerId":42}}]""");

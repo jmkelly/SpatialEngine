@@ -37,7 +37,7 @@ internal static class FeatureEditEngine
         var scheme = EsriObjectIdScheme.For(invocation.Dataset);
         if (!scheme.SupportsEditing)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"Layer '{invocation.Dataset.Id}' has no integer identity column, so it cannot be edited.");
         }
 
@@ -199,7 +199,7 @@ internal static class FeatureEditEngine
             {
                 if (!work.Existing.TryGetValue(work.ObjectIds[i], out var feature))
                 {
-                    throw EsriInteropException.Invalid($"No feature has OBJECTID {work.ObjectIds[i]} in layer '{session.Dataset.Id}'.");
+                    throw GeoServicesErrors.Invalid($"No feature has OBJECTID {work.ObjectIds[i]} in layer '{session.Dataset.Id}'.");
                 }
 
                 work.Features.Add(BuildUpdate(work.Updates[i], feature, session));
@@ -249,7 +249,7 @@ internal static class FeatureEditEngine
             }
             else
             {
-                results[i] = ToFailure(EsriInteropException.Invalid(
+                results[i] = ToFailure(GeoServicesErrors.Invalid(
                     $"No feature has OBJECTID {targetIds[i]} in layer '{session.Dataset.Id}'."));
             }
         }
@@ -431,7 +431,7 @@ internal static class FeatureEditEngine
             return value;
         }
 
-        throw EsriInteropException.Invalid($"The feature carries no numeric '{EsriLayerModel.ObjectIdField}' attribute.");
+        throw GeoServicesErrors.Invalid($"The feature carries no numeric '{EsriLayerModel.ObjectIdField}' attribute.");
     }
 
     private static JsonElement Property(JsonElement element, string name) =>

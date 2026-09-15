@@ -38,7 +38,7 @@ internal static class FeatureValidateSql
         ArgumentNullException.ThrowIfNull(dataset);
         if (string.IsNullOrWhiteSpace(sql))
         {
-            throw EsriInteropException.Invalid("The 'sql' parameter is required.");
+            throw GeoServicesErrors.Invalid("The 'sql' parameter is required.");
         }
 
         var type = string.IsNullOrWhiteSpace(sqlType) ? "where" : sqlType.Trim().ToLowerInvariant();
@@ -50,7 +50,7 @@ internal static class FeatureValidateSql
 
         if (type != "where")
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The 'sqlType' value '{sqlType}' is not supported; use 'where' (the default), 'expression' or 'statement'.");
         }
 

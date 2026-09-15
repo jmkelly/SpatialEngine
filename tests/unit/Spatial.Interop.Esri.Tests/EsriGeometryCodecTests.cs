@@ -222,4 +222,93 @@ public sealed class EsriGeometryCodecTests
     {
         Assert.Throws<EsriInteropException>(() => Decode("""{"x":1}"""));
     }
+
+    [Fact]
+    public void An_xyzm_point_encodes_z_and_m()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreatePoint(1, 2, 3, 4));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("x").GetDouble());
+        Assert.Equal(2, root.GetProperty("y").GetDouble());
+        Assert.Equal(3, root.GetProperty("z").GetDouble());
+        Assert.Equal(4, root.GetProperty("m").GetDouble());
+    }
+
+    [Fact]
+    public void An_xyz_point_encodes_z_without_m()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreatePoint(1, 2, 3));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(3, root.GetProperty("z").GetDouble());
+        Assert.False(root.TryGetProperty("m", out _));
+    }
+
+    [Fact]
+    public void An_xym_point_encodes_m_without_z()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreatePoint(new Coordinate(1, 2, M: 4)));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.False(root.TryGetProperty("z", out _));
+        Assert.Equal(4, root.GetProperty("m").GetDouble());
+    }
+
+    [Fact]
+    public void An_empty_point_encodes_without_coordinates()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreateEmptyPoint());
+
+        using var document = JsonDocument.Parse(json);
+        Assert.False(document.RootElement.TryGetProperty("x", out _));
+        Assert.False(document.RootElement.TryGetProperty("y", out _));
+    }
+
+    [Fact]
+    public void An_xyzm_linestring_encodes_every_ordinate()
+    {
+        var line = GeometryFactory.CreateLineString(
+        [
+            new Coordinate(0, 0, 0, 0),
+            new Coordinate(1, 1, 1, 1),
+        ]);
+
+        var json = EsriGeometryCodec.Encode(line);
+
+        Assert.Contains("[[0,0,0,0],[1,1,1,1]]", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Empty_rings_decode_to_an_empty_polygon()
+    {
+        var polygon = Assert.IsAssignableFrom<Polygon>(Decode("""{"rings":[]}"""));
+
+        Assert.True(polygon.IsEmpty);
+    }
+
+    [Fact]
+    public void A_geometry_without_an_esri_form_is_rejected_on_write()
+    {
+        var collection = new GeometryCollection([GeometryFactory.CreatePoint(1, 2)]);
+
+        var exception = Assert.Throws<EsriInteropException>(() => EsriGeometryCodec.Encode(collection));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+    }
+
+    [Fact]
+    public void A_non_array_coordinate_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"points":["x"]}"""));
+    }
+
+    [Fact]
+    public void A_non_numeric_ordinate_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"points":[[1,"x"]]}"""));
+    }
 }

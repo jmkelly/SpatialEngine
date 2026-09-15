@@ -30,7 +30,7 @@ internal static class FeatureQueryEngine
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
-        var matches = await MatchAsync(new QuerySpec(dataset, store, query, queryGeometry, operations, scheme), cancellationToken);
+        var matches = await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, operations, scheme), cancellationToken);
         return Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
     }
 
@@ -52,155 +52,42 @@ internal static class FeatureQueryEngine
         var ordered = ApplyOrderBy([.. matches], CompileOrderBy(dataset, query));
         if (query.ReturnIdsOnly)
         {
-            return IdsOnly(ordered);
+            return FeatureResponseWriter.IdsOnly(ordered);
         }
 
         if (query.ReturnCountOnly)
         {
-            return query.ReturnDistinctValues
-                ? DistinctCount(dataset, ordered, query)
-                : EsriJson.Value(new EsriCountResponse(ordered.Count));
+            return FeatureResponseWriter.CountResponse(dataset, ordered, query);
         }
 
         if (query.ReturnExtentOnly)
         {
-            return ExtentOnly(ordered, layerCrs, query.OutSr, transforms, cancellationToken);
+            return FeatureResponseWriter.ExtentOnly(ordered, layerCrs, query.OutSr, transforms, cancellationToken);
         }
 
         if (query.ReturnDistinctValues)
         {
-            return DistinctValues(dataset, ordered, query, layerCrs);
+            return FeatureResponseWriter.DistinctValues(dataset, ordered, query, layerCrs);
         }
 
         if (query.OutStatistics is not null)
         {
-            return Statistics(dataset, ordered, query);
+            return FeatureStatisticsEngine.Statistics(dataset, ordered, query);
         }
 
         if (query.ReturnUniqueIdsOnly)
         {
-            return UniqueIdsOnly(dataset, ordered);
+            return FeatureResponseWriter.UniqueIdsOnly(dataset, ordered);
         }
 
         var page = Page(ordered, query);
         var features = page.Items
-            .Select(item => TransformFeature(item, query, layerCrs, transforms, cancellationToken))
+            .Select(item => FeatureProjection.TransformFeature(item, query, layerCrs, transforms, cancellationToken))
             .ToArray();
-        return WriteFeatures(dataset, layerCrs, query, features, page.Exceeded, page.NextToken);
+        return FeatureResponseWriter.WriteFeatures(dataset, layerCrs, query, features, page.Exceeded, page.NextToken);
     }
 
-    /// <summary>
-    /// Executes a service-level query (S1 query-feature-service/) and writes
-    /// the <c>{"layers": [...]}</c> response: one feature set, count, or id
-    /// list per layer, in layer-id order. Each layer already carries its
-    /// effective query (shared parameters plus its <c>layerDefs</c>
-    /// overrides), so this method only matches, pages and projects per layer.
-    /// Layer-level result shapes (extent, distinct, statistics, unique ids)
-    /// are rejected by <see cref="FeatureServiceQuery.RejectLayerOnlyShapes"/>
-    /// before this runs; only the full, count and ids shapes arrive here.
-    /// </summary>
-    internal static async Task<IResult> ServiceQueryAsync(
-        IReadOnlyList<ServiceLayerQuery> layers,
-        IFeatureStore store,
-        EsriFeatureQuery shared,
-        IGeometryOperations operations,
-        ICoordinateTransforms transforms,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(layers);
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(shared);
-        FeatureServiceQuery.RejectLayerOnlyShapes(shared);
-        var ordered = layers.OrderBy(layer => layer.Id).ToArray();
-        var matched = new List<(ServiceLayerQuery Layer, List<MatchedFeature> Matches)>(ordered.Length);
-        foreach (var layer in ordered)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
-            var scheme = EsriObjectIdScheme.For(layer.Description);
-            var queryGeometry = TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
-            matched.Add((layer, await MatchAsync(new QuerySpec(layer.Description, store, layer.Query, queryGeometry, operations, scheme), cancellationToken)));
-        }
 
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("layers");
-            writer.WriteStartArray();
-            foreach (var (layer, matches) in matched)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                WriteServiceLayer(writer, layer, matches, transforms, cancellationToken);
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        });
-    }
-
-    /// <summary>
-    /// Writes one service-query layer entry (S1 response syntax): the full
-    /// feature set, the count, or the id list. Paging applies per layer, and
-    /// tables omit the layer-only <c>geometryType</c>/<c>spatialReference</c>
-    /// keys, exactly as the layer query shapes they mirror.
-    /// </summary>
-    private static void WriteServiceLayer(
-        Utf8JsonWriter writer,
-        ServiceLayerQuery layer,
-        List<MatchedFeature> matches,
-        ICoordinateTransforms transforms,
-        CancellationToken cancellationToken)
-    {
-        var ordered = ApplyOrderBy(matches, CompileOrderBy(layer.Description, layer.Query));
-        writer.WriteStartObject();
-        writer.WriteNumber("id", layer.Id);
-        if (layer.Query.ReturnCountOnly)
-        {
-            writer.WriteNumber("count", ordered.Count);
-            writer.WriteEndObject();
-            return;
-        }
-
-        if (layer.Query.ReturnIdsOnly)
-        {
-            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-            writer.WritePropertyName("objectIds");
-            writer.WriteStartArray();
-            foreach (var match in ordered)
-            {
-                writer.WriteNumberValue(match.ObjectId);
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            return;
-        }
-
-        var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
-        var page = Page(ordered, layer.Query);
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, layer.Query.OutFields, layer.Query.ReturnGeometry, layer.Query.ReturnEnvelope);
-        writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-        writer.WriteString("globalIdFieldName", string.Empty);
-        if (!layer.IsTable)
-        {
-            writer.WriteString("geometryType", EsriLayerModel.GeometryType(layer.Description.GeometryType));
-            WriteSpatialReference(writer, layer.Query.OutSr ?? layerCrs);
-        }
-
-        WriteFields(writer, layer.Description);
-        writer.WritePropertyName("features");
-        writer.WriteStartArray();
-        foreach (var match in page.Items)
-        {
-            var transformed = TransformFeature(match, layer.Query, layerCrs, transforms, cancellationToken);
-            EsriFeatureCodec.Write(writer, transformed.Feature, options with { ObjectId = transformed.ObjectId });
-        }
-
-        writer.WriteEndArray();
-        writer.WriteBoolean("exceededTransferLimit", page.Exceeded);
-        WritePaginationToken(writer, page.NextToken);
-        writer.WriteEndObject();
-    }
 
     /// <summary>
     /// Reads one feature by its Esri <c>OBJECTID</c> (the Feature resource,
@@ -226,8 +113,7 @@ internal static class FeatureQueryEngine
             ordinal++;
             if (!scheme.TryResolve(feature, ordinal, out var candidate))
             {
-                throw new EsriInteropException(
-                    EsriErrorCodes.ServerError,
+                throw GeoServicesErrors.ServerError(
                     $"The identity column of layer '{dataset.Id}' is not an integer.");
             }
 
@@ -236,211 +122,13 @@ internal static class FeatureQueryEngine
                 continue;
             }
 
-            var transformed = TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, transforms, cancellationToken);
-            return WriteFeature(transformed, query);
+            var transformed = FeatureProjection.TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, transforms, cancellationToken);
+            return FeatureResponseWriter.WriteFeature(transformed, query);
         }
 
-        throw new EsriInteropException(EsriErrorCodes.NotFound, $"Feature {objectId} does not exist in layer '{dataset.Id}'.");
+        throw GeoServicesErrors.NotFound($"Feature {objectId} does not exist in layer '{dataset.Id}'.");
     }
 
-    private static async Task<List<MatchedFeature>> MatchAsync(QuerySpec spec, CancellationToken cancellationToken)
-    {
-        var batches = await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken);
-        var matches = new List<MatchedFeature>();
-        long ordinal = 0;
-        foreach (var feature in batches.SelectMany(batch => batch.Features))
-        {
-            ordinal++;
-            if (!spec.Scheme.TryResolve(feature, ordinal, out var objectId))
-            {
-                throw new EsriInteropException(
-                    EsriErrorCodes.ServerError,
-                    $"The identity column of layer '{spec.Dataset.Id}' is not an integer.");
-            }
-
-            var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
-            if (Matches(new MatchCandidate(spec.Query, feature, objectId, spec.QueryGeometry, spec.Operations, uniqueId), cancellationToken))
-            {
-                matches.Add(new MatchedFeature(objectId, feature));
-            }
-        }
-
-        return matches;
-    }
-
-    internal static bool Matches(MatchCandidate match, CancellationToken cancellationToken)
-    {
-        if (match.Query.ObjectIds is { } ids && !ids.Contains(match.ObjectId))
-        {
-            return false;
-        }
-
-        // T-036/T-058: the string-ID filter (spec §9.1.4, 11.5+). A null unique id
-        // never equals a requested id; layers without a string-or-guid unique-id
-        // model are rejected when the match loops resolve the id.
-        if (match.Query.UniqueIds is { } wanted
-            && (match.UniqueId is null || !wanted.Contains(match.UniqueId, StringComparer.Ordinal)))
-        {
-            return false;
-        }
-
-        if (match.Query.Where is { } where && !where.Matches(match.Feature, SyntheticObjectId(match.ObjectId)))
-        {
-            return false;
-        }
-
-        if (match.Query.Time is { } time && !MatchesTime(match.Feature, time))
-        {
-            return false;
-        }
-
-        return match.QueryGeometry is null || SpatialMatch(match.Feature, match.QueryGeometry, match.Query.SpatialRel, match.Operations, cancellationToken);
-    }
-
-    /// <summary>
-    /// Applies the <c>time</c> extent to the feature's date attributes: the
-    /// feature matches when any date value falls inside the (inclusive)
-    /// bounds, where a <c>null</c> bound is infinite. A feature with no date
-    /// values matches unconditionally — ArcGIS Server ignores <c>time</c> on
-    /// layers without time-aware (date) fields. Shared with the MapServer
-    /// identify path (T-059), which filters dated hits with the same rule.
-    /// </summary>
-    internal static bool MatchesTime(Feature feature, EsriTimeExtent time)
-    {
-        var dated = false;
-        foreach (var attribute in feature.Attributes)
-        {
-            if (attribute.Kind != AttributeKind.DateTimeOffset)
-            {
-                continue;
-            }
-
-            dated = true;
-            var milliseconds = attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds();
-            if ((time.StartMs is null || milliseconds >= time.StartMs)
-                && (time.EndMs is null || milliseconds <= time.EndMs))
-            {
-                return true;
-            }
-        }
-
-        return !dated;
-    }
-
-    /// <summary>The synthetic <c>OBJECTID</c> a where clause may reference (ADR-0037).</summary>
-    private static EsriSyntheticField SyntheticObjectId(long objectId) =>
-        new(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId));
-
-    private static bool SpatialMatch(Feature feature, IGeometry queryGeometry, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
-    {
-        var geometry = FeatureGeometry.Find(feature);
-        if (geometry is null || geometry.Envelope is not { } featureEnvelope || queryGeometry.Envelope is not { } queryEnvelope)
-        {
-            return false;
-        }
-
-        if (string.Equals(spatialRel, EsriFeatureQuery.EnvelopeIntersects, StringComparison.Ordinal))
-        {
-            return featureEnvelope.Intersects(queryEnvelope);
-        }
-
-        if (string.Equals(spatialRel, EsriFeatureQuery.Intersects, StringComparison.Ordinal))
-        {
-            return !operations.Intersection(geometry, queryGeometry, cancellationToken).IsEmpty;
-        }
-
-        return spatialRel switch
-        {
-            var rel when string.Equals(rel, EsriFeatureQuery.Contains, StringComparison.Ordinal) => Contains(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Within, StringComparison.Ordinal) => Contains(queryGeometry, geometry, queryEnvelope, featureEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Touches, StringComparison.Ordinal) => Touches(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Overlaps, StringComparison.Ordinal) => Overlaps(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Crosses, StringComparison.Ordinal) => Crosses(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            _ => throw EsriInteropException.Invalid($"spatialRel '{spatialRel}' is not supported."),
-        };
-    }
-
-    /// <summary>
-    /// DE-9IM contains approximated with the available verbs: the container
-    /// envelope must contain the containee envelope and the intersection must
-    /// cover the containee (envelope-equal). Boundary cases (containee on the
-    /// container boundary) read as contained; exact boundary exclusion needs
-    /// a boundary verb the engine does not expose.
-    /// </summary>
-    private static bool Contains(IGeometry container, IGeometry containee, Envelope containerEnvelope, Envelope containeeEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
-    {
-        if (!containerEnvelope.Contains(containeeEnvelope))
-        {
-            return false;
-        }
-
-        var intersection = operations.Intersection(container, containee, cancellationToken);
-        return !intersection.IsEmpty && intersection.Envelope is { } envelope && EnvelopesEqual(envelope, containeeEnvelope);
-    }
-
-    private static bool Touches(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
-    {
-        var intersection = operations.Intersection(left, right, cancellationToken);
-        if (intersection.IsEmpty || intersection.Envelope is not { } envelope)
-        {
-            return false;
-        }
-
-        if (Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
-            || Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken))
-        {
-            return false;
-        }
-
-        return IsDegenerate(envelope);
-    }
-
-    private static bool Overlaps(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
-    {
-        if (Dimension(left) != Dimension(right))
-        {
-            return false;
-        }
-
-        var intersection = operations.Intersection(left, right, cancellationToken);
-        if (intersection.IsEmpty || Dimension(intersection) != Dimension(left))
-        {
-            return false;
-        }
-
-        return !Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
-            && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
-    }
-
-    private static bool Crosses(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
-    {
-        if (Dimension(left) == Dimension(right))
-        {
-            return false;
-        }
-
-        var intersection = operations.Intersection(left, right, cancellationToken);
-        if (intersection.IsEmpty)
-        {
-            return false;
-        }
-
-        return !Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
-            && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
-    }
-
-    private static int Dimension(IGeometry geometry) => geometry.Type switch
-    {
-        GeometryType.Point or GeometryType.MultiPoint => 0,
-        GeometryType.LineString or GeometryType.MultiLineString => 1,
-        GeometryType.Polygon or GeometryType.MultiPolygon => 2,
-        _ => -1,
-    };
-
-    private static bool EnvelopesEqual(Envelope left, Envelope right) =>
-        left.MinX == right.MinX && left.MinY == right.MinY && left.MaxX == right.MaxX && left.MaxY == right.MaxY;
-
-    private static bool IsDegenerate(Envelope envelope) => envelope.MinX == envelope.MaxX || envelope.MinY == envelope.MaxY;
 
     internal static IGeometry? TransformQueryGeometry(
         IGeometry? geometry,
@@ -464,7 +152,7 @@ internal static class FeatureQueryEngine
     /// Unknown fields and geometry fields are typed invalid-argument failures
     /// (HTTP 400).
     /// </summary>
-    private static OrderKey[]? CompileOrderBy(DatasetDescription dataset, EsriFeatureQuery query)
+    internal static OrderKey[]? CompileOrderBy(DatasetDescription dataset, EsriFeatureQuery query)
     {
         if (query.OrderByFields is not { Count: > 0 } fields)
         {
@@ -484,13 +172,13 @@ internal static class FeatureQueryEngine
             var index = dataset.Schema.IndexOf(field.Name);
             if (index < 0)
             {
-                throw EsriInteropException.Invalid(
+                throw GeoServicesErrors.Invalid(
                     $"'orderByFields' names unknown field '{field.Name}' in layer '{dataset.Id}'.");
             }
 
             if (dataset.Schema[index].Kind == AttributeKind.Geometry)
             {
-                throw EsriInteropException.Invalid(
+                throw GeoServicesErrors.Invalid(
                     $"'orderByFields' cannot order by geometry field '{field.Name}' in layer '{dataset.Id}'.");
             }
 
@@ -504,7 +192,7 @@ internal static class FeatureQueryEngine
     /// Applies the compiled ordering to the matched features before paging.
     /// LINQ's ordering is a stable sort, so equal keys keep their scan order.
     /// </summary>
-    private static List<MatchedFeature> ApplyOrderBy(List<MatchedFeature> matches, OrderKey[]? keys)
+    internal static List<MatchedFeature> ApplyOrderBy(List<MatchedFeature> matches, OrderKey[]? keys)
     {
         if (keys is null)
         {
@@ -537,7 +225,7 @@ internal static class FeatureQueryEngine
             ? ordered.ThenByDescending(selector, AttributeValueComparer.Instance)
             : ordered.ThenBy(selector, AttributeValueComparer.Instance);
 
-    private static PageResult Page(List<MatchedFeature> matches, EsriFeatureQuery query)
+    internal static PageResult Page(List<MatchedFeature> matches, EsriFeatureQuery query)
     {
         var offset = Math.Min(ResolveOffset(query), matches.Count);
         var count = EffectivePageSize(query);
@@ -551,35 +239,9 @@ internal static class FeatureQueryEngine
     /// the client continues a token workflow, else <c>resultOffset</c>. Parse
     /// already rejects the combination, so the token simply wins by presence.
     /// </summary>
-    private static int ResolveOffset(EsriFeatureQuery query) =>
+    internal static int ResolveOffset(EsriFeatureQuery query) =>
         query.ResultPaginationToken is { } token ? ResultPagination.Decode(token) : query.ResultOffset ?? 0;
 
-    /// <summary>
-    /// The <c>returnUniqueIdsOnly</c> response (spec §9.1.4, 11.5+): the
-    /// string-ID analogue of <see cref="IdsOnly"/>, symmetric in shape.
-    /// Layers without a string-or-guid unique-id model never reach here — the match
-    /// loops reject the param first — so a missing scheme is defensive.
-    /// </summary>
-    private static IResult UniqueIdsOnly(DatasetDescription dataset, IReadOnlyList<MatchedFeature> matches)
-    {
-        var scheme = EsriUniqueIdScheme.For(dataset)
-            ?? throw EsriInteropException.Invalid(
-                $"The 'returnUniqueIdsOnly' parameter is not supported on layer '{dataset.Id}': the layer has no string or guid unique-id field; address its integer features with 'objectIds'.");
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WriteString("uniqueIdFieldName", scheme.FieldName);
-            writer.WritePropertyName("uniqueIds");
-            writer.WriteStartArray();
-            foreach (var match in matches)
-            {
-                writer.WriteStringValue(scheme.Resolve(match.Feature, dataset));
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        });
-    }
 
     /// <summary>
     /// The effective page cap: <c>maxRecordCount × maxRecordCountFactor</c>
@@ -593,874 +255,35 @@ internal static class FeatureQueryEngine
         return Math.Min(query.ResultRecordCount ?? cap, cap);
     }
 
-    private static MatchedFeature TransformFeature(
-        MatchedFeature match,
-        EsriFeatureQuery query,
-        CoordinateReference? layerCrs,
-        ICoordinateTransforms transforms,
-        CancellationToken cancellationToken)
-    {
-        var feature = match.Feature;
-        var geometryIndex = FeatureGeometry.Index(feature.Schema);
-        if (geometryIndex < 0 || feature[geometryIndex].Kind != AttributeKind.Geometry)
-        {
-            return match;
-        }
 
-        var geometry = feature[geometryIndex].GeometryValue;
-        if (query.OutSr is { } target && layerCrs is not null && target != layerCrs)
-        {
-            geometry = transforms.Transform(geometry, layerCrs.Value.ToString(), target.ToString(), cancellationToken);
-        }
 
-        if (query.GeometryPrecision is { } precision)
-        {
-            geometry = RoundGeometry(geometry, precision);
-        }
-        else if (ReferenceEquals(geometry, feature[geometryIndex].GeometryValue))
-        {
-            return match;
-        }
 
-        var attributes = feature.Attributes.ToArray();
-        attributes[geometryIndex] = AttributeValue.FromGeometry(geometry);
-        return new MatchedFeature(match.ObjectId, new Feature(feature.Id, feature.Schema, attributes));
-    }
 
-    internal static IGeometry RoundGeometry(IGeometry geometry, int precision)
-    {
-        var crs = geometry.CoordinateReference;
-        return geometry switch
-        {
-            Point point when point.Coordinate is { } coordinate =>
-                GeometryFactory.CreatePoint(RoundCoordinate(coordinate, precision), crs),
-            MultiPoint multiPoint =>
-                GeometryFactory.CreateMultiPoint(multiPoint.Points.Select(point => GeometryFactory.CreatePoint(RoundCoordinate(point.Coordinate ?? new Coordinate(0, 0), precision), crs)), crs),
-            LineString line => RoundLine(line, crs, precision),
-            MultiLineString multiLine =>
-                GeometryFactory.CreateMultiLineString(multiLine.LineStrings.Select(line => RoundLine(line, null, precision)), crs),
-            Polygon polygon => RoundPolygon(polygon, crs, precision),
-            MultiPolygon multiPolygon =>
-                GeometryFactory.CreateMultiPolygon(multiPolygon.Polygons.Select(polygon => RoundPolygon(polygon, null, precision)), crs),
-            GeometryCollection collection =>
-                GeometryFactory.CreateGeometryCollection(collection.Geometries.Select(member => RoundGeometry(member, precision)), crs),
-            _ => geometry,
-        };
-    }
 
-    private static LineString RoundLine(LineString line, CoordinateReference? crs, int precision)
-    {
-        var sequence = line.Sequence;
-        var rounded = new Coordinate[sequence.Count];
-        for (var i = 0; i < rounded.Length; i++)
-        {
-            rounded[i] = RoundCoordinate(sequence.GetCoordinate(i), precision);
-        }
 
-        return GeometryFactory.CreateLineString(rounded, sequence.Layout, crs ?? line.CoordinateReference);
-    }
 
-    private static Polygon RoundPolygon(Polygon polygon, CoordinateReference? crs, int precision)
-    {
-        var exterior = RoundLine(polygon.ExteriorRing, null, precision);
-        var holes = polygon.InteriorRings.Select(ring => RoundLine(ring, null, precision));
-        return GeometryFactory.CreatePolygon(exterior, holes, crs ?? polygon.CoordinateReference);
-    }
 
-    private static Coordinate RoundCoordinate(Coordinate coordinate, int precision) => new(
-        Math.Round(coordinate.X, precision),
-        Math.Round(coordinate.Y, precision),
-        RoundOrdinate(coordinate.Z, precision),
-        RoundOrdinate(coordinate.M, precision));
 
-    private static double? RoundOrdinate(double? value, int precision) =>
-        value is null || double.IsNaN(value.Value) ? value : Math.Round(value.Value, precision);
 
-    private static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query)
-    {
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, feature.ObjectId, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("feature");
-            EsriFeatureCodec.Write(writer, feature.Feature, options);
-            writer.WriteEndObject();
-        });
-    }
 
-    private static IResult IdsOnly(List<MatchedFeature> matches) =>
-        EsriJson.Value(new EsriObjectIdsResponse(EsriLayerModel.ObjectIdField, matches.Select(match => match.ObjectId).ToArray()));
 
-    /// <summary>
-    /// The <c>returnExtentOnly</c> response: the envelope of the full matched
-    /// set (before paging), in <c>outSR</c> when supplied, else the layer SR.
-    /// A matchless query yields <c>"extent": null</c>.
-    /// </summary>
-    private static IResult ExtentOnly(
-        IReadOnlyList<MatchedFeature> matches,
-        CoordinateReference? layerCrs,
-        CoordinateReference? outSr,
-        ICoordinateTransforms transforms,
-        CancellationToken cancellationToken)
-    {
-        var extent = Envelope.Empty;
-        foreach (var match in matches)
-        {
-            if (FeatureGeometry.Find(match.Feature) is not { } geometry)
-            {
-                continue;
-            }
 
-            var projected = TransformGeometry(geometry, layerCrs, outSr, transforms, cancellationToken);
-            if (projected.Envelope is { } envelope)
-            {
-                extent = extent.Union(envelope);
-            }
-        }
 
-        return WriteExtent(extent, outSr ?? layerCrs);
-    }
 
-    private static IResult WriteExtent(Envelope extent, CoordinateReference? coordinateReference) =>
-        EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            if (extent.IsEmpty)
-            {
-                writer.WriteNull("extent");
-            }
-            else
-            {
-                writer.WritePropertyName("extent");
-                writer.WriteStartObject();
-                writer.WriteNumber("xmin", extent.MinX);
-                writer.WriteNumber("ymin", extent.MinY);
-                writer.WriteNumber("xmax", extent.MaxX);
-                writer.WriteNumber("ymax", extent.MaxY);
-                WriteSpatialReference(writer, coordinateReference);
-                writer.WriteEndObject();
-            }
 
-            writer.WriteEndObject();
-        });
 
-    /// <summary>
-    /// The COUNT DISTINCT response (S3): the number of deduplicated
-    /// combinations of the projected fields, the count analogue of
-    /// <see cref="DistinctValues"/>. Backs the advertised
-    /// <c>supportsCountDistinct</c> flag.
-    /// </summary>
-    private static IResult DistinctCount(
-        DatasetDescription dataset,
-        IReadOnlyList<MatchedFeature> matches,
-        EsriFeatureQuery query)
-    {
-        var fields = ResolveDistinctFields(dataset, query.OutFields);
-        return EsriJson.Value(new EsriCountResponse(DistinctRows(matches, fields).Count));
-    }
 
-    /// <summary>
-    /// The <c>returnDistinctValues</c> response: the deduplicated combinations
-    /// of the projected fields, no geometry. Paging is applied after dedupe.
-    /// </summary>
-    private static IResult DistinctValues(
-        DatasetDescription dataset,
-        IReadOnlyList<MatchedFeature> matches,
-        EsriFeatureQuery query,
-        CoordinateReference? layerCrs)
-    {
-        var fields = ResolveDistinctFields(dataset, query.OutFields);
-        var rows = DistinctRows(matches, fields);
-        var offset = Math.Min(ResolveOffset(query), rows.Count);
-        var count = EffectivePageSize(query);
-        var page = rows.Skip(offset).Take(count).ToArray();
-        var exceeded = offset + page.Length < rows.Count;
-        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
-    }
 
-    /// <summary>
-    /// Deduplicates the projected fields over the matched set, preserving
-    /// first-seen order. Shared by the distinct-values response and the
-    /// COUNT DISTINCT response so both agree on what "distinct" means.
-    /// </summary>
-    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<MatchedFeature> matches, IReadOnlyList<DistinctField> fields)
-    {
-        var rows = new List<AttributeValue[]>();
-        var seen = new HashSet<AttributeValue[]>(AttributeRowComparer.Instance);
-        foreach (var match in matches)
-        {
-            var row = new AttributeValue[fields.Count];
-            for (var i = 0; i < fields.Count; i++)
-            {
-                row[i] = match.Feature[fields[i].Index];
-            }
 
-            if (seen.Add(row))
-            {
-                rows.Add(row);
-            }
-        }
 
-        return rows;
-    }
 
-    private static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
-    {
-        var schema = dataset.Schema;
-        var names = outFields is { Count: > 0 }
-            ? outFields
-            : schema.Fields.Where(field => field.Kind != AttributeKind.Geometry).Select(field => field.Name).ToArray();
-        var fields = new List<DistinctField>(names.Count);
-        foreach (var name in names)
-        {
-            var index = schema.IndexOf(name);
-            if (index < 0 || schema[index].Kind == AttributeKind.Geometry)
-            {
-                throw EsriInteropException.Invalid(
-                    $"The 'outFields' value '{name}' is not a distinctable attribute of layer '{dataset.Id}'.");
-            }
 
-            fields.Add(new DistinctField(name, index));
-        }
 
-        return fields;
-    }
-
-    private static IResult WriteDistinctValues(
-        DatasetDescription dataset,
-        CoordinateReference? coordinateReference,
-        IReadOnlyList<DistinctField> fields,
-        IReadOnlyList<AttributeValue[]> rows,
-        bool exceeded,
-        string? nextToken)
-    {
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-            writer.WriteString("geometryType", EsriLayerModel.GeometryType(dataset.GeometryType));
-            WriteSpatialReference(writer, coordinateReference);
-            WriteFields(writer, dataset);
-            writer.WritePropertyName("features");
-            writer.WriteStartArray();
-            foreach (var row in rows)
-            {
-                writer.WriteStartObject();
-                writer.WritePropertyName("attributes");
-                writer.WriteStartObject();
-                for (var i = 0; i < fields.Count; i++)
-                {
-                    EsriAttributeCodec.Write(writer, fields[i].Name, row[i]);
-                }
-
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndArray();
-            writer.WriteBoolean("exceededTransferLimit", exceeded);
-            WritePaginationToken(writer, nextToken);
-            writer.WriteEndObject();
-        });
-    }
-
-    /// <summary>
-    /// The <c>outStatistics</c> response (10.x): aggregations over the matched
-    /// set, optionally grouped with a <c>having</c> filter on the groups.
-    /// Percentile statistics (S3 <c>percentile_cont</c>/<c>percentile_disc</c>)
-    /// aggregate the same way but never combine with <c>having</c>.
-    /// Shape per Koop: <c>{displayFieldName, fields, features: [{attributes}]}</c>
-    /// with no geometry. A statistics query over an empty set with no grouping
-    /// yields one row of nulls (Esri response example 5).
-    /// </summary>
-    private static IResult Statistics(
-        DatasetDescription dataset,
-        IReadOnlyList<MatchedFeature> matches,
-        EsriFeatureQuery query)
-    {
-        var statistics = query.OutStatistics!;
-        var groupFields = ResolveGroupFields(dataset, query.GroupByFields);
-        var statInputs = ResolveStatisticInputs(dataset, statistics);
-        var groups = GroupMatches(matches, groupFields);
-        var rows = new List<StatisticRow>();
-        if (groups.Count == 0 && groupFields.Count == 0)
-        {
-            rows.Add(NullRow(groupFields, statistics, statInputs));
-        }
-        else
-        {
-            foreach (var group in groups)
-            {
-                rows.Add(ComputeRow(group.Key, group.Value, groupFields, statistics, statInputs));
-            }
-        }
-
-        if (query.Having is { } having)
-        {
-            rows = rows.Where(row => HavingMatches(row, groupFields, statistics, having)).ToList();
-        }
-
-        rows = ApplyStatisticOrder(rows, groupFields, statistics, query.OrderByFields, dataset);
-        var offset = Math.Min(ResolveOffset(query), rows.Count);
-        var count = EffectivePageSize(query);
-        var page = rows.Skip(offset).Take(count).ToArray();
-        var exceeded = offset + page.Length < rows.Count;
-        return WriteStatistics(new StatisticsPage(dataset, groupFields, statistics, statInputs, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null));
-    }
-
-    private static List<GroupField> ResolveGroupFields(DatasetDescription dataset, IReadOnlyList<string>? names)
-    {
-        var fields = new List<GroupField>();
-        if (names is null)
-        {
-            return fields;
-        }
-
-        foreach (var name in names)
-        {
-            var index = dataset.Schema.IndexOf(name);
-            if (index < 0)
-            {
-                throw EsriInteropException.Invalid($"'groupByFieldsForStatistics' names unknown field '{name}' in layer '{dataset.Id}'.");
-            }
-
-            if (dataset.Schema[index].Kind == AttributeKind.Geometry)
-            {
-                throw EsriInteropException.Invalid($"'groupByFieldsForStatistics' cannot group by geometry field '{name}'.");
-            }
-
-            if (fields.Any(field => string.Equals(field.Name, dataset.Schema[index].Name, StringComparison.OrdinalIgnoreCase)))
-            {
-                throw EsriInteropException.Invalid($"Duplicate group field '{name}'.");
-            }
-
-            fields.Add(new GroupField(dataset.Schema[index].Name, index, dataset.Schema[index].Kind));
-        }
-
-        return fields;
-    }
-
-    private static List<StatisticInput> ResolveStatisticInputs(DatasetDescription dataset, IReadOnlyList<EsriOutStatistic> statistics)
-    {
-        var inputs = new List<StatisticInput>(statistics.Count);
-        foreach (var statistic in statistics)
-        {
-            if ((statistic.OnStatisticField == "*" || string.Equals(statistic.OnStatisticField, statistic.OutStatisticFieldName, StringComparison.OrdinalIgnoreCase)) && statistic.StatisticType == "count")
-            {
-                inputs.Add(new StatisticInput(statistic, -1, AttributeKind.Int64, true));
-                continue;
-            }
-
-            var index = dataset.Schema.IndexOf(statistic.OnStatisticField);
-            if (index < 0)
-            {
-                throw EsriInteropException.Invalid($"Statistic '{statistic.OutStatisticFieldName}' names unknown field '{statistic.OnStatisticField}' in layer '{dataset.Id}'.");
-            }
-
-            var kind = dataset.Schema[index].Kind;
-            if (kind == AttributeKind.Geometry)
-            {
-                throw EsriInteropException.Invalid($"Statistic '{statistic.OutStatisticFieldName}' cannot aggregate geometry field '{statistic.OnStatisticField}'.");
-            }
-
-            if (statistic.StatisticType is "sum" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc" && kind is not (AttributeKind.Int64 or AttributeKind.Double))
-            {
-                throw EsriInteropException.Invalid($"Statistic '{statistic.StatisticType}' on field '{statistic.OnStatisticField}' needs a numeric field.");
-            }
-
-            inputs.Add(new StatisticInput(statistic, index, kind, false));
-        }
-
-        return inputs;
-    }
-
-    private static List<KeyValuePair<AttributeValue[], List<MatchedFeature>>> GroupMatches(
-        IReadOnlyList<MatchedFeature> matches, IReadOnlyList<GroupField> groupFields)
-    {
-        var groups = new Dictionary<AttributeValue[], List<MatchedFeature>>(AttributeRowComparer.Instance);
-        var order = new List<AttributeValue[]>();
-        foreach (var match in matches)
-        {
-            var key = new AttributeValue[groupFields.Count];
-            for (var i = 0; i < groupFields.Count; i++)
-            {
-                key[i] = match.Feature[groupFields[i].Index];
-            }
-
-            if (!groups.TryGetValue(key, out var list))
-            {
-                list = [];
-                groups[key] = list;
-                order.Add(key);
-            }
-
-            list.Add(match);
-        }
-
-        return order.Select(key => new KeyValuePair<AttributeValue[], List<MatchedFeature>>(key, groups[key])).ToList();
-    }
-
-    private static StatisticRow NullRow(
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        IReadOnlyList<StatisticInput> inputs)
-    {
-        var groupValues = new AttributeValue[groupFields.Count];
-        for (var i = 0; i < groupValues.Length; i++)
-        {
-            groupValues[i] = AttributeValue.Null;
-        }
-
-        var values = new AttributeValue[statistics.Count];
-        for (var i = 0; i < values.Length; i++)
-        {
-            values[i] = AttributeValue.Null;
-        }
-
-        return new StatisticRow(groupValues, values, StatisticKinds(inputs));
-    }
-
-    private static StatisticRow ComputeRow(
-        AttributeValue[] key,
-        IReadOnlyList<MatchedFeature> members,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        IReadOnlyList<StatisticInput> inputs)
-    {
-        var values = new AttributeValue[statistics.Count];
-        for (var i = 0; i < statistics.Count; i++)
-        {
-            values[i] = Aggregate(members, inputs[i]);
-        }
-
-        return new StatisticRow(key, values, StatisticKinds(inputs));
-    }
-
-    private static AttributeKind[] StatisticKinds(IReadOnlyList<StatisticInput> inputs)
-    {
-        var kinds = new AttributeKind[inputs.Count];
-        for (var i = 0; i < inputs.Count; i++)
-        {
-            kinds[i] = ResultKind(inputs[i]);
-        }
-
-        return kinds;
-    }
-
-    private static AttributeKind ResultKind(StatisticInput input) => input.Spec.StatisticType switch
-    {
-        "count" => AttributeKind.Int64,
-        "sum" when input.Kind == AttributeKind.Int64 => AttributeKind.Int64,
-        "sum" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc" => AttributeKind.Double,
-        "min" or "max" => input.Kind,
-        _ => AttributeKind.Double,
-    };
-
-    private static AttributeValue Aggregate(IReadOnlyList<MatchedFeature> members, StatisticInput input)
-    {
-        var type = input.Spec.StatisticType;
-        if (type == "count" && input.CountRows)
-        {
-            return AttributeValue.FromInt64(members.Count);
-        }
-
-        var raw = new List<AttributeValue>();
-        foreach (var member in members)
-        {
-            var value = member.Feature[input.Index];
-            if (!value.IsNull)
-            {
-                raw.Add(value);
-            }
-        }
-
-        if (raw.Count == 0)
-        {
-            return AttributeValue.Null;
-        }
-
-        if (type == "count")
-        {
-            return AttributeValue.FromInt64(raw.Count);
-        }
-
-        if (type is "percentile_cont" or "percentile_disc")
-        {
-            return Percentile(raw, input.Spec);
-        }
-
-        if (type is "min" or "max")
-        {
-            var best = raw[0];
-            foreach (var candidate in raw.Skip(1))
-            {
-                var order = AttributeValueComparer.Instance.Compare(candidate, best);
-                if ((type == "min" && order < 0) || (type == "max" && order > 0))
-                {
-                    best = candidate;
-                }
-            }
-
-            return best;
-        }
-
-        var numbers = raw.Select(ToDouble).ToArray();
-        return type switch
-        {
-            "sum" when input.Kind == AttributeKind.Int64 && raw.All(value => value.Kind == AttributeKind.Int64) =>
-                AttributeValue.FromInt64(raw.Sum(value => value.Int64Value)),
-            "sum" => AttributeValue.FromDouble(numbers.Sum()),
-            "avg" => AttributeValue.FromDouble(numbers.Average()),
-            "var" => AttributeValue.FromDouble(Variance(numbers)),
-            "stddev" => AttributeValue.FromDouble(Math.Sqrt(Variance(numbers))),
-            _ => AttributeValue.Null,
-        };
-    }
-
-    /// <summary>
-    /// The S3 percentile statistic over the group's non-null numeric
-    /// values, ranked in the requested order: discrete returns the dataset
-    /// value at rank <c>ceil(fraction × n)</c>, continuous linearly
-    /// interpolates at rank <c>fraction × (n − 1)</c>.
-    /// </summary>
-    private static AttributeValue Percentile(List<AttributeValue> raw, EsriOutStatistic spec)
-    {
-        var numbers = raw.Select(ToDouble).ToList();
-        numbers.Sort();
-        if (spec.PercentileDescending)
-        {
-            numbers.Reverse();
-        }
-
-        var fraction = spec.PercentileValue ?? 0;
-        return spec.StatisticType == "percentile_disc"
-            ? AttributeValue.FromDouble(DiscretePercentile(numbers, fraction))
-            : AttributeValue.FromDouble(ContinuousPercentile(numbers, fraction));
-    }
-
-    private static double DiscretePercentile(List<double> sorted, double fraction)
-    {
-        var rank = (int)Math.Ceiling(fraction * sorted.Count);
-        return sorted[Math.Clamp(rank - 1, 0, sorted.Count - 1)];
-    }
-
-    private static double ContinuousPercentile(List<double> sorted, double fraction)
-    {
-        var rank = fraction * (sorted.Count - 1);
-        var lower = (int)Math.Floor(rank);
-        var upper = (int)Math.Ceiling(rank);
-        return lower == upper
-            ? sorted[lower]
-            : sorted[lower] + ((rank - lower) * (sorted[upper] - sorted[lower]));
-    }
-
-    private static double ToDouble(AttributeValue value) => value.Kind switch
-    {
-        AttributeKind.Int64 => value.Int64Value,
-        AttributeKind.Double => value.DoubleValue,
-        _ => throw EsriInteropException.Invalid($"Cannot aggregate non-numeric value of kind {value.Kind}."),
-    };
-
-    private static double Variance(double[] numbers)
-    {
-        if (numbers.Length <= 1)
-        {
-            return 0;
-        }
-
-        var mean = numbers.Average();
-        return numbers.Sum(number => (number - mean) * (number - mean)) / (numbers.Length - 1);
-    }
-
-    private static bool HavingMatches(
-        StatisticRow row,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        EsriFilterClause having)
-    {
-        var fields = new List<FieldDefinition>(groupFields.Count + statistics.Count);
-        var values = new List<AttributeValue>(fields.Capacity);
-        for (var i = 0; i < groupFields.Count; i++)
-        {
-            fields.Add(new FieldDefinition(groupFields[i].Name, KindForComparison(groupFields[i].Kind)));
-            values.Add(row.GroupValues[i]);
-        }
-
-        for (var i = 0; i < statistics.Count; i++)
-        {
-            fields.Add(new FieldDefinition(statistics[i].OutStatisticFieldName, KindForComparison(row.StatKinds[i])));
-            values.Add(row.StatValues[i]);
-        }
-
-        var schema = new FeatureSchema(fields);
-        var feature = new Feature(new FeatureId("having"), schema, values.ToArray());
-        return having.Matches(feature);
-    }
-
-    private static AttributeKind KindForComparison(AttributeKind kind) => kind == AttributeKind.Null ? AttributeKind.Double : kind;
-
-    private static List<StatisticRow> ApplyStatisticOrder(
-        List<StatisticRow> rows,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        IReadOnlyList<EsriOrderByField>? orderBy,
-        DatasetDescription dataset)
-    {
-        if (orderBy is not { Count: > 0 })
-        {
-            return rows;
-        }
-
-        IOrderedEnumerable<StatisticRow>? ordered = null;
-        foreach (var key in orderBy)
-        {
-            var selector = StatisticSelector(key.Name, groupFields, statistics, dataset);
-            ordered = ordered is null
-                ? (key.Descending ? rows.OrderByDescending(selector, AttributeValueComparer.Instance) : rows.OrderBy(selector, AttributeValueComparer.Instance))
-                : (key.Descending ? ordered.ThenByDescending(selector, AttributeValueComparer.Instance) : ordered.ThenBy(selector, AttributeValueComparer.Instance));
-        }
-
-        return ordered!.ToList();
-    }
-
-    private static Func<StatisticRow, AttributeValue> StatisticSelector(
-        string name,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        DatasetDescription dataset)
-    {
-        for (var i = 0; i < groupFields.Count; i++)
-        {
-            if (string.Equals(groupFields[i].Name, name, StringComparison.OrdinalIgnoreCase))
-            {
-                var index = i;
-                return row => row.GroupValues[index];
-            }
-        }
-
-        for (var i = 0; i < statistics.Count; i++)
-        {
-            if (string.Equals(statistics[i].OutStatisticFieldName, name, StringComparison.OrdinalIgnoreCase))
-            {
-                var index = i;
-                return row => row.StatValues[index];
-            }
-        }
-
-        throw EsriInteropException.Invalid($"'orderByFields' names unknown statistic or group field '{name}' in layer '{dataset.Id}'.");
-    }
-
-    private static IResult WriteStatistics(StatisticsPage page)
-    {
-        var dataset = page.Dataset;
-        var groupFields = page.GroupFields;
-        var statistics = page.Statistics;
-        var inputs = page.Inputs;
-        var rows = page.Rows;
-        var exceeded = page.Exceeded;
-        var nextToken = page.NextToken;
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WriteString("displayFieldName", groupFields.Count > 0 ? groupFields[0].Name : string.Empty);
-            writer.WritePropertyName("fields");
-            writer.WriteStartArray();
-            foreach (var group in groupFields)
-            {
-                WriteField(writer, group.Name, EsriFieldType.FromAttributeKind(group.Kind), true, false);
-            }
-
-            for (var i = 0; i < statistics.Count; i++)
-            {
-                WriteField(writer, statistics[i].OutStatisticFieldName, EsriFieldType.FromAttributeKind(ResultKindForWrite(inputs[i], rows)), true, false);
-            }
-
-            writer.WriteEndArray();
-            writer.WritePropertyName("features");
-            writer.WriteStartArray();
-            foreach (var row in rows)
-            {
-                writer.WriteStartObject();
-                writer.WritePropertyName("attributes");
-                writer.WriteStartObject();
-                for (var i = 0; i < groupFields.Count; i++)
-                {
-                    EsriAttributeCodec.Write(writer, groupFields[i].Name, row.GroupValues[i]);
-                }
-
-                for (var i = 0; i < statistics.Count; i++)
-                {
-                    EsriAttributeCodec.Write(writer, statistics[i].OutStatisticFieldName, row.StatValues[i]);
-                }
-
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndArray();
-            writer.WriteBoolean("exceededTransferLimit", exceeded);
-            WritePaginationToken(writer, nextToken);
-            writer.WriteEndObject();
-        });
-    }
-
-    private static AttributeKind ResultKindForWrite(StatisticInput input, IReadOnlyList<StatisticRow> rows)
-    {
-        var kind = ResultKind(input);
-        if (kind is not (AttributeKind.Int64 or AttributeKind.Double or AttributeKind.String or AttributeKind.DateTimeOffset or AttributeKind.Guid or AttributeKind.Boolean))
-        {
-            return AttributeKind.Double;
-        }
-
-        return kind;
-    }
-
-    private sealed record GroupField(string Name, int Index, AttributeKind Kind);
-
-    private sealed record StatisticInput(EsriOutStatistic Spec, int Index, AttributeKind Kind, bool CountRows);
-
-    private sealed record StatisticRow(AttributeValue[] GroupValues, AttributeValue[] StatValues, AttributeKind[] StatKinds);
-
-    private static IGeometry TransformGeometry(
-        IGeometry geometry,
-        CoordinateReference? source,
-        CoordinateReference? target,
-        ICoordinateTransforms transforms,
-        CancellationToken cancellationToken)
-    {
-        if (target is not { } to || source is not { } from || from == to)
-        {
-            return geometry;
-        }
-
-        return transforms.Transform(geometry, from.ToString(), to.ToString(), cancellationToken);
-    }
-
-    private static IResult WriteFeatures(
-        DatasetDescription dataset,
-        CoordinateReference? layerCrs,
-        EsriFeatureQuery query,
-        IReadOnlyList<MatchedFeature> features,
-        bool exceeded,
-        string? nextToken)
-    {
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-            writer.WriteString("geometryType", EsriLayerModel.GeometryType(dataset.GeometryType));
-            WriteSpatialReference(writer, query.OutSr ?? layerCrs);
-            WriteFields(writer, dataset);
-            writer.WritePropertyName("features");
-            writer.WriteStartArray();
-            foreach (var feature in features)
-            {
-                EsriFeatureCodec.Write(writer, feature.Feature, options with { ObjectId = feature.ObjectId });
-            }
-
-            writer.WriteEndArray();
-            writer.WriteBoolean("exceededTransferLimit", exceeded);
-            WritePaginationToken(writer, nextToken);
-            writer.WriteEndObject();
-        });
-    }
-
-    private static void WriteSpatialReference(Utf8JsonWriter writer, CoordinateReference? coordinateReference)
-    {
-        if (coordinateReference is { } crs && IsMapped(crs))
-        {
-            EsriSpatialReference.Write(writer, crs);
-            return;
-        }
-
-        writer.WriteNull("spatialReference");
-    }
-
-    private static bool IsMapped(CoordinateReference crs) =>
-        string.Equals(crs.Authority, "EPSG", StringComparison.OrdinalIgnoreCase)
-        && int.TryParse(crs.Code, NumberStyles.None, CultureInfo.InvariantCulture, out var epsg)
-        && WkidMap.TryFromEpsg(epsg, out _);
-
-    private static void WriteFields(Utf8JsonWriter writer, DatasetDescription dataset)
-    {
-        writer.WritePropertyName("fields");
-        writer.WriteStartArray();
-        WriteField(writer, EsriLayerModel.ObjectIdField, EsriFieldType.Oid, false, false);
-        foreach (var field in dataset.Schema.Fields)
-        {
-            // A raster catalog's schema already carries the identity column;
-            // the synthetic OBJECTID above is authoritative, so do not repeat it.
-            if (field.Name == EsriLayerModel.ObjectIdField)
-            {
-                continue;
-            }
-
-            WriteField(writer, field.Name, EsriFieldType.FromAttributeKind(field.Kind), field.Nullable, field.Kind != AttributeKind.Geometry);
-        }
-
-        writer.WriteEndArray();
-    }
-
-    private static void WriteField(Utf8JsonWriter writer, string name, string type, bool nullable, bool editable)
-    {
-        writer.WriteStartObject();
-        writer.WriteString("name", name);
-        writer.WriteString("type", type);
-        writer.WriteString("alias", name);
-        writer.WriteBoolean("nullable", nullable);
-        writer.WriteBoolean("editable", editable);
-        writer.WriteEndObject();
-    }
-
-    /// <summary>
-    /// One feature-match invocation: which layer, store and parsed query to
-    /// match, with the pre-transformed query geometry and the object-id
-    /// scheme the scan ordinals resolve through. Threading one value instead
-    /// of seven parameters keeps the match loop readable (metrics
-    /// long-parameter-list).
-    /// </summary>
-    private sealed record QuerySpec(
-        DatasetDescription Dataset,
-        IFeatureStore Store,
-        EsriFeatureQuery Query,
-        IGeometry? QueryGeometry,
-        IGeometryOperations Operations,
-        EsriObjectIdScheme Scheme);
-
-    /// <summary>
-    /// One per-feature match candidate: the parsed query, the feature and
-    /// its resolved <c>OBJECTID</c>, the pre-transformed query geometry and
-    /// the geometry verbs a spatial predicate needs. Shared by the Feature
-    /// Service match loop and the Image Service catalog query, so both agree
-    /// on what "matches" means.
-    /// </summary>
-    internal sealed record MatchCandidate(
-        EsriFeatureQuery Query,
-        Feature Feature,
-        long ObjectId,
-        IGeometry? QueryGeometry,
-        IGeometryOperations Operations,
-        string? UniqueId = null);
-
-    /// <summary>
-    /// One statistics response page: the layer, its grouping, the requested
-    /// statistics and their resolved inputs, the computed rows and the paging
-    /// outcome. Grouping one value keeps the writer to a single parameter.
-    /// </summary>
-    private sealed record StatisticsPage(
-        DatasetDescription Dataset,
-        IReadOnlyList<GroupField> GroupFields,
-        IReadOnlyList<EsriOutStatistic> Statistics,
-        IReadOnlyList<StatisticInput> Inputs,
-        IReadOnlyList<StatisticRow> Rows,
-        bool Exceeded,
-        string? NextToken);
 
     internal sealed record MatchedFeature(long ObjectId, Feature Feature);
 
     /// <summary>One compiled <c>orderByFields</c> key: a schema index and direction, or the synthetic object id.</summary>
-    private sealed record OrderKey(int Index, bool Descending, bool ObjectId = false);
+    internal sealed record OrderKey(int Index, bool Descending, bool ObjectId = false);
 
     /// <summary>
     /// Orders attribute values of the kinds a schema can declare. Nulls sort
@@ -1510,22 +333,12 @@ internal static class FeatureQueryEngine
         };
     }
 
-    private sealed record PageResult(IReadOnlyList<MatchedFeature> Items, bool Exceeded, string? NextToken);
+    internal sealed record PageResult(IReadOnlyList<MatchedFeature> Items, bool Exceeded, string? NextToken);
 
-    /// <summary>Writes the next-page cursor when the page filled up; the final page carries none.</summary>
-    private static void WritePaginationToken(Utf8JsonWriter writer, string? nextToken)
-    {
-        if (nextToken is not null)
-        {
-            writer.WriteString("resultPaginationToken", nextToken);
-        }
-    }
 
-    /// <summary>One projected field of a distinct-values request.</summary>
-    private readonly record struct DistinctField(string Name, int Index);
 
     /// <summary>Structural equality for projected distinct-value rows.</summary>
-    private sealed class AttributeRowComparer : IEqualityComparer<AttributeValue[]>
+    internal sealed class AttributeRowComparer : IEqualityComparer<AttributeValue[]>
     {
         public static AttributeRowComparer Instance { get; } = new();
 

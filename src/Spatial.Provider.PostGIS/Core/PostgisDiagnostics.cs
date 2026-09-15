@@ -55,18 +55,17 @@ internal static class PostgisDiagnostics
         return values;
     }
 
-    private static object? ParseIdentityPart(AttributeKind kind, string value)
+    private static readonly Dictionary<AttributeKind, Func<string, object?>> IdentityParsers = new()
     {
-        return kind switch
-        {
-            AttributeKind.Int64 => long.Parse(value, CultureInfo.InvariantCulture),
-            AttributeKind.Double => double.Parse(value, CultureInfo.InvariantCulture),
-            AttributeKind.Boolean => bool.Parse(value),
-            AttributeKind.Guid => Guid.Parse(value),
-            AttributeKind.DateTimeOffset => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture),
-            _ => value,
-        };
-    }
+        [AttributeKind.Int64] = value => long.Parse(value, CultureInfo.InvariantCulture),
+        [AttributeKind.Double] = value => double.Parse(value, CultureInfo.InvariantCulture),
+        [AttributeKind.Boolean] = value => bool.Parse(value),
+        [AttributeKind.Guid] = value => Guid.Parse(value),
+        [AttributeKind.DateTimeOffset] = value => DateTimeOffset.Parse(value, CultureInfo.InvariantCulture),
+    };
+
+    private static object? ParseIdentityPart(AttributeKind kind, string value) =>
+        IdentityParsers.TryGetValue(kind, out var parse) ? parse(value) : value;
 
     /// <summary>Reads a date-only or timestamp value into a <see cref="DateTimeOffset"/> (UTC unless the value says otherwise).</summary>
     public static DateTimeOffset ToDateTimeOffset(DateTime value) =>

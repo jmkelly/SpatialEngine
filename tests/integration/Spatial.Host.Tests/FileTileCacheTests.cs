@@ -116,6 +116,33 @@ public sealed class FileTileCacheTests : IDisposable
     }
 
     [Fact]
+    public async Task A_missing_tile_on_a_pristine_root_is_a_miss_not_an_error()
+    {
+        // The directory itself does not exist yet: DirectoryNotFoundException
+        // is a cache miss, so a cold cache answers null instead of throwing.
+        Assert.Null(await Cache().TryGetAsync(Key(7)));
+    }
+
+    [Fact]
+    public async Task A_corrupt_metadata_entry_is_dropped_as_a_miss()
+    {
+        var key = Key(9);
+        var cache = Cache();
+        await cache.SetAsync(key, Image(8));
+        Assert.NotNull(await cache.TryGetAsync(key));
+
+        // Corrupt the sidecar without knowing the hashed file name: the entry
+        // pair is the only *.tile.meta file under the root.
+        var meta = Directory.EnumerateFiles(_root, "*.tile.meta").Single();
+        await File.WriteAllBytesAsync(meta, "not json"u8.ToArray());
+
+        // The JsonException path deletes the poisoned pair and reports a miss.
+        Assert.Null(await cache.TryGetAsync(key));
+        Assert.Empty(Directory.EnumerateFiles(_root));
+        Assert.Null(await cache.TryGetAsync(key));
+    }
+
+    [Fact]
     public async Task Operations_honour_cancellation()
     {
         var cache = Cache();

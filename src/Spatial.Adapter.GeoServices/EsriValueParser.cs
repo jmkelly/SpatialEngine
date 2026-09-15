@@ -40,7 +40,7 @@ internal static class EsriValueParser
             return [simple!];
         }
 
-        throw EsriInteropException.Invalid("'geometries' must be a JSON array of Esri geometry objects or an array of coordinates.");
+        throw GeoServicesErrors.Invalid("'geometries' must be a JSON array of Esri geometry objects or an array of coordinates.");
     }
 
     /// <summary>Parses a single <c>geometry</c> parameter (object or simple syntax).</summary>
@@ -58,7 +58,7 @@ internal static class EsriValueParser
             return simple!;
         }
 
-        throw EsriInteropException.Invalid("'geometry' must be an Esri geometry object or coordinate list.");
+        throw GeoServicesErrors.Invalid("'geometry' must be an Esri geometry object or coordinate list.");
     }
 
     /// <summary>Parses an <c>inSR</c>/<c>outSR</c> value (a spatial-reference object or a bare WKID).</summary>
@@ -81,7 +81,7 @@ internal static class EsriValueParser
             return EsriSpatialReference.Resolve(wkid);
         }
 
-        throw EsriInteropException.Invalid($"'{value}' is not a spatial reference (expected a WKID or {{wkid}}).");
+        throw GeoServicesErrors.Invalid($"'{value}' is not a spatial reference (expected a WKID or {{wkid}}).");
     }
 
     /// <summary>Parses a comma-separated list of doubles.</summary>
@@ -90,7 +90,7 @@ internal static class EsriValueParser
         var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
-            throw EsriInteropException.Invalid($"'{name}' must be a comma-separated list of numbers.");
+            throw GeoServicesErrors.Invalid($"'{name}' must be a comma-separated list of numbers.");
         }
 
         var values = new double[parts.Length];
@@ -98,7 +98,7 @@ internal static class EsriValueParser
         {
             if (!double.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out var number) || !double.IsFinite(number))
             {
-                throw EsriInteropException.Invalid($"'{name}' must be a comma-separated list of finite numbers, got '{parts[i]}'.");
+                throw GeoServicesErrors.Invalid($"'{name}' must be a comma-separated list of finite numbers, got '{parts[i]}'.");
             }
 
             values[i] = number;
@@ -113,7 +113,7 @@ internal static class EsriValueParser
         var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {
-            throw EsriInteropException.Invalid($"'{name}' must be a comma-separated list of integers.");
+            throw GeoServicesErrors.Invalid($"'{name}' must be a comma-separated list of integers.");
         }
 
         var values = new long[parts.Length];
@@ -121,7 +121,7 @@ internal static class EsriValueParser
         {
             if (!long.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
             {
-                throw EsriInteropException.Invalid($"'{name}' must be a comma-separated list of integers, got '{parts[i]}'.");
+                throw GeoServicesErrors.Invalid($"'{name}' must be a comma-separated list of integers, got '{parts[i]}'.");
             }
 
             values[i] = number;

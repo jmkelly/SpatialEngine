@@ -7,6 +7,69 @@ All notable changes to Spatial Engine are documented here. The format follows
 The product version is single-sourced in `Directory.Build.props`; update it and
 this file together, then tag the release (`RELEASING.md`).
 
+## [0.3.0] - 2026-09-15
+
+### Added
+
+- **Feature attachments end to end** (ADR-0065/0066, T-060/T-061/T-088):
+  the additive `IFeatureAttachmentStore` SDK capability with provider-owned
+  bytes, served `hasAttachments`/`queryAttachments`/add/update/delete plus
+  the single-attachment bytes resource (the OpenAPI snapshot gains
+  `.../attachments/{attachmentId}` GET), with PostGIS sidecar persistence.
+- **Guid identity columns** (ADR-0067, T-058): `uniqueIds` for guid-identity
+  columns are served in canonical form.
+- **ImageServer authored metadata XML** (ADR-0068, T-056): the authored
+  ISO/FGDC document is served verbatim as `application/xml` at both the
+  service level and the per-item level.
+- **Esri compatibility projections** (ADR-0054–0059, T-071): ImageServer
+  legend/find/statistics/histograms/attribute-table/thumbnail/metadata,
+  MapServer legend/queryDomains/queryLegends/generateRenderer, modern
+  Feature query params, percentile statistics with capability-flag honesty,
+  Map export time/dynamicLayers/layerOption/cached-root honesty, and
+  Image capability flags with named rejects; offline/async surface stays
+  rejected by name (ADR-0060). Proven by the Esri-docs replay suite D.
+- **Feature write-model extensions** (ADR-0061): service query,
+  generateRenderer reuse, validateSQL, aggregation honesty, attachments.
+- **Workbench**: service Parity page (T-072), Geometry playground + Image
+  tab (T-073), Chaos simulation toggles proving typed error mapping
+  (T-074).
+- **Performance suites**: suite C throughput smoke and suite D full-job
+  baselines with a nightly job (T-077/T-078/T-086), OpenLayers proof at
+  vectorCount 12 (T-090).
+- **Interop test infrastructure**: live Esri fixture refresh script
+  (T-065) with the GeometryServer root fixture drift pinned (T-093).
+- **Documented non-goals**: vector tiles and OGC API Tiles (ADR-0062);
+  BenchmarkDotNet for the benchmark suite (ADR-0063).
+
+### Changed
+
+- **Quality loop cleared to green again** (ADR-0069): high-complexity
+  methods split into cohesive engines (`FeatureStatisticsEngine`,
+  `FeatureSpatialMatcher`, `FeatureProjection`, `FeatureResponseWriter`,
+  `FeatureQueryHandlers`, `FeatureAttachmentHandlers`,
+  `GeoServicesResolution`, `ImageFileHandlers`, `ImageLegendBuilder`,
+  `WmsGmlWriter`) with real unit tests; CRAP 0 of ~2600 methods,
+  authored branch coverage 83.2% (floor 70%), Core.Tests mutation 91.2%
+  (break 80). The two namespace `architectural-rigidity` diagnoses are
+  advisory (shared-codec coupling prescribed by ADR-0035; the tool offers
+  no per-diagnosis lever), so `failOn.severity` returns to `high`, and the
+  structural architecture suite is waived out of the mutation gate.
+- **Esri admin projection deltas aligned** (T-062): uploads MaxFeatures
+  cap plus publish merge semantics; demo catalogue summaries cached
+  (T-096); WorldCities snapshot loads lazily (T-095); CRS lookups cached
+  on the transform hot path (T-087); query burst-tail diagnosed with Esri
+  writer bytes sent direct (T-092).
+- **Deterministic legend swatch URLs** (T-085).
+- **ADR-0059 item 5 amended** (T-082): `hasHistograms` for every
+  real-valued band format.
+
+### Fixed
+
+- **Malformed multipart ingest** (T-094): rejected as a typed 400 naming
+  the file part.
+- **WFS GetFeature ids** (ADR-0064, T-084): ids are scoped per typeName,
+  so unique ids hold across layers.
+
 ## [0.2.0] - 2026-09-14
 
 ### Added

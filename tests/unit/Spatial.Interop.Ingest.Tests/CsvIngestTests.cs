@@ -118,4 +118,28 @@ public sealed class CsvIngestTests
     {
         Assert.Throws<IngestFormatException>(() => Decode(","));
     }
+
+    [Fact]
+    public void A_double_identity_column_keeps_its_round_trip_text()
+    {
+        var decoded = Decode("x,y,ratio\n1,2,4.5\n", new DecodeOptions { IdentityField = "ratio" });
+
+        Assert.Equal("4.5", decoded.Pages[0][0].Id.Value);
+    }
+
+    [Fact]
+    public void A_string_identity_column_is_used_verbatim()
+    {
+        var decoded = Decode("x,y,name\n1,2,A\n", new DecodeOptions { IdentityField = "name" });
+
+        Assert.Equal("A", decoded.Pages[0][0].Id.Value);
+    }
+
+    [Fact]
+    public void An_empty_identity_cell_falls_back_to_the_row_number()
+    {
+        var decoded = Decode("x,y,name\n1,2,\n", new DecodeOptions { IdentityField = "name" });
+
+        Assert.Equal("1", decoded.Pages[0][0].Id.Value);
+    }
 }

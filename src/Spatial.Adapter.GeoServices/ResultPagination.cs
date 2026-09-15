@@ -34,7 +34,7 @@ internal static class ResultPagination
             return offset;
         }
 
-        throw EsriInteropException.Invalid(
+        throw GeoServicesErrors.Invalid(
             "The 'resultPaginationToken' is invalid or expired; re-run the query without it to restart paging.");
     }
 

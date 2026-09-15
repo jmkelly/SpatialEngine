@@ -148,35 +148,48 @@ internal static class GeoJsonGeometryCodec
 
     private static Coordinate Position(JsonElement position)
     {
-        if (position.ValueKind != JsonValueKind.Array)
-        {
-            throw new IngestFormatException("A GeoJSON position must be an array.");
-        }
-
+        RequirePositionArray(position);
         Span<double> ordinates = stackalloc double[3];
-        var count = 0;
-        foreach (var ordinate in position.EnumerateArray())
-        {
-            if (count == 3)
-            {
-                break;
-            }
-
-            if (ordinate.ValueKind != JsonValueKind.Number)
-            {
-                throw new IngestFormatException("A GeoJSON position ordinate must be a number.");
-            }
-
-            ordinates[count++] = ordinate.GetDouble();
-        }
-
+        var count = ReadOrdinates(position, ordinates);
         if (count < 2)
         {
             throw new IngestFormatException("A GeoJSON position needs at least an x and a y.");
         }
 
-        return count == 3 ? new Coordinate(ordinates[0], ordinates[1], ordinates[2]) : new Coordinate(ordinates[0], ordinates[1]);
+        return BuildCoordinate(ordinates, count);
     }
+
+    private static void RequirePositionArray(JsonElement position)
+    {
+        if (position.ValueKind != JsonValueKind.Array)
+        {
+            throw new IngestFormatException("A GeoJSON position must be an array.");
+        }
+    }
+
+    private static int ReadOrdinates(JsonElement position, Span<double> ordinates)
+    {
+        var count = 0;
+        foreach (var ordinate in position.EnumerateArray())
+        {
+            if (count == ordinates.Length)
+            {
+                break;
+            }
+
+            ordinates[count++] = RequireOrdinate(ordinate);
+        }
+
+        return count;
+    }
+
+    private static double RequireOrdinate(JsonElement ordinate) =>
+        ordinate.ValueKind == JsonValueKind.Number
+            ? ordinate.GetDouble()
+            : throw new IngestFormatException("A GeoJSON position ordinate must be a number.");
+
+    private static Coordinate BuildCoordinate(ReadOnlySpan<double> ordinates, int count) =>
+        count == 3 ? new Coordinate(ordinates[0], ordinates[1], ordinates[2]) : new Coordinate(ordinates[0], ordinates[1]);
 
     private static Polygon BuildPolygon(List<Coordinate[]> rings, CoordinateReference crs)
     {

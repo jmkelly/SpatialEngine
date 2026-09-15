@@ -71,18 +71,18 @@ internal sealed record EsriFeatureQuery(
         var having = ParseHaving(parameters.Get("having"));
         if (groupByFields is not null && outStatistics is null)
         {
-            throw EsriInteropException.Invalid("'groupByFieldsForStatistics' requires 'outStatistics'.");
+            throw GeoServicesErrors.Invalid("'groupByFieldsForStatistics' requires 'outStatistics'.");
         }
 
         if (having is not null && outStatistics is null)
         {
-            throw EsriInteropException.Invalid("'having' requires 'outStatistics'.");
+            throw GeoServicesErrors.Invalid("'having' requires 'outStatistics'.");
         }
 
         if (having is not null && outStatistics is { } stats
             && stats.Any(statistic => statistic.StatisticType is "percentile_cont" or "percentile_disc"))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 "Percentile statistics ('percentile_cont', 'percentile_disc') cannot be combined with 'having' (S3 percentile type).");
         }
 
@@ -145,7 +145,7 @@ internal sealed record EsriFeatureQuery(
 
         if (!EsriFilterClause.TryParse(value, out var clause, out var error))
         {
-            throw EsriInteropException.Invalid($"The 'where' clause is not supported: {error}.");
+            throw GeoServicesErrors.Invalid($"The 'where' clause is not supported: {error}.");
         }
 
         return clause;
@@ -164,9 +164,9 @@ internal sealed record EsriFeatureQuery(
         return value.Trim() switch
         {
             EnvelopeIntersects or Intersects or Contains or Within or Touches or Overlaps or Crosses => value.Trim(),
-            "esriSpatialRelIndexIntersects" => throw EsriInteropException.Invalid(
+            "esriSpatialRelIndexIntersects" => throw GeoServicesErrors.Invalid(
                 "spatialRel 'esriSpatialRelIndexIntersects' is not supported; it names an index optimisation, not a predicate. Use esriSpatialRelEnvelopeIntersects."),
-            _ => throw EsriInteropException.Invalid(
+            _ => throw GeoServicesErrors.Invalid(
                 $"spatialRel '{value}' is not supported."),
         };
     }
@@ -195,7 +195,7 @@ internal sealed record EsriFeatureQuery(
 
         if (fields.Length == 0)
         {
-            throw EsriInteropException.Invalid("'orderByFields' must name at least one field.");
+            throw GeoServicesErrors.Invalid("'orderByFields' must name at least one field.");
         }
 
         return fields;
@@ -206,7 +206,7 @@ internal sealed record EsriFeatureQuery(
         var parts = entry.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length is 0 or > 2)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"'orderByFields' entry '{entry}' is not a field name optionally followed by ASC or DESC.");
         }
 
@@ -219,7 +219,7 @@ internal sealed record EsriFeatureQuery(
         {
             "ASC" => new EsriOrderByField(parts[0], false),
             "DESC" => new EsriOrderByField(parts[0], true),
-            _ => throw EsriInteropException.Invalid(
+            _ => throw GeoServicesErrors.Invalid(
                 $"'orderByFields' entry '{entry}' has direction '{parts[1]}'; use ASC or DESC."),
         };
     }
@@ -250,7 +250,7 @@ internal sealed record EsriFeatureQuery(
             return new EsriTimeExtent(ParseTimeBound(parts[0], allowNull: true), ParseTimeBound(parts[1], allowNull: true));
         }
 
-        throw EsriInteropException.Invalid($"'time' must be an instant or a start,end extent, got '{value}'.");
+        throw GeoServicesErrors.Invalid($"'time' must be an instant or a start,end extent, got '{value}'.");
     }
 
     private static long? ParseTimeBound(string? value, bool allowNull)
@@ -260,7 +260,7 @@ internal sealed record EsriFeatureQuery(
         {
             return allowNull
                 ? null
-                : throw EsriInteropException.Invalid("'time' must be epoch milliseconds or an ISO-8601 date-time.");
+                : throw GeoServicesErrors.Invalid("'time' must be epoch milliseconds or an ISO-8601 date-time.");
         }
 
         if (long.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var milliseconds))
@@ -273,7 +273,7 @@ internal sealed record EsriFeatureQuery(
             return parsed.ToUnixTimeMilliseconds();
         }
 
-        throw EsriInteropException.Invalid($"'time' bound '{text}' is not epoch milliseconds, an ISO-8601 date-time or null.");
+        throw GeoServicesErrors.Invalid($"'time' bound '{text}' is not epoch milliseconds, an ISO-8601 date-time or null.");
     }
 
     private static int? ParseNonNegativeInt(string? value, string name)
@@ -285,7 +285,7 @@ internal sealed record EsriFeatureQuery(
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var number) || number < 0)
         {
-            throw EsriInteropException.Invalid($"'{name}' must be a non-negative integer, got '{value}'.");
+            throw GeoServicesErrors.Invalid($"'{name}' must be a non-negative integer, got '{value}'.");
         }
 
         return number;
@@ -306,19 +306,36 @@ internal sealed record EsriFeatureQuery(
 
         if (!string.IsNullOrWhiteSpace(offset))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 "The parameters resultOffset, resultPaginationToken are mutually exclusive; the token carries the page position — drop 'resultOffset' to continue a token workflow.");
         }
 
-        var shape = idsOnly ? "returnIdsOnly"
-            : countOnly ? "returnCountOnly"
-            : extentOnly ? "returnExtentOnly"
-            : uniqueIdsOnly ? "returnUniqueIdsOnly" : null;
+        var shape = PagedShapeConflict(idsOnly, countOnly, extentOnly, uniqueIdsOnly);
         if (shape is not null)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The 'resultPaginationToken' parameter pages feature results; it cannot be combined with '{shape}'.");
         }
+    }
+
+    private static string? PagedShapeConflict(bool idsOnly, bool countOnly, bool extentOnly, bool uniqueIdsOnly)
+    {
+        if (idsOnly)
+        {
+            return "returnIdsOnly";
+        }
+
+        if (countOnly)
+        {
+            return "returnCountOnly";
+        }
+
+        if (extentOnly)
+        {
+            return "returnExtentOnly";
+        }
+
+        return uniqueIdsOnly ? "returnUniqueIdsOnly" : null;
     }
 
     private static string? ParsePaginationToken(string? value) =>
@@ -333,7 +350,7 @@ internal sealed record EsriFeatureQuery(
 
         var ids = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         return ids.Length == 0
-            ? throw EsriInteropException.Invalid("'uniqueIds' must name at least one id.")
+            ? throw GeoServicesErrors.Invalid("'uniqueIds' must name at least one id.")
             : ids;
     }
 
@@ -347,43 +364,36 @@ internal sealed record EsriFeatureQuery(
     /// </summary>
     private static void ValidateResultShape(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues, bool statistics = false, bool uniqueIdsOnly = false)
     {
-        var requested = new List<string>(6);
-        if (idsOnly)
+        var requested = CollectResultShapes(idsOnly, countOnly, extentOnly, distinctValues, statistics, uniqueIdsOnly);
+        if (IsConflictingShapeCombination(requested, countOnly, distinctValues))
         {
-            requested.Add("returnIdsOnly");
-        }
-
-        if (countOnly)
-        {
-            requested.Add("returnCountOnly");
-        }
-
-        if (extentOnly)
-        {
-            requested.Add("returnExtentOnly");
-        }
-
-        if (distinctValues)
-        {
-            requested.Add("returnDistinctValues");
-        }
-
-        if (statistics)
-        {
-            requested.Add("outStatistics");
-        }
-
-        if (uniqueIdsOnly)
-        {
-            requested.Add("returnUniqueIdsOnly");
-        }
-
-        if (requested.Count > 1 && !(requested.Count == 2 && countOnly && distinctValues))
-        {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The parameters {string.Join(", ", requested)} are mutually exclusive; request at most one result shape (returnCountOnly with returnDistinctValues is COUNT DISTINCT).");
         }
     }
+
+    private static List<string> CollectResultShapes(bool idsOnly, bool countOnly, bool extentOnly, bool distinctValues, bool statistics, bool uniqueIdsOnly)
+    {
+        var requested = new List<string>(6);
+        AddResultShape(requested, idsOnly, "returnIdsOnly");
+        AddResultShape(requested, countOnly, "returnCountOnly");
+        AddResultShape(requested, extentOnly, "returnExtentOnly");
+        AddResultShape(requested, distinctValues, "returnDistinctValues");
+        AddResultShape(requested, statistics, "outStatistics");
+        AddResultShape(requested, uniqueIdsOnly, "returnUniqueIdsOnly");
+        return requested;
+    }
+
+    private static void AddResultShape(List<string> requested, bool flag, string name)
+    {
+        if (flag)
+        {
+            requested.Add(name);
+        }
+    }
+
+    private static bool IsConflictingShapeCombination(List<string> requested, bool countOnly, bool distinctValues) =>
+        requested.Count > 1 && !(requested.Count == 2 && countOnly && distinctValues);
 
     private static List<EsriOutStatistic>? ParseOutStatistics(string? value)
     {
@@ -399,14 +409,14 @@ internal sealed record EsriFeatureQuery(
         }
         catch (System.Text.Json.JsonException exception)
         {
-            throw EsriInteropException.Invalid($"'outStatistics' must be a JSON array, got an unparsable value: {exception.Message}.");
+            throw GeoServicesErrors.Invalid($"'outStatistics' must be a JSON array, got an unparsable value: {exception.Message}.");
         }
 
         using (document)
         {
             if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array || document.RootElement.GetArrayLength() == 0)
             {
-                throw EsriInteropException.Invalid("'outStatistics' must be a non-empty JSON array.");
+                throw GeoServicesErrors.Invalid("'outStatistics' must be a non-empty JSON array.");
             }
 
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -420,55 +430,84 @@ internal sealed record EsriFeatureQuery(
         }
     }
 
-    private static EsriOutStatistic ParseOutStatistic(System.Text.Json.JsonElement element, HashSet<string> seen)
+    internal static EsriOutStatistic ParseOutStatistic(System.Text.Json.JsonElement element, HashSet<string> seen)
+    {
+        RequireStatisticObject(element);
+        var (type, onField, outName) = ReadStatisticFields(element);
+        ValidateStatisticFields(type, onField, outName);
+        ValidateStatisticType(type!);
+        return BuildOutStatistic(element, type!, onField!, outName!, seen);
+    }
+
+    private static void RequireStatisticObject(System.Text.Json.JsonElement element)
     {
         if (element.ValueKind != System.Text.Json.JsonValueKind.Object)
         {
-            throw EsriInteropException.Invalid("'outStatistics' entries must be objects with statisticType, onStatisticField and outStatisticFieldName.");
+            throw GeoServicesErrors.Invalid("'outStatistics' entries must be objects with statisticType, onStatisticField and outStatisticFieldName.");
         }
+    }
 
-        var type = element.TryGetProperty("statisticType", out var typeElement) && typeElement.ValueKind == System.Text.Json.JsonValueKind.String
-            ? typeElement.GetString()?.Trim().ToLowerInvariant()
+    private static (string? Type, string? OnField, string? OutName) ReadStatisticFields(System.Text.Json.JsonElement element)
+    {
+        var type = ReadStatisticString(element, "statisticType")?.ToLowerInvariant();
+        return (type, ReadStatisticString(element, "onStatisticField"), ReadStatisticString(element, "outStatisticFieldName"));
+    }
+
+    private static string? ReadStatisticString(System.Text.Json.JsonElement element, string name) =>
+        element.TryGetProperty(name, out var property) && property.ValueKind == System.Text.Json.JsonValueKind.String
+            ? property.GetString()?.Trim()
             : null;
-        var onField = element.TryGetProperty("onStatisticField", out var onElement) && onElement.ValueKind == System.Text.Json.JsonValueKind.String
-            ? onElement.GetString()?.Trim()
-            : null;
-        var outName = element.TryGetProperty("outStatisticFieldName", out var outElement) && outElement.ValueKind == System.Text.Json.JsonValueKind.String
-            ? outElement.GetString()?.Trim()
-            : null;
+
+    private static void ValidateStatisticFields(string? type, string? onField, string? outName)
+    {
         if (string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(onField) || string.IsNullOrWhiteSpace(outName))
         {
-            throw EsriInteropException.Invalid("'outStatistics' entries need a non-empty statisticType, onStatisticField and outStatisticFieldName.");
+            throw GeoServicesErrors.Invalid("'outStatistics' entries need a non-empty statisticType, onStatisticField and outStatisticFieldName.");
         }
+    }
 
+    private static void ValidateStatisticType(string type)
+    {
         if (type is not ("count" or "sum" or "min" or "max" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc"))
         {
-            throw EsriInteropException.Invalid($"Statistic type '{type}' is not supported; use count, sum, min, max, avg, stddev, var, percentile_cont or percentile_disc.");
+            throw GeoServicesErrors.Invalid($"Statistic type '{type}' is not supported; use count, sum, min, max, avg, stddev, var, percentile_cont or percentile_disc.");
         }
+    }
 
+    private static EsriOutStatistic BuildOutStatistic(System.Text.Json.JsonElement element, string type, string onField, string outName, HashSet<string> seen)
+    {
         if (type is "percentile_cont" or "percentile_disc")
         {
-            var (value, descending) = ParsePercentileParameters(element, type);
-            if (!seen.Add(outName!))
-            {
-                throw EsriInteropException.Invalid($"Duplicate outStatisticFieldName '{outName}'.");
-            }
-
-            return new EsriOutStatistic(type!, onField!, outName!, value, descending);
+            return BuildPercentileStatistic(element, type, onField, outName, seen);
         }
 
+        RejectScalarStatisticParameters(element, type, outName);
+        RegisterStatisticName(seen, outName);
+        return new EsriOutStatistic(type!, onField!, outName!);
+    }
+
+    private static EsriOutStatistic BuildPercentileStatistic(System.Text.Json.JsonElement element, string type, string onField, string outName, HashSet<string> seen)
+    {
+        var (value, descending) = ParsePercentileParameters(element, type);
+        RegisterStatisticName(seen, outName);
+        return new EsriOutStatistic(type!, onField!, outName!, value, descending);
+    }
+
+    private static void RejectScalarStatisticParameters(System.Text.Json.JsonElement element, string type, string outName)
+    {
         if (element.TryGetProperty("statisticParameters", out _))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"'statisticParameters' is only supported for 'percentile_cont' and 'percentile_disc' (statistic '{outName}'); the '{type}' statistic takes no parameters.");
         }
+    }
 
-        if (!seen.Add(outName!))
+    private static void RegisterStatisticName(HashSet<string> seen, string outName)
+    {
+        if (!seen.Add(outName))
         {
-            throw EsriInteropException.Invalid($"Duplicate outStatisticFieldName '{outName}'.");
+            throw GeoServicesErrors.Invalid($"Duplicate outStatisticFieldName '{outName}'.");
         }
-
-        return new EsriOutStatistic(type!, onField!, outName!);
     }
 
     /// <summary>
@@ -479,35 +518,57 @@ internal sealed record EsriFeatureQuery(
     private static (double Value, bool Descending) ParsePercentileParameters(System.Text.Json.JsonElement element, string type)
     {
         if (!element.TryGetProperty("statisticParameters", out var parameters)
-            || parameters.ValueKind != System.Text.Json.JsonValueKind.Object
-            || !parameters.TryGetProperty("value", out var valueElement)
-            || valueElement.ValueKind != System.Text.Json.JsonValueKind.Number
-            || !valueElement.TryGetDouble(out var value)
-            || double.IsNaN(value)
-            || value < 0
-            || value > 1)
+            || parameters.ValueKind != System.Text.Json.JsonValueKind.Object)
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"Statistic type '{type}' needs 'statisticParameters' with a numeric 'value' between 0 and 1 (0.9 is the ninetieth percentile).");
         }
 
-        var descending = false;
-        if (parameters.TryGetProperty("orderBy", out var orderElement))
+        return (ParsePercentileValue(parameters, type), ParsePercentileOrder(parameters));
+    }
+
+    private static double ParsePercentileValue(System.Text.Json.JsonElement parameters, string type)
+    {
+        if (!parameters.TryGetProperty("value", out var valueElement)
+            || valueElement.ValueKind != System.Text.Json.JsonValueKind.Number
+            || !valueElement.TryGetDouble(out var value))
         {
-            descending = orderElement.ValueKind == System.Text.Json.JsonValueKind.String
-                && orderElement.GetString() is { } order
-                ? order.Trim().ToUpperInvariant() switch
-                {
-                    "ASC" => false,
-                    "DESC" => true,
-                    _ => throw EsriInteropException.Invalid(
-                        $"'statisticParameters.orderBy' must be ASC or DESC, got '{order}'."),
-                }
-                : throw EsriInteropException.Invalid("'statisticParameters.orderBy' must be ASC or DESC.");
+            throw GeoServicesErrors.Invalid(
+                $"Statistic type '{type}' needs 'statisticParameters' with a numeric 'value' between 0 and 1 (0.9 is the ninetieth percentile).");
         }
 
-        return (value, descending);
+        if (double.IsNaN(value) || value < 0 || value > 1)
+        {
+            throw GeoServicesErrors.Invalid(
+                $"Statistic type '{type}' needs 'statisticParameters' with a numeric 'value' between 0 and 1 (0.9 is the ninetieth percentile).");
+        }
+
+        return value;
     }
+
+    private static bool ParsePercentileOrder(System.Text.Json.JsonElement parameters)
+    {
+        if (!parameters.TryGetProperty("orderBy", out var orderElement))
+        {
+            return false;
+        }
+
+        if (orderElement.ValueKind != System.Text.Json.JsonValueKind.String
+            || orderElement.GetString() is not { } order)
+        {
+            throw GeoServicesErrors.Invalid("'statisticParameters.orderBy' must be ASC or DESC.");
+        }
+
+        return ParsePercentileDirection(order);
+    }
+
+    private static bool ParsePercentileDirection(string order) => order.Trim().ToUpperInvariant() switch
+    {
+        "ASC" => false,
+        "DESC" => true,
+        _ => throw GeoServicesErrors.Invalid(
+            $"'statisticParameters.orderBy' must be ASC or DESC, got '{order}'."),
+    };
 
     private static string[]? ParseGroupByFields(string? value)
     {
@@ -519,7 +580,7 @@ internal sealed record EsriFeatureQuery(
         var fields = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (fields.Length == 0)
         {
-            throw EsriInteropException.Invalid("'groupByFieldsForStatistics' must name at least one field.");
+            throw GeoServicesErrors.Invalid("'groupByFieldsForStatistics' must name at least one field.");
         }
 
         return fields;
@@ -534,7 +595,7 @@ internal sealed record EsriFeatureQuery(
 
         if (!EsriFilterClause.TryParse(value, out var clause, out var error))
         {
-            throw EsriInteropException.Invalid($"The 'having' clause is not supported: {error}.");
+            throw GeoServicesErrors.Invalid($"The 'having' clause is not supported: {error}.");
         }
 
         return clause;
@@ -549,7 +610,7 @@ internal sealed record EsriFeatureQuery(
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var factor) || factor < 1)
         {
-            throw EsriInteropException.Invalid($"'maxRecordCountFactor' must be a positive integer, got '{value}'.");
+            throw GeoServicesErrors.Invalid($"'maxRecordCountFactor' must be a positive integer, got '{value}'.");
         }
 
         return factor;
@@ -559,7 +620,7 @@ internal sealed record EsriFeatureQuery(
     {
         if (parameters.Has("quantizationParameters"))
         {
-            throw EsriInteropException.Invalid("The 'quantizationParameters' parameter is not supported: quantized responses are not served; request full-precision geometries.");
+            throw GeoServicesErrors.Invalid("The 'quantizationParameters' parameter is not supported: quantized responses are not served; request full-precision geometries.");
         }
     }
 
@@ -572,7 +633,7 @@ internal sealed record EsriFeatureQuery(
 
         if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var precision) || precision < 0 || precision > 15)
         {
-            throw EsriInteropException.Invalid($"'geometryPrecision' must be an integer 0-15, got '{value}'.");
+            throw GeoServicesErrors.Invalid($"'geometryPrecision' must be an integer 0-15, got '{value}'.");
         }
 
         return precision;
@@ -587,7 +648,7 @@ internal sealed record EsriFeatureQuery(
 
         if (!double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var offset) || !double.IsFinite(offset) || offset < 0)
         {
-            throw EsriInteropException.Invalid($"'maxAllowableOffset' must be a non-negative number, got '{value}'.");
+            throw GeoServicesErrors.Invalid($"'maxAllowableOffset' must be a non-negative number, got '{value}'.");
         }
 
         return offset;
@@ -626,7 +687,7 @@ internal sealed record EsriFeatureQuery(
     {
         if (parameters.Has(name))
         {
-            throw EsriInteropException.Invalid($"The '{name}' parameter is not supported: {message}");
+            throw GeoServicesErrors.Invalid($"The '{name}' parameter is not supported: {message}");
         }
     }
 }

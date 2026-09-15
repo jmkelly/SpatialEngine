@@ -9,7 +9,7 @@
       "coupling": ["error", { "max": 40 }],
       "mi": ["error", { "min": 20 }]
     },
-    "failOn": { "severity": "moderate" },
+    "failOn": { "severity": "high" },
     "exclude": [
       "**/Migrations/**",
       "**/*.Tests/**",

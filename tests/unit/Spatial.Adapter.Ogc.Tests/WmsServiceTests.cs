@@ -344,4 +344,58 @@ public sealed class WmsServiceTests
 
         Assert.Equal("InvalidParameterValue", exception.Code);
     }
+
+    [Fact]
+    public async Task Parse_dpi_prefers_the_explicit_dpi_parameter()
+    {
+        var parameters = await ParametersAsync("?dpi=192&map_resolution=150&format_options=dpi:72");
+
+        Assert.Equal(192, WmsService.ParseDpi(parameters));
+    }
+
+    [Fact]
+    public async Task Parse_dpi_falls_back_to_map_resolution_then_format_options()
+    {
+        Assert.Equal(150, WmsService.ParseDpi(await ParametersAsync("?map_resolution=150&format_options=dpi:72")));
+        Assert.Equal(72, WmsService.ParseDpi(await ParametersAsync("?format_options=antialiasing:true;dpi:72")));
+        Assert.Equal(
+            Spatial.PluginSdk.MapRenderRequest.ReferenceDpi,
+            WmsService.ParseDpi(await ParametersAsync("?format_options=antialiasing:true")));
+        Assert.Equal(
+            Spatial.PluginSdk.MapRenderRequest.ReferenceDpi,
+            WmsService.ParseDpi(await ParametersAsync(string.Empty)));
+    }
+
+    [Theory]
+    [InlineData("?format_options=dpi:0")]
+    [InlineData("?format_options=dpi:-5")]
+    [InlineData("?format_options=dpi:abc")]
+    [InlineData("?format_options=dpi")]
+    [InlineData("?format_options=other:72")]
+    public async Task Parse_dpi_skips_a_malformed_format_options_dpi(string query)
+    {
+        Assert.Equal(
+            Spatial.PluginSdk.MapRenderRequest.ReferenceDpi,
+            WmsService.ParseDpi(await ParametersAsync(query)));
+    }
+
+    [Theory]
+    [InlineData("?dpi=abc")]
+    [InlineData("?dpi=0")]
+    [InlineData("?map_resolution=NaN")]
+    public async Task Parse_dpi_rejects_a_malformed_explicit_value(string query)
+    {
+        var parameters = await ParametersAsync(query);
+
+        var exception = Assert.Throws<OgcServiceException>(() => WmsService.ParseDpi(parameters));
+
+        Assert.Equal("InvalidParameterValue", exception.Code);
+    }
+
+    private static async Task<OgcParameters> ParametersAsync(string query)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.QueryString = new QueryString(query);
+        return await OgcParameters.ReadAsync(context, CancellationToken.None);
+    }
 }

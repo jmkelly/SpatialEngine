@@ -189,19 +189,32 @@ internal static class WmsService
         value = MapRenderRequest.ReferenceDpi;
         foreach (var token in options.Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
-            var pair = token.Split(':', 2, StringSplitOptions.TrimEntries);
-            if (pair.Length == 2
-                && string.Equals(pair[0], "dpi", StringComparison.OrdinalIgnoreCase)
-                && double.TryParse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
-                && double.IsFinite(parsed) && parsed > 0)
+            if (TryTokenDpi(token, out value))
             {
-                value = parsed;
                 return true;
             }
         }
 
         return false;
     }
+
+    private static bool TryTokenDpi(string token, out double value)
+    {
+        value = MapRenderRequest.ReferenceDpi;
+        var pair = token.Split(':', 2, StringSplitOptions.TrimEntries);
+        return pair.Length == 2 && IsDpiPair(pair[0], pair[1], out value);
+    }
+
+    private static bool IsDpiPair(string name, string text, out double value)
+    {
+        value = MapRenderRequest.ReferenceDpi;
+        return string.Equals(name, "dpi", StringComparison.OrdinalIgnoreCase)
+            && TryPositiveDpi(text, out value);
+    }
+
+    private static bool TryPositiveDpi(string text, out double value) =>
+        double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+        && double.IsFinite(value) && value > 0;
 
     /// <summary>
     /// The fixed legend frame: QGIS's GetLegendGraphic carries no size, so
@@ -529,7 +542,7 @@ internal static class WmsService
             var geometryIndex = GeometryIndex(feature);
             if (geometryIndex >= 0 && !feature[geometryIndex].IsNull)
             {
-                current.Add(new XElement(XName.Get(SafeName(geometryName)), WriteGmlGeometry(feature[geometryIndex].GeometryValue)));
+                current.Add(new XElement(XName.Get(SafeName(geometryName)), WmsGmlWriter.WriteGmlGeometry(feature[geometryIndex].GeometryValue)));
             }
 
             member.Add(current);
@@ -573,67 +586,9 @@ internal static class WmsService
         return builder.Length == 0 ? "_" : builder.ToString();
     }
 
-    private static XElement WriteGmlGeometry(IGeometry geometry) => geometry switch
-    {
-        Point point => new XElement(
-            OgcXml.Gml + "Point",
-            point.Coordinate is { } coordinate
-                ? new XElement(OgcXml.Gml + "pos", Doubles(coordinate.X, coordinate.Y))
-                : null),
-        MultiPoint multi => new XElement(
-            OgcXml.Gml + "MultiPoint",
-            multi.Points.Select(member => new XElement(OgcXml.Gml + "pointMember", WriteGmlGeometry(member)))),
-        LineString line => new XElement(OgcXml.Gml + "LineString", new XElement(OgcXml.Gml + "posList", Positions(line.Sequence))),
-        MultiLineString multi => new XElement(
-            OgcXml.Gml + "MultiCurve",
-            multi.LineStrings.Select(member => new XElement(OgcXml.Gml + "curveMember", WriteGmlGeometry(member)))),
-        Polygon polygon => WriteGmlPolygon(polygon),
-        MultiPolygon multi => new XElement(
-            OgcXml.Gml + "MultiSurface",
-            multi.Polygons.Select(member => new XElement(OgcXml.Gml + "surfaceMember", WriteGmlGeometry(member)))),
-        GeometryCollection collection => new XElement(
-            OgcXml.Gml + "MultiGeometry",
-            collection.Geometries.Select(member => new XElement(OgcXml.Gml + "geometryMember", WriteGmlGeometry(member)))),
-        _ => new XElement(OgcXml.Gml + "Point"),
-    };
 
-    private static XElement WriteGmlPolygon(Polygon polygon)
-    {
-        var current = new XElement(
-            OgcXml.Gml + "Polygon",
-            new XElement(
-                OgcXml.Gml + "exterior",
-                new XElement(OgcXml.Gml + "LinearRing", new XElement(OgcXml.Gml + "posList", Positions(polygon.ExteriorRing.Sequence)))));
-        foreach (var ring in polygon.InteriorRings)
-        {
-            current.Add(new XElement(
-                OgcXml.Gml + "interior",
-                new XElement(OgcXml.Gml + "LinearRing", new XElement(OgcXml.Gml + "posList", Positions(ring.Sequence)))));
-        }
 
-        return current;
-    }
 
-    private static string Doubles(double x, double y) =>
-        $"{x.ToString("R", CultureInfo.InvariantCulture)} {y.ToString("R", CultureInfo.InvariantCulture)}";
-
-    private static string Positions(ICoordinateSequence sequence)
-    {
-        var builder = new StringBuilder();
-        for (var index = 0; index < sequence.Count; index++)
-        {
-            if (index > 0)
-            {
-                builder.Append(' ');
-            }
-
-            builder.Append(sequence.GetOrdinate(index, Ordinate.X).ToString("R", CultureInfo.InvariantCulture))
-                .Append(' ')
-                .Append(sequence.GetOrdinate(index, Ordinate.Y).ToString("R", CultureInfo.InvariantCulture));
-        }
-
-        return builder.ToString();
-    }
 
     private static RasterViewport ParseViewport(OgcParameters parameters, bool requireVersion)
     {

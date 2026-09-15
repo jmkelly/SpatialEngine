@@ -155,9 +155,9 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
-            var layers = await ListLayersAsync(stores, resolved, cancellationToken);
-            var (spatial, tables) = await SplitTablesAsync(stores, resolved, layers, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
+            var (spatial, tables) = await GeoServicesResolution.SplitTablesAsync(stores, resolved, layers, cancellationToken);
             return EsriJson.Value(FeatureService.Root(spatial, tables, IsEditable(stores, resolved.Store)));
         }
         catch (Exception exception)
@@ -172,8 +172,8 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var editable = IsEditable(request.Stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
             return EsriJson.Value(FeatureService.Layer(
                 request.LayerId,
@@ -194,8 +194,8 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
             return await FeatureService.FeatureAsync(description, store, request.ObjectId, query, request.Transforms, cancellationToken);
@@ -212,8 +212,8 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
             return await FeatureService.QueryAsync(description, store, query, request.Operations, request.Transforms, cancellationToken);
@@ -231,11 +231,11 @@ public static partial class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EsriEditRequest.RejectUnsupported(parameters);
-            var resolved = await ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
-            var description = await DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var store = request.Stores.Features(resolved.Store);
             var editStore = EditStore(request.Stores, resolved.Store)
-                ?? throw EsriInteropException.Invalid(
+                ?? throw GeoServicesErrors.Invalid(
                     $"Service '{request.Service}' is read-only; it exposes no feature-editing capability.");
 
             var edits = request.Operation switch
@@ -271,103 +271,11 @@ public static partial class GeoServicesEndpoints
     private static IFeatureEditStore? EditStore(IStoreRegistry stores, string store) =>
         stores.EditStore(store);
 
-    /// <summary>
-    /// Resolves one GeoServices server (Feature, Map or Image): a
-    /// config-declared service exposes its whole store (sorted, index-assigned
-    /// layers), a runtime map exposes the persisted explicit layers that feed
-    /// the requested service (ADR-0053). A map that does not expose the
-    /// service, or an unknown name, is not-found.
-    /// </summary>
-    internal static async Task<ResolvedService> ResolveServiceAsync(
-        GeoServicesCatalog catalog,
-        IMapRegistry registry,
-        string service,
-        string serverType,
-        MapService mapService,
-        CancellationToken cancellationToken)
-    {
-        if (catalog.TryGet(service, out var entry) && entry.Type == serverType)
-        {
-            return new ResolvedService(entry.Store, null);
-        }
 
-        Map map;
-        try
-        {
-            map = await registry.GetAsync(service, cancellationToken);
-        }
-        catch (SpatialException exception) when (exception.Code == SpatialException.NotFound)
-        {
-            throw new EsriInteropException(EsriErrorCodes.NotFound, $"Service '{service}' was not found.");
-        }
 
-        if (!map.Exposes(mapService))
-        {
-            throw new EsriInteropException(EsriErrorCodes.NotFound, $"Service '{service}' was not found.");
-        }
 
-        var layers = map.Layers.Where(layer => Feeds(mapService, layer.Kind)).ToArray();
-        return new ResolvedService(map.Store, layers, map.Description, map.Copyright, map.MetadataXml);
-    }
 
-    /// <summary>Whether a layer of <paramref name="kind"/> feeds <paramref name="service"/>.</summary>
-    internal static bool Feeds(MapService service, MapLayerKind kind) =>
-        service == MapService.Image ? kind == MapLayerKind.Image : kind == MapLayerKind.Feature;
 
-    /// <summary>Lists the published layers: explicit for a runtime publication, whole-store (sorted) for a declared service.</summary>
-    internal static async Task<IReadOnlyList<PublishedLayer>> ListLayersAsync(
-        IStoreRegistry stores, ResolvedService resolved, CancellationToken cancellationToken)
-    {
-        if (resolved.Layers is { } layers)
-        {
-            return layers
-                .OrderBy(layer => layer.LayerId)
-                .Select(layer => new PublishedLayer(layer.LayerId, layer.Dataset, layer.Name ?? Table(layer.Dataset), layer.Style))
-                .ToArray();
-        }
-
-        var catalogue = stores.Catalogue(resolved.Store);
-        var datasets = (await catalogue.ListAsync(null, cancellationToken)).OrderBy(dataset => dataset.Id, StringComparer.Ordinal).ToArray();
-        return datasets.Select((dataset, index) => new PublishedLayer(index, dataset.Id, dataset.Table)).ToArray();
-    }
-
-    /// <summary>
-    /// Splits published layers into spatial layers and geometry-less tables
-    /// (spec §9.0): each dataset is described once and routed by
-    /// <see cref="EsriLayerModel.IsTable"/>. Ids are preserved from the
-    /// single layer/table id space.
-    /// </summary>
-    internal static async Task<(IReadOnlyList<PublishedLayer> Layers, IReadOnlyList<PublishedLayer> Tables)> SplitTablesAsync(
-        IStoreRegistry stores, ResolvedService resolved, IReadOnlyList<PublishedLayer> layers, CancellationToken cancellationToken)
-    {
-        var catalogue = stores.Catalogue(resolved.Store);
-        var spatial = new List<PublishedLayer>(layers.Count);
-        var tables = new List<PublishedLayer>();
-        foreach (var layer in layers)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var description = await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
-            (EsriLayerModel.IsTable(description) ? tables : spatial).Add(layer);
-        }
-
-        return (spatial, tables);
-    }
-
-    internal static async Task<DatasetDescription> DescribeAsync(
-        IStoreRegistry stores, ResolvedService resolved, int layerId, CancellationToken cancellationToken)
-    {
-        var layers = await ListLayersAsync(stores, resolved, cancellationToken);
-        var layer = layers.FirstOrDefault(candidate => candidate.Id == layerId)
-            ?? throw new EsriInteropException(EsriErrorCodes.NotFound, $"Layer {layerId} does not exist in the service.");
-        var catalogue = stores.Catalogue(resolved.Store);
-        return await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
-    }
-
-    private static string Table(string dataset)
-    {
-        var dot = dataset.IndexOf('.');
-        return dot < 0 ? dataset : dataset[(dot + 1)..];
-    }
 }
 
 /// <summary>One layer resolved for serving (id via the publication or the whole-store order).</summary>

@@ -74,7 +74,7 @@ internal sealed record EsriObjectIdScheme(bool IsIdentity, int FieldIndex)
             return value;
         }
 
-        throw EsriInteropException.Invalid(
+        throw GeoServicesErrors.Invalid(
             $"The store assigned feature identity '{id.Value}', which is not a numeric OBJECTID.");
     }
 }
@@ -147,8 +147,7 @@ internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
             return uniqueId;
         }
 
-        throw new EsriInteropException(
-            EsriErrorCodes.ServerError,
+        throw GeoServicesErrors.ServerError(
             $"The identity column '{FieldName}' of layer '{dataset.Id}' carries no unique id value.");
     }
 
@@ -171,7 +170,7 @@ internal sealed record EsriUniqueIdScheme(string FieldName, int FieldIndex)
         if (scheme is null)
         {
             var parameter = query.UniqueIds is not null ? "uniqueIds" : "returnUniqueIdsOnly";
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The '{parameter}' parameter is not supported on layer '{dataset.Id}': the layer has no string or guid unique-id field; address its integer features with 'objectIds'.");
         }
 

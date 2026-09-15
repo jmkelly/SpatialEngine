@@ -48,14 +48,14 @@ internal sealed class EsriRequestParameters
     /// <summary>A required non-empty parameter, or a typed invalid-argument failure.</summary>
     public string Require(string name) =>
         string.IsNullOrWhiteSpace(Get(name))
-            ? throw EsriInteropException.Invalid($"The '{name}' parameter is required.")
+            ? throw GeoServicesErrors.Invalid($"The '{name}' parameter is required.")
             : Get(name)!;
 
     private static bool ParseBool(string value) => value.Trim().ToLowerInvariant() switch
     {
         "true" or "1" => true,
         "false" or "0" => false,
-        _ => throw EsriInteropException.Invalid($"Expected a boolean value, got '{value}'."),
+        _ => throw GeoServicesErrors.Invalid($"Expected a boolean value, got '{value}'."),
     };
 
     private static async Task ReadBodyAsync(HttpContext context, Dictionary<string, string> values, CancellationToken cancellationToken)

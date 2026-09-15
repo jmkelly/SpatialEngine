@@ -32,7 +32,7 @@ internal static class ImageFindEngine
         var returnGeometry = parameters.GetBool("returnGeometry", true);
         var outCrs = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
         var schema = description.CatalogSchema
-            ?? throw EsriInteropException.Invalid($"Image Service '{description.Dataset}' does not include an accessible raster catalog.");
+            ?? throw GeoServicesErrors.Invalid($"Image Service '{description.Dataset}' does not include an accessible raster catalog.");
         var layerCrs = EsriLayerModel.LayerCoordinateReference(MapServerResources.SridOf(description.Raster.Crs));
         return EsriJson.Write(writer =>
         {
@@ -49,32 +49,50 @@ internal static class ImageFindEngine
                     continue;
                 }
 
-                writer.WriteStartObject();
-                writer.WriteNumber("layerId", 0);
-                writer.WriteString("layerName", description.Name);
-                writer.WriteString("foundFieldName", matched.Value.Field);
-                writer.WriteString("value", matched.Value.Value);
-                writer.WritePropertyName("attributes");
-                writer.WriteStartObject();
-                MapFeatures.WriteAttributes(writer, feature);
-                writer.WriteEndObject();
-                writer.WriteString("geometryType", "esriGeometryPolygon");
-                if (returnGeometry)
-                {
-                    var geometry = Transform(item.Footprint, layerCrs, outCrs, transforms, cancellationToken);
-                    if (geometry is not null)
-                    {
-                        writer.WritePropertyName("geometry");
-                        EsriGeometryCodec.Write(writer, geometry);
-                    }
-                }
-
-                writer.WriteEndObject();
+                var geometry = GeometryOf(item, layerCrs, outCrs, transforms, returnGeometry, cancellationToken);
+                WriteMatch(writer, description, feature, matched.Value, geometry);
             }
 
             writer.WriteEndArray();
             writer.WriteEndObject();
         });
+    }
+
+    private static IGeometry? GeometryOf(
+        RasterCatalogItem item,
+        CoordinateReference? layerCrs,
+        CoordinateReference? outCrs,
+        ICoordinateTransforms transforms,
+        bool returnGeometry,
+        CancellationToken cancellationToken) =>
+        returnGeometry
+            ? Transform(item.Footprint, layerCrs, outCrs, transforms, cancellationToken)
+            : null;
+
+    private static void WriteMatch(
+        Utf8JsonWriter writer,
+        RasterDatasetDescription description,
+        Feature feature,
+        (string Field, string Value) matched,
+        IGeometry? geometry)
+    {
+        writer.WriteStartObject();
+        writer.WriteNumber("layerId", 0);
+        writer.WriteString("layerName", description.Name);
+        writer.WriteString("foundFieldName", matched.Field);
+        writer.WriteString("value", matched.Value);
+        writer.WritePropertyName("attributes");
+        writer.WriteStartObject();
+        MapFeatures.WriteAttributes(writer, feature);
+        writer.WriteEndObject();
+        writer.WriteString("geometryType", "esriGeometryPolygon");
+        if (geometry is not null)
+        {
+            writer.WritePropertyName("geometry");
+            EsriGeometryCodec.Write(writer, geometry);
+        }
+
+        writer.WriteEndObject();
     }
 
     /// <summary>
@@ -85,7 +103,7 @@ internal static class ImageFindEngine
     {
         if (parameters.Has("fromGeometry") || parameters.Has("toGeometry"))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 "The 'fromGeometry'/'toGeometry' oriented-imagery workflow is not supported: catalog items carry no sensor models. Use 'searchText' for the catalog text search.");
         }
     }
@@ -101,7 +119,7 @@ internal static class ImageFindEngine
             return;
         }
 
-        throw EsriInteropException.Invalid($"The 'layers' parameter names an unknown layer: the raster catalog is layer 0.");
+        throw GeoServicesErrors.Invalid($"The 'layers' parameter names an unknown layer: the raster catalog is layer 0.");
     }
 
     private static (string Field, string Value)? Match(Feature feature, IReadOnlyList<string> fields, string searchText, bool contains)

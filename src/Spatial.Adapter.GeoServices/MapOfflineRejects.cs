@@ -64,8 +64,8 @@ internal static class MapOfflineRejects
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            _ = await GeoServicesEndpoints.ResolveServiceAsync(catalog, registry, service, serverType, mapService, cancellationToken);
-            throw EsriInteropException.Invalid(message);
+            _ = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, serverType, mapService, cancellationToken);
+            throw GeoServicesErrors.Invalid(message);
         }
         catch (Exception exception)
         {

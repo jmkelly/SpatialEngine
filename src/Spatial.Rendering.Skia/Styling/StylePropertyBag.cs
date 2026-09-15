@@ -147,6 +147,13 @@ internal sealed class StylePropertyBag
         return (x, y);
     }
 
+    private static readonly Dictionary<string, LineCapStyle> LineCaps = new(StringComparer.Ordinal)
+    {
+        ["butt"] = LineCapStyle.Butt,
+        ["round"] = LineCapStyle.Round,
+        ["square"] = LineCapStyle.Square,
+    };
+
     public LineCapStyle LineCap(string name, LineCapStyle fallback)
     {
         var text = String(name, null);
@@ -155,13 +162,9 @@ internal sealed class StylePropertyBag
             return fallback;
         }
 
-        return text switch
-        {
-            "butt" => LineCapStyle.Butt,
-            "round" => LineCapStyle.Round,
-            "square" => LineCapStyle.Square,
-            _ => throw SpatialException.BadArguments($"Unsupported value for '{name}': '{text}'."),
-        };
+        return LineCaps.TryGetValue(text, out var style)
+            ? style
+            : throw SpatialException.BadArguments($"Unsupported value for '{name}': '{text}'.");
     }
 
     public LineJoinStyle LineJoin(string name, LineJoinStyle fallback)

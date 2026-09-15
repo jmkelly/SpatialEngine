@@ -41,7 +41,7 @@ public sealed class EsriTimeExtentTests
     }
 
     private static bool Matches(EsriFeatureQuery query, Feature feature) =>
-        FeatureQueryEngine.Matches(new FeatureQueryEngine.MatchCandidate(query, feature, 1, null, null!), CancellationToken.None);
+        FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, null, null!), CancellationToken.None);
 
     [Fact]
     public async Task A_time_instant_matches_the_containing_date()

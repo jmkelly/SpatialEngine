@@ -2125,6 +2125,58 @@
         }
       }
     },
+    "/arcgis/rest/services/{service}/FeatureServer/{layerId}/{objectId}/attachments/{attachmentId}": {
+      "get": {
+        "tags": [
+          "Spatial.Host"
+        ],
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "layerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "objectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/arcgis/rest/services/{service}/FeatureServer/{layerId}/{objectId}/addAttachment": {
       "post": {
         "tags": [
@@ -5365,6 +5417,12 @@
             ]
           },
           "copyright": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadataXml": {
             "type": [
               "null",
               "string"

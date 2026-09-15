@@ -203,6 +203,48 @@ public sealed class EsriFeatureStatsTests
         Assert.Equal(JsonValueKind.Null, attributes.GetProperty("p50").ValueKind);
     }
 
+    [Fact]
+    public async Task Grouped_statistics_honour_order_by_group_and_statistic_fields()
+    {
+        // Exercises the order-by selector over both the group-field list and
+        // the out-statistic list (hit and miss on each scan).
+        var dataset = Layer();
+        var store = new StatsStore(
+            Row(1, "b", 10, 0, 0), Row(2, "a", 20, 1, 1), Row(3, "b", 30, 2, 2));
+        var query = await ParseAsync(
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("orderByFields", "name ASC"));
+
+        var body = await QueryBodyAsync(dataset, store, query);
+
+        var features = body.GetProperty("features").EnumerateArray().ToArray();
+        Assert.Equal(2, features.Length);
+        Assert.Equal("a", features[0].GetProperty("attributes").GetProperty("name").GetString());
+        Assert.Equal(20, features[0].GetProperty("attributes").GetProperty("total").GetInt64());
+        Assert.Equal("b", features[1].GetProperty("attributes").GetProperty("name").GetString());
+        Assert.Equal(40, features[1].GetProperty("attributes").GetProperty("total").GetInt64());
+    }
+
+    [Fact]
+    public async Task Grouped_statistics_reject_order_by_a_computed_statistic()
+    {
+        // orderByFields validates against dataset fields, so a computed
+        // out-statistic name stays rejected by name (no silent mis-order).
+        var dataset = Layer();
+        var store = new StatsStore(
+            Row(1, "b", 10, 0, 0), Row(2, "a", 20, 1, 1), Row(3, "b", 30, 2, 2));
+        var query = await ParseAsync(
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("orderByFields", "total DESC"));
+
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(
+            () => QueryBodyAsync(dataset, store, query));
+
+        Assert.Contains("'orderByFields' names unknown field 'total'", exception.Message);
+    }
+
     // ---- 2. COUNT DISTINCT: returnCountOnly + returnDistinctValues ----
 
     [Fact]

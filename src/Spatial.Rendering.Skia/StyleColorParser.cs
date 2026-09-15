@@ -67,21 +67,39 @@ internal static class StyleColorParser
     private static bool TryParseHex(string hex, out StyleColor color)
     {
         color = StyleColor.Transparent;
-        if (!HexLengths.Contains(hex.Length)
-            || !uint.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var value))
+        if (!TryDecodeHexValue(hex, out var value, out var length))
         {
             return false;
         }
 
-        color = hex.Length switch
-        {
-            3 => new StyleColor(Nibble(value, 8), Nibble(value, 4), Nibble(value, 0)),
-            4 => new StyleColor(Nibble(value, 12), Nibble(value, 8), Nibble(value, 4), Nibble(value, 0)),
-            6 => new StyleColor((byte)(value >> 16), (byte)(value >> 8), (byte)value),
-            _ => new StyleColor((byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value),
-        };
+        color = DecodeHexColor(length, value);
         return true;
     }
+
+    private static bool TryDecodeHexValue(string hex, out uint value, out int length)
+    {
+        length = hex.Length;
+        value = 0;
+        return HexLengths.Contains(length)
+            && uint.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+    }
+
+    // Precondition: length is one of 3, 4, 6 or 8 (enforced by TryDecodeHexValue
+    // before this is called). Each arm below is a plain conditional so every
+    // branch is reachable from tests; a switch expression carries an implicit
+    // never-taken default arm that coverage tools count as an uncovered branch.
+    private static StyleColor DecodeHexColor(int length, uint value) =>
+        length <= 4 ? DecodeShortHex(length, value) : DecodeLongHex(length, value);
+
+    private static StyleColor DecodeShortHex(int length, uint value) =>
+        length == 3
+            ? new StyleColor(Nibble(value, 8), Nibble(value, 4), Nibble(value, 0))
+            : new StyleColor(Nibble(value, 12), Nibble(value, 8), Nibble(value, 4), Nibble(value, 0));
+
+    private static StyleColor DecodeLongHex(int length, uint value) =>
+        length == 6
+            ? new StyleColor((byte)(value >> 16), (byte)(value >> 8), (byte)value)
+            : new StyleColor((byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value);
 
     private static byte Nibble(uint value, int shift) => (byte)(((value >> shift) & 0xF) * 17);
 

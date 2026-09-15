@@ -148,24 +148,19 @@ internal static class GeoJsonIngest
 
     private static object? Scalar(JsonElement element)
     {
-        if (element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        if (IsNull(element))
         {
             return null;
         }
 
-        if (element.ValueKind == JsonValueKind.True)
+        if (TryGetBool(element, out var boolean))
         {
-            return true;
+            return boolean;
         }
 
-        if (element.ValueKind == JsonValueKind.False)
+        if (TryGetNumber(element, out var number))
         {
-            return false;
-        }
-
-        if (element.ValueKind == JsonValueKind.Number)
-        {
-            return element.TryGetInt64(out var integer) ? (object)integer : element.GetDouble();
+            return number;
         }
 
         if (element.ValueKind == JsonValueKind.String)
@@ -174,5 +169,38 @@ internal static class GeoJsonIngest
         }
 
         return element.GetRawText();
+    }
+
+    private static bool IsNull(JsonElement element) =>
+        element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined;
+
+    private static bool TryGetBool(JsonElement element, out bool value)
+    {
+        if (element.ValueKind == JsonValueKind.True)
+        {
+            value = true;
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.False)
+        {
+            value = false;
+            return true;
+        }
+
+        value = false;
+        return false;
+    }
+
+    private static bool TryGetNumber(JsonElement element, out object? value)
+    {
+        value = null;
+        if (element.ValueKind != JsonValueKind.Number)
+        {
+            return false;
+        }
+
+        value = element.TryGetInt64(out var integer) ? (object)integer : element.GetDouble();
+        return true;
     }
 }

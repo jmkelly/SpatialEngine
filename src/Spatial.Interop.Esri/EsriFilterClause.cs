@@ -596,46 +596,79 @@ public sealed class EsriFilterClause
 
         private bool TryValue(out Literal literal, out string error)
         {
-            switch (Current.Kind)
+            if (Current.Kind == TokenKind.String)
             {
-                case TokenKind.String:
-                    literal = new Literal(LiteralKind.String, Current.Text, 0, false);
-                    error = string.Empty;
-                    _index++;
-                    return true;
-                case TokenKind.Number:
-                    if (!double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
-                    {
-                        error = $"'{Current.Text}' is not a valid numeric literal at position {Current.Position}";
-                        literal = default;
-                        return false;
-                    }
-
-                    var decimalPoint = Current.Text.Contains('.');
-                    literal = new Literal(decimalPoint ? LiteralKind.Decimal : LiteralKind.Integer, null, number, false);
-                    error = string.Empty;
-                    _index++;
-                    return true;
-                case TokenKind.True:
-                case TokenKind.False:
-                    literal = new Literal(LiteralKind.Boolean, null, 0, Current.Kind == TokenKind.True);
-                    error = string.Empty;
-                    _index++;
-                    return true;
-                case TokenKind.Null:
-                    literal = new Literal(LiteralKind.Null, null, 0, false);
-                    error = string.Empty;
-                    _index++;
-                    return true;
-                case TokenKind.Timestamp:
-                    return TryTimestampLiteral(out literal, out error);
-                case TokenKind.CurrentTimestamp:
-                    return TryCurrentTimestamp(out literal, out error);
-                default:
-                    error = $"expected a literal value at position {Current.Position}, found '{Current.Text}'";
-                    literal = default;
-                    return false;
+                return TryStringLiteral(out literal, out error);
             }
+
+            if (Current.Kind == TokenKind.Number)
+            {
+                return TryNumberLiteral(out literal, out error);
+            }
+
+            if (Current.Kind is TokenKind.True or TokenKind.False)
+            {
+                return TryBooleanLiteral(out literal, out error);
+            }
+
+            if (Current.Kind == TokenKind.Null)
+            {
+                literal = new Literal(LiteralKind.Null, null, 0, false);
+                error = string.Empty;
+                _index++;
+                return true;
+            }
+
+            return TryTemporalLiteral(out literal, out error);
+        }
+
+        private bool TryStringLiteral(out Literal literal, out string error)
+        {
+            literal = new Literal(LiteralKind.String, Current.Text, 0, false);
+            error = string.Empty;
+            _index++;
+            return true;
+        }
+
+        private bool TryNumberLiteral(out Literal literal, out string error)
+        {
+            if (!double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            {
+                error = $"'{Current.Text}' is not a valid numeric literal at position {Current.Position}";
+                literal = default;
+                return false;
+            }
+
+            var decimalPoint = Current.Text.Contains('.');
+            literal = new Literal(decimalPoint ? LiteralKind.Decimal : LiteralKind.Integer, null, number, false);
+            error = string.Empty;
+            _index++;
+            return true;
+        }
+
+        private bool TryBooleanLiteral(out Literal literal, out string error)
+        {
+            literal = new Literal(LiteralKind.Boolean, null, 0, Current.Kind == TokenKind.True);
+            error = string.Empty;
+            _index++;
+            return true;
+        }
+
+        private bool TryTemporalLiteral(out Literal literal, out string error)
+        {
+            if (Current.Kind == TokenKind.Timestamp)
+            {
+                return TryTimestampLiteral(out literal, out error);
+            }
+
+            if (Current.Kind == TokenKind.CurrentTimestamp)
+            {
+                return TryCurrentTimestamp(out literal, out error);
+            }
+
+            error = $"expected a literal value at position {Current.Position}, found '{Current.Text}'";
+            literal = default;
+            return false;
         }
 
         /// <summary>

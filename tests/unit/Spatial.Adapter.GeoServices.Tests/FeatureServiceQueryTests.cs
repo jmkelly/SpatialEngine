@@ -84,7 +84,7 @@ public sealed class FeatureServiceQueryTests
         EsriFeatureQuery query,
         CancellationToken cancellationToken = default)
     {
-        var result = await FeatureQueryEngine.ServiceQueryAsync(layers, store, query, Operations, Transforms, cancellationToken);
+        var result = await FeatureResponseWriter.ServiceQueryAsync(layers, store, query, Operations, Transforms, cancellationToken);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();

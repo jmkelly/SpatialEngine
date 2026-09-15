@@ -189,7 +189,7 @@ internal static class FeatureAttachments
         {
             if (!long.TryParse(part, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var id))
             {
-                throw EsriInteropException.Invalid($"The '{parameter}' parameter must be a comma-separated list of integers, got '{value}'.");
+                throw GeoServicesErrors.Invalid($"The '{parameter}' parameter must be a comma-separated list of integers, got '{value}'.");
             }
 
             ids.Add(id);
@@ -261,8 +261,7 @@ internal static class FeatureAttachments
             ordinal++;
             if (!scheme.TryResolve(feature, ordinal, out var objectId))
             {
-                throw new EsriInteropException(
-                    EsriErrorCodes.ServerError,
+                throw GeoServicesErrors.ServerError(
                     $"The identity column of layer '{dataset.Id}' is not an integer.");
             }
 
@@ -290,8 +289,7 @@ internal static class FeatureAttachments
             ordinal++;
             if (!scheme.TryResolve(feature, ordinal, out var candidate))
             {
-                throw new EsriInteropException(
-                    EsriErrorCodes.ServerError,
+                throw GeoServicesErrors.ServerError(
                     $"The identity column of layer '{dataset.Id}' is not an integer.");
             }
 

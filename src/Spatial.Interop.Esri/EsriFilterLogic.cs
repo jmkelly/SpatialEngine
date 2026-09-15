@@ -166,9 +166,14 @@ internal static class EsriFilterLogic
             return false;
         }
 
+        return EvaluateTypedConstant(left, comparisonOperator, right);
+    }
+
+    private static bool EvaluateTypedConstant(Literal left, ComparisonOperator comparisonOperator, Literal right)
+    {
         if (IsDateOperand(left, right))
         {
-            return BothDateTime(left, right) && ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
+            return EvaluateDateConstant(left, comparisonOperator, right);
         }
 
         if (IsBooleanOperand(left, right))
@@ -181,8 +186,14 @@ internal static class EsriFilterLogic
             return EvaluateStringConstant(left, comparisonOperator, right);
         }
 
-        return BothNumeric(left, right) && ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
+        return EvaluateNumericConstant(left, comparisonOperator, right);
     }
+
+    private static bool EvaluateDateConstant(Literal left, ComparisonOperator comparisonOperator, Literal right) =>
+        BothDateTime(left, right) && ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
+
+    private static bool EvaluateNumericConstant(Literal left, ComparisonOperator comparisonOperator, Literal right) =>
+        BothNumeric(left, right) && ApplyNumberComparison(left.Number, right.Number, comparisonOperator);
 
     private static bool HasNullOperand(Literal left, Literal right) =>
         left.Kind is LiteralKind.Null || right.Kind is LiteralKind.Null;
@@ -307,13 +318,14 @@ internal enum LiteralKind
 /// <summary>One parsed literal with its wire-renderable form.</summary>
 internal readonly record struct Literal(LiteralKind Kind, string? Text, double Number, bool Boolean)
 {
-    public string Render() => Kind switch
+    private static readonly Dictionary<LiteralKind, Func<Literal, string>> Renderers = new()
     {
-        LiteralKind.String => "'" + (Text ?? string.Empty).Replace("'", "''", StringComparison.Ordinal) + "'",
-        LiteralKind.Integer => ((long)Number).ToString(CultureInfo.InvariantCulture),
-        LiteralKind.Decimal => Number.ToString("R", CultureInfo.InvariantCulture),
-        LiteralKind.Boolean => Boolean ? "TRUE" : "FALSE",
-        LiteralKind.DateTime => "TIMESTAMP '" + DateTimeOffset.FromUnixTimeMilliseconds((long)Number).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "'",
-        _ => "NULL",
+        [LiteralKind.String] = literal => "'" + (literal.Text ?? string.Empty).Replace("'", "''", StringComparison.Ordinal) + "'",
+        [LiteralKind.Integer] = literal => ((long)literal.Number).ToString(CultureInfo.InvariantCulture),
+        [LiteralKind.Decimal] = literal => literal.Number.ToString("R", CultureInfo.InvariantCulture),
+        [LiteralKind.Boolean] = literal => literal.Boolean ? "TRUE" : "FALSE",
+        [LiteralKind.DateTime] = literal => "TIMESTAMP '" + DateTimeOffset.FromUnixTimeMilliseconds((long)literal.Number).UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "'",
     };
+
+    public string Render() => Renderers.TryGetValue(Kind, out var render) ? render(this) : "NULL";
 }

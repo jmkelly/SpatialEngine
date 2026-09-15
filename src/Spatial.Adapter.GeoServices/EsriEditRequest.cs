@@ -36,7 +36,7 @@ internal sealed record EsriEditRequest(
         var where = ParseWhere(parameters.Get("where"));
         if (objectIds.Count == 0 && where is null)
         {
-            throw EsriInteropException.Invalid("'deleteFeatures' requires 'objectIds' or 'where'.");
+            throw GeoServicesErrors.Invalid("'deleteFeatures' requires 'objectIds' or 'where'.");
         }
 
         return new EsriEditRequest(Empty, Empty, objectIds, where, Rollback(parameters));
@@ -69,7 +69,7 @@ internal sealed record EsriEditRequest(
         using var document = ParseDocument(value, "The 'features' parameter must be a JSON array of Esri feature objects.");
         if (document.RootElement.ValueKind != JsonValueKind.Array)
         {
-            throw EsriInteropException.Invalid("The 'features' parameter must be a JSON array of Esri feature objects.");
+            throw GeoServicesErrors.Invalid("The 'features' parameter must be a JSON array of Esri feature objects.");
         }
 
         var features = new List<JsonElement>(document.RootElement.GetArrayLength());
@@ -77,7 +77,7 @@ internal sealed record EsriEditRequest(
         {
             if (element.ValueKind != JsonValueKind.Object)
             {
-                throw EsriInteropException.Invalid("Every feature in 'features' must be a JSON object.");
+                throw GeoServicesErrors.Invalid("Every feature in 'features' must be a JSON object.");
             }
 
             features.Add(element.Clone());
@@ -102,7 +102,7 @@ internal sealed record EsriEditRequest(
         using var document = ParseDocument(trimmed, "The 'deletes' parameter must be a JSON array of object ids.");
         if (document.RootElement.ValueKind != JsonValueKind.Array)
         {
-            throw EsriInteropException.Invalid("The 'deletes' parameter must be a JSON array of object ids.");
+            throw GeoServicesErrors.Invalid("The 'deletes' parameter must be a JSON array of object ids.");
         }
 
         var ids = new List<long>(document.RootElement.GetArrayLength());
@@ -116,7 +116,7 @@ internal sealed record EsriEditRequest(
 
             if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt64(out var id))
             {
-                throw EsriInteropException.Invalid("Every entry in 'deletes' must be an integer object id.");
+                throw GeoServicesErrors.Invalid("Every entry in 'deletes' must be an integer object id.");
             }
 
             ids.Add(id);
@@ -134,7 +134,7 @@ internal sealed record EsriEditRequest(
 
         if (!EsriFilterClause.TryParse(value, out var clause, out var error))
         {
-            throw EsriInteropException.Invalid($"The 'where' clause is not supported: {error}.");
+            throw GeoServicesErrors.Invalid($"The 'where' clause is not supported: {error}.");
         }
 
         return clause;
@@ -148,7 +148,7 @@ internal sealed record EsriEditRequest(
         {
             if (!long.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out var id))
             {
-                throw EsriInteropException.Invalid($"'objectIds' must be a comma-separated list of integers, got '{parts[i]}'.");
+                throw GeoServicesErrors.Invalid($"'objectIds' must be a comma-separated list of integers, got '{parts[i]}'.");
             }
 
             ids[i] = id;
@@ -165,7 +165,7 @@ internal sealed record EsriEditRequest(
         }
         catch (JsonException exception)
         {
-            throw EsriInteropException.Invalid($"{message} ({exception.Message})", exception);
+            throw GeoServicesErrors.Invalid($"{message} ({exception.Message})", exception);
         }
     }
 
@@ -173,7 +173,7 @@ internal sealed record EsriEditRequest(
     {
         if (parameters.Has(name))
         {
-            throw EsriInteropException.Invalid($"The '{name}' parameter is not supported: {message}");
+            throw GeoServicesErrors.Invalid($"The '{name}' parameter is not supported: {message}");
         }
     }
 }

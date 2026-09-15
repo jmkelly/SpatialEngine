@@ -45,61 +45,100 @@ internal static class MapIdentifyEngine
             EsriFeatureQuery.ParseTime(parameters.Get("time")),
             MapExportTime.ParseLayerTimeOptions(parameters.Get("layerTimeOptions")));
         _ = MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
-        var hits = await MatchAsync(store, selected, layerDefs, times, queryGeometry, identifyCrs, returnGeometry, operations, transforms, cancellationToken);
+        var hits = await MatchAsync(new IdentifyServices(store, operations, transforms), selected, new IdentifyQuery(layerDefs, times, queryGeometry, identifyCrs, returnGeometry), cancellationToken);
         return EsriJson.Write(writer => WriteResults(writer, hits, returnGeometry));
     }
 
-    private static async Task<List<IdentifyHit>> MatchAsync(
-        IFeatureStore store,
+    /// <summary>The engine verbs one identify request needs, grouped so the match pipeline stays within the parameter budget.</summary>
+    internal sealed record IdentifyServices(IFeatureStore Store, IGeometryOperations Operations, ICoordinateTransforms Transforms);
+
+    /// <summary>The per-request identify selection: layer filters, the buffered query geometry and its result shape.</summary>
+    internal sealed record IdentifyQuery(
+        IReadOnlyDictionary<int, string>? LayerDefs,
+        IReadOnlyDictionary<int, MapTimeExtent>? Times,
+        IGeometry QueryGeometry,
+        CoordinateReference? IdentifyCrs,
+        bool ReturnGeometry);
+
+    internal static async Task<List<IdentifyHit>> MatchAsync(
+        IdentifyServices services,
         IReadOnlyList<MapLayerInfo> layers,
-        IReadOnlyDictionary<int, string>? layerDefs,
-        IReadOnlyDictionary<int, MapTimeExtent>? times,
-        IGeometry queryGeometry,
-        CoordinateReference? identifyCrs,
-        bool returnGeometry,
-        IGeometryOperations operations,
-        ICoordinateTransforms transforms,
+        IdentifyQuery query,
         CancellationToken cancellationToken)
     {
         var hits = new List<IdentifyHit>();
         foreach (var layer in layers)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var definition = layerDefs?.GetValueOrDefault(layer.Layer.Id) is { } where
-                ? ParseLayerDef(layer.Layer.Id, where)
-                : null;
-            var scheme = definition is null ? null : EsriObjectIdScheme.For(layer.Dataset);
-            var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Dataset.Srid);
-            var localQuery = Transform(queryGeometry, layerCrs, transforms, cancellationToken);
-            var batches = await store.ScanAsync(layer.Layer.Dataset, cancellationToken);
-            long ordinal = 0;
-            foreach (var feature in batches.SelectMany(batch => batch.Features))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                ordinal++;
-                if (definition is not null && !MatchesDefinition(scheme!, layer.Dataset, definition, feature, ordinal))
-                {
-                    continue;
-                }
-
-                if (times?.GetValueOrDefault(layer.Layer.Id) is { } extent
-                    && !FeatureQueryEngine.MatchesTime(feature, new EsriTimeExtent(extent.StartMs, extent.EndMs)))
-                {
-                    continue;
-                }
-
-                if (FeatureGeometry.Find(feature) is not { } geometry
-                    || operations.Intersection(geometry, localQuery, cancellationToken).IsEmpty)
-                {
-                    continue;
-                }
-
-                var projected = returnGeometry ? Transform(geometry, identifyCrs, transforms, cancellationToken) : null;
-                hits.Add(new IdentifyHit(layer, feature, projected));
-            }
+            await CollectLayerHitsAsync(services, layer, query, hits, cancellationToken);
         }
 
         return hits;
+    }
+
+    /// <summary>Scans one layer's features, keeping the hits that pass the layer's filters and intersect the query.</summary>
+    private static async Task CollectLayerHitsAsync(
+        IdentifyServices services,
+        MapLayerInfo layer,
+        IdentifyQuery query,
+        List<IdentifyHit> hits,
+        CancellationToken cancellationToken)
+    {
+        var definition = query.LayerDefs?.GetValueOrDefault(layer.Layer.Id) is { } where
+            ? ParseLayerDef(layer.Layer.Id, where)
+            : null;
+        var scheme = definition is null ? null : EsriObjectIdScheme.For(layer.Dataset);
+        var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Dataset.Srid);
+        var localQuery = Transform(query.QueryGeometry, layerCrs, services.Transforms, cancellationToken);
+        var extent = query.Times?.GetValueOrDefault(layer.Layer.Id);
+        var batches = await services.Store.ScanAsync(layer.Layer.Dataset, cancellationToken);
+        long ordinal = 0;
+        foreach (var feature in batches.SelectMany(batch => batch.Features))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ordinal++;
+            if (!MatchesFilters(scheme, layer.Dataset, definition, feature, ordinal, extent))
+            {
+                continue;
+            }
+
+            if (FeatureGeometry.Find(feature) is not { } geometry
+                || services.Operations.Intersection(geometry, localQuery, cancellationToken).IsEmpty)
+            {
+                continue;
+            }
+
+            var projected = query.ReturnGeometry ? Transform(geometry, query.IdentifyCrs, services.Transforms, cancellationToken) : null;
+            hits.Add(new IdentifyHit(layer, feature, projected));
+        }
+    }
+
+    /// <summary>
+    /// Applies one layer's attribute and temporal filters to a feature:
+    /// the <c>layerDefs</c> definition expression (with the synthetic
+    /// <c>OBJECTID</c> resolved as the query path does) and the layer's
+    /// time extent. Geometry intersection stays with the caller.
+    /// </summary>
+    internal static bool MatchesFilters(
+        EsriObjectIdScheme? scheme,
+        DatasetDescription dataset,
+        EsriFilterClause? definition,
+        Feature feature,
+        long ordinal,
+        MapTimeExtent? extent)
+    {
+        if (definition is not null && !MatchesDefinition(scheme!, dataset, definition, feature, ordinal))
+        {
+            return false;
+        }
+
+        if (extent is not null
+            && !FeatureSpatialMatcher.MatchesTime(feature, new EsriTimeExtent(extent.StartMs, extent.EndMs)))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -107,22 +146,21 @@ internal static class MapIdentifyEngine
     /// when the <c>layerDefs</c> object parsed, so its re-rendered form always
     /// parses; a failure here is still typed rather than silent.
     /// </summary>
-    private static EsriFilterClause ParseLayerDef(int layerId, string where) =>
+    internal static EsriFilterClause ParseLayerDef(int layerId, string where) =>
         EsriFilterClause.TryParse(where, out var clause, out var error) && clause is not null
             ? clause
-            : throw EsriInteropException.Invalid($"'layerDefs' clause for layer {layerId} is not supported: {error}.");
+            : throw GeoServicesErrors.Invalid($"'layerDefs' clause for layer {layerId} is not supported: {error}.");
 
     /// <summary>
     /// Applies one layer's definition to a feature, resolving the synthetic
     /// <c>OBJECTID</c> exactly as the query path does.
     /// </summary>
-    private static bool MatchesDefinition(
+    internal static bool MatchesDefinition(
         EsriObjectIdScheme scheme, DatasetDescription dataset, EsriFilterClause definition, Feature feature, long ordinal)
     {
         if (!scheme.TryResolve(feature, ordinal, out var objectId))
         {
-            throw new EsriInteropException(
-                EsriErrorCodes.ServerError,
+            throw GeoServicesErrors.ServerError(
                 $"The identity column of layer '{dataset.Id}' is not an integer.");
         }
 
@@ -204,5 +242,5 @@ internal static class MapIdentifyEngine
             ? fallback
             : parsed;
 
-    private sealed record IdentifyHit(MapLayerInfo Layer, Feature Feature, IGeometry? Geometry);
+    internal sealed record IdentifyHit(MapLayerInfo Layer, Feature Feature, IGeometry? Geometry);
 }

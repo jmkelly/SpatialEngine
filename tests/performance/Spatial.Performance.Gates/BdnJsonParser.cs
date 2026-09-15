@@ -28,59 +28,111 @@ public static class BdnJsonParser
         var warnings = new List<string>();
 
         using var document = JsonDocument.Parse(json);
-        if (!document.RootElement.TryGetProperty("Benchmarks", out var benchmarks)
-            || benchmarks.ValueKind != JsonValueKind.Array)
+        if (!TryGetBenchmarks(document, warnings, out var benchmarks))
         {
-            warnings.Add("report has no Benchmarks array; nothing parsed.");
             return new ParseResult(samples, warnings);
         }
 
         foreach (var bench in benchmarks.EnumerateArray())
         {
-            if (!bench.TryGetProperty("Type", out var typeElement)
-                || !bench.TryGetProperty("Method", out var methodElement)
-                || typeElement.ValueKind != JsonValueKind.String
-                || methodElement.ValueKind != JsonValueKind.String)
-            {
-                warnings.Add("skipped a row without Type/Method.");
-                continue;
-            }
-
-            var name = $"{typeElement.GetString()}.{methodElement.GetString()}";
-            if (!bench.TryGetProperty("Statistics", out var statistics)
-                || !statistics.TryGetProperty("Mean", out var meanElement)
-                || meanElement.ValueKind != JsonValueKind.Number)
-            {
-                warnings.Add($"skipped {name}: no Statistics.Mean.");
-                continue;
-            }
-
-            var allocated = 0.0;
-            if (bench.TryGetProperty("Memory", out var memory)
-                && memory.TryGetProperty("BytesAllocatedPerOperation", out var allocatedElement)
-                && allocatedElement.ValueKind == JsonValueKind.Number)
-            {
-                allocated = allocatedElement.GetDouble();
-            }
-
-            var rank = 1;
-            if (bench.TryGetProperty("DisplayInfo", out var displayElement)
-                && displayElement.ValueKind == JsonValueKind.String
-                && (displayElement.GetString() ?? string.Empty).Contains("Medium", StringComparison.Ordinal))
-            {
-                rank = 0;
-            }
-
-            if (samples.TryGetValue(name, out _) && ranks[name] <= rank)
-            {
-                continue;
-            }
-
-            ranks[name] = rank;
-            samples[name] = new BenchSample(name, meanElement.GetDouble(), allocated);
+            ParseRow(bench, samples, ranks, warnings);
         }
 
         return new ParseResult(samples, warnings);
+    }
+
+    private static bool TryGetBenchmarks(JsonDocument document, List<string> warnings, out JsonElement benchmarks)
+    {
+        benchmarks = default;
+        if (document.RootElement.TryGetProperty("Benchmarks", out var found)
+            && found.ValueKind == JsonValueKind.Array)
+        {
+            benchmarks = found;
+            return true;
+        }
+
+        warnings.Add("report has no Benchmarks array; nothing parsed.");
+        return false;
+    }
+
+    private static void ParseRow(
+        JsonElement bench,
+        Dictionary<string, BenchSample> samples,
+        Dictionary<string, int> ranks,
+        List<string> warnings)
+    {
+        if (!TryReadName(bench, warnings, out var name))
+        {
+            return;
+        }
+
+        if (!TryReadMean(bench, warnings, name, out var mean))
+        {
+            return;
+        }
+
+        if (samples.TryGetValue(name, out _) && ranks[name] <= ReadRank(bench))
+        {
+            return;
+        }
+
+        ranks[name] = ReadRank(bench);
+        samples[name] = new BenchSample(name, mean, ReadAllocated(bench));
+    }
+
+    private static bool TryReadName(JsonElement bench, List<string> warnings, out string name)
+    {
+        name = string.Empty;
+        if (bench.TryGetProperty("Type", out var typeElement)
+            && bench.TryGetProperty("Method", out var methodElement)
+            && typeElement.ValueKind == JsonValueKind.String
+            && methodElement.ValueKind == JsonValueKind.String)
+        {
+            name = $"{typeElement.GetString()}.{methodElement.GetString()}";
+            return true;
+        }
+
+        warnings.Add("skipped a row without Type/Method.");
+        return false;
+    }
+
+    private static bool TryReadMean(JsonElement bench, List<string> warnings, string name, out double mean)
+    {
+        mean = 0;
+        if (bench.TryGetProperty("Statistics", out var statistics)
+            && statistics.TryGetProperty("Mean", out var meanElement)
+            && meanElement.ValueKind == JsonValueKind.Number)
+        {
+            mean = meanElement.GetDouble();
+            return true;
+        }
+
+        warnings.Add($"skipped {name}: no Statistics.Mean.");
+        return false;
+    }
+
+    private static double ReadAllocated(JsonElement bench)
+    {
+        if (bench.TryGetProperty("Memory", out var memory)
+            && memory.TryGetProperty("BytesAllocatedPerOperation", out var allocatedElement)
+            && allocatedElement.ValueKind == JsonValueKind.Number)
+        {
+            return allocatedElement.GetDouble();
+        }
+
+        return 0;
+    }
+
+    private static int ReadRank(JsonElement bench)
+    {
+        if (bench.TryGetProperty("DisplayInfo", out var displayElement)
+            && displayElement.ValueKind == JsonValueKind.String
+            && (displayElement.GetString() ?? string.Empty).Contains("Medium", StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        return 1;
     }
 
     /// <summary>Parses every <c>*.json</c> report under a BDN artifacts directory.</summary>

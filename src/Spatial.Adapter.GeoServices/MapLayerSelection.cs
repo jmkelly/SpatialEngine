@@ -46,7 +46,7 @@ internal static class MapLayerSelection
             && !layerOption.Trim().Equals("visible", StringComparison.OrdinalIgnoreCase)
             && !layerOption.Trim().Equals("top", StringComparison.OrdinalIgnoreCase))
         {
-            throw EsriInteropException.Invalid(
+            throw GeoServicesErrors.Invalid(
                 $"The 'layerOption' value '{layerOption}' is not supported (all, visible, top).");
         }
     }
