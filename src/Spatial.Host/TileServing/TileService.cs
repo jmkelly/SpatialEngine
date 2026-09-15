@@ -1,6 +1,6 @@
 using Spatial.PluginSdk;
 
-namespace Spatial.Host.Tiling;
+namespace Spatial.Host.TileServing;
 
 /// <summary>
 /// The tile-invariant half of a render request (ADR-0046): everything except

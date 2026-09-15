@@ -1,6 +1,6 @@
 using Spatial.PluginSdk;
 
-namespace Spatial.Host.Tiling;
+namespace Spatial.Host.TileServing;
 
 /// <summary>
 /// The initial <see cref="ITileCache"/> (ADR-0046): process-memory storage

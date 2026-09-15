@@ -1,4 +1,4 @@
-using Spatial.Host.Tiling;
+using Spatial.Host.TileServing;
 using Spatial.PluginSdk;
 
 namespace Spatial.Host.Tests;

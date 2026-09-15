@@ -31,6 +31,17 @@ The renderer receives **resolved** services in the request (no DI/service
 location), so it is unit-testable with fakes; `Spatial.Host` resolves each
 layer's keyed store and catalogue at the edge.
 
+## Vocabulary
+
+- **Raster** = contract types (`RasterImage`, `RasterViewport`, `RasterInfo`, …).
+- **Render / Skia** = vector drawing (`Spatial.Rendering.Skia`, `IMapRenderer`).
+- **Imagery / Vips** = the raster engine (`Spatial.Imagery.Vips`,
+  `IRasterOperations`); `Spatial:Imagery` names flat render sources while
+  `Spatial:Raster` names catalogued ImageServer datasets.
+- **Scheme vs serving**: the tiling scheme lives in `Spatial.Tiling.*`
+  (projection + LOD math); the host's cache/render orchestration lives in
+  `Spatial.Host.TileServing` (`TileService`, `ITileCache` implementations).
+
 ## Implementations and composition
 
 | Project | Owns | Package |

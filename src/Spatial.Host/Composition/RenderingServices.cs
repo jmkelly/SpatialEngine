@@ -1,5 +1,5 @@
 using Spatial.Host.Api;
-using Spatial.Host.Tiling;
+using Spatial.Host.TileServing;
 using Spatial.Imagery.Vips;
 using Spatial.Imagery.Vips.Raster;
 using Spatial.PluginSdk;

@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using Spatial.Host.Tiling;
+using Spatial.Host.TileServing;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
 using Spatial.PluginSdk.Providers;

@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Spatial.PluginSdk;
 
-namespace Spatial.Host.Tiling;
+namespace Spatial.Host.TileServing;
 
 /// <summary>
 /// The persistent <see cref="ITileCache"/> (T-001, ADR-0046): the second cache

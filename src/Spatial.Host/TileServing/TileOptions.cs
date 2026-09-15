@@ -1,4 +1,4 @@
-namespace Spatial.Host.Tiling;
+namespace Spatial.Host.TileServing;
 
 /// <summary>
 /// Host configuration for tiles (<c>Spatial:Tiles</c>), ADR-0046: the default

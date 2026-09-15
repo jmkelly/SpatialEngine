@@ -1,5 +1,5 @@
 using System.Globalization;
-using Spatial.Host.Tiling;
+using Spatial.Host.TileServing;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
 using Spatial.PluginSdk.Providers;
