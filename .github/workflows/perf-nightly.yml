@@ -99,3 +99,31 @@ jobs:
           name: perf-results
           path: artifacts/bench/
           retention-days: 30
+
+      - name: Publish micro tables to job summary (always)
+        if: always()
+        run: |
+          {
+            echo "## Perf nightly — micros (MediumRun)"
+            echo ""
+            echo "Full exports stay in the \`perf-results\` artifact (30d); \`perf-baseline\` promotes only on green scheduled runs."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          shopt -s nullglob
+          reports=(artifacts/bench/raw/results/*-report-github.md)
+          if [[ ${#reports[@]} -eq 0 ]]; then
+            echo "_No benchmark reports under \`artifacts/bench/raw/results/\` — the micro job produced no output._" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          while IFS= read -r report; do
+            name="$(basename "$report" "-report-github.md")"
+            short="${name#Spatial.Performance.}"
+            {
+              echo "<details><summary><strong>$short</strong></summary>"
+              echo ""
+              cat "$report"
+              echo ""
+              echo "</details>"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
+          done < <(printf '%s\n' "${reports[@]}" | sort)

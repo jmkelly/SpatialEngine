@@ -89,7 +89,9 @@ Baselines live in `artifacts/bench/` (gitignored via `artifacts/`):
   {meanNs, allocatedBytes}}}`), restored each nightly from the previous
   green run's `perf-baseline` artifact (90-day retention).
 - `artifacts/bench/raw/` — the BDN JSON exports for the current run.
-- `perf-results` (30-day retention) is uploaded every run for diagnosis.
+- `perf-results` (30-day retention) is uploaded every run for diagnosis,
+  and the micro tables also render inline in the run's job summary
+  (collapsible per-bench sections, no download needed).
 
 Update flows:
 
