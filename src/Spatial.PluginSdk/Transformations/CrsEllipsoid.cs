@@ -2,7 +2,7 @@ namespace Spatial.PluginSdk.Transformations;
 
 /// <summary>
 /// The reference ellipsoid of a CRS as reported by
-/// <c>spatial.crs.describe@1</c> (ADR-0027), when the provider knows one:
+/// the CRS description service (ADR-0027/ADR-0033), when the provider knows one:
 /// name, semi-major and semi-minor axes and their unit. Carries only
 /// framework types (ADR-0005).
 /// </summary>

@@ -8,11 +8,11 @@ namespace Spatial.Provider.Demo;
 /// <summary>
 /// The demo store (ADR-0033): a direct, in-process implementation of
 /// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/> and
-/// <see cref="IDemoJobs"/> over the procedural <see cref="DemoDatasetCatalog"/>.
+/// <see cref="IDemoWork"/> over the procedural <see cref="DemoDatasetCatalog"/>.
 /// Read-only (writes and dataset creation throw <c>invalid.arguments</c>);
-/// the sleep job is a cancellable delay reporting progress.
+/// the demo sleep is a cancellable delay reporting progress.
 /// </summary>
-public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoJobs
+public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
 {
     private const int BatchSize = 64;
 

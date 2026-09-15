@@ -13,7 +13,7 @@
 - **Model:** `Spatial.Core` (values, zero deps) → `Spatial.PluginSdk`
   (interfaces: `IGeometryOperations`, `ICrsDirectory`,
   `ICoordinateTransforms`, `IDataCatalogue`, `IFeatureStore`,
-  `ITransactionStore`, `IDemoJobs`, `SpatialException`, DTOs, HTTP shapes)
+  `ITransactionStore`, `IDemoWork`, `SpatialException`, DTOs, HTTP shapes)
   → implementations (`NtsGeometryOperations`, `ProjNetTransforms`,
   `DemoStore`, `PostgisStore`, `VipsRasterOperations`) → `Spatial.Host`
   (typed routes, keyed DI `"demo"`/`"postgis"`, `PostgisOptions`).

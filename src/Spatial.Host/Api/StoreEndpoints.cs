@@ -175,11 +175,11 @@ internal static class StoreEndpoints
         }
     }
 
-    private static async Task<IResult> Sleep(SleepRequest request, IDemoJobs jobs, CancellationToken token)
+    private static async Task<IResult> Sleep(SleepRequest request, IDemoWork work, CancellationToken token)
     {
         try
         {
-            var slept = await jobs.SleepAsync(request.Milliseconds, progress: null, token);
+            var slept = await work.SleepAsync(request.Milliseconds, progress: null, token);
             return Results.Ok(new SleepResponse(slept));
         }
         catch (Exception exception)

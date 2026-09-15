@@ -5,9 +5,8 @@ namespace Spatial.PluginSdk.Transformations;
 /// transformation contracts (ADR-0027): an authority plus a code, written
 /// as <c>EPSG:4326</c>. Same shape as the core value model's
 /// <c>CoordinateReference</c> identity (ADR-0009) but expressed as
-/// wire-legal contract values — the arguments of <c>spatial.crs.describe@1</c>
-/// and <c>spatial.coordinate.transform@1</c> are identity strings, parsed by
-/// this type.
+/// wire-legal contract values — the CRS describe and coordinate transform verbs take identity
+/// strings, parsed by this type.
 /// </summary>
 public readonly record struct CrsIdentity(string Authority, string Code)
 {

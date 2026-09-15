@@ -2,9 +2,9 @@ namespace Spatial.PluginSdk.Transformations;
 
 /// <summary>
 /// The family of a coordinate reference system, as reported by the
-/// <c>spatial.crs.describe@1</c> contract (ADR-0027). The engine's value
+/// CRS description service (ADR-0027/ADR-0033). The engine's value
 /// model knows CRS identities structurally (ADR-0009); the description —
-/// including the family — is plugin knowledge from the transformation
+/// including the family — is service knowledge from the transformation
 /// adapter's catalogue.
 /// </summary>
 public enum CrsKind

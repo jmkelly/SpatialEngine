@@ -6,7 +6,7 @@ namespace Spatial.Provider.Demo.Tests;
 /// <summary>
 /// Behaviour of the in-process demo store (ADR-0033): catalogue listing
 /// with LIKE-style patterns, dataset description, scans, bbox queries and
-/// the cancellable sleep job. The store is read-only: writes and creation
+/// the cancellable demo sleep. The store is read-only: writes and creation
 /// throw <c>invalid.arguments</c>.
 /// </summary>
 public sealed class DemoStoreTests

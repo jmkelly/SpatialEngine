@@ -2,7 +2,7 @@ namespace Spatial.PluginSdk.Transformations;
 
 /// <summary>
 /// The orientation of one axis of a coordinate reference system, as reported
-/// by the <c>spatial.crs.describe@1</c> contract (ADR-0027). A CRS's native
+/// by the CRS description service (ADR-0027/ADR-0033). A CRS's native
 /// axis order and orientations are part of its description; the engine's
 /// geometry convention is always x-first — x is the first axis of the CRS
 /// (longitude for geographic, easting for projected) and y the second —

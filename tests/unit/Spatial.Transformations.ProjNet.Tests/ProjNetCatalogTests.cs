@@ -9,7 +9,7 @@ namespace Spatial.Transformations.ProjNet.Tests;
 /// The curated EPSG catalogue of the ProjNet transformation provider
 /// (ADR-0027): the served code set, the family/axis/unit descriptions and the
 /// unknown-code rejection. Pins the catalogue surface the provider promises
-/// through spatial.crs.describe@1.
+/// through the CRS description service (ADR-0027/ADR-0033).
 /// </summary>
 public sealed class ProjNetCatalogTests
 {

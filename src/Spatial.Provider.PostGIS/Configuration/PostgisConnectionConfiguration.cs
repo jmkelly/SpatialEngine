@@ -13,7 +13,7 @@ namespace Spatial.Provider.PostGIS.Configuration;
 /// </summary>
 internal sealed class PostgisConnectionConfiguration
 {
-    /// <summary>The environment variable the worker reads at startup.</summary>
+    /// <summary>The environment variable the host reads at startup.</summary>
     public const string EnvironmentVariable = "SPATIAL_POSTGIS_CONNECTION";
 
     private readonly string _connectionString;

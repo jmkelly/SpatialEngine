@@ -23,7 +23,7 @@ infrastructure.
 | `IFeatureEditStore` | `PostgisEditStore` | Per-feature add/update/delete with `FeatureEditOutcome`; split from `PostgisStore` so each type keeps one responsibility (ADR-0037) |
 | `IFeatureLookup` | `PostgisStore` | Read features by identity in one targeted statement; additive, so callers fall back to `IFeatureStore.ScanAsync` (ADR-0038) |
 | `ITransactionStore` | `PostgisStore` | String handles over open connections (`Begin/Commit/Rollback`) |
-| `IDemoJobs` | `DemoStore` | Cancellable `SleepAsync` delay with `IProgress<double>` |
+| `IDemoWork` | `DemoStore` | Cancellable `SleepAsync` delay with `IProgress<double>` |
 
 ## Error model
 

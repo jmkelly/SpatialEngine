@@ -3,9 +3,8 @@ using Spatial.PluginSdk.Transformations;
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// The <c>authority:code</c> identity parsing shared by
-/// <c>spatial.crs.describe@1</c> and <c>spatial.coordinate.transform@1</c>
-/// (ADR-0027): well-formed identities parse and round-trip, and every
+/// The <c>authority:code</c> identity parsing shared by the CRS describe and coordinate
+/// transform verbs (ADR-0027/ADR-0033): well-formed identities parse and round-trip, and every
 /// malformed shape is rejected instead of failing the wire contract later.
 /// </summary>
 public sealed class CrsIdentityTests

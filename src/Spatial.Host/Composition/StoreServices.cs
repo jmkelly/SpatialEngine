@@ -31,7 +31,7 @@ internal static class StoreServices
         builder.Services.AddSingleton<DemoStore>();
         builder.Services.AddKeyedSingleton<IDataCatalogue, DemoStore>("demo");
         builder.Services.AddKeyedSingleton<IFeatureStore, DemoStore>("demo");
-        builder.Services.AddSingleton<IDemoJobs>(services => services.GetRequiredService<DemoStore>());
+        builder.Services.AddSingleton<IDemoWork>(services => services.GetRequiredService<DemoStore>());
     }
 
     private static void ConfigureMemory(WebApplicationBuilder builder)

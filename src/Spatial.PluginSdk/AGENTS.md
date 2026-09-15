@@ -30,7 +30,7 @@ implementations and the host — never the reverse.
   (ADR-0033): a runtime store name resolves to its catalogue, feature store
   and additive faces, so boundary adapters and the host API never hold the
   DI container. Implemented by `Spatial.Host`'s `KeyedStoreRegistry`.
-- `IDemoJobs` — the demo cancellable sleep with progress.
+- `IDemoWork` — the demo cancellable sleep with progress.
 - `ITileScheme` + `TileCoordinate`/`TileLevel` and `ITileCache` +
   `TileCacheKey` — pluggable tiling schemes and a content-addressed tile
   cache (ADR-0046); Web-Mercator and the in-memory cache are implementations.

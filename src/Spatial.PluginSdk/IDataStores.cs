@@ -9,9 +9,7 @@ namespace Spatial.PluginSdk;
 public sealed record BoundingBox(double MinX, double MinY, double MaxX, double MaxY);
 
 /// <summary>
-/// Dataset catalogue over a store (ADR-0033, replaces
-/// <c>spatial.catalogue.list@1</c> / <c>spatial.dataset.describe@1</c> /
-/// <c>spatial.dataset.create@1</c>).
+/// Dataset catalogue over a store (ADR-0033; the versioned worker contracts are history).
 /// </summary>
 public interface IDataCatalogue
 {
@@ -23,8 +21,7 @@ public interface IDataCatalogue
 }
 
 /// <summary>
-/// Feature reads/writes over a store (ADR-0033, replaces
-/// <c>spatial.feature.scan@1</c> / <c>query@1</c> / <c>write@1</c>).
+/// Feature reads/writes over a store (ADR-0033; the versioned worker contracts are history).
 /// Reads return canonical <see cref="FeatureBatch"/> lists (in-memory pages,
 /// no bounded streams); writes append in one transaction.
 /// </summary>
@@ -39,8 +36,8 @@ public interface IFeatureStore
 }
 
 /// <summary>
-/// Store transactions as string handles owned by the store (ADR-0033,
-/// replaces <c>spatial.transaction.*@1</c>).
+/// Store transactions as string handles owned by the store (ADR-0033;
+/// the versioned worker contracts are history).
 /// </summary>
 public interface ITransactionStore
 {
@@ -51,8 +48,8 @@ public interface ITransactionStore
     Task<bool> RollbackAsync(string transaction, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Demo-only long-running job (replaces <c>spatial.demo.sleep@1</c>): cancellable delay with progress.</summary>
-public interface IDemoJobs
+/// <summary>Demo-only cancellable delay with progress (ADR-0033; there is no job model, and the versioned worker contracts are history).</summary>
+public interface IDemoWork
 {
     Task<long> SleepAsync(long milliseconds, IProgress<double>? progress = null, CancellationToken cancellationToken = default);
 }

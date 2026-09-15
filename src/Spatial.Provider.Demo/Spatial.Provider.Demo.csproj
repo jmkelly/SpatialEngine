@@ -2,7 +2,7 @@
 
   <!--
     The demo data store (ADR-0033): a Docker-free, read-only in-process
-    implementation of IDataCatalogue, IFeatureStore and IDemoJobs over
+    implementation of IDataCatalogue, IFeatureStore and IDemoWork over
     procedurally generated point datasets — the browser workbench's
     dataset-browser/map/selection vehicle in Playwright and local demos,
     where PostGIS is unavailable.

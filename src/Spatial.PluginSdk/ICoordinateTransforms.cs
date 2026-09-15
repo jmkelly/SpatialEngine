@@ -4,8 +4,7 @@ using Spatial.PluginSdk.Transformations;
 namespace Spatial.PluginSdk;
 
 /// <summary>
-/// CRS description plus coordinate transformation (ADR-0033, replaces
-/// <c>spatial.crs.describe@1</c> / <c>spatial.coordinate.transform@1</c>).
+/// CRS description plus coordinate transformation (ADR-0033; the versioned worker contracts are history).
 /// Axis order is x-first for every CRS (x = longitude/easting).
 /// </summary>
 public interface ICrsDirectory

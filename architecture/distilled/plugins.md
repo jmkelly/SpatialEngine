@@ -19,7 +19,7 @@ Microsoft DI — keyed services where two stores serve one contract:
   read-only.
 - `IGeometryOperations`, `IGeometryMeasures`, `IGeometryProcessing`,
   `IGeometryRelations`, `ICrsDirectory`, `ICoordinateTransforms`,
-  `IDemoJobs`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and
+  `IDemoWork`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and
   `ITileCache` as singletons (ADR-0044/ADR-0046). `ITileScheme` and
   `ITileCache` are the pluggable tiling seams: new projections/cache owners
   are additional registrations, not host changes. `IRasterCatalogue` is

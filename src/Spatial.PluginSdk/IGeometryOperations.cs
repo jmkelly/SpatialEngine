@@ -3,8 +3,7 @@ using Spatial.Core.Geometry;
 namespace Spatial.PluginSdk;
 
 /// <summary>
-/// The standard geometry operations (ADR-0033, replaces
-/// <c>spatial.geometry.*@1</c> capability contracts): pure, synchronous
+/// The standard geometry operations (ADR-0033; the versioned worker contracts are history): pure, synchronous
 /// planar computations over core geometry values. Implementations keep
 /// third-party types private (ADR-0005). Validation failures of the input
 /// shape are <see cref="SpatialException"/> with code
