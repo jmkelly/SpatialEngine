@@ -216,7 +216,7 @@ internal static class ImageFileHandlers
     internal static async Task<ImageContext> ResolveImageAsync(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, IStoreRegistry stores, CancellationToken cancellationToken)
     {
-        var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "ImageServer", MapService.Image, cancellationToken);
+        var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "ImageServer", MapServiceKind.ImageServer, cancellationToken);
         if (resolved.Layers is not { Count: > 0 } layers)
         {
             throw GeoServicesErrors.Invalid(

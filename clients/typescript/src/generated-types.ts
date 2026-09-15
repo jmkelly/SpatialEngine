@@ -133,7 +133,7 @@ export interface Map {
   name: string;
   store: string;
   layers: MapLayer[];
-  services: MapService[];
+  services: MapServiceKind[];
   description?: null | string;
   copyright?: null | string;
   metadataXml?: null | string;
@@ -160,7 +160,7 @@ export interface MapRenderRequestDto {
   scale?: number | string;
 }
 
-export type MapService = "feature" | "map" | "tiles" | "wms" | "wfs" | "image";
+export type MapServiceKind = "feature" | "map" | "tiles" | "wms" | "wfs" | "image";
 
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";
 

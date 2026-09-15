@@ -57,7 +57,7 @@ public static class EsriAdminEndpoints
     private static async Task<IResult> ListServicesAsync(IMapRegistry registry, CancellationToken token)
     {
         var services = (await registry.ListAsync(token))
-            .Where(map => map.Exposes(MapService.Feature))
+            .Where(map => map.Exposes(MapServiceKind.FeatureServer))
             .Select(map => new AdminServiceEntry(map.Name, "FeatureServer"))
             .ToArray();
         return EsriJson.Value(new AdminServiceList(services));
@@ -67,7 +67,7 @@ public static class EsriAdminEndpoints
     {
         var name = ServiceName(service);
         var map = await registry.GetAsync(name, token);
-        if (!map.Exposes(MapService.Feature))
+        if (!map.Exposes(MapServiceKind.FeatureServer))
         {
             throw GeoServicesErrors.Invalid($"Map '{name}' does not expose a FeatureServer.");
         }
@@ -86,7 +86,7 @@ public static class EsriAdminEndpoints
         var form = await context.Request.ReadFormAsync(token);
         var store = Form(form, "store", context) ?? throw GeoServicesErrors.Invalid("A 'store' is required.");
         var dataset = Form(form, "dataset", context) ?? throw GeoServicesErrors.Invalid("A 'dataset' is required.");
-        var map = new Map(name, store, [new MapLayer(dataset, -1)], [MapService.Feature]);
+        var map = new Map(name, store, [new MapLayer(dataset, -1)], [MapServiceKind.FeatureServer]);
         var stored = await registry.PutAsync(map, token);
         return EsriJson.Value(new AdminSuccess(true, name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
     }
@@ -161,8 +161,8 @@ public static class EsriAdminEndpoints
         }
 
         var map = existing is null
-            ? new Map(name, staged.Store, layers, [MapService.Feature])
-            : existing with { Store = staged.Store, Layers = layers, Services = [.. existing.Services.Union([MapService.Feature])] };
+            ? new Map(name, staged.Store, layers, [MapServiceKind.FeatureServer])
+            : existing with { Store = staged.Store, Layers = layers, Services = [.. existing.Services.Union([MapServiceKind.FeatureServer])] };
         var stored = await registry.PutAsync(map, token);
         return EsriJson.Value(new AdminSuccess(true, stored.Name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
     }

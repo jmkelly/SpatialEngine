@@ -184,32 +184,32 @@ internal static class DiscoveryPage
     {
         var name = Uri.EscapeDataString(map.Name);
         var links = new List<ServiceLink>();
-        if (map.Exposes(MapService.Feature))
+        if (map.Exposes(MapServiceKind.FeatureServer))
         {
             links.Add(new ServiceLink("FeatureServer", $"{origin}{esriRoot}/{name}/FeatureServer", $"{origin}{esriRoot}/{name}/FeatureServer?f=json"));
         }
 
-        if (map.Exposes(MapService.Map))
+        if (map.Exposes(MapServiceKind.MapServer))
         {
             links.Add(new ServiceLink("MapServer", $"{origin}{esriRoot}/{name}/MapServer", $"{origin}{esriRoot}/{name}/MapServer?f=json"));
         }
 
-        if (map.Exposes(MapService.Image))
+        if (map.Exposes(MapServiceKind.ImageServer))
         {
             links.Add(new ServiceLink("ImageServer", $"{origin}{esriRoot}/{name}/ImageServer", $"{origin}{esriRoot}/{name}/ImageServer?f=json"));
         }
 
-        if (map.Exposes(MapService.Wms))
+        if (map.Exposes(MapServiceKind.Wms))
         {
             links.Add(new ServiceLink("WMS", $"{origin}{ogcRoot}/{name}/wms", $"{origin}{ogcRoot}/{name}/wms?service=WMS&request=GetCapabilities"));
         }
 
-        if (map.Exposes(MapService.Wfs))
+        if (map.Exposes(MapServiceKind.Wfs))
         {
             links.Add(new ServiceLink("WFS", $"{origin}{ogcRoot}/{name}/wfs", $"{origin}{ogcRoot}/{name}/wfs?service=WFS&request=GetCapabilities"));
         }
 
-        if (map.Exposes(MapService.Tiles))
+        if (map.Exposes(MapServiceKind.Tiles))
         {
             links.Add(new ServiceLink("Tiles", $"{origin}/api/maps/{name}/tiles/{{z}}/{{x}}/{{y}}.png", $"{origin}/api/maps/{name}/tiles/0/0/0.png"));
         }
@@ -220,20 +220,20 @@ internal static class DiscoveryPage
     private static string? PreviewUrl(string origin, string esriRoot, string ogcRoot, Map map)
     {
         var name = Uri.EscapeDataString(map.Name);
-        if (map.Exposes(MapService.Wms))
+        if (map.Exposes(MapServiceKind.Wms))
         {
             // CRS:84 keeps the bbox x-first; EPSG:4326 is latitude-first in WMS 1.3.0.
             return $"{origin}{ogcRoot}/{name}/wms?service=WMS&version=1.3.0&request=GetMap&crs=CRS:84"
                 + "&bbox=-180,-85,180,85&width=360&height=180&format=image/png&transparent=false";
         }
 
-        if (map.Exposes(MapService.Map))
+        if (map.Exposes(MapServiceKind.MapServer))
         {
             return $"{origin}{esriRoot}/{name}/MapServer/export?bbox=-180,-85,180,85&bboxSR=4326&imageSR=4326"
                 + "&size=360,180&format=png&f=image&transparent=false";
         }
 
-        return map.Exposes(MapService.Tiles) ? $"{origin}/api/maps/{name}/tiles/0/0/0.png" : null;
+        return map.Exposes(MapServiceKind.Tiles) ? $"{origin}/api/maps/{name}/tiles/0/0/0.png" : null;
     }
 
     private static string LayerName(MapLayer layer) => layer.Name ?? layer.Dataset;

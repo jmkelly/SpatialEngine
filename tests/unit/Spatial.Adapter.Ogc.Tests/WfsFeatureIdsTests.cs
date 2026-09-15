@@ -45,7 +45,7 @@ public sealed class WfsFeatureIdsTests
                 new MapLayer("cap.lines", 0, "Routes"),
                 new MapLayer("cap.polys", 1, "Zones"),
             ],
-            [MapService.Wfs]);
+            [MapServiceKind.Wfs]);
         var store = new MultiStore();
         store.Seed("cap.lines", Numbered("1", "Route A", 0, 51), Numbered("2", "Route B", -5, 48));
         store.Seed("cap.polys", Numbered("1", "Zone A", 5, 52), Numbered("2", "Zone B", -2, 47));

@@ -16,7 +16,7 @@ namespace Spatial.Adapter.Ogc.Tests;
 /// </summary>
 public sealed class WfsServiceTests
 {
-    private static Map WfsMap() => OgcFixtures.Map(MapService.Wfs);
+    private static Map WfsMap() => OgcFixtures.Map(MapServiceKind.Wfs);
 
     private static void Seed(OgcFixtures.FakeStore store)
     {

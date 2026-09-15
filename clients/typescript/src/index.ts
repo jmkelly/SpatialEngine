@@ -6,7 +6,7 @@ export type {
   DatasetDescription, DatasetSummary, DescribeRequest, ErrorResponse, FeatureBatchesResponse,
   FeatureQueryRequest, FeatureWriteRequest, FeatureWriteResponse, GeometryResponse,
   ImagerySourceDto, IntersectionRequest, JsonElement, Map, MapLayer, MapLayerKind,
-  MapRenderRequestDto, MapService, RasterBlend, RasterFormat, RenderCapabilitiesResponse,
+  MapRenderRequestDto, MapServiceKind, RasterBlend, RasterFormat, RenderCapabilitiesResponse,
   RenderImageryDto, RenderLayerDto, RenderRequest, ScanRequest, SimplifyRequest, SleepRequest,
   SleepResponse, TileBatchRequest, TileBatchResponse, TileCapabilitiesResponse, TileDto,
   TileLevelDto, TileRenderRequest, TileResultDto, TileSchemeDto,

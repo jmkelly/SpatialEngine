@@ -17,7 +17,7 @@ public sealed class MapStyleTests
     {
         var map = new Map("svc", "demo", [
             new MapLayer("demo.cities", 3, null, """[{"type":"circle","paint":{"circle-color":"#ff0000"}}]"""),
-        ], [MapService.Map]);
+        ], [MapServiceKind.MapServer]);
 
         using var document = JsonDocument.Parse(MapStyle.Compose(map));
         var layer = document.RootElement.GetProperty("layers")[0];
@@ -30,7 +30,7 @@ public sealed class MapStyleTests
     [Fact]
     public void A_layer_without_style_keeps_a_default_symbol()
     {
-        var map = new Map("svc", "demo", [new MapLayer("demo.cities", 0)], [MapService.Map]);
+        var map = new Map("svc", "demo", [new MapLayer("demo.cities", 0)], [MapServiceKind.MapServer]);
 
         using var document = JsonDocument.Parse(MapStyle.Compose(map));
         var layers = document.RootElement.GetProperty("layers").EnumerateArray().ToArray();

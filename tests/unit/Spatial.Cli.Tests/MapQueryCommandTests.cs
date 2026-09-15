@@ -19,7 +19,7 @@ public sealed class MapQueryCommandTests
         name,
         "memory",
         [new MapLayer("public.world", 0, "Countries")],
-        [MapService.Feature]);
+        [MapServiceKind.FeatureServer]);
 
     [Fact]
     public async Task List_reports_no_maps_when_the_catalogue_is_empty()

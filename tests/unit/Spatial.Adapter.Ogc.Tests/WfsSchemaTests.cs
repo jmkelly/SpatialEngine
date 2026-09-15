@@ -13,7 +13,7 @@ public sealed class WfsSchemaTests
     private static readonly XNamespace Xsd = "http://www.w3.org/2001/XMLSchema";
 
     private static OgcLayer Layer() =>
-        new(OgcFixtures.Map(MapService.Wfs).Layers[0], "Cities", OgcFixtures.Store, OgcFixtures.Description());
+        new(OgcFixtures.Map(MapServiceKind.Wfs).Layers[0], "Cities", OgcFixtures.Store, OgcFixtures.Description());
 
     [Fact]
     public void The_schema_declares_the_feature_type_and_its_fields()
@@ -53,7 +53,7 @@ public sealed class WfsSchemaTests
             new Spatial.Core.Features.FieldDefinition("geometry", Spatial.Core.Features.AttributeKind.Geometry),
         ]);
         var description = new DatasetDescription("demo.roads", "demo", "roads", "geometry", 4326, "LineString", 0, [], schema);
-        var layer = new OgcLayer(OgcFixtures.Map(MapService.Wfs).Layers[0], "Roads", OgcFixtures.Store, description);
+        var layer = new OgcLayer(OgcFixtures.Map(MapServiceKind.Wfs).Layers[0], "Roads", OgcFixtures.Store, description);
 
         var document = XDocument.Parse(WfsSchema.Build([layer]));
         var label = document.Descendants(Xsd + "element").Single(element => element.Attribute("name")?.Value == "label");

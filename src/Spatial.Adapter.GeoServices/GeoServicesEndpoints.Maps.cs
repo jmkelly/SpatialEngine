@@ -8,7 +8,7 @@ namespace Spatial.Adapter.GeoServices;
 /// The Map Service routes (spec §4, ADR-0048/ADR-0055): root, all-layers, layer
 /// metadata, query, identify, find, legend, queryDomains, queryLegends and
 /// per-layer generateRenderer. The MapServer is the GeoServices
-/// projection of a <see cref="MapService.Map"/> publication; its export
+/// projection of a <see cref="MapServiceKind.MapServer"/> publication; its export
 /// and tile routes live in <see cref="MapExportEndpoints"/>, which renders
 /// through the SDK render contract.
 /// </summary>
@@ -94,7 +94,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(Store(stores, resolved.Store), Catalogue(stores, resolved.Store), layers, cancellationToken);
             return EsriJson.Value(MapServerResources.Root(service, infos, MapTileScheme(schemes), resolved.Description, resolved.Copyright));
@@ -112,7 +112,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             return EsriJson.Value(MapServerResources.AllLayers(layers));
         }
@@ -129,7 +129,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var layer = layers.FirstOrDefault(candidate => candidate.Id == layerId)
                 ?? throw GeoServicesErrors.NotFound($"Layer {layerId} does not exist in service '{service}'.");
@@ -154,7 +154,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(Store(stores, resolved.Store), Catalogue(stores, resolved.Store), layers, cancellationToken);
             return EsriJson.Value(Adapter.GeoServices.MapLegend.Legend(infos));
@@ -178,7 +178,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(Store(stores, resolved.Store), Catalogue(stores, resolved.Store), layers, cancellationToken);
             return EsriJson.Value(Adapter.GeoServices.MapLegend.QueryDomains(Select(infos, parameters.Get("layers"), service)));
@@ -201,7 +201,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(Store(stores, resolved.Store), Catalogue(stores, resolved.Store), layers, cancellationToken);
             return EsriJson.Value(Adapter.GeoServices.MapLegend.QueryLegends(Select(infos, parameters.Get("layers"), service)));
@@ -224,7 +224,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             _ = layers.FirstOrDefault(candidate => candidate.Id == layerId)
                 ?? throw GeoServicesErrors.NotFound($"Layer {layerId} does not exist in service '{service}'.");
@@ -322,7 +322,7 @@ internal static class MapServerEndpoints
     {
         try
         {
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             _ = layers.FirstOrDefault(candidate => candidate.Id == layerId)
                 ?? throw GeoServicesErrors.NotFound($"Layer {layerId} does not exist in service '{service}'.");
@@ -343,7 +343,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(stores, resolved, layerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = Store(stores, resolved.Store);
@@ -363,7 +363,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var store = Store(stores, resolved.Store);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(store, Catalogue(stores, resolved.Store), layers, cancellationToken);
@@ -384,7 +384,7 @@ internal static class MapServerEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var store = Store(stores, resolved.Store);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(store, Catalogue(stores, resolved.Store), layers, cancellationToken);

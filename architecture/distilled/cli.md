@@ -105,7 +105,7 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
 - `version` must be `1`; an unknown version is `invalid.arguments`.
 - `source` is an `http(s)` URL or a filesystem path relative to the
   project file.
-- `kind` maps to `MapService`: `feature` → FeatureServer,
+- `kind` maps to `MapServiceKind`: `feature` → FeatureServer,
   `map` → MapServer, `image` → ImageServer.
 - The compact `style` recipe lowers to the persisted MapLibre fragment
   (ADR-0047): a `polygon` layer draws fill + line, a `line` layer line, a

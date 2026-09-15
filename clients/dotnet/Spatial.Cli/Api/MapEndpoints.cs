@@ -53,11 +53,11 @@ public static class MapEndpoints
     }
 
     /// <summary>The GeoServices server type for a service, or null when the service is not an Esri server.</summary>
-    public static string? ServiceType(MapService service) => service switch
+    public static string? ServiceType(MapServiceKind service) => service switch
     {
-        MapService.Feature => "FeatureServer",
-        MapService.Map => "MapServer",
-        MapService.Image => "ImageServer",
+        MapServiceKind.FeatureServer => "FeatureServer",
+        MapServiceKind.MapServer => "MapServer",
+        MapServiceKind.ImageServer => "ImageServer",
         _ => null,
     };
 }

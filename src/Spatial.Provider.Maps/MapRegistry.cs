@@ -252,7 +252,7 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
             return null;
         }
 
-        var layerKind = service == MapService.Image ? MapLayerKind.Image : MapLayerKind.Feature;
+        var layerKind = service == MapServiceKind.ImageServer ? MapLayerKind.Image : MapLayerKind.Feature;
         var layers = legacy.Layers
             .Select(layer => new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, layerKind))
             .ToList();
@@ -261,11 +261,11 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
     }
 
     /// <summary>The service a legacy <c>kind</c> name maps to, or null when it is unknown.</summary>
-    private static MapService? LegacyService(string? kind) => kind?.ToLowerInvariant() switch
+    private static MapServiceKind? LegacyService(string? kind) => kind?.ToLowerInvariant() switch
     {
-        "feature" => MapService.Feature,
-        "map" => MapService.Map,
-        "image" => MapService.Image,
+        "feature" => MapServiceKind.FeatureServer,
+        "map" => MapServiceKind.MapServer,
+        "image" => MapServiceKind.ImageServer,
         _ => null,
     };
 
@@ -331,10 +331,21 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
         return MapValidator.Normalize(map, nextLayerId: 0);
     }
 
-    private static MapService ParseService(string mapName, string name) =>
-        Enum.TryParse<MapService>(name, ignoreCase: true, out var service) && Enum.IsDefined(service)
+    private static MapServiceKind ParseService(string mapName, string name)
+    {
+        // Legacy declared-config names (pre-N5) still parse: the members were
+        // renamed to server names but configuration keeps working.
+        var canonical = name.ToLowerInvariant() switch
+        {
+            "feature" => nameof(MapServiceKind.FeatureServer),
+            "map" => nameof(MapServiceKind.MapServer),
+            "image" => nameof(MapServiceKind.ImageServer),
+            _ => name,
+        };
+        return Enum.TryParse<MapServiceKind>(canonical, ignoreCase: true, out var service) && Enum.IsDefined(service)
             ? service
             : throw SpatialException.BadArguments($"Declared map '{mapName}' has unknown service '{name}'.");
+    }
 
     private static MapLayer ParseLayer(string mapName, DeclaredLayerOptions layer)
     {

@@ -86,7 +86,7 @@ internal static class MapValidator
 
     private static void ValidateServices(Map map)
     {
-        var seen = new HashSet<MapService>();
+        var seen = new HashSet<MapServiceKind>();
         foreach (var service in map.Services)
         {
             if (!Enum.IsDefined(service))
@@ -123,14 +123,14 @@ internal static class MapValidator
 
     private static void RequireLayers(Map map, bool hasFeature, bool hasImage)
     {
-        var needsFeature = map.Services.Any(service => service is MapService.Feature or MapService.Map or MapService.Tiles or MapService.Wms or MapService.Wfs);
+        var needsFeature = map.Services.Any(service => service is MapServiceKind.FeatureServer or MapServiceKind.MapServer or MapServiceKind.Tiles or MapServiceKind.Wms or MapServiceKind.Wfs);
         if (needsFeature && !hasFeature)
         {
             throw SpatialException.BadArguments(
                 $"Map '{map.Name}' enables a vector service but has no feature layer.");
         }
 
-        if (map.Exposes(MapService.Image) && !hasImage)
+        if (map.Exposes(MapServiceKind.ImageServer) && !hasImage)
         {
             throw SpatialException.BadArguments(
                 $"Map '{map.Name}' enables the image service but has no image layer.");

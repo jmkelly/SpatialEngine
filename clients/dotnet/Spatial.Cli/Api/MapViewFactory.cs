@@ -85,7 +85,7 @@ public static class MapViewFactory
             hasStyle ? recipe : null);
     }
 
-    private static string KindName(IReadOnlyList<MapService> services) =>
+    private static string KindName(IReadOnlyList<MapServiceKind> services) =>
         services.Count == 0
             ? "none"
             : string.Join("+", services.Select(service => service.ToString().ToLowerInvariant()));

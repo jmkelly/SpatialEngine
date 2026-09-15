@@ -18,7 +18,7 @@ namespace Spatial.Adapter.GeoServices;
 /// offline rejects <c>exportTiles</c> / <c>estimateExportTileSize</c>
 /// (ADR-0060: packaging needs a job model the host does not have).
 /// The ImageServer is the GeoServices projection of a
-/// <see cref="MapService.Image"/> publication whose layer names a dataset
+/// <see cref="MapServiceKind.ImageServer"/> publication whose layer names a dataset
 /// in the keyed <c>raster</c> store; the adapter consumes only the SDK
 /// <see cref="IRasterCatalogue"/> contract, never a NetVips type or a raster
 /// file path.

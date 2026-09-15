@@ -15,7 +15,7 @@ public sealed class WmsCapabilitiesTests
     [Fact]
     public async Task Capabilities_describe_the_service_and_each_feature_layer()
     {
-        var map = OgcFixtures.Map(MapService.Wms);
+        var map = OgcFixtures.Map(MapServiceKind.Wms);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(
             OgcFixtures.City("Amsterdam", 900_000, 4.9041, 52.3676),
@@ -44,7 +44,7 @@ public sealed class WmsCapabilitiesTests
         // A client that honours the advertised DCP URI (QGIS does by default)
         // appends its own service/request; embedding them here duplicates the
         // parameters and the request is rejected.
-        var map = OgcFixtures.Map(MapService.Wms);
+        var map = OgcFixtures.Map(MapServiceKind.Wms);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(OgcFixtures.City("Amsterdam", 900_000, 4.9041, 52.3676));
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
@@ -64,7 +64,7 @@ public sealed class WmsCapabilitiesTests
     [Fact]
     public async Task Capabilities_report_the_layer_extent()
     {
-        var map = OgcFixtures.Map(MapService.Wms);
+        var map = OgcFixtures.Map(MapServiceKind.Wms);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(
             OgcFixtures.City("Amsterdam", 900_000, 4.9041, 52.3676),
@@ -91,7 +91,7 @@ public sealed class WmsCapabilitiesTests
     {
         // A point at the south pole is a valid WGS84 extent but outside Web
         // Mercator; the advertised mercator box must stay inside the domain.
-        var map = OgcFixtures.Map(MapService.Wms);
+        var map = OgcFixtures.Map(MapServiceKind.Wms);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(OgcFixtures.City("Polar", 0, 0, -90));
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);

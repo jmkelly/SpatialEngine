@@ -221,8 +221,8 @@ internal static class AdminEndpoints
 
         var map = await registry.PutAsync(
             existing is null
-                ? new Map(name, store, layers, [MapService.Feature])
-                : existing with { Store = store, Layers = layers, Services = [.. existing.Services.Union([MapService.Feature])] },
+                ? new Map(name, store, layers, [MapServiceKind.FeatureServer])
+                : existing with { Store = store, Layers = layers, Services = [.. existing.Services.Union([MapServiceKind.FeatureServer])] },
             token);
         return outcome with { Map = map };
     }

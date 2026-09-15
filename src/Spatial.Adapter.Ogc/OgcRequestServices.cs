@@ -22,7 +22,7 @@ internal sealed record OgcRequestServices(
     public IFeatureStore Features(string store) => Stores.Features(store);
 
     /// <summary>Resolves a map and requires it to expose <paramref name="service"/> (404 otherwise).</summary>
-    public async Task<Map> ResolveMapAsync(string name, MapService service, string label, CancellationToken cancellationToken)
+    public async Task<Map> ResolveMapAsync(string name, MapServiceKind service, string label, CancellationToken cancellationToken)
     {
         Map map;
         try

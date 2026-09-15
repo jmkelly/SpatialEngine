@@ -104,7 +104,7 @@ POST   /arcgis/admin/uploads/{id}/publish
 
 Maps are the neutral authoring and exposure model (ADR-0053): a named,
 ordered set of styled layers from one keyed store plus the set of services it
-exposes (Feature, Map, Tiles, Wms, Wfs, Image), with persisted stable layer
+exposes (FeatureServer, MapServer, Tiles, Wms, Wfs, ImageServer), with persisted stable layer
 ids. `GET /api/maps` and
 `GET /api/maps/{name}` are always available; `PUT`/`DELETE` and
 `POST /api/ingest` are mounted only when `Spatial:Admin:Token`

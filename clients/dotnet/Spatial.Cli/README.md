@@ -134,7 +134,7 @@ spatial project export                           # serialise the host back to sp
 - `version` must be `1`; an unknown version is `invalid.arguments`.
 - `source` is an `http(s)` URL or a filesystem path relative to the project
   file.
-- `kind` maps to `MapService`: `feature` → FeatureServer,
+- `kind` maps to `MapServiceKind`: `feature` → FeatureServer,
   `map` → MapServer, `image` → ImageServer.
 - The compact `style` recipe lowers to the persisted MapLibre fragment
   (ADR-0047): `polygon` draws fill + line, `line` draws line, `point`

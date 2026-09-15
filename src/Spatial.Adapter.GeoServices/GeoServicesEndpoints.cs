@@ -131,11 +131,11 @@ public static partial class GeoServicesEndpoints
         return services;
     }
 
-    private static string? ServerType(MapService service) => service switch
+    private static string? ServerType(MapServiceKind service) => service switch
     {
-        MapService.Feature => "FeatureServer",
-        MapService.Map => "MapServer",
-        MapService.Image => "ImageServer",
+        MapServiceKind.FeatureServer => "FeatureServer",
+        MapServiceKind.MapServer => "MapServer",
+        MapServiceKind.ImageServer => "ImageServer",
         _ => null,
     };
 
@@ -155,7 +155,7 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var (spatial, tables) = await GeoServicesResolution.SplitTablesAsync(stores, resolved, layers, cancellationToken);
             return EsriJson.Value(FeatureService.Root(spatial, tables, IsEditable(stores, resolved.Store)));
@@ -172,7 +172,7 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var editable = IsEditable(request.Stores, resolved.Store) && EsriObjectIdScheme.For(description).SupportsEditing;
             return EsriJson.Value(FeatureService.Layer(
@@ -194,7 +194,7 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
@@ -212,7 +212,7 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
@@ -231,7 +231,7 @@ public static partial class GeoServicesEndpoints
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EsriEditRequest.RejectUnsupported(parameters);
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var store = request.Stores.Features(resolved.Store);
             var editStore = EditStore(request.Stores, resolved.Store)

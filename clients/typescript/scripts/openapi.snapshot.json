@@ -5407,7 +5407,7 @@
           "services": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MapService"
+              "$ref": "#/components/schemas/MapServiceKind"
             }
           },
           "description": {
@@ -5529,7 +5529,7 @@
           }
         }
       },
-      "MapService": {
+      "MapServiceKind": {
         "enum": [
           "feature",
           "map",

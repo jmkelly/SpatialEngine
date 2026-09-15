@@ -28,7 +28,7 @@ internal static class MapServerTileEndpoints
     {
         try
         {
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var scheme = MapServerEndpoints.MapTileScheme(render.Schemes)
                 ?? throw GeoServicesErrors.ServiceUnavailable("No tiling scheme is configured on this host.");

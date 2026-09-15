@@ -21,7 +21,7 @@ internal static class FeatureAttachmentHandlers
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var objectIds = FeatureAttachments.ParseIds(parameters.Get("objectIds"), "objectIds");
             return await FeatureAttachments.QueryAsync(
@@ -41,7 +41,7 @@ internal static class FeatureAttachmentHandlers
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             return await FeatureAttachments.InfosAsync(
                 layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store), objectId, cancellationToken);
@@ -58,7 +58,7 @@ internal static class FeatureAttachmentHandlers
     {
         try
         {
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             return await FeatureAttachments.ContentAsync(
                 layer.Description, stores.Features(resolved.Store), stores.AttachmentStore(resolved.Store),
@@ -79,7 +79,7 @@ internal static class FeatureAttachmentHandlers
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EnsureAttachmentAuthorized(adminToken, context, parameters);
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var upload = await ReadAttachmentUploadAsync(context, "addAttachment", parameters.Get("keywords"), cancellationToken);
             return await FeatureAttachments.AddAsync(
@@ -101,7 +101,7 @@ internal static class FeatureAttachmentHandlers
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EnsureAttachmentAuthorized(adminToken, context, parameters);
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var attachmentIds = FeatureAttachments.ParseIds(parameters.Get("attachmentIds"), "attachmentIds")
                 ?? throw GeoServicesErrors.Invalid("The 'attachmentIds' parameter is required.");
@@ -124,7 +124,7 @@ internal static class FeatureAttachmentHandlers
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EnsureAttachmentAuthorized(adminToken, context, parameters);
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var attachmentId = ParseAttachmentId(parameters.Get("attachmentId"));
             var upload = await ReadAttachmentUploadAsync(context, "updateAttachment", parameters.Get("keywords"), cancellationToken);

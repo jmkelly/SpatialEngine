@@ -37,8 +37,8 @@ internal static class OgcFixtures
     public static DatasetDescription Description(string dataset = Dataset) =>
         new(dataset, "demo", "cities", "geometry", 4326, "Point", 2, ["name"], Schema);
 
-    public static Map Map(params MapService[] services) =>
-        new(MapName, Store, [new MapLayer(Dataset, 0, "Cities")], services.Length == 0 ? [MapService.Wms] : services);
+    public static Map Map(params MapServiceKind[] services) =>
+        new(MapName, Store, [new MapLayer(Dataset, 0, "Cities")], services.Length == 0 ? [MapServiceKind.Wms] : services);
 
     public static (OgcRequestServices Services, FakeStore Store) Build(Map map)
     {

@@ -19,7 +19,7 @@ implementations and the host — never the reverse.
   additive per-feature editing (ADR-0037) and read-by-identity lookup for
   edit resolution (ADR-0038), additive per-feature attachment blobs
   (ADR-0065), and store-owned string transaction handles.
-- `IMapRegistry` + `Map`/`MapService`/`MapLayer`/`MapLayerKind`
+- `IMapRegistry` + `Map`/`MapServiceKind`/`MapLayer`/`MapLayerKind`
   — the runtime map registry (ADR-0053), the neutral unit of authoring and
   exposure (name, store, stable-id layers, enabled services). A map exposes
   any subset of Feature/Map/Tiles/Wms/Wfs/Image; the same dataset can be

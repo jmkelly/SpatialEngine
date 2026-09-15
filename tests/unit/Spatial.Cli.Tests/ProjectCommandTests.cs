@@ -93,7 +93,7 @@ public sealed class ProjectCommandTests
         Assert.Equal("missing.geojson", ingest.Upload.FileName);
         var put = Assert.Single(gateway.PutCalls);
         Assert.Equal("secret", put.Token);
-        Assert.Equal([MapService.Map], put.Map.Services);
+        Assert.Equal([MapServiceKind.MapServer], put.Map.Services);
         Assert.Equal(2, put.Map.Layers.Count);
     }
 
@@ -190,7 +190,7 @@ public sealed class ProjectCommandTests
                         new MapLayer("public.a", 0),
                         new MapLayer("public.b", 7),
                     ],
-                    [MapService.Map]),
+                    [MapServiceKind.MapServer]),
             ],
         };
 
@@ -221,7 +221,7 @@ public sealed class ProjectCommandTests
                             "Countries",
                             MapLibreStyleBuilder.Lower(recipe, GeometryFamily.Polygon)),
                     ],
-                    [MapService.Map],
+                    [MapServiceKind.MapServer],
                     "described",
                     "copyright"),
             ],
@@ -256,7 +256,7 @@ public sealed class ProjectCommandTests
         {
             Maps =
             [
-                new Map("World", "memory", [new MapLayer("public.world", 0)], [MapService.Map]),
+                new Map("World", "memory", [new MapLayer("public.world", 0)], [MapServiceKind.MapServer]),
             ],
         };
         var path = TempPath();

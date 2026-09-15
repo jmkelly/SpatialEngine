@@ -27,7 +27,7 @@ public sealed class WfsPageThroughTests
 
     private static (Map Map, OgcRequestServices Services) Seed()
     {
-        var map = OgcFixtures.Map(MapService.Wfs);
+        var map = OgcFixtures.Map(MapServiceKind.Wfs);
         var (services, store) = OgcFixtures.Build(map);
         for (var index = 0; index < Names.Length; index++)
         {

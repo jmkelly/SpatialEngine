@@ -28,7 +28,7 @@ internal static class FeatureQueryHandlers
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var defs = Adapter.GeoServices.FeatureServiceQuery.ParseLayerDefs(parameters.Get("layerDefs"));
             var selected = SelectServiceLayers(layers, defs, service);
@@ -93,7 +93,7 @@ internal static class FeatureQueryHandlers
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(stores, resolved, layerId, cancellationToken);
             var renderer = await MapGenerateRenderer.GenerateAsync(
                 stores.Features(resolved.Store), description, parameters.Get("classificationDef"), parameters.Get("where"), cancellationToken);
@@ -113,7 +113,7 @@ internal static class FeatureQueryHandlers
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(stores, resolved, layerId, cancellationToken);
             return EsriJson.Value(Adapter.GeoServices.FeatureValidateSql.Validate(
                 description, parameters.Get("sql"), parameters.Get("sqlType")));
@@ -139,7 +139,7 @@ internal static class FeatureQueryHandlers
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapService.Feature, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             _ = await GeoServicesResolution.DescribeAsync(stores, resolved, layerId, cancellationToken);
             throw GeoServicesErrors.Invalid($"The '{operation}' operation is not supported on service '{service}': {guidance}");
         }

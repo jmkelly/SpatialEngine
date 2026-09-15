@@ -27,7 +27,7 @@ public sealed class GeoServicesCatalogHonestyTests
             throw new NotSupportedException();
     }
 
-    private static Map See(string name, params MapService[] services) =>
+    private static Map See(string name, params MapServiceKind[] services) =>
         new(name, "demo", [], services);
 
     [Fact]
@@ -36,13 +36,13 @@ public sealed class GeoServicesCatalogHonestyTests
         var catalog = new GeoServicesCatalog(new GeoServicesOptions());
         var registry = new FakeRegistry(
         [
-            See("features", MapService.Feature),
-            See("rendered", MapService.Map),
-            See("imagery", MapService.Image),
-            See("tiles-only", MapService.Tiles),
-            See("ogc-only", MapService.Wms, MapService.Wfs),
+            See("features", MapServiceKind.FeatureServer),
+            See("rendered", MapServiceKind.MapServer),
+            See("imagery", MapServiceKind.ImageServer),
+            See("tiles-only", MapServiceKind.Tiles),
+            See("ogc-only", MapServiceKind.Wms, MapServiceKind.Wfs),
             See("draft"),
-            See("multi", MapService.Feature, MapService.Map),
+            See("multi", MapServiceKind.FeatureServer, MapServiceKind.MapServer),
         ]);
 
         var services = await GeoServicesEndpoints.BuildServicesAsync(catalog, registry, default);
@@ -58,10 +58,10 @@ public sealed class GeoServicesCatalogHonestyTests
     }
 
     [Theory]
-    [InlineData(MapService.Tiles)]
-    [InlineData(MapService.Wms)]
-    [InlineData(MapService.Wfs)]
-    public async Task A_non_esri_service_never_leaks_into_the_listing(MapService service)
+    [InlineData(MapServiceKind.Tiles)]
+    [InlineData(MapServiceKind.Wms)]
+    [InlineData(MapServiceKind.Wfs)]
+    public async Task A_non_esri_service_never_leaks_into_the_listing(MapServiceKind service)
     {
         var catalog = new GeoServicesCatalog(new GeoServicesOptions());
         var registry = new FakeRegistry([See("other", service)]);

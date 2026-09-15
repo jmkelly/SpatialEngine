@@ -16,7 +16,7 @@ public sealed class WfsCapabilitiesTests
     [Fact]
     public async Task Capabilities_list_each_feature_type_with_geojson_output()
     {
-        var map = OgcFixtures.Map(MapService.Wfs);
+        var map = OgcFixtures.Map(MapServiceKind.Wfs);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(OgcFixtures.City("Amsterdam", 900_000, 4.9041, 52.3676));
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
@@ -42,7 +42,7 @@ public sealed class WfsCapabilitiesTests
     [Fact]
     public async Task Capabilities_advertise_the_operations()
     {
-        var map = OgcFixtures.Map(MapService.Wfs);
+        var map = OgcFixtures.Map(MapServiceKind.Wfs);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(OgcFixtures.City("Amsterdam", 900_000, 4.9041, 52.3676));
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);

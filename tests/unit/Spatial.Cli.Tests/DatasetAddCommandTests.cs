@@ -272,7 +272,7 @@ public sealed class DatasetAddCommandTests
                 5,
                 upload.Srid,
                 "id",
-                new Map(upload.Publish ?? "CliE2E", upload.Store, [], [MapService.Feature])));
+                new Map(upload.Publish ?? "CliE2E", upload.Store, [], [MapServiceKind.FeatureServer])));
 
         public Task<IReadOnlyList<Map>> ListMapsAsync(CancellationToken cancellationToken = default) =>
             inner.ListMapsAsync(cancellationToken);

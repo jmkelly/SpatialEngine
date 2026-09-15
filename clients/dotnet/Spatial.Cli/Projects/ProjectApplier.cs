@@ -191,7 +191,7 @@ public static class ProjectApplier
             map.Copyright);
     }
 
-    private static List<MapLayer> BuildLayers(ProjectMap map, Map? existing, MapService service)
+    private static List<MapLayer> BuildLayers(ProjectMap map, Map? existing, MapServiceKind service)
     {
         var kind = MapEditing.LayerKind(service);
         var reused = ExistingLayerIds(existing);
@@ -227,11 +227,11 @@ public static class ProjectApplier
         return MapLibreStyleBuilder.Lower(recipe, GeometryFamilies.Parse(layer.Geometry));
     }
 
-    private static MapService ParseKind(string kind) => kind.ToLowerInvariant() switch
+    private static MapServiceKind ParseKind(string kind) => kind.ToLowerInvariant() switch
     {
-        "feature" => MapService.Feature,
-        "map" => MapService.Map,
-        "image" => MapService.Image,
+        "feature" => MapServiceKind.FeatureServer,
+        "map" => MapServiceKind.MapServer,
+        "image" => MapServiceKind.ImageServer,
         _ => throw new CliUsageException($"Unknown map kind '{kind}'. Use feature, map or image."),
     };
 
@@ -273,7 +273,7 @@ public static class ProjectApplier
         map.Layers.Select(ToProjectLayer).ToArray());
 
     /// <summary>The project file records one kind; the first GeoServices service is the map's representative.</summary>
-    private static string PrimaryKind(IReadOnlyList<MapService> services) =>
+    private static string PrimaryKind(IReadOnlyList<MapServiceKind> services) =>
         services.Select(service => service.ToString().ToLowerInvariant()).FirstOrDefault() ?? "feature";
 
     private static ProjectLayer ToProjectLayer(MapLayer layer)

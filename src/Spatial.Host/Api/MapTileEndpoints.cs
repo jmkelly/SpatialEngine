@@ -37,7 +37,7 @@ internal static class MapTileEndpoints
         try
         {
             var map = await registry.GetAsync(Uri.UnescapeDataString(name), context.RequestAborted);
-            if (!map.Exposes(MapService.Tiles))
+            if (!map.Exposes(MapServiceKind.Tiles))
             {
                 throw SpatialException.Missing($"Map '{map.Name}' does not expose a Tiles service.");
             }

@@ -2,38 +2,50 @@ namespace Spatial.PluginSdk.Providers;
 
 /// <summary>
 /// A protocol surface a <see cref="Map"/> can expose (ADR-0053). A map
-/// declares any subset: <see cref="Feature"/> and <see cref="Map"/> are the
+/// declares any subset: <see cref="FeatureServer"/> and <see cref="MapServer"/> are the
 /// Esri GeoServices FeatureServer and MapServer (ADR-0035/ADR-0048),
 /// <see cref="Tiles"/> is the neutral tile route over the render/tile
 /// contracts (ADR-0046), <see cref="Wms"/> and <see cref="Wfs"/> are the OGC
-/// boundary adapter, and <see cref="Image"/> is the GeoServices ImageServer
+/// boundary adapter, and <see cref="ImageServer"/> is the GeoServices ImageServer
 /// (ADR-0051). Each service is an independent projection of the same map.
 /// </summary>
-public enum MapService
+/// <remarks>
+/// The member names are server names (N5). The JSON wire keys are pinned to
+/// the legacy values (<c>feature</c>, <c>map</c>, …) so persisted
+/// <c>maps.json</c> files, snapshots and clients keep working; declared-config
+/// parsing additionally accepts the legacy member names (see the registry).
+/// </remarks>
+public enum MapServiceKind
 {
     /// <summary>A feature service: queryable and, where the store supports it, editable feature layers.</summary>
-    Feature,
+    [System.Text.Json.Serialization.JsonStringEnumMemberName("feature")]
+    FeatureServer,
 
     /// <summary>A map service: a read-only, ordered set of renderable feature layers.</summary>
-    Map,
+    [System.Text.Json.Serialization.JsonStringEnumMemberName("map")]
+    MapServer,
 
     /// <summary>A tile service: the map's composed style served as Web-Mercator XYZ tiles.</summary>
+    [System.Text.Json.Serialization.JsonStringEnumMemberName("tiles")]
     Tiles,
 
     /// <summary>An OGC Web Map Service (WMS 1.3.0): capabilities, GetMap and GetFeatureInfo.</summary>
+    [System.Text.Json.Serialization.JsonStringEnumMemberName("wms")]
     Wms,
 
     /// <summary>An OGC Web Feature Service (WFS 2.0.0): capabilities, DescribeFeatureType and GetFeature.</summary>
+    [System.Text.Json.Serialization.JsonStringEnumMemberName("wfs")]
     Wfs,
 
     /// <summary>An image service: the map's raster layers exposed as a GeoServices ImageServer.</summary>
-    Image,
+    [System.Text.Json.Serialization.JsonStringEnumMemberName("image")]
+    ImageServer,
 }
 
 /// <summary>
 /// Whether a <see cref="MapLayer"/> names a vector feature dataset or a
-/// raster dataset (ADR-0053). Feature layers feed Feature/Map/Tiles/WMS/WFS;
-/// image layers feed the Image service.
+/// raster dataset (ADR-0053). Feature layers feed FeatureServer/MapServer/Tiles/WMS/WFS;
+/// image layers feed the ImageServer service.
 /// </summary>
 public enum MapLayerKind
 {
@@ -89,7 +101,7 @@ public sealed record MapLayer(
 /// <para>A layer is owned by the map, so the same dataset can appear in
 /// different maps with different styles; styles are never global. A map's
 /// <see cref="Services"/> may be empty (a draft that serves nothing) or any
-/// subset of <see cref="MapService"/>.</para>
+/// subset of <see cref="MapServiceKind"/>.</para>
 ///
 /// <para><see cref="MetadataXml"/> is the map's authored service-level
 /// metadata document (ISO/FGDC XML): the ImageServer <c>metadata</c>
@@ -101,7 +113,7 @@ public sealed record Map(
     string Name,
     string Store,
     IReadOnlyList<MapLayer> Layers,
-    IReadOnlyList<MapService> Services,
+    IReadOnlyList<MapServiceKind> Services,
     string? Description = null,
     string? Copyright = null,
     string? MetadataXml = null)
@@ -110,7 +122,7 @@ public sealed record Map(
         $"{Name} ({Store}, {Layers.Count} layer(s), {string.Join("/", Services)})";
 
     /// <summary>Whether the map exposes <paramref name="service"/>.</summary>
-    public bool Exposes(MapService service) => Services.Contains(service);
+    public bool Exposes(MapServiceKind service) => Services.Contains(service);
 }
 
 /// <summary>

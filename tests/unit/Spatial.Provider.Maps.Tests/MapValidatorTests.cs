@@ -18,7 +18,7 @@ public sealed class MapValidatorTests
             "ortho",
             "raster",
             [new MapLayer("ortho_2024.tif", 0, Kind: MapLayerKind.Image)],
-            [MapService.Image]);
+            [MapServiceKind.ImageServer]);
 
         var normalised = MapValidator.Normalize(map, nextLayerId: 0);
 
@@ -32,7 +32,7 @@ public sealed class MapValidatorTests
             "ortho",
             "raster",
             [new MapLayer("has space", 0, Kind: MapLayerKind.Image)],
-            [MapService.Image]);
+            [MapServiceKind.ImageServer]);
 
         var failure = Assert.Throws<SpatialException>(() => MapValidator.Normalize(map, nextLayerId: 0));
 
@@ -47,7 +47,7 @@ public sealed class MapValidatorTests
             "dup",
             "memory",
             [new MapLayer("memory.parks", 0), new MapLayer("memory.parks", 1, Name: "again")],
-            [MapService.Feature]);
+            [MapServiceKind.FeatureServer]);
 
         var failure = Assert.Throws<SpatialException>(() => MapValidator.Normalize(map, nextLayerId: 0));
 
@@ -62,7 +62,7 @@ public sealed class MapValidatorTests
             "named",
             "memory",
             [new MapLayer("memory.parks", 0, Name: string.Empty)],
-            [MapService.Feature]);
+            [MapServiceKind.FeatureServer]);
 
         var failure = Assert.Throws<SpatialException>(() => MapValidator.Normalize(map, nextLayerId: 0));
 

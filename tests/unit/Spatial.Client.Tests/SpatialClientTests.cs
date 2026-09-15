@@ -318,7 +318,7 @@ public sealed class SpatialClientTests
             Assert.Equal("secret", request.Headers.Authorization?.Parameter);
             return StubHttpHandler.Json("""{"name":"cities","store":"demo","layers":[],"services":["feature"]}""");
         }));
-        var map = new Map("cities", "demo", [], [MapService.Feature]);
+        var map = new Map("cities", "demo", [], [MapServiceKind.FeatureServer]);
 
         var stored = await stub.Client.PutMapAsync(map, adminToken: "secret");
 
@@ -334,7 +334,7 @@ public sealed class SpatialClientTests
     {
         using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
             """{"code":"invalid.arguments","message":"dangling dataset"}""", HttpStatusCode.BadRequest)));
-        var map = new Map("cities", "demo", [], [MapService.Feature]);
+        var map = new Map("cities", "demo", [], [MapServiceKind.FeatureServer]);
 
         var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
             stub.Client.PutMapAsync(map, adminToken: "secret"));
@@ -348,7 +348,7 @@ public sealed class SpatialClientTests
     {
         using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
             """{"name":"cities","store":"demo","layers":[],"services":["feature"]}""")));
-        var map = new Map("cities", "demo", [], [MapService.Feature]);
+        var map = new Map("cities", "demo", [], [MapServiceKind.FeatureServer]);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             stub.Client.PutMapAsync(map, cancellationToken: new CancellationToken(canceled: true)));

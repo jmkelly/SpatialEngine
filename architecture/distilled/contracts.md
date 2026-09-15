@@ -69,7 +69,7 @@ unknown store; additive faces return `null`.
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face, implemented by PostGIS only (ADR-0038) |
 | `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). The host ingest route also accepts `sourceSrid` and reprojects the decoded pages through `ICoordinateTransforms` before load |
-| `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (Feature/Map/Tiles/Wms/Wfs/Image); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
+| `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (FeatureServer/MapServer/Tiles/Wms/Wfs/ImageServer); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
 
@@ -110,7 +110,7 @@ upgrade. `RasterFormat`/`RasterPixelFormat`/`RasterBlend`/`RasterViewport`/
 - Feature data is **canonical `FeatureBatch` pages** (ADR-0020); on HTTP as
   Base64 SFBAT strings.
 - Metadata is **JSON DTOs** — never feature/geometry payloads.
-- `Map`/`MapService`/`MapLayer`/`MapLayerKind` and the ingest records
+- `Map`/`MapServiceKind`/`MapLayer`/`MapLayerKind` and the ingest records
   are core-typed (ADR-0053); no protocol or provider type crosses.
 - Dataset identifiers: strict `schema.table` grammar (`[a-z_][a-z0-9_]*` per
   part; `public` default), validated, never concatenated raw into SQL;

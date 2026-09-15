@@ -63,7 +63,7 @@ internal static class MapServices
             {
                 Name = service.Name,
                 Store = service.Store,
-                Services = [nameof(MapService.Feature)],
+                Services = [nameof(MapServiceKind.FeatureServer)],
             });
         }
 

@@ -7,10 +7,10 @@ namespace Spatial.Cli.Tests;
 public sealed class MapEndpointsTests
 {
     [Theory]
-    [InlineData(MapService.Feature, "FeatureServer")]
-    [InlineData(MapService.Map, "MapServer")]
-    [InlineData(MapService.Image, "ImageServer")]
-    public void For_maps_the_publication_kind_to_a_service_type(MapService kind, string serviceType)
+    [InlineData(MapServiceKind.FeatureServer, "FeatureServer")]
+    [InlineData(MapServiceKind.MapServer, "MapServer")]
+    [InlineData(MapServiceKind.ImageServer, "ImageServer")]
+    public void For_maps_the_publication_kind_to_a_service_type(MapServiceKind kind, string serviceType)
     {
         var map = new Map("World", "memory", [], [kind]);
 

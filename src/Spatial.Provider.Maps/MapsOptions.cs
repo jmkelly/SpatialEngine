@@ -38,7 +38,7 @@ public sealed class DeclaredMapOptions
 
     public string Store { get; set; } = string.Empty;
 
-    /// <summary>The exposed services: any of <c>Feature</c>, <c>Map</c>, <c>Tiles</c>, <c>Wms</c>, <c>Wfs</c>, <c>Image</c>.</summary>
+    /// <summary>The exposed services: any of <c>FeatureServer</c>, <c>MapServer</c>, <c>Tiles</c>, <c>Wms</c>, <c>Wfs</c>, <c>ImageServer</c>.</summary>
     public IReadOnlyList<string> Services { get; set; } = [];
 
     public string? Description { get; set; }

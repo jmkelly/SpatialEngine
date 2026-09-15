@@ -35,7 +35,7 @@ internal static class WfsService
         string name, OgcParameters parameters, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
     {
         parameters.RequiredService("WFS");
-        var map = await services.ResolveMapAsync(name, MapService.Wfs, "WFS", cancellationToken);
+        var map = await services.ResolveMapAsync(name, MapServiceKind.Wfs, "WFS", cancellationToken);
         var request = parameters.RequiredRequest();
         return request.ToUpperInvariant() switch
         {

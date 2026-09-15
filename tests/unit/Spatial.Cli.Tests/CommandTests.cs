@@ -80,7 +80,7 @@ public sealed class CommandTests
                 "World",
                 "memory",
                 [new MapLayer("public.world", 0, "Countries", MapLibreStyleBuilder.Lower(new DrawRecipe(), GeometryFamily.Polygon))],
-                [MapService.Map]),
+                [MapServiceKind.MapServer]),
         };
 
         var run = await CliHarness.RunAsync(gateway, "map", "show", "World");
@@ -96,7 +96,7 @@ public sealed class CommandTests
         var gateway = new FakeSpatialGateway();
         gateway.MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
         {
-            ["World"] = new Map("World", "memory", [], [MapService.Feature]),
+            ["World"] = new Map("World", "memory", [], [MapServiceKind.FeatureServer]),
         };
 
         var run = await CliHarness.RunAsync(gateway, "map", "export", "World", "--format", "url");

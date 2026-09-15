@@ -28,7 +28,7 @@ internal static class MapExportEndpoints
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapService.Map, cancellationToken);
+            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var effective = MapDynamicLayers.Apply(
                 await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken),
                 MapDynamicLayers.Parse(parameters.Get("dynamicLayers")),

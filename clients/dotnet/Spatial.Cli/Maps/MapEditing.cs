@@ -14,17 +14,17 @@ internal static class MapEditing
     internal const string AdminTokenRequired = "Admin token required; pass --token or set SPATIAL_ADMIN_TOKEN.";
 
     /// <summary>Parses a <c>--kind</c> value case-insensitively to the service it selects.</summary>
-    internal static MapService ParseKind(string value) => value.ToLowerInvariant() switch
+    internal static MapServiceKind ParseKind(string value) => value.ToLowerInvariant() switch
     {
-        "feature" => MapService.Feature,
-        "map" => MapService.Map,
-        "image" => MapService.Image,
+        "feature" => MapServiceKind.FeatureServer,
+        "map" => MapServiceKind.MapServer,
+        "image" => MapServiceKind.ImageServer,
         _ => throw new CliUsageException($"Unknown kind '{value}'. Use feature, map or image."),
     };
 
     /// <summary>The layer kind a service reads: raster datasets for the image service, vector otherwise.</summary>
-    internal static MapLayerKind LayerKind(MapService service) =>
-        service == MapService.Image ? MapLayerKind.Image : MapLayerKind.Feature;
+    internal static MapLayerKind LayerKind(MapServiceKind service) =>
+        service == MapServiceKind.ImageServer ? MapLayerKind.Image : MapLayerKind.Feature;
 
     /// <summary>The layer kind for a new layer on a map, from its first service (vector when none).</summary>
     internal static MapLayerKind PrimaryLayerKind(Map map) =>

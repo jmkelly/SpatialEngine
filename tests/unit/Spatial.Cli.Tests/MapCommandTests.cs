@@ -32,7 +32,7 @@ public sealed class MapCommandTests
         var (map, token) = Assert.Single(gateway.PutCalls);
         Assert.Equal("secret", token);
         Assert.Equal("World", map.Name);
-        Assert.Equal([MapService.Map], map.Services);
+        Assert.Equal([MapServiceKind.MapServer], map.Services);
         Assert.Equal("memory", map.Store);
         Assert.Equal("A world map", map.Description);
         Assert.Equal("Natural Earth", map.Copyright);
@@ -59,7 +59,7 @@ public sealed class MapCommandTests
         {
             MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
             {
-                ["World"] = new Map("World", "memory", [], [MapService.Map]),
+                ["World"] = new Map("World", "memory", [], [MapServiceKind.MapServer]),
             },
         };
 
@@ -102,7 +102,7 @@ public sealed class MapCommandTests
                     "World",
                     "memory",
                     [new MapLayer("public.world", 3), new MapLayer("public.roads", 7)],
-                    [MapService.Map]),
+                    [MapServiceKind.MapServer]),
             },
         };
 
@@ -154,7 +154,7 @@ public sealed class MapCommandTests
                     "World",
                     "memory",
                     [new MapLayer("public.world", 2), new MapLayer("public.roads", 5)],
-                    [MapService.Map]),
+                    [MapServiceKind.MapServer]),
             },
         };
 
@@ -180,7 +180,7 @@ public sealed class MapCommandTests
         {
             MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
             {
-                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapService.Map]),
+                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapServiceKind.MapServer]),
             },
         };
 
@@ -223,7 +223,7 @@ public sealed class MapCommandTests
                     "World",
                     "memory",
                     [new MapLayer("public.world", 0), new MapLayer("public.roads", 5), new MapLayer("public.rivers", 9)],
-                    [MapService.Map]),
+                    [MapServiceKind.MapServer]),
             },
         };
 
@@ -249,7 +249,7 @@ public sealed class MapCommandTests
         {
             MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
             {
-                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapService.Map]),
+                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapServiceKind.MapServer]),
             },
         };
 
@@ -276,7 +276,7 @@ public sealed class MapCommandTests
                 "World",
                 "memory",
                 [new MapLayer("public.world", 0, "Countries", MapLibreStyleBuilder.Lower(initial, GeometryFamily.Mixed))],
-                [MapService.Map]),
+                [MapServiceKind.MapServer]),
         };
 
         var run = await CliHarness.RunAsync(
@@ -307,7 +307,7 @@ public sealed class MapCommandTests
         {
             MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
             {
-                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapService.Map]),
+                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapServiceKind.MapServer]),
             },
         };
 
@@ -335,7 +335,7 @@ public sealed class MapCommandTests
         {
             MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
             {
-                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0, null, hidden)], [MapService.Map]),
+                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0, null, hidden)], [MapServiceKind.MapServer]),
             },
         };
 
@@ -356,7 +356,7 @@ public sealed class MapCommandTests
         {
             MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
             {
-                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0, null, hidden)], [MapService.Map]),
+                ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0, null, hidden)], [MapServiceKind.MapServer]),
             },
         };
 
@@ -424,7 +424,7 @@ public sealed class MapCommandTests
     {
         MapsByName = new Dictionary<string, Map>(StringComparer.Ordinal)
         {
-            ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapService.Map]),
+            ["World"] = new Map("World", "memory", [new MapLayer("public.world", 0)], [MapServiceKind.MapServer]),
         },
     };
 

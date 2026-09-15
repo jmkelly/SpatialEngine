@@ -38,7 +38,7 @@ internal static class WmsService
         string name, OgcParameters parameters, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
     {
         parameters.RequiredService("WMS");
-        var map = await services.ResolveMapAsync(name, MapService.Wms, "WMS", cancellationToken);
+        var map = await services.ResolveMapAsync(name, MapServiceKind.Wms, "WMS", cancellationToken);
         var request = parameters.RequiredRequest();
         return request.ToUpperInvariant() switch
         {

@@ -60,7 +60,7 @@ public sealed class WmsServiceTests
                 new Spatial.PluginSdk.Providers.MapLayer(
                     OgcFixtures.Dataset, 1, "Photo", Kind: Spatial.PluginSdk.Providers.MapLayerKind.Image),
             ],
-            [Spatial.PluginSdk.Providers.MapService.Wms]);
+            [Spatial.PluginSdk.Providers.MapServiceKind.Wms]);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(OgcFixtures.City("Amsterdam", 900_000, 5, 55));
 

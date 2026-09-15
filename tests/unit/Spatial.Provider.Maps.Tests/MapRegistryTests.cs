@@ -35,7 +35,59 @@ public sealed class MapRegistryTests : IDisposable
     }
 
     private static Map Feature(string name, params MapLayer[] layers) =>
-        new(name, "memory", layers, [MapService.Feature]);
+        new(name, "memory", layers, [MapServiceKind.FeatureServer]);
+
+    [Fact]
+    public async Task Legacy_declared_service_names_still_parse()
+    {
+        var options = new MapsOptions
+        {
+            Path = FilePath,
+            Declared =
+            [
+                new DeclaredMapOptions
+                {
+                    Name = "legacy",
+                    Store = "demo",
+                    Services = ["Feature", "Map", "Tiles", "Wms", "Wfs", "Image"],
+                    Layers =
+                    [
+                        new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 0 },
+                        new DeclaredLayerOptions { Dataset = "raster.ortho", LayerId = 1, Kind = nameof(MapLayerKind.Image) },
+                    ],
+                },
+            ],
+        };
+        using var registry = Registry(options);
+
+        var map = await registry.GetAsync("legacy");
+        Assert.Equal(
+            [MapServiceKind.FeatureServer, MapServiceKind.MapServer, MapServiceKind.Tiles, MapServiceKind.Wms, MapServiceKind.Wfs, MapServiceKind.ImageServer],
+            map.Services);
+    }
+
+    [Fact]
+    public async Task Runtime_file_keeps_the_legacy_wire_keys()
+    {
+        Directory.CreateDirectory(_directory);
+        await File.WriteAllTextAsync(FilePath, """
+            {
+              "version": 1,
+              "maps": [
+                { "name": "old", "store": "demo", "services": ["feature", "map"],
+                  "layers": [{ "dataset": "demo.points", "layerId": 0 }] }
+              ]
+            }
+            """);
+        using var registry = Registry();
+
+        var map = await registry.GetAsync("old");
+        Assert.Equal([MapServiceKind.FeatureServer, MapServiceKind.MapServer], map.Services);
+
+        await registry.PutAsync(new Map("fresh", "demo", [new MapLayer("raster.ortho", 0, Kind: MapLayerKind.Image)], [MapServiceKind.ImageServer]));
+        var text = await File.ReadAllTextAsync(FilePath);
+        Assert.Contains("\"image\"", text, StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task A_runtime_map_round_trips_through_the_file()
@@ -51,7 +103,7 @@ public sealed class MapRegistryTests : IDisposable
 
         using var reopened = Registry();
         var reloaded = await reopened.GetAsync("parks");
-        Assert.Equal([MapService.Feature], reloaded.Services);
+        Assert.Equal([MapServiceKind.FeatureServer], reloaded.Services);
         Assert.Single(reloaded.Layers);
     }
 
@@ -104,13 +156,13 @@ public sealed class MapRegistryTests : IDisposable
             "mixed",
             "memory",
             [new MapLayer("memory.parks", 0)],
-            [MapService.Feature, MapService.Map, MapService.Tiles, MapService.Wms, MapService.Wfs]));
+            [MapServiceKind.FeatureServer, MapServiceKind.MapServer, MapServiceKind.Tiles, MapServiceKind.Wms, MapServiceKind.Wfs]));
 
         Assert.Equal(
-            [MapService.Feature, MapService.Map, MapService.Tiles, MapService.Wms, MapService.Wfs],
+            [MapServiceKind.FeatureServer, MapServiceKind.MapServer, MapServiceKind.Tiles, MapServiceKind.Wms, MapServiceKind.Wfs],
             stored.Services);
-        Assert.True(stored.Exposes(MapService.Wms));
-        Assert.False(stored.Exposes(MapService.Image));
+        Assert.True(stored.Exposes(MapServiceKind.Wms));
+        Assert.False(stored.Exposes(MapServiceKind.ImageServer));
     }
 
     [Fact]
@@ -119,7 +171,7 @@ public sealed class MapRegistryTests : IDisposable
         using var registry = Registry();
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() => registry.PutAsync(new Map(
-            "raster_only", "raster", [new MapLayer("ortho", 0, null, null, MapLayerKind.Image)], [MapService.Map])));
+            "raster_only", "raster", [new MapLayer("ortho", 0, null, null, MapLayerKind.Image)], [MapServiceKind.MapServer])));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
@@ -130,7 +182,7 @@ public sealed class MapRegistryTests : IDisposable
         using var registry = Registry();
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() => registry.PutAsync(new Map(
-            "vector", "memory", [new MapLayer("memory.parks", 0)], [MapService.Image])));
+            "vector", "memory", [new MapLayer("memory.parks", 0)], [MapServiceKind.ImageServer])));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
@@ -147,7 +199,7 @@ public sealed class MapRegistryTests : IDisposable
                 {
                     Name = "demo",
                     Store = "demo",
-                    Services = [nameof(MapService.Feature)],
+                    Services = [nameof(MapServiceKind.FeatureServer)],
                     Layers = [new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 0 }],
                 },
             ],
@@ -171,7 +223,7 @@ public sealed class MapRegistryTests : IDisposable
         var options = new MapsOptions
         {
             Path = FilePath,
-            Declared = [new DeclaredMapOptions { Name = "demo", Store = "demo", Services = [nameof(MapService.Feature)] }],
+            Declared = [new DeclaredMapOptions { Name = "demo", Store = "demo", Services = [nameof(MapServiceKind.FeatureServer)] }],
         };
         using var registry = Registry(options, (store, _) =>
         {
@@ -285,7 +337,7 @@ public sealed class MapRegistryTests : IDisposable
         using var registry = Registry(new MapsOptions { Path = FilePath, LegacyPath = legacyPath });
         var migrated = await registry.GetAsync("legacy");
 
-        Assert.Equal([MapService.Map], migrated.Services);
+        Assert.Equal([MapServiceKind.MapServer], migrated.Services);
         Assert.Equal("demo.points", migrated.Layers[0].Dataset);
         Assert.False(File.Exists(FilePath));
     }
@@ -319,10 +371,10 @@ public sealed class MapRegistryTests : IDisposable
     }
 
     [Theory]
-    [InlineData("feature", MapService.Feature)]
-    [InlineData("map", MapService.Map)]
-    [InlineData("image", MapService.Image)]
-    public async Task A_legacy_kind_maps_to_its_service(string kind, MapService expected)
+    [InlineData("feature", MapServiceKind.FeatureServer)]
+    [InlineData("map", MapServiceKind.MapServer)]
+    [InlineData("image", MapServiceKind.ImageServer)]
+    public async Task A_legacy_kind_maps_to_its_service(string kind, MapServiceKind expected)
     {
         Directory.CreateDirectory(_directory);
         var legacyPath = System.IO.Path.Combine(_directory, "publications.json");
@@ -333,7 +385,7 @@ public sealed class MapRegistryTests : IDisposable
         var migrated = await registry.GetAsync("legacy");
 
         Assert.Equal([expected], migrated.Services);
-        var expectedKind = expected == MapService.Image ? MapLayerKind.Image : MapLayerKind.Feature;
+        var expectedKind = expected == MapServiceKind.ImageServer ? MapLayerKind.Image : MapLayerKind.Feature;
         Assert.Equal(expectedKind, migrated.Layers[0].Kind);
     }
 
@@ -381,7 +433,7 @@ public sealed class MapRegistryTests : IDisposable
                 {
                     Name = "imagery",
                     Store = "raster",
-                    Services = [nameof(MapService.Image), nameof(MapService.Wms)],
+                    Services = [nameof(MapServiceKind.ImageServer), nameof(MapServiceKind.Wms)],
                     Layers =
                     [
                         new DeclaredLayerOptions { Dataset = "ortho", LayerId = 0, Kind = nameof(MapLayerKind.Image) },
@@ -394,7 +446,7 @@ public sealed class MapRegistryTests : IDisposable
         using var registry = Registry(options);
         var map = await registry.GetAsync("imagery");
 
-        Assert.Equal([MapService.Image, MapService.Wms], map.Services);
+        Assert.Equal([MapServiceKind.ImageServer, MapServiceKind.Wms], map.Services);
         Assert.Equal([MapLayerKind.Image, MapLayerKind.Feature], map.Layers.Select(layer => layer.Kind));
     }
 
@@ -417,7 +469,7 @@ public sealed class MapRegistryTests : IDisposable
         var options = new MapsOptions
         {
             Path = FilePath,
-            Declared = [new DeclaredMapOptions { Name = "bad", Store = "demo", Services = [nameof(MapService.Feature)], Layers = [new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 0, Kind = "hologram" }] }],
+            Declared = [new DeclaredMapOptions { Name = "bad", Store = "demo", Services = [nameof(MapServiceKind.FeatureServer)], Layers = [new DeclaredLayerOptions { Dataset = "demo.points", LayerId = 0, Kind = "hologram" }] }],
         };
 
         var failure = Assert.Throws<SpatialException>(() => Registry(options));
@@ -434,7 +486,7 @@ public sealed class MapRegistryTests : IDisposable
             "ortho",
             "raster",
             [new MapLayer("ortho", 0, null, null, MapLayerKind.Image)],
-            [MapService.Image],
+            [MapServiceKind.ImageServer],
             MetadataXml: xml));
 
         Assert.Equal(xml, stored.MetadataXml);
@@ -453,7 +505,7 @@ public sealed class MapRegistryTests : IDisposable
             "ortho",
             "raster",
             [new MapLayer("ortho", 0, null, null, MapLayerKind.Image)],
-            [MapService.Image],
+            [MapServiceKind.ImageServer],
             MetadataXml: "<MD_Metadata><title>unclosed")));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
@@ -472,7 +524,7 @@ public sealed class MapRegistryTests : IDisposable
                 {
                     Name = "ortho",
                     Store = "raster",
-                    Services = [nameof(MapService.Image)],
+                    Services = [nameof(MapServiceKind.ImageServer)],
                     MetadataXml = xml,
                     Layers = [new DeclaredLayerOptions { Dataset = "ortho", LayerId = 0, Kind = nameof(MapLayerKind.Image) }],
                 },
@@ -495,7 +547,7 @@ public sealed class MapRegistryTests : IDisposable
                 {
                     Name = "ortho",
                     Store = "raster",
-                    Services = [nameof(MapService.Image)],
+                    Services = [nameof(MapServiceKind.ImageServer)],
                     MetadataXml = "<MD_Metadata><title>unclosed",
                     Layers = [new DeclaredLayerOptions { Dataset = "ortho", LayerId = 0, Kind = nameof(MapLayerKind.Image) }],
                 },

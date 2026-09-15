@@ -25,7 +25,7 @@ internal static class GeoServicesResolution
         IMapRegistry registry,
         string service,
         string serverType,
-        MapService mapService,
+        MapServiceKind mapService,
         CancellationToken cancellationToken)
     {
         if (catalog.TryGet(service, out var entry) && entry.Type == serverType)
@@ -53,8 +53,8 @@ internal static class GeoServicesResolution
     }
 
     /// <summary>Whether a layer of <paramref name="kind"/> feeds <paramref name="service"/>.</summary>
-    internal static bool Feeds(MapService service, MapLayerKind kind) =>
-        service == MapService.Image ? kind == MapLayerKind.Image : kind == MapLayerKind.Feature;
+    internal static bool Feeds(MapServiceKind service, MapLayerKind kind) =>
+        service == MapServiceKind.ImageServer ? kind == MapLayerKind.Image : kind == MapLayerKind.Feature;
 
     /// <summary>Lists the published layers: explicit for a runtime publication, whole-store (sorted) for a declared service.</summary>
     internal static async Task<IReadOnlyList<PublishedLayer>> ListLayersAsync(
