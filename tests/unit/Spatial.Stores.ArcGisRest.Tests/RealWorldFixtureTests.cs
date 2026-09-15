@@ -240,7 +240,7 @@ public sealed class RealWorldFixtureTests
         {
             var name = field.GetProperty("name").GetString()!;
             var esriType = field.TryGetProperty("type", out var type) ? type.GetString() : null;
-            if (!Spatial.Interop.Esri.EsriFieldType.TryToAttributeKind(esriType, out var kind))
+            if (!Spatial.Esri.Codec.EsriFieldType.TryToAttributeKind(esriType, out var kind))
             {
                 continue;
             }
@@ -270,7 +270,7 @@ public sealed class RealWorldFixtureTests
             foreach (var field in fields.EnumerateArray())
             {
                 if (field.TryGetProperty("type", out var type)
-                    && type.GetString() == Spatial.Interop.Esri.EsriFieldType.Oid
+                    && type.GetString() == Spatial.Esri.Codec.EsriFieldType.Oid
                     && field.TryGetProperty("name", out var name))
                 {
                     return name.GetString()!;
@@ -322,7 +322,7 @@ public sealed class RealWorldFixtureTests
             if (reference.TryGetProperty(name, out var element)
                 && element.ValueKind == JsonValueKind.Number
                 && element.TryGetInt32(out var wkid)
-                && Spatial.Interop.Esri.WkidMap.TryToEpsg(wkid, out epsg))
+                && Spatial.Esri.Codec.WkidMap.TryToEpsg(wkid, out epsg))
             {
                 return true;
             }

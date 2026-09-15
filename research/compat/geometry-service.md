@@ -15,7 +15,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeometryService.cs` (dispatch +
 15 ops), `GeoServicesEndpoints.Geometry.cs` (routes), SDK
 `IGeometryOperations`/`IGeometryMeasures`/`IGeometryProcessing`/`IGeometryRelations`
 (ADR-0036), `ICoordinateTransforms`/`ICrsDirectory`, wire `EsriUnits`
-(`Spatial.Interop.Esri`).
+(`Spatial.Esri.Codec`).
 
 ## 1. Operations (21)
 

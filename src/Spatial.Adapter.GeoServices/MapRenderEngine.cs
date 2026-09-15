@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Spatial.Core.Geometry;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 

@@ -83,20 +83,20 @@ public sealed class FeatureValidateSqlTests
     [Fact]
     public void A_missing_sql_is_a_typed_error()
     {
-        var exception = Assert.Throws<Spatial.Interop.Esri.EsriInteropException>(() =>
+        var exception = Assert.Throws<Spatial.Esri.Codec.EsriInteropException>(() =>
             FeatureValidateSql.Validate(Layer(), null, null));
 
-        Assert.Equal(Spatial.Interop.Esri.EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Equal(Spatial.Esri.Codec.EsriErrorCodes.InvalidParameters, exception.Code);
         Assert.Contains("sql", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void An_unknown_sql_type_is_a_typed_error()
     {
-        var exception = Assert.Throws<Spatial.Interop.Esri.EsriInteropException>(() =>
+        var exception = Assert.Throws<Spatial.Esri.Codec.EsriInteropException>(() =>
             FeatureValidateSql.Validate(Layer(), "1=1", "select"));
 
-        Assert.Equal(Spatial.Interop.Esri.EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Equal(Spatial.Esri.Codec.EsriErrorCodes.InvalidParameters, exception.Code);
         Assert.Contains("sqlType", exception.Message, StringComparison.Ordinal);
     }
 }

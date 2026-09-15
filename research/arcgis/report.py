@@ -3,14 +3,14 @@
 
 Reads ``tests/fixtures/arcgis/captured/index.json`` and measures it against the
 dimensions the ArcGIS REST provider (`Spatial.Stores.ArcGisRest`) and the
-Esri interop codec (`Spatial.Interop.Esri`) actually branch on. The point is
+Esri interop codec (`Spatial.Esri.Codec`) actually branch on. The point is
 not "how many endpoints" but "which real-world shapes are we *not* proving we
 handle". Gaps printed at the end are the next harvest iteration's shopping
 list.
 
 Keep the supported sets below in sync with:
-- ``src/Spatial.Interop.Esri/EsriFieldType.cs``  (field type map)
-- ``src/Spatial.Interop.Esri/WkidMap.cs``        (curated WKID -> EPSG map)
+- ``src/Spatial.Esri.Codec/EsriFieldType.cs``  (field type map)
+- ``src/Spatial.Esri.Codec/WkidMap.cs``        (curated WKID -> EPSG map)
 - ``src/Spatial.Stores.ArcGisRest/ArcGisRestMapper.cs`` (geometry type names)
 """
 

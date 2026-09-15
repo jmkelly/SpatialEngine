@@ -98,13 +98,13 @@ public sealed class ArchitectureGuardTests
     /// ADR-0033/ADR-0005: implementations link Core + SDK only; third-party
     /// spatial packages stay inside the owning implementation. ADR-0035 adds
     /// the shared Esri codec as a permitted reference for the two boundary
-    /// projects (they share only <c>Spatial.Interop.Esri</c>, never each
+    /// projects (they share only <c>Spatial.Esri.Codec</c>, never each
     /// other).
     /// </summary>
     [Fact]
     public void Implementation_projects_reference_only_core_and_sdk()
     {
-        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk", "Spatial.Interop.Esri" };
+        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk", "Spatial.Esri.Codec" };
         var violations = ImplementationProjects()
             .SelectMany(project => project.ProjectReferences
                 .Where(r => !allowed.Contains(r) && !AllowedBoundaryReferences(project.Name).Contains(r))
@@ -115,14 +115,15 @@ public sealed class ArchitectureGuardTests
     }
 
     /// <summary>
-    /// ADR-0035: the shared Esri wire codec references Core only — no NTS,
+    /// ADR-0035: the shared wire codecs reference Core only — no NTS,
     /// no ASP.NET, no HttpClient.
     /// </summary>
     [Fact]
-    public void Interop_projects_reference_only_core()
+    public void Codec_projects_reference_only_core()
     {
+        var codecs = new[] { "Spatial.Esri.Codec", "Spatial.Ingest.Codec" };
         var violations = Repository.Value.Projects
-            .Where(project => project.Name.StartsWith("Spatial.Interop.", StringComparison.Ordinal)
+            .Where(project => codecs.Contains(project.Name)
                 && project.RelativePath.Replace('\\', '/').StartsWith("src/", StringComparison.Ordinal))
             .SelectMany(project => project.ProjectReferences
                 .Where(reference => reference != "Spatial.Core")
@@ -143,7 +144,7 @@ public sealed class ArchitectureGuardTests
         {
             "Spatial.Core",
             "Spatial.PluginSdk",
-            "Spatial.Interop.Ingest",
+            "Spatial.Ingest.Codec",
             "Spatial.Operations.NetTopologySuite",
             "Spatial.Transformations.ProjNet",
             "Spatial.Stores.Demo",
@@ -259,8 +260,8 @@ public sealed class ArchitectureGuardTests
         "Spatial.AppHost",
         "Spatial.Core",
         "Spatial.PluginSdk",
-        "Spatial.Interop.Esri",
-        "Spatial.Interop.Ingest",
+        "Spatial.Esri.Codec",
+        "Spatial.Ingest.Codec",
         "Spatial.Operations.NetTopologySuite",
         "Spatial.Transformations.ProjNet",
         "Spatial.Stores.Demo",
@@ -295,9 +296,9 @@ public sealed class ArchitectureGuardTests
     /// <summary>ADR-0035 boundary projects may also reference the shared Esri codec.</summary>
     private static string[] AllowedBoundaryReferences(string projectName) => projectName switch
     {
-        "Spatial.Adapter.GeoServices" => ["Spatial.Interop.Esri", "Spatial.Interop.Ingest"],
-        "Spatial.Adapter.Ogc" => ["Spatial.Interop.Esri"],
-        "Spatial.Stores.ArcGisRest" => ["Spatial.Interop.Esri"],
+        "Spatial.Adapter.GeoServices" => ["Spatial.Esri.Codec", "Spatial.Ingest.Codec"],
+        "Spatial.Adapter.Ogc" => ["Spatial.Esri.Codec"],
+        "Spatial.Stores.ArcGisRest" => ["Spatial.Esri.Codec"],
         _ => [],
     };
 

@@ -9,7 +9,7 @@
 Ground-truth corpus for the GeoServices work (ADR-0035):
 
 - **consume:** `Spatial.Stores.ArcGisRest` (the engine reads ArcGIS REST), and
-- **codec:** `Spatial.Interop.Esri` (the shape of Esri JSON itself).
+- **codec:** `Spatial.Esri.Codec` (the shape of Esri JSON itself).
 
 The suite in `tests/unit/Spatial.Stores.ArcGisRest.Tests/RealWorldFixtureTests.cs`
 replays responses recorded from **real, public ArcGIS services** and checks the

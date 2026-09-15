@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.PluginSdk;
 
 namespace Spatial.Adapter.GeoServices.Tests;

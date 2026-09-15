@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The GeoServices REST serving facade (ADR-0035): a boundary adapter that
-    maps the Esri GeoServices REST specification onto the in-process engine
-    services. It contains no spatial algorithms — the adapter maps protocol
+    The GeoServices REST serving boundary (ADR-0035: the server side): a boundary
+    adapter that maps the Esri GeoServices REST specification onto the in-process
+    engine services. It contains no spatial algorithms — the adapter maps protocol
     to verbs and delegates to IGeometryOperations, ICoordinateTransforms and
     the keyed stores. ASP.NET Core types stay inside this project; the adapter
-    is mounted by Spatial.Host only.
+    is mounted by Spatial.Host only. The consuming side is the
+    Spatial.Stores.ArcGisRest client; both share only Spatial.Esri.Codec.
   -->
 
   <PropertyGroup>
@@ -21,8 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
-    <ProjectReference Include="..\Spatial.Interop.Esri\Spatial.Interop.Esri.csproj" />
-    <ProjectReference Include="..\Spatial.Interop.Ingest\Spatial.Interop.Ingest.csproj" />
+    <ProjectReference Include="..\Spatial.Esri.Codec\Spatial.Esri.Codec.csproj" />
+    <ProjectReference Include="..\Spatial.Ingest.Codec\Spatial.Ingest.Codec.csproj" />
   </ItemGroup>
 
   <ItemGroup>

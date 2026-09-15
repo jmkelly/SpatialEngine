@@ -53,8 +53,8 @@ public sealed class MapLayerSelectionTests
     [Fact]
     public void An_unknown_layer_option_is_a_typed_error()
     {
-        var failure = Assert.Throws<Spatial.Interop.Esri.EsriInteropException>(() =>
+        var failure = Assert.Throws<Spatial.Esri.Codec.EsriInteropException>(() =>
             MapLayerSelection.Select(Layers, null, "every"));
-        Assert.Equal(Spatial.Interop.Esri.EsriErrorCodes.InvalidParameters, failure.Code);
+        Assert.Equal(Spatial.Esri.Codec.EsriErrorCodes.InvalidParameters, failure.Code);
     }
 }

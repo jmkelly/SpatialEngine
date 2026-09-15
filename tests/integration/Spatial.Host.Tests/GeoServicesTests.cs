@@ -2,7 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Client;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 
 namespace Spatial.Host.Tests;
 

@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Spatial.Core.Features;
-using Spatial.Interop.Ingest;
+using Spatial.Ingest.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 

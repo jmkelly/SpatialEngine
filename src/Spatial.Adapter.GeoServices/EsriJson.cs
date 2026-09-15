@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.PluginSdk;
 
 namespace Spatial.Adapter.GeoServices;

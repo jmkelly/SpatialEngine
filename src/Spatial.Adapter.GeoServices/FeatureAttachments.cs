@@ -1,5 +1,5 @@
 using Spatial.Core.Features;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 

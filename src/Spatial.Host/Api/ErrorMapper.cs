@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Spatial.Interop.Ingest;
+using Spatial.Ingest.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Http;
 

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 

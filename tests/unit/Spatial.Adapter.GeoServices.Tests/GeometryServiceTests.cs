@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Core.Geometry;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.Transformations.ProjNet;
 

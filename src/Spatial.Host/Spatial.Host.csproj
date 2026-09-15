@@ -18,7 +18,7 @@
     <ProjectReference Include="..\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
     <ProjectReference Include="..\Spatial.Stores.PostGIS\Spatial.Stores.PostGIS.csproj" />
     <ProjectReference Include="..\Spatial.Maps\Spatial.Maps.csproj" />
-    <ProjectReference Include="..\Spatial.Interop.Ingest\Spatial.Interop.Ingest.csproj" />
+    <ProjectReference Include="..\Spatial.Ingest.Codec\Spatial.Ingest.Codec.csproj" />
     <ProjectReference Include="..\Spatial.Stores.ArcGisRest\Spatial.Stores.ArcGisRest.csproj" />
     <ProjectReference Include="..\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
     <ProjectReference Include="..\Spatial.Imagery.Vips\Spatial.Imagery.Vips.csproj" />

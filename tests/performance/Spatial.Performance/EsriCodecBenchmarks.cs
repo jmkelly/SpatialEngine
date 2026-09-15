@@ -2,7 +2,7 @@ using System.Text.Json;
 using BenchmarkDotNet.Attributes;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 
 namespace Spatial.Performance;
 

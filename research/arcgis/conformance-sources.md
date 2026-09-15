@@ -6,7 +6,7 @@ source URLs, mined client test suites/fixtures, and the recorded corpus in
 request, expected response/assertion, real-client dependency, current engine
 behaviour with a `file:line` pointer, and rough effort (S < 1 day, M 1–3 days,
 L > 3 days). Serve side = `src/Spatial.Adapter.GeoServices` (+ codec
-`src/Spatial.Interop.Esri`); consume side = `src/Spatial.Stores.ArcGisRest`.
+`src/Spatial.Esri.Codec`); consume side = `src/Spatial.Stores.ArcGisRest`.
 
 Existing narrow proof (do not duplicate): `clients/typescript/test/geoservices-e2e.test.ts`
 drives the live host with unmodified `@esri/arcgis-rest-feature-service`
@@ -247,9 +247,9 @@ with pointer). Follow-up tasks must land the red test before the fix.
   maps and dashboards send `time` on every query.
 - Current behaviour: `time` explicitly rejected 400 (`EsriFeatureQuery.cs:207`);
   `EsriFilterClause` supports only AND/OR/parens/comparisons/LIKE/IS NULL
-  (`src/Spatial.Interop.Esri/EsriFilterClause.cs:9,16-70`) — no date literals.
+  (`src/Spatial.Esri.Codec/EsriFilterClause.cs:9,16-70`) — no date literals.
   Attribute codec already round-trips epoch-ms dates
-  (`src/Spatial.Interop.Esri/EsriAttributeCodec.cs:44,128-130`).
+  (`src/Spatial.Esri.Codec/EsriAttributeCodec.cs:44,128-130`).
 - Effort: **M-L**. Red tests: `time` instant, `time` extent with `null`
   infinity bound, `TIMESTAMP` literal, `CURRENT_TIMESTAMP ± INTERVAL`.
 

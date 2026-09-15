@@ -219,7 +219,8 @@ shipped.
 | `src/Spatial.PluginSdk` | Service interfaces, DTOs, error codes, HTTP shapes |
 | `src/Spatial.Operations.NetTopologySuite` | Geometry verbs: operations, measures, processing, relations |
 | `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
-| `src/Spatial.Interop.Esri` | Shared Esri JSON codec, WKID map, error model, filter grammar |
+| `src/Spatial.Esri.Codec` | Shared Esri JSON codec, WKID map, error model, filter grammar |
+| `src/Spatial.Ingest.Codec` | Upload format decoders (GeoJSON, NDJSON, CSV) to canonical batches |
 | `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade |
 | `src/Spatial.Stores.ArcGisRest` | ArcGIS REST consuming store |
 | `src/Spatial.Stores.PostGIS` | PostGIS store: catalogue, features, transactions, editing |

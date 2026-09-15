@@ -1,0 +1,314 @@
+using System.Text.Json;
+using Spatial.Core.Geometry;
+
+namespace Spatial.Esri.Codec.Tests;
+
+public sealed class EsriGeometryCodecTests
+{
+    private static IGeometry Decode(string json) => EsriGeometryCodec.Decode(JsonDocument.Parse(json).RootElement);
+
+    private static IGeometry RoundTrip(IGeometry geometry) => Decode(EsriGeometryCodec.Encode(geometry));
+
+    [Fact]
+    public void Point_round_trips_with_its_spatial_reference()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode(
+            """{"x":-118.15,"y":33.8,"spatialReference":{"wkid":4326}}"""));
+
+        Assert.Equal(-118.15, decoded.X);
+        Assert.Equal(33.8, decoded.Y);
+        Assert.Equal(CoordinateReference.Epsg(4326), decoded.CoordinateReference);
+        Assert.True(GeometryComparer.Equals(decoded, RoundTrip(decoded)));
+    }
+
+    [Fact]
+    public void Point_carries_optional_z_and_m()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"z":3,"m":4,"hasZ":true,"hasM":true}"""));
+
+        Assert.Equal(3, decoded.Z);
+        Assert.Equal(4, decoded.M);
+        Assert.Equal(CoordinateLayout.Xyzm, decoded.Layout);
+    }
+
+    [Fact]
+    public void Three_element_coordinate_treats_third_as_z_when_hasM_is_absent()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"z":3,"hasZ":true}"""));
+
+        Assert.Equal(3, decoded.Z);
+        Assert.Null(decoded.M);
+        Assert.Equal(CoordinateLayout.Xyz, decoded.Layout);
+    }
+
+    [Fact]
+    public void Three_element_coordinate_treats_third_as_m_when_hasM_is_true_and_hasZ_is_false()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"m":3,"hasM":true}"""));
+
+        Assert.Null(decoded.Z);
+        Assert.Equal(3, decoded.M);
+        Assert.Equal(CoordinateLayout.Xym, decoded.Layout);
+    }
+
+    [Fact]
+    public void Multipoint_round_trips()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2],[3,4]],"spatialReference":{"wkid":3857}}"""));
+
+        Assert.Equal(2, decoded.Points.Count);
+        Assert.Equal(CoordinateReference.Epsg(3857), decoded.CoordinateReference);
+        Assert.True(GeometryComparer.Equals(decoded, RoundTrip(decoded)));
+    }
+
+    [Fact]
+    public void A_single_path_polyline_decodes_to_a_line_string()
+    {
+        var decoded = Decode("""{"paths":[[[0,0],[1,1],[2,2]]]}""");
+
+        var line = Assert.IsAssignableFrom<LineString>(decoded);
+        Assert.Equal(3, line.CoordinateCount);
+        Assert.True(GeometryComparer.Equals(decoded, RoundTrip(decoded)));
+    }
+
+    [Fact]
+    public void A_multi_path_polyline_decodes_to_a_multi_line_string()
+    {
+        var decoded = Decode("""{"paths":[[[0,0],[1,1]],[[2,2],[3,3]]]}""");
+
+        var multi = Assert.IsAssignableFrom<MultiLineString>(decoded);
+        Assert.Equal(2, multi.LineStrings.Count);
+        Assert.True(GeometryComparer.Equals(decoded, RoundTrip(decoded)));
+    }
+
+    [Fact]
+    public void Polygon_rings_split_into_exterior_and_holes_by_orientation()
+    {
+        var decoded = Decode(
+            """{"rings":[[[0,0],[0,1],[1,1],[1,0],[0,0]],[[0.2,0.2],[0.8,0.2],[0.8,0.8],[0.2,0.8],[0.2,0.2]]]}""");
+
+        var polygon = Assert.IsAssignableFrom<Polygon>(decoded);
+        Assert.Single(polygon.InteriorRings);
+        Assert.True(GeometryComparer.Equals(decoded, RoundTrip(decoded)));
+    }
+
+    [Fact]
+    public void Multiple_clockwise_outer_rings_decode_to_a_multi_polygon()
+    {
+        var decoded = Decode(
+            """{"rings":[[[0,0],[0,1],[1,1],[1,0],[0,0]],[[2,2],[2,3],[3,3],[3,2],[2,2]]]}""");
+
+        var multi = Assert.IsAssignableFrom<MultiPolygon>(decoded);
+        Assert.Equal(2, multi.Polygons.Count);
+    }
+
+    [Fact]
+    public void Envelope_decodes_to_a_closed_rectangle()
+    {
+        var decoded = Decode("""{"xmin":0,"ymin":0,"xmax":2,"ymax":1}""");
+
+        var polygon = Assert.IsAssignableFrom<Polygon>(decoded);
+        Assert.Equal(5, polygon.ExteriorRing.CoordinateCount);
+        Assert.Equal(0, polygon.Envelope!.Value.MinX);
+        Assert.Equal(2, polygon.Envelope!.Value.MaxX);
+    }
+
+    [Fact]
+    public void An_inverted_envelope_is_rejected()
+    {
+        var exception = Assert.Throws<EsriInteropException>(() => Decode("""{"xmin":5,"ymin":0,"xmax":1,"ymax":1}"""));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+    }
+
+    [Fact]
+    public void The_url_remote_geometry_form_is_rejected()
+    {
+        var exception = Assert.Throws<EsriInteropException>(() => Decode("""{"url":"https://example.com/geometry.json"}"""));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("url", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void An_unrecognised_shape_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"unexpected":true}"""));
+    }
+
+    [Fact]
+    public void A_fallback_spatial_reference_applies_when_the_geometry_carries_none()
+    {
+        var decoded = EsriGeometryCodec.Decode(JsonDocument.Parse("""{"x":1,"y":2}""").RootElement, CoordinateReference.Epsg(27700));
+
+        Assert.Equal(CoordinateReference.Epsg(27700), decoded.CoordinateReference);
+    }
+
+    [Theory]
+    [InlineData("1,2")]
+    [InlineData(" 1.5 , -2.5 ")]
+    public void Simple_point_syntax_parses(string text)
+    {
+        Assert.True(EsriGeometryCodec.TryParseSimple(text, out var geometry));
+        Assert.IsAssignableFrom<Point>(geometry);
+    }
+
+    [Fact]
+    public void Simple_envelope_syntax_parses()
+    {
+        Assert.True(EsriGeometryCodec.TryParseSimple("0,0,4,2", out var geometry));
+
+        var polygon = Assert.IsAssignableFrom<Polygon>(geometry);
+        Assert.Equal(4, polygon.Envelope!.Value.MaxX);
+        Assert.Equal(2, polygon.Envelope!.Value.MaxY);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("1")]
+    [InlineData("a,b")]
+    [InlineData("1,2,3")]
+    public void Malformed_simple_syntax_is_rejected(string text)
+    {
+        Assert.False(EsriGeometryCodec.TryParseSimple(text, out _));
+    }
+
+    [Fact]
+    public void A_three_element_coordinate_array_uses_the_hasZ_flag_for_z()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2,3]],"hasZ":true}"""));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Equal(3, point.Z);
+        Assert.Null(point.M);
+    }
+
+    [Fact]
+    public void A_three_element_coordinate_array_uses_the_hasM_flag_for_m()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2,3]],"hasM":true}"""));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Null(point.Z);
+        Assert.Equal(3, point.M);
+    }
+
+    [Fact]
+    public void A_four_element_coordinate_array_is_xyzm()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode("""{"points":[[1,2,3,4]]}"""));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Equal(3, point.Z);
+        Assert.Equal(4, point.M);
+    }
+
+    [Theory]
+    [InlineData("5")]
+    [InlineData("\"text\"")]
+    public void A_non_object_geometry_is_rejected(string json)
+    {
+        Assert.Throws<EsriInteropException>(() => Decode(json));
+    }
+
+    [Fact]
+    public void A_coordinate_array_of_the_wrong_length_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"points":[[1]]}"""));
+    }
+
+    [Fact]
+    public void A_partial_point_object_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"x":1}"""));
+    }
+
+    [Fact]
+    public void An_xyzm_point_encodes_z_and_m()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreatePoint(1, 2, 3, 4));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("x").GetDouble());
+        Assert.Equal(2, root.GetProperty("y").GetDouble());
+        Assert.Equal(3, root.GetProperty("z").GetDouble());
+        Assert.Equal(4, root.GetProperty("m").GetDouble());
+    }
+
+    [Fact]
+    public void An_xyz_point_encodes_z_without_m()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreatePoint(1, 2, 3));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.Equal(3, root.GetProperty("z").GetDouble());
+        Assert.False(root.TryGetProperty("m", out _));
+    }
+
+    [Fact]
+    public void An_xym_point_encodes_m_without_z()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreatePoint(new Coordinate(1, 2, M: 4)));
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        Assert.False(root.TryGetProperty("z", out _));
+        Assert.Equal(4, root.GetProperty("m").GetDouble());
+    }
+
+    [Fact]
+    public void An_empty_point_encodes_without_coordinates()
+    {
+        var json = EsriGeometryCodec.Encode(GeometryFactory.CreateEmptyPoint());
+
+        using var document = JsonDocument.Parse(json);
+        Assert.False(document.RootElement.TryGetProperty("x", out _));
+        Assert.False(document.RootElement.TryGetProperty("y", out _));
+    }
+
+    [Fact]
+    public void An_xyzm_linestring_encodes_every_ordinate()
+    {
+        var line = GeometryFactory.CreateLineString(
+        [
+            new Coordinate(0, 0, 0, 0),
+            new Coordinate(1, 1, 1, 1),
+        ]);
+
+        var json = EsriGeometryCodec.Encode(line);
+
+        Assert.Contains("[[0,0,0,0],[1,1,1,1]]", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Empty_rings_decode_to_an_empty_polygon()
+    {
+        var polygon = Assert.IsAssignableFrom<Polygon>(Decode("""{"rings":[]}"""));
+
+        Assert.True(polygon.IsEmpty);
+    }
+
+    [Fact]
+    public void A_geometry_without_an_esri_form_is_rejected_on_write()
+    {
+        var collection = new GeometryCollection([GeometryFactory.CreatePoint(1, 2)]);
+
+        var exception = Assert.Throws<EsriInteropException>(() => EsriGeometryCodec.Encode(collection));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+    }
+
+    [Fact]
+    public void A_non_array_coordinate_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"points":["x"]}"""));
+    }
+
+    [Fact]
+    public void A_non_numeric_ordinate_is_rejected()
+    {
+        Assert.Throws<EsriInteropException>(() => Decode("""{"points":[[1,"x"]]}"""));
+    }
+}

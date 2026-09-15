@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 using Spatial.PluginSdk;
 
 namespace Spatial.Adapter.GeoServices;

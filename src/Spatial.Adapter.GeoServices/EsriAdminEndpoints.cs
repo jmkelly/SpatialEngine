@@ -2,8 +2,8 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Spatial.Interop.Esri;
-using Spatial.Interop.Ingest;
+using Spatial.Esri.Codec;
+using Spatial.Ingest.Codec;
 using Spatial.PluginSdk;
 using Spatial.PluginSdk.Providers;
 

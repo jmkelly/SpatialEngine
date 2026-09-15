@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The shared Esri GeoServices wire codec (ADR-0035): JSON geometry/feature
+    shapes, esriFieldType* <-> AttributeKind, WKID <-> EPSG mapping and the
+    Esri error model. References Spatial.Core only — no algorithms, no NTS,
+    no ASP.NET, no HttpClient. Both the serving facade
+    (Spatial.Adapter.GeoServices) and the consuming provider
+    (Spatial.Stores.ArcGisRest) depend on this project and nothing else of
+    each other.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Esri.Codec</AssemblyName>
+    <RootNamespace>Spatial.Esri.Codec</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The unit tests pin the wire codec's conversion behaviour. -->
+    <InternalsVisibleTo Include="Spatial.Esri.Codec.Tests" />
+    <InternalsVisibleTo Include="Spatial.Adapter.GeoServices.Tests" />
+    <InternalsVisibleTo Include="Spatial.Stores.ArcGisRest.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Spatial.Interop.Esri;
+using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 
