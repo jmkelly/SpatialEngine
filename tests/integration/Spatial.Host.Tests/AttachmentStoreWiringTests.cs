@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Host.Tests;
 

@@ -1,6 +1,6 @@
 using Spatial.Adapter.GeoServices;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Host.Tests;
 

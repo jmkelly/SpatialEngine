@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using SkiaSharp;
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
 using Spatial.Rendering.Skia.Styling;
 
 namespace Spatial.Rendering.Skia.Drawing;

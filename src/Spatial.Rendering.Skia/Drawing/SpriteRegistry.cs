@@ -1,5 +1,5 @@
 using SkiaSharp;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Svg.Skia;
 
 namespace Spatial.Rendering.Skia.Drawing;

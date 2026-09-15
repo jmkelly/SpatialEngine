@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Xml.Linq;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.Ogc;
 

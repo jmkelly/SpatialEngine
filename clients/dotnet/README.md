@@ -2,7 +2,7 @@
 
 The .NET client SDK for the typed spatial host API (ADR-0033): a thin
 `HttpClient` wrapper for automation and service clients, speaking the same
-typed routes (`Spatial.PluginSdk.Http`) the host and the TypeScript SDK use.
+typed routes (`Spatial.Contracts.Http`) the host and the TypeScript SDK use.
 
 ## Use
 

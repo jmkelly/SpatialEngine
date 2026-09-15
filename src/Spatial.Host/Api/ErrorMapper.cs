@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
 using Spatial.Ingest.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
 
 namespace Spatial.Host.Api;
 

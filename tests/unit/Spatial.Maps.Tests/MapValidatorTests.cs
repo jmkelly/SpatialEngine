@@ -1,6 +1,6 @@
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Maps;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Maps.Tests;
 

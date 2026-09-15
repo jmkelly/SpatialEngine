@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "project": "src/Spatial.PluginSdk/Spatial.PluginSdk.csproj",
+    "project": "src/Spatial.Contracts/Spatial.Contracts.csproj",
     "mutation-level": "Standard",
     "coverage-analysis": "perTest",
     "additional-timeout": 2,

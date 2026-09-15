@@ -1,5 +1,5 @@
+using Spatial.Contracts;
 using Spatial.Host.TileServing;
-using Spatial.PluginSdk;
 using Spatial.Tiling.WebMercator;
 
 namespace Spatial.Host.Tests;

@@ -7,11 +7,11 @@ ADR for the decision and the research at
 `../../research/rendering/README.md` for the measured baseline and the
 libvips traps; this is the as-built shape.
 
-## Contract surface (`Spatial.PluginSdk`)
+## Contract surface (`Spatial.Contracts`)
 
 Core/framework types only — no Skia, no NetVips (ADR-0005). The value types
-sit in the root `Spatial.PluginSdk` namespace; the wire DTOs in
-`Spatial.PluginSdk.Http`.
+sit in the root `Spatial.Contracts` namespace; the wire DTOs in
+`Spatial.Contracts.Http`.
 
 | Type | Role |
 | --- | --- |

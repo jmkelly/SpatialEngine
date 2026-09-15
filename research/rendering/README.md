@@ -6,7 +6,7 @@ how should NetVips imagery compose into one high-performance pipeline built
 from the engine's existing services?
 
 **Answer (short).** **SkiaSharp for vector rasterization, NetVips for imagery
-and composition**, both hidden behind `Spatial.PluginSdk` interfaces and
+and composition**, both hidden behind `Spatial.Contracts` interfaces and
 wired by DI in `Spatial.Host`. The style document is the MapLibre style spec
 (so the browser workbench and the server agree); a CSS-ish authoring layer
 lowers to the same compiled style model. A runnable spike (since retired
@@ -95,7 +95,7 @@ wiring. The renderer depends on the imagery *interface*, never on NetVips
 directly, so the engine keeps "implementations never depend on each other".
 
 ```
-Spatial.PluginSdk
+Spatial.Contracts
   IMapRenderer          RenderAsync(MapRenderRequest) -> RasterImage
   IRasterOperations     CompositeAsync(RasterComposite) -> RasterImage   // imagery verbs
   DTOs: MapRenderRequest, RasterViewport, RasterComposite, RasterLayer,
@@ -213,7 +213,7 @@ two dashed roads and four city points composed over the imagery floor.
 ## Phased plan
 
 1. **ADR + contracts** (small): `IMapRenderer` + `IRasterOperations` + DTOs
-   in `Spatial.PluginSdk`; architecture-test allowlist entries for the two
+   in `Spatial.Contracts`; architecture-test allowlist entries for the two
    new projects and their packages; distilled-doc updates.
 2. **Vector first**: `Spatial.Rendering.Skia` renders `fill`/`line`/`circle`
    from a MapLibre-subset style, no imagery, output PNG. Host route +

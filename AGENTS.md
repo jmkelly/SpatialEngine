@@ -1,6 +1,6 @@
 # Spatial Engine
 
-Spatial **values** live in `Spatial.Core`; the **verbs** are `Spatial.PluginSdk`
+Spatial **values** live in `Spatial.Core`; the **verbs** are `Spatial.Contracts`
 interfaces implemented in-process and composed by `Spatial.Host` with DI. The
 browser workbench is the delivered client; Esri GeoServices REST is the
 interop surface.
@@ -11,7 +11,7 @@ interop surface.
   structural: inspection, traversal, encoding, envelopes.
 - Public contracts carry only core types; NTS, Npgsql, EF and renderer types
   stay inside their owning implementation.
-- `Spatial.PluginSdk` references only `Spatial.Core` and takes no packages.
+- `Spatial.Contracts` references only `Spatial.Core` and takes no packages.
 - The host is JIT-compiled; a Native AOT change needs an approved ADR first.
 - Long-running work is a cancellable `Task`; failures are structured
   `SpatialException` codes (`invalid.arguments`, `not.found`,

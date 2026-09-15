@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Rendering.Skia.Styling;
 

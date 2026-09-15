@@ -8,10 +8,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NetVips;
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Imagery.Vips.Raster;
-using Spatial.PluginSdk;
 
 namespace Spatial.Host.Tests;
 

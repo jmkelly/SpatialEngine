@@ -73,7 +73,7 @@ internal static class GeometryFixtures
 }
 
 /// <summary>
-/// Buffer micro (T-076): the engine verb via <see cref="Spatial.PluginSdk.IGeometryOperations"/>
+/// Buffer micro (T-076): the engine verb via <see cref="Spatial.Contracts.IGeometryOperations"/>
 /// against the same operation executed straight on NTS types. The delta is the
 /// Core↔NTS adapter cost (ToNts + ToCore) plus validation.
 /// </summary>

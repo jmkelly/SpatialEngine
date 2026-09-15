@@ -5,7 +5,7 @@ Implements ADR-0033 (replaces ADR-0030/0031 HTTP/workbench surfaces).
 ## Host API (`Spatial.Host`, ASP.NET Core minimal API, JIT)
 
 - One JSON contract: camelCase properties and enum names; options come from
-  the SDK's shared `HostApiJson`. Shapes live in `Spatial.PluginSdk.Http`;
+  the SDK's shared `HostApiJson`. Shapes live in `Spatial.Contracts.Http`;
   OpenAPI at `/openapi/v1.json` (source of the generated TypeScript wire types).
 - Geometries cross as Base64 SGEOM strings, batches as Base64 SFBAT strings
   (ADR-0020). Feature data never crosses as JSON geometry.

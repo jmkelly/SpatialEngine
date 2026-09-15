@@ -2,10 +2,10 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 

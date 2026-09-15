@@ -62,10 +62,10 @@ public sealed class PostgisDiagnosticsTests
     [Fact]
     public void Parse_feature_identity_rejects_a_column_count_mismatch()
     {
-        var exception = Assert.Throws<Spatial.PluginSdk.SpatialException>(() =>
+        var exception = Assert.Throws<Spatial.Contracts.SpatialException>(() =>
             PostgisDiagnostics.ParseFeatureIdentity([AttributeKind.Int64, AttributeKind.Int64], new FeatureId("7")));
 
-        Assert.Equal(Spatial.PluginSdk.SpatialException.InvalidArguments, exception.Code);
+        Assert.Equal(Spatial.Contracts.SpatialException.InvalidArguments, exception.Code);
     }
 
     [Fact]

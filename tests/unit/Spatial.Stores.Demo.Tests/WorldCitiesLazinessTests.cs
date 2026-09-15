@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Xunit;
 
 namespace Spatial.Stores.Demo.Tests;

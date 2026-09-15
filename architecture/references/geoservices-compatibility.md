@@ -19,7 +19,7 @@ API online documentation, checked 2026-09-11:
 
 The current engine state is the authored code in `src/` plus `README.md`,
 `architecture/distilled/*`, ADRs 0001/0005/0020/0033/0035/0036/0037,
-`src/Spatial.Host/Api`, `src/Spatial.PluginSdk/Http`,
+`src/Spatial.Host/Api`, `src/Spatial.Contracts/Http`,
 `IGeometryOperations`. Review date: 2026-09-11; editing addendum: 2026-09-13.
 
 ## Verdict

@@ -1,13 +1,13 @@
 using System.Globalization;
+using Spatial.Contracts;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
 
 namespace Spatial.Stores.PostGIS.Core;
 
 /// <summary>
 /// Pure row-identity and date helpers for the PostGIS store (ADR-0033).
 /// Failure mapping lives in <see cref="PostgisStore"/> via
-/// <see cref="Spatial.PluginSdk.SpatialException"/>; every message passes
+/// <see cref="Spatial.Contracts.SpatialException"/>; every message passes
 /// through the configuration's redaction there, so a connection string or
 /// password can never appear in a diagnostic.
 /// </summary>

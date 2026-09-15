@@ -1,5 +1,5 @@
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Adapter.Ogc;
 

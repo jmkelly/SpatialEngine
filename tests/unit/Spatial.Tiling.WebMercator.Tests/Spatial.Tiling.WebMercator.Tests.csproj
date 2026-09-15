@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Tiling.WebMercator\Spatial.Tiling.WebMercator.csproj" />
   </ItemGroup>
 

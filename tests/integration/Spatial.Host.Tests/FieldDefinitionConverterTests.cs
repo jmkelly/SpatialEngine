@@ -1,6 +1,6 @@
 using System.Text.Json;
+using Spatial.Contracts;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
 
 namespace Spatial.Host.Tests;
 

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 

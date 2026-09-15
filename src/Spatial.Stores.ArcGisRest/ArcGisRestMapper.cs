@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Stores.ArcGisRest;
 

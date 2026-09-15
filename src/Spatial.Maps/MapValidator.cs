@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Maps;
 

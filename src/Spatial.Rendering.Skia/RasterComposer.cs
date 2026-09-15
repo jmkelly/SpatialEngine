@@ -1,4 +1,4 @@
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Spatial.Rendering.Skia.Drawing;
 
 namespace Spatial.Rendering.Skia;

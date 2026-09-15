@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using Spatial.Contracts;
+using Spatial.Contracts.Transformations;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Transformations;
 using ProjCs = ProjNet.CoordinateSystems;
 using ProjTf = ProjNet.CoordinateSystems.Transformations;
 

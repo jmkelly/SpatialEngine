@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Stores.ArcGisRest;
 

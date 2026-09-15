@@ -10,7 +10,7 @@ Covers `Spatial.Core` only. Implements ADR-0001/0004/0009/0020/0029/0032.
 
 **Core owns:** spatial values (geometry, features, schemas, CRS identity) and
 canonical encoding/decoding. Runtime behaviour — service interfaces and their
-in-process composition — lives in `Spatial.PluginSdk` and `Spatial.Host`
+in-process composition — lives in `Spatial.Contracts` and `Spatial.Host`
 (see `runtime.md`).
 
 **Core never implements:** buffer, intersection, union, difference,

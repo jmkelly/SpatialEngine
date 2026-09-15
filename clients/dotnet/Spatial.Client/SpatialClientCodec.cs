@@ -1,10 +1,10 @@
 using System.Net.Http.Json;
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
 using Spatial.Core.Geometry.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
 
 namespace Spatial.Client;
 

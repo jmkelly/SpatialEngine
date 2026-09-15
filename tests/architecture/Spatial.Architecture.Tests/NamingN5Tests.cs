@@ -39,7 +39,7 @@ public sealed class NamingN5Tests
     [Fact]
     public void Renamed_enum_pins_its_wire_keys()
     {
-        var path = Path.Combine(Root.Value, "src", "Spatial.PluginSdk", "Providers", "IMapRegistry.cs");
+        var path = Path.Combine(Root.Value, "src", "Spatial.Contracts", "Providers", "IMapRegistry.cs");
         var text = File.ReadAllText(path);
 
         Assert.Contains("enum MapServiceKind", text, StringComparison.Ordinal);

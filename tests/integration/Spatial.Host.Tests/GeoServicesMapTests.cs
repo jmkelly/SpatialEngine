@@ -5,14 +5,14 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Adapter.GeoServices;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Host.Tests;
 
 /// <summary>
 /// The GeoServices MapServer facade (spec §4, ADR-0048): the root, layer
 /// metadata (<c>drawingInfo</c>), all-layers, query, identify, find, export
-/// and tiles, over a runtime <see cref="Spatial.PluginSdk.Providers.PublicationKind.Map"/>
+/// and tiles, over a runtime <see cref="Spatial.Contracts.Providers.PublicationKind.Map"/>
 /// publication backed by the demo store.
 /// </summary>
 public sealed class GeoServicesMapTests : IDisposable

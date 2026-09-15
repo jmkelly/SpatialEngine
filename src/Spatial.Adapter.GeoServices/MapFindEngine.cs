@@ -1,8 +1,8 @@
 using System.Text.Json;
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
-using Spatial.PluginSdk;
 
 namespace Spatial.Adapter.GeoServices;
 

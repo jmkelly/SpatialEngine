@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
+using Spatial.Contracts.Providers;
 using Spatial.Host.TileServing;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Host.Api;
 

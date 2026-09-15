@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 

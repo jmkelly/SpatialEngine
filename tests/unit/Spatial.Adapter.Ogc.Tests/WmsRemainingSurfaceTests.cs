@@ -1,7 +1,7 @@
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Adapter.Ogc.Tests;
 
@@ -222,7 +222,7 @@ public sealed class WmsRemainingSurfaceTests
         Assert.Equal(WmsService.LegendHeight, renderer.LastRequest.Viewport.Height);
     }
 
-    private static OgcRequestServices MapServices(Spatial.PluginSdk.Providers.Map map, CapturingRenderer renderer)
+    private static OgcRequestServices MapServices(Spatial.Contracts.Providers.Map map, CapturingRenderer renderer)
     {
         var store = new OgcFixtures.FakeStore(OgcFixtures.Dataset);
         return new OgcRequestServices(
@@ -245,7 +245,7 @@ public sealed class WmsRemainingSurfaceTests
     }
 
     private static async Task<(string? ContentType, string Body)> DispatchAsync(
-        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string query, CancellationToken cancellationToken = default)
+        Spatial.Contracts.Providers.Map map, OgcRequestServices services, string query, CancellationToken cancellationToken = default)
     {
         var request = new DefaultHttpContext();
         request.Request.QueryString = new QueryString(query);

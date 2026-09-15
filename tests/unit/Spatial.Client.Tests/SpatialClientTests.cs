@@ -1,13 +1,13 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
 using Spatial.Core.Geometry.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Client.Tests;
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.Ogc.Tests;
 

@@ -1,6 +1,6 @@
 # Service Contract Catalog (distilled)
 
-The typed contracts in `Spatial.PluginSdk`. Implements ADR-0033
+The typed contracts in `Spatial.Contracts`. Implements ADR-0033
 (replaces the ADR-0026/0027/0028 versioned worker contracts). Shared error codes:
 `invalid.arguments`, `not.found`, `store.unavailable` (see `runtime.md`).
 

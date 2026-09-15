@@ -1,6 +1,6 @@
 using System.Reflection;
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
 
 namespace Spatial.Operations.NetTopologySuite.Tests;
 

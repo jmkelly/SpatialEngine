@@ -1,10 +1,10 @@
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
+using Spatial.Contracts.Providers;
+using Spatial.Contracts.Transformations;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
-using Spatial.PluginSdk.Providers;
-using Spatial.PluginSdk.Transformations;
 
 namespace Spatial.Client;
 
@@ -127,7 +127,7 @@ public sealed class SpatialClient
     }
 
     public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, PluginSdk.BoundingBox? bbox = null, string? filter = null,
+        string dataset, Contracts.BoundingBox? bbox = null, string? filter = null,
         string store = "demo", CancellationToken cancellationToken = default)
     {
         var response = await _transport.PostAsync<FeatureBatchesResponse>(

@@ -1,5 +1,5 @@
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk.Providers;
 using Spatial.Stores.PostGIS.Core;
 
 namespace Spatial.Stores.PostGIS.Data;

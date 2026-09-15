@@ -1,4 +1,4 @@
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Spatial.Tiling.WebMercator;
 
 namespace Spatial.Tiling.WebMercator.Tests;

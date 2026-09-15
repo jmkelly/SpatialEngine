@@ -1,7 +1,7 @@
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Stores.PostGIS.Tests;
 

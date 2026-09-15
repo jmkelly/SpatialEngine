@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using Spatial.Client;
-using Spatial.PluginSdk.Http;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Http;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Cli;
 

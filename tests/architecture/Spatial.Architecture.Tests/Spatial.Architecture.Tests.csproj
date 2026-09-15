@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <!-- The SDK interop guard inspects the compiled contract surface, so the
-       architecture suite loads Spatial.PluginSdk (Core transitively). -->
+       architecture suite loads Spatial.Contracts (Core transitively). -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

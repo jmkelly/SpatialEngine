@@ -1,4 +1,4 @@
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using NtsTopologyException = NetTopologySuite.Geometries.TopologyException;
 
 namespace Spatial.Operations.NetTopologySuite;

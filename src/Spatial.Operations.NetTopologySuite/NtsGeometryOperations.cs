@@ -2,9 +2,9 @@ using NetTopologySuite.Operation.Overlay;
 using NetTopologySuite.Operation.OverlayNG;
 using NetTopologySuite.Operation.Valid;
 using NetTopologySuite.Simplify;
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite.Adapters;
-using Spatial.PluginSdk;
 
 namespace Spatial.Operations.NetTopologySuite;
 

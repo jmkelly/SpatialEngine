@@ -1,4 +1,4 @@
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Spatial.Rendering.Skia.Styling;
 
 namespace Spatial.Rendering.Skia.Tests;

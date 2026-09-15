@@ -8,7 +8,7 @@
     <Project Path="src/Spatial.Esri.Codec/Spatial.Esri.Codec.csproj" />
     <Project Path="src/Spatial.Ingest.Codec/Spatial.Ingest.Codec.csproj" />
     <Project Path="src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
-    <Project Path="src/Spatial.PluginSdk/Spatial.PluginSdk.csproj" />
+    <Project Path="src/Spatial.Contracts/Spatial.Contracts.csproj" />
     <Project Path="src/Spatial.Stores.Demo/Spatial.Stores.Demo.csproj" />
     <Project Path="src/Spatial.Stores.Memory/Spatial.Stores.Memory.csproj" />
     <Project Path="src/Spatial.Stores.PostGIS/Spatial.Stores.PostGIS.csproj" />

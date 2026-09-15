@@ -1,5 +1,5 @@
 using System.Xml.Linq;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Adapter.Ogc.Tests;
 

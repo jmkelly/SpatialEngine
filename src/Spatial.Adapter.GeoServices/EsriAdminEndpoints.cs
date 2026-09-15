@@ -2,10 +2,10 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
 using Spatial.Ingest.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 

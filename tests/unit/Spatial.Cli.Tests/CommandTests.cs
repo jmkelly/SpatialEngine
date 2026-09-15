@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Spatial.Cli;
 using Spatial.Client;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Cli.Tests;
 

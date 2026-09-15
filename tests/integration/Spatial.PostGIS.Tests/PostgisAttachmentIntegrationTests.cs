@@ -1,5 +1,5 @@
+using Spatial.Contracts;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
 using Spatial.Stores.PostGIS;
 
 namespace Spatial.PostGIS.Tests;

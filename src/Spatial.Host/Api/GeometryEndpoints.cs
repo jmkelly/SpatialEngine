@@ -1,5 +1,5 @@
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
 
 namespace Spatial.Host.Api;
 

@@ -1,6 +1,6 @@
 using NetVips;
+using Spatial.Contracts;
 using Spatial.Imagery.Vips.Imagery;
-using Spatial.PluginSdk;
 
 namespace Spatial.Imagery.Vips.Tests;
 

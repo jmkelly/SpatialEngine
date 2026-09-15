@@ -1,5 +1,5 @@
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
 using Spatial.Rendering.Skia.Pipeline;
 
 namespace Spatial.Rendering.Skia.Tests;

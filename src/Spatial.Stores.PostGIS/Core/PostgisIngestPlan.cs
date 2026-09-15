@@ -1,7 +1,7 @@
 using System.Text;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Stores.PostGIS.Core;
 

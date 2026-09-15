@@ -1,5 +1,5 @@
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Stores.PostGIS.Core;
 
@@ -12,7 +12,7 @@ namespace Spatial.Stores.PostGIS.Core;
 internal static class PostgisPredicate
 {
     public static string? Build(
-        DatasetDescription description, Spatial.PluginSdk.BoundingBox? bbox, string? filter, List<object?> parameters)
+        DatasetDescription description, Spatial.Contracts.BoundingBox? bbox, string? filter, List<object?> parameters)
     {
         string? predicate = null;
         if (bbox is not null)

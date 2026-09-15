@@ -2,7 +2,7 @@ using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Host.Api;
 

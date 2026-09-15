@@ -46,7 +46,7 @@ public sealed class NamingN3Tests
     [Fact]
     public void Demo_work_interface_exists()
     {
-        var path = Path.Combine(Root.Value, "src", "Spatial.PluginSdk", "IDataStores.cs");
+        var path = Path.Combine(Root.Value, "src", "Spatial.Contracts", "IDataStores.cs");
         var text = File.ReadAllText(path);
 
         Assert.Contains("IDemoWork", text, StringComparison.Ordinal);

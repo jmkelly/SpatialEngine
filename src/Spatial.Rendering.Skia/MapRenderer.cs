@@ -1,4 +1,4 @@
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Spatial.Rendering.Skia.Drawing;
 using Spatial.Rendering.Skia.Pipeline;
 using Spatial.Rendering.Skia.Styling;

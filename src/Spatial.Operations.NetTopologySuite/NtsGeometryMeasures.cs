@@ -1,6 +1,6 @@
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite.Adapters;
-using Spatial.PluginSdk;
 using NtsGeometry = NetTopologySuite.Geometries.Geometry;
 
 namespace Spatial.Operations.NetTopologySuite;

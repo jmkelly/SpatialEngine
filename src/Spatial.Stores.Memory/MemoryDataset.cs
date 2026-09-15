@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Stores.Memory;
 

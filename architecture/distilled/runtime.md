@@ -1,6 +1,6 @@
 # Services: Interfaces, Implementations, Composition (distilled)
 
-Covers `Spatial.PluginSdk` interfaces and their in-process implementations.
+Covers `Spatial.Contracts` interfaces and their in-process implementations.
 Implements ADR-0033 (replaces ADR-0002/0003/0006/0007/0008/0013/0022/0023/0024/0025
 worker machinery).
 

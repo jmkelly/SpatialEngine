@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
 using Npgsql;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 using Spatial.Stores.PostGIS.Configuration;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
-using CoreBoundingBox = Spatial.PluginSdk.BoundingBox;
+using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 
 namespace Spatial.Stores.PostGIS;
 

@@ -1,7 +1,7 @@
 using Npgsql;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
 

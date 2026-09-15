@@ -1,7 +1,7 @@
 using BenchmarkDotNet.Attributes;
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
 using Spatial.Stores.Memory;
 
 namespace Spatial.Performance;

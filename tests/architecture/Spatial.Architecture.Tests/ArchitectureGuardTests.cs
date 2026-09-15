@@ -4,7 +4,7 @@ namespace Spatial.Architecture.Tests;
 /// Dependency and structure guardrails for the spatial engine (ADR-0033).
 ///
 /// The engine is composed by DI: <c>Spatial.Core</c> holds values,
-/// <c>Spatial.PluginSdk</c> holds service interfaces, implementation
+/// <c>Spatial.Contracts</c> holds service interfaces, implementation
 /// projects own the verbs, and <c>Spatial.Host</c> wires them. Changing a
 /// rule requires updating ADR-0033 first.
 /// </summary>
@@ -36,9 +36,9 @@ public sealed class ArchitectureGuardTests
     /// third-party packages and references nothing but Core.
     /// </summary>
     [Fact]
-    public void PluginSdk_references_only_core()
+    public void Contracts_references_only_core()
     {
-        var sdk = PlatformProject("Spatial.PluginSdk");
+        var sdk = PlatformProject("Spatial.Contracts");
         var violations = new List<string>();
         violations.AddRange(sdk.ProjectReferences
             .Where(r => r != "Spatial.Core")
@@ -57,14 +57,14 @@ public sealed class ArchitectureGuardTests
     /// provider-owned raster boundary.
     /// </summary>
     [Fact]
-    public void PluginSdk_references_only_core_and_framework_assemblies()
+    public void Contracts_references_only_core_and_framework_assemblies()
     {
-        var assembly = typeof(Spatial.PluginSdk.RasterInfo).Assembly;
+        var assembly = typeof(Spatial.Contracts.RasterInfo).Assembly;
         var violations = assembly.GetReferencedAssemblies()
             .Select(reference => reference.Name ?? string.Empty)
             .Where(name => name != "Spatial.Core"
                 && !name.StartsWith("System", StringComparison.Ordinal)
-                && name is not ("netstandard" or "mscorlib" or "Spatial.PluginSdk"))
+                && name is not ("netstandard" or "mscorlib" or "Spatial.Contracts"))
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
@@ -77,9 +77,9 @@ public sealed class ArchitectureGuardTests
     /// into the contract even as an unused import.
     /// </summary>
     [Fact]
-    public void PluginSdk_source_names_no_raster_or_third_party_type()
+    public void Contracts_source_names_no_raster_or_third_party_type()
     {
-        var root = Path.Combine(Repository.Value.Root, "src", "Spatial.PluginSdk");
+        var root = Path.Combine(Repository.Value.Root, "src", "Spatial.Contracts");
         var forbidden = new[] { "NetVips", "Vips", "SkiaSharp", "Npgsql", "NetTopologySuite", "ProjNET", "Microsoft.AspNetCore" };
         var violations = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
@@ -104,7 +104,7 @@ public sealed class ArchitectureGuardTests
     [Fact]
     public void Implementation_projects_reference_only_core_and_sdk()
     {
-        var allowed = new[] { "Spatial.Core", "Spatial.PluginSdk", "Spatial.Esri.Codec" };
+        var allowed = new[] { "Spatial.Core", "Spatial.Contracts", "Spatial.Esri.Codec" };
         var violations = ImplementationProjects()
             .SelectMany(project => project.ProjectReferences
                 .Where(r => !allowed.Contains(r) && !AllowedBoundaryReferences(project.Name).Contains(r))
@@ -143,7 +143,7 @@ public sealed class ArchitectureGuardTests
         var allowed = new[]
         {
             "Spatial.Core",
-            "Spatial.PluginSdk",
+            "Spatial.Contracts",
             "Spatial.Ingest.Codec",
             "Spatial.Operations.NetTopologySuite",
             "Spatial.Transformations.ProjNet",
@@ -259,7 +259,7 @@ public sealed class ArchitectureGuardTests
     [
         "Spatial.AppHost",
         "Spatial.Core",
-        "Spatial.PluginSdk",
+        "Spatial.Contracts",
         "Spatial.Esri.Codec",
         "Spatial.Ingest.Codec",
         "Spatial.Operations.NetTopologySuite",

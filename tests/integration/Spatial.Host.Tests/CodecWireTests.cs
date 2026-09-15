@@ -1,7 +1,7 @@
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
 using Spatial.Core.Geometry.Codec;
 using Spatial.Host.Api;
-using Spatial.PluginSdk;
 
 namespace Spatial.Host.Tests;
 

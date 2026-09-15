@@ -14,7 +14,7 @@ surfaces of the independently executable `Spatial.Host` (ADR-0033).
 ## Invariants
 
 - Every client speaks only the public typed HTTP routes
-  (`Spatial.PluginSdk.Http`).
+  (`Spatial.Contracts.Http`).
 - Geometry crosses as Base64 canonical bytes (ADR-0020); feature reads
   return decoded canonical batches.
 - The TypeScript SDK's generated wire types are pinned to the OpenAPI

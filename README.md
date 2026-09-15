@@ -216,7 +216,7 @@ shipped.
 | Path | Purpose |
 | --- | --- |
 | `src/Spatial.Core` | Spatial value model (no dependencies, no algorithms) |
-| `src/Spatial.PluginSdk` | Service interfaces, DTOs, error codes, HTTP shapes |
+| `src/Spatial.Contracts` | Service interfaces, DTOs, error codes, HTTP shapes |
 | `src/Spatial.Operations.NetTopologySuite` | Geometry verbs: operations, measures, processing, relations |
 | `src/Spatial.Transformations.ProjNet` | CRS description and coordinate transformation |
 | `src/Spatial.Esri.Codec` | Shared Esri JSON codec, WKID map, error model, filter grammar |
@@ -234,7 +234,7 @@ shipped.
 
 ### The shape of the design
 
-A small stable core owns spatial values. Interfaces in `Spatial.PluginSdk`
+A small stable core owns spatial values. Interfaces in `Spatial.Contracts`
 own the verbs. Implementations live in their own projects, depend on
 contracts and never on each other, and are composed by the host with
 Microsoft DI. Third-party types — NTS, Npgsql, EF, renderer — never cross a

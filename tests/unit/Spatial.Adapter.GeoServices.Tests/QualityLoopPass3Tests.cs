@@ -1,8 +1,8 @@
 using System.Globalization;
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite;
-using Spatial.PluginSdk;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 

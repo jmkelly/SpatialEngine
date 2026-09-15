@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Adapter.Ogc.Tests;
 

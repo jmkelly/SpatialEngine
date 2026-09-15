@@ -1,6 +1,6 @@
 using System.Globalization;
 using NetVips;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Imagery.Vips.Raster;
 

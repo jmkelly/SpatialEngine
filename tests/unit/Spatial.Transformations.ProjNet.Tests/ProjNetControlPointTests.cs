@@ -1,6 +1,6 @@
+using Spatial.Contracts;
+using Spatial.Contracts.Transformations;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Transformations;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 
 namespace Spatial.Transformations.ProjNet.Tests;

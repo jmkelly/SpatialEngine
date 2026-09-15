@@ -19,11 +19,11 @@
 
   <ItemGroup>
     <!-- T-076 micros: the bench project references engine implementation
-         projects directly, never via Spatial.PluginSdk (which takes no
+         projects directly, never via Spatial.Contracts (which takes no
          packages). NTS/ProjNet/Skia types stay inside the bench methods;
          nothing crosses a contract. -->
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\..\..\src\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Esri.Codec\Spatial.Esri.Codec.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />

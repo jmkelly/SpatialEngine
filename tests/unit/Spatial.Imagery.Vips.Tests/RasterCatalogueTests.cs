@@ -1,9 +1,9 @@
 using NetVips;
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Imagery.Vips.Imagery;
 using Spatial.Imagery.Vips.Raster;
-using Spatial.PluginSdk;
 
 namespace Spatial.Imagery.Vips.Tests;
 

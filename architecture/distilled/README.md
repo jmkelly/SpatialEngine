@@ -33,7 +33,7 @@ shape is noted in brackets.
 3. The browser workbench is the frontend.
 4. Packaging is not architecture; the host ships standalone.
 5. The .NET host runs independently of every client.
-6. Contracts outlive implementations. [Interfaces in `Spatial.PluginSdk`.]
+6. Contracts outlive implementations. [Interfaces in `Spatial.Contracts`.]
 7. Implementations depend on contracts, never on each other.
 8. No implementation-specific geometry object crosses a service boundary.
 9. Core geometry values are immutable.

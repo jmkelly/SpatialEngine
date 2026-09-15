@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Text.Json;
+using Spatial.Contracts;
+using Spatial.Contracts.Transformations;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Transformations;
 
 namespace Spatial.Adapter.GeoServices;
 

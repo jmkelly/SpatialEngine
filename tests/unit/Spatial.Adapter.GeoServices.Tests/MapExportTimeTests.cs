@@ -1,5 +1,5 @@
+using Spatial.Contracts;
 using Spatial.Esri.Codec;
-using Spatial.PluginSdk;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 

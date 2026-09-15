@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Host.TileServing;
 

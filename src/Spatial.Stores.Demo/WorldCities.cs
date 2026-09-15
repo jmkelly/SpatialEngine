@@ -1,9 +1,9 @@
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Stores.Demo;
 

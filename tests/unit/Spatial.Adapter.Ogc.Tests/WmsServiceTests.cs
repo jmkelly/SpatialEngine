@@ -52,15 +52,15 @@ public sealed class WmsServiceTests
     [Fact]
     public async Task Get_feature_info_rejects_a_non_queryable_layer()
     {
-        var map = new Spatial.PluginSdk.Providers.Map(
+        var map = new Spatial.Contracts.Providers.Map(
             OgcFixtures.MapName,
             OgcFixtures.Store,
             [
-                new Spatial.PluginSdk.Providers.MapLayer(OgcFixtures.Dataset, 0, "Cities"),
-                new Spatial.PluginSdk.Providers.MapLayer(
-                    OgcFixtures.Dataset, 1, "Photo", Kind: Spatial.PluginSdk.Providers.MapLayerKind.Image),
+                new Spatial.Contracts.Providers.MapLayer(OgcFixtures.Dataset, 0, "Cities"),
+                new Spatial.Contracts.Providers.MapLayer(
+                    OgcFixtures.Dataset, 1, "Photo", Kind: Spatial.Contracts.Providers.MapLayerKind.Image),
             ],
-            [Spatial.PluginSdk.Providers.MapServiceKind.Wms]);
+            [Spatial.Contracts.Providers.MapServiceKind.Wms]);
         var (services, store) = OgcFixtures.Build(map);
         store.Seed(OgcFixtures.City("Amsterdam", 900_000, 5, 55));
 
@@ -110,7 +110,7 @@ public sealed class WmsServiceTests
         ]);
 
     private static Task<(string? ContentType, string Body)> IdentifyOnAsync(
-        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string queryLayers)
+        Spatial.Contracts.Providers.Map map, OgcRequestServices services, string queryLayers)
     {
         var query = "?service=WMS&request=GetFeatureInfo"
             + $"&query_layers={Uri.EscapeDataString(queryLayers)}&crs=CRS:84"
@@ -119,7 +119,7 @@ public sealed class WmsServiceTests
     }
 
     private static async Task<(string? ContentType, string Body)> IdentifyAsync(
-        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string infoFormat, int? i, int? j)
+        Spatial.Contracts.Providers.Map map, OgcRequestServices services, string infoFormat, int? i, int? j)
     {
         var query = "?service=WMS&request=GetFeatureInfo&query_layers=Cities&crs=CRS:84"
             + "&bbox=0,50,10,60&width=100&height=100"
@@ -229,7 +229,7 @@ public sealed class WmsServiceTests
 
         Assert.Equal("image/png", contentType);
         Assert.NotNull(renderer.LastRequest);
-        Assert.Equal(Spatial.PluginSdk.RasterFormat.Jpeg, renderer.LastRequest.Format);
+        Assert.Equal(Spatial.Contracts.RasterFormat.Jpeg, renderer.LastRequest.Format);
         Assert.True(renderer.LastRequest.Transparent);
     }
 
@@ -250,7 +250,7 @@ public sealed class WmsServiceTests
         $"?service=WMS&request=GetMap&version=1.3.0&layers=Cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&{extra}";
 
     private static OgcRequestServices MapServices(
-        Spatial.PluginSdk.Providers.Map map, CapturingRenderer renderer, out OgcFixtures.FakeStore store)
+        Spatial.Contracts.Providers.Map map, CapturingRenderer renderer, out OgcFixtures.FakeStore store)
     {
         store = new OgcFixtures.FakeStore(OgcFixtures.Dataset);
         return new OgcRequestServices(
@@ -261,19 +261,19 @@ public sealed class WmsServiceTests
     }
 
     private static async Task<(string? ContentType, string Body)> GetMapRawAsync(
-        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string query) =>
+        Spatial.Contracts.Providers.Map map, OgcRequestServices services, string query) =>
         await IdentifyRawAsync(map, services, query);
 
-    private sealed class CapturingRenderer : Spatial.PluginSdk.IMapRenderer
+    private sealed class CapturingRenderer : Spatial.Contracts.IMapRenderer
     {
-        public Spatial.PluginSdk.MapRenderRequest? LastRequest { get; private set; }
+        public Spatial.Contracts.MapRenderRequest? LastRequest { get; private set; }
 
-        public Task<Spatial.PluginSdk.RasterImage> RenderAsync(
-            Spatial.PluginSdk.MapRenderRequest request, CancellationToken cancellationToken = default)
+        public Task<Spatial.Contracts.RasterImage> RenderAsync(
+            Spatial.Contracts.MapRenderRequest request, CancellationToken cancellationToken = default)
         {
             LastRequest = request;
             return Task.FromResult(
-                new Spatial.PluginSdk.RasterImage([1, 2, 3], "image/png", request.Viewport.Width, request.Viewport.Height, Spatial.PluginSdk.RasterFormat.Png));
+                new Spatial.Contracts.RasterImage([1, 2, 3], "image/png", request.Viewport.Width, request.Viewport.Height, Spatial.Contracts.RasterFormat.Png));
         }
     }
 
@@ -291,7 +291,7 @@ public sealed class WmsServiceTests
     }
 
     private static async Task<(string? ContentType, string Body)> IdentifyRawAsync(
-        Spatial.PluginSdk.Providers.Map map, OgcRequestServices services, string query, CancellationToken cancellationToken = default)
+        Spatial.Contracts.Providers.Map map, OgcRequestServices services, string query, CancellationToken cancellationToken = default)
     {
         var request = new DefaultHttpContext();
         request.Request.QueryString = new QueryString(query);
@@ -359,10 +359,10 @@ public sealed class WmsServiceTests
         Assert.Equal(150, WmsService.ParseDpi(await ParametersAsync("?map_resolution=150&format_options=dpi:72")));
         Assert.Equal(72, WmsService.ParseDpi(await ParametersAsync("?format_options=antialiasing:true;dpi:72")));
         Assert.Equal(
-            Spatial.PluginSdk.MapRenderRequest.ReferenceDpi,
+            Spatial.Contracts.MapRenderRequest.ReferenceDpi,
             WmsService.ParseDpi(await ParametersAsync("?format_options=antialiasing:true")));
         Assert.Equal(
-            Spatial.PluginSdk.MapRenderRequest.ReferenceDpi,
+            Spatial.Contracts.MapRenderRequest.ReferenceDpi,
             WmsService.ParseDpi(await ParametersAsync(string.Empty)));
     }
 
@@ -375,7 +375,7 @@ public sealed class WmsServiceTests
     public async Task Parse_dpi_skips_a_malformed_format_options_dpi(string query)
     {
         Assert.Equal(
-            Spatial.PluginSdk.MapRenderRequest.ReferenceDpi,
+            Spatial.Contracts.MapRenderRequest.ReferenceDpi,
             WmsService.ParseDpi(await ParametersAsync(query)));
     }
 

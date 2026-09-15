@@ -68,7 +68,7 @@ cat <<'GUIDE'
 
 == route your task ==
   core geometry / feature types / codecs  -> Spatial.Core        docs: architecture/distilled/core.md
-  service contract (a verb)               -> Spatial.PluginSdk   docs: architecture/distilled/contracts.md
+  service contract (a verb)               -> Spatial.Contracts   docs: architecture/distilled/contracts.md
   algorithm / store / renderer            -> implementation proj  docs: architecture/distilled/plugins.md
   HTTP API, config, SDKs, workbench       -> Spatial.Host        docs: architecture/distilled/host-and-clients.md
   CLI / project file                      -> clients/dotnet       docs: architecture/distilled/cli.md

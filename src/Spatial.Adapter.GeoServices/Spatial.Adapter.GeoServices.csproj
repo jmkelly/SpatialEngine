@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
-    <ProjectReference Include="..\Spatial.PluginSdk\Spatial.PluginSdk.csproj" />
+    <ProjectReference Include="..\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\Spatial.Esri.Codec\Spatial.Esri.Codec.csproj" />
     <ProjectReference Include="..\Spatial.Ingest.Codec\Spatial.Ingest.Codec.csproj" />
   </ItemGroup>

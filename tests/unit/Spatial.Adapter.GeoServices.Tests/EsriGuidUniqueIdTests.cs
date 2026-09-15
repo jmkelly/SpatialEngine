@@ -1,12 +1,12 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 using Spatial.Operations.NetTopologySuite;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 using Spatial.Transformations.ProjNet;
 
 namespace Spatial.Adapter.GeoServices.Tests;

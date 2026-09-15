@@ -1,6 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Http;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Adapter.Ogc;
 

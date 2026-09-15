@@ -1,7 +1,7 @@
 using Spatial.Adapter.GeoServices;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Maps;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 using Spatial.Stores.ArcGisRest;
 
 namespace Spatial.Host;

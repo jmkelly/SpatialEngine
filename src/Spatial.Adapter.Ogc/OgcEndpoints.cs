@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Adapter.Ogc;
 

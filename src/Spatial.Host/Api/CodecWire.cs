@@ -8,7 +8,7 @@ namespace Spatial.Host.Api;
 /// <summary>
 /// Canonical-binary wire helpers (ADR-0033): geometries cross typed routes
 /// as Base64 <c>SGEOM</c> bytes and feature batches as Base64 <c>SFBAT</c>
-/// bytes (ADR-0020). Malformed payloads throw <see cref="Spatial.PluginSdk.SpatialException"/>
+/// bytes (ADR-0020). Malformed payloads throw <see cref="Spatial.Contracts.SpatialException"/>
 /// with code <c>invalid.arguments</c> naming the field.
 /// </summary>
 internal static class CodecWire
@@ -22,7 +22,7 @@ internal static class CodecWire
         }
         catch (Exception exception)
         {
-            throw PluginSdk.SpatialException.BadArguments($"'{field}' is not valid SGEOM geometry: {exception.Message}");
+            throw Contracts.SpatialException.BadArguments($"'{field}' is not valid SGEOM geometry: {exception.Message}");
         }
     }
 
@@ -38,7 +38,7 @@ internal static class CodecWire
         }
         catch (Exception exception)
         {
-            throw PluginSdk.SpatialException.BadArguments($"'{field}' is not a valid SFBAT batch: {exception.Message}");
+            throw Contracts.SpatialException.BadArguments($"'{field}' is not a valid SFBAT batch: {exception.Message}");
         }
     }
 
@@ -53,7 +53,7 @@ internal static class CodecWire
         }
         catch (FormatException)
         {
-            throw PluginSdk.SpatialException.BadArguments($"'{field}' must be Base64 canonical bytes.");
+            throw Contracts.SpatialException.BadArguments($"'{field}' must be Base64 canonical bytes.");
         }
     }
 }

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Tiling.WebMercator.Tests;
 

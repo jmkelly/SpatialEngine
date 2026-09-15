@@ -43,7 +43,7 @@ In order of preference for new implementations:
 ## Project rules
 
 - `Spatial.Core` — values only, zero packages, zero references.
-- `Spatial.PluginSdk` — interfaces + DTOs over core types only, zero
+- `Spatial.Contracts` — interfaces + DTOs over core types only, zero
   packages, only a Core reference.
 - `Spatial.Esri.Codec` — the shared Esri wire codec: Core only, no NTS,
   ASP.NET or HttpClient (ADR-0035).

@@ -1,7 +1,7 @@
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 
 namespace Spatial.Adapter.GeoServices;
 

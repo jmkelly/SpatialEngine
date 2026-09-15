@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Spatial.Contracts;
 using Spatial.Core.Features;
-using Spatial.PluginSdk;
 
 namespace Spatial.Stores.ArcGisRest.Tests;
 

@@ -87,7 +87,7 @@ public sealed class HostApiTests : IClassFixture<WebApplicationFactory<Program>>
         var batches = await Client.ScanAsync("demo.points");
         Assert.Equal(110, batches.SelectMany(batch => batch.Features).Count());
 
-        var window = await Client.QueryAsync("demo.points", new PluginSdk.BoundingBox(-5, -4, -5, -4));
+        var window = await Client.QueryAsync("demo.points", new Contracts.BoundingBox(-5, -4, -5, -4));
         Assert.Single(window.SelectMany(batch => batch.Features));
 
         var missing = await Assert.ThrowsAsync<SpatialClientException>(() => Client.ScanAsync("demo.missing"));

@@ -1,6 +1,6 @@
 using Spatial.Cli;
 using Spatial.Client;
-using Spatial.PluginSdk.Providers;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Cli.Tests;
 

@@ -35,7 +35,7 @@ public sealed class NamingN6Tests
     [Fact]
     public void Both_spellings_exist_on_their_own_side()
     {
-        var sdk = Path.Combine(Root.Value, "src", "Spatial.PluginSdk", "IDataStores.cs");
+        var sdk = Path.Combine(Root.Value, "src", "Spatial.Contracts", "IDataStores.cs");
         Assert.Contains("IDataCatalogue", File.ReadAllText(sdk), StringComparison.Ordinal);
 
         var catalog = Path.Combine(Root.Value, "src", "Spatial.Adapter.GeoServices", "GeoServicesCatalog.cs");

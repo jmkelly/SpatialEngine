@@ -1,9 +1,9 @@
 using BenchmarkDotNet.Attributes;
+using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Providers;
 using Spatial.Rendering.Skia;
 
 namespace Spatial.Performance;

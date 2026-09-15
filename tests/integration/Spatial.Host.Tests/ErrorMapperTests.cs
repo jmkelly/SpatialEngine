@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Spatial.Contracts;
+using Spatial.Contracts.Http;
 using Spatial.Host.Api;
-using Spatial.PluginSdk;
-using Spatial.PluginSdk.Http;
 
 namespace Spatial.Host.Tests;
 

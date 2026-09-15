@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Spatial.PluginSdk.Http;
+using Spatial.Contracts.Http;
 
 namespace Spatial.Cli;
 

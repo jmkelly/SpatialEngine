@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 
 namespace Spatial.Adapter.Ogc.Tests;
 

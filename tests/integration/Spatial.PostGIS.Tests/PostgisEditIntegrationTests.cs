@@ -1,6 +1,6 @@
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
 
 namespace Spatial.PostGIS.Tests;
 

@@ -10,7 +10,7 @@
 
 - **Branch:** main. The quality-gate queue files (if any) are gitignored —
   do not commit them.
-- **Model:** `Spatial.Core` (values, zero deps) → `Spatial.PluginSdk`
+- **Model:** `Spatial.Core` (values, zero deps) → `Spatial.Contracts`
   (interfaces: `IGeometryOperations`, `ICrsDirectory`,
   `ICoordinateTransforms`, `IDataCatalogue`, `IFeatureStore`,
   `ITransactionStore`, `IDemoWork`, `SpatialException`, DTOs, HTTP shapes)
@@ -32,7 +32,7 @@
 ADR-0044 (accepted) is implemented through R6 (tiles are R4 under
 ADR-0046; labels/symbols are R6 under ADR-0049):
 
-- **Contracts** in the root `Spatial.PluginSdk` namespace (per the ADR, not
+- **Contracts** in the root `Spatial.Contracts` namespace (per the ADR, not
   the superseded `.Rendering` suggestion — that namespace tripped the
   metrics `architectural-rigidity` zone-of-pain diagnosis): `IMapRenderer`,
   `IRasterOperations` and the core-typed DTOs. HTTP DTOs in `.Http`.
@@ -77,7 +77,7 @@ method for it.
   `fields` vs property `Fields`) and `FieldDefinition` (readonly struct)
   silently deserialize to defaults. The explicit
   `FeatureSchemaConverter`/`FieldDefinitionConverter` in
-  `Spatial.PluginSdk.Http` are load-bearing — do not remove them.
+  `Spatial.Contracts.Http` are load-bearing — do not remove them.
 - **NaN never survives JSON.** `JSON.stringify(NaN)` is `null` (TS side);
   the .NET `HostApiJson` allows named floating-point literals, so the .NET
   client can send NaN but browsers cannot. Invalid-number tests should use

@@ -1,5 +1,5 @@
 using System.Globalization;
-using Spatial.PluginSdk;
+using Spatial.Contracts;
 using Spatial.Rendering.Skia.Styling;
 
 namespace Spatial.Rendering.Skia;

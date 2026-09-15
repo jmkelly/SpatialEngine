@@ -81,7 +81,7 @@ demands for AOT.
   images + core-typed metadata/geometry only), chooses the managed NetVips
   path over GDAL (ADR-0021 measured-demand rule), models the catalog as a
   core `FeatureSchema` of raster items and bounds pixel-type conversion.
-- **Delivered:** `Spatial.PluginSdk.IRasterCatalogue` and its core-typed
+- **Delivered:** `Spatial.Contracts.IRasterCatalogue` and its core-typed
   records/enums (`RasterInfo`, `RasterBandStatistics`,
   `RasterDatasetDescription`, `RasterCatalogItem`, `RasterIdentifyRequest`,
   `RasterIdentifyResult`, `RasterExportRequest`, `RasterPixelType`,

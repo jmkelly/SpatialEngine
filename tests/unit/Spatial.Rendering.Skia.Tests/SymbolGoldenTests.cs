@@ -1,6 +1,6 @@
 using SkiaSharp;
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
-using Spatial.PluginSdk;
 
 namespace Spatial.Rendering.Skia.Tests;
 
