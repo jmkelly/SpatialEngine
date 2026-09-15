@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The map registry (ADR-0052 §2): the IMapRegistry over declared
+    The map registry (ADR-0053 §2): the IMapRegistry over declared
     (config-seeded, immutable) entries and runtime entries persisted to a
     versioned JSON file written atomically, with a one-time read of a legacy
-    publications file. References Core and SDK only — the file keeps the
+    map file. References Core and SDK only — the file keeps the
     database-free profile working and does not couple metadata to feature
     storage. A PostGIS-backed registry for multi-instance deployments is a
     later option.

@@ -38,7 +38,7 @@ test("the live host serves buffer, catalogue, scan and structured errors", { ski
   assert.equal(description.code, "4326");
 });
 
-test("the live host renders a styled raster and advertises its capabilities", { skip: !ENABLED ? "set SPATIAL_HOST_URL to a running host" : false }, async () => {
+test("the live host renders a styled raster and advertises render capabilities", { skip: !ENABLED ? "set SPATIAL_HOST_URL to a running host" : false }, async () => {
   const client = new SpatialClient(HOST!);
 
   const capabilities = await client.renderCapabilities();
