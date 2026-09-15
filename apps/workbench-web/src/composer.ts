@@ -1,5 +1,5 @@
 import type { LayerSpecification } from "maplibre-gl";
-import type { Map, MapLayer, MapLayerKind, MapService } from "@spatial/client";
+import type { Map, MapLayer, MapLayerKind, MapServiceKind } from "@spatial/client";
 import { newId } from "./ids.ts";
 
 /**
@@ -49,11 +49,11 @@ export interface ComposerDraft {
   store: string;
   layers: ComposerLayer[];
   /** The exposure set; a map may expose any subset of the six services (ADR-0053). */
-  services: MapService[];
+  services: MapServiceKind[];
 }
 
 /** The exposure set a new draft starts with; feature layers feed it. */
-export const defaultServices: MapService[] = ["feature"];
+export const defaultServices: MapServiceKind[] = ["feature"];
 
 export const StyleDefaults: LayerStyle = { color: "#4fc3f7", opacity: 0.3, lineWidth: 2, radius: 5, visible: true };
 

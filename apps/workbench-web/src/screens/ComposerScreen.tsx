@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map as MapLibreMap, NavigationControl, LngLatBounds, setWorkerUrl, type GeoJSONSource, type StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { DatasetSummary, FeatureBatch, Map, MapService } from "@spatial/client";
+import type { DatasetSummary, FeatureBatch, Map, MapServiceKind } from "@spatial/client";
 import { createClient, hostBaseUrl } from "../api.ts";
 import { batchToGeoJson } from "../sgeom.ts";
 import { basemapSource, initialBasemap, rememberBasemap, type Basemap } from "../basemap.ts";
@@ -50,7 +50,7 @@ export function ComposerScreen() {
   const [basemap, setBasemap] = useState<Basemap>(initialBasemap);
   const [store, setStore] = useState("demo");
   const [name, setName] = useState("draft_service");
-  const [services, setServices] = useState<MapService[]>(() => [...defaultServices]);
+  const [services, setServices] = useState<MapServiceKind[]>(() => [...defaultServices]);
   const [layers, setLayers] = useState<ComposerLayer[]>([]);
   const [features, setFeatures] = useState<Record<string, GeoJSON.FeatureCollection>>({});
   const [catalogue, setCatalogue] = useState<DatasetSummary[]>([]);
@@ -287,7 +287,7 @@ export function ComposerScreen() {
     }
   }, [client, refreshMaps, token]);
 
-  function toggleService(service: MapService) {
+  function toggleService(service: MapServiceKind) {
     setServices((current) =>
       current.includes(service) ? current.filter((value) => value !== service) : [...current, service]);
   }
@@ -692,10 +692,10 @@ function messageOf(failure: unknown): string {
 }
 
 /** The six services a map may expose, in toggle order (ADR-0053). */
-const AllServices: MapService[] = ["feature", "map", "tiles", "wms", "wfs", "image"];
+const AllServices: MapServiceKind[] = ["feature", "map", "tiles", "wms", "wfs", "image"];
 
 /** Human labels for the service toggles and endpoint rows. */
-const ServiceLabels: Record<MapService, string> = {
+const ServiceLabels: Record<MapServiceKind, string> = {
   feature: "Feature",
   map: "Map",
   tiles: "Tiles",
@@ -711,7 +711,7 @@ const ServiceLabels: Record<MapService, string> = {
  * routes. The tiles URL keeps the `{z}/{x}/{y}` template literal so it can be
  * pasted straight into a client.
  */
-function endpointUrl(base: string, service: MapService, name: string): string {
+function endpointUrl(base: string, service: MapServiceKind, name: string): string {
   const root = base.replace(/\/+$/, "");
   const encoded = encodeURIComponent(name);
   switch (service) {
@@ -727,5 +727,7 @@ function endpointUrl(base: string, service: MapService, name: string): string {
       return `${root}/ogc/${encoded}/wms?service=WMS&request=GetCapabilities`;
     case "wfs":
       return `${root}/ogc/${encoded}/wfs?service=WFS&request=GetCapabilities`;
+    default:
+      throw new Error(`Unknown service '${service satisfies never}'.`);
   }
 }
