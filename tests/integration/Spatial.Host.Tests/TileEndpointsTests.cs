@@ -9,7 +9,7 @@ namespace Spatial.Host.Tests;
 
 /// <summary>
 /// The tile routes (ADR-0046): cache-aware single tiles, ordered batches,
-/// scheme capability discovery, cache invalidation and the failure mapping
+/// scheme discovery, cache invalidation and the failure mapping
 /// for unknown schemes, out-of-range tiles and unconfigured formats.
 /// </summary>
 public sealed class TileEndpointsTests : IClassFixture<WebApplicationFactory<Program>>

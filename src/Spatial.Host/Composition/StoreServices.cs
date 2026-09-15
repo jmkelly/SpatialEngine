@@ -9,7 +9,7 @@ namespace Spatial.Host;
 /// <summary>
 /// Registers the keyed data stores (ADR-0033): the read-only demo store, the
 /// ephemeral writable in-memory provider (ADR-0042) and the PostGIS store,
-/// each exposed through the granular capability interfaces it actually
+/// each exposed through the granular service faces it actually
 /// implements. Split from the composition root so its fan-out stays
 /// deliberate (ADR-0040).
 /// </summary>
@@ -18,7 +18,7 @@ internal static class StoreServices
     public static void Configure(WebApplicationBuilder builder)
     {
         // The one typed seam over the keyed stores (ADR-0033): adapters and
-        // the host API resolve store capabilities through it, never through
+        // the host API resolve store faces through it, never through
         // the container.
         builder.Services.AddSingleton<IStoreRegistry, KeyedStoreRegistry>();
         ConfigureDemo(builder);

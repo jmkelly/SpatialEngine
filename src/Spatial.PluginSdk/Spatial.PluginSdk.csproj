@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Public capability contracts and SDK types for plugin developers and clients. -->
+  <!-- Public service contracts and SDK types for service implementations and clients. -->
 
   <!--
     CA1711 flags reserved suffixes in type names. 'Permission' is the
     documented contract name for a permission it holds (plan §9 "required
     permissions"); the flag suffix rule is for BCL-facing names and does not
-    apply to the capability contract vocabulary.
+    apply to the contract vocabulary.
   -->
   <PropertyGroup>
     <NoWarn>$(NoWarn);CA1711</NoWarn>

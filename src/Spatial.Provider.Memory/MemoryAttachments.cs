@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Memory;
 
 /// <summary>
-/// The in-memory feature-attachment capability (T-060, ADR-0065), split from
+/// The in-memory feature-attachment face (T-060, ADR-0065), split from
 /// <see cref="MemoryStore"/> exactly like <see cref="MemoryEditor"/> so each
 /// type keeps one cohesive responsibility. Attachments are keyed by dataset
 /// and feature identity with per-feature integer ids starting at one; bytes

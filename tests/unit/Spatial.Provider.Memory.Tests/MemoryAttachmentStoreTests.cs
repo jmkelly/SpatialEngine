@@ -7,10 +7,10 @@ using Spatial.Provider.Memory;
 namespace Spatial.Provider.Memory.Tests;
 
 /// <summary>
-/// The in-memory feature-attachment capability (T-060): per-feature blob
+/// The in-memory feature-attachment face (T-060): per-feature blob
 /// put/get/delete keyed by dataset and object id, with core-typed
 /// descriptors, provider-owned bytes, a provider-side quota and structured
-/// failures. Red-first: the <c>IFeatureAttachmentStore</c> capability does
+/// failures. Red-first: the <c>IFeatureAttachmentStore</c> face does
 /// not exist yet, so nothing here compiles until it lands.
 /// </summary>
 public sealed class MemoryAttachmentStoreTests

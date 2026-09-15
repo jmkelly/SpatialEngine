@@ -7,12 +7,12 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The attachment surface (S4 query-attachments/add-attachment/…), served on
-/// the <c>IFeatureAttachmentStore</c> capability (ADR-0065, ADR-0066): reads
+/// the <c>IFeatureAttachmentStore</c> face (ADR-0065, ADR-0066): reads
 /// list the stored blobs per feature, writes put/replace/delete them, and
 /// the layer advertises <c>hasAttachments</c> exactly when the store exposes
-/// the capability. Stores without blob support (demo, ArcGIS REST, PostGIS
+/// the face. Stores without blob support (demo, ArcGIS REST, PostGIS
 /// until its sidecar lands) keep the ADR-0061 honesty: empty reads and typed
-/// write rejects naming the missing capability. Every method observes its
+/// write rejects naming the missing face. Every method observes its
 /// <see cref="CancellationToken"/> before touching state.
 /// </summary>
 internal static class FeatureAttachments
@@ -21,7 +21,7 @@ internal static class FeatureAttachments
     /// The layer-level <c>queryAttachments</c> (S4): one group per requested
     /// feature (every feature when <paramref name="objectIds"/> is null),
     /// each carrying its stored attachment infos in id order. Without a
-    /// capability the truthful empty set is reported.
+    /// face the truthful empty set is reported.
     /// </summary>
     public static async Task<IResult> QueryAsync(
         DatasetDescription dataset,
@@ -45,7 +45,7 @@ internal static class FeatureAttachments
     /// <summary>
     /// The per-feature <c>attachments</c> resource: the stored attachment
     /// infos for one feature in id order, or the truthful empty set without
-    /// a capability. An unknown feature is <c>not.found</c>.
+    /// a face. An unknown feature is <c>not.found</c>.
     /// </summary>
     public static async Task<IResult> InfosAsync(
         DatasetDescription dataset,
@@ -63,7 +63,7 @@ internal static class FeatureAttachments
     /// <summary>
     /// The per-attachment content resource: the stored bytes with their
     /// content type. Unknown features and unknown attachment ids are
-    /// <c>not.found</c>; without a capability no attachment can exist, so
+    /// <c>not.found</c>; without a face no attachment can exist, so
     /// every id is <c>not.found</c>.
     /// </summary>
     public static async Task<IResult> ContentAsync(
@@ -78,7 +78,7 @@ internal static class FeatureAttachments
         var feature = await FindFeatureAsync(dataset, store, objectId, cancellationToken);
         if (attachments is null)
         {
-            throw NotFound($"Attachment {attachmentId} does not exist on feature {objectId}: the store exposes no attachment capability.");
+            throw NotFound($"Attachment {attachmentId} does not exist on feature {objectId}: the store exposes no attachment face.");
         }
 
         var content = await attachments.GetAsync(dataset.Id, feature.Id, attachmentId, cancellationToken);
@@ -87,8 +87,8 @@ internal static class FeatureAttachments
 
     /// <summary>
     /// The per-feature <c>addAttachment</c>: stores one blob and reports its
-    /// assigned attachment id. Without a capability the write is rejected as
-    /// typed <c>invalid.arguments</c> naming the missing capability.
+    /// assigned attachment id. Without a face the write is rejected as
+    /// typed <c>invalid.arguments</c> naming the missing face.
     /// </summary>
     public static async Task<IResult> AddAsync(
         DatasetDescription dataset,
@@ -198,11 +198,11 @@ internal static class FeatureAttachments
         return ids;
     }
 
-    /// <summary>Rejects an attachment write: the store exposes no blob capability.</summary>
+    /// <summary>Rejects an attachment write: the store exposes no blob face.</summary>
     public static EsriInteropException WriteError(string operation) =>
         new(
             EsriErrorCodes.InvalidParameters,
-            $"The '{operation}' operation is not supported on this layer: the store exposes no attachment capability, so layer attachments cannot be added, updated or deleted (ADR-0065).");
+            $"The '{operation}' operation is not supported on this layer: the store exposes no attachment face, so layer attachments cannot be added, updated or deleted (ADR-0065).");
 
     private static async Task<IReadOnlyList<EsriAttachmentInfo>> InfosForAsync(
         DatasetDescription dataset,

@@ -57,7 +57,7 @@ public sealed record IngestOutcome(
 }
 
 /// <summary>
-/// Optional bulk create-and-load capability (ADR-0041), the ingest sibling of
+/// Optional bulk create-and-load face (ADR-0041), the ingest sibling of
 /// <see cref="IDataCatalogue.CreateAsync"/>. A store that can create a table
 /// and load it implements it so the whole operation is one transaction: the
 /// dataset exists only if every page lands, which the non-atomic

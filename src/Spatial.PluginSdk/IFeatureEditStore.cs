@@ -21,8 +21,8 @@ public sealed record FeatureEditOutcome(FeatureId Id, bool Succeeded, string? Er
 /// <summary>
 /// Feature add/update/delete over a writable store (ADR-0037), the editing
 /// sibling of <see cref="IFeatureStore"/>. Kept as a separate, additive
-/// capability so read-only stores (demo, ArcGIS REST) simply do not
-/// implement it and the facade advertises read-only capabilities. Each
+/// face so read-only stores (demo, ArcGIS REST) simply do not
+/// implement it and the facade advertises query-only Esri capabilities. Each
 /// method returns one <see cref="FeatureEditOutcome"/> per input, in input
 /// order, so a partially successful batch is reported per feature rather
 /// than as one failure. An optional store-owned transaction handle (from

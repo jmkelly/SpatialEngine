@@ -55,10 +55,10 @@ public static partial class GeoServicesEndpoints
                 cancellationToken));
 
         // Attachments (T-061, ADR-0066): reads are served on the store's
-        // attachment capability (public, like the features they annotate),
+        // attachment face (public, like the features they annotate),
         // writes require the single admin token (ADR-0065 §3). Layers whose
-        // store exposes no capability keep the honest surface: empty reads
-        // and typed write rejects naming the missing capability.
+        // store exposes no face keep the honest surface: empty reads
+        // and typed write rejects naming the missing face.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryAttachments", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             FeatureAttachmentHandlers.FeatureQueryAttachments(catalog, registry, service, layerId, context, stores, cancellationToken));

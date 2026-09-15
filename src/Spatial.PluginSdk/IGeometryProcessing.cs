@@ -7,7 +7,7 @@ namespace Spatial.PluginSdk;
 /// difference, convex hull, densify and topological repair
 /// (<c>simplify</c>-as-MakeValid). Split from
 /// <see cref="IGeometryOperations"/> so the adapter maps protocol verbs onto
-/// a granular capability. Pure, planar and cancellable.
+/// a granular face. Pure, planar and cancellable.
 /// </summary>
 public interface IGeometryProcessing
 {

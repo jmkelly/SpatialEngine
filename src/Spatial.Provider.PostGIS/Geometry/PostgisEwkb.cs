@@ -18,7 +18,7 @@ namespace Spatial.Provider.PostGIS.Geometry;
 /// <see cref="PostgisEwkbFormatException"/>; a write whose geometry CRS
 /// conflicts with the dataset column's SRID fails with
 /// <see cref="PostgisCrsMismatchException"/> — both mapped by the runners to
-/// structured capability errors.
+/// structured contract errors.
 /// </summary>
 internal static class PostgisEwkb
 {

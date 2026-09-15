@@ -234,9 +234,9 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatur
 }
 
 /// <summary>
-/// The editing capability over <see cref="WritableMemoryStore"/>, split out
+/// The editing face over <see cref="WritableMemoryStore"/>, split out
 /// exactly like the production <c>PostgisEditStore</c> (ADR-0037) so the
-/// facade must resolve the separately-registered capability rather than the
+/// facade must resolve the separately-registered face rather than the
 /// read-store instance.
 /// </summary>
 public sealed class WritableMemoryEditor : IFeatureEditStore

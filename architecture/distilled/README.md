@@ -89,11 +89,11 @@ shape is noted in brackets.
 | 0034 | Aspire AppHost composes the local development profile. |
 | 0035 | GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider. |
 | 0036 | Geometry measurement, processing and relation verbs are separate SDK interfaces. |
-| 0037 | Feature editing is a gated, per-feature `IFeatureEditStore` capability. |
-| 0038 | Read-by-identity is an additive store capability (`IFeatureLookup`). |
+| 0037 | Feature editing is a gated, per-feature `IFeatureEditStore` face. |
+| 0038 | Read-by-identity is an additive store face (`IFeatureLookup`). |
 | 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
 | 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
-| 0041 | Ingest and publications are protocol-neutral SDK capabilities; Esri admin is a gated projection. |
+| 0041 | Ingest and publications are protocol-neutral SDK faces; Esri admin is a gated projection. |
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |

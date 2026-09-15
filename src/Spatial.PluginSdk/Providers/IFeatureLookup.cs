@@ -3,7 +3,7 @@ using Spatial.Core.Features;
 namespace Spatial.PluginSdk.Providers;
 
 /// <summary>
-/// Optional read-by-identity capability (ADR-0038), the read sibling of
+/// Optional read-by-identity face (ADR-0038), the read sibling of
 /// <see cref="IFeatureEditStore"/> and an additive face alongside
 /// <see cref="IFeatureStore"/>. A store that can fetch features by their
 /// <see cref="Feature.Id"/> without scanning the whole dataset implements it,

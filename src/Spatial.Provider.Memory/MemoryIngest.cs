@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Memory;
 
 /// <summary>
-/// The in-memory ingest capability (ADR-0041 §3, ADR-0042): validate a decoded
+/// The in-memory ingest face (ADR-0041 §3, ADR-0042): validate a decoded
 /// upload into a <see cref="MemoryIngestPlan"/>, then build and register the
 /// dataset in one in-memory operation, so a partial dataset is never
 /// observable. Identity follows the same

@@ -236,7 +236,7 @@ public static partial class GeoServicesEndpoints
             var store = request.Stores.Features(resolved.Store);
             var editStore = EditStore(request.Stores, resolved.Store)
                 ?? throw GeoServicesErrors.Invalid(
-                    $"Service '{request.Service}' is read-only; it exposes no feature-editing capability.");
+                    $"Service '{request.Service}' is read-only; it exposes no feature-editing face.");
 
             var edits = request.Operation switch
             {
@@ -263,11 +263,11 @@ public static partial class GeoServicesEndpoints
     private static bool IsEditable(IStoreRegistry stores, string store) =>
         EditStore(stores, store) is not null;
 
-    /// <summary>Whether the layer advertises attachments: the store exposes the blob capability (T-061, ADR-0066).</summary>
+    /// <summary>Whether the layer advertises attachments: the store exposes the blob face (T-061, ADR-0066).</summary>
     private static bool HasAttachments(IStoreRegistry stores, string store) =>
         stores.AttachmentStore(store) is not null;
 
-    /// <summary>Resolves the service's keyed editing capability, or null when the store is read-only (ADR-0037).</summary>
+    /// <summary>Resolves the service's keyed editing face, or null when the store is read-only (ADR-0037).</summary>
     private static IFeatureEditStore? EditStore(IStoreRegistry stores, string store) =>
         stores.EditStore(store);
 

@@ -1,7 +1,7 @@
 # Service Contract Catalog (distilled)
 
 The typed contracts in `Spatial.PluginSdk`. Implements ADR-0033
-(replaces ADR-0026/0027/0028 capability contracts). Shared error codes:
+(replaces the ADR-0026/0027/0028 versioned worker contracts). Shared error codes:
 `invalid.arguments`, `not.found`, `store.unavailable` (see `runtime.md`).
 
 ## Geometry operations (`IGeometryOperations`, NTS)
@@ -53,10 +53,10 @@ holding algorithms. All verbs are pure, planar and cancellable.
 ## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 
 `IStoreRegistry` is the one runtime-keyed seam (ADR-0033): a store name
-resolves to its catalogue, feature store and additive capabilities, so a
+resolves to its catalogue, feature store and additive faces, so a
 protocol adapter reads a mixed map's layers from their own stores without
 holding the DI container. Required reads are `invalid.arguments` for an
-unknown store; additive capabilities return `null`.
+unknown store; additive faces return `null`.
 
 | Method | Input | Behaviour |
 | --- | --- | --- |
@@ -66,9 +66,9 @@ unknown store; additive capabilities return `null`.
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
 | `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
-| `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive capability, implemented by PostGIS only (ADR-0037) |
-| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity capability, implemented by PostGIS only (ADR-0038) |
-| `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive capability (ADR-0041). The host ingest route also accepts `sourceSrid` and reprojects the decoded pages through `ICoordinateTransforms` before load |
+| `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
+| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face, implemented by PostGIS only (ADR-0038) |
+| `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). The host ingest route also accepts `sourceSrid` and reprojects the decoded pages through `ICoordinateTransforms` before load |
 | `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (Feature/Map/Tiles/Wms/Wfs/Image); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |

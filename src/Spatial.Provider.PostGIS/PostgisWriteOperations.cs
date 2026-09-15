@@ -22,7 +22,7 @@ internal static class PostgisWriteOperations
     /// update binds the full schema, and an update appends the feature's
     /// pre-edit identity so the row is matched by <see cref="FeatureId"/>.
     /// Stateless, so it lives with the write
-    /// leaves rather than on the editing capability (ADR-0040).
+    /// leaves rather than on the editing face (ADR-0040).
     /// </summary>
     public static (string Sql, object?[] Values) PlanFeature(
         PostgisDatasetName name, DatasetDescription description, Feature feature, bool update)

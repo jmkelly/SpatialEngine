@@ -397,7 +397,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         return batches;
     }
 
-    /// <summary>Opens a pooled connection for the ingest capability (ADR-0041); the caller owns the transaction and lifecycle.</summary>
+    /// <summary>Opens a pooled connection for the ingest face (ADR-0041); the caller owns the transaction and lifecycle.</summary>
     internal Task<NpgsqlConnection> OpenIngestConnectionAsync(CancellationToken cancellationToken) =>
         _store.Value.OpenConnectionAsync(cancellationToken);
 

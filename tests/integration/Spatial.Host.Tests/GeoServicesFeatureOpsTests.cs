@@ -12,8 +12,8 @@ namespace Spatial.Host.Tests;
 /// <c>generateRenderer</c> (reusing the T-039 classifier), <c>validateSQL</c>,
 /// the honestly rejected aggregation extensions (<c>queryBins</c>,
 /// <c>queryTopFeatures</c>, <c>queryAnalytic</c>), and the attachment surface
-/// without a blob capability (T-061 served behaviour for capability-less
-/// stores; the store-backed behaviour lives in GeoServicesAttachmentsTests).
+/// without a blob face (T-061 served behaviour when the store exposes no face;
+/// the store-backed behaviour lives in GeoServicesAttachmentsTests).
 /// Red-first: none of these routes exist today, so every test here 404s
 /// while the surface is unmounted.
 /// </summary>
@@ -185,13 +185,13 @@ public sealed class GeoServicesFeatureOpsTests : IDisposable
     }
 
     // ---- item 5: attachments (T-061 served: the demo store exposes no
-    // blob capability, so reads stay empty and writes stay rejected; the
+    // blob face, so reads stay empty and writes stay rejected; the
     // store-backed behaviour lives in GeoServicesAttachmentsTests) ----
 
     [Fact]
     public async Task Query_attachments_reports_empty_groups_without_a_store()
     {
-        // Without a blob capability nothing is stored for any feature, so
+        // Without a blob face nothing is stored for any feature, so
         // every group is truthfully empty.
         var body = await BodyAsync(await Client().GetAsync($"{Feature}/0/queryAttachments?f=json"));
 

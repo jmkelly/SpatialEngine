@@ -102,7 +102,7 @@ internal static class EsriLayerModel
     /// identity column advertise it as <c>uniqueIdField</c> (11.5+) so
     /// clients can discover up front the field <c>uniqueIds</c> /
     /// <c>returnUniqueIdsOnly</c> serve (T-036); every other layer omits it.
-    /// A layer whose store exposes the attachment capability advertises
+    /// A layer whose store exposes the attachment face advertises
     /// <c>hasAttachments</c> with its <c>attachmentProperties</c> (T-061,
     /// ADR-0066); every other layer reports <c>hasAttachments: false</c>.
     /// </summary>

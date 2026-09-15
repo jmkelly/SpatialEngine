@@ -8,7 +8,7 @@ using Spatial.Provider.PostGIS.Data;
 namespace Spatial.Provider.PostGIS;
 
 /// <summary>
-/// The PostGIS ingest capability (ADR-0041 §3): create a dataset from a
+/// The PostGIS ingest face (ADR-0041 §3): create a dataset from a
 /// decoded upload's schema and load every page in **one transaction**, so the
 /// table exists only if every feature lands. The identity mode decides whether
 /// the new table gets a database-generated key (<see cref="IngestIdentity.Auto"/>),

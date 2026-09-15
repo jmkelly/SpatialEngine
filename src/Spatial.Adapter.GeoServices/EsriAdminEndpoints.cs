@@ -11,8 +11,8 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The Esri admin projection (ADR-0041 §5): a thin, token-gated mapping of the
-/// ArcGIS REST admin surface onto the neutral publication registry and ingest
-/// capability. It is a projection, not the model — service creation goes
+/// ArcGIS REST admin surface onto the neutral map registry and ingest
+/// face. It is a projection, not the model — service creation goes
 /// through <see cref="IMapRegistry.PutAsync"/> and uploads through
 /// <see cref="IDatasetIngest"/>. Data-store registration, definitions,
 /// portal items and everything the v1.0 specification does not describe are

@@ -35,7 +35,7 @@ public sealed record FeatureAttachmentOutcome(long Id, bool Succeeded, string? E
 
 /// <summary>
 /// Feature-attachment blobs over a store (T-060), the attachment sibling of
-/// <see cref="IFeatureEditStore"/>. An additive capability keyed by layer
+/// <see cref="IFeatureEditStore"/>. An additive face keyed by layer
 /// dataset and feature identity: a store that can hold per-feature blobs
 /// implements it, read-only or blob-less stores simply omit it and the facade
 /// keeps reporting empty reads with typed write rejects (ADR-0061 §5).

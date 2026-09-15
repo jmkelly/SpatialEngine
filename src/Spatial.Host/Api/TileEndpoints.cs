@@ -24,7 +24,7 @@ internal sealed class TileAddress
 
 /// <summary>
 /// The tile routes (ADR-0046): one cache-aware tile, an ordered batch with
-/// bounded parallelism, scheme capability discovery and explicit cache
+/// bounded parallelism, scheme discovery and explicit cache
 /// invalidation. The single-tile path format is authoritative over the body;
 /// the host resolves each layer's keyed store and catalogue at the edge and
 /// the <see cref="TileService"/> does the cache/render orchestration.

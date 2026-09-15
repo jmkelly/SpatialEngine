@@ -8,7 +8,7 @@ namespace Spatial.Host.Api;
 
 /// <summary>
 /// The raster render routes (ADR-0044): a one-off styled export and the
-/// capability description. The host maps the primitive wire DTO to core-typed
+/// capabilities-route description. The host maps the primitive wire DTO to core-typed
 /// contracts, validates the advertised format, resolves each layer's keyed
 /// store and catalogue at the edge, and passes them to the renderer.
 ///

@@ -5,7 +5,7 @@ namespace Spatial.Core.Geometry;
 /// A two-dimensional geometry: one exterior ring (a closed
 /// <see cref="LineString"/>) plus any interior rings. Ring closure,
 /// orientation and self-intersection are not validated here — validation is a
-/// plugin capability.
+/// service verb.
 /// </summary>
 public sealed class Polygon : IPolygon, IEquatable<Polygon>
 {

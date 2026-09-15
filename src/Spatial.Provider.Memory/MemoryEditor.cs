@@ -5,7 +5,7 @@ using Spatial.PluginSdk.Providers;
 namespace Spatial.Provider.Memory;
 
 /// <summary>
-/// The in-memory feature-editing capability (ADR-0037, ADR-0042), split from
+/// The in-memory feature-editing face (ADR-0037, ADR-0042), split from
 /// <see cref="MemoryStore"/> exactly like <c>PostgisEditStore</c> so each type
 /// keeps one cohesive responsibility. A feature whose identity is
 /// <see cref="FeatureId.Unassigned"/> gets the dataset's next generated

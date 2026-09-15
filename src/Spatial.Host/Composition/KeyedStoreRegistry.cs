@@ -6,7 +6,7 @@ namespace Spatial.Host;
 
 /// <summary>
 /// The host's <see cref="IStoreRegistry"/> implementation (ADR-0033): the one
-/// place the engine turns a request's store name into its keyed capabilities.
+/// place the engine turns a request's store name into its keyed faces.
 /// It captures the container <see cref="IServiceProvider"/> deliberately —
 /// the store key is a request value, so the lookup cannot be ordinary
 /// constructor injection — and every boundary adapter depends on the typed

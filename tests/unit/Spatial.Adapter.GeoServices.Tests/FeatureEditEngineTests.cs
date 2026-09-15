@@ -234,7 +234,7 @@ public sealed class FeatureEditEngineTests
                 """{"attributes":{"name":"Bad","population":1},"geometry":{"x":1,"y":1}}"""),
             [], [], null, true);
 
-        // No transaction capability, so even with rollbackOnFailure there is nothing to roll back:
+        // No transaction face, so even with rollbackOnFailure there is nothing to roll back:
         // the good feature stays while the failed one is reported per feature.
         var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
 

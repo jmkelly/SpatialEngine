@@ -8,7 +8,7 @@ using Spatial.Provider.PostGIS.Data;
 namespace Spatial.Provider.PostGIS;
 
 /// <summary>
-/// The PostGIS feature-editing capability (ADR-0037), split from
+/// The PostGIS feature-editing face (ADR-0037), split from
 /// <see cref="PostgisStore"/> so the store keeps one cohesive
 /// read/write/transaction responsibility and the editor owns add/update/
 /// delete. It shares the store's discovered schema, connection configuration

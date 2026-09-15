@@ -8,7 +8,7 @@ using Spatial.Provider.PostGIS.Data;
 namespace Spatial.Provider.PostGIS;
 
 /// <summary>
-/// The PostGIS feature-attachment capability (T-088, ADR-0065 §2), split
+/// The PostGIS feature-attachment face (T-088, ADR-0065 §2), split
 /// from <see cref="PostgisStore"/> so the store keeps one cohesive
 /// read/write/transaction responsibility and the attachment sidecar owns
 /// put/get/delete. Attachments persist in the provider-owned
@@ -17,7 +17,7 @@ namespace Spatial.Provider.PostGIS;
 /// per-feature attachment id starting at one — so blobs survive restarts
 /// alongside their datasets. Every statement is built in
 /// <see cref="PostgisQueries"/> from fixed identifiers and bound
-/// parameters; Npgsql types never cross the capability contract, which
+/// parameters; Npgsql types never cross the contract, which
 /// carries only core and BCL types.
 /// </summary>
 public sealed class PostgisAttachmentStore : IFeatureAttachmentStore

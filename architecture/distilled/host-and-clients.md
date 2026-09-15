@@ -111,7 +111,7 @@ ids. `GET /api/maps` and
 (`SPATIAL_ADMIN_TOKEN`) is configured, and then require it
 (`Authorization: Bearer …` or `?token=`). The Esri admin projection at
 `Spatial:GeoServices:AdminRoot` (default `/arcgis/admin`) is the same
-capability behind a token-gated Esri error envelope; without a configured
+surface behind a token-gated Esri error envelope; without a configured
 token it returns an actionable unavailable error.
 
 A map exposes a service only when its `Services` set contains it; the
