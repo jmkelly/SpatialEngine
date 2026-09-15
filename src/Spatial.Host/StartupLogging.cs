@@ -60,7 +60,7 @@ internal static partial class StartupLogging
     [LoggerMessage(
         EventId = 3,
         Level = LogLevel.Information,
-        Message = "Admin mutation routes are disabled; set {Setting} or {EnvironmentVariable} to enable publications and ingest.")]
+        Message = "Admin mutation routes are disabled; set {Setting} or {EnvironmentVariable} to enable maps and ingest.")]
     private static partial void LogAdminDisabled(ILogger logger, string setting, string environmentVariable);
 
     [LoggerMessage(

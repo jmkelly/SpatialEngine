@@ -101,8 +101,8 @@ public static partial class GeoServicesEndpoints
 
     /// <summary>
     /// The catalogue entries: a deterministic Geometry-first order built from
-    /// the registry's publications plus the declared FeatureServer services.
-    /// Declared services are also publications (seeded at composition), and a
+    /// the registry's maps plus the declared FeatureServer services.
+    /// Declared services are also maps (seeded at composition), and a
     /// registry that is not populated (for example in unit tests) is tolerated.
     /// Internal for the T-049 catalog-honesty tests: only served types
     /// (Feature/Map/Image) may appear — Tiles/WMS/WFS and any future

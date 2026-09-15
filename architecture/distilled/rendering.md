@@ -73,8 +73,8 @@ SHA-256 of the style/layer/imagery/encoding request.
 ## Style document (documented MapLibre subset)
 
 Canonical document is the MapLibre style spec JSON the workbench writes.
-A publication may also persist a per-layer style fragment in the same dialect
-(ADR-0047): each `PublicationLayer.Style` is a JSON array of style-layer
+A map may also persist a per-layer style fragment in the same dialect
+(ADR-0047): each `MapLayer.Style` is a JSON array of style-layer
 objects without `id`/`source-layer`, and the host injects those (plus the
 layer's dataset) when it assembles the render document.
 Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer keys:
@@ -108,7 +108,7 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
 | --- | --- |
 | `POST /api/render` | image bytes (`Content-Type` by format) + `X-Raster-Width/Height/Format` |
 | `GET /api/render/capabilities` | advertised formats, pixel cap, imagery source names |
-| `POST /api/publications/{name}/render` | render a publication's datasets with its persisted per-layer style (ADR-0047); same encoding options, no inline style/layers |
+| `POST /api/maps/{name}/render` | render a map's datasets with its persisted per-layer style (ADR-0047); same encoding options, no inline style/layers |
 | `POST /api/render/tiles/{z}/{x}/{y}.{format}` | one cache-aware tile (binary) + `X-Tile-Cached` |
 | `POST /api/render/tiles/batch` | ordered tile list (Base64) with cache dispositions |
 | `GET /api/render/tiles/capabilities` | schemes, LODs, default scheme, batch cap |
@@ -163,6 +163,6 @@ A persistent/shared tile cache (the `ITileCache` contract is ready for it);
 a GPU backend is not planned. Vector tiles (MVT/`.vtpk`) and OGC API Tiles
 are documented non-goals (ADR-0062): the engine serves pre-styled raster
 tiles only. The GeoServices MapServer (`export`/`tile`,
-ADR-0048) is implemented; a neutral `/api/publications/{name}/tiles` route is
+ADR-0048) is implemented; a neutral `/api/maps/{name}/tiles` route is
 not. Within the symbol subset, line placement, expressions, sprite sheets and
 text transforms are not claimed.

@@ -117,8 +117,8 @@ token it returns an actionable unavailable error.
 A map exposes a service only when its `Services` set contains it; the
 GeoServices catalog advertises `FeatureServer`/`MapServer`/`ImageServer` per
 enabled service, and the OGC tile/WMS/WFS routes resolve the same map. The
-pre-ADR-0053 `/api/publications` routes remain as deprecated aliases for one
-release. Deliberate Esri non-goals (scope in `research/compat/scope.md`,
+pre-ADR-0053 `/api/publications` aliases were removed in 0.2.0;
+`/api/maps` is canonical (unknown routes answer 404). Deliberate Esri non-goals (scope in `research/compat/scope.md`,
 full audit in `architecture/references/geoservices-compatibility.md` §7.1):
 Geocode Server, GP Server (no engine job model — ADR-0033), Network
 Analysis, GeoEvent/Stream/Knowledge/Workflow/Data Store admin, token/auth
