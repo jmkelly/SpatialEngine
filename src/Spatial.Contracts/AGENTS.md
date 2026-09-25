@@ -8,7 +8,10 @@ implementations and the host — never the reverse.
 ## Owned here
 
 - `SpatialException` — the single error type (`invalid.arguments`,
-  `not.found`, `store.unavailable`).
+  `not.found`, `store.unavailable`, `auth.failed`, `auth.unauthorized`,
+  `auth.forbidden`).
+- `IAuthService` + `AuthIdentity`/`AuthToken`/`AuthGuard` — the package-free
+  phase-1 authentication and role-enforcement contract (ADR-0071).
 - `IGeometryOperations` — buffer, intersection, validate, simplify over
   core geometry values.
 - `ICrsDirectory` + `ICoordinateTransforms` — CRS description and

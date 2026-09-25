@@ -27,6 +27,7 @@ public static class CliCommandCatalog
     public static IReadOnlyList<CliCommandInfo> Commands { get; } =
     [
         .. HostCommands.Specs,
+        .. AuthCommands.Specs,
         .. DatasetCommands.Specs,
         .. MapCommands.Specs,
         .. ProjectCommands.Specs,

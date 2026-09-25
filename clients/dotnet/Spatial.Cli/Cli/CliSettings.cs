@@ -42,7 +42,9 @@ public sealed record CliSettings(
         var getEnvironment = environment ?? Environment.GetEnvironmentVariable;
 
         var host = NonEmpty(parsed.Last("host")) ?? NonEmpty(getEnvironment("SPATIAL_HOST")) ?? DefaultHost;
-        var token = NonEmpty(parsed.Last("token")) ?? NonEmpty(getEnvironment("SPATIAL_ADMIN_TOKEN"));
+        var token = NonEmpty(parsed.Last("token"))
+            ?? NonEmpty(getEnvironment("SPATIAL_ADMIN_TOKEN"))
+            ?? NonEmpty(AuthTokenStore.Read());
         var store = NonEmpty(parsed.Last("store")) ?? DefaultStore;
         var project = NonEmpty(parsed.Last("project")) ?? DefaultProjectPath;
         var geoServicesRoot = NonEmpty(parsed.Last("geoservices-root")) ?? DefaultGeoServicesRoot;

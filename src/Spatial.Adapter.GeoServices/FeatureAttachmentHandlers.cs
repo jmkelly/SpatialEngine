@@ -72,13 +72,13 @@ internal static class FeatureAttachmentHandlers
 
     internal static async Task<IResult> FeatureAddAttachment(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
-        HttpContext context, IStoreRegistry stores, string? adminToken, CancellationToken cancellationToken)
+        HttpContext context, IStoreRegistry stores, string? adminToken, IAuthService? auth, bool authEnabled, string? legacyToken, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            EnsureAttachmentAuthorized(adminToken, context, parameters);
+            await EnsureAttachmentAuthorized(adminToken, context, parameters, auth, authEnabled, legacyToken, cancellationToken);
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var upload = await ReadAttachmentUploadAsync(context, "addAttachment", parameters.Get("keywords"), cancellationToken);
@@ -94,13 +94,13 @@ internal static class FeatureAttachmentHandlers
 
     internal static async Task<IResult> FeatureDeleteAttachments(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
-        HttpContext context, IStoreRegistry stores, string? adminToken, CancellationToken cancellationToken)
+        HttpContext context, IStoreRegistry stores, string? adminToken, IAuthService? auth, bool authEnabled, string? legacyToken, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            EnsureAttachmentAuthorized(adminToken, context, parameters);
+            await EnsureAttachmentAuthorized(adminToken, context, parameters, auth, authEnabled, legacyToken, cancellationToken);
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var attachmentIds = FeatureAttachments.ParseIds(parameters.Get("attachmentIds"), "attachmentIds")
@@ -117,13 +117,13 @@ internal static class FeatureAttachmentHandlers
 
     internal static async Task<IResult> FeatureUpdateAttachment(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, int layerId, long objectId,
-        HttpContext context, IStoreRegistry stores, string? adminToken, CancellationToken cancellationToken)
+        HttpContext context, IStoreRegistry stores, string? adminToken, IAuthService? auth, bool authEnabled, string? legacyToken, CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            EnsureAttachmentAuthorized(adminToken, context, parameters);
+            await EnsureAttachmentAuthorized(adminToken, context, parameters, auth, authEnabled, legacyToken, cancellationToken);
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var layer = await ResolveLayerAsync(stores, resolved, layerId, cancellationToken);
             var attachmentId = ParseAttachmentId(parameters.Get("attachmentId"));
@@ -159,8 +159,35 @@ internal static class FeatureAttachmentHandlers
         return attachmentId;
     }
 
-    private static void EnsureAttachmentAuthorized(string? configuredToken, HttpContext context, EsriRequestParameters parameters)
+    private static async Task EnsureAttachmentAuthorized(
+        string? configuredToken,
+        HttpContext context,
+        EsriRequestParameters parameters,
+        IAuthService? auth,
+        bool authEnabled,
+        string? legacyToken,
+        CancellationToken cancellationToken)
     {
+        if (authEnabled)
+        {
+            try
+            {
+                await AuthGuard.RequireRoleAsync(
+                    auth!, PresentedAttachmentToken(context, parameters), legacyToken,
+                    AuthGuard.AdminRole, cancellationToken);
+            }
+            catch (SpatialException exception) when (exception.Code == SpatialException.AuthUnauthorized)
+            {
+                throw GeoServicesErrors.TokenRequired("An admin token is required to modify attachments.");
+            }
+            catch (SpatialException exception) when (
+                exception.Code is SpatialException.AuthFailed or SpatialException.AuthForbidden)
+            {
+                throw GeoServicesErrors.InvalidToken(exception.Message);
+            }
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(configuredToken))
         {
             throw GeoServicesErrors.ServiceUnavailable(

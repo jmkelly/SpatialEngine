@@ -10,6 +10,9 @@ public sealed class SpatialException : Exception
     public const string InvalidArguments = "invalid.arguments";
     public const string StoreUnavailable = "store.unavailable";
     public const string NotFound = "not.found";
+    public const string AuthFailed = "auth.failed";
+    public const string AuthUnauthorized = "auth.unauthorized";
+    public const string AuthForbidden = "auth.forbidden";
 
     public SpatialException(string code, string message)
         : base(message)
@@ -31,4 +34,12 @@ public sealed class SpatialException : Exception
         new(StoreUnavailable, message, inner);
 
     public static SpatialException Missing(string message) => new(NotFound, message);
+
+    public static SpatialException AuthenticationFailed(string message = "The username or password is not valid.") =>
+        new(AuthFailed, message);
+
+    public static SpatialException AuthenticationRequired(string message = "Authentication is required.") =>
+        new(AuthUnauthorized, message);
+
+    public static SpatialException Forbidden(string message) => new(AuthForbidden, message);
 }

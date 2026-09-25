@@ -28,7 +28,7 @@ Global options are valid before or after the command:
 | Option | Env | Meaning |
 | --- | --- | --- |
 | `--host <url>` | `SPATIAL_HOST` | Host base address (default `http://127.0.0.1:5201`) |
-| `--token <token>` | `SPATIAL_ADMIN_TOKEN` | Admin token for mutations; never echoed |
+| `--token <token>` | `SPATIAL_ADMIN_TOKEN` | Legacy admin token or cached opaque bearer; never echoed |
 | `--store <name>` | — | Default store (`demo`, `memory`, `postgis`); writes default `memory` |
 | `--project <path>` | — | Project file (default `spatial.json`) |
 | `--geoservices-root <path>` | — | GeoServices route prefix (default `/arcgis/rest/services`) |
@@ -38,11 +38,20 @@ Global options are valid before or after the command:
 | `--timeout <seconds>` | — | Per-request timeout (default 100) |
 | `--help` | — | Command help, rendered from the catalog |
 
-Mutating commands require an admin token, either `--token` or
-`SPATIAL_ADMIN_TOKEN`; the token is never written to output, errors or the
-project file.
+Mutating commands require a bearer with the `admin`/`writer` role. Use
+`spatial auth login --username alice --password ...` once; the opaque token is
+cached at `~/.spatial/token` with mode `0600` and sent automatically. A legacy
+`--token`/`SPATIAL_ADMIN_TOKEN` remains supported during migration. Tokens are
+never written to output, errors or the project file.
 
 ## Commands
+
+### `auth`
+
+```bash
+spatial auth login --username alice --password "$PASSWORD"
+spatial auth logout
+```
 
 ### `host`
 

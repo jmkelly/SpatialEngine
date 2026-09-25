@@ -15,28 +15,37 @@ internal static class StoreEndpoints
     public const string Demo = "demo";
     public const string Postgis = "postgis";
 
-    public static void Map(IEndpointRouteBuilder app)
+    public static void Map(
+        IEndpointRouteBuilder app,
+        AdminOptions admin,
+        AuthOptions authOptions,
+        IAuthService auth)
     {
         app.MapGet("/api/catalogue", Catalogue)
             .Produces<CatalogueResponse>();
         app.MapGet("/api/datasets/{id}", Describe)
             .Produces<DatasetDescription>()
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
-        app.MapPost("/api/datasets", Create)
+        app.MapPost("/api/datasets", (HttpContext context, CreateDatasetRequest request, string? store, IStoreRegistry stores, CancellationToken token) =>
+            Create(context, request, store, stores, admin, authOptions, auth, token))
             .Produces<CreateDatasetResponse>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
         app.MapPost("/api/features/scan", Scan)
             .Produces<FeatureBatchesResponse>();
         app.MapPost("/api/features/query", Query)
             .Produces<FeatureBatchesResponse>();
-        app.MapPost("/api/features/write", Write)
+        app.MapPost("/api/features/write", (HttpContext context, FeatureWriteRequest request, string? store, IStoreRegistry stores, CancellationToken token) =>
+            Write(context, request, store, stores, admin, authOptions, auth, token))
             .Produces<FeatureWriteResponse>()
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
-        app.MapPost("/api/transactions/begin", Begin)
+        app.MapPost("/api/transactions/begin", (HttpContext context, string? store, IStoreRegistry stores, CancellationToken token) =>
+            Begin(context, store, stores, admin, authOptions, auth, token))
             .Produces<BeginTransactionResponse>();
-        app.MapPost("/api/transactions/commit", Commit)
+        app.MapPost("/api/transactions/commit", (HttpContext context, TransactionRequest request, string? store, IStoreRegistry stores, CancellationToken token) =>
+            Commit(context, request, store, stores, admin, authOptions, auth, token))
             .Produces<TransactionResponse>();
-        app.MapPost("/api/transactions/rollback", Rollback)
+        app.MapPost("/api/transactions/rollback", (HttpContext context, TransactionRequest request, string? store, IStoreRegistry stores, CancellationToken token) =>
+            Rollback(context, request, store, stores, admin, authOptions, auth, token))
             .Produces<TransactionResponse>();
         app.MapPost("/api/demo/sleep", Sleep)
             .Produces<SleepResponse>();
@@ -72,10 +81,18 @@ internal static class StoreEndpoints
     }
 
     private static async Task<IResult> Create(
-        CreateDatasetRequest request, string? store, IStoreRegistry stores, CancellationToken token)
+        HttpContext context,
+        CreateDatasetRequest request,
+        string? store,
+        IStoreRegistry stores,
+        AdminOptions admin,
+        AuthOptions authOptions,
+        IAuthService auth,
+        CancellationToken token)
     {
         try
         {
+            await Authorize(context, admin, authOptions, auth, token);
             var catalogue = ResolveCatalogue(stores, store ?? Postgis);
             var batch = CodecWire.DecodeBatch(request.Batch, "batch");
             var created = await catalogue.CreateAsync(request.Dataset, batch, request.Srid, token);
@@ -121,10 +138,18 @@ internal static class StoreEndpoints
     }
 
     private static async Task<IResult> Write(
-        FeatureWriteRequest request, string? store, IStoreRegistry stores, CancellationToken token)
+        HttpContext context,
+        FeatureWriteRequest request,
+        string? store,
+        IStoreRegistry stores,
+        AdminOptions admin,
+        AuthOptions authOptions,
+        IAuthService auth,
+        CancellationToken token)
     {
         try
         {
+            await Authorize(context, admin, authOptions, auth, token);
             var features = ResolveFeatures(stores, store ?? Postgis);
             var batch = CodecWire.DecodeBatch(request.Batch, "batch");
             var appended = await features.WriteAsync(request.Dataset, batch, request.Transaction, token);
@@ -136,10 +161,13 @@ internal static class StoreEndpoints
         }
     }
 
-    private static async Task<IResult> Begin(string? store, IStoreRegistry stores, CancellationToken token)
+    private static async Task<IResult> Begin(
+        HttpContext context, string? store, IStoreRegistry stores,
+        AdminOptions admin, AuthOptions authOptions, IAuthService auth, CancellationToken token)
     {
         try
         {
+            await Authorize(context, admin, authOptions, auth, token);
             var transactions = ResolveTransactions(stores, store ?? Postgis);
             return Results.Ok(new BeginTransactionResponse(await transactions.BeginAsync(token)));
         }
@@ -149,10 +177,13 @@ internal static class StoreEndpoints
         }
     }
 
-    private static async Task<IResult> Commit(TransactionRequest request, string? store, IStoreRegistry stores, CancellationToken token)
+    private static async Task<IResult> Commit(
+        HttpContext context, TransactionRequest request, string? store, IStoreRegistry stores,
+        AdminOptions admin, AuthOptions authOptions, IAuthService auth, CancellationToken token)
     {
         try
         {
+            await Authorize(context, admin, authOptions, auth, token);
             var transactions = ResolveTransactions(stores, store ?? Postgis);
             return Results.Ok(new TransactionResponse(await transactions.CommitAsync(request.Transaction, token)));
         }
@@ -162,10 +193,13 @@ internal static class StoreEndpoints
         }
     }
 
-    private static async Task<IResult> Rollback(TransactionRequest request, string? store, IStoreRegistry stores, CancellationToken token)
+    private static async Task<IResult> Rollback(
+        HttpContext context, TransactionRequest request, string? store, IStoreRegistry stores,
+        AdminOptions admin, AuthOptions authOptions, IAuthService auth, CancellationToken token)
     {
         try
         {
+            await Authorize(context, admin, authOptions, auth, token);
             var transactions = ResolveTransactions(stores, store ?? Postgis);
             return Results.Ok(new TransactionResponse(await transactions.RollbackAsync(request.Transaction, token)));
         }
@@ -186,6 +220,25 @@ internal static class StoreEndpoints
         {
             return ErrorMapper.Map(exception);
         }
+    }
+
+    private static async Task Authorize(
+        HttpContext context,
+        AdminOptions admin,
+        AuthOptions authOptions,
+        IAuthService auth,
+        CancellationToken token)
+    {
+        if (!admin.Enabled && !authOptions.Enabled)
+        {
+            return;
+        }
+
+        var header = context.Request.Headers.Authorization.ToString();
+        var presented = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? header["Bearer ".Length..].Trim()
+            : null;
+        await AuthGuard.RequireRoleAsync(auth, presented, admin.Token, AuthGuard.AdminRole, token);
     }
 
     internal static IDataCatalogue ResolveCatalogue(IStoreRegistry stores, string store) =>

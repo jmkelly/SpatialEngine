@@ -20,7 +20,13 @@ namespace Spatial.Adapter.GeoServices;
 public static partial class GeoServicesEndpoints
 {
     /// <summary>Maps the facade at <see cref="GeoServicesOptions.Root"/>.</summary>
-    public static void Map(IEndpointRouteBuilder app, GeoServicesOptions options, IMapRegistry registry)
+    public static void Map(
+        IEndpointRouteBuilder app,
+        GeoServicesOptions options,
+        IMapRegistry registry,
+        IAuthService? auth = null,
+        bool authEnabled = false,
+        string? legacyToken = null)
     {
         var catalog = new GeoServicesCatalog(options);
         var group = app.MapGroup(catalog.Root);
@@ -58,16 +64,16 @@ public static partial class GeoServicesEndpoints
         // Editing (ADR-0037): POST-only, per spec §9.1.6–§9.1.9.
         group.MapPost("/{service}/FeatureServer/{layerId:int}/addFeatures", (
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Add), cancellationToken));
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Add, auth, authEnabled, legacyToken), cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/updateFeatures", (
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Update), cancellationToken));
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Update, auth, authEnabled, legacyToken), cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/deleteFeatures", (
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Delete), cancellationToken));
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Delete, auth, authEnabled, legacyToken), cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/applyEdits", (
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Apply), cancellationToken));
+            FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Apply, auth, authEnabled, legacyToken), cancellationToken));
 
         // The Feature write-model operations (T-038, ADR-0058): service-level
         // query, per-layer generateRenderer, validateSQL, honest aggregation
@@ -76,7 +82,7 @@ public static partial class GeoServicesEndpoints
         // the host's single admin secret, read from configuration like the
         // Esri admin projection does.
         var adminToken = app.ServiceProvider.GetService<IConfiguration>()?["Spatial:Admin:Token"];
-        MapFeatureOps(group, catalog, registry, adminToken);
+        MapFeatureOps(group, catalog, registry, adminToken, auth, authEnabled, legacyToken);
 
         // The Map Service projection (spec §4, ADR-0048) and the Image
         // Service projection (spec §8, ADR-0051).
@@ -230,6 +236,15 @@ public static partial class GeoServicesEndpoints
         {
             var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
+            if (request.AuthEnabled)
+            {
+                await AuthGuard.RequireRoleAsync(
+                    request.Auth!,
+                    Bearer(request.Context),
+                    request.LegacyToken,
+                    AuthGuard.AdminRole,
+                    cancellationToken);
+            }
             EsriEditRequest.RejectUnsupported(parameters);
             var resolved = await GeoServicesResolution.ResolveServiceAsync(request.Catalog, request.Registry, request.Service, "FeatureServer", MapServiceKind.FeatureServer, cancellationToken);
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
@@ -258,6 +273,14 @@ public static partial class GeoServicesEndpoints
         {
             return EsriErrorMapper.Map(exception);
         }
+    }
+
+    private static string? Bearer(HttpContext context)
+    {
+        var header = context.Request.Headers.Authorization.ToString();
+        return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? header["Bearer ".Length..].Trim()
+            : null;
     }
 
     private static bool IsEditable(IStoreRegistry stores, string store) =>
@@ -329,7 +352,10 @@ internal sealed record FeatureEditContext(
     string Service,
     int LayerId,
     IStoreRegistry Stores,
-    EsriEditOperation Operation);
+    EsriEditOperation Operation,
+    IAuthService? Auth,
+    bool AuthEnabled,
+    string? LegacyToken);
 
 /// <summary>The GeoServices catalog resource (spec §3).</summary>
 internal sealed record CatalogResponse(double CurrentVersion, IReadOnlyList<string> Folders, IReadOnlyList<EsriServiceEntry> Services);

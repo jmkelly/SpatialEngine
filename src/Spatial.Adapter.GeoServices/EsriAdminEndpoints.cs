@@ -1,6 +1,4 @@
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.AspNetCore.Http;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
@@ -22,30 +20,38 @@ namespace Spatial.Adapter.GeoServices;
 public static class EsriAdminEndpoints
 {
     /// <summary>Maps the admin projection at <see cref="EsriAdminOptions.Root"/>.</summary>
-    public static void Map(IEndpointRouteBuilder app, EsriAdminOptions options, IMapRegistry registry)
+    public static void Map(
+        IEndpointRouteBuilder app,
+        EsriAdminOptions options,
+        IMapRegistry registry,
+        IAuthService auth)
     {
         var staging = new EsriUploadStaging(options.UploadTtl);
         var group = app.MapGroup(options.Root);
 
         group.MapMethods("/services", ["GET", "POST"], (HttpContext context, CancellationToken token) =>
-            Handle(options, context, () => ListServicesAsync(registry, token)));
+            Handle(options, context, auth, () => ListServicesAsync(registry, token)));
         group.MapMethods("/services/{service}", ["GET", "POST"], (string service, HttpContext context, CancellationToken token) =>
-            Handle(options, context, () => GetServiceAsync(registry, service, token)));
+            Handle(options, context, auth, () => GetServiceAsync(registry, service, token)));
         group.MapPost("/services/{service}/createService", (string service, HttpContext context, CancellationToken token) =>
-            Handle(options, context, () => CreateServiceAsync(registry, service, context, token)));
+            Handle(options, context, auth, () => CreateServiceAsync(registry, service, context, token)));
         group.MapPost("/services/{service}/deleteService", (string service, HttpContext context, CancellationToken token) =>
-            Handle(options, context, () => DeleteServiceAsync(registry, service, token)));
+            Handle(options, context, auth, () => DeleteServiceAsync(registry, service, token)));
         group.MapPost("/uploads", (HttpContext context, IStoreRegistry stores, CancellationToken token) =>
-            Handle(options, context, () => UploadAsync(options, staging, context, stores, token)));
+            Handle(options, context, auth, () => UploadAsync(options, staging, context, stores, token)));
         group.MapPost("/uploads/{id}/publish", (string id, HttpContext context, CancellationToken token) =>
-            Handle(options, context, () => PublishAsync(registry, staging, id, context, token)));
+            Handle(options, context, auth, () => PublishAsync(registry, staging, id, context, token)));
     }
 
-    private static async Task<IResult> Handle(EsriAdminOptions options, HttpContext context, Func<Task<IResult>> action)
+    private static async Task<IResult> Handle(
+        EsriAdminOptions options,
+        HttpContext context,
+        IAuthService auth,
+        Func<Task<IResult>> action)
     {
         try
         {
-            EnsureAuthorized(options, context);
+            await EnsureAuthorized(options, context, auth);
             return await action();
         }
         catch (Exception exception)
@@ -167,19 +173,35 @@ public static class EsriAdminEndpoints
         return EsriJson.Value(new AdminSuccess(true, stored.Name, stored.Layers.Select(layer => layer.LayerId).ToArray()));
     }
 
-    /// <summary>Validates the admin token, in constant time; without a configured token the projection is unavailable.</summary>
-    private static void EnsureAuthorized(EsriAdminOptions options, HttpContext context)
+    /// <summary>Validates the local bearer or the migration static token.</summary>
+    private static async Task EnsureAuthorized(
+        EsriAdminOptions options,
+        HttpContext context,
+        IAuthService auth)
     {
         if (!options.Enabled)
         {
             throw GeoServicesErrors.ServiceUnavailable(
-                "The Esri admin projection is not configured; set Spatial:Admin:Token or SPATIAL_ADMIN_TOKEN.");
+                "The Esri admin projection is not configured; set Spatial:Auth:Users or Spatial:Admin:Token.");
         }
 
-        var presented = PresentedToken(context) ?? throw GeoServicesErrors.TokenRequired("An admin token is required.");
-        if (!FixedTimeEquals(presented, options.Token))
+        try
         {
-            throw GeoServicesErrors.InvalidToken("The admin token is not valid.");
+            await AuthGuard.RequireRoleAsync(
+                auth,
+                PresentedToken(context),
+                options.Token,
+                AuthGuard.AdminRole,
+                context.RequestAborted);
+        }
+        catch (SpatialException exception) when (exception.Code == SpatialException.AuthUnauthorized)
+        {
+            throw GeoServicesErrors.TokenRequired("An admin token is required.");
+        }
+        catch (SpatialException exception) when (
+            exception.Code is SpatialException.AuthFailed or SpatialException.AuthForbidden)
+        {
+            throw GeoServicesErrors.InvalidToken(exception.Message);
         }
     }
 
@@ -194,9 +216,6 @@ public static class EsriAdminEndpoints
         var query = Query(context.Request.Query, "token");
         return query;
     }
-
-    private static bool FixedTimeEquals(string left, string right) =>
-        CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(left), Encoding.UTF8.GetBytes(right));
 
     private static string ServiceName(string service)
     {

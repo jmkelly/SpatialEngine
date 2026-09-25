@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
@@ -26,22 +24,27 @@ internal static class AdminEndpoints
     /// <summary>The store ingest defaults to: the always-available writable in-memory provider.</summary>
     public const string DefaultIngestStore = "memory";
 
-    public static void Map(IEndpointRouteBuilder app, AdminOptions admin, IngestOptions ingest)
+    public static void Map(
+        IEndpointRouteBuilder app,
+        AdminOptions admin,
+        IngestOptions ingest,
+        AuthOptions authOptions,
+        IAuthService auth)
     {
         app.MapGet("/api/maps", ListMaps).Produces<IReadOnlyList<Map>>();
         app.MapGet("/api/maps/{name}", GetMap).Produces<Map>();
 
-        if (!admin.Enabled)
+        if (!admin.Enabled && !authOptions.Enabled)
         {
             return;
         }
 
         app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IStoreRegistry stores, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, name, map, stores, registry, token));
+            PutMap(context, admin, auth, name, map, stores, registry, token));
         app.MapDelete("/api/maps/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
-            DeleteMap(context, admin, name, registry, token));
+            DeleteMap(context, admin, auth, name, registry, token));
         app.MapPost("/api/ingest", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token) =>
-            Ingest(context, admin, ingest, stores, transforms, registry, token));
+            Ingest(context, admin, auth, ingest, stores, transforms, registry, token));
     }
 
     private static async Task<IResult> ListMaps(IMapRegistry registry, CancellationToken token)
@@ -69,16 +72,12 @@ internal static class AdminEndpoints
     }
 
     private static async Task<IResult> PutMap(
-        HttpContext context, AdminOptions admin, string name, Map map,
+        HttpContext context, AdminOptions admin, IAuthService auth, string name, Map map,
         IStoreRegistry stores, IMapRegistry registry, CancellationToken token)
     {
-        if (Authorize(context, admin) is { } rejection)
-        {
-            return rejection;
-        }
-
         try
         {
+            await Authorize(context, admin, auth, token);
             var named = map with { Name = Uri.UnescapeDataString(name) };
             await EnsureLayersAreServableAsync(stores, named, token);
             var stored = await registry.PutAsync(named, token);
@@ -116,15 +115,11 @@ internal static class AdminEndpoints
     }
 
     private static async Task<IResult> DeleteMap(
-        HttpContext context, AdminOptions admin, string name, IMapRegistry registry, CancellationToken token)
+        HttpContext context, AdminOptions admin, IAuthService auth, string name, IMapRegistry registry, CancellationToken token)
     {
-        if (Authorize(context, admin) is { } rejection)
-        {
-            return rejection;
-        }
-
         try
         {
+            await Authorize(context, admin, auth, token);
             return Results.Ok(await registry.DeleteAsync(Uri.UnescapeDataString(name), token));
         }
         catch (Exception exception)
@@ -134,16 +129,12 @@ internal static class AdminEndpoints
     }
 
     private static async Task<IResult> Ingest(
-        HttpContext context, AdminOptions admin, IngestOptions ingest,
+        HttpContext context, AdminOptions admin, IAuthService auth, IngestOptions ingest,
         IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token)
     {
-        if (Authorize(context, admin) is { } rejection)
-        {
-            return rejection;
-        }
-
         try
         {
+            await Authorize(context, admin, auth, token);
             var query = context.Request.Query;
             var dataset = Required(query, "dataset");
             var srid = ParseSrid(Required(query, "srid"));
@@ -386,18 +377,18 @@ internal static class AdminEndpoints
 
     private static string? EmptyToNull(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
-    /// <summary>Returns a 401/403 result when the request is not authorised, otherwise null.</summary>
-    private static IResult? Authorize(HttpContext context, AdminOptions admin)
+    private static async Task Authorize(
+        HttpContext context,
+        AdminOptions admin,
+        IAuthService auth,
+        CancellationToken token)
     {
-        var presented = PresentedToken(context);
-        if (presented is null)
-        {
-            return ErrorMapper.Unauthorized("An admin token is required.");
-        }
-
-        return FixedTimeEquals(presented, admin.Token)
-            ? null
-            : ErrorMapper.Forbidden("The admin token is not valid.");
+        await AuthGuard.RequireRoleAsync(
+            auth,
+            PresentedToken(context),
+            admin.Token,
+            AuthGuard.AdminRole,
+            token);
     }
 
     private static string? PresentedToken(HttpContext context)
@@ -412,10 +403,4 @@ internal static class AdminEndpoints
         return string.IsNullOrEmpty(query) ? null : query;
     }
 
-    private static bool FixedTimeEquals(string left, string right)
-    {
-        var a = Encoding.UTF8.GetBytes(left);
-        var b = Encoding.UTF8.GetBytes(right);
-        return CryptographicOperations.FixedTimeEquals(a, b);
-    }
 }

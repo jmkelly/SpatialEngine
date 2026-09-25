@@ -21,6 +21,21 @@ zero runtime dependencies.
   real-client proof: it drives the GeoServices boundary with the official
   Esri `@esri/arcgis-rest-feature-service` / `arcgis-rest-request` libraries.
 
+## Authentication
+
+Phase 1 local login uses the host's opaque bearer flow (ADR-0071):
+
+```ts
+const client = new SpatialClient("http://localhost:5201");
+await client.login("alice", process.env.SPATIAL_PASSWORD!);
+const identity = await client.me();
+// putMap/deleteMap/ingest automatically use the in-memory bearer.
+await client.logout();
+```
+
+`setToken()` is available for applications that manage the token themselves.
+The browser workbench only persists the token when the user opts in.
+
 ## Commands (node >= 22.6)
 
 ```bash

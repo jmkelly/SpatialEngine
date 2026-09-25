@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Spatial.Client;
+using Spatial.Contracts;
 using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
 
@@ -51,6 +52,14 @@ public sealed class HttpSpatialGateway : ISpatialGateway
         var body = await response.Content.ReadFromJsonAsync<ReadyResponse>(HostApiJson.Options, cancellationToken);
         return new HostHealth(body?.Status ?? "ready", body?.Stores ?? []);
     }
+
+    /// <inheritdoc />
+    public Task<AuthToken> LoginAsync(string username, string password, CancellationToken cancellationToken = default) =>
+        _client.LoginAsync(username, password, cancellationToken);
+
+    /// <inheritdoc />
+    public Task LogoutAsync(string token, CancellationToken cancellationToken = default) =>
+        _client.LogoutAsync(token, cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<DatasetSummary>> ListDatasetsAsync(string store, string? pattern, CancellationToken cancellationToken = default) =>

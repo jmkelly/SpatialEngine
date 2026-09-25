@@ -16,5 +16,13 @@ export function hostBaseUrl(): string {
 }
 
 export function createClient(): SpatialClient {
-  return new SpatialClient(hostBaseUrl());
+  const client = new SpatialClient(hostBaseUrl());
+  // The token cache is opt-in: only a login that explicitly asks to remember
+  // writes here. Keeping the default memory-only makes accidental persistence
+  // less likely while allowing a browser session to resume after navigation.
+  if (typeof window !== "undefined") {
+    const token = window.localStorage.getItem("spatial.auth.token");
+    if (token) client.setToken(token);
+  }
+  return client;
 }

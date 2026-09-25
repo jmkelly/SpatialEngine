@@ -14,6 +14,7 @@ public static class CommandGroups
         return context.Group switch
         {
             "host" => HostCommands.RunAsync(context),
+            "auth" => AuthCommands.RunAsync(context),
             "dataset" => DatasetCommands.RunAsync(context),
             "map" => MapCommands.RunAsync(context),
             "project" => ProjectCommands.RunAsync(context),

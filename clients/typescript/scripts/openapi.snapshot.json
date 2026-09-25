@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:5199/"
+      "url": "http://127.0.0.1:5299/"
     }
   ],
   "paths": {
@@ -42,6 +42,85 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "AuthEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthIdentityResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -354,7 +433,7 @@
     "/api/datasets": {
       "post": {
         "tags": [
-          "StoreEndpoints"
+          "Spatial.Host"
         ],
         "parameters": [
           {
@@ -478,7 +557,7 @@
     "/api/features/write": {
       "post": {
         "tags": [
-          "StoreEndpoints"
+          "Spatial.Host"
         ],
         "parameters": [
           {
@@ -526,7 +605,7 @@
     "/api/transactions/begin": {
       "post": {
         "tags": [
-          "StoreEndpoints"
+          "Spatial.Host"
         ],
         "parameters": [
           {
@@ -554,7 +633,7 @@
     "/api/transactions/commit": {
       "post": {
         "tags": [
-          "StoreEndpoints"
+          "Spatial.Host"
         ],
         "parameters": [
           {
@@ -592,7 +671,7 @@
     "/api/transactions/rollback": {
       "post": {
         "tags": [
-          "StoreEndpoints"
+          "Spatial.Host"
         ],
         "parameters": [
           {
@@ -4880,6 +4959,48 @@
   },
   "components": {
     "schemas": {
+      "AuthIdentityResponse": {
+        "required": [
+          "issuer",
+          "subject",
+          "username",
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AuthTokenResponse": {
+        "required": [
+          "token",
+          "expiresAt"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "AxisOrientation": {
         "enum": [
           "east",
@@ -5383,6 +5504,21 @@
         }
       },
       "JsonElement": { },
+      "LoginRequest": {
+        "required": [
+          "username",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
       "Map": {
         "required": [
           "name",
@@ -6213,6 +6349,9 @@
   "tags": [
     {
       "name": "Spatial.Host"
+    },
+    {
+      "name": "AuthEndpoints"
     },
     {
       "name": "GeometryEndpoints"

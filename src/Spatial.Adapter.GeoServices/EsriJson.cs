@@ -164,6 +164,8 @@ internal static class EsriErrorMapper
         SpatialException.InvalidArguments => EsriErrorCodes.InvalidParameters,
         SpatialException.NotFound => EsriErrorCodes.NotFound,
         SpatialException.StoreUnavailable => EsriErrorCodes.ServiceUnavailable,
+        SpatialException.AuthFailed or SpatialException.AuthUnauthorized => EsriErrorCodes.TokenRequired,
+        SpatialException.AuthForbidden => EsriErrorCodes.InvalidToken,
         _ => EsriErrorCodes.ServerError,
     };
 

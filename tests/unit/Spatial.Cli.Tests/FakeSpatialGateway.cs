@@ -1,5 +1,6 @@
 using Spatial.Cli;
 using Spatial.Client;
+using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 
 namespace Spatial.Cli.Tests;
@@ -28,6 +29,19 @@ public sealed class FakeSpatialGateway : ISpatialGateway
     public List<(Map Map, string? Token)> PutCalls { get; } = [];
 
     public List<string> DeletedMaps { get; } = [];
+
+    public Task<AuthToken> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
+    {
+        ThrowIfConfigured();
+        return Task.FromResult(new AuthToken("test-token", DateTimeOffset.UtcNow.AddHours(1),
+            new AuthIdentity("local", username, username, ["admin"])));
+    }
+
+    public Task LogoutAsync(string token, CancellationToken cancellationToken = default)
+    {
+        ThrowIfConfigured();
+        return Task.CompletedTask;
+    }
 
     public Task<HostHealth> CheckHealthAsync(CancellationToken cancellationToken = default)
     {

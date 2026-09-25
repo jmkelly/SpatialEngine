@@ -22,7 +22,7 @@ Global options (valid before or after the command):
 | Option | Env | Meaning |
 | --- | --- | --- |
 | `--host <url>` | `SPATIAL_HOST` | Host base address (default `http://127.0.0.1:5201`) |
-| `--token <token>` | `SPATIAL_ADMIN_TOKEN` | Admin token for mutations; never echoed |
+| `--token <token>` | `SPATIAL_ADMIN_TOKEN` | Legacy admin token or cached opaque bearer; never echoed |
 | `--store <name>` | — | Default store (`demo`, `memory`, `postgis`); writes default `memory` |
 | `--project <path>` | — | Project file (default `spatial.json`) |
 | `--json` | — | Machine-readable `{ok, command, data}` output |
@@ -39,6 +39,7 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
 | Group | Verb | Purpose |
 | --- | --- | --- |
 | `host` | `health` | Read `GET /health/ready` and report reachability + stores |
+| `auth` | `login` / `logout` | Login with `--username` and `--password`; cache the opaque bearer in `~/.spatial/token` (mode `0600`), or revoke/remove it |
 | `dataset` | `list` | `GET /api/catalogue` for a store (`--pattern` filters) |
 | `dataset` | `describe <dataset>` | `GET /api/datasets/{id}` (fields, geometry, identity) |
 | `dataset` | `add` | `POST /api/ingest` a local file (`--file`) or URL (`--url`) |

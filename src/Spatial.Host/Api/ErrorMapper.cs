@@ -11,11 +11,11 @@ internal static class ErrorMapper
 {
     /// <summary>A 401 response for a mutation that carried no admin token.</summary>
     public static IResult Unauthorized(string message) =>
-        Results.Json(new ErrorResponse("unauthorized", message), statusCode: StatusCodes.Status401Unauthorized);
+        Results.Json(new ErrorResponse(SpatialException.AuthUnauthorized, message), statusCode: StatusCodes.Status401Unauthorized);
 
-    /// <summary>A 403 response for a mutation that carried a wrong admin token.</summary>
+    /// <summary>A 403 response for a caller without the required auth role.</summary>
     public static IResult Forbidden(string message) =>
-        Results.Json(new ErrorResponse("forbidden", message), statusCode: StatusCodes.Status403Forbidden);
+        Results.Json(new ErrorResponse(SpatialException.AuthForbidden, message), statusCode: StatusCodes.Status403Forbidden);
 
     public static IResult Map(Exception exception) =>
         exception switch
@@ -27,6 +27,12 @@ internal static class ErrorMapper
                 SpatialException.StoreUnavailable => Results.Json(
                     new ErrorResponse(spatial.Code, spatial.Message),
                     statusCode: StatusCodes.Status503ServiceUnavailable),
+                SpatialException.AuthFailed or SpatialException.AuthUnauthorized => Results.Json(
+                    new ErrorResponse(spatial.Code, spatial.Message),
+                    statusCode: StatusCodes.Status401Unauthorized),
+                SpatialException.AuthForbidden => Results.Json(
+                    new ErrorResponse(spatial.Code, spatial.Message),
+                    statusCode: StatusCodes.Status403Forbidden),
                 _ => Results.Json(
                     new ErrorResponse(spatial.Code, spatial.Message),
                     statusCode: StatusCodes.Status500InternalServerError),

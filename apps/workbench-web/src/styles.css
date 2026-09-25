@@ -268,3 +268,8 @@ table.grid th { color: var(--muted); font-weight: 600; text-transform: uppercase
 .service-toggles { display: flex; flex-wrap: wrap; gap: 6px 12px; }
 .service-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
 .endpoint-url { min-width: 0; font-size: 12px; overflow-wrap: anywhere; color: var(--muted); }
+
+.auth-panel { margin: 8px 16px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); }
+.auth-panel form { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.auth-panel input:not([type="checkbox"]) { padding: 6px 8px; }
+.auth-panel label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }

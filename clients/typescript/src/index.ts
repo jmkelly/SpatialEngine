@@ -1,5 +1,5 @@
 export { SpatialClient } from "./client.ts";
-export type { IngestResult, RasterImage } from "./client.ts";
+export type { AuthIdentity, AuthTokenResult, IngestResult, RasterImage } from "./client.ts";
 export type {
   AxisOrientation, BboxDto, BeginTransactionResponse, BufferRequest, CatalogueResponse,
   CreateDatasetRequest, CreateDatasetResponse, CrsAxis, CrsDescription, CrsEllipsoid, CrsKind,

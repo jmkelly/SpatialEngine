@@ -16,8 +16,11 @@ public sealed class EsriAdminOptions
     /// <summary>The admin token; empty disables the projection (an unavailable error is returned).</summary>
     public string Token { get; set; } = string.Empty;
 
-    /// <summary>Whether a token is configured.</summary>
-    public bool Enabled => !string.IsNullOrWhiteSpace(Token);
+    /// <summary>Whether local users are configured for the new auth surface.</summary>
+    public bool AuthEnabled { get; set; }
+
+    /// <summary>Whether a legacy token or local users are configured.</summary>
+    public bool Enabled => AuthEnabled || !string.IsNullOrWhiteSpace(Token);
 
     /// <summary>The maximum upload size in bytes.</summary>
     public long MaxBytes { get; set; } = 104_857_600;

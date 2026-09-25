@@ -34,6 +34,8 @@ One exception: `SpatialException` with a stable dotted `Code`.
 | `invalid.arguments` | Bad arguments **and** inputs the algorithm cannot process | 400 |
 | `not.found` | Unknown dataset/transaction | 404 |
 | `store.unavailable` | No connection configuration or DB failure (redacted) | 503 |
+| `auth.failed` / `auth.unauthorized` | Invalid or missing authentication credential | 401 |
+| `auth.forbidden` | Valid identity without the required role | 403 |
 | anything else | Provider failure | 500 |
 
 ## Interchange rules

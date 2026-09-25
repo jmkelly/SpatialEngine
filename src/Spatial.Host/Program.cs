@@ -8,6 +8,7 @@ using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
 using Spatial.Host;
 using Spatial.Host.Api;
+using Spatial.Host.Auth;
 using Spatial.Imagery.Vips;
 using Spatial.Maps;
 using Spatial.Operations.NetTopologySuite;
@@ -45,6 +46,12 @@ internal static class HostComposition
     {
         // Structured logging is installed first so composition itself is observable (ADR-0045).
         LoggingSetup.Configure(builder);
+
+        // Phase-1 local authentication is an in-process contract implementation;
+        // no auth state is written to a spatial store (ADR-0071).
+        builder.Services.AddSingleton(services =>
+            AuthOptions.FromConfiguration(services.GetRequiredService<IConfiguration>()));
+        builder.Services.AddSingleton<IAuthService, LocalAuthService>();
 
         // One JSON contract across the API: camelCase everywhere (ADR-0033).
         builder.Services.ConfigureHttpJsonOptions(options =>
@@ -103,22 +110,26 @@ internal static class HostComposition
 
         var adminOptions = AdminOptions.FromConfiguration(configuration);
         var ingestOptions = IngestOptions.FromConfiguration(configuration);
-        app.MapSpatialApi(adminOptions, ingestOptions);
+        var authOptions = app.Services.GetRequiredService<AuthOptions>();
+        var auth = app.Services.GetRequiredService<IAuthService>();
+        AuthEndpoints.Map(app);
+        app.MapSpatialApi(adminOptions, ingestOptions, authOptions, auth);
 
         // The Esri GeoServices boundary adapter (ADR-0035): mounted at
         // Spatial:GeoServices:Root, independent of the engine's own typed API.
         var geoServicesOptions = configuration.GetSection("Spatial:GeoServices").Get<GeoServicesOptions>()
             ?? new GeoServicesOptions();
         var maps = app.Services.GetRequiredService<IMapRegistry>();
-        GeoServicesEndpoints.Map(app, geoServicesOptions, maps);
+        GeoServicesEndpoints.Map(app, geoServicesOptions, maps, auth, authOptions.Enabled, adminOptions.Token);
         EsriAdminEndpoints.Map(app, new EsriAdminOptions
         {
             Root = configuration["Spatial:GeoServices:AdminRoot"] ?? "/arcgis/admin",
             Token = adminOptions.Token,
+            AuthEnabled = authOptions.Enabled,
             MaxBytes = ingestOptions.MaxBytes,
             MaxFeatures = ingestOptions.MaxFeatures,
             BatchSize = ingestOptions.BatchSize,
-        }, maps);
+        }, maps, auth);
 
         // The OGC WMS/WFS boundary adapter (ADR-0053 §3): mounted at
         // Spatial:Ogc:Root, projecting the same maps read-only.

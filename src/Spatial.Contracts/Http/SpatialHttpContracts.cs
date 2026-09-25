@@ -45,4 +45,12 @@ public sealed record SleepResponse(long Slept);
 
 // ---- errors ----
 
+// ---- auth ----
+
+public sealed record LoginRequest(string Username, string Password);
+public sealed record AuthTokenResponse(string Token, DateTimeOffset ExpiresAt);
+public sealed record AuthIdentityResponse(string Issuer, string Subject, string Username, IReadOnlyList<string> Roles);
+
+// ---- errors ----
+
 public sealed record ErrorResponse(string Code, string Message);

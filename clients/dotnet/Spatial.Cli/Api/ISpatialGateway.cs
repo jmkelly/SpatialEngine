@@ -1,4 +1,5 @@
 using Spatial.Client;
+using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 
 namespace Spatial.Cli;
@@ -14,6 +15,14 @@ public sealed record HostHealth(string Status, IReadOnlyList<string> Stores);
 /// </summary>
 public interface ISpatialGateway : IDisposable
 {
+    /// <summary>Authenticates a local user and returns the opaque bearer.</summary>
+    Task<AuthToken> LoginAsync(string username, string password, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This gateway does not support authentication.");
+
+    /// <summary>Revokes a bearer.</summary>
+    Task LogoutAsync(string token, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This gateway does not support authentication.");
+
     /// <summary>Reads <c>GET /health/ready</c>.</summary>
     Task<HostHealth> CheckHealthAsync(CancellationToken cancellationToken = default);
 

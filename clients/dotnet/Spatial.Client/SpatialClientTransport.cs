@@ -81,6 +81,22 @@ internal sealed class SpatialClientTransport
         _ => RasterFormat.Png,
     };
 
+    /// <summary>Sends a request that has no response body.</summary>
+    public async Task SendNoContentAsync(HttpMethod method, string url, string? token, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, url);
+        if (!string.IsNullOrEmpty(token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        using var response = await _http.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await FailAsync(response, cancellationToken);
+        }
+    }
+
     /// <summary>Sends one request, optionally with a bearer admin token, and reads the typed body.</summary>
     public async Task<T> SendAsync<T>(HttpMethod method, string url, HttpContent? content, string? token, CancellationToken cancellationToken)
     {

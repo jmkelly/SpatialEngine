@@ -33,6 +33,18 @@ export interface RasterImage {
 }
 
 /** The result of a neutral ingest (ADR-0041); the map is present when `publish` was requested. */
+export interface AuthIdentity {
+  issuer: string;
+  subject: string;
+  username: string;
+  roles: string[];
+}
+
+export interface AuthTokenResult {
+  token: string;
+  expiresAt: string;
+}
+
 export interface IngestResult {
   dataset: string;
   features: number;
@@ -50,6 +62,7 @@ export interface IngestResult {
 export class SpatialClient {
   private readonly baseUrl: string;
   private readonly fetchFn: typeof fetch;
+  private token?: string;
 
   constructor(
     baseUrl: string,
@@ -60,6 +73,38 @@ export class SpatialClient {
     // invocation" when called as an unbound method reference (browsers),
     // so the default is a wrapper and injected fetches are trusted as-is.
     this.fetchFn = fetchFn.bind(globalThis);
+  }
+
+  // ---- auth (ADR-0071) ----
+
+  /** Sets the bearer used automatically for subsequent mutations. */
+  setToken(token?: string): void {
+    this.token = token;
+  }
+
+  /** Authenticates and stores the returned opaque bearer in memory. */
+  async login(username: string, password: string, signal?: AbortSignal): Promise<AuthTokenResult> {
+    const result = await this.post<AuthTokenResult>("/api/auth/login", { username, password }, signal);
+    this.token = result.token;
+    return result;
+  }
+
+  /** Revokes the current bearer and clears the in-memory token. */
+  async logout(signal?: AbortSignal): Promise<void> {
+    await this.send<void>("POST", "/api/auth/logout", { headers: authorization(this.token), signal });
+    this.token = undefined;
+  }
+
+  /** Rotates the current bearer and stores the replacement. */
+  async refresh(signal?: AbortSignal): Promise<AuthTokenResult> {
+    const result = await this.send<AuthTokenResult>("POST", "/api/auth/refresh", { headers: authorization(this.token), signal });
+    this.token = result.token;
+    return result;
+  }
+
+  /** Returns the current identity and roles. */
+  me(signal?: AbortSignal): Promise<AuthIdentity> {
+    return this.send<AuthIdentity>("GET", "/api/auth/me", { headers: authorization(this.token), signal });
   }
 
   // ---- geometry ----
@@ -267,14 +312,14 @@ export class SpatialClient {
   async putMap(map: Map, adminToken?: string): Promise<Map> {
     return this.send<Map>("PUT", `/api/maps/${encodeURIComponent(map.name)}`, {
       body: JSON.stringify(map),
-      headers: { "content-type": "application/json", ...authorization(adminToken) },
+      headers: { "content-type": "application/json", ...authorization(adminToken ?? this.token) },
     });
   }
 
   /** Deletes a runtime map and reports whether it existed (requires the admin token). */
   async deleteMap(name: string, adminToken?: string): Promise<boolean> {
     return this.send<boolean>("DELETE", `/api/maps/${encodeURIComponent(name)}`, {
-      headers: authorization(adminToken),
+      headers: authorization(adminToken ?? this.token),
     });
   }
 
@@ -305,7 +350,7 @@ export class SpatialClient {
     form.append("file", content, fileName);
     return this.send<IngestResult>("POST", `/api/ingest?${query.toString()}`, {
       body: form,
-      headers: authorization(adminToken),
+      headers: authorization(adminToken ?? this.token),
       signal,
     });
   }
@@ -378,6 +423,9 @@ export class SpatialClient {
   }
 
   private async fail(response: Response): Promise<SpatialApiError> {
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("spatial:auth-required"));
+    }
     let code = "http.error";
     let message = `the host failed with ${response.status}`;
     try {

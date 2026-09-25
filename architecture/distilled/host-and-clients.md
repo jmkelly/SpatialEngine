@@ -19,6 +19,10 @@ Implements ADR-0033 (replaces ADR-0030/0031 HTTP/workbench surfaces).
 GET    /                                # identity doc (index.html when workbench served)
 GET    /routes                          # HTML index of every route and published service
 GET    /health/live | /health/ready     # ready includes the configured stores
+POST   /api/auth/login                  # {username, password} -> {token, expiresAt}
+POST   /api/auth/logout                 # Bearer -> 204; revokes the opaque token
+POST   /api/auth/refresh                # Bearer -> {token, expiresAt}; rotates
+GET    /api/auth/me                     # Bearer -> {issuer, subject, username, roles}
 POST   /api/geometry/buffer             # {geometry, distance, quadrantSegments?} -> {geometry}
 POST   /api/geometry/intersection       # {left, right} -> {geometry}
 POST   /api/geometry/validate           # {geometry} -> {valid}
@@ -173,7 +177,10 @@ defaults to `memory` so the database-free upload path works out of the box.
 | `Spatial:GeoServices:Root` | GeoServices URL prefix (default `/arcgis/rest/services`) |
 | `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only); projected to declared Feature maps at composition |
 | `Spatial:GeoServices:AdminRoot` | Esri admin projection prefix (default `/arcgis/admin`) |
-| `Spatial:Admin:Token` | Admin token for the mutation routes; empty disables them |
+| `Spatial:Admin:Token` | Legacy admin token for the mutation routes; empty disables them when no local users are configured |
+| `Spatial:Auth:Users` | Local users `{username, passwordHash, roles[]}` for ADR-0071 login |
+| `Spatial:Auth:TokenLifetime` | Opaque bearer lifetime (default `12:00:00`) |
+| `SPATIAL_ADMIN_USERNAME` / `SPATIAL_ADMIN_PASSWORD_HASH` | Env override for one bootstrap local admin; hash only, never a cleartext password |
 | `SPATIAL_ADMIN_TOKEN` | Env fallback for the admin token — a secret channel alongside the connection string |
 | `Spatial:Maps:Path` | Runtime map JSON file (default `./data/maps.json`) |
 | `Spatial:Maps:LegacyPath` | Pre-ADR-0053 legacy map file (`publications.json` wire shape) read once for migration |
@@ -253,15 +260,15 @@ host independently executable; browser tests run against the host directly.
 ## Security model
 
 - Implementation projects are fully trusted in-process code.
-- **Today: one static admin token.** `Spatial:Admin:Token`
-  (`SPATIAL_ADMIN_TOKEN`) gates the mutation routes; reads are anonymous.
-  See `AdminOptions`/`AdminEndpoints`.
-- **Next: ADR-0071 (proposed).** Username/password login
-  (`POST /api/auth/login`) issuing expiring, revocable opaque bearers
-  (`logout`/`refresh`/`me`), enforced uniformly across neutral, Esri-admin
-  and OGC-write paths, with SDK + CLI + workbench support. An
-  `IAuthIssuer` abstraction reserves the OAuth2/OIDC second issuer
-  (Entra ID / Keycloak / ArcGIS Online) without a rewrite.
+- **ADR-0071 phase 1: local username/password login.** `Spatial:Auth:Users`
+  stores PBKDF2 password hashes only; `POST /api/auth/login` issues a 256-bit
+  opaque bearer whose SHA-256 hash is retained in the process. Tokens expire,
+  can be revoked with logout, and rotate with refresh. Reads remain anonymous;
+  neutral mutations, Esri admin and configured FeatureServer writes require an
+  `admin` (or `writer`) bearer. The legacy `Spatial:Admin:Token` remains a
+  migration path and `?token=` remains accepted only on existing admin routes.
+- **Reserved ADR-0071 phase 2:** an `IAuthIssuer` abstraction can add
+  OAuth2/OIDC without changing local identity semantics.
 - **Secrets flow host config → options only**
   (`PostgisOptions.ConnectionString`). Request bodies never carry
   connection material.

@@ -3,6 +3,18 @@
 // The snapshot lives at scripts/openapi.snapshot.json; scripts/check-generated.mjs fails
 // when this file has drifted from it.
 
+export interface AuthIdentityResponse {
+  issuer: string;
+  subject: string;
+  username: string;
+  roles: string[];
+}
+
+export interface AuthTokenResponse {
+  token: string;
+  expiresAt: string;
+}
+
 export type AxisOrientation = "east" | "north" | "west" | "south" | "up" | "down" | "other";
 
 export interface BboxDto {
@@ -128,6 +140,11 @@ export interface IntersectionRequest {
 }
 
 export type JsonElement = unknown;
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
 
 export interface Map {
   name: string;

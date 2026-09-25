@@ -19,6 +19,7 @@ namespace Spatial.Client;
 public sealed class SpatialClient
 {
     private readonly SpatialClientTransport _transport;
+    private string? _token;
 
     /// <summary>The tile surface (ADR-0046), split so this type's fan-out stays deliberate (ADR-0040).</summary>
     public SpatialTileClient Tiles { get; }
@@ -34,6 +35,43 @@ public sealed class SpatialClient
     public SpatialClient(string baseAddress)
         : this(new HttpClient { BaseAddress = new Uri(baseAddress, UriKind.Absolute) })
     {
+    }
+
+    // ---- auth (ADR-0071) ----
+
+    /// <summary>Authenticates a configured local user and returns an opaque bearer.</summary>
+    public async Task<AuthToken> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
+    {
+        var response = await _transport.PostAsync<AuthTokenResponse>(
+            "/api/auth/login", new LoginRequest(username, password), cancellationToken);
+        _token = response.Token;
+        return new AuthToken(response.Token, response.ExpiresAt,
+            new AuthIdentity("local", username, username, []));
+    }
+
+    /// <summary>Revokes an opaque bearer.</summary>
+    public async Task LogoutAsync(string token, CancellationToken cancellationToken = default)
+    {
+        await _transport.SendNoContentAsync(HttpMethod.Post, "/api/auth/logout", token, cancellationToken);
+        if (string.Equals(_token, token, StringComparison.Ordinal)) _token = null;
+    }
+
+    /// <summary>Rotates an opaque bearer.</summary>
+    public async Task<AuthToken> RefreshAsync(string token, CancellationToken cancellationToken = default)
+    {
+        var response = await _transport.SendAsync<AuthTokenResponse>(
+            HttpMethod.Post, "/api/auth/refresh", null, token, cancellationToken);
+        _token = response.Token;
+        return new AuthToken(response.Token, response.ExpiresAt,
+            new AuthIdentity("local", string.Empty, string.Empty, []));
+    }
+
+    /// <summary>Reads the authenticated identity and roles.</summary>
+    public async Task<AuthIdentity> MeAsync(string token, CancellationToken cancellationToken = default)
+    {
+        var response = await _transport.SendAsync<AuthIdentityResponse>(
+            HttpMethod.Get, "/api/auth/me", null, token, cancellationToken);
+        return new AuthIdentity(response.Issuer, response.Subject, response.Username, response.Roles);
     }
 
     // ---- geometry ----
@@ -223,7 +261,7 @@ public sealed class SpatialClient
             HttpMethod.Put,
             $"/api/maps/{Uri.EscapeDataString(map.Name)}",
             SpatialClientCodec.Json(map),
-            adminToken,
+            adminToken ?? _token,
             cancellationToken);
     }
 
@@ -232,7 +270,7 @@ public sealed class SpatialClient
         string name, string? adminToken = null, CancellationToken cancellationToken = default)
     {
         return await _transport.SendAsync<bool>(
-            HttpMethod.Delete, $"/api/maps/{Uri.EscapeDataString(name)}", null, adminToken, cancellationToken);
+            HttpMethod.Delete, $"/api/maps/{Uri.EscapeDataString(name)}", null, adminToken ?? _token, cancellationToken);
     }
 
     /// <summary>
@@ -266,6 +304,6 @@ public sealed class SpatialClient
         using var multipart = new MultipartFormDataContent();
         multipart.Add(new StreamContent(content), "file", upload.FileName);
         return await _transport.SendAsync<IngestOutcome>(
-            HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken, cancellationToken);
+            HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken ?? _token, cancellationToken);
     }
 }

@@ -17,7 +17,14 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 public static partial class GeoServicesEndpoints
 {
-    internal static void MapFeatureOps(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry, string? adminToken = null)
+    internal static void MapFeatureOps(
+        RouteGroupBuilder group,
+        GeoServicesCatalog catalog,
+        IMapRegistry registry,
+        string? adminToken = null,
+        IAuthService? auth = null,
+        bool authEnabled = false,
+        string? legacyToken = null)
     {
         group.MapMethods("/{service}/FeatureServer/query", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores,
@@ -70,13 +77,13 @@ public static partial class GeoServicesEndpoints
             FeatureAttachmentHandlers.FeatureAttachmentContent(catalog, registry, service, layerId, objectId, attachmentId, context, stores, cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/addAttachment", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureAddAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, cancellationToken));
+            FeatureAttachmentHandlers.FeatureAddAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, auth, authEnabled, legacyToken, cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/deleteAttachments", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureDeleteAttachments(catalog, registry, service, layerId, objectId, context, stores, adminToken, cancellationToken));
+            FeatureAttachmentHandlers.FeatureDeleteAttachments(catalog, registry, service, layerId, objectId, context, stores, adminToken, auth, authEnabled, legacyToken, cancellationToken));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/updateAttachment", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureUpdateAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, cancellationToken));
+            FeatureAttachmentHandlers.FeatureUpdateAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, auth, authEnabled, legacyToken, cancellationToken));
     }
 
     /// <summary>
