@@ -153,13 +153,30 @@ public sealed class NamingTests
         Assert.Contains("were removed in 0.2.0", hits[0], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Generated_artifact_roots_are_excluded_from_live_scan()
+    {
+        Assert.True(IsExcluded(Path.Combine(Root.Value, "artifacts", "plugins-web", "demo@1", "manifest.json")));
+        Assert.True(IsExcluded(Path.Combine(Root.Value, ".aspire", "generated.json")));
+        Assert.True(IsExcluded(Path.Combine(Root.Value, "data", "maps.json")));
+    }
+
     private static IEnumerable<string> LiveFiles(params string[] patterns)
     {
         return patterns.SelectMany(pattern => Directory.EnumerateFiles(Root.Value, pattern, SearchOption.AllDirectories))
             .Where(path => !IsExcluded(path));
     }
 
-    private static bool IsExcluded(string path)
+    private static readonly HashSet<string> GeneratedRoots = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "artifacts",
+        ".aspire",
+        "data",
+        "test-results",
+        "playwright-report",
+    };
+
+    internal static bool IsExcluded(string path)
     {
         if (string.Equals(Path.GetFileName(path), "NamingTests.cs", StringComparison.Ordinal))
         {
@@ -177,7 +194,7 @@ public sealed class NamingTests
             return true;
         }
 
-        return segments.Any(segment => segment is "bin" or "obj" or ".git" or "node_modules" or "StrykerOutput")
+        return segments.Any(segment => segment is "bin" or "obj" or ".git" or "node_modules" or "StrykerOutput" || GeneratedRoots.Contains(segment))
             || relative.StartsWith(
                 "architecture" + Path.DirectorySeparatorChar + "decisions", StringComparison.Ordinal);
     }
