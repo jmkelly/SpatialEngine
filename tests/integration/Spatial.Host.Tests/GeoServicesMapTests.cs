@@ -404,6 +404,66 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task MapServer_export_contains_visible_feature_pixels_not_only_a_blank_png()
+    {
+        var client = await MapServiceAsync();
+
+        // This is the same MapServer image resource used by desktop GIS
+        // clients. A successful PNG response is not sufficient: decode it and
+        // prove that the published city layer actually put ink on the canvas.
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/export?f=image&bbox=" + Uri.EscapeDataString("-180,-90,180,90") +
+            "&bboxSR=4326&imageSR=4326&size=512,256&format=png&transparent=true");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(bytes);
+        Assert.NotNull(bitmap);
+        Assert.Equal(512, bitmap.Width);
+        Assert.Equal(256, bitmap.Height);
+        Assert.True(CountVisiblePixels(bitmap) > 0,
+            "The MapServer export decoded successfully but contained no visible feature pixels.");
+    }
+
+    [Fact]
+    public async Task MapServer_tile_requested_by_qgis_contains_visible_feature_pixels()
+    {
+        var client = await MapServiceAsync();
+
+        // QGIS uses the ArcGIS z/y/x spelling and requests f=image. Decode
+        // the returned PNG rather than trusting its status code or byte count.
+        var response = await client.GetAsync($"{Root}/world/MapServer/tile/0/0/0?f=image");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(bytes);
+        Assert.NotNull(bitmap);
+        Assert.Equal(256, bitmap.Width);
+        Assert.Equal(256, bitmap.Height);
+        Assert.True(CountVisiblePixels(bitmap) > 0,
+            "The QGIS MapServer tile decoded successfully but contained no visible feature pixels.");
+    }
+
+    private static int CountVisiblePixels(SkiaSharp.SKBitmap bitmap)
+    {
+        var count = 0;
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                if (bitmap.GetPixel(x, y).Alpha > 0)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    [Fact]
     public async Task Export_json_returns_an_image_href()
     {
         var client = await MapServiceAsync();
