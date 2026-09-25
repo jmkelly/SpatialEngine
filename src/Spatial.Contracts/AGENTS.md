@@ -33,7 +33,11 @@ implementations and the host — never the reverse.
 - `IDemoWork` — the demo cancellable sleep with progress.
 - `ITileScheme` + `TileCoordinate`/`TileLevel` and `ITileCache` +
   `TileCacheKey` — pluggable tiling schemes and a content-addressed tile
-  cache (ADR-0046); Web-Mercator and the in-memory cache are implementations.
+  cache for raster and MVT bytes (ADR-0046/0070); Web-Mercator, MVT and
+  the host caches are implementations.
+- `IVectorTileService` + `VectorTileRequest`/`VectorTileLayer`/`VectorTile`
+  — core-typed MVT feature-layer seam; protobuf and encoder types stay in
+  `Spatial.Tiling.Mvt` (ADR-0070).
 - `Providers/DatasetSummary`, `Providers/DatasetDescription` — catalogue DTOs.
 - `Transformations/CrsDescription` (+ axes, ellipsoid, kind, identity) —
   CRS metadata DTOs.

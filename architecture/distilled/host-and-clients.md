@@ -40,7 +40,8 @@ GET    /api/maps/{name}                 # Map
 PUT    /api/maps/{name}                 # create/replace -> Map (admin)
 DELETE /api/maps/{name}                 # -> {deleted} (admin)
 POST   /api/maps/{name}/render          # persisted layer styles -> image
-GET    /api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}  # map tile (Tiles service)
+GET    /api/maps/{name}/tiles/{z}/{x}/{y}.{fmt}  # raster map tile (Tiles service)
+GET    /api/maps/{name}/tiles/mvt/{z}/{x}/{y}.pbf # MVT map tile (Tiles service)
 GET    /arcgis/rest/services/{name}/ImageServer  # raster layers (Image service)
 GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 + 1.1.1 caps dialect (Wms service): GetCapabilities negotiates the dialect (absent/1.3.x -> 1.3.0, 1.1.x -> 1.1.1 with SRS + LatLonBoundingBox, else InvalidParameterValue); GetMap PNG/JPEG (EXCEPTIONS=XML/INIMAGE/BLANK + se_xml/se_inimage/se_blank; DPI triple scales symbology at 96-dpi reference, frame unchanged; JPEG+TRANSPARENT stays lenient; absent BGCOLOR paints opaque white; SLD=/SLD_BODY= is OperationNotSupported), GetLegendGraphic per-layer style PNG (+LegendURL per style), GetFeatureInfo text/plain+text/html+text/xml+JSON+GML with FEATURE_COUNT cap; EPSG:4326 is lat-first for 1.3.x but x-first for 1.1.1, and GetMap requires VERSION; every layer advertises one default Style (STYLES= or STYLES=default renders it, any other name is StyleNotDefined). Deliberate non-goals (T-014, confirmed T-045 diagnostics): GetStyles + DescribeLayer (no recorded trace sends them), TIME/WMS-T (no temporal caps advertised), vendor params (1.1.1 GetMap/GetFeatureInfo KVP already works).
 GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service): GetCapabilities (served outputFormats advertised, GML absent), DescribeFeatureType XSD, GetFeature GeoJSON with startIndex/count paging over a stable order (sortBy else feature-id order; numberMatched/numberReturned/next envelope), srsName response reprojection, bbox subset; FES filter/CQL/resourceId and GetPropertyValue/stored-query ops reject by name; WFS-T stays a non-goal (gated Esri edits + neutral ingest are the write path)
@@ -66,7 +67,9 @@ GET|POST /arcgis/rest/services/{service}/MapServer/{layerId}/query   # layer que
 GET|POST /arcgis/rest/services/{service}/MapServer/identify
 GET|POST /arcgis/rest/services/{service}/MapServer/find
 GET|POST /arcgis/rest/services/{service}/MapServer/export            # f=image bytes or {href}
-GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator tile
+GET|POST /arcgis/rest/services/{service}/MapServer/tile/{z}/{y}/{x}  # Web-Mercator raster tile
+GET|POST /arcgis/rest/services/{service}/MapServer/vectorTile/{z}/{y}/{x} # MVT projection
+GET|POST /arcgis/rest/services/{service}/VectorTileServer/tile/{z}/{y}/{x} # MVT spelling
 GET|POST /arcgis/rest/services/{service}/MapServer/exportTiles      # reject by name (ADR-0060)
 GET|POST /arcgis/rest/services/{service}/MapServer/estimateExportTileSize # reject by name (ADR-0060)
 GET|POST /arcgis/rest/services/{service}/MapServer/WMTS[{/*rest}]    # reject by name (ADR-0060)

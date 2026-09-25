@@ -26,6 +26,15 @@ public sealed class SpatialTileClient
             $"/api/render/tiles/{z}/{x}/{y}.{format}", request, cancellationToken);
     }
 
+    /// <summary>Gets one live MVT tile for a map.</summary>
+    public Task<VectorTile> VectorTileAsync(
+        string map, int z, int x, int y, string? scheme = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(map);
+        var query = string.IsNullOrWhiteSpace(scheme) ? string.Empty : $"?scheme={Uri.EscapeDataString(scheme)}";
+        return _transport.GetVectorTileAsync($"/api/maps/{Uri.EscapeDataString(map)}/tiles/mvt/{z}/{x}/{y}.pbf{query}", cancellationToken);
+    }
+
     /// <summary>Renders an ordered tile batch with server-side bounded parallelism.</summary>
     public async Task<TileBatchResponse> RenderAsync(TileBatchRequest request, CancellationToken cancellationToken = default)
     {

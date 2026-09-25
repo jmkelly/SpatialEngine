@@ -236,6 +236,11 @@ export class SpatialClient {
     return this.postForImage(`/api/render/tiles/${z}/${x}/${y}.${request.format ?? "png"}`, request, signal);
   }
 
+  /** Gets one live Mapbox Vector Tile from a map's neutral vector-tile route. */
+  async vectorTile(name: string, z: number, x: number, y: number, signal?: AbortSignal): Promise<Uint8Array> {
+    return this.getBytes(`/api/maps/${encodeURIComponent(name)}/tiles/mvt/${z}/${x}/${y}.pbf`, signal);
+  }
+
   /** Renders an ordered tile batch with server-side bounded parallelism. */
   async renderTiles(request: TileBatchRequest, signal?: AbortSignal): Promise<TileBatchResponse> {
     return this.post<TileBatchResponse>("/api/render/tiles/batch", request, signal);
@@ -327,6 +332,12 @@ export class SpatialClient {
       height: Number(response.headers.get("x-raster-height") ?? 0),
       format: formatOf(mediaType),
     };
+  }
+
+  private async getBytes(path: string, signal?: AbortSignal): Promise<Uint8Array> {
+    const response = await this.fetchFn(`${this.baseUrl}${path}`, { signal });
+    if (!response.ok) throw await this.fail(response);
+    return new Uint8Array(await response.arrayBuffer());
   }
 
   private async get<T>(path: string, signal?: AbortSignal): Promise<T> {

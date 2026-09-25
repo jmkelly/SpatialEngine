@@ -25,7 +25,8 @@ sit in the root `Spatial.Contracts` namespace; the wire DTOs in
 | `MapLayerSource(Dataset, Features, Catalogue, Filter, Time)` | a resolved keyed store + catalogue, with an optional `MapTimeExtent` render filter (ADR-0058) |
 | `RasterFormat`, `RasterPixelFormat`, `RasterBlend` | png/jpeg/webp/tiff, rgba8888/rgb888, blend modes |
 | `ITileScheme` + `TileCoordinate`/`TileLevel` | pluggable tiling: address → projected extent + LODs (ADR-0046) |
-| `ITileCache` + `TileCacheKey` | content-addressed tile cache; ownership is the implementation's (ADR-0046) |
+| `ITileCache` + `TileCacheKey` | content-addressed tile cache for raster and MVT bytes; ownership is the implementation's (ADR-0046/0070) |
+| `IVectorTileService` + `VectorTileRequest`/`VectorTileLayer`/`VectorTile` | core-typed MVT feature-layer request and encoded result; no protobuf types cross the contract (ADR-0070) |
 
 The renderer receives **resolved** services in the request (no DI/service
 location), so it is unit-testable with fakes; `Spatial.Host` resolves each
@@ -49,6 +50,7 @@ layer's keyed store and catalogue at the edge.
 | `Spatial.Rendering.Skia` | `IMapRenderer` | SkiaSharp 4.152.0 (+ Linux native assets), SkiaSharp.HarfBuzz 4.152.0 (HarfBuzzSharp 14.2.1.200), Svg.Skia 5.2.3 |
 | `Spatial.Imagery.Vips` | `IRasterOperations`, `IRasterCatalogue` | NetVips 3.2.0 + NetVips.Native 8.18.6 |
 | `Spatial.Tiling.WebMercator` | `ITileScheme` (EPSG:3857 XYZ) | none |
+| `Spatial.Tiling.Mvt` | `IVectorTileService` (MVT 2.1 feature/attribute encoding) | none |
 
 Neither references the other (ADR-0033); `Spatial.Host` wires them. Skia plus
 native types are contained in their owning assembly.
@@ -78,8 +80,9 @@ and calls `IMapRenderer` per tile; a batch runs an ordered tile list through
 bounded parallelism. The memory cache is the host's `InMemoryTileCache`
 (LRU, byte + entry bounds); `FileTileCache` (T-001, same bounds, LRU by
 file time) persists tiles under a shared directory so they survive a
-restart and are shared between hosts. The version in `TileCacheKey` is a
-SHA-256 of the style/layer/imagery/encoding request.
+restart and are shared between hosts. MVT bytes use the same `ITileCache`
+key and cache implementations. The version in `TileCacheKey` is a SHA-256 of
+the service/layer/encoding request.
 
 ## Style document (documented MapLibre subset)
 
@@ -121,7 +124,8 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
 | `GET /api/render/capabilities` | advertised formats, pixel cap, imagery source names |
 | `POST /api/maps/{name}/render` | render a map's datasets with its persisted per-layer style (ADR-0047); same encoding options, no inline style/layers |
 | `POST /api/render/tiles/{z}/{x}/{y}.{format}` | one cache-aware tile (binary) + `X-Tile-Cached` |
-| `POST /api/render/tiles/batch` | ordered tile list (Base64) with cache dispositions |
+| `POST /api/render/tiles/batch` | ordered raster tile list (Base64) with cache dispositions |
+| `GET /api/maps/{name}/tiles/mvt/{z}/{x}/{y}.pbf` | live MVT bytes for a map's feature layers (`Tiles` service) |
 | `GET /api/render/tiles/capabilities` | schemes, LODs, default scheme, batch cap |
 | `DELETE /api/render/cache` | explicit tile-cache invalidation |
 
@@ -149,14 +153,18 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   traps (sRGB interpretation before `composite2`, equal band counts,
   premultiplied input, stride padding).
 - Host: content type/format, error mapping, pixel cap.
-- Clients: `.NET` `SpatialClient.RenderAsync` / `RenderCapabilitiesAsync`;
-  TypeScript `render` / `renderCapabilities` (binary via `arrayBuffer`).
+- Clients: `.NET` `SpatialClient.RenderAsync` / `RenderCapabilitiesAsync` /
+  `Tiles.VectorTileAsync`; TypeScript `render` / `renderCapabilities` /
+  `vectorTile` (binary via `arrayBuffer`).
 - `Spatial.Imagery.Vips` un-premultiplies the vector buffer so every layer in
   the libvips chain is straight (non-premultiplied) before compositing.
 - Tiles: Web-Mercator LOD math, the G1 LOD replay (resolution/scale) and
   envelope-equality proof, cache get/set/eviction/invalidation, the tile
-  version fingerprint, `TileService` order/batch-cap/cancellation, and the
-  HTTP tile routes (hit/miss, formats, schemes, batch).
+  version fingerprint, `TileService` order/batch-cap/cancellation, the HTTP
+  tile routes (hit/miss, formats, schemes, batch), and MVT success/failure/
+  cancellation. The neutral route is `GET /api/maps/{name}/tiles/mvt/...`;
+  the Esri projection is `.../MapServer/vectorTile/...` (and the
+  `VectorTileServer/tile/...` spelling).
 - Global data: a dataset whose extent reaches a pole is clipped to the
   viewport before reprojection, so Web-Mercator tiles and WMS capabilities
   never ask the transform service to project ±90° (`PolarRenderTests`).
@@ -170,10 +178,7 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 
 ## Not implemented
 
-A persistent/shared tile cache (the `ITileCache` contract is ready for it);
-a GPU backend is not planned. Vector tiles (MVT/`.vtpk`) and OGC API Tiles
-are documented non-goals (ADR-0062): the engine serves pre-styled raster
-tiles only. The GeoServices MapServer (`export`/`tile`,
-ADR-0048) is implemented; a neutral `/api/maps/{name}/tiles` route is
-not. Within the symbol subset, line placement, expressions, sprite sheets and
-text transforms are not claimed.
+Offline `.vtpk` packaging, `exportTiles` and OGC API Tiles are not part of
+this phase; live MVT and the existing raster tile surface are supported.
+A GPU backend is not planned. Within the symbol subset, line placement,
+expressions, sprite sheets and text transforms are not claimed.

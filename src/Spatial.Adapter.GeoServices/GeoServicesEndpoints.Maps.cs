@@ -48,6 +48,7 @@ internal static class MapServerEndpoints
         MapOfflineEndpoints(catalog, registry, group);
 
         MapExportEndpoints.MapExportRoutes(group, catalog, registry);
+        MapVectorTileEndpoints.MapRoutes(group, catalog, registry);
     }
 
     /// <summary>

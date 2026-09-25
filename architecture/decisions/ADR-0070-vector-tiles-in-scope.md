@@ -68,9 +68,14 @@ Concretely:
   faces) with the usual contract → SDK → test → ADR bundle per behaviour
   change; the TypeScript and .NET SDKs gain tile-fetch helpers with
   drift-checked wire types.
-- No immediate code change: this ADR lifts the ban and sets the shape so
-  the next tile task has somewhere to land. Raster remains the only
-  *implemented* tile surface until that task ships.
+- T-002 implements phase A: `Spatial.Contracts` adds the core-typed
+  `IVectorTileService` request/result seam; `Spatial.Tiling.Mvt` implements
+  MVT 2.1 encoding over resolved feature stores; the host serves
+  `GET /api/maps/{name}/tiles/mvt/{z}/{x}/{y}.pbf`; and the GeoServices
+  adapter projects the same cache/scheme/service seam at
+  `.../MapServer/vectorTile/...` and `.../VectorTileServer/tile/...`.
+  Raster remains fully supported. OGC API Tiles, `.vtpk` packaging and
+  `exportTiles` remain out of scope.
 
 ## Alternatives
 

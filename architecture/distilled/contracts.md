@@ -4,6 +4,16 @@ The typed contracts in `Spatial.Contracts`. Implements ADR-0033
 (replaces the ADR-0026/0027/0028 versioned worker contracts). Shared error codes:
 `invalid.arguments`, `not.found`, `store.unavailable` (see `runtime.md`).
 
+## Vector tiles (`IVectorTileService`, MVT)
+
+| Method | Input | Output | Behaviour |
+| --- | --- | --- | --- |
+| `RenderAsync` | `VectorTileRequest` (tile bounds/CRS, extent and resolved `VectorTileLayer`s) | `VectorTile` | Cancellable MVT 2.1 bytes; queries each layer, reprojects through `ICoordinateTransforms`, and never exposes protobuf types. |
+
+`ITileCache` also carries the MVT bytes through its optional
+`TryGetVectorAsync` / `SetVectorAsync` faces, preserving the same ownership
+and bounds as raster entries (ADR-0046/0070).
+
 ## Geometry operations (`IGeometryOperations`, NTS)
 
 | Method | Input | Output | Behaviour |

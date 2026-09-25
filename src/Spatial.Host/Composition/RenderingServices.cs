@@ -4,6 +4,7 @@ using Spatial.Host.TileServing;
 using Spatial.Imagery.Vips;
 using Spatial.Imagery.Vips.Raster;
 using Spatial.Rendering.Skia;
+using Spatial.Tiling.Mvt;
 using Spatial.Tiling.WebMercator;
 
 namespace Spatial.Host;
@@ -50,9 +51,15 @@ internal static class RenderingServices
         // survive a restart (T-001) — and replacing it touches neither the
         // routes nor the renderer (ADR-0046).
         builder.Services.AddSingleton<ITileScheme>(new WebMercatorTileScheme());
+        builder.Services.AddSingleton<IVectorTileService, MvtTileService>();
         builder.Services.AddSingleton<ITileCache>(CreateCache(tileOptions));
         builder.Services.AddSingleton(services => new TileService(
             services.GetRequiredService<IMapRenderer>(),
+            services.GetServices<ITileScheme>(),
+            services.GetRequiredService<ITileCache>(),
+            services.GetRequiredService<TileOptions>()));
+        builder.Services.AddSingleton(services => new VectorTileService(
+            services.GetRequiredService<IVectorTileService>(),
             services.GetServices<ITileScheme>(),
             services.GetRequiredService<ITileCache>(),
             services.GetRequiredService<TileOptions>()));

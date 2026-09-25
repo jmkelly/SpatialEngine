@@ -71,6 +71,46 @@ internal sealed class FileTileCache : ITileCache
         return new RasterImage(content, metadata.MediaType, metadata.Width, metadata.Height, metadata.Format);
     }
 
+    public async ValueTask<VectorTile?> TryGetVectorAsync(VectorTileCacheKey key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = VectorPath(key);
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+            var content = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
+            TouchBestEffort(path);
+            return new VectorTile(content);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw Unavailable(exception);
+        }
+    }
+
+    public async ValueTask SetVectorAsync(VectorTileCacheKey key, VectorTile tile, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_maxEntries <= 0 || _maxBytes <= 0 || tile.Content.LongLength > _maxBytes)
+        {
+            return;
+        }
+        try
+        {
+            Directory.CreateDirectory(_root);
+            await WriteAtomicallyAsync(VectorPath(key), tile.Content, cancellationToken).ConfigureAwait(false);
+            Evict();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw Unavailable(exception);
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask SetAsync(TileCacheKey key, RasterImage image, CancellationToken cancellationToken = default)
     {
@@ -125,7 +165,8 @@ internal sealed class FileTileCache : ITileCache
                 return ValueTask.CompletedTask;
             }
 
-            foreach (var path in Directory.EnumerateFiles(_root, "*.tile.*", SearchOption.TopDirectoryOnly))
+            foreach (var path in Directory.EnumerateFiles(_root, "*.tile.*", SearchOption.TopDirectoryOnly)
+                .Concat(Directory.EnumerateFiles(_root, "*.vector.bin", SearchOption.TopDirectoryOnly)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 File.Delete(path);
@@ -142,10 +183,27 @@ internal sealed class FileTileCache : ITileCache
     private bool CanStore(RasterImage image) =>
         _maxEntries > 0 && _maxBytes > 0 && image.Content.LongLength <= _maxBytes;
 
+    private string VectorPath(VectorTileCacheKey key) => Path.Combine(_root, Name(key) + ".vector.bin");
+
+    private static void TouchBestEffort(string dataPath) => TouchBestEffort(dataPath, dataPath + ".meta");
+
     private (string Data, string Meta) Paths(TileCacheKey key)
     {
         var name = Name(key);
         return (Path.Combine(_root, name + ".tile.bin"), Path.Combine(_root, name + ".tile.meta"));
+    }
+
+    private static string Name(VectorTileCacheKey key)
+    {
+        var text = string.Join(
+            "\n",
+            key.Scheme,
+            key.Z.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            key.X.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            key.Y.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "mvt",
+            key.Version);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
     }
 
     private static string Name(TileCacheKey key)
@@ -164,6 +222,7 @@ internal sealed class FileTileCache : ITileCache
     private void Evict()
     {
         var ordered = Directory.EnumerateFiles(_root, "*.tile.bin", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.EnumerateFiles(_root, "*.vector.bin", SearchOption.TopDirectoryOnly))
             .Select(path => new FileInfo(path))
             .OrderBy(info => info.LastWriteTimeUtc)
             .ToList();
@@ -179,7 +238,10 @@ internal sealed class FileTileCache : ITileCache
             bytes -= oldest.Length;
             count--;
             File.Delete(oldest.FullName);
-            File.Delete(MetaFor(oldest.FullName));
+            if (oldest.FullName.EndsWith(".tile.bin", StringComparison.Ordinal))
+            {
+                File.Delete(MetaFor(oldest.FullName));
+            }
         }
     }
 

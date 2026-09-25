@@ -36,6 +36,18 @@ internal sealed class SpatialClientTransport
         return await ReadAsync<T>(response, cancellationToken);
     }
 
+    /// <summary>GETs a binary response, preserving its media type and mapping failures.</summary>
+    public async Task<VectorTile> GetVectorTileAsync(string url, CancellationToken cancellationToken)
+    {
+        using var response = await _http.GetAsync(url, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await FailAsync(response, cancellationToken);
+        }
+        var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        return new VectorTile(content, response.Content.Headers.ContentType?.MediaType ?? "application/vnd.mapbox-vector-tile");
+    }
+
     /// <summary>POSTs a JSON body and reads an image response, including the host's raster metadata headers.</summary>
     public async Task<RasterImage> PostForImageAsync(string url, object body, CancellationToken cancellationToken)
     {

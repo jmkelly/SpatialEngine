@@ -23,6 +23,11 @@ internal static class MapTileEndpoints
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable);
+        app.MapGet("/api/maps/{name}/tiles/mvt/{z:int}/{x:int}/{y:int}.pbf", VectorTile)
+            .Produces(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+            .Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable);
     }
 
     private static async Task<IResult> Tile(
@@ -60,6 +65,39 @@ internal static class MapTileEndpoints
         }
     }
 
+    private static async Task<IResult> VectorTile(
+        string name, [AsParameters] MapVectorTileParameters parameters, HttpContext context,
+        IMapRegistry registry, IStoreRegistry stores, VectorTileService vectorTiles)
+    {
+        try
+        {
+            var map = await registry.GetAsync(Uri.UnescapeDataString(name), context.RequestAborted);
+            if (!map.Exposes(MapServiceKind.Tiles))
+            {
+                throw SpatialException.Missing($"Map '{map.Name}' does not expose a Tiles service.");
+            }
+            var layers = map.Layers.Where(layer => layer.Kind == MapLayerKind.Feature).ToArray();
+            var resolved = layers.Select(layer => new VectorTileLayer(
+                layer.Name ?? layer.Dataset,
+                layer.Dataset,
+                stores.Features(layer.Store ?? map.Store),
+                stores.Catalogue(layer.Store ?? map.Store),
+                null)).ToArray();
+            var result = await vectorTiles.RenderAsync(
+                resolved,
+                new TileCoordinate(parameters.Z, parameters.X, parameters.Y),
+                vectorTiles.Resolve(parameters.Scheme),
+                VectorTileService.Version(map.Name, layers),
+                context.RequestAborted);
+            context.Response.Headers["X-Tile-Cached"] = result.Cached ? "true" : "false";
+            return Results.Bytes(result.Tile.Content, result.Tile.MediaType);
+        }
+        catch (Exception exception)
+        {
+            return ErrorMapper.Map(exception);
+        }
+    }
+
     private static TileRenderRequest Request(Map map, MapTileParameters parameters)
     {
         var layers = map.Layers.Where(layer => layer.Kind == MapLayerKind.Feature).ToList();
@@ -74,6 +112,22 @@ internal static class MapTileEndpoints
             Transparent: parameters.Transparent ?? true,
             Scale: parameters.Scale ?? 1.0);
     }
+}
+
+/// <summary>Address and scheme for the neutral MVT route.</summary>
+internal sealed class MapVectorTileParameters
+{
+    [FromRoute]
+    public int Z { get; set; }
+
+    [FromRoute]
+    public int X { get; set; }
+
+    [FromRoute]
+    public int Y { get; set; }
+
+    [FromQuery]
+    public string? Scheme { get; set; }
 }
 
 /// <summary>

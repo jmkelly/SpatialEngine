@@ -14,9 +14,12 @@ internal sealed class InMemoryTileCache : ITileCache
     private readonly object _gate = new();
     private readonly Dictionary<TileCacheKey, Entry> _entries = [];
     private readonly LinkedList<TileCacheKey> _order = new();
+    private readonly Dictionary<VectorTileCacheKey, VectorEntry> _vectorEntries = [];
+    private readonly LinkedList<VectorTileCacheKey> _vectorOrder = new();
     private readonly long _maxBytes;
     private readonly int _maxEntries;
     private long _bytes;
+    private long _vectorBytes;
 
     public InMemoryTileCache(TileCacheOptions options)
     {
@@ -38,6 +41,46 @@ internal sealed class InMemoryTileCache : ITileCache
     }
 
     /// <inheritdoc />
+    public ValueTask<VectorTile?> TryGetVectorAsync(VectorTileCacheKey key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            if (!_vectorEntries.TryGetValue(key, out var entry))
+            {
+                return ValueTask.FromResult<VectorTile?>(null);
+            }
+            _vectorOrder.Remove(entry.Order);
+            _vectorOrder.AddFirst(entry.Order);
+            return ValueTask.FromResult<VectorTile?>(entry.Tile);
+        }
+    }
+
+    public ValueTask SetVectorAsync(VectorTileCacheKey key, VectorTile tile, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tile);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_maxEntries <= 0 || _maxBytes <= 0 || tile.Content.LongLength > _maxBytes)
+        {
+            return ValueTask.CompletedTask;
+        }
+        lock (_gate)
+        {
+            RemoveVectorEntry(key);
+            _vectorEntries[key] = new VectorEntry(tile, _vectorOrder.AddFirst(key));
+            _vectorBytes += tile.Content.LongLength;
+            while ((_vectorBytes > _maxBytes || _vectorEntries.Count > _maxEntries) && _vectorOrder.Last is { } oldest)
+            {
+                _vectorOrder.RemoveLast();
+                if (_vectorEntries.Remove(oldest.Value, out var entry))
+                {
+                    _vectorBytes -= entry.Tile.Content.LongLength;
+                }
+            }
+        }
+        return ValueTask.CompletedTask;
+    }
+
     public ValueTask<RasterImage?> TryGetAsync(TileCacheKey key, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -93,6 +136,9 @@ internal sealed class InMemoryTileCache : ITileCache
             _entries.Clear();
             _order.Clear();
             _bytes = 0;
+            _vectorEntries.Clear();
+            _vectorOrder.Clear();
+            _vectorBytes = 0;
         }
 
         return ValueTask.CompletedTask;
@@ -133,5 +179,17 @@ internal sealed class InMemoryTileCache : ITileCache
 
     private static long SizeOf(RasterImage image) => image.Content.LongLength;
 
+    private bool RemoveVectorEntry(VectorTileCacheKey key)
+    {
+        if (!_vectorEntries.Remove(key, out var removed))
+        {
+            return false;
+        }
+        _vectorOrder.Remove(removed.Order);
+        _vectorBytes -= removed.Tile.Content.LongLength;
+        return true;
+    }
+
     private sealed record Entry(RasterImage Image, LinkedListNode<TileCacheKey> Order);
+    private sealed record VectorEntry(VectorTile Tile, LinkedListNode<VectorTileCacheKey> Order);
 }

@@ -23,6 +23,7 @@
     <ProjectReference Include="..\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
     <ProjectReference Include="..\Spatial.Imagery.Vips\Spatial.Imagery.Vips.csproj" />
     <ProjectReference Include="..\Spatial.Tiling.WebMercator\Spatial.Tiling.WebMercator.csproj" />
+    <ProjectReference Include="..\Spatial.Tiling.Mvt\Spatial.Tiling.Mvt.csproj" />
   </ItemGroup>
 
   <ItemGroup>

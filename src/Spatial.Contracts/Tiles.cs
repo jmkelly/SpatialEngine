@@ -56,9 +56,9 @@ public interface ITileScheme
 }
 
 /// <summary>
-/// The content-addressed identity of one rendered tile (ADR-0046): scheme,
-/// address, encoding and a caller-computed <c>Version</c> that folds the
-/// style and dataset state. Two requests with different versions never
+/// The content-addressed identity of one rendered raster tile (ADR-0046):
+/// scheme, address, encoding and a caller-computed <c>Version</c> that folds
+/// the style and dataset state. Two requests with different versions never
 /// collide, so a style or dataset change invalidates its tiles without
 /// scanning the cache.
 /// </summary>
@@ -68,6 +68,17 @@ public sealed record TileCacheKey(
     int X,
     int Y,
     RasterFormat Format,
+    string Version);
+
+/// <summary>
+/// The content-addressed identity of one live MVT tile. It is separate from
+/// the raster key so existing raster callers retain their typed format.
+/// </summary>
+public sealed record VectorTileCacheKey(
+    string Scheme,
+    int Z,
+    int X,
+    int Y,
     string Version);
 
 /// <summary>
@@ -88,4 +99,15 @@ public interface ITileCache
 
     /// <summary>Removes every entry.</summary>
     ValueTask ClearAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets an encoded non-raster tile. The default is a miss so existing
+    /// third-party cache implementations remain source-compatible; the host's
+    /// caches override it for MVT bytes.
+    /// </summary>
+    ValueTask<VectorTile?> TryGetVectorAsync(VectorTileCacheKey key, CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<VectorTile?>(null);
+
+    /// <summary>Stores an encoded non-raster tile; the default is a no-op.</summary>
+    ValueTask SetVectorAsync(VectorTileCacheKey key, VectorTile tile, CancellationToken cancellationToken = default) => default;
 }
