@@ -8,8 +8,9 @@ using Spatial.Contracts.Providers;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
-/// Mounts the OGC WMS/WFS route group (ADR-0053 §3): <c>/{name}/wms</c> and
-/// <c>/{name}/wfs</c> under the configured root, each accepting GET and a
+/// Mounts the OGC WMS/WFS and API Tiles route group (ADR-0053 §3, ADR-0070):
+/// <c>/{name}/wms</c>, <c>/{name}/wfs</c> and <c>/{name}/tiles</c> under the
+/// configured root; WMS/WFS accept GET and a
 /// form POST. Every handler resolves the map, dispatches the operation and
 /// maps any failure to the OGC <c>ServiceExceptionReport</c> envelope. One
 /// structured event per request carries the operation and the request
@@ -44,6 +45,8 @@ public static partial class OgcEndpoints
             CancellationToken cancellationToken) =>
             Dispatch(context, loggerFactory, parameters => WfsService.HandleAsync(
                 name, parameters, new OgcRequestServices(stores, registry, renderer, transforms), options, context, cancellationToken), cancellationToken));
+
+        OgcApiTiles.Map(group, options);
     }
 
     /// <summary>Reads, dispatches and reports one OGC operation, logging the outcome.</summary>

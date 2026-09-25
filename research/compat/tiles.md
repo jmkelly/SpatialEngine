@@ -29,8 +29,8 @@ Our surface: `src/Spatial.Host/Api/MapTileEndpoints.cs`
 | `tileInfo` LODs on the MapServer root matching the served scheme | served | **Have** | `MapTileScheme(schemes)` in `Maps.cs:Root`; single Web-Mercator scheme — the 24 served LODs replay G1's rows (resolution/scale in `CachedLodReplayTests`, envelope-equality in `TileEnvelopeProofTests`, T-048) |
 | `exportTiles` (offline tile packages) + `estimateExportTileSize` | rejected | **Non-goal** | S2; mounted and rejected by name with typed `invalid.arguments` (ADR-0059); no packaging route, no job model (ADR-0033); root advertises `exportTilesAllowed:false` |
 | WMTS (`WMTSCapabilities.xml`, `.../tile/{z}/{y}/{x}` WMTS addressing, RESTful + KVP) | rejected | **Non-goal** | S3 triple (base, capabilities, tile) mounted and rejected by name with typed `invalid.arguments` (ADR-0059); live tiles come from `tile/{z}/{y}/{x}` |
-| Vector tiles (`.vtpk`, MVT endpoints) | — | **Scoped (ADR-0070)** | raster tiles are the shipping surface; MVT encoder + `VectorTileServer` are future work, `.vtpk` packaging still needs its own ADR (ADR-0033) |
-| OGC API Tiles (`/tiles`, TileJSON, `capabilities` doc) | — | **Scoped (ADR-0070)** | no TileJSON/landing-page/collections-tiles JSON served yet; neutral tile routes + MapServer `tile/{z}/{y}/{x}` stay the surface until the tile-set work lands |
+| Vector tiles (`.vtpk`, MVT endpoints) | — | **Have (live MVT)** | MVT encoder + neutral/MapServer/VectorTileServer routes use the shared scheme/cache contracts; `.vtpk` packaging remains a separate non-goal (ADR-0033) |
+| OGC API Tiles (`/tiles`, TileJSON, `capabilities` doc) | — | **Have (phase B)** | map-scoped landing/collections tiles resources, TileJSON and negotiated MVT data are mounted under `/ogc/{name}/tiles`; JSON and MVT negotiation, links and typed failures are adapter-owned |
 | `storageInfo` / `exportTilesAllowed` / `maxExportTilesCount` honesty on root | served | **Have** | `exportTilesAllowed:false` on the root (ADR-0056); packaging fields correctly absent and the operations reject by name (ADR-0059) |
 
 ## 2. Same-data proof (wired by T-048)
@@ -54,4 +54,4 @@ Our surface: `src/Spatial.Host/Api/MapTileEndpoints.cs`
   WMTS capabilities+tile scope, vector-tiles decision.
   Closed: LOD proof landed (`CachedLodReplayTests` + `TileEnvelopeProofTests`);
   `exportTiles`+estimate/WMTS/KML/jobs reject by name (ADR-0059, T-041);
-  vector-tiles/MVT + OGC API Tiles are scoped future work (ADR-0070, superseding ADR-0062).
+  vector-tiles/MVT + OGC API Tiles are implemented (ADR-0070, superseding ADR-0062).

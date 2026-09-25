@@ -115,7 +115,7 @@ shape is noted in brackets.
 | 0060 | Map/Image offline and async surface (exportTiles, WMTS, KML, jobs) is rejected by name; T-048 builds on that scope. |
 | 0061 | Feature write-model extensions: service-level query, `generateRenderer` reuse, `validateSQL`, aggregation honesty, attachment store-model decision. |
 | 0062 | ~~Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals~~ — superseded by 0070 (vector tiles back in scope). |
-| 0070 | Vector tiles (MVT) and OGC API Tiles are in scope as future work; raster stays; `.vtpk` packaging still needs its own ADR. |
+| 0070 | Vector tiles (MVT) and OGC API Tiles are in scope; live MVT, TileJSON and collection tile resources are implemented; `.vtpk` packaging still needs its own ADR. |
 | 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
 
 ## How to change the architecture

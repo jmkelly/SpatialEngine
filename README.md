@@ -19,9 +19,10 @@ No desktop install. No Enterprise stack. No vendor lock-in on your geometry.
 - **Keep the clients you have.** ArcGIS Maps SDK / REST JS, QGIS, OpenLayers
   and MapLibre talk to the engine today; the TypeScript and .NET SDKs plus a
   scriptable CLI cover what those tools don't.
-- **Grow into vectors.** Raster tiles, `export`/`exportImage` and WMS/WFS ship
-  today; Mapbox Vector Tiles and OGC API Tiles are scoped next (ADR-0070) —
-  same tile scheme/cache contracts, same map model.
+- **Grow into vectors.** Raster tiles, `export`/`exportImage`, WMS/WFS, live
+  Mapbox Vector Tiles and OGC API Tiles ship together (ADR-0070) — same tile
+  scheme/cache contracts, same map model. Offline `.vtpk` packaging remains
+  a separate non-goal.
 
 ---
 
@@ -196,10 +197,11 @@ FeatureServer over your keyed stores with editing gated per layer, plus
 MapServer and ImageServer projections of the same maps. In the
 other direction, `Spatial.Stores.ArcGisRest` reads a configured remote
 ArcGIS REST service through the same store interfaces, with pagination and
-`where` pushdown. Raster tiles, `export`/`exportImage` and OGC WMS/WFS are
-the shipping tile story; MVT vector tiles and OGC API Tiles are scoped next
-under ADR-0070 (same `ITileScheme`/`ITileCache` contracts, same map model) —
-not served yet.
+`where` pushdown. Raster tiles, `export`/`exportImage`, OGC WMS/WFS, live MVT
+and OGC API Tiles (TileJSON, collection resources and negotiated tile data)
+are the shipping tile story under ADR-0070, using the same
+`ITileScheme`/`ITileCache` contracts and map model. Offline `.vtpk` packaging
+and `exportTiles` remain deliberately absent.
 
 ---
 

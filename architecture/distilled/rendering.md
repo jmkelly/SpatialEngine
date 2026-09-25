@@ -126,6 +126,9 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
 | `POST /api/render/tiles/{z}/{x}/{y}.{format}` | one cache-aware tile (binary) + `X-Tile-Cached` |
 | `POST /api/render/tiles/batch` | ordered raster tile list (Base64) with cache dispositions |
 | `GET /api/maps/{name}/tiles/mvt/{z}/{x}/{y}.pbf` | live MVT bytes for a map's feature layers (`Tiles` service) |
+| `GET /ogc/{name}/tiles` | OGC API Tiles landing page for the map collection |
+| `GET /ogc/{name}/tiles/collections/{id}/tiles/{matrixSet}/{z}/{x}/{y}.pbf` | OGC-negotiated live MVT tile over the shared scheme/cache |
+| `GET /ogc/{name}/tiles/collections/{id}/tiles/{matrixSet}/TileJSON` | OGC TileJSON for the map's vector layers and matrix set |
 | `GET /api/render/tiles/capabilities` | schemes, LODs, default scheme, batch cap |
 | `DELETE /api/render/cache` | explicit tile-cache invalidation |
 
@@ -164,7 +167,9 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   tile routes (hit/miss, formats, schemes, batch), and MVT success/failure/
   cancellation. The neutral route is `GET /api/maps/{name}/tiles/mvt/...`;
   the Esri projection is `.../MapServer/vectorTile/...` (and the
-  `VectorTileServer/tile/...` spelling).
+  `VectorTileServer/tile/...` spelling); OGC API Tiles landing, collection,
+  TileJSON and negotiated MVT routes are covered by `OgcApiTilesTests` and
+  `OgcVectorTileServiceTests`.
 - Global data: a dataset whose extent reaches a pole is clipped to the
   viewport before reprojection, so Web-Mercator tiles and WMS capabilities
   never ask the transform service to project ±90° (`PolarRenderTests`).
@@ -178,7 +183,7 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 
 ## Not implemented
 
-Offline `.vtpk` packaging, `exportTiles` and OGC API Tiles are not part of
-this phase; live MVT and the existing raster tile surface are supported.
+Offline `.vtpk` packaging and `exportTiles` are not part of this phase;
+live MVT, OGC API Tiles and the existing raster tile surface are supported.
 A GPU backend is not planned. Within the symbol subset, line placement,
 expressions, sprite sheets and text transforms are not claimed.

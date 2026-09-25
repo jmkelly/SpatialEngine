@@ -74,7 +74,9 @@ Concretely:
   `GET /api/maps/{name}/tiles/mvt/{z}/{x}/{y}.pbf`; and the GeoServices
   adapter projects the same cache/scheme/service seam at
   `.../MapServer/vectorTile/...` and `.../VectorTileServer/tile/...`.
-  Raster remains fully supported. OGC API Tiles, `.vtpk` packaging and
+  Raster remains fully supported. OGC API Tiles are implemented in T-003 as
+  map-scoped landing/collections resources, TileJSON and negotiated MVT tile
+  data over the same scheme/cache/service seam. `.vtpk` packaging and
   `exportTiles` remain out of scope.
 
 ## Alternatives
