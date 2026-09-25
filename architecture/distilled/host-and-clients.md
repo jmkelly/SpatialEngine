@@ -10,7 +10,7 @@ Implements ADR-0033 (replaces ADR-0030/0031 HTTP/workbench surfaces).
 - Geometries cross as Base64 SGEOM strings, batches as Base64 SFBAT strings
   (ADR-0020). Feature data never crosses as JSON geometry.
 - **Service outcomes are typed results.** `invalid.arguments` → 400,
-  `not.found` → 404, `store.unavailable` → 503 (all as `ErrorResponse`
+  `not.found` → 404, `store.unavailable` → 503, `auth.*` → 401/403 (all as `ErrorResponse`
   `{code, message}`); cancelled calls → 499.
 - Long work is a cancellable request, never a parked job: `CancellationToken`
   flows from the aborted connection (the demo sleep cancels over HTTP).
@@ -250,6 +250,15 @@ host independently executable; browser tests run against the host directly.
 ## Security model
 
 - Implementation projects are fully trusted in-process code.
+- **Today: one static admin token.** `Spatial:Admin:Token`
+  (`SPATIAL_ADMIN_TOKEN`) gates the mutation routes; reads are anonymous.
+  See `AdminOptions`/`AdminEndpoints`.
+- **Next: ADR-0071 (proposed).** Username/password login
+  (`POST /api/auth/login`) issuing expiring, revocable opaque bearers
+  (`logout`/`refresh`/`me`), enforced uniformly across neutral, Esri-admin
+  and OGC-write paths, with SDK + CLI + workbench support. An
+  `IAuthIssuer` abstraction reserves the OAuth2/OIDC second issuer
+  (Entra ID / Keycloak / ArcGIS Online) without a rewrite.
 - **Secrets flow host config → options only**
   (`PostgisOptions.ConnectionString`). Request bodies never carry
   connection material.

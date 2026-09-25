@@ -1,10 +1,14 @@
 ---
-status: accepted
+status: superseded by ADR-0070
 date: 2026-09-14
 deciders: maintainer + agent
 ---
 
 # ADR-0062: Vector tiles and OGC API Tiles are documented non-goals; raster tiles stay the surface
+
+> **Superseded by ADR-0070 (2026-09-16):** MVT vector tiles and OGC API
+> Tiles are back in scope as future work. This record is kept as history;
+> do not cite it as the current tile policy.
 
 ## Context
 

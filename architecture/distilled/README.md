@@ -10,6 +10,8 @@ reflects the state at decision time.
 
 | Task | Read | Related ADRs |
 | --- | --- | --- |
+| Auth (admin token today; login + OAuth path next) | `host-and-clients.md` | 0041, 0071 |
+| --- | --- | --- |
 | Core geometry / feature types, codecs | `core.md` | 0001, 0004, 0009, 0020, 0029, 0032 |
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
@@ -112,7 +114,9 @@ shape is noted in brackets.
 | 0059 | ImageServer capability flags (raster-function/mosaic/mensuration/download honesty) plus reject-by-name for mensuration/multidimensional/catalog-write ops. |
 | 0060 | Map/Image offline and async surface (exportTiles, WMTS, KML, jobs) is rejected by name; T-048 builds on that scope. |
 | 0061 | Feature write-model extensions: service-level query, `generateRenderer` reuse, `validateSQL`, aggregation honesty, attachment store-model decision. |
-| 0062 | Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals; raster tiles stay the surface. |
+| 0062 | ~~Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals~~ — superseded by 0070 (vector tiles back in scope). |
+| 0070 | Vector tiles (MVT) and OGC API Tiles are in scope as future work; raster stays; `.vtpk` packaging still needs its own ADR. |
+| 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
 
 ## How to change the architecture
 

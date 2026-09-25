@@ -1,59 +1,68 @@
 # Spatial Engine
 
-**Spatial infrastructure you can build on — not another GIS monolith.**
+**PostGIS as Esri REST in one container — point your existing GIS at it and it just works.**
 
-Spatial Engine gives you a small, dependable server that owns spatial
-*values* and performs spatial *work*: buffer, intersect, validate, simplify,
-measure, transform between CRSs, and read/write real feature data. It ships
-with a browser workbench so you can see results on a map immediately, two
-typed SDKs so you can script it in minutes, and an Esri GeoServices REST
-boundary so the tools you already use can talk to it.
+Spatial Engine is a small, dependable server that turns your PostGIS (or a
+remote ArcGIS REST service, or nothing at all) into GeoServices REST your
+tools already speak: catalog, Geometry Service, FeatureServer with gated
+editing, MapServer, ImageServer — plus OGC WMS/WFS and a typed neutral HTTP
+API with two SDKs. Proven against the official ArcGIS REST JS client and
+QGIS, packaged as one container, usable the second it starts.
 
-No desktop install. No plugin zoo. No vendor lock-in on your geometry.
+No desktop install. No Enterprise stack. No vendor lock-in on your geometry.
 
-- **Start without a database.** A Docker-free demo store makes the engine
-  usable the moment it starts.
-- **Grow into your data.** Point it at PostGIS, or consume a remote ArcGIS
-  REST service as if it were local.
-- **Build clients your way.** One typed HTTP API, an OpenAPI document, a
-  TypeScript SDK and a .NET SDK.
-- **Extend without forking.** Implement a service interface, compose it with
-  DI, never touch the core.
+- **Start with nothing.** The Docker-free demo store answers on first boot —
+  open the workbench and run a buffer before you have a database.
+- **Bring PostGIS when you're ready.** Set one connection string and the same
+  catalog, feature, tile and OGC routes serve your real data. Nothing else
+  changes — not the URLs, not the clients, not the SDKs.
+- **Keep the clients you have.** ArcGIS Maps SDK / REST JS, QGIS, OpenLayers
+  and MapLibre talk to the engine today; the TypeScript and .NET SDKs plus a
+  scriptable CLI cover what those tools don't.
+- **Grow into vectors.** Raster tiles, `export`/`exportImage` and WMS/WFS ship
+  today; Mapbox Vector Tiles and OGC API Tiles are scoped next (ADR-0070) —
+  same tile scheme/cache contracts, same map model.
 
 ---
 
 ## Why Spatial Engine
 
-**Geometry is treated as a value, not a row in someone's SDK.** The
-`Spatial.Core` type model — coordinates, geometries, CRS identity, features —
-is dependency-free and immutable. Every service boundary speaks in those
-types only.
-
-**Spatial algorithms are services, not the core.** Buffering, intersection,
-validity, simplification, measurement, set/construction and DE-9IM relations
-live behind small SDK interfaces and are implemented on battle-tested
-libraries (NetTopologySuite, ProjNet). Swap or add an implementation without
-disturbing the value model.
-
-**Your existing GIS keeps working.** The engine serves the Esri GeoServices
-REST shape — catalog, Geometry Service, FeatureServer, gated editing — and
-consumes remote ArcGIS REST as a provider. The compatibility claim is proven
-against the official ArcGIS REST JS client.
+**One container replaces the Esri-shaped hole.** Enterprise GIS is heavy and
+expensive; GeoServer doesn't speak Esri REST well. The engine serves the
+GeoServices REST shape — catalog, Geometry Service, FeatureServer query and
+gated editing, MapServer, ImageServer — from your PostGIS through one typed,
+tested adapter. Point ArcGIS clients or QGIS at it and keep working.
 
 **Your data and secrets stay under your control.** PostGIS is a first-class
 store with catalogue, scan/query/write, transactions and gated editing.
 Connection strings flow from host configuration to options only — never
 through request bodies, logs or error messages.
 
+**Script everything the UI can do.** One typed HTTP API, an OpenAPI document
+at `/openapi/v1.json`, a TypeScript SDK and a .NET SDK with drift-checked
+wire types, plus a dependency-free CLI (`Spatial.Cli`) with a declarative
+`spatial.json` workspace — built for scripts and LLMs as much as humans.
+
+**Proven against real clients, not just the spec.** The compatibility claim
+is proven against the official ArcGIS REST JS client (the request layer the
+ArcGIS Maps SDK uses) and exercised from QGIS; recorded-corpus fixtures gate
+regressions in `eng/verify.sh`.
+
+**Geometry is treated as a value, not a row in someone's SDK.** The
+`Spatial.Core` type model — coordinates, geometries, CRS identity, features —
+is dependency-free and immutable. Every service boundary speaks in those
+types only; algorithms (NetTopologySuite, ProjNet) live behind small service
+interfaces you can swap without disturbing the value model.
+
 **Long work is cancellable, not a parked job.** Every call is a cancellable
 `Task`; the client disconnecting cancels the server work. Failures are
-structured codes (`invalid.arguments`, `not.found`, `store.unavailable`)
-that map to real HTTP statuses.
+structured codes (`invalid.arguments`, `not.found`, `store.unavailable`,
+`auth.*`) that map to real HTTP statuses.
 
 **It is genuinely inspectable.** `eng/verify.sh` gates format, build and the
 full test suite; quality gates enforce zero warnings, branch coverage,
-complexity and CRAP thresholds; and two end-to-end suites drive a real host
-from the JavaScript SDK and from a real browser.
+complexity and CRAP thresholds; and end-to-end suites drive a real host
+from the SDKs, the CLI and a real browser.
 
 ---
 
@@ -182,18 +191,23 @@ geometry values in and out).
 **An Esri boundary you can point at:** GeoServices REST at
 `/arcgis/rest/services` by default — a catalog, a Geometry Service
 (`project`, `generalize`, `buffer`, `intersect`, `simplify`, `union`,
-`difference`, `convexHull`, `densify`, `relation`, measures) and a
-FeatureServer over your keyed stores, with editing gated per layer. In the
+`difference`, `convexHull`, `densify`, `relation`, measures), a
+FeatureServer over your keyed stores with editing gated per layer, plus
+MapServer and ImageServer projections of the same maps. In the
 other direction, `Spatial.Stores.ArcGisRest` reads a configured remote
 ArcGIS REST service through the same store interfaces, with pagination and
-`where` pushdown.
+`where` pushdown. Raster tiles, `export`/`exportImage` and OGC WMS/WFS are
+the shipping tile story; MVT vector tiles and OGC API Tiles are scoped next
+under ADR-0070 (same `ITileScheme`/`ITileCache` contracts, same map model) —
+not served yet.
 
 ---
 
 ## Ship it
 
 The engine packages as one container: the host plus the built workbench,
-listening on port 8080 as a non-root user.
+listening on port 8080 as a non-root user. This is the wedge — PostGIS in,
+Esri REST out:
 
 ```bash
 docker build -t spatial-engine:0.1.0 .
@@ -202,10 +216,25 @@ docker run --rm -p 8080:8080 \
   spatial-engine:0.1.0
 ```
 
-The demo store and the GeoServices FeatureServer are always available; the
-PostGIS store is advertised once its connection string is configured. See
-`RELEASING.md` for the version/tag checklist and `CHANGELOG.md` for what
-shipped.
+Point QGIS, the ArcGIS Maps SDK, or the workbench at `:8080` and the same
+catalog/feature/map/image/OGC routes serve your data. The demo store and the
+GeoServices FeatureServer are always available; the PostGIS store is
+advertised once its connection string is configured. See `RELEASING.md` for
+the version/tag checklist and `CHANGELOG.md` for what shipped.
+
+### Auth today, auth next
+
+Today mutations (`PUT`/`DELETE /api/maps`, `POST /api/ingest`, the Esri admin
+projection) are gated by a single static admin token (`Spatial:Admin:Token` /
+`SPATIAL_ADMIN_TOKEN`); reads are anonymous and the token is never logged or
+echoed. That is the bootstrap, not the destination.
+
+Next is ADR-0071: `POST /api/auth/login` with a username + password returns
+an expiring, revocable opaque bearer token (`logout`/`refresh`/`me`
+included), enforced uniformly across neutral, Esri-admin and OGC-write
+paths, with SDK + CLI + workbench support — and an `IAuthIssuer`
+abstraction reserved so OAuth2/OIDC (Entra ID, Keycloak, ArcGIS Online)
+arrives as a second issuer, not a rewrite.
 
 ---
 
