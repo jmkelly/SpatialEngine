@@ -15,24 +15,33 @@ internal static partial class DrawRecipeValidation
     public static void EnsureValid(DrawRecipe recipe)
     {
         ArgumentNullException.ThrowIfNull(recipe);
-        if (!ColourPattern().IsMatch(recipe.Color))
-        {
-            throw new CliUsageException($"Colour '{recipe.Color}' is invalid: expected #rrggbb.");
-        }
+        ValidateColour(recipe.Color);
+        ValidateOpacity(recipe.Opacity);
+        ValidatePositive(recipe.LineWidth, "Line width");
+        ValidatePositive(recipe.Radius, "Radius");
+    }
 
-        if (double.IsNaN(recipe.Opacity) || recipe.Opacity < 0 || recipe.Opacity > 1)
+    private static void ValidateColour(string colour)
+    {
+        if (!ColourPattern().IsMatch(colour))
         {
-            throw new CliUsageException($"Opacity {recipe.Opacity} is out of range: expected 0..1.");
+            throw new CliUsageException($"Colour '{colour}' is invalid: expected #rrggbb.");
         }
+    }
 
-        if (double.IsNaN(recipe.LineWidth) || recipe.LineWidth <= 0)
+    private static void ValidateOpacity(double opacity)
+    {
+        if (opacity is not (>= 0 and <= 1))
         {
-            throw new CliUsageException($"Line width {recipe.LineWidth} is invalid: expected a positive number.");
+            throw new CliUsageException($"Opacity {opacity} is out of range: expected 0..1.");
         }
+    }
 
-        if (double.IsNaN(recipe.Radius) || recipe.Radius <= 0)
+    private static void ValidatePositive(double value, string name)
+    {
+        if (value is not > 0)
         {
-            throw new CliUsageException($"Radius {recipe.Radius} is invalid: expected a positive number.");
+            throw new CliUsageException($"{name} {value} is invalid: expected a positive number.");
         }
     }
 

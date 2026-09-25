@@ -12,30 +12,59 @@ namespace Spatial.Stores.PostGIS.Core;
 internal static class PostgisPredicate
 {
     public static string? Build(
-        DatasetDescription description, Spatial.Contracts.BoundingBox? bbox, string? filter, List<object?> parameters)
+        DatasetDescription description,
+        Spatial.Contracts.BoundingBox? bbox,
+        string? filter,
+        List<object?> parameters)
     {
-        string? predicate = null;
-        if (bbox is not null)
+        var predicate = BuildBoundingBox(description, bbox, parameters);
+        return CombineFilter(description, filter, parameters, predicate);
+    }
+
+    private static string? BuildBoundingBox(
+        DatasetDescription description,
+        Spatial.Contracts.BoundingBox? bbox,
+        List<object?> parameters)
+    {
+        if (bbox is null)
         {
-            var bounds = new BoundingBox(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY);
-            predicate = PostgisFilterSql.BoundingBox(bounds, description.GeometryColumn, description.Srid, parameters);
+            return null;
         }
 
-        if (filter is not null)
+        var bounds = new BoundingBox(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY);
+        return PostgisFilterSql.BoundingBox(bounds, description.GeometryColumn, description.Srid, parameters);
+    }
+
+    private static string? CombineFilter(
+        DatasetDescription description,
+        string? filter,
+        List<object?> parameters,
+        string? predicate)
+    {
+        if (filter is null)
         {
-            if (!PostgisFilterParser.TryParse(filter, out var expression, out var parseError))
-            {
-                throw SpatialException.BadArguments($"The filter cannot be parsed: {parseError}");
-            }
-
-            if (!PostgisFilterSql.TryBuild(expression, description.Schema, parameters, out var sql, out var buildError))
-            {
-                throw SpatialException.BadArguments($"The filter is not supported: {buildError}");
-            }
-
-            predicate = predicate is null ? sql : $"({predicate}) AND ({sql})";
+            return predicate;
         }
 
-        return predicate;
+        var sql = BuildFilter(description, filter, parameters);
+        return predicate is null ? sql : $"({predicate}) AND ({sql})";
+    }
+
+    private static string BuildFilter(
+        DatasetDescription description,
+        string filter,
+        List<object?> parameters)
+    {
+        if (!PostgisFilterParser.TryParse(filter, out var expression, out var parseError))
+        {
+            throw SpatialException.BadArguments($"The filter cannot be parsed: {parseError}");
+        }
+
+        if (!PostgisFilterSql.TryBuild(expression, description.Schema, parameters, out var sql, out var buildError))
+        {
+            throw SpatialException.BadArguments($"The filter is not supported: {buildError}");
+        }
+
+        return sql;
     }
 }

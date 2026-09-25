@@ -72,29 +72,75 @@ public static class BaselineStore
     {
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var samples = new Dictionary<string, BenchSample>(StringComparer.Ordinal);
-        if (!document.RootElement.TryGetProperty("benches", out var benches)
-            || benches.ValueKind != JsonValueKind.Object)
+        if (!TryGetBenches(document.RootElement, out var benches))
         {
             return samples;
         }
 
+        return ReadSamples(benches, samples);
+    }
+
+    private static Dictionary<string, BenchSample> ReadSamples(JsonElement benches, Dictionary<string, BenchSample> samples)
+    {
         foreach (var bench in benches.EnumerateObject())
         {
-            if (bench.Value.TryGetProperty("meanNs", out var mean)
-                && mean.ValueKind == JsonValueKind.Number)
-            {
-                var allocated = 0.0;
-                if (bench.Value.TryGetProperty("allocatedBytes", out var alloc)
-                    && alloc.ValueKind == JsonValueKind.Number)
-                {
-                    allocated = alloc.GetDouble();
-                }
-
-                samples[bench.Name] = new BenchSample(bench.Name, mean.GetDouble(), allocated);
-            }
+            AddSample(samples, bench);
         }
 
         return samples;
+    }
+
+    private static void AddSample(Dictionary<string, BenchSample> samples, JsonProperty bench)
+    {
+        if (TryReadSample(bench, out var sample))
+        {
+            samples[bench.Name] = sample;
+        }
+    }
+
+    private static bool TryGetBenches(JsonElement root, out JsonElement benches)
+    {
+        benches = default;
+        if (root.TryGetProperty("benches", out var found) && found.ValueKind == JsonValueKind.Object)
+        {
+            benches = found;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryReadSample(JsonProperty bench, out BenchSample sample)
+    {
+        sample = default!;
+        if (!TryGetNumber(bench.Value, "meanNs", out var mean))
+        {
+            return false;
+        }
+
+        sample = new BenchSample(bench.Name, mean.GetDouble(), ReadNumber(bench.Value, "allocatedBytes"));
+        return true;
+    }
+
+    private static double ReadNumber(JsonElement value, string propertyName)
+    {
+        if (!TryGetNumber(value, propertyName, out var number))
+        {
+            return 0;
+        }
+
+        return number.GetDouble();
+    }
+
+    private static bool TryGetNumber(JsonElement value, string propertyName, out JsonElement number)
+    {
+        if (value.TryGetProperty(propertyName, out number) && number.ValueKind == JsonValueKind.Number)
+        {
+            return true;
+        }
+
+        number = default;
+        return false;
     }
 
     /// <summary>Loads a <c>{name: {budgetNs}}</c> budgets file.</summary>

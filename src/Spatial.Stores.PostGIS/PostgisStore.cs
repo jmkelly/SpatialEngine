@@ -141,34 +141,36 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         }
     }
 
-    public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, CoreBoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+        string dataset,
+        CoreBoundingBox? bbox = null,
+        string? filter = null,
+        CancellationToken cancellationToken = default)
     {
         var name = ParseDataset(dataset);
         RequireConfigured();
+        ValidateBoundingBox(bbox);
+        return RunStoreOperationAsync(() => QueryConfiguredAsync(name, bbox, filter, cancellationToken));
+    }
+
+    private async Task<IReadOnlyList<FeatureBatch>> QueryConfiguredAsync(
+        PostgisDatasetName name,
+        CoreBoundingBox? bbox,
+        string? filter,
+        CancellationToken cancellationToken)
+    {
+        var description = await DescribeInternalAsync(name, cancellationToken);
+        var parameters = new List<object?>();
+        var predicate = PostgisPredicate.Build(description, bbox, filter, parameters);
+        return await ReadBatchesAsync(
+            PostgisQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
+    }
+
+    private static void ValidateBoundingBox(CoreBoundingBox? bbox)
+    {
         if (bbox is not null && (bbox.MinX > bbox.MaxX || bbox.MinY > bbox.MaxY))
         {
             throw SpatialException.BadArguments("The bounding box requires minx <= maxx and miny <= maxy.");
-        }
-
-        try
-        {
-            var description = await DescribeInternalAsync(name, cancellationToken);
-            var parameters = new List<object?>();
-            var predicate = PostgisPredicate.Build(description, bbox, filter, parameters);
-            return await ReadBatchesAsync(
-                PostgisQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw StoreFailure(exception);
         }
     }
 
@@ -222,43 +224,66 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         }
     }
 
-    public async Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
+    public Task<int> WriteAsync(
+        string dataset,
+        FeatureBatch batch,
+        string? transaction = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(batch);
         var name = ParseDataset(dataset);
         RequireConfigured();
-        try
-        {
-            var description = await DescribeInternalAsync(name, cancellationToken);
-            PostgisWriteOperations.CheckWritable(description, batch);
-            if (_transactions.TryGetValue(transaction ?? string.Empty, out var entry))
-            {
-                return await PostgisWriteOperations.WriteOnAsync(entry.Connection, entry.Transaction, name, description, batch, cancellationToken);
-            }
+        return RunStoreOperationAsync(() => WriteConfiguredAsync(name, batch, transaction, cancellationToken));
+    }
 
-            if (transaction is not null)
-            {
-                throw SpatialException.BadArguments($"Unknown transaction '{transaction}'.");
-            }
+    private async Task<int> WriteConfiguredAsync(
+        PostgisDatasetName name,
+        FeatureBatch batch,
+        string? transaction,
+        CancellationToken cancellationToken)
+    {
+        var description = await DescribeInternalAsync(name, cancellationToken);
+        PostgisWriteOperations.CheckWritable(description, batch);
+        var entry = FindTransaction(transaction);
+        return entry is null
+            ? await WriteAutocommitAsync(name, description, batch, cancellationToken)
+            : await WriteOnTransactionAsync(entry, name, description, batch, cancellationToken);
+    }
 
-            await using var connection = await _store.Value.OpenConnectionAsync(cancellationToken);
-            await using var txn = await connection.BeginTransactionAsync(cancellationToken);
-            var count = await PostgisWriteOperations.WriteOnAsync(connection, txn, name, description, batch, cancellationToken);
-            await txn.CommitAsync(cancellationToken);
-            return count;
-        }
-        catch (OperationCanceledException)
+    private TransactionEntry? FindTransaction(string? transaction) =>
+        transaction is null ? null : FindNamedTransaction(transaction);
+
+    private TransactionEntry FindNamedTransaction(string transaction)
+    {
+        if (!_transactions.TryGetValue(transaction, out var entry))
         {
-            throw;
+            throw SpatialException.BadArguments($"Unknown transaction '{transaction}'.");
         }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw StoreFailure(exception);
-        }
+
+        return entry;
+    }
+
+    private static Task<int> WriteOnTransactionAsync(
+        TransactionEntry entry,
+        PostgisDatasetName name,
+        DatasetDescription description,
+        FeatureBatch batch,
+        CancellationToken cancellationToken) =>
+        PostgisWriteOperations.WriteOnAsync(
+            entry.Connection, entry.Transaction, name, description, batch, cancellationToken);
+
+    private async Task<int> WriteAutocommitAsync(
+        PostgisDatasetName name,
+        DatasetDescription description,
+        FeatureBatch batch,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await _store.Value.OpenConnectionAsync(cancellationToken);
+        await using var txn = await connection.BeginTransactionAsync(cancellationToken);
+        var count = await PostgisWriteOperations.WriteOnAsync(
+            connection, txn, name, description, batch, cancellationToken);
+        await txn.CommitAsync(cancellationToken);
+        return count;
     }
 
     public async Task<string> BeginAsync(CancellationToken cancellationToken = default)
@@ -367,6 +392,18 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         }
 
         throw SpatialException.Missing($"Cannot read dataset '{name}': {reason}");
+    }
+
+    private async Task<T> RunStoreOperationAsync<T>(Func<Task<T>> operation)
+    {
+        try
+        {
+            return await operation();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not SpatialException)
+        {
+            throw StoreFailure(exception);
+        }
     }
 
     private async Task<IReadOnlyList<FeatureBatch>> ReadBatchesAsync(

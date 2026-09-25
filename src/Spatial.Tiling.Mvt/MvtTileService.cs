@@ -143,42 +143,91 @@ public sealed class MvtTileService : IVectorTileService
     private static byte[] WriteGeometry(IGeometry geometry, Envelope bounds, int extent)
     {
         using var output = new MemoryStream();
-        var x = 0L;
-        var y = 0L;
-        switch (geometry)
-        {
-            case IPoint point when point.Coordinate is { } coordinate:
-                WritePoint(output, coordinate, bounds, extent, ref x, ref y);
-                break;
-            case IMultiPoint multiPoint:
-                foreach (var point in multiPoint.Points)
-                {
-                    if (point.Coordinate is { } coordinate)
-                    {
-                        WritePoint(output, coordinate, bounds, extent, ref x, ref y);
-                    }
-                }
-                break;
-            case ILineString line:
-                WriteLine(output, line, bounds, extent, ref x, ref y);
-                break;
-            case IMultiLineString multiLine:
-                foreach (var line in multiLine.LineStrings)
-                {
-                    WriteLine(output, line, bounds, extent, ref x, ref y);
-                }
-                break;
-            case IPolygon polygon:
-                WritePolygon(output, polygon, bounds, extent, ref x, ref y);
-                break;
-            case IMultiPolygon multiPolygon:
-                foreach (var polygon in multiPolygon.Polygons)
-                {
-                    WritePolygon(output, polygon, bounds, extent, ref x, ref y);
-                }
-                break;
-        }
+        var writer = new GeometryWriter(output, bounds, extent);
+        writer.Write(geometry);
         return output.ToArray();
+    }
+
+    private sealed class GeometryWriter
+    {
+        private static readonly Dictionary<GeometryType, Action<GeometryWriter, IGeometry>> Writers =
+            new Dictionary<GeometryType, Action<GeometryWriter, IGeometry>>
+            {
+                [GeometryType.Point] = WritePoint,
+                [GeometryType.MultiPoint] = WriteMultiPoint,
+                [GeometryType.LineString] = WriteLine,
+                [GeometryType.MultiLineString] = WriteMultiLine,
+                [GeometryType.Polygon] = WritePolygon,
+                [GeometryType.MultiPolygon] = WriteMultiPolygon,
+            };
+
+        private readonly Stream _output;
+        private readonly Envelope _bounds;
+        private readonly int _extent;
+        private long _x;
+        private long _y;
+
+        public GeometryWriter(Stream output, Envelope bounds, int extent)
+        {
+            _output = output;
+            _bounds = bounds;
+            _extent = extent;
+        }
+
+        public void Write(IGeometry geometry)
+        {
+            if (Writers.TryGetValue(geometry.Type, out var write))
+            {
+                write(this, geometry);
+            }
+        }
+
+        private static void WritePoint(GeometryWriter writer, IGeometry geometry) =>
+            writer.WritePoint((IPoint)geometry);
+
+        private static void WriteMultiPoint(GeometryWriter writer, IGeometry geometry)
+        {
+            foreach (var point in ((IMultiPoint)geometry).Points)
+            {
+                writer.WritePoint(point);
+            }
+        }
+
+        private static void WriteLine(GeometryWriter writer, IGeometry geometry) =>
+            writer.WriteLine((ILineString)geometry);
+
+        private static void WriteMultiLine(GeometryWriter writer, IGeometry geometry)
+        {
+            foreach (var line in ((IMultiLineString)geometry).LineStrings)
+            {
+                writer.WriteLine(line);
+            }
+        }
+
+        private static void WritePolygon(GeometryWriter writer, IGeometry geometry) =>
+            writer.WritePolygon((IPolygon)geometry);
+
+        private static void WriteMultiPolygon(GeometryWriter writer, IGeometry geometry)
+        {
+            foreach (var polygon in ((IMultiPolygon)geometry).Polygons)
+            {
+                writer.WritePolygon(polygon);
+            }
+        }
+
+        private void WritePoint(IPoint point)
+        {
+            if (point.Coordinate is { } coordinate)
+            {
+                MvtTileService.WritePoint(_output, coordinate, _bounds, _extent, ref _x, ref _y);
+            }
+        }
+
+        private void WriteLine(ILineString line) =>
+            MvtTileService.WriteLine(_output, line, _bounds, _extent, ref _x, ref _y);
+
+        private void WritePolygon(IPolygon polygon) =>
+            MvtTileService.WritePolygon(_output, polygon, _bounds, _extent, ref _x, ref _y);
     }
 
     private static void WritePoint(Stream output, Coordinate coordinate, Envelope bounds, int extent, ref long x, ref long y)
@@ -195,58 +244,67 @@ public sealed class MvtTileService : IVectorTileService
         {
             return;
         }
+
         var (firstX, firstY) = Project(line[0], bounds, extent);
         WriteCommand(output, 1, 1, (int)(firstX - x), (int)(firstY - y));
         x = firstX;
         y = firstY;
         if (line.Sequence.Count > 1)
         {
-            WriteCommandHeader(output, 2, line.Sequence.Count - 1);
-            for (var i = 1; i < line.Sequence.Count; i++)
-            {
-                var (px, py) = Project(line[i], bounds, extent);
-                WriteZigZag(output, (int)(px - x));
-                WriteZigZag(output, (int)(py - y));
-                x = px;
-                y = py;
-            }
+            WriteLineCoordinates(output, line, bounds, extent, ref x, ref y);
+        }
+    }
+
+    private static void WriteLineCoordinates(Stream output, ILineString line, Envelope bounds, int extent, ref long x, ref long y)
+    {
+        WriteCommandHeader(output, 2, line.Sequence.Count - 1);
+        for (var i = 1; i < line.Sequence.Count; i++)
+        {
+            var (px, py) = Project(line[i], bounds, extent);
+            WriteZigZag(output, (int)(px - x));
+            WriteZigZag(output, (int)(py - y));
+            x = px;
+            y = py;
         }
     }
 
     private static void WritePolygon(Stream output, IPolygon polygon, Envelope bounds, int extent, ref long x, ref long y)
     {
-        WriteRing(output, polygon.ExteriorRing, bounds, extent, ref x, ref y, close: true);
+        WriteRing(output, polygon.ExteriorRing, bounds, extent, ref x, ref y);
         foreach (var ring in polygon.InteriorRings)
         {
-            WriteRing(output, ring, bounds, extent, ref x, ref y, close: true);
+            WriteRing(output, ring, bounds, extent, ref x, ref y);
         }
     }
 
-    private static void WriteRing(Stream output, LineString ring, Envelope bounds, int extent, ref long x, ref long y, bool close)
+    private static void WriteRing(Stream output, LineString ring, Envelope bounds, int extent, ref long x, ref long y)
     {
         if (ring.Sequence.Count == 0)
         {
             return;
         }
+
         var (firstX, firstY) = Project(ring[0], bounds, extent);
         WriteCommand(output, 1, 1, (int)(firstX - x), (int)(firstY - y));
         x = firstX;
         y = firstY;
         if (ring.Sequence.Count > 1)
         {
-            WriteCommandHeader(output, 2, ring.Sequence.Count - 1);
-            for (var i = 1; i < ring.Sequence.Count; i++)
-            {
-                var (px, py) = Project(ring[i], bounds, extent);
-                WriteZigZag(output, (int)(px - x));
-                WriteZigZag(output, (int)(py - y));
-                x = px;
-                y = py;
-            }
+            WriteRingCoordinates(output, ring, bounds, extent, ref x, ref y);
         }
-        if (close)
+        WriteCommand(output, 7, 1, 0, 0);
+    }
+
+    private static void WriteRingCoordinates(Stream output, LineString ring, Envelope bounds, int extent, ref long x, ref long y)
+    {
+        WriteCommandHeader(output, 2, ring.Sequence.Count - 1);
+        for (var i = 1; i < ring.Sequence.Count; i++)
         {
-            WriteCommand(output, 7, 1, 0, 0);
+            var (px, py) = Project(ring[i], bounds, extent);
+            WriteZigZag(output, (int)(px - x));
+            WriteZigZag(output, (int)(py - y));
+            x = px;
+            y = py;
         }
     }
 

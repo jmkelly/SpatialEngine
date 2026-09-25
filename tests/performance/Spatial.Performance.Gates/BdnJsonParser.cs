@@ -138,46 +138,62 @@ public static class BdnJsonParser
     /// <summary>Parses every <c>*.json</c> report under a BDN artifacts directory.</summary>
     public static ParseResult ParseDirectory(string directory)
     {
-        var merged = new Dictionary<string, BenchSample>(StringComparer.Ordinal);
         var warnings = new List<string>();
-
         if (!Directory.Exists(directory))
         {
             warnings.Add($"results directory {directory} does not exist; nothing parsed.");
-            return new ParseResult(merged, warnings);
+            return new ParseResult(new Dictionary<string, BenchSample>(StringComparer.Ordinal), warnings);
         }
 
         var files = Directory.EnumerateFiles(directory, "*.json", SearchOption.AllDirectories).ToList();
+        return ParseFiles(directory, files, warnings);
+    }
+
+    private static ParseResult ParseFiles(string directory, List<string> files, List<string> warnings)
+    {
         if (files.Count == 0)
         {
             warnings.Add($"no JSON reports under {directory}; nothing parsed.");
-            return new ParseResult(merged, warnings);
+            return new ParseResult(new Dictionary<string, BenchSample>(StringComparer.Ordinal), warnings);
         }
 
-        foreach (var file in files.Order(StringComparer.Ordinal))
+        var parsed = files.Order(StringComparer.Ordinal).Select(ParseFile).ToArray();
+        return Merge(parsed, warnings);
+    }
+
+    private static ParseResultWithFile ParseFile(string file)
+    {
+        try
         {
-            ParseResult parsed;
-            try
-            {
-                parsed = ParseReport(File.ReadAllText(file));
-            }
-            catch (JsonException exception)
-            {
-                warnings.Add($"skipped {file}: not valid JSON ({exception.Message}).");
-                continue;
-            }
+            return new ParseResultWithFile(file, ParseReport(File.ReadAllText(file)));
+        }
+        catch (JsonException exception)
+        {
+            return new ParseResultWithFile(file, new ParseResult(
+                new Dictionary<string, BenchSample>(StringComparer.Ordinal),
+                [$"skipped {file}: not valid JSON ({exception.Message})."]));
+        }
+    }
 
-            foreach (var warning in parsed.Warnings)
-            {
-                warnings.Add($"{file}: {warning}");
-            }
-
-            foreach (var sample in parsed.Samples.Values)
-            {
-                merged[sample.Name] = sample;
-            }
+    private static ParseResult Merge(IReadOnlyList<ParseResultWithFile> parsed, List<string> warnings)
+    {
+        var merged = new Dictionary<string, BenchSample>(StringComparer.Ordinal);
+        foreach (var result in parsed)
+        {
+            warnings.AddRange(result.Result.Warnings.Select(warning => $"{result.File}: {warning}"));
+            MergeSamples(merged, result.Result.Samples.Values);
         }
 
         return new ParseResult(merged, warnings);
     }
+
+    private static void MergeSamples(Dictionary<string, BenchSample> merged, IEnumerable<BenchSample> samples)
+    {
+        foreach (var sample in samples)
+        {
+            merged[sample.Name] = sample;
+        }
+    }
+
+    private sealed record ParseResultWithFile(string File, ParseResult Result);
 }

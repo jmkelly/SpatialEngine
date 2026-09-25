@@ -29,12 +29,12 @@ public sealed class PostgisEditStore : IFeatureEditStore
     /// <inheritdoc />
     public Task<IReadOnlyList<FeatureEditOutcome>> AddAsync(
         string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
-        EditBatchAsync(dataset, batch, transaction, update: false, cancellationToken);
+        EditBatchAsync(dataset, batch, transaction, update: false, ApplyInsertAsync, cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<FeatureEditOutcome>> UpdateAsync(
         string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
-        EditBatchAsync(dataset, batch, transaction, update: true, cancellationToken);
+        EditBatchAsync(dataset, batch, transaction, update: true, ApplyUpdateAsync, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<FeatureEditOutcome>> DeleteAsync(
@@ -78,7 +78,12 @@ public sealed class PostgisEditStore : IFeatureEditStore
     }
 
     private async Task<IReadOnlyList<FeatureEditOutcome>> EditBatchAsync(
-        string dataset, FeatureBatch batch, string? transaction, bool update, CancellationToken cancellationToken)
+        string dataset,
+        FeatureBatch batch,
+        string? transaction,
+        bool update,
+        Func<Feature, NpgsqlCommand, CancellationToken, Task<FeatureEditOutcome>> apply,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(batch);
         var name = PostgisStore.ParseDataset(dataset);
@@ -99,7 +104,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
             var outcomes = new List<FeatureEditOutcome>(batch.Count);
             foreach (var feature in batch.Features)
             {
-                outcomes.Add(await ApplyFeatureAsync(session, name, description, feature, update, cancellationToken));
+                outcomes.Add(await ApplyFeatureAsync(session, name, description, feature, update, apply, cancellationToken));
             }
 
             return outcomes;
@@ -119,47 +124,81 @@ public sealed class PostgisEditStore : IFeatureEditStore
     }
 
     private static async Task<FeatureEditOutcome> ApplyFeatureAsync(
-        PostgisEditSession session, PostgisDatasetName name, DatasetDescription description, Feature feature, bool update, CancellationToken cancellationToken)
+        PostgisEditSession session,
+        PostgisDatasetName name,
+        DatasetDescription description,
+        Feature feature,
+        bool update,
+        Func<Feature, NpgsqlCommand, CancellationToken, Task<FeatureEditOutcome>> apply,
+        CancellationToken cancellationToken)
     {
         try
         {
             var (sql, values) = PostgisWriteOperations.PlanFeature(name, description, feature, update);
-            await using var command = session.Connection.CreateCommand();
-            command.Transaction = session.Transaction;
-            command.CommandText = sql;
-            for (var i = 0; i < values.Length; i++)
-            {
-                command.Parameters.AddWithValue($"p{i}", values[i] ?? DBNull.Value);
-            }
-
-            if (update)
-            {
-                var affected = await command.ExecuteNonQueryAsync(cancellationToken);
-                return affected > 0
-                    ? FeatureEditOutcome.Success(feature.Id)
-                    : FeatureEditOutcome.Failure(feature.Id, SpatialException.NotFound, $"No feature with identity '{feature.Id}' exists.");
-            }
-
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken) || reader.FieldCount == 0)
-            {
-                return FeatureEditOutcome.Success(feature.Id);
-            }
-
-            var row = new object[reader.FieldCount];
-            reader.GetValues(row);
-            var indexes = Enumerable.Range(0, reader.FieldCount).ToArray();
-            return FeatureEditOutcome.Success(new FeatureId(PostgisDiagnostics.FeatureIdentity(indexes, row, 0)));
+            await using var command = CreateCommand(session, sql, values);
+            return await apply(feature, command, cancellationToken);
         }
-        catch (PostgresException exception)
+        catch (Exception exception) when (IsFeatureFailure(exception))
         {
-            return FeatureEditOutcome.Failure(feature.Id, SpatialException.InvalidArguments, exception.MessageText);
-        }
-        catch (SpatialException exception)
-        {
-            return FeatureEditOutcome.Failure(feature.Id, exception.Code, exception.Message);
+            return FailureFor(feature.Id, exception);
         }
     }
+
+    private static NpgsqlCommand CreateCommand(PostgisEditSession session, string sql, object?[] values)
+    {
+        var command = session.Connection.CreateCommand();
+        command.Transaction = session.Transaction;
+        command.CommandText = sql;
+        for (var i = 0; i < values.Length; i++)
+        {
+            command.Parameters.AddWithValue($"p{i}", values[i] ?? DBNull.Value);
+        }
+
+        return command;
+    }
+
+    private static async Task<FeatureEditOutcome> ApplyUpdateAsync(Feature feature, NpgsqlCommand command, CancellationToken cancellationToken)
+    {
+        var affected = await command.ExecuteNonQueryAsync(cancellationToken);
+        return affected > 0
+            ? FeatureEditOutcome.Success(feature.Id)
+            : FeatureEditOutcome.Failure(feature.Id, SpatialException.NotFound, $"No feature with identity '{feature.Id}' exists.");
+    }
+
+    private static async Task<FeatureEditOutcome> ApplyInsertAsync(Feature feature, NpgsqlCommand command, CancellationToken cancellationToken)
+    {
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await ReadInsertedIdentityAsync(feature, reader, cancellationToken);
+    }
+
+    private static async Task<FeatureEditOutcome> ReadInsertedIdentityAsync(Feature feature, NpgsqlDataReader reader, CancellationToken cancellationToken)
+    {
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return FeatureEditOutcome.Success(feature.Id);
+        }
+
+        return ReadInsertedRow(feature, reader);
+    }
+
+    private static FeatureEditOutcome ReadInsertedRow(Feature feature, NpgsqlDataReader reader)
+    {
+        if (reader.FieldCount == 0)
+        {
+            return FeatureEditOutcome.Success(feature.Id);
+        }
+
+        var row = new object[reader.FieldCount];
+        reader.GetValues(row);
+        var indexes = Enumerable.Range(0, reader.FieldCount).ToArray();
+        return FeatureEditOutcome.Success(new FeatureId(PostgisDiagnostics.FeatureIdentity(indexes, row, 0)));
+    }
+
+    private static bool IsFeatureFailure(Exception exception) => exception is PostgresException or SpatialException;
+
+    private static FeatureEditOutcome FailureFor(FeatureId id, Exception exception) => exception is PostgresException postgres
+        ? FeatureEditOutcome.Failure(id, SpatialException.InvalidArguments, postgres.MessageText)
+        : FeatureEditOutcome.Failure(id, ((SpatialException)exception).Code, ((SpatialException)exception).Message);
 
     private static async Task<FeatureEditOutcome> DeleteFeatureAsync(
         PostgisEditSession session, PostgisDatasetName name, DatasetDescription description, FeatureId id, CancellationToken cancellationToken)
