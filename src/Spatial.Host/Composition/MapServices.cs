@@ -84,10 +84,17 @@ internal static class MapServices
         builder.Services.AddSingleton(new HttpClient());
         foreach (var remote in arcGisOptions.Services)
         {
-            builder.Services.AddKeyedSingleton<IDataCatalogue>(remote.Name, (services, _) =>
+            // One configured service is one adapter. Register the adapter
+            // once, then project that same instance onto its two read faces;
+            // otherwise catalogue and feature queries get different store
+            // objects and future adapter state (caches, diagnostics, sessions)
+            // cannot be shared across a service.
+            builder.Services.AddKeyedSingleton<ArcGisRestStore>(remote.Name, (services, _) =>
                 new ArcGisRestStore(services.GetRequiredService<HttpClient>(), remote, arcGisOptions.Token));
-            builder.Services.AddKeyedSingleton<IFeatureStore>(remote.Name, (services, _) =>
-                new ArcGisRestStore(services.GetRequiredService<HttpClient>(), remote, arcGisOptions.Token));
+            builder.Services.AddKeyedSingleton<IDataCatalogue>(remote.Name, (services, key) =>
+                services.GetRequiredKeyedService<ArcGisRestStore>(key));
+            builder.Services.AddKeyedSingleton<IFeatureStore>(remote.Name, (services, key) =>
+                services.GetRequiredKeyedService<ArcGisRestStore>(key));
         }
     }
 }
