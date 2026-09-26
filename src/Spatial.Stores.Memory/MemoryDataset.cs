@@ -15,14 +15,17 @@ internal sealed class MemoryDataset
 {
     private static readonly Regex Pattern = new(@"^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", RegexOptions.Compiled);
 
+    /// <summary>The dataset's identity, parsed from its id and the geometry field it stores.</summary>
+    private sealed record MemoryIdentity(string Id, string SchemaName, string Table, string GeometryColumn);
+
     private MemoryDataset(
-        string id, string schemaName, string table, string geometryColumn, int srid,
-        FeatureSchema schema, IReadOnlyList<string> idColumns, List<Feature> features, long nextId)
+        MemoryIdentity identity, int srid, FeatureSchema schema,
+        IReadOnlyList<string> idColumns, List<Feature> features, long nextId)
     {
-        Id = id;
-        SchemaName = schemaName;
-        Table = table;
-        GeometryColumn = geometryColumn;
+        Id = identity.Id;
+        SchemaName = identity.SchemaName;
+        Table = identity.Table;
+        GeometryColumn = identity.GeometryColumn;
         Srid = srid;
         Schema = schema;
         IdColumns = idColumns;
@@ -73,7 +76,8 @@ internal sealed class MemoryDataset
             throw new ArgumentException($"Dataset '{id}' has no geometry field.", nameof(storedSchema));
         }
 
-        return new MemoryDataset(id, schemaName, table, shape.Name, srid, storedSchema, idColumns, features, nextId);
+        return new MemoryDataset(
+            new MemoryIdentity(id, schemaName, table, shape.Name), srid, storedSchema, idColumns, features, nextId);
     }
 
     public DatasetSummary ToSummary() => new(Id, SchemaName, Table, GeometryColumn, Srid, Features.Count);
@@ -105,7 +109,7 @@ internal sealed class MemoryDataset
 
     /// <summary>Copies the dataset with a fresh feature list (used for transaction snapshots).</summary>
     public MemoryDataset Clone() =>
-        new(Id, SchemaName, Table, GeometryColumn, Srid, Schema, IdColumns, Features.ToList(), NextId);
+        new(new MemoryIdentity(Id, SchemaName, Table, GeometryColumn), Srid, Schema, IdColumns, Features.ToList(), NextId);
 
     private static (string SchemaName, string Table) Split(string id)
     {

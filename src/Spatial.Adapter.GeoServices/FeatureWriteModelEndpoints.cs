@@ -5,7 +5,7 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The Feature write-model operations (T-038, ADR-0058): the service-level
+/// The Feature write-model routes (T-038, ADR-0058): the service-level
 /// <c>FeatureServer/query</c> (S1), the per-layer <c>generateRenderer</c>
 /// (reusing the T-039 <see cref="MapGenerateRenderer"/> classification
 /// rather than duplicating it), <c>validateSQL</c> (S4), the honestly
@@ -15,51 +15,51 @@ namespace Spatial.Adapter.GeoServices;
 /// ADR-0066): reads follow feature-query auth (public), writes require the
 /// single admin token (ADR-0065 §3).
 /// </summary>
-public static partial class GeoServicesEndpoints
+internal static class FeatureWriteModelEndpoints
 {
-    internal static void MapFeatureOps(
+    public static void MapFeatureOps(
         RouteGroupBuilder group,
         GeoServicesCatalog catalog,
         IMapRegistry registry,
-        string? adminToken = null,
-        IAuthService? auth = null,
-        bool authEnabled = false,
-        string? legacyToken = null)
+        AttachmentWriteAuthorization attachmentWrites)
     {
         group.MapMethods("/{service}/FeatureServer/query", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores,
             IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            FeatureQueryHandlers.FeatureServiceQuery(catalog, registry, service, context, stores, operations, transforms, cancellationToken));
+            FeatureQueryHandlers.FeatureServiceQuery(
+                new(catalog, registry, service, context, stores, cancellationToken), operations, transforms));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/generateRenderer", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureQueryHandlers.FeatureGenerateRenderer(catalog, registry, service, layerId, context, stores, cancellationToken));
+            FeatureLayerQueryHandlers.FeatureGenerateRenderer(
+                new(catalog, registry, service, context, stores, cancellationToken), layerId));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/validateSQL", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureQueryHandlers.FeatureValidateSql(catalog, registry, service, layerId, context, stores, cancellationToken));
+            FeatureLayerQueryHandlers.FeatureValidateSql(
+                new(catalog, registry, service, context, stores, cancellationToken), layerId));
 
         // Aggregation extensions without an engine model (ADR-0058 §4):
         // mounted so clients get a typed invalid-arguments failure naming
         // the served alternative instead of a bare 404.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryBins", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureQueryHandlers.UnsupportedLayerOperation(catalog, registry, service, layerId, context, stores,
+            FeatureLayerQueryHandlers.UnsupportedLayerOperation(
+                new(catalog, registry, service, context, stores, cancellationToken), layerId,
                 "queryBins",
-                "binned aggregation has no engine model; use 'query' with 'outStatistics' and 'groupByFieldsForStatistics' instead.",
-                cancellationToken));
+                "binned aggregation has no engine model; use 'query' with 'outStatistics' and 'groupByFieldsForStatistics' instead."));
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryTopFeatures", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureQueryHandlers.UnsupportedLayerOperation(catalog, registry, service, layerId, context, stores,
+            FeatureLayerQueryHandlers.UnsupportedLayerOperation(
+                new(catalog, registry, service, context, stores, cancellationToken), layerId,
                 "queryTopFeatures",
-                "top-N aggregation has no engine model; use 'query' with 'orderByFields' and 'resultRecordCount' instead.",
-                cancellationToken));
+                "top-N aggregation has no engine model; use 'query' with 'orderByFields' and 'resultRecordCount' instead."));
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryAnalytic", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureQueryHandlers.UnsupportedLayerOperation(catalog, registry, service, layerId, context, stores,
+            FeatureLayerQueryHandlers.UnsupportedLayerOperation(
+                new(catalog, registry, service, context, stores, cancellationToken), layerId,
                 "queryAnalytic",
-                "analytic aggregation has no engine model; use 'query' with 'outStatistics' instead.",
-                cancellationToken));
+                "analytic aggregation has no engine model; use 'query' with 'outStatistics' instead."));
 
         // Attachments (T-061, ADR-0066): reads are served on the store's
         // attachment face (public, like the features they annotate),
@@ -68,22 +68,28 @@ public static partial class GeoServicesEndpoints
         // and typed write rejects naming the missing face.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryAttachments", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureQueryAttachments(catalog, registry, service, layerId, context, stores, cancellationToken));
+            FeatureAttachmentHandlers.FeatureQueryAttachments(
+                new(catalog, registry, service, layerId, context, stores, cancellationToken)));
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/{objectId:long}/attachments", ["GET", "POST"], (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureAttachmentInfos(catalog, registry, service, layerId, objectId, context, stores, cancellationToken));
+            FeatureAttachmentHandlers.FeatureAttachmentInfos(
+                new(catalog, registry, service, layerId, context, stores, cancellationToken), objectId));
         group.MapGet("/{service}/FeatureServer/{layerId:int}/{objectId:long}/attachments/{attachmentId:long}", (
             string service, int layerId, long objectId, long attachmentId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureAttachmentContent(catalog, registry, service, layerId, objectId, attachmentId, context, stores, cancellationToken));
+            FeatureAttachmentHandlers.FeatureAttachmentContent(
+                new(catalog, registry, service, layerId, context, stores, cancellationToken), objectId, attachmentId));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/addAttachment", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureAddAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, auth, authEnabled, legacyToken, cancellationToken));
+            FeatureAttachmentHandlers.FeatureAddAttachment(
+                new(catalog, registry, service, layerId, context, stores, cancellationToken), objectId, attachmentWrites));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/deleteAttachments", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureDeleteAttachments(catalog, registry, service, layerId, objectId, context, stores, adminToken, auth, authEnabled, legacyToken, cancellationToken));
+            FeatureAttachmentHandlers.FeatureDeleteAttachments(
+                new(catalog, registry, service, layerId, context, stores, cancellationToken), objectId, attachmentWrites));
         group.MapPost("/{service}/FeatureServer/{layerId:int}/{objectId:long}/updateAttachment", (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
-            FeatureAttachmentHandlers.FeatureUpdateAttachment(catalog, registry, service, layerId, objectId, context, stores, adminToken, auth, authEnabled, legacyToken, cancellationToken));
+            FeatureAttachmentHandlers.FeatureUpdateAttachment(
+                new(catalog, registry, service, layerId, context, stores, cancellationToken), objectId, attachmentWrites));
     }
 
     /// <summary>

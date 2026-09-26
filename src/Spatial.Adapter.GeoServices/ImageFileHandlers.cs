@@ -16,21 +16,44 @@ namespace Spatial.Adapter.GeoServices;
 internal static class ImageFileHandlers
 {
     internal const int ThumbnailMaxSize = 200;
-    internal static async Task<IResult> ImageDownload(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IStoreRegistry stores, GeoServicesOptions options, CancellationToken cancellationToken)
+
+    /// <summary>
+    /// One image-resource request: the published Image Service plus the seams
+    /// every resource handler needs. Grouping them keeps each handler's
+    /// signature to the ids and options its own resource addresses.
+    /// </summary>
+    internal sealed record ImageRequest(
+        GeoServicesCatalog Catalog,
+        IMapRegistry Registry,
+        string Service,
+        HttpContext Context,
+        IStoreRegistry Stores,
+        CancellationToken CancellationToken);
+
+    /// <summary>
+    /// One export the caller has already resolved: the image, the request
+    /// parameters, the selected raster and the per-item export defaults.
+    /// </summary>
+    internal sealed record ImageExportRequest(
+        ImageContext Image,
+        EsriRequestParameters Parameters,
+        ICoordinateTransforms Transforms,
+        long? RasterId,
+        Envelope? DefaultBbox,
+        string? DefaultCrs);
+    internal static async Task<IResult> ImageDownload(ImageRequest request, GeoServicesOptions options)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, request.CancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
             EnsureDownloadAllowed(options);
-            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            RequireCatalog(image.Description, service);
+            var image = await ResolveImageAsync(request);
+            RequireCatalog(image.Description, request.Service);
             RejectDownloadClipping(parameters);
             var rasterIds = ImageService.ParseRasterIds(parameters.Get("rasterIds"));
-            var items = await image.Catalogue.ListItemsAsync(image.Dataset, cancellationToken);
-            var files = await CollectFilesAsync(image, items, rasterIds, service, cancellationToken);
+            var items = await image.Catalogue.ListItemsAsync(image.Dataset, request.CancellationToken);
+            var files = await CollectFilesAsync(image, items, rasterIds, request.Service, request.CancellationToken);
             EnforceDownloadLimits(files, options);
             return EsriJson.Value(ImageService.Download(files));
         }
@@ -40,27 +63,25 @@ internal static class ImageFileHandlers
         }
     }
 
-    internal static async Task<IResult> ImageFile(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IStoreRegistry stores, GeoServicesOptions options, CancellationToken cancellationToken)
+    internal static async Task<IResult> ImageFile(ImageRequest request, GeoServicesOptions options)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, request.CancellationToken);
             EnsureDownloadAllowed(options);
-            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            RequireCatalog(image.Description, service);
+            var image = await ResolveImageAsync(request);
+            RequireCatalog(image.Description, request.Service);
             var fileId = parameters.Require("id");
-            var files = await image.Catalogue.ListFilesAsync(image.Dataset, null, cancellationToken);
+            var files = await image.Catalogue.ListFilesAsync(image.Dataset, null, request.CancellationToken);
             var file = files.FirstOrDefault(candidate => string.Equals(candidate.Id, fileId, StringComparison.Ordinal))
-                ?? throw GeoServicesErrors.NotFound($"Raster file '{fileId}' does not exist in service '{service}'.");
+                ?? throw GeoServicesErrors.NotFound($"Raster file '{fileId}' does not exist in service '{request.Service}'.");
             if (file.Size > options.MaxRasterDownloadBytes)
             {
                 throw GeoServicesErrors.Invalid(
                     $"Raster file '{fileId}' is {file.Size} bytes, over the {options.MaxRasterDownloadBytes}-byte download cap.");
             }
 
-            var content = await image.Catalogue.ReadFileAsync(image.Dataset, fileId, cancellationToken);
+            var content = await image.Catalogue.ReadFileAsync(image.Dataset, fileId, request.CancellationToken);
             return Results.File(content.Content, content.MediaType, content.Name, enableRangeProcessing: true);
         }
         catch (Exception exception)
@@ -69,17 +90,15 @@ internal static class ImageFileHandlers
         }
     }
 
-    internal static async Task<IResult> RasterItem(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IStoreRegistry stores, CancellationToken cancellationToken)
+    internal static async Task<IResult> RasterItem(ImageRequest request, long rasterId)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, request.CancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            RequireCatalog(image.Description, service);
-            var item = await FindItemAsync(image, rasterId, cancellationToken);
+            var image = await ResolveImageAsync(request);
+            RequireCatalog(image.Description, request.Service);
+            var item = await FindItemAsync(image, rasterId, request.CancellationToken);
             return ImageService.CatalogItem(
                 item, image.Description.CatalogSchema!, image.Description.ObjectIdField!, parameters.GetBool("returnGeometry", true));
         }
@@ -89,17 +108,15 @@ internal static class ImageFileHandlers
         }
     }
 
-    internal static async Task<IResult> RasterInfo(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IStoreRegistry stores, CancellationToken cancellationToken)
+    internal static async Task<IResult> RasterInfo(ImageRequest request, long rasterId)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, request.CancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            RequireCatalog(image.Description, service);
-            var item = await FindItemAsync(image, rasterId, cancellationToken);
+            var image = await ResolveImageAsync(request);
+            RequireCatalog(image.Description, request.Service);
+            var item = await FindItemAsync(image, rasterId, request.CancellationToken);
             return EsriJson.Value(ImageService.Info(item.Raster));
         }
         catch (Exception exception)
@@ -109,17 +126,18 @@ internal static class ImageFileHandlers
     }
 
     /// <summary>The Raster Image resource (spec §8.2): one catalog item over the export pipeline.</summary>
-    internal static async Task<IResult> RasterImage(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+    internal static async Task<IResult> RasterImage(ImageRequest request, long rasterId, ICoordinateTransforms transforms)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            RequireCatalog(image.Description, service);
-            var item = await FindItemAsync(image, rasterId, cancellationToken);
-            return await ExportImageAsync(image, parameters, context, transforms, rasterId, item.Raster.Extent, item.Raster.Crs, cancellationToken);
+            var parameters = await EsriRequestParameters.ReadAsync(request.Context, request.CancellationToken);
+            var image = await ResolveImageAsync(request);
+            RequireCatalog(image.Description, request.Service);
+            var item = await FindItemAsync(image, rasterId, request.CancellationToken);
+            return await ExportImageAsync(
+                new ImageExportRequest(image, parameters, transforms, rasterId, item.Raster.Extent, item.Raster.Crs),
+                request.Context,
+                request.CancellationToken);
         }
         catch (Exception exception)
         {
@@ -128,39 +146,52 @@ internal static class ImageFileHandlers
     }
 
     /// <summary>The Raster Thumbnail resource (spec §8.3): a reduced image of one catalog item, streamed.</summary>
-    internal static async Task<IResult> RasterThumbnail(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, long rasterId, HttpContext context,
-        IStoreRegistry stores, CancellationToken cancellationToken)
+    internal static async Task<IResult> RasterThumbnail(ImageRequest request, long rasterId)
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
-            var format = parameters.Get("f");
-            var stream = string.IsNullOrWhiteSpace(format) || string.Equals(format, "image", StringComparison.OrdinalIgnoreCase);
-            if (!stream)
-            {
-                EsriFormat.Ensure(format);
-            }
-
-            var image = await ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
-            RequireCatalog(image.Description, service);
-            var item = await FindItemAsync(image, rasterId, cancellationToken);
-            var viewport = ImageService.ThumbnailViewport(item.Raster, ThumbnailMaxSize);
-            var exported = await image.Catalogue.ExportAsync(
-                image.Dataset, new RasterExportRequest(viewport, RasterFormat.Png, RasterId: rasterId), cancellationToken);
-            if (stream)
-            {
-                GeoServicesResponses.WriteImageHeaders(context, exported);
-                return Results.Bytes(exported.Content, exported.MediaType);
-            }
-
-            return EsriJson.Value(ImageService.Export(
-                GeoServicesResponses.ExportHref(context), viewport, MapServerResources.SridOf(item.Raster.Crs)));
+            return await ThumbnailAsync(request, rasterId);
         }
         catch (Exception exception)
         {
             return EsriErrorMapper.Map(exception);
         }
+    }
+
+    private static async Task<IResult> ThumbnailAsync(ImageRequest request, long rasterId)
+    {
+        var parameters = await EsriRequestParameters.ReadAsync(request.Context, request.CancellationToken);
+        var format = parameters.Get("f");
+        var stream = IsImageStream(format);
+        if (!stream)
+        {
+            EsriFormat.Ensure(format);
+        }
+
+        var image = await ResolveImageAsync(request);
+        RequireCatalog(image.Description, request.Service);
+        var item = await FindItemAsync(image, rasterId, request.CancellationToken);
+        var viewport = ImageService.ThumbnailViewport(item.Raster, ThumbnailMaxSize);
+        var exported = await image.Catalogue.ExportAsync(
+            image.Dataset, new RasterExportRequest(viewport, RasterFormat.Png, RasterId: rasterId), request.CancellationToken);
+        return ThumbnailResult(request.Context, exported, item, viewport, stream);
+    }
+
+    /// <summary>No <c>f</c> (or <c>f=image</c>) streams the pixels; any other format is a JSON export descriptor.</summary>
+    private static bool IsImageStream(string? format) =>
+        string.IsNullOrWhiteSpace(format) || string.Equals(format, "image", StringComparison.OrdinalIgnoreCase);
+
+    private static IResult ThumbnailResult(
+        HttpContext context, RasterImage exported, RasterCatalogItem item, RasterViewport viewport, bool stream) =>
+        stream
+            ? StreamThumbnail(context, exported)
+            : EsriJson.Value(ImageService.Export(
+                GeoServicesResponses.ExportHref(context), viewport, MapServerResources.SridOf(item.Raster.Crs)));
+
+    private static IResult StreamThumbnail(HttpContext context, RasterImage exported)
+    {
+        GeoServicesResponses.WriteImageHeaders(context, exported);
+        return Results.Bytes(exported.Content, exported.MediaType);
     }
 
     /// <summary>
@@ -169,9 +200,11 @@ internal static class ImageFileHandlers
     /// stream bytes (<c>f=image</c>) or return the JSON <c>href</c>.
     /// </summary>
     internal static async Task<IResult> ExportImageAsync(
-        ImageContext image, EsriRequestParameters parameters, HttpContext context, ICoordinateTransforms transforms,
-        long? rasterId, Envelope? defaultBbox, string? defaultCrs, CancellationToken cancellationToken)
+        ImageExportRequest export, HttpContext context, CancellationToken cancellationToken)
     {
+        var image = export.Image;
+        var parameters = export.Parameters;
+        var transforms = export.Transforms;
         // T-015 closeout: raster-selection parameters change which pixels
         // combine; silently ignoring them would serve wrong bytes.
         RejectRasterSelection(parameters);
@@ -185,10 +218,10 @@ internal static class ImageFileHandlers
         var rasterSrid = MapServerResources.SridOf(image.Description.Raster.Crs);
         var bboxValue = parameters.Get("bbox");
         var bbox = bboxValue is { Length: > 0 } value
-            ? MapRenderEngine.ParseBbox(value)
-            : defaultBbox ?? throw GeoServicesErrors.Invalid("The 'bbox' parameter is required.");
-        var defaultSrid = bboxValue is null && defaultCrs is not null ? MapServerResources.SridOf(defaultCrs) : rasterSrid;
-        var (width, height) = MapRenderEngine.ParseSize(parameters.Get("size") ?? "400,400");
+            ? MapRenderParameters.ParseBbox(value)
+            : export.DefaultBbox ?? throw GeoServicesErrors.Invalid("The 'bbox' parameter is required.");
+        var defaultSrid = bboxValue is null && export.DefaultCrs is not null ? MapServerResources.SridOf(export.DefaultCrs) : rasterSrid;
+        var (width, height) = MapRenderParameters.ParseSize(parameters.Get("size") ?? "400,400");
         var bboxCrs = EsriValueParser.ParseSpatialReference(parameters.Get("bboxSR")) ?? CoordinateReference.Epsg(defaultSrid);
         var imageCrs = EsriValueParser.ParseSpatialReference(parameters.Get("imageSR")) ?? bboxCrs;
         var viewport = new RasterViewport(
@@ -200,7 +233,7 @@ internal static class ImageFileHandlers
             ImageService.ParsePixelType(parameters.Get("pixelType")),
             ImageService.ParseNoData(parameters.Get("noData")),
             ImageService.ParseQuality(parameters.Get("compressionQuality")),
-            RasterId: rasterId);
+            RasterId: export.RasterId);
         var exported = await image.Catalogue.ExportAsync(image.Dataset, request, cancellationToken);
         if (stream)
         {
@@ -213,8 +246,16 @@ internal static class ImageFileHandlers
     }
 
     /// <summary>Resolves the image publication, its keyed raster catalogue and the described dataset.</summary>
-    internal static async Task<ImageContext> ResolveImageAsync(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, IStoreRegistry stores, CancellationToken cancellationToken)
+    internal static Task<ImageContext> ResolveImageAsync(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, IStoreRegistry stores, CancellationToken cancellationToken) =>
+        ResolveImagePublicationAsync(catalog, registry, service, stores, cancellationToken);
+
+    private static Task<ImageContext> ResolveImageAsync(ImageRequest request) =>
+        ResolveImagePublicationAsync(request.Catalog, request.Registry, request.Service, request.Stores, request.CancellationToken);
+
+    private static async Task<ImageContext> ResolveImagePublicationAsync(
+        GeoServicesCatalog catalog, IMapRegistry registry, string service, IStoreRegistry stores,
+        CancellationToken cancellationToken)
     {
         var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "ImageServer", MapServiceKind.ImageServer, cancellationToken);
         if (resolved.Layers is not { Count: > 0 } layers)

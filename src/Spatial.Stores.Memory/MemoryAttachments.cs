@@ -49,20 +49,17 @@ public sealed class MemoryAttachments : IFeatureAttachmentStore
 
     /// <inheritdoc cref="IFeatureAttachmentStore.AddAsync"/>
     public Task<FeatureAttachmentDescriptor> AddAsync(
-        string dataset, FeatureId featureId, string name, string contentType, byte[] content,
-        string? keywords = null, CancellationToken cancellationToken = default)
+        string dataset, FeatureId featureId, FeatureAttachmentWrite write, CancellationToken cancellationToken = default)
     {
-        RequireName(name);
-        RequireContent(content);
+        RequireName(write.Name);
+        RequireContent(write.Content);
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(_store.WithLock(() =>
         {
             RequireFeature(dataset, featureId);
             var key = new AttachmentKey(dataset, featureId);
             var id = NextId(key);
-            var stored = new StoredAttachment(
-                new FeatureAttachmentDescriptor(id, name, OrDefaultContentType(contentType), content.Length, keywords),
-                Copy(content));
+            var stored = new StoredAttachment(Descriptor(id, write), Copy(write.Content));
             CheckQuota(stored.Descriptor);
             _attachments[key].Add(stored);
             return stored.Descriptor;
@@ -84,21 +81,20 @@ public sealed class MemoryAttachments : IFeatureAttachmentStore
 
     /// <inheritdoc cref="IFeatureAttachmentStore.UpdateAsync"/>
     public Task<FeatureAttachmentDescriptor> UpdateAsync(
-        string dataset, FeatureId featureId, long attachmentId, string name, string contentType, byte[] content,
-        string? keywords = null, CancellationToken cancellationToken = default)
+        string dataset, FeatureId featureId, long attachmentId, FeatureAttachmentWrite write,
+        CancellationToken cancellationToken = default)
     {
-        RequireName(name);
-        RequireContent(content);
+        RequireName(write.Name);
+        RequireContent(write.Content);
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(_store.WithLock(() =>
         {
             RequireFeature(dataset, featureId);
             var stored = Find(dataset, featureId, attachmentId);
-            var descriptor = new FeatureAttachmentDescriptor(
-                stored.Descriptor.Id, name, OrDefaultContentType(contentType), content.Length, keywords);
+            var descriptor = Descriptor(stored.Descriptor.Id, write);
             CheckQuota(descriptor);
             stored.Descriptor = descriptor;
-            stored.Content = Copy(content);
+            stored.Content = Copy(write.Content);
             return descriptor;
         }));
     }
@@ -188,6 +184,10 @@ public sealed class MemoryAttachments : IFeatureAttachmentStore
 
     private static string OrDefaultContentType(string? contentType) =>
         string.IsNullOrWhiteSpace(contentType) ? DefaultContentType : contentType;
+
+    /// <summary>The descriptor a write stores, under the assigned identity and the defaulted content type.</summary>
+    private static FeatureAttachmentDescriptor Descriptor(long id, FeatureAttachmentWrite write) =>
+        new(id, write.Name, OrDefaultContentType(write.ContentType), write.Content.Length, write.Keywords);
 
     private static byte[] Copy(byte[] content)
     {

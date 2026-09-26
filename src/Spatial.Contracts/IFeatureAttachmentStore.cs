@@ -19,6 +19,15 @@ public sealed record FeatureAttachmentDescriptor(long Id, string Name, string Co
 public sealed record FeatureAttachmentContent(FeatureAttachmentDescriptor Descriptor, byte[] Content);
 
 /// <summary>
+/// One attachment write: the metadata and bytes an add or update stores,
+/// independent of the feature they land on. Grouping them keeps the store
+/// face to the identity plus one payload value, and gives adapters and
+/// stores a single named write instead of four positional arguments. An
+/// empty content type defaults to <c>application/octet-stream</c>.
+/// </summary>
+public sealed record FeatureAttachmentWrite(string Name, string ContentType, byte[] Content, string? Keywords = null);
+
+/// <summary>
 /// The outcome of one attachment delete, mirroring
 /// <see cref="FeatureEditOutcome"/> (ADR-0037): deletes report per attachment
 /// id in input order, so a partially successful batch is reported per
@@ -58,13 +67,9 @@ public interface IFeatureAttachmentStore
     Task<IReadOnlyList<FeatureAttachmentDescriptor>> ListAsync(
         string dataset, FeatureId featureId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Stores one blob for a feature and returns its assigned descriptor. An
-    /// empty content type defaults to <c>application/octet-stream</c>.
-    /// </summary>
+    /// <summary>Stores one blob for a feature and returns its assigned descriptor.</summary>
     Task<FeatureAttachmentDescriptor> AddAsync(
-        string dataset, FeatureId featureId, string name, string contentType, byte[] content,
-        string? keywords = null, CancellationToken cancellationToken = default);
+        string dataset, FeatureId featureId, FeatureAttachmentWrite write, CancellationToken cancellationToken = default);
 
     /// <summary>Returns one stored attachment with its bytes.</summary>
     Task<FeatureAttachmentContent> GetAsync(
@@ -72,8 +77,8 @@ public interface IFeatureAttachmentStore
 
     /// <summary>Replaces one stored attachment's metadata and bytes, keeping its identity.</summary>
     Task<FeatureAttachmentDescriptor> UpdateAsync(
-        string dataset, FeatureId featureId, long attachmentId, string name, string contentType, byte[] content,
-        string? keywords = null, CancellationToken cancellationToken = default);
+        string dataset, FeatureId featureId, long attachmentId, FeatureAttachmentWrite write,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Deletes attachments by identity, one outcome per id in input order.</summary>
     Task<IReadOnlyList<FeatureAttachmentOutcome>> DeleteAsync(

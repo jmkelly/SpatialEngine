@@ -40,11 +40,12 @@ internal static class AdminEndpoints
         }
 
         app.MapPut("/api/maps/{name}", (string name, Map map, HttpContext context, IStoreRegistry stores, IMapRegistry registry, CancellationToken token) =>
-            PutMap(context, admin, auth, name, map, stores, registry, token));
+            PutMap(new AdminRoute(context, admin, auth, name, stores, registry, token), map));
         app.MapDelete("/api/maps/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
             DeleteMap(context, admin, auth, name, registry, token));
         app.MapPost("/api/ingest", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token) =>
-            Ingest(context, admin, auth, ingest, stores, transforms, registry, token));
+            Ingest(
+                new AdminRoute(context, admin, auth, string.Empty, stores, registry, token), ingest, transforms));
     }
 
     private static async Task<IResult> ListMaps(IMapRegistry registry, CancellationToken token)
@@ -71,10 +72,24 @@ internal static class AdminEndpoints
         }
     }
 
-    private static async Task<IResult> PutMap(
-        HttpContext context, AdminOptions admin, IAuthService auth, string name, Map map,
-        IStoreRegistry stores, IMapRegistry registry, CancellationToken token)
+    /// <summary>
+    /// The seams every admin-gated route shares: the caller and its
+    /// cancellation, the authorization policy, the addressed map name and the
+    /// registries the route works through. Grouping them keeps each route's
+    /// signature to the payload it carries.
+    /// </summary>
+    private sealed record AdminRoute(
+        HttpContext Context,
+        AdminOptions Admin,
+        IAuthService Auth,
+        string Name,
+        IStoreRegistry Stores,
+        IMapRegistry Registry,
+        CancellationToken Token);
+
+    private static async Task<IResult> PutMap(AdminRoute route, Map map)
     {
+        var (context, admin, auth, name, stores, registry, token) = route;
         try
         {
             await Authorize(context, admin, auth, token);
@@ -129,9 +144,9 @@ internal static class AdminEndpoints
     }
 
     private static async Task<IResult> Ingest(
-        HttpContext context, AdminOptions admin, IAuthService auth, IngestOptions ingest,
-        IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token)
+        AdminRoute route, IngestOptions ingest, ICoordinateTransforms transforms)
     {
+        var (context, admin, auth, _, stores, registry, token) = route;
         try
         {
             await Authorize(context, admin, auth, token);
@@ -219,53 +234,83 @@ internal static class AdminEndpoints
     }
 
     /// <summary>Reads the request body into memory, enforcing the byte cap for raw and multipart bodies.</summary>
-    private static async Task<MemoryStream> ReadUploadAsync(HttpRequest request, long maxBytes)
+    private static async Task<MemoryStream> ReadUploadAsync(HttpRequest request, long maxBytes) =>
+        request.HasFormContentType
+            ? await ReadFormUploadAsync(request, maxBytes)
+            : await ReadRawUploadAsync(request, maxBytes);
+
+    /// <summary>The malformed-body failures a multipart upload maps to a client error.</summary>
+    private static readonly Type[] MalformedUploadFailures =
+        [typeof(InvalidDataException), typeof(IOException), typeof(BadHttpRequestException)];
+
+    private static bool IsMalformedUpload(Exception exception) =>
+        MalformedUploadFailures.Any(failure => failure.IsInstanceOfType(exception));
+
+    private static async Task<MemoryStream> ReadFormUploadAsync(HttpRequest request, long maxBytes)
     {
-        if (request.HasFormContentType)
+        var file = FirstFile(await ReadFormAsync(request));
+        return await CopyFormFileAsync(file, maxBytes);
+    }
+
+    private static IFormFile FirstFile(IFormCollection form) =>
+        form.Files.Count > 0
+            ? form.Files[0]
+            : throw SpatialException.BadArguments("The multipart upload carries no file part.");
+
+    private static async Task<MemoryStream> CopyFormFileAsync(IFormFile file, long maxBytes)
+    {
+        if (file.Length > maxBytes)
         {
-            IFormCollection form;
-            try
-            {
-                form = await request.ReadFormAsync();
-            }
-            catch (Exception exception) when (exception is InvalidDataException or IOException or BadHttpRequestException)
-            {
-                throw SpatialException.BadArguments(
-                    $"The multipart upload is malformed and the 'file' part could not be read: {exception.Message}");
-            }
-
-            var file = form.Files.Count > 0
-                ? form.Files[0]
-                : throw SpatialException.BadArguments("The multipart upload carries no file part.");
-            if (file.Length > maxBytes)
-            {
-                throw SpatialException.BadArguments($"The upload is {file.Length} bytes, above the configured maximum of {maxBytes}.");
-            }
-
-            var multipart = new MemoryStream();
-            await using var source = file.OpenReadStream();
-            await source.CopyToAsync(multipart);
-            multipart.Position = 0;
-            return multipart;
+            throw SpatialException.BadArguments($"The upload is {file.Length} bytes, above the configured maximum of {maxBytes}.");
         }
 
+        var multipart = new MemoryStream();
+        await using var source = file.OpenReadStream();
+        await source.CopyToAsync(multipart);
+        multipart.Position = 0;
+        return multipart;
+    }
+
+    private static async Task<IFormCollection> ReadFormAsync(HttpRequest request)
+    {
+        try
+        {
+            return await request.ReadFormAsync();
+        }
+        catch (Exception exception) when (IsMalformedUpload(exception))
+        {
+            throw SpatialException.BadArguments(
+                $"The multipart upload is malformed and the 'file' part could not be read: {exception.Message}");
+        }
+    }
+
+    private static async Task<MemoryStream> ReadRawUploadAsync(HttpRequest request, long maxBytes)
+    {
         var buffer = new MemoryStream();
+        await CopyBodyAsync(request.Body, buffer, maxBytes);
+        buffer.Position = 0;
+        return buffer;
+    }
+
+    private static async Task CopyBodyAsync(Stream body, MemoryStream buffer, long maxBytes)
+    {
         var chunk = new byte[64 * 1024];
         long total = 0;
         int read;
-        while ((read = await request.Body.ReadAsync(chunk)) > 0)
+        while ((read = await body.ReadAsync(chunk)) > 0)
         {
             total += read;
-            if (total > maxBytes)
-            {
-                throw SpatialException.BadArguments($"The upload exceeds the configured maximum of {maxBytes} bytes.");
-            }
-
             buffer.Write(chunk, 0, read);
+            RequireWithinCap(total, maxBytes);
         }
+    }
 
-        buffer.Position = 0;
-        return buffer;
+    private static void RequireWithinCap(long total, long maxBytes)
+    {
+        if (total > maxBytes)
+        {
+            throw SpatialException.BadArguments($"The upload exceeds the configured maximum of {maxBytes} bytes.");
+        }
     }
 
     private static int ParseSrid(string value) =>

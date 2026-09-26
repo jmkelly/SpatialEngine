@@ -62,7 +62,7 @@ internal sealed class FileTileCache : ITileCache
             DeleteBestEffort(dataPath, metaPath);
             return null;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
             throw Unavailable(exception);
         }
@@ -75,17 +75,23 @@ internal sealed class FileTileCache : ITileCache
     {
         cancellationToken.ThrowIfCancellationRequested();
         var path = VectorPath(key);
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        return await ReadStoredAsync(path, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask<VectorTile> ReadStoredAsync(string path, CancellationToken cancellationToken)
+    {
         try
         {
-            if (!File.Exists(path))
-            {
-                return null;
-            }
             var content = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
             TouchBestEffort(path);
             return new VectorTile(content);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
             throw Unavailable(exception);
         }
@@ -95,17 +101,23 @@ internal sealed class FileTileCache : ITileCache
     {
         ArgumentNullException.ThrowIfNull(tile);
         cancellationToken.ThrowIfCancellationRequested();
-        if (_maxEntries <= 0 || _maxBytes <= 0 || tile.Content.LongLength > _maxBytes)
+        if (!CanStore(tile.Content.LongLength))
         {
             return;
         }
+
+        await StoreVectorAsync(VectorPath(key), tile, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask StoreVectorAsync(string path, VectorTile tile, CancellationToken cancellationToken)
+    {
         try
         {
             Directory.CreateDirectory(_root);
-            await WriteAtomicallyAsync(VectorPath(key), tile.Content, cancellationToken).ConfigureAwait(false);
+            await WriteAtomicallyAsync(path, tile.Content, cancellationToken).ConfigureAwait(false);
             Evict();
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
             throw Unavailable(exception);
         }
@@ -116,7 +128,7 @@ internal sealed class FileTileCache : ITileCache
     {
         ArgumentNullException.ThrowIfNull(image);
         cancellationToken.ThrowIfCancellationRequested();
-        if (!CanStore(image))
+        if (!CanStore(image.Content.LongLength))
         {
             return;
         }
@@ -130,7 +142,7 @@ internal sealed class FileTileCache : ITileCache
             await WriteAtomicallyAsync(metaPath, JsonSerializer.SerializeToUtf8Bytes(metadata), cancellationToken).ConfigureAwait(false);
             Evict();
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
             throw Unavailable(exception);
         }
@@ -148,7 +160,7 @@ internal sealed class FileTileCache : ITileCache
             File.Delete(metaPath);
             return ValueTask.FromResult(removed);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
             throw Unavailable(exception);
         }
@@ -172,7 +184,7 @@ internal sealed class FileTileCache : ITileCache
                 File.Delete(path);
             }
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
             throw Unavailable(exception);
         }
@@ -180,8 +192,9 @@ internal sealed class FileTileCache : ITileCache
         return ValueTask.CompletedTask;
     }
 
-    private bool CanStore(RasterImage image) =>
-        _maxEntries > 0 && _maxBytes > 0 && image.Content.LongLength <= _maxBytes;
+    /// <summary>False when caching is disabled or the payload exceeds the byte bound (T-001).</summary>
+    private bool CanStore(long contentLength) =>
+        _maxEntries > 0 && _maxBytes > 0 && contentLength <= _maxBytes;
 
     private string VectorPath(VectorTileCacheKey key) => Path.Combine(_root, Name(key) + ".vector.bin");
 
@@ -290,10 +303,13 @@ internal sealed class FileTileCache : ITileCache
             File.Delete(dataPath);
             File.Delete(metaPath);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (IsStorageFailure(exception))
         {
         }
     }
+
+    /// <summary>The filesystem failures that surface as <c>store.unavailable</c> (ADR-0046).</summary>
+    private static bool IsStorageFailure(Exception exception) => exception is IOException or UnauthorizedAccessException;
 
     private SpatialException Unavailable(Exception inner) =>
         SpatialException.Unavailable(FormattableString.Invariant($"The tile cache at '{_root}' is unavailable."), inner);

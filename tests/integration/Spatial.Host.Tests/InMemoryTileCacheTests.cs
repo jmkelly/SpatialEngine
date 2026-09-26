@@ -150,7 +150,51 @@ public sealed class InMemoryTileCacheTests
     private static InMemoryTileCache Cache(long maxBytes, int maxEntries) =>
         new(new TileCacheOptions { MaxBytes = maxBytes, MaxEntries = maxEntries });
 
+    [Fact]
+    public async Task Vector_tiles_miss_before_a_set_and_hit_after()
+    {
+        var cache = Cache(maxBytes: 1024, maxEntries: 4);
+        var key = VectorKey(0);
+        var tile = new VectorTile(new byte[10]);
+
+        Assert.Null(await cache.TryGetVectorAsync(key));
+        await cache.SetVectorAsync(key, tile);
+        Assert.Same(tile, await cache.TryGetVectorAsync(key));
+        Assert.Null(await cache.TryGetVectorAsync(key with { X = 2 }));
+    }
+
+    [Fact]
+    public async Task Vector_entry_bound_evicts_the_oldest_tile()
+    {
+        var cache = Cache(maxBytes: 1024, maxEntries: 2);
+        await cache.SetVectorAsync(VectorKey(0), new VectorTile(new byte[10]));
+        await cache.SetVectorAsync(VectorKey(1), new VectorTile(new byte[10]));
+        await cache.SetVectorAsync(VectorKey(2), new VectorTile(new byte[10]));
+
+        Assert.Null(await cache.TryGetVectorAsync(VectorKey(0)));
+        Assert.NotNull(await cache.TryGetVectorAsync(VectorKey(2)));
+    }
+
+    [Fact]
+    public async Task Vector_byte_bound_evicts_and_an_oversized_tile_is_skipped()
+    {
+        var cache = Cache(maxBytes: 5, maxEntries: 10);
+        await cache.SetVectorAsync(VectorKey(0), new VectorTile(new byte[10]));
+
+        Assert.Null(await cache.TryGetVectorAsync(VectorKey(0)));
+
+        var bounded = Cache(maxBytes: 25, maxEntries: 10);
+        await bounded.SetVectorAsync(VectorKey(0), new VectorTile(new byte[10]));
+        await bounded.SetVectorAsync(VectorKey(1), new VectorTile(new byte[10]));
+        await bounded.SetVectorAsync(VectorKey(2), new VectorTile(new byte[10]));
+
+        Assert.Null(await bounded.TryGetVectorAsync(VectorKey(0)));
+        Assert.NotNull(await bounded.TryGetVectorAsync(VectorKey(1)));
+    }
+
     private static TileCacheKey Key(int y) => new("webmercator", 3, 1, y, Format, "v1");
+
+    private static VectorTileCacheKey VectorKey(int y) => new("webmercator", 3, 1, y, "v1");
 
     private static RasterImage Image(int length) =>
         new(new byte[length], "image/png", 1, 1, RasterFormat.Png);

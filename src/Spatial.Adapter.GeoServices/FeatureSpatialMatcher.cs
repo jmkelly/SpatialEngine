@@ -17,10 +17,10 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class FeatureSpatialMatcher
 {
-    internal static async Task<List<FeatureQueryEngine.MatchedFeature>> MatchAsync(QuerySpec spec, CancellationToken cancellationToken)
+    internal static async Task<List<MatchedFeature>> MatchAsync(QuerySpec spec, CancellationToken cancellationToken)
     {
         var batches = await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken);
-        var matches = new List<FeatureQueryEngine.MatchedFeature>();
+        var matches = new List<MatchedFeature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
@@ -34,7 +34,7 @@ internal static class FeatureSpatialMatcher
             var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
             if (Matches(new MatchCandidate(spec.Query, feature, objectId, spec.QueryGeometry, spec.Operations, uniqueId), cancellationToken))
             {
-                matches.Add(new FeatureQueryEngine.MatchedFeature(objectId, feature));
+                matches.Add(new MatchedFeature(objectId, feature));
             }
         }
 
@@ -97,25 +97,17 @@ internal static class FeatureSpatialMatcher
     /// </summary>
     internal static bool MatchesTime(Feature feature, EsriTimeExtent time)
     {
-        var dated = false;
-        foreach (var attribute in feature.Attributes)
-        {
-            if (attribute.Kind != AttributeKind.DateTimeOffset)
-            {
-                continue;
-            }
-
-            dated = true;
-            var milliseconds = attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds();
-            if ((time.StartMs is null || milliseconds >= time.StartMs)
-                && (time.EndMs is null || milliseconds <= time.EndMs))
-            {
-                return true;
-            }
-        }
-
-        return !dated;
+        var dates = feature.Attributes
+            .Where(attribute => attribute.Kind == AttributeKind.DateTimeOffset)
+            .Select(attribute => attribute.DateTimeOffsetValue)
+            .ToArray();
+        return dates.Length == 0 || dates.Any(date => Within(date, time));
     }
+
+    /// <summary>One date value against the inclusive bounds, where a null bound is infinite.</summary>
+    private static bool Within(DateTimeOffset value, EsriTimeExtent time) =>
+        value.ToUnixTimeMilliseconds() >= (time.StartMs ?? long.MinValue)
+        && value.ToUnixTimeMilliseconds() <= (time.EndMs ?? long.MaxValue);
 
     /// <summary>The synthetic <c>OBJECTID</c> a where clause may reference (ADR-0037).</summary>
     private static EsriSyntheticField SyntheticObjectId(long objectId) =>
@@ -123,50 +115,66 @@ internal static class FeatureSpatialMatcher
 
     private static bool SpatialMatch(Feature feature, IGeometry queryGeometry, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
     {
-        var geometry = FeatureGeometry.Find(feature);
-        if (TryMatchEnvelopeShortcut(geometry, queryGeometry, spatialRel, operations, cancellationToken, out var featureEnvelope, out var queryEnvelope) is { } shortcut)
-        {
-            return shortcut;
-        }
-
-        return MatchTopology(geometry!, queryGeometry, featureEnvelope, queryEnvelope, spatialRel, operations, cancellationToken);
-    }
-
-    /// <summary>Null/missing envelopes plus the two relations that need no topological verb.</summary>
-    private static bool? TryMatchEnvelopeShortcut(IGeometry? geometry, IGeometry queryGeometry, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken, out Envelope featureEnvelope, out Envelope queryEnvelope)
-    {
-        featureEnvelope = default;
-        queryEnvelope = default;
-        if (geometry?.Envelope is not { } feature || queryGeometry.Envelope is not { } query)
+        if (GeometryPair.Of(FeatureGeometry.Find(feature), queryGeometry) is not { } pair)
         {
             return false;
         }
 
-        featureEnvelope = feature;
-        queryEnvelope = query;
+        if (TryMatchEnvelopeShortcut(pair, spatialRel, operations, cancellationToken) is { } shortcut)
+        {
+            return shortcut;
+        }
+
+        return MatchTopology(pair, spatialRel, operations, cancellationToken);
+    }
+
+    /// <summary>
+    /// The geometry pair under test: the feature's geometry and the query
+    /// geometry with both envelopes. Threading one value instead of four
+    /// positional geometries keeps the match steps readable.
+    /// </summary>
+    private readonly record struct GeometryPair(IGeometry Feature, Envelope FeatureEnvelope, IGeometry Query, Envelope QueryEnvelope)
+    {
+        /// <summary>The pair when both geometries carry an envelope; null when either is missing or null.</summary>
+        public static GeometryPair? Of(IGeometry? feature, IGeometry query) =>
+            feature?.Envelope is { } featureEnvelope && query.Envelope is { } queryEnvelope
+                ? new GeometryPair(feature, featureEnvelope, query, queryEnvelope)
+                : null;
+    }
+
+    /// <summary>Null/missing envelopes plus the two relations that need no topological verb.</summary>
+    private static bool? TryMatchEnvelopeShortcut(
+        GeometryPair pair, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
         if (string.Equals(spatialRel, EsriFeatureQuery.EnvelopeIntersects, StringComparison.Ordinal))
         {
-            return featureEnvelope.Intersects(queryEnvelope);
+            return pair.FeatureEnvelope.Intersects(pair.QueryEnvelope);
         }
 
         if (string.Equals(spatialRel, EsriFeatureQuery.Intersects, StringComparison.Ordinal))
         {
-            return !operations.Intersection(geometry, queryGeometry, cancellationToken).IsEmpty;
+            return !operations.Intersection(pair.Feature, pair.Query, cancellationToken).IsEmpty;
         }
 
         return null;
     }
 
     /// <summary>The relations approximated with envelope-prefiltered topological verbs.</summary>
-    private static bool MatchTopology(IGeometry geometry, IGeometry queryGeometry, Envelope featureEnvelope, Envelope queryEnvelope, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
+    private static bool MatchTopology(
+        GeometryPair pair, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
     {
         return spatialRel switch
         {
-            var rel when string.Equals(rel, EsriFeatureQuery.Contains, StringComparison.Ordinal) => Contains(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Within, StringComparison.Ordinal) => Contains(queryGeometry, geometry, queryEnvelope, featureEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Touches, StringComparison.Ordinal) => Touches(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Overlaps, StringComparison.Ordinal) => Overlaps(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
-            var rel when string.Equals(rel, EsriFeatureQuery.Crosses, StringComparison.Ordinal) => Crosses(geometry, queryGeometry, featureEnvelope, queryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Contains, StringComparison.Ordinal) =>
+                Contains(pair.Feature, pair.Query, pair.FeatureEnvelope, pair.QueryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Within, StringComparison.Ordinal) =>
+                Contains(pair.Query, pair.Feature, pair.QueryEnvelope, pair.FeatureEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Touches, StringComparison.Ordinal) =>
+                Touches(pair.Feature, pair.Query, pair.FeatureEnvelope, pair.QueryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Overlaps, StringComparison.Ordinal) =>
+                Overlaps(pair.Feature, pair.Query, pair.FeatureEnvelope, pair.QueryEnvelope, operations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Crosses, StringComparison.Ordinal) =>
+                Crosses(pair.Feature, pair.Query, pair.FeatureEnvelope, pair.QueryEnvelope, operations, cancellationToken),
             _ => throw GeoServicesErrors.Invalid($"spatialRel '{spatialRel}' is not supported."),
         };
     }
@@ -191,20 +199,26 @@ internal static class FeatureSpatialMatcher
 
     private static bool Touches(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
     {
-        var intersection = operations.Intersection(left, right, cancellationToken);
-        if (intersection.IsEmpty || intersection.Envelope is not { } envelope)
+        var envelope = SharedBoundary(left, right, operations, cancellationToken);
+        if (envelope is null)
         {
             return false;
         }
 
-        if (Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
-            || Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken))
-        {
-            return false;
-        }
-
-        return IsDegenerate(envelope);
+        return IsDegenerate(envelope.Value)
+            && !EitherContains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken);
     }
+
+    /// <summary>The envelope of the intersection, or <c>null</c> when the geometries share no point at all.</summary>
+    private static Envelope? SharedBoundary(IGeometry left, IGeometry right, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        var intersection = operations.Intersection(left, right, cancellationToken);
+        return intersection.IsEmpty ? null : intersection.Envelope;
+    }
+
+    private static bool EitherContains(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken) =>
+        Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
+        || Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
 
     internal static bool Overlaps(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
     {
@@ -213,15 +227,21 @@ internal static class FeatureSpatialMatcher
             return false;
         }
 
-        var intersection = operations.Intersection(left, right, cancellationToken);
-        if (intersection.IsEmpty || Dimension(intersection) != Dimension(left))
-        {
-            return false;
-        }
-
-        return !Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
-            && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
+        return SameDimensionOverlap(left, right, operations, cancellationToken)
+            && NeitherContains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken);
     }
+
+    /// <summary>Overlapping at the same dimension: the intersection is non-empty and keeps that dimension.</summary>
+    private static bool SameDimensionOverlap(IGeometry left, IGeometry right, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        var intersection = operations.Intersection(left, right, cancellationToken);
+        return !intersection.IsEmpty && Dimension(intersection) == Dimension(left);
+    }
+
+    /// <summary>Overlaps exclude containment, in either direction.</summary>
+    private static bool NeitherContains(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken) =>
+        !Contains(left, right, leftEnvelope, rightEnvelope, operations, cancellationToken)
+        && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
 
     private static bool Crosses(IGeometry left, IGeometry right, Envelope leftEnvelope, Envelope rightEnvelope, IGeometryOperations operations, CancellationToken cancellationToken)
     {
@@ -240,16 +260,25 @@ internal static class FeatureSpatialMatcher
             && !Contains(right, left, rightEnvelope, leftEnvelope, operations, cancellationToken);
     }
 
-    private static int Dimension(IGeometry geometry) => geometry.Type switch
+    /// <summary>The topological dimension of a geometry: points 0, lines 1, areas 2, anything else -1.</summary>
+    private static readonly Dictionary<GeometryType, int> Dimensions = new()
     {
-        GeometryType.Point or GeometryType.MultiPoint => 0,
-        GeometryType.LineString or GeometryType.MultiLineString => 1,
-        GeometryType.Polygon or GeometryType.MultiPolygon => 2,
-        _ => -1,
+        [GeometryType.Point] = 0,
+        [GeometryType.MultiPoint] = 0,
+        [GeometryType.LineString] = 1,
+        [GeometryType.MultiLineString] = 1,
+        [GeometryType.Polygon] = 2,
+        [GeometryType.MultiPolygon] = 2,
     };
 
+    private static int Dimension(IGeometry geometry) => Dimensions.GetValueOrDefault(geometry.Type, -1);
+
     private static bool EnvelopesEqual(Envelope left, Envelope right) =>
-        left.MinX == right.MinX && left.MinY == right.MinY && left.MaxX == right.MaxX && left.MaxY == right.MaxY;
+        SameOrigin(left, right) && SameExtent(left, right);
+
+    private static bool SameOrigin(Envelope left, Envelope right) => left.MinX == right.MinX && left.MinY == right.MinY;
+
+    private static bool SameExtent(Envelope left, Envelope right) => left.MaxX == right.MaxX && left.MaxY == right.MaxY;
 
     private static bool IsDegenerate(Envelope envelope) => envelope.MinX == envelope.MaxX || envelope.MinY == envelope.MaxY;
 

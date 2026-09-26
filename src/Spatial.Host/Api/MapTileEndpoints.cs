@@ -18,7 +18,10 @@ internal static class MapTileEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/maps/{name}/tiles/{z:int}/{x:int}/{y:int}.{format}", Tile)
+        app.MapGet("/api/maps/{name}/tiles/{z:int}/{x:int}/{y:int}.{format}", (
+            string name, [AsParameters] MapTileParameters parameters, HttpContext context, IMapRegistry registry,
+            IStoreRegistry stores, TileService tiles, RenderingOptions options) =>
+            Tile(new TileRoute(name, parameters, context, registry, stores, tiles, options)))
             .Produces(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
@@ -30,15 +33,19 @@ internal static class MapTileEndpoints
             .Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable);
     }
 
-    private static async Task<IResult> Tile(
-        string name,
-        [AsParameters] MapTileParameters parameters,
-        HttpContext context,
-        IMapRegistry registry,
-        IStoreRegistry stores,
-        TileService tiles,
-        RenderingOptions options)
+    /// <summary>One tile route's seams: the map, its address, and the rendering stack behind it.</summary>
+    private sealed record TileRoute(
+        string Name,
+        MapTileParameters Parameters,
+        HttpContext Context,
+        IMapRegistry Registry,
+        IStoreRegistry Stores,
+        TileService Tiles,
+        RenderingOptions Options);
+
+    private static async Task<IResult> Tile(TileRoute route)
     {
+        var (name, parameters, context, registry, stores, tiles, options) = route;
         try
         {
             var map = await registry.GetAsync(Uri.UnescapeDataString(name), context.RequestAborted);

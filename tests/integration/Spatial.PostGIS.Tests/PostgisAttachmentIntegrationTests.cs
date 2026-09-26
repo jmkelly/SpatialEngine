@@ -1,4 +1,5 @@
 using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Stores.PostGIS;
 
@@ -26,9 +27,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = await SeededAsync();
 
-        var added = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "photo.png", "image/png", [0x89, 0x50, 0x4E, 0x47],
-            keywords: "streetscape");
+        var added = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("photo.png", "image/png", [0x89, 0x50, 0x4E, 0x47], "streetscape"));
 
         Assert.Equal(1, added.Id);
         Assert.Equal("photo.png", added.Name);
@@ -53,12 +52,9 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = await SeededAsync();
 
-        var first = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "a.bin", "application/octet-stream", [1]);
-        var second = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "b.bin", "application/octet-stream", [2]);
-        var other = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("2"), "c.bin", "application/octet-stream", [3]);
+        var first = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
+        var second = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("b.bin", "application/octet-stream", [2]));
+        var other = await context.Attachments.AddAsync("public.attach_target", new FeatureId("2"), new FeatureAttachmentWrite("c.bin", "application/octet-stream", [3]));
 
         Assert.Equal(1, first.Id);
         Assert.Equal(2, second.Id);
@@ -70,8 +66,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = await SeededAsync();
-        var added = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "a.bin", "application/octet-stream", [1, 2, 3]);
+        var added = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1, 2, 3]));
 
         // A new store instance over the same database sees the sidecar rows:
         // persistence, not process memory.
@@ -88,8 +83,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = await SeededAsync();
 
-        var added = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "a.bin", "", [1]);
+        var added = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "", [1]));
 
         Assert.Equal("application/octet-stream", added.ContentType);
     }
@@ -99,11 +93,9 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = await SeededAsync();
-        var added = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "a.bin", "application/octet-stream", [1]);
+        var added = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
 
-        var updated = await context.Attachments.UpdateAsync(
-            "public.attach_target", new FeatureId("1"), added.Id, "b.png", "image/png", [9, 10], keywords: "front");
+        var updated = await context.Attachments.UpdateAsync("public.attach_target", new FeatureId("1"), added.Id, new FeatureAttachmentWrite("b.png", "image/png", [9, 10], "front"));
 
         Assert.Equal(added.Id, updated.Id);
         Assert.Equal("b.png", updated.Name);
@@ -123,8 +115,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         await using var context = await SeededAsync();
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Attachments.UpdateAsync(
-                "public.attach_target", new FeatureId("1"), 999, "a.bin", "application/octet-stream", [1]));
+            context.Attachments.UpdateAsync("public.attach_target", new FeatureId("1"), 999, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.NotFound, failure.Code);
     }
 
@@ -133,10 +124,8 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = await SeededAsync();
-        var first = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "a.bin", "application/octet-stream", [1]);
-        var second = await context.Attachments.AddAsync(
-            "public.attach_target", new FeatureId("1"), "b.bin", "application/octet-stream", [2]);
+        var first = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
+        var second = await context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("b.bin", "application/octet-stream", [2]));
 
         var outcomes = await context.Attachments.DeleteAsync(
             "public.attach_target", new FeatureId("1"), [first.Id, 999]);
@@ -158,7 +147,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         await using var context = await SeededAsync();
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Attachments.AddAsync("public.attach_missing", new FeatureId("1"), "a.bin", "application/octet-stream", [1]));
+            context.Attachments.AddAsync("public.attach_missing", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.NotFound, add.Code);
 
         var list = await Assert.ThrowsAsync<SpatialException>(() =>
@@ -177,7 +166,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         await using var context = await SeededAsync();
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Attachments.AddAsync("public.attach_target", new FeatureId("404"), "a.bin", "application/octet-stream", [1]));
+            context.Attachments.AddAsync("public.attach_target", new FeatureId("404"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.NotFound, add.Code);
 
         var get = await Assert.ThrowsAsync<SpatialException>(() =>
@@ -217,7 +206,7 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         // public.roads is seeded without a primary key (see the fixture), so
         // per-feature blobs have no stable identity to key on.
         var failure = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Attachments.AddAsync("public.roads", new FeatureId("0"), "a.bin", "application/octet-stream", [1]));
+            context.Attachments.AddAsync("public.roads", new FeatureId("0"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
 
         failure = await Assert.ThrowsAsync<SpatialException>(() =>
@@ -233,12 +222,12 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         var capped = new PostgisAttachmentStore(context.Store, maxBytesPerAttachment: 4);
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() =>
-            capped.AddAsync("public.attach_target", new FeatureId("1"), "big.bin", "application/octet-stream", [1, 2, 3, 4, 5]));
+            capped.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("big.bin", "application/octet-stream", [1, 2, 3, 4, 5])));
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
 
         // At the boundary the put still lands.
         var added = await capped.AddAsync(
-            "public.attach_target", new FeatureId("1"), "ok.bin", "application/octet-stream", [1, 2, 3, 4]);
+            "public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("ok.bin", "application/octet-stream", [1, 2, 3, 4]));
         Assert.Equal(4, added.Size);
     }
 
@@ -252,13 +241,11 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             context.Attachments.ListAsync("public.attach_target", new FeatureId("1"), canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            context.Attachments.AddAsync(
-                "public.attach_target", new FeatureId("1"), "a.bin", "application/octet-stream", [1], cancellationToken: canceled));
+            context.Attachments.AddAsync("public.attach_target", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]), canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             context.Attachments.GetAsync("public.attach_target", new FeatureId("1"), 1, canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            context.Attachments.UpdateAsync(
-                "public.attach_target", new FeatureId("1"), 1, "a.bin", "application/octet-stream", [1], cancellationToken: canceled));
+            context.Attachments.UpdateAsync("public.attach_target", new FeatureId("1"), 1, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]), canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             context.Attachments.DeleteAsync("public.attach_target", new FeatureId("1"), [1], canceled));
     }

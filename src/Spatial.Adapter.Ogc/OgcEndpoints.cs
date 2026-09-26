@@ -61,11 +61,8 @@ public static partial class OgcEndpoints
             var result = await handle(parameters);
             if (logger.IsEnabled(LogLevel.Information))
             {
-                var method = Method(context);
-                var path = Path(context);
-                var operation = Operation(parameters);
-                var values = Parameters(parameters);
-                LogCompleted(logger, method, path, operation, values);
+                var request = OgcRequestLog.Describe(context, parameters);
+                LogCompleted(logger, request);
             }
 
             return result;
@@ -75,42 +72,44 @@ public static partial class OgcEndpoints
             var failure = OgcErrorMapper.Describe(exception);
             if (logger.IsEnabled(LogLevel.Warning))
             {
-                var method = Method(context);
-                var path = Path(context);
-                var operation = Operation(parameters);
-                var values = Parameters(parameters);
-                LogFailed(logger, method, path, operation, failure.Code, failure.Status, failure.Message, values);
+                var request = OgcRequestLog.Describe(context, parameters);
+                LogFailed(logger, request, failure.Code, failure.Status, failure.Message);
             }
 
             return OgcErrorMapper.Map(exception);
         }
     }
 
-    private static string Method(HttpContext context) => context.Request.Method;
+    /// <summary>One OGC request as the structured log records it: what was asked, and where.</summary>
+    private static class OgcRequestLog
+    {
+        /// <summary>
+        /// The one descriptor both request events carry: the method and path,
+        /// the OGC operation, and the merged parameters in request order. OGC
+        /// requests carry no secrets, so the adapter logs the parameters
+        /// verbatim to make a rejected GetMap reproducible.
+        /// </summary>
+        public static string Describe(HttpContext context, OgcParameters? parameters) =>
+            $"{context.Request.Method} {context.Request.Path.Value ?? "/"} request '{parameters?.Get("request") ?? "-"}'; "
+            + $"parameters: {Merged(parameters)}";
 
-    private static string Path(HttpContext context) => context.Request.Path.Value ?? "/";
-
-    private static string Operation(OgcParameters? parameters) => parameters?.Get("request") ?? "-";
-
-    // The merged parameters in request order; OGC requests carry no secrets, so
-    // the adapter logs them verbatim to make a rejected GetMap reproducible.
-    private static string Parameters(OgcParameters? parameters) =>
-        parameters is null || parameters.Values.Count == 0
-            ? "(none)"
-            : string.Join('&', parameters.Values.Select(pair => $"{pair.Key}={pair.Value}"));
+        // The merged parameters in request order.
+        private static string Merged(OgcParameters? parameters) =>
+            parameters is null || parameters.Values.Count == 0
+                ? "(none)"
+                : string.Join('&', parameters.Values.Select(pair => $"{pair.Key}={pair.Value}"));
+    }
 
     [LoggerMessage(
         EventId = 10,
         Level = LogLevel.Information,
-        Message = "OGC {Method} {Path} request '{Operation}' completed; parameters: {Parameters}")]
-    private static partial void LogCompleted(
-        ILogger logger, string method, string path, string operation, string parameters);
+        Message = "OGC {Request} completed")]
+    private static partial void LogCompleted(ILogger logger, string request);
 
     [LoggerMessage(
         EventId = 11,
         Level = LogLevel.Warning,
-        Message = "OGC {Method} {Path} request '{Operation}' failed with {ExceptionCode} (HTTP {StatusCode}): {Reason}; parameters: {Parameters}")]
+        Message = "OGC {Request} failed with {ExceptionCode} (HTTP {StatusCode}): {Reason}")]
     private static partial void LogFailed(
-        ILogger logger, string method, string path, string operation,
-        string exceptionCode, int statusCode, string reason, string parameters);
+        ILogger logger, string request, string exceptionCode, int statusCode, string reason);
 }

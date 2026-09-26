@@ -484,25 +484,28 @@ internal static class WfsService
         return $"{baseUrl}?{string.Join('&', query)}";
     }
 
-    private static WfsBbox? ParseBbox(string? text)
+    private static WfsBbox? ParseBbox(string? text) => text is null ? null : ParseBboxText(text);
+
+    private static WfsBbox ParseBboxText(string text)
     {
-        if (text is null)
-        {
-            return null;
-        }
-
-        var parts = text.Split(',', StringSplitOptions.TrimEntries);
-        if (parts.Length is not (4 or 5))
-        {
-            throw OgcServiceException.Invalid(
-                $"The 'bbox' parameter must be minx,miny,maxx,maxy[,crs], got '{text}'.");
-        }
-
+        var parts = SplitBbox(text);
         var (crs, yFirst) = OgcCrs.Resolve(parts.Length == 5 ? parts[4] : "CRS:84");
-        var bounds = OgcGeometry.ParseBbox(string.Join(',', parts[..4]));
-        var xFirst = yFirst ? new Envelope(bounds.MinY, bounds.MinX, bounds.MaxY, bounds.MaxX) : bounds;
-        return new WfsBbox(xFirst, crs);
+        return new WfsBbox(XFirst(OgcGeometry.ParseBbox(string.Join(',', parts[..4])), yFirst), crs);
     }
+
+    /// <summary>Splits the comma list, rejecting anything but minx,miny,maxx,maxy[,crs].</summary>
+    private static string[] SplitBbox(string text)
+    {
+        var parts = text.Split(',', StringSplitOptions.TrimEntries);
+        return parts.Length is 4 or 5
+            ? parts
+            : throw OgcServiceException.Invalid(
+                $"The 'bbox' parameter must be minx,miny,maxx,maxy[,crs], got '{text}'.");
+    }
+
+    /// <summary>Swaps the ordinates of an axis-swapped CRS so the envelope is x-first.</summary>
+    private static Envelope XFirst(Envelope bounds, bool yFirst) =>
+        yFirst ? new Envelope(bounds.MinY, bounds.MinX, bounds.MaxY, bounds.MaxX) : bounds;
 
     /// <summary>A parsed WFS bbox in x-first coordinates plus its CRS identity.</summary>
     private sealed record WfsBbox(Envelope Envelope, string Crs);

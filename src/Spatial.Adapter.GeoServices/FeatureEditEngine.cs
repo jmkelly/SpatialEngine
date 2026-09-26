@@ -20,17 +20,6 @@ namespace Spatial.Adapter.GeoServices;
 internal static class FeatureEditEngine
 {
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
-    public static Task<IResult> EditsAsync(
-        EsriEditOperation operation,
-        DatasetDescription dataset,
-        IFeatureStore store,
-        IFeatureEditStore editStore,
-        EsriEditRequest request,
-        CoordinateReference? layerCrs,
-        CancellationToken cancellationToken) =>
-        EditsAsync(new EditInvocation(operation, dataset, store, editStore, request, layerCrs), cancellationToken);
-
-    /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
     public static async Task<IResult> EditsAsync(EditInvocation invocation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -511,20 +500,21 @@ internal static class FeatureEditEngine
     /// </summary>
     private sealed class EditSession
     {
-        private EditSession(
-            DatasetDescription dataset,
-            IFeatureStore store,
-            IFeatureEditStore editStore,
-            EsriObjectIdScheme scheme,
-            CoordinateReference? layerCrs,
-            string? transaction,
-            CancellationToken cancellationToken)
+        /// <summary>What one edit runs against: the layer, its stores, the id scheme and the layer's CRS.</summary>
+        private sealed record SessionState(
+            DatasetDescription Dataset,
+            IFeatureStore Store,
+            IFeatureEditStore EditStore,
+            EsriObjectIdScheme Scheme,
+            CoordinateReference? LayerCrs);
+
+        private EditSession(SessionState state, string? transaction, CancellationToken cancellationToken)
         {
-            Dataset = dataset;
-            Store = store;
-            EditStore = editStore;
-            Scheme = scheme;
-            LayerCrs = layerCrs;
+            Dataset = state.Dataset;
+            Store = state.Store;
+            EditStore = state.EditStore;
+            Scheme = state.Scheme;
+            LayerCrs = state.LayerCrs;
             Transaction = transaction;
             CancellationToken = cancellationToken;
         }
@@ -544,11 +534,14 @@ internal static class FeatureEditEngine
         public CancellationToken CancellationToken { get; }
 
         public static EditSession Start(EditInvocation invocation, EsriObjectIdScheme scheme, CancellationToken cancellationToken) =>
-            new(invocation.Dataset, invocation.Store, invocation.EditStore, scheme, invocation.LayerCrs, null, cancellationToken);
+            new(
+                new SessionState(invocation.Dataset, invocation.Store, invocation.EditStore, scheme, invocation.LayerCrs),
+                null,
+                cancellationToken);
 
         /// <summary>The same session inside the store transaction the batch runs under.</summary>
         public EditSession WithTransaction(string? handle) =>
-            new(Dataset, Store, EditStore, Scheme, LayerCrs, handle, CancellationToken);
+            new(new SessionState(Dataset, Store, EditStore, Scheme, LayerCrs), handle, CancellationToken);
 
         /// <summary>Aborts the edit promptly when the caller has gone away.</summary>
         public void ThrowIfCancelled() => CancellationToken.ThrowIfCancellationRequested();

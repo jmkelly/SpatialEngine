@@ -40,13 +40,13 @@ internal static class FeatureResponseWriter
         ArgumentNullException.ThrowIfNull(shared);
         FeatureServiceQuery.RejectLayerOnlyShapes(shared);
         var ordered = layers.OrderBy(layer => layer.Id).ToArray();
-        var matched = new List<(ServiceLayerQuery Layer, List<FeatureQueryEngine.MatchedFeature> Matches)>(ordered.Length);
+        var matched = new List<(ServiceLayerQuery Layer, List<MatchedFeature> Matches)>(ordered.Length);
         foreach (var layer in ordered)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
             var scheme = EsriObjectIdScheme.For(layer.Description);
-            var queryGeometry = FeatureQueryEngine.TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
+            var queryGeometry = FeatureProjection.TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
             matched.Add((layer, await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, operations, scheme), cancellationToken)));
         }
 
@@ -75,11 +75,11 @@ internal static class FeatureResponseWriter
     private static void WriteServiceLayer(
         Utf8JsonWriter writer,
         ServiceLayerQuery layer,
-        List<FeatureQueryEngine.MatchedFeature> matches,
+        List<MatchedFeature> matches,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken)
     {
-        var ordered = FeatureQueryEngine.ApplyOrderBy(matches, FeatureQueryEngine.CompileOrderBy(layer.Description, layer.Query));
+        var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(layer.Description, layer.Query));
         writer.WriteStartObject();
         writer.WriteNumber("id", layer.Id);
         if (layer.Query.ReturnCountOnly)
@@ -105,7 +105,7 @@ internal static class FeatureResponseWriter
         }
 
         var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
-        var page = FeatureQueryEngine.Page(ordered, layer.Query);
+        var page = FeaturePaging.Page(ordered, layer.Query);
         var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, layer.Query.OutFields, layer.Query.ReturnGeometry, layer.Query.ReturnEnvelope);
         writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
         writer.WriteString("globalIdFieldName", string.Empty);
@@ -136,7 +136,7 @@ internal static class FeatureResponseWriter
     /// Layers without a string-or-guid unique-id model never reach here — the match
     /// loops reject the param first — so a missing scheme is defensive.
     /// </summary>
-    internal static IResult UniqueIdsOnly(DatasetDescription dataset, IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches)
+    internal static IResult UniqueIdsOnly(DatasetDescription dataset, IReadOnlyList<MatchedFeature> matches)
     {
         var scheme = EsriUniqueIdScheme.For(dataset)
             ?? throw GeoServicesErrors.Invalid(
@@ -157,7 +157,7 @@ internal static class FeatureResponseWriter
         });
     }
 
-    internal static IResult WriteFeature(FeatureQueryEngine.MatchedFeature feature, EsriFeatureQuery query)
+    internal static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query)
     {
         var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, feature.ObjectId, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
         return EsriJson.Write(writer =>
@@ -169,7 +169,7 @@ internal static class FeatureResponseWriter
         });
     }
 
-    internal static IResult IdsOnly(List<FeatureQueryEngine.MatchedFeature> matches) =>
+    internal static IResult IdsOnly(List<MatchedFeature> matches) =>
         EsriJson.Value(new EsriObjectIdsResponse(EsriLayerModel.ObjectIdField, matches.Select(match => match.ObjectId).ToArray()));
 
     /// <summary>
@@ -178,7 +178,7 @@ internal static class FeatureResponseWriter
     /// A matchless query yields <c>"extent": null</c>.
     /// </summary>
     internal static IResult ExtentOnly(
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches,
+        IReadOnlyList<MatchedFeature> matches,
         CoordinateReference? layerCrs,
         CoordinateReference? outSr,
         ICoordinateTransforms transforms,
@@ -237,7 +237,7 @@ internal static class FeatureResponseWriter
     /// </summary>
     internal static IResult CountResponse(
         DatasetDescription dataset,
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches,
+        IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query) =>
         query.ReturnDistinctValues
             ? DistinctCount(dataset, matches, query)
@@ -245,7 +245,7 @@ internal static class FeatureResponseWriter
 
     internal static IResult DistinctCount(
         DatasetDescription dataset,
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches,
+        IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query)
     {
         var fields = ResolveDistinctFields(dataset, query.OutFields);
@@ -258,14 +258,14 @@ internal static class FeatureResponseWriter
     /// </summary>
     internal static IResult DistinctValues(
         DatasetDescription dataset,
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches,
+        IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query,
         CoordinateReference? layerCrs)
     {
         var fields = ResolveDistinctFields(dataset, query.OutFields);
         var rows = DistinctRows(matches, fields);
-        var offset = Math.Min(FeatureQueryEngine.ResolveOffset(query), rows.Count);
-        var count = FeatureQueryEngine.EffectivePageSize(query);
+        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
+        var count = FeaturePaging.EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
         var exceeded = offset + page.Length < rows.Count;
         return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
@@ -276,10 +276,10 @@ internal static class FeatureResponseWriter
     /// first-seen order. Shared by the distinct-values response and the
     /// COUNT DISTINCT response so both agree on what "distinct" means.
     /// </summary>
-    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches, IReadOnlyList<DistinctField> fields)
+    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<MatchedFeature> matches, IReadOnlyList<DistinctField> fields)
     {
         var rows = new List<AttributeValue[]>();
-        var seen = new HashSet<AttributeValue[]>(FeatureQueryEngine.AttributeRowComparer.Instance);
+        var seen = new HashSet<AttributeValue[]>(FeatureOrdering.AttributeRowComparer.Instance);
         foreach (var match in matches)
         {
             var row = new AttributeValue[fields.Count];
@@ -361,7 +361,7 @@ internal static class FeatureResponseWriter
         DatasetDescription dataset,
         CoordinateReference? layerCrs,
         EsriFeatureQuery query,
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> features,
+        IReadOnlyList<MatchedFeature> features,
         bool exceeded,
         string? nextToken)
     {

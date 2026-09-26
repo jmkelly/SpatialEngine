@@ -156,33 +156,49 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
 
     private async Task<Dictionary<string, Map>> EnsureLoadedAsync(CancellationToken cancellationToken)
     {
-        if (_runtime is not null)
+        if (_runtime is null)
         {
-            return _runtime;
+            _runtime = await LoadAsync(cancellationToken);
         }
 
-        var loaded = new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
+        return _runtime;
+    }
+
+    /// <summary>Loads the runtime maps from the map file, falling back to a pre-ADR-0053 map file.</summary>
+    private async Task<Dictionary<string, Map>> LoadAsync(CancellationToken cancellationToken)
+    {
         if (File.Exists(_options.Path))
         {
-            string text;
-            try
-            {
-                text = await File.ReadAllTextAsync(_options.Path, cancellationToken);
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            {
-                throw SpatialException.Unavailable(
-                    $"The map file '{_options.Path}' cannot be read: {exception.Message}", exception);
-            }
-
-            loaded = ParseFile(text);
+            return ParseFile(await ReadMapFileAsync(cancellationToken));
         }
-        else if (!string.IsNullOrWhiteSpace(_options.LegacyPath) && File.Exists(_options.LegacyPath))
+
+        return await ReadLegacyIfPresentAsync(cancellationToken);
+    }
+
+    private async Task<Dictionary<string, Map>> ReadLegacyIfPresentAsync(CancellationToken cancellationToken)
+    {
+        if (!HasLegacyFile())
         {
-            loaded = await ReadLegacyAsync(_options.LegacyPath, cancellationToken);
+            return new Dictionary<string, Map>(StringComparer.OrdinalIgnoreCase);
         }
 
-        return _runtime = loaded;
+        return await ReadLegacyAsync(_options.LegacyPath!, cancellationToken);
+    }
+
+    private bool HasLegacyFile() =>
+        !string.IsNullOrWhiteSpace(_options.LegacyPath) && File.Exists(_options.LegacyPath);
+
+    private async Task<string> ReadMapFileAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await File.ReadAllTextAsync(_options.Path, cancellationToken);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            throw SpatialException.Unavailable(
+                $"The map file '{_options.Path}' cannot be read: {exception.Message}", exception);
+        }
     }
 
     private Dictionary<string, Map> ParseFile(string text)

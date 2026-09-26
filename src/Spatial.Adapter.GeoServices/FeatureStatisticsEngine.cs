@@ -24,7 +24,7 @@ internal static class FeatureStatisticsEngine
     /// </summary>
     internal static IResult Statistics(
         DatasetDescription dataset,
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches,
+        IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query)
     {
         var statistics = query.OutStatistics!;
@@ -50,8 +50,8 @@ internal static class FeatureStatisticsEngine
         }
 
         rows = ApplyStatisticOrder(rows, groupFields, statistics, query.OrderByFields, dataset);
-        var offset = Math.Min(FeatureQueryEngine.ResolveOffset(query), rows.Count);
-        var count = FeatureQueryEngine.EffectivePageSize(query);
+        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
+        var count = FeaturePaging.EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
         var exceeded = offset + page.Length < rows.Count;
         return WriteStatistics(new StatisticsPage(dataset, groupFields, statistics, statInputs, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null));
@@ -123,10 +123,10 @@ internal static class FeatureStatisticsEngine
         return inputs;
     }
 
-    private static List<KeyValuePair<AttributeValue[], List<FeatureQueryEngine.MatchedFeature>>> GroupMatches(
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> matches, IReadOnlyList<GroupField> groupFields)
+    private static List<KeyValuePair<AttributeValue[], List<MatchedFeature>>> GroupMatches(
+        IReadOnlyList<MatchedFeature> matches, IReadOnlyList<GroupField> groupFields)
     {
-        var groups = new Dictionary<AttributeValue[], List<FeatureQueryEngine.MatchedFeature>>(FeatureQueryEngine.AttributeRowComparer.Instance);
+        var groups = new Dictionary<AttributeValue[], List<MatchedFeature>>(FeatureOrdering.AttributeRowComparer.Instance);
         var order = new List<AttributeValue[]>();
         foreach (var match in matches)
         {
@@ -146,7 +146,7 @@ internal static class FeatureStatisticsEngine
             list.Add(match);
         }
 
-        return order.Select(key => new KeyValuePair<AttributeValue[], List<FeatureQueryEngine.MatchedFeature>>(key, groups[key])).ToList();
+        return order.Select(key => new KeyValuePair<AttributeValue[], List<MatchedFeature>>(key, groups[key])).ToList();
     }
 
     private static StatisticRow NullRow(
@@ -171,7 +171,7 @@ internal static class FeatureStatisticsEngine
 
     private static StatisticRow ComputeRow(
         AttributeValue[] key,
-        IReadOnlyList<FeatureQueryEngine.MatchedFeature> members,
+        IReadOnlyList<MatchedFeature> members,
         IReadOnlyList<GroupField> groupFields,
         IReadOnlyList<EsriOutStatistic> statistics,
         List<StatisticInput> inputs)
@@ -205,7 +205,7 @@ internal static class FeatureStatisticsEngine
         _ => AttributeKind.Double,
     };
 
-    internal static AttributeValue Aggregate(IReadOnlyList<FeatureQueryEngine.MatchedFeature> members, StatisticInput input)
+    internal static AttributeValue Aggregate(IReadOnlyList<MatchedFeature> members, StatisticInput input)
     {
         var type = input.Spec.StatisticType;
         if (type == "count" && input.CountRows)
@@ -238,7 +238,7 @@ internal static class FeatureStatisticsEngine
     }
 
     /// <summary>Collects the group's non-null values for one statistic input, skipping nulls.</summary>
-    private static List<AttributeValue> CollectNonNull(IReadOnlyList<FeatureQueryEngine.MatchedFeature> members, int index)
+    private static List<AttributeValue> CollectNonNull(IReadOnlyList<MatchedFeature> members, int index)
     {
         var raw = new List<AttributeValue>();
         foreach (var member in members)
@@ -259,7 +259,7 @@ internal static class FeatureStatisticsEngine
         var best = raw[0];
         foreach (var candidate in raw.Skip(1))
         {
-            var order = FeatureQueryEngine.AttributeValueComparer.Instance.Compare(candidate, best);
+            var order = FeatureOrdering.AttributeValueComparer.Instance.Compare(candidate, best);
             if ((type == "min" && order < 0) || (type == "max" && order > 0))
             {
                 best = candidate;
@@ -272,22 +272,36 @@ internal static class FeatureStatisticsEngine
     /// <summary>Reduces the group's non-null values to their numeric summary (sum/avg/var/stddev).</summary>
     private static AttributeValue AggregateNumeric(List<AttributeValue> raw, StatisticInput input)
     {
-        var type = input.Spec.StatisticType;
-        if (type == "sum" && input.Kind == AttributeKind.Int64 && raw.All(value => value.Kind == AttributeKind.Int64))
+        if (IsExactInt64Sum(input, raw))
         {
             return AttributeValue.FromInt64(raw.Sum(value => value.Int64Value));
         }
 
-        var numbers = raw.Select(ToDouble).ToArray();
-        return type switch
-        {
-            "sum" => AttributeValue.FromDouble(numbers.Sum()),
-            "avg" => AttributeValue.FromDouble(numbers.Average()),
-            "var" => AttributeValue.FromDouble(Variance(numbers)),
-            "stddev" => AttributeValue.FromDouble(Math.Sqrt(Variance(numbers))),
-            _ => AttributeValue.Null,
-        };
+        return NumericStatistic(input.Spec.StatisticType, raw.Select(ToDouble).ToArray());
     }
+
+    /// <summary>Whether the group sums exactly as Int64, so the double reduction is unnecessary.</summary>
+    private static bool IsExactInt64Sum(StatisticInput input, List<AttributeValue> raw) =>
+        IsInt64Sum(input) && AllInt64(raw);
+
+    private static bool IsInt64Sum(StatisticInput input) =>
+        input.Spec.StatisticType == "sum" && input.Kind == AttributeKind.Int64;
+
+    private static bool AllInt64(List<AttributeValue> raw) => raw.All(value => value.Kind == AttributeKind.Int64);
+
+    /// <summary>The numeric reductions, keyed by Esri statistic type; an unlisted type yields null.</summary>
+    private static readonly Dictionary<string, Func<double[], double>> NumericStatistics = new(StringComparer.Ordinal)
+    {
+        ["sum"] = numbers => numbers.Sum(),
+        ["avg"] = numbers => numbers.Average(),
+        ["var"] = numbers => Variance(numbers),
+        ["stddev"] = numbers => Math.Sqrt(Variance(numbers)),
+    };
+
+    private static AttributeValue NumericStatistic(string type, double[] numbers) =>
+        NumericStatistics.TryGetValue(type, out var reduce)
+            ? AttributeValue.FromDouble(reduce(numbers))
+            : AttributeValue.Null;
 
     /// <summary>
     /// The S3 percentile statistic over the group's non-null numeric
@@ -388,8 +402,8 @@ internal static class FeatureStatisticsEngine
         {
             var selector = StatisticSelector(key.Name, groupFields, statistics, dataset);
             ordered = ordered is null
-                ? (key.Descending ? rows.OrderByDescending(selector, FeatureQueryEngine.AttributeValueComparer.Instance) : rows.OrderBy(selector, FeatureQueryEngine.AttributeValueComparer.Instance))
-                : (key.Descending ? ordered.ThenByDescending(selector, FeatureQueryEngine.AttributeValueComparer.Instance) : ordered.ThenBy(selector, FeatureQueryEngine.AttributeValueComparer.Instance));
+                ? (key.Descending ? rows.OrderByDescending(selector, FeatureOrdering.AttributeValueComparer.Instance) : rows.OrderBy(selector, FeatureOrdering.AttributeValueComparer.Instance))
+                : (key.Descending ? ordered.ThenByDescending(selector, FeatureOrdering.AttributeValueComparer.Instance) : ordered.ThenBy(selector, FeatureOrdering.AttributeValueComparer.Instance));
         }
 
         return ordered!.ToList();

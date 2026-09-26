@@ -15,25 +15,36 @@ namespace Spatial.Host.Api;
 /// </summary>
 internal static class MapRenderEndpoints
 {
+    /// <summary>
+    /// One render route's seams: the map to render, the caller's request and
+    /// context, and the store, map and renderer services behind it. Grouping
+    /// them keeps the route's signature to the payload it carries.
+    /// </summary>
+    private sealed record RenderRoute(
+        string Name,
+        MapRenderRequestDto Request,
+        HttpContext Context,
+        IStoreRegistry Stores,
+        IMapRegistry Registry,
+        IMapRenderer Renderer,
+        RenderingOptions Options,
+        CancellationToken CancellationToken);
+
     public static void Map(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/maps/{name}/render", Render)
+        app.MapPost("/api/maps/{name}/render", (
+            string name, MapRenderRequestDto request, HttpContext context, IStoreRegistry stores,
+            IMapRegistry registry, IMapRenderer renderer, RenderingOptions options, CancellationToken cancellationToken) =>
+            Render(new RenderRoute(name, request, context, stores, registry, renderer, options, cancellationToken)))
             .Produces(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .Produces<ErrorResponse>(StatusCodes.Status503ServiceUnavailable);
     }
 
-    private static async Task<IResult> Render(
-        string name,
-        MapRenderRequestDto request,
-        HttpContext context,
-        IStoreRegistry stores,
-        IMapRegistry registry,
-        IMapRenderer renderer,
-        RenderingOptions options,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> Render(RenderRoute route)
     {
+        var (name, request, context, stores, registry, renderer, options, cancellationToken) = route;
         try
         {
             RenderEndpoints.ValidateFormat(request.Format, options);

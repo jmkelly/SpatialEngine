@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Http;
 using Spatial.Contracts.Providers;
 
 namespace Spatial.Adapter.Ogc.Tests;
@@ -23,7 +24,8 @@ public sealed class WmsCapabilitiesTests
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
 
         var xml = await WmsCapabilities.BuildAsync(
-            map, [layer], "http://localhost/ogc/world/wms", services, new OgcOptions(), CancellationToken.None);
+            new WmsServing(map, services, new OgcOptions(), new DefaultHttpContext(), CancellationToken.None),
+            [layer], "http://localhost/ogc/world/wms");
         var document = XDocument.Parse(xml);
 
         Assert.Equal("1.3.0", document.Root!.Attribute("version")!.Value);
@@ -50,7 +52,8 @@ public sealed class WmsCapabilitiesTests
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
 
         var xml = await WmsCapabilities.BuildAsync(
-            map, [layer], "http://localhost/ogc/world/wms", services, new OgcOptions(), CancellationToken.None);
+            new WmsServing(map, services, new OgcOptions(), new DefaultHttpContext(), CancellationToken.None),
+            [layer], "http://localhost/ogc/world/wms");
         var document = XDocument.Parse(xml);
 
         var hrefs = document.Descendants(Wms + "Request")
@@ -72,7 +75,8 @@ public sealed class WmsCapabilitiesTests
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
 
         var xml = await WmsCapabilities.BuildAsync(
-            map, [layer], "http://localhost/ogc/world/wms", services, new OgcOptions(), CancellationToken.None);
+            new WmsServing(map, services, new OgcOptions(), new DefaultHttpContext(), CancellationToken.None),
+            [layer], "http://localhost/ogc/world/wms");
         var document = XDocument.Parse(xml);
 
         var geographic = document.Descendants(Wms + "EX_GeographicBoundingBox").Single();
@@ -97,7 +101,8 @@ public sealed class WmsCapabilitiesTests
         var layer = await services.LoadAsync(map, map.Layers[0], CancellationToken.None);
 
         var xml = await WmsCapabilities.BuildAsync(
-            map, [layer], "http://localhost/ogc/world/wms", services, new OgcOptions(), CancellationToken.None);
+            new WmsServing(map, services, new OgcOptions(), new DefaultHttpContext(), CancellationToken.None),
+            [layer], "http://localhost/ogc/world/wms");
         var document = XDocument.Parse(xml);
 
         var mercator = document.Descendants(Wms + "BoundingBox")

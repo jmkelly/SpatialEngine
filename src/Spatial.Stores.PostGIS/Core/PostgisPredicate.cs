@@ -46,9 +46,11 @@ internal static class PostgisPredicate
             return predicate;
         }
 
-        var sql = BuildFilter(description, filter, parameters);
-        return predicate is null ? sql : $"({predicate}) AND ({sql})";
+        return Join(predicate, BuildFilter(description, filter, parameters));
     }
+
+    private static string Join(string? predicate, string sql) =>
+        predicate is null ? sql : $"({predicate}) AND ({sql})";
 
     private static string BuildFilter(
         DatasetDescription description,
@@ -60,6 +62,12 @@ internal static class PostgisPredicate
             throw SpatialException.BadArguments($"The filter cannot be parsed: {parseError}");
         }
 
+        return Render(description, expression, parameters);
+    }
+
+    private static string Render(
+        DatasetDescription description, FilterExpression expression, List<object?> parameters)
+    {
         if (!PostgisFilterSql.TryBuild(expression, description.Schema, parameters, out var sql, out var buildError))
         {
             throw SpatialException.BadArguments($"The filter is not supported: {buildError}");

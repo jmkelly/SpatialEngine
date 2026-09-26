@@ -14,7 +14,14 @@ internal static class GeometryServerEndpoints
     {
         group.MapMethods("/Geometry/GeometryServer", ["GET", "POST"], (HttpContext context, CancellationToken cancellationToken) =>
             GeometryServerInfo(context, cancellationToken));
-        group.MapMethods("/Geometry/GeometryServer/{operation}", ["GET", "POST"], GeometryOperation);
+        group.MapMethods("/Geometry/GeometryServer/{operation}", ["GET", "POST"], (
+            HttpContext context, string operation, IGeometryOperations geometry, IGeometryMeasures measures,
+            IGeometryProcessing processing, IGeometryRelations relations, ICoordinateTransforms transforms,
+            ICrsDirectory catalogue, CancellationToken cancellationToken) =>
+            GeometryOperation(
+                context, operation,
+                new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms, catalogue),
+                cancellationToken));
     }
 
     private static async Task<IResult> GeometryServerInfo(HttpContext context, CancellationToken cancellationToken)
@@ -34,19 +41,13 @@ internal static class GeometryServerEndpoints
     private static async Task<IResult> GeometryOperation(
         HttpContext context,
         string operation,
-        IGeometryOperations geometry,
-        IGeometryMeasures measures,
-        IGeometryProcessing processing,
-        IGeometryRelations relations,
-        ICoordinateTransforms transforms,
-        ICrsDirectory catalogue,
+        GeometryServiceCapabilities capabilities,
         CancellationToken cancellationToken)
     {
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             EsriFormat.Ensure(parameters.Get("f"));
-            var capabilities = new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms, catalogue);
             return GeometryService.Dispatch(operation, parameters, capabilities, cancellationToken);
         }
         catch (Exception exception)

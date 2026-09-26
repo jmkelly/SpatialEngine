@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
@@ -22,28 +23,54 @@ internal static class OgcApiTiles
     private const string TileJsonRel = "http://www.opengis.net/def/rel/ogc/1.0/tilejson";
     private const string TilesRel = "http://www.opengis.net/def/rel/ogc/1.0/tiles";
 
+    /// <summary>
+    /// The seams every tiles resource needs: the map and the collection it is
+    /// addressed as, the registry that resolves it, the OGC base path, the
+    /// caller's context and its cancellation. Grouping them keeps each
+    /// resource's signature to the one thing it actually varies on.
+    /// </summary>
+    private sealed record TilesRequest(
+        string Name,
+        string CollectionId,
+        IMapRegistry Registry,
+        OgcOptions Options,
+        HttpContext Context,
+        CancellationToken CancellationToken);
+
+    /// <summary>One tile's place in the matrix set: the matrix set and the three path parts.</summary>
+    private sealed record TilePath(string MatrixSetId, string Z, string X, string Y);
+
+    private static TilesRequest Request(
+        string name,
+        string collectionId,
+        HttpContext context,
+        IMapRegistry registry,
+        OgcOptions options,
+        CancellationToken cancellationToken) =>
+        new(name, collectionId, registry, options, context, cancellationToken);
+
     public static void Map(RouteGroupBuilder group, OgcOptions options)
     {
         // The map is the collection: /ogc/{map}/tiles, not a second global
         // tile registry. The OGC root remains configurable with WMS/WFS.
         group.MapGet("/{name}/tiles", (string name, HttpContext context, IMapRegistry registry, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => LandingAsync(name, registry, options, context, token), cancellationToken));
+            Dispatch(context, logger, token => LandingAsync(Request(name, name, context, registry, options, token)), cancellationToken));
         group.MapGet("/{name}/tiles/collections", (string name, HttpContext context, IMapRegistry registry, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => CollectionsAsync(name, registry, options, context, token), cancellationToken));
+            Dispatch(context, logger, token => CollectionsAsync(Request(name, name, context, registry, options, token)), cancellationToken));
         group.MapGet("/{name}/tiles/collections/{collectionId}", (string name, string collectionId, HttpContext context, IMapRegistry registry, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => CollectionAsync(name, collectionId, registry, options, context, token), cancellationToken));
+            Dispatch(context, logger, token => CollectionAsync(Request(name, collectionId, context, registry, options, token)), cancellationToken));
         group.MapGet("/{name}/tiles/collections/{collectionId}/tiles", (string name, string collectionId, HttpContext context, IMapRegistry registry, OgcVectorTileService tiles, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => TilesResourceAsync(name, collectionId, registry, tiles, options, context, token), cancellationToken));
+            Dispatch(context, logger, token => TilesResourceAsync(Request(name, collectionId, context, registry, options, token), tiles), cancellationToken));
 
         // TileJSON is a resource of a tile matrix set. The unqualified spelling
         // is useful to clients bootstrapping from the collection landing page;
         // the matrix-set-qualified spelling is the OGC resource path.
         group.MapGet("/{name}/tiles/TileJSON", (string name, HttpContext context, IMapRegistry registry, IStoreRegistry stores, OgcVectorTileService tiles, OgcOptions options, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => TileJsonAsync(name, name, registry, stores, tiles, options, context, token), cancellationToken));
+            Dispatch(context, logger, token => TileJsonAsync(Request(name, name, context, registry, options, token), stores, tiles), cancellationToken));
         group.MapGet("/{name}/tiles/collections/{collectionId}/tiles/{matrixSetId}/TileJSON", (string name, string collectionId, string matrixSetId, HttpContext context, IMapRegistry registry, IStoreRegistry stores, OgcVectorTileService tiles, OgcOptions options, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => TileJsonAsync(name, collectionId, registry, stores, tiles, options, context, token, matrixSetId), cancellationToken));
+            Dispatch(context, logger, token => TileJsonAsync(Request(name, collectionId, context, registry, options, token), stores, tiles, matrixSetId), cancellationToken));
         group.MapGet("/{name}/tiles/{matrixSetId}/TileJSON", (string name, string matrixSetId, HttpContext context, IMapRegistry registry, IStoreRegistry stores, OgcVectorTileService tiles, OgcOptions options, ILoggerFactory logger, CancellationToken cancellationToken) =>
-            Dispatch(context, logger, token => TileJsonAsync(name, name, registry, stores, tiles, options, context, token, matrixSetId), cancellationToken));
+            Dispatch(context, logger, token => TileJsonAsync(Request(name, name, context, registry, options, token), stores, tiles, matrixSetId), cancellationToken));
 
         MapTileData(group, "pbf");
         MapTileData(group, string.Empty);
@@ -57,59 +84,58 @@ internal static class OgcApiTiles
             (string name, string collectionId, string matrixSetId, string z, string x, string y, HttpContext context,
                 IMapRegistry registry, IStoreRegistry stores, OgcVectorTileService tiles, OgcOptions options,
                 ILoggerFactory logger, CancellationToken cancellationToken) =>
-                Dispatch(context, logger, token => TileDataAsync(name, collectionId, matrixSetId, z, x, y, registry, stores, tiles, options, context, token), cancellationToken));
+                Dispatch(context, logger, token => TileDataAsync(
+                    Request(name, collectionId, context, registry, options, token), stores, tiles,
+                    new TilePath(matrixSetId, z, x, y)), cancellationToken));
     }
 
     private static Task<IResult> Dispatch(
         HttpContext context, ILoggerFactory logger, Func<CancellationToken, Task<IResult>> handler, CancellationToken cancellationToken) =>
         OgcEndpoints.Dispatch(context, logger, _ => handler(cancellationToken), cancellationToken);
 
-    private static async Task<IResult> LandingAsync(
-        string name, IMapRegistry registry, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> LandingAsync(TilesRequest request)
     {
-        RequireJson(context);
-        var map = await ResolveMapAsync(name, name, registry, cancellationToken);
-        var root = Path(options, name, "tiles");
+        RequireJson(request.Context);
+        var map = await ResolveMapAsync(request);
+        var root = Path(request.Options, request.Name, "tiles");
         return Results.Json(new
         {
             title = $"{map.Name} vector tiles",
             description = map.Description,
             links = new[]
             {
-                Link(context, "self", JsonMediaType, root),
-                Link(context, "http://www.opengis.net/def/rel/ogc/1.0/collections", JsonMediaType, root + "/collections"),
+                Link(request.Context, "self", JsonMediaType, root),
+                Link(request.Context, "http://www.opengis.net/def/rel/ogc/1.0/collections", JsonMediaType, root + "/collections"),
             },
         });
     }
 
-    private static async Task<IResult> CollectionsAsync(
-        string name, IMapRegistry registry, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> CollectionsAsync(TilesRequest request)
     {
-        RequireJson(context);
-        var map = await ResolveMapAsync(name, name, registry, cancellationToken);
-        var root = Path(options, name, "tiles", "collections");
-        var collection = Path(options, name, "tiles", "collections", map.Name);
+        RequireJson(request.Context);
+        var map = await ResolveMapAsync(request);
+        var root = Path(request.Options, request.Name, "tiles", "collections");
+        var collection = Path(request.Options, request.Name, "tiles", "collections", map.Name);
         return Results.Json(new
         {
-            links = new[] { Link(context, "self", JsonMediaType, root) },
+            links = new[] { Link(request.Context, "self", JsonMediaType, root) },
             collections = new[]
             {
                 new
                 {
                     id = map.Name,
                     title = map.Name,
-                    links = new[] { Link(context, "item", JsonMediaType, collection) },
+                    links = new[] { Link(request.Context, "item", JsonMediaType, collection) },
                 },
             },
         });
     }
 
-    private static async Task<IResult> CollectionAsync(
-        string name, string collectionId, IMapRegistry registry, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> CollectionAsync(TilesRequest request)
     {
-        RequireJson(context);
-        var map = await ResolveMapAsync(name, collectionId, registry, cancellationToken);
-        var root = Path(options, name, "tiles", "collections", map.Name);
+        RequireJson(request.Context);
+        var map = await ResolveMapAsync(request);
+        var root = Path(request.Options, request.Name, "tiles", "collections", map.Name);
         return Results.Json(new
         {
             id = map.Name,
@@ -118,43 +144,41 @@ internal static class OgcApiTiles
             extent = new { srid = 4326, world = new[] { -180.0, -90.0, 180.0, 90.0 } },
             links = new[]
             {
-                Link(context, "self", JsonMediaType, root),
-                Link(context, TilesRel, JsonMediaType, root + "/tiles"),
+                Link(request.Context, "self", JsonMediaType, root),
+                Link(request.Context, TilesRel, JsonMediaType, root + "/tiles"),
             },
         });
     }
 
-    private static async Task<IResult> TilesResourceAsync(
-        string name, string collectionId, IMapRegistry registry, OgcVectorTileService tiles, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+    private static async Task<IResult> TilesResourceAsync(TilesRequest request, OgcVectorTileService tiles)
     {
-        RequireJson(context);
-        var map = await ResolveMapAsync(name, collectionId, registry, cancellationToken);
-        var root = Path(options, name, "tiles", "collections", map.Name, "tiles");
+        RequireJson(request.Context);
+        var map = await ResolveMapAsync(request);
+        var root = Path(request.Options, request.Name, "tiles", "collections", map.Name, "tiles");
         var matrixSetId = tiles.MatrixSetId(tiles.Resolve(null));
         return Results.Json(new
         {
             links = new[]
             {
-                Link(context, "self", JsonMediaType, root),
-                Link(context, TileJsonRel, JsonMediaType, root + "/" + matrixSetId + "/TileJSON"),
+                Link(request.Context, "self", JsonMediaType, root),
+                Link(request.Context, TileJsonRel, JsonMediaType, root + "/" + matrixSetId + "/TileJSON"),
             },
         });
     }
 
     private static async Task<IResult> TileJsonAsync(
-        string name, string collectionId, IMapRegistry registry, IStoreRegistry stores, OgcVectorTileService tiles, OgcOptions options,
-        HttpContext context, CancellationToken cancellationToken, string? matrixSetId = null)
+        TilesRequest request, IStoreRegistry stores, OgcVectorTileService tiles, string? matrixSetId = null)
     {
-        RequireJson(context);
-        var map = await ResolveMapAsync(name, collectionId, registry, cancellationToken);
+        RequireJson(request.Context);
+        var map = await ResolveMapAsync(request);
         var scheme = tiles.Resolve(matrixSetId);
         var matrixSet = tiles.MatrixSetId(scheme);
-        var root = Path(options, name, "tiles", "collections", map.Name, "tiles", matrixSet);
+        var root = Path(request.Options, request.Name, "tiles", "collections", map.Name, "tiles", matrixSet);
         var vectorLayers = new List<object>();
         foreach (var layer in map.Layers.Where(layer => layer.Kind == MapLayerKind.Feature))
         {
             var store = layer.Store ?? map.Store;
-            var description = await stores.Catalogue(store).DescribeAsync(layer.Dataset, cancellationToken);
+            var description = await stores.Catalogue(store).DescribeAsync(layer.Dataset, request.CancellationToken);
             var fields = description.Schema.Fields
                 .Where(field => field.Kind.ToString() != "Geometry")
                 .ToDictionary(field => field.Name, field => field.Kind.ToString());
@@ -172,7 +196,7 @@ internal static class OgcApiTiles
             version = "1.0.0",
             attribution = map.Copyright ?? string.Empty,
             scheme = "xyz",
-            tiles = new[] { Absolute(context, root + "/{z}/{x}/{y}.pbf") },
+            tiles = new[] { Absolute(request.Context, root + "/{z}/{x}/{y}.pbf") },
             minzoom = scheme.MinZoom,
             maxzoom = scheme.MaxZoom,
             bounds,
@@ -180,23 +204,22 @@ internal static class OgcApiTiles
             vector_layers = vectorLayers,
             links = new[]
             {
-                Link(context, "self", JsonMediaType, root + "/TileJSON"),
-                Link(context, TilesRel, MvtMediaType, root + "/{z}/{x}/{y}.pbf"),
+                Link(request.Context, "self", JsonMediaType, root + "/TileJSON"),
+                Link(request.Context, TilesRel, MvtMediaType, root + "/{z}/{x}/{y}.pbf"),
             },
         });
     }
 
     private static async Task<IResult> TileDataAsync(
-        string name, string collectionId, string matrixSetId, string z, string x, string y, IMapRegistry registry,
-        IStoreRegistry stores, OgcVectorTileService tiles, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+        TilesRequest request, IStoreRegistry stores, OgcVectorTileService tiles, TilePath path)
     {
-        RequireMvt(context);
-        var zoom = ParseTilePart(z, "z");
-        var column = ParseTilePart(x, "x");
-        var row = ParseTilePart(y, "y");
-        var map = await ResolveMapAsync(name, collectionId, registry, cancellationToken);
+        RequireMvt(request.Context);
+        var zoom = ParseTilePart(path.Z, "z");
+        var column = ParseTilePart(path.X, "x");
+        var row = ParseTilePart(path.Y, "y");
+        var map = await ResolveMapAsync(request);
         var coordinate = new TileCoordinate(zoom, column, row);
-        var scheme = tiles.Resolve(matrixSetId);
+        var scheme = tiles.Resolve(path.MatrixSetId);
         if (!scheme.IsValid(coordinate))
         {
             throw SpatialException.BadArguments(
@@ -211,27 +234,27 @@ internal static class OgcApiTiles
                 stores.Features(layer.Store ?? map.Store),
                 stores.Catalogue(layer.Store ?? map.Store)))
             .ToArray();
-        var tile = await tiles.RenderAsync(layers, map, coordinate, matrixSetId, cancellationToken);
+        var tile = await tiles.RenderAsync(layers, map, coordinate, path.MatrixSetId, request.CancellationToken);
         return Results.Bytes(tile.Content, tile.MediaType);
     }
 
-    private static async Task<Map> ResolveMapAsync(string name, string collectionId, IMapRegistry registry, CancellationToken cancellationToken)
+    private static async Task<Map> ResolveMapAsync(TilesRequest request)
     {
-        if (!string.Equals(Uri.UnescapeDataString(name), Uri.UnescapeDataString(collectionId), StringComparison.Ordinal))
+        if (!string.Equals(Uri.UnescapeDataString(request.Name), Uri.UnescapeDataString(request.CollectionId), StringComparison.Ordinal))
         {
-            throw OgcServiceException.NotDefined($"Tiles collection '{collectionId}' was not found.");
+            throw OgcServiceException.NotDefined($"Tiles collection '{request.CollectionId}' was not found.");
         }
 
         try
         {
-            var map = await registry.GetAsync(Uri.UnescapeDataString(name), cancellationToken);
+            var map = await request.Registry.GetAsync(Uri.UnescapeDataString(request.Name), request.CancellationToken);
             return map.Exposes(MapServiceKind.Tiles)
                 ? map
-                : throw OgcServiceException.NotDefined($"Tiles service '{name}' was not found.");
+                : throw OgcServiceException.NotDefined($"Tiles service '{request.Name}' was not found.");
         }
         catch (SpatialException exception) when (exception.Code == SpatialException.NotFound)
         {
-            throw OgcServiceException.NotDefined($"Tiles service '{name}' was not found.");
+            throw OgcServiceException.NotDefined($"Tiles service '{request.Name}' was not found.");
         }
     }
 
@@ -255,15 +278,23 @@ internal static class OgcApiTiles
     private static string Absolute(HttpContext context, string path) =>
         $"{context.Request.Scheme}://{context.Request.Host}{context.Request.PathBase}/{path.TrimStart('/')}";
 
+    /// <summary>The media types that satisfy the JSON content negotiation, wildcards included.</summary>
+    private static readonly string[] JsonMediaTypes = ["application/json", "application/geo+json", "*/*"];
+
     private static void RequireJson(HttpContext context)
     {
-        if (context.Request.Headers.Accept.Count != 0 && !context.Request.Headers.Accept.Any(value => value?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true
-            || value?.Contains("application/geo+json", StringComparison.OrdinalIgnoreCase) == true
-            || value?.Contains("*/*", StringComparison.Ordinal) == true))
+        if (!Allows(context.Request.Headers.Accept, IsJsonMediaType))
         {
             throw OgcServiceException.InvalidFormat("The OGC API Tiles resource requires application/json content negotiation.");
         }
     }
+
+    /// <summary>An absent Accept header allows anything; otherwise one entry must match the predicate.</summary>
+    private static bool Allows(StringValues accept, Func<string?, bool> isAllowed) =>
+        accept.Count == 0 || accept.Any(value => isAllowed(value));
+
+    private static bool IsJsonMediaType(string? value) =>
+        JsonMediaTypes.Any(mediaType => value?.Contains(mediaType, StringComparison.OrdinalIgnoreCase) == true);
 
     private static void RequireMvt(HttpContext context)
     {

@@ -41,7 +41,7 @@ internal static class CsvIngest
         var set = new RawFeatureSet();
         for (var row = 1; row < records.Count; row++)
         {
-            Add(set, header, records[row], xIndex, yIndex, crs, options);
+            Add(set, new CsvRow(header, records[row], xIndex, yIndex, crs), options);
         }
 
         return set;
@@ -75,15 +75,17 @@ internal static class CsvIngest
             "The CSV document has no recognised geometry columns; supply XField and YField (for example x and y, or lon and lat).");
     }
 
-    private static void Add(
-        RawFeatureSet set,
-        List<string> header,
-        List<string> record,
-        int xIndex,
-        int yIndex,
-        CoordinateReference crs,
-        DecodeOptions options)
+    /// <summary>One CSV record against its header: the values and the geometry columns they decode from.</summary>
+    private sealed record CsvRow(
+        List<string> Header,
+        List<string> Record,
+        int XIndex,
+        int YIndex,
+        CoordinateReference Crs);
+
+    private static void Add(RawFeatureSet set, CsvRow row, DecodeOptions options)
     {
+        var (header, record, xIndex, yIndex, crs) = row;
         if (record.Count != header.Count)
         {
             throw new IngestFormatException(

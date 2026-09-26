@@ -5,11 +5,11 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
-/// The MapServer render bridge's parameter parsing (spec §4.0.4/§4.1,
+/// The MapServer image-render request grammar (spec §4.0.4/§4.1,
 /// ADR-0048): the <c>layerDefs</c> safe-filter grammar plus the format, bbox,
 /// size and dpi parameters. Client text is re-rendered, never passed through.
 /// </summary>
-public sealed class MapRenderEngineTests
+public sealed class MapRenderParametersTests
 {
     [Theory]
     [InlineData(null)]
@@ -17,7 +17,7 @@ public sealed class MapRenderEngineTests
     [InlineData("   ")]
     public void ParseLayerDefs_returns_null_without_input(string? value)
     {
-        Assert.Null(MapRenderEngine.ParseLayerDefs(value));
+        Assert.Null(MapRenderParameters.ParseLayerDefs(value));
     }
 
     [Theory]
@@ -26,21 +26,21 @@ public sealed class MapRenderEngineTests
     [InlineData("\"text\"")]
     public void ParseLayerDefs_rejects_non_object_json(string value)
     {
-        var failure = Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseLayerDefs(value));
+        var failure = Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseLayerDefs(value));
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }
 
     [Fact]
     public void ParseLayerDefs_rejects_non_integer_layer_names()
     {
-        var failure = Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseLayerDefs("""{"roads":"name = 'x'"}"""));
+        var failure = Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseLayerDefs("""{"roads":"name = 'x'"}"""));
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }
 
     [Fact]
     public void ParseLayerDefs_rejects_unsupported_clauses()
     {
-        var failure = Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseLayerDefs("""{"0":"name = "}"""));
+        var failure = Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseLayerDefs("""{"0":"name = "}"""));
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }
 
@@ -51,13 +51,13 @@ public sealed class MapRenderEngineTests
     [InlineData("""{"0":null}""")]
     public void ParseLayerDefs_skips_blank_or_non_string_clauses(string value)
     {
-        Assert.Null(MapRenderEngine.ParseLayerDefs(value));
+        Assert.Null(MapRenderParameters.ParseLayerDefs(value));
     }
 
     [Fact]
     public void ParseLayerDefs_parses_and_rerenders_each_clause()
     {
-        var defs = MapRenderEngine.ParseLayerDefs("""{"0":"name = 'x'","2":"population >= 5","7":""}""");
+        var defs = MapRenderParameters.ParseLayerDefs("""{"0":"name = 'x'","2":"population >= 5","7":""}""");
 
         Assert.NotNull(defs);
         Assert.Equal(2, defs.Count);
@@ -77,30 +77,30 @@ public sealed class MapRenderEngineTests
     [InlineData("TIFF", RasterFormat.Tiff)]
     public void ParseFormat_accepts_the_supported_containers(string? value, RasterFormat expected)
     {
-        Assert.Equal(expected, MapRenderEngine.ParseFormat(value));
+        Assert.Equal(expected, MapRenderParameters.ParseFormat(value));
     }
 
     [Fact]
     public void ParseFormat_rejects_unknown_containers()
     {
-        Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseFormat("bmp"));
+        Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseFormat("bmp"));
     }
 
     [Fact]
     public void ParseBbox_reads_four_numbers_and_requires_them()
     {
-        Assert.Equal(new Envelope(1, 2, 3, 4), MapRenderEngine.ParseBbox("1,2,3,4"));
-        Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseBbox(null));
-        Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseBbox("1,2,3"));
+        Assert.Equal(new Envelope(1, 2, 3, 4), MapRenderParameters.ParseBbox("1,2,3,4"));
+        Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseBbox(null));
+        Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseBbox("1,2,3"));
     }
 
     [Fact]
     public void ParseSize_reads_positive_dimensions()
     {
-        Assert.Equal((10, 20), MapRenderEngine.ParseSize("10,20"));
-        Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseSize(null));
-        Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseSize("10"));
-        Assert.Throws<EsriInteropException>(() => MapRenderEngine.ParseSize("0,20"));
+        Assert.Equal((10, 20), MapRenderParameters.ParseSize("10,20"));
+        Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseSize(null));
+        Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseSize("10"));
+        Assert.Throws<EsriInteropException>(() => MapRenderParameters.ParseSize("0,20"));
     }
 
     [Theory]
@@ -112,6 +112,6 @@ public sealed class MapRenderEngineTests
     [InlineData("150", 150)]
     public void Dpi_defaults_to_96(string? value, double expected)
     {
-        Assert.Equal(expected, MapRenderEngine.Dpi(value));
+        Assert.Equal(expected, MapRenderParameters.Dpi(value));
     }
 }

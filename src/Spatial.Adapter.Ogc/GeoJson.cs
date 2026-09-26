@@ -94,32 +94,44 @@ internal static class GeoJson
         {
             writer.WriteStartObject();
             writer.WriteString("type", "FeatureCollection");
-            if (numberMatched.HasValue)
-            {
-                writer.WriteNumber("numberMatched", numberMatched.Value);
-            }
-
-            if (numberReturned.HasValue)
-            {
-                writer.WriteNumber("numberReturned", numberReturned.Value);
-            }
-
-            if (next is not null)
-            {
-                writer.WriteString("next", next);
-            }
-
-            writer.WriteStartArray("features");
-            foreach (var (id, dataset, feature) in features)
-            {
-                WriteFeature(writer, id, dataset, feature);
-            }
-
-            writer.WriteEndArray();
+            WritePagingEnvelope(writer, numberMatched, numberReturned, next);
+            WriteFeatures(writer, features);
             writer.WriteEndObject();
         }
 
         return stream.ToArray();
+    }
+
+    /// <summary>Writes the WFS paging envelope; absent values are omitted entirely.</summary>
+    private static void WritePagingEnvelope(Utf8JsonWriter writer, int? numberMatched, int? numberReturned, string? next)
+    {
+        if (numberMatched.HasValue)
+        {
+            writer.WriteNumber("numberMatched", numberMatched.Value);
+        }
+
+        if (numberReturned.HasValue)
+        {
+            writer.WriteNumber("numberReturned", numberReturned.Value);
+        }
+
+        if (next is not null)
+        {
+            writer.WriteString("next", next);
+        }
+    }
+
+    /// <summary>Writes the <c>features</c> array in collection order.</summary>
+    private static void WriteFeatures(
+        Utf8JsonWriter writer, IReadOnlyList<(string Id, DatasetDescription Dataset, Feature Feature)> features)
+    {
+        writer.WriteStartArray("features");
+        foreach (var (id, dataset, feature) in features)
+        {
+            WriteFeature(writer, id, dataset, feature);
+        }
+
+        writer.WriteEndArray();
     }
 
     /// <summary>Writes one core geometry as a GeoJSON geometry object.</summary>

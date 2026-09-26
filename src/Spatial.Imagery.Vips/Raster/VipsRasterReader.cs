@@ -28,22 +28,22 @@ internal static class VipsRasterReader
         }
     }
 
+    /// <summary>Where a raster sits on the ground: its footprint, CRS and pixel size.</summary>
+    public sealed record RasterPlacement(Envelope Extent, string Crs, double PixelSizeX, double PixelSizeY);
+
     public static RasterInfo ReadInfo(
         string path,
-        Envelope extent,
-        string crs,
-        double pixelSizeX,
-        double pixelSizeY,
+        RasterPlacement placement,
         IReadOnlyList<RasterBandStatistics>? statistics,
         RasterAttributeTable? attributeTable = null)
     {
         using var image = VipsRasterFiles.Open(path);
         var levels = VipsRasterStructure.PyramidLevels(image);
         return new RasterInfo(
-            extent,
-            crs,
-            pixelSizeX,
-            pixelSizeY,
+            placement.Extent,
+            placement.Crs,
+            placement.PixelSizeX,
+            placement.PixelSizeY,
             image.Width,
             image.Height,
             image.Bands,
@@ -159,11 +159,11 @@ internal static class VipsRasterReader
     }
 
     public static double[] Sample(
-        string path, Envelope extent, double pixelSizeX, double pixelSizeY, double x, double y, CancellationToken cancellationToken)
+        string path, RasterPlacement placement, double x, double y, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var image = VipsRasterFiles.Open(path);
-        var (px, py) = RasterEnvelopes.Pixel(extent, pixelSizeX, pixelSizeY, x, y);
+        var (px, py) = RasterEnvelopes.Pixel(placement.Extent, placement.PixelSizeX, placement.PixelSizeY, x, y);
         return px >= 0 && py >= 0 && px < image.Width && py < image.Height ? image.Getpoint(px, py) : [];
     }
 }

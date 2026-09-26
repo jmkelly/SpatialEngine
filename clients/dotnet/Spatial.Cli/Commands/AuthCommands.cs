@@ -10,15 +10,19 @@ public static class AuthCommands
         new("auth", "logout", "Revoke the cached bearer", "", []),
     ];
 
+    /// <summary>The verb-to-handler table; an unlisted verb is a usage error.</summary>
+    private static readonly Dictionary<string, Func<CliContext, Task<int>>> Handlers = new(StringComparer.Ordinal)
+    {
+        ["login"] = LoginAsync,
+        ["logout"] = LogoutAsync,
+    };
+
     public static Task<int> RunAsync(CliContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return context.Verb switch
-        {
-            "login" => LoginAsync(context),
-            "logout" => LogoutAsync(context),
-            _ => throw new CliUsageException($"Unknown auth command '{context.Verb}'."),
-        };
+        return Handlers.TryGetValue(context.Verb, out var handler)
+            ? handler(context)
+            : throw new CliUsageException($"Unknown auth command '{context.Verb}'.");
     }
 
     private static async Task<int> LoginAsync(CliContext context)

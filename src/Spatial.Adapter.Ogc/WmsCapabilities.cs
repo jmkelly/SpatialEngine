@@ -18,28 +18,27 @@ namespace Spatial.Adapter.Ogc;
 internal static class WmsCapabilities
 {
     public static async Task<string> BuildAsync(
-        Map map, IReadOnlyList<OgcLayer> layers, string baseUrl, OgcRequestServices services, OgcOptions options, CancellationToken cancellationToken, string version = "1.3.0")
+        WmsServing serving, IReadOnlyList<OgcLayer> layers, string baseUrl, string version = "1.3.0")
     {
         if (version.StartsWith("1.1", StringComparison.Ordinal))
         {
-            return await Build111Async(map, layers, baseUrl, services, options, cancellationToken);
+            return await Build111Async(serving, layers, baseUrl);
         }
 
-        return await Build130Async(map, layers, baseUrl, services, options, cancellationToken);
+        return await Build130Async(serving, layers, baseUrl);
     }
 
-    private static async Task<string> Build130Async(
-        Map map, IReadOnlyList<OgcLayer> layers, string baseUrl, OgcRequestServices services, OgcOptions options, CancellationToken cancellationToken)
+    private static async Task<string> Build130Async(WmsServing serving, IReadOnlyList<OgcLayer> layers, string baseUrl)
     {
         var rootLayer = new XElement(
             OgcXml.Wms + "Layer",
-            new XElement(OgcXml.Wms + "Title", map.Name),
+            new XElement(OgcXml.Wms + "Title", serving.Map.Name),
             CrsElement("EPSG:4326"),
             CrsElement("CRS:84"),
             CrsElement("EPSG:3857"));
         foreach (var layer in layers)
         {
-            rootLayer.Add(await LayerAsync(layer, baseUrl, services, cancellationToken));
+            rootLayer.Add(await LayerAsync(layer, baseUrl, serving));
         }
 
         var document = new XDocument(
@@ -52,7 +51,7 @@ internal static class WmsCapabilities
                 new XAttribute(
                     XName.Get("schemaLocation", "http://www.w3.org/2001/XMLSchema-instance"),
                     "http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd"),
-                Service(options, baseUrl),
+                Service(serving.Options, baseUrl),
                 new XElement(
                     OgcXml.Wms + "Capability",
                     Request(baseUrl),
@@ -68,7 +67,7 @@ internal static class WmsCapabilities
         return OgcXml.Write(document);
     }
 
-    private static async Task<XElement> LayerAsync(OgcLayer layer, string baseUrl, OgcRequestServices services, CancellationToken cancellationToken)
+    private static async Task<XElement> LayerAsync(OgcLayer layer, string baseUrl, WmsServing serving)
     {
         var element = new XElement(
             OgcXml.Wms + "Layer",
@@ -90,12 +89,13 @@ internal static class WmsCapabilities
                     new XElement(
                         OgcXml.Wms + "OnlineResource",
                         new XAttribute(OgcXml.Xlink + "href", LegendUrl(baseUrl, layer.Name))))));
-        var extent = await OgcGeometry.ExtentAsync(services.Features(layer.Store), layer.Layer.Dataset, cancellationToken);
+        var extent = await OgcGeometry.ExtentAsync(
+            serving.Services.Features(layer.Store), layer.Layer.Dataset, serving.CancellationToken);
         if (extent is { } bounds)
         {
             var source = $"EPSG:{layer.Description.Srid.ToString(CultureInfo.InvariantCulture)}";
-            var wgs84 = OgcGeometry.Transform(bounds, source, "EPSG:4326", services.Transforms, cancellationToken);
-            var mercator = OgcGeometry.ToWebMercator(wgs84, services.Transforms, cancellationToken);
+            var wgs84 = OgcGeometry.Transform(bounds, source, "EPSG:4326", serving.Services.Transforms, serving.CancellationToken);
+            var mercator = OgcGeometry.ToWebMercator(wgs84, serving.Services.Transforms, serving.CancellationToken);
             element.Add(GeographicBoundingBox(wgs84));
             element.Add(BoundingBox("EPSG:4326", wgs84, yFirst: true));
             element.Add(BoundingBox("CRS:84", wgs84, yFirst: false));
@@ -176,17 +176,16 @@ internal static class WmsCapabilities
     /// content (one default style with its LegendURL) matches the 1.3.0
     /// dialect.
     /// </summary>
-    private static async Task<string> Build111Async(
-        Map map, IReadOnlyList<OgcLayer> layers, string baseUrl, OgcRequestServices services, OgcOptions options, CancellationToken cancellationToken)
+    private static async Task<string> Build111Async(WmsServing serving, IReadOnlyList<OgcLayer> layers, string baseUrl)
     {
         var rootLayer = new XElement(
             "Layer",
-            new XElement("Title", map.Name),
+            new XElement("Title", serving.Map.Name),
             SrsElement("EPSG:4326"),
             SrsElement("EPSG:3857"));
         foreach (var layer in layers)
         {
-            rootLayer.Add(await Layer111Async(layer, baseUrl, services, cancellationToken));
+            rootLayer.Add(await Layer111Async(layer, baseUrl, serving));
         }
 
         var document = new XDocument(
@@ -199,7 +198,7 @@ internal static class WmsCapabilities
             new XElement(
                 "WMS_Capabilities",
                 new XAttribute("version", "1.1.1"),
-                Service111(options, baseUrl),
+                Service111(serving.Options, baseUrl),
                 new XElement(
                     "Capability",
                     Request111(baseUrl),
@@ -212,7 +211,7 @@ internal static class WmsCapabilities
         return OgcXml.Write(document);
     }
 
-    private static async Task<XElement> Layer111Async(OgcLayer layer, string baseUrl, OgcRequestServices services, CancellationToken cancellationToken)
+    private static async Task<XElement> Layer111Async(OgcLayer layer, string baseUrl, WmsServing serving)
     {
         var element = new XElement(
             "Layer",
@@ -231,12 +230,13 @@ internal static class WmsCapabilities
                     new XAttribute("height", WmsService.LegendHeight),
                     new XElement("Format", "image/png"),
                     OnlineResource111(LegendUrl(baseUrl, layer.Name)))));
-        var extent = await OgcGeometry.ExtentAsync(services.Features(layer.Store), layer.Layer.Dataset, cancellationToken);
+        var extent = await OgcGeometry.ExtentAsync(
+            serving.Services.Features(layer.Store), layer.Layer.Dataset, serving.CancellationToken);
         if (extent is { } bounds)
         {
             var source = $"EPSG:{layer.Description.Srid.ToString(CultureInfo.InvariantCulture)}";
-            var wgs84 = OgcGeometry.Transform(bounds, source, "EPSG:4326", services.Transforms, cancellationToken);
-            var mercator = OgcGeometry.ToWebMercator(wgs84, services.Transforms, cancellationToken);
+            var wgs84 = OgcGeometry.Transform(bounds, source, "EPSG:4326", serving.Services.Transforms, serving.CancellationToken);
+            var mercator = OgcGeometry.ToWebMercator(wgs84, serving.Services.Transforms, serving.CancellationToken);
             element.Add(LatLonBoundingBox(wgs84));
             element.Add(BoundingBox111("EPSG:4326", wgs84));
             element.Add(BoundingBox111("EPSG:3857", mercator));

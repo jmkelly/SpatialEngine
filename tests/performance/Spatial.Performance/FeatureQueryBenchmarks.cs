@@ -38,23 +38,29 @@ public class FeatureQueryBenchmarks
         const int batch = 500;
         for (var offset = 0; offset < total; offset += batch)
         {
-            var features = new List<Feature>(batch);
-            for (var i = offset; i < offset + batch; i++)
-            {
-                var x = (i % 100) * 0.1;
-                var y = (i / 100) * 0.1;
-                features.Add(new Feature(
-                    new FeatureId($"place-{i}"),
-                    Schema,
-                    [
-                        AttributeValue.FromString($"Place {i}"),
-                        AttributeValue.FromInt64(i),
-                        AttributeValue.FromGeometry(GeometryFactory.CreatePoint(x, y, CoordinateReference.Epsg(4326))),
-                    ]));
-            }
-
-            await _store.WriteAsync(Dataset, new FeatureBatch(Schema, features));
+            await _store.WriteAsync(Dataset, new FeatureBatch(Schema, Batch(offset, Math.Min(offset + batch, total))));
         }
+    }
+
+    /// <summary>The <c>[offset, end)</c> slice of the generated point grid.</summary>
+    private static Feature[] Batch(int offset, int end)
+    {
+        var features = new Feature[end - offset];
+        for (var i = offset; i < end; i++)
+        {
+            var x = (i % 100) * 0.1;
+            var y = (i / 100) * 0.1;
+            features[i - offset] = new Feature(
+                new FeatureId($"place-{i}"),
+                Schema,
+                [
+                    AttributeValue.FromString($"Place {i}"),
+                    AttributeValue.FromInt64(i),
+                    AttributeValue.FromGeometry(GeometryFactory.CreatePoint(x, y, CoordinateReference.Epsg(4326))),
+                ]);
+        }
+
+        return features;
     }
 
     [Benchmark(Description = "MemoryStore scan (2k points)")]

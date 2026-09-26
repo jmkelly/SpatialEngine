@@ -21,14 +21,14 @@ public sealed class QualityLoopPassTests
     [InlineData("bogus", new int[0])]
     [InlineData("", new int[0])]
     public void RequestedIds_parses_selection_grammar(string selection, int[] expected) =>
-        Assert.Equal(expected, MapServerEndpoints.RequestedIds(selection));
+        Assert.Equal(expected, MapServerLegendEndpoints.RequestedIds(selection));
 
     [Fact]
     public void RequestedIds_is_case_insensitive_on_prefixes_and_keywords()
     {
-        Assert.Equal([3], MapServerEndpoints.RequestedIds("SHOW:3"));
-        Assert.Empty(MapServerEndpoints.RequestedIds("HIDE:3"));
-        Assert.Empty(MapServerEndpoints.RequestedIds("ALL"));
+        Assert.Equal([3], MapServerLegendEndpoints.RequestedIds("SHOW:3"));
+        Assert.Empty(MapServerLegendEndpoints.RequestedIds("HIDE:3"));
+        Assert.Empty(MapServerLegendEndpoints.RequestedIds("ALL"));
     }
 
     [Theory]
@@ -56,33 +56,33 @@ public sealed class QualityLoopPassTests
     [Fact]
     public void RoundGeometry_rounds_points_lines_polygons_and_collections()
     {
-        var point = (Point)FeatureProjection.RoundGeometry(GeometryFactory.CreatePoint(1.23456, 2.34567), 2);
+        var point = (Point)GeometryRounding.Round(GeometryFactory.CreatePoint(1.23456, 2.34567), 2);
         Assert.Equal(1.23, point.Coordinate!.Value.X, 9);
         Assert.Equal(2.35, point.Coordinate!.Value.Y, 9);
 
-        var line = (LineString)FeatureProjection.RoundGeometry(
+        var line = (LineString)GeometryRounding.Round(
             GeometryFactory.CreateLineString([new Coordinate(1.234, 2.345), new Coordinate(3.456, 4.567)]), 1);
         Assert.Equal(1.2, line.Sequence.GetCoordinate(0).X, 9);
 
-        var polygon = (Polygon)FeatureProjection.RoundGeometry(
+        var polygon = (Polygon)GeometryRounding.Round(
             GeometryFactory.CreatePolygon([new Coordinate(0, 0), new Coordinate(1.234, 0), new Coordinate(0, 1.234), new Coordinate(0, 0)]), 1);
         Assert.Equal(1.2, polygon.ExteriorRing.Sequence.GetCoordinate(1).X, 9);
 
-        var multi = (MultiPoint)FeatureProjection.RoundGeometry(
+        var multi = (MultiPoint)GeometryRounding.Round(
             GeometryFactory.CreateMultiPoint([GeometryFactory.CreatePoint(1.26, 2.24)], null), 1);
         Assert.Equal(1.3, multi.Points[0].Coordinate!.Value.X, 9);
 
-        var lines = (MultiLineString)FeatureProjection.RoundGeometry(
+        var lines = (MultiLineString)GeometryRounding.Round(
             GeometryFactory.CreateMultiLineString(
                 [GeometryFactory.CreateLineString([new Coordinate(1.26, 1), new Coordinate(2, 2)])], null), 1);
         Assert.Equal(1.3, lines.LineStrings[0].Sequence.GetCoordinate(0).X, 9);
 
-        var polys = (MultiPolygon)FeatureProjection.RoundGeometry(
+        var polys = (MultiPolygon)GeometryRounding.Round(
             GeometryFactory.CreateMultiPolygon(
                 [GeometryFactory.CreatePolygon([new Coordinate(0, 0), new Coordinate(1.26, 0), new Coordinate(0, 1), new Coordinate(0, 0)])], null), 1);
         Assert.Equal(1.3, polys.Polygons[0].ExteriorRing.Sequence.GetCoordinate(1).X, 9);
 
-        var collection = (GeometryCollection)FeatureProjection.RoundGeometry(
+        var collection = (GeometryCollection)GeometryRounding.Round(
             GeometryFactory.CreateGeometryCollection([GeometryFactory.CreatePoint(1.26, 1)], null), 1);
         Assert.Equal(1.3, ((Point)collection.Geometries[0]).Coordinate!.Value.X, 9);
     }

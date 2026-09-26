@@ -25,28 +25,34 @@ internal static class PostgisWriteOperations
     /// leaves rather than on the editing face (ADR-0040).
     /// </summary>
     public static (string Sql, object?[] Values) PlanFeature(
-        PostgisDatasetName name, DatasetDescription description, Feature feature, bool update)
-    {
-        if (update)
-        {
-            var kinds = description.IdColumns
-                .Select(column => description.Schema[description.Schema.IndexOf(column)].Kind)
-                .ToArray();
-            var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid)
-                .Concat(PostgisDiagnostics.ParseFeatureIdentity(kinds, feature.Id))
-                .ToArray();
-            return (
-                PostgisQueries.Update(name, description.Schema, description.Srid, description.IdColumns),
-                values);
-        }
+        PostgisDatasetName name, DatasetDescription description, Feature feature, bool update) =>
+        update
+            ? PlanUpdate(name, description, feature)
+            : PlanAdd(name, description, feature);
 
-        if (!feature.Id.Equals(FeatureId.Unassigned))
-        {
-            return (
+    private static (string Sql, object?[] Values) PlanUpdate(
+        PostgisDatasetName name, DatasetDescription description, Feature feature)
+    {
+        var kinds = PostgisIdentity.Kinds(description);
+        var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid)
+            .Concat(PostgisDiagnostics.ParseFeatureIdentity(kinds, feature.Id))
+            .ToArray();
+        return (
+            PostgisQueries.Update(name, description.Schema, description.Srid, description.IdColumns),
+            values);
+    }
+
+    private static (string Sql, object?[] Values) PlanAdd(
+        PostgisDatasetName name, DatasetDescription description, Feature feature) =>
+        feature.Id.Equals(FeatureId.Unassigned)
+            ? PlanAddWithoutIdentity(name, description, feature)
+            : (
                 PostgisQueries.InsertReturning(name, description.Schema, description.Srid, description.IdColumns),
                 PostgisRowMapper.Parameters(description.Schema, feature, description.Srid));
-        }
 
+    private static (string Sql, object?[] Values) PlanAddWithoutIdentity(
+        PostgisDatasetName name, DatasetDescription description, Feature feature)
+    {
         var indexes = Enumerable.Range(0, description.Schema.Count)
             .Where(index => !description.IdColumns.Contains(description.Schema[index].Name, StringComparer.Ordinal))
             .ToArray();
@@ -61,18 +67,28 @@ internal static class PostgisWriteOperations
     {
         foreach (var field in batch.Schema.Fields)
         {
-            var index = description.Schema.IndexOf(field.Name);
-            if (index < 0)
-            {
-                throw SpatialException.BadArguments(
-                    $"The batch field '{field.Name}' is not a column of dataset '{description.Id}'.");
-            }
+            RequireWritableField(description, field);
+        }
+    }
 
-            if (description.Schema[index].Kind != field.Kind)
-            {
-                throw SpatialException.BadArguments(
-                    $"The batch field '{field.Name}' is {field.Kind} but the dataset column is {description.Schema[index].Kind}.");
-            }
+    private static void RequireWritableField(DatasetDescription description, FieldDefinition field)
+    {
+        var index = description.Schema.IndexOf(field.Name);
+        if (index < 0)
+        {
+            throw SpatialException.BadArguments(
+                $"The batch field '{field.Name}' is not a column of dataset '{description.Id}'.");
+        }
+
+        RequireMatchingKind(description, field, index);
+    }
+
+    private static void RequireMatchingKind(DatasetDescription description, FieldDefinition field, int index)
+    {
+        if (description.Schema[index].Kind != field.Kind)
+        {
+            throw SpatialException.BadArguments(
+                $"The batch field '{field.Name}' is {field.Kind} but the dataset column is {description.Schema[index].Kind}.");
         }
     }
 
@@ -85,19 +101,29 @@ internal static class PostgisWriteOperations
         var count = 0;
         foreach (var feature in batch.Features)
         {
-            var values = PostgisRowMapper.Parameters(batch.Schema, feature, description.Srid);
-            await using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = sql;
-            for (var i = 0; i < values.Length; i++)
-            {
-                command.Parameters.AddWithValue($"p{i}", values[i] ?? DBNull.Value);
-            }
-
-            await command.ExecuteNonQueryAsync(token);
-            count++;
+            count += await WriteOneAsync(
+                connection, transaction, new RowWrite(sql, feature, batch.Schema, description.Srid), token);
         }
 
         return count;
+    }
+
+    /// <summary>One row write: the statement to run, the feature and the schema that shapes its parameters.</summary>
+    private sealed record RowWrite(string Sql, Feature Feature, FeatureSchema Schema, int Srid);
+
+    private static async Task<int> WriteOneAsync(
+        NpgsqlConnection connection, NpgsqlTransaction transaction, RowWrite row, CancellationToken token)
+    {
+        var values = PostgisRowMapper.Parameters(row.Schema, row.Feature, row.Srid);
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = row.Sql;
+        for (var i = 0; i < values.Length; i++)
+        {
+            command.Parameters.AddWithValue($"p{i}", values[i] ?? DBNull.Value);
+        }
+
+        await command.ExecuteNonQueryAsync(token);
+        return 1;
     }
 }

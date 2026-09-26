@@ -15,57 +15,36 @@ public static class BaselineStore
 
     public const string RawResultsDirectoryName = "raw";
 
+    /// <summary>The solution file that marks the repository root.</summary>
+    private const string RootMarker = "SpatialEngine.slnx";
+
     /// <summary>Bench directory: <c>SPATIAL_BENCH_DIR</c>, else <c>&lt;repo&gt;/artifacts/bench</c>. A relative configured value resolves against the repository root, since the testhost CWD is the test binaries directory while the shell steps run from the root.</summary>
-    public static string FindBenchDirectory()
-    {
-        var configured = Environment.GetEnvironmentVariable("SPATIAL_BENCH_DIR");
-        if (!string.IsNullOrWhiteSpace(configured))
-        {
-            var trimmed = configured.Trim();
-            if (Path.IsPathRooted(trimmed))
-            {
-                return trimmed;
-            }
-
-            return Path.GetFullPath(Path.Combine(FindRepositoryRoot(), trimmed));
-        }
-
-        return Path.Combine(FindRepositoryRoot(), "artifacts", "bench");
-    }
+    public static string FindBenchDirectory() =>
+        Resolve(Environment.GetEnvironmentVariable("SPATIAL_BENCH_DIR"), ["artifacts", "bench"]);
 
     /// <summary>Committed budgets file: <c>SPATIAL_BENCH_BUDGETS</c>, else <c>&lt;repo&gt;/tests/performance/bench-budgets.json</c>. Relative values resolve against the repository root, matching <see cref="FindBenchDirectory"/>.</summary>
-    public static string FindBudgetsFile()
-    {
-        var configured = Environment.GetEnvironmentVariable("SPATIAL_BENCH_BUDGETS");
-        if (!string.IsNullOrWhiteSpace(configured))
-        {
-            var trimmed = configured.Trim();
-            if (Path.IsPathRooted(trimmed))
-            {
-                return trimmed;
-            }
+    public static string FindBudgetsFile() =>
+        Resolve(Environment.GetEnvironmentVariable("SPATIAL_BENCH_BUDGETS"), ["tests", "performance", "bench-budgets.json"]);
 
-            return Path.GetFullPath(Path.Combine(FindRepositoryRoot(), trimmed));
-        }
+    /// <summary>The configured value, resolved against the repository root when relative; else the default segments under it.</summary>
+    private static string Resolve(string? configured, string[] fallback) =>
+        string.IsNullOrWhiteSpace(configured)
+            ? Path.Combine([FindRepositoryRoot(), .. fallback])
+            : Absolute(configured.Trim(), FindRepositoryRoot());
 
-        return Path.Combine(FindRepositoryRoot(), "tests", "performance", "bench-budgets.json");
-    }
+    private static string Absolute(string configured, string repositoryRoot) =>
+        Path.IsPathRooted(configured) ? configured : Path.GetFullPath(Path.Combine(repositoryRoot, configured));
 
-    public static string FindRepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "SpatialEngine.slnx")))
-            {
-                return directory.FullName;
-            }
+    public static string FindRepositoryRoot() =>
+        MarkedRoot(new DirectoryInfo(AppContext.BaseDirectory))
+        ?? throw new InvalidOperationException($"cannot locate the repository root (no {RootMarker} above the test binaries).");
 
-            directory = directory.Parent;
-        }
+    /// <summary>Walks up from <paramref name="directory"/> to the first directory holding the solution file.</summary>
+    private static string? MarkedRoot(DirectoryInfo? directory) =>
+        IsRoot(directory) ? directory!.FullName : MarkedRoot(directory?.Parent);
 
-        throw new InvalidOperationException("cannot locate the repository root (no SpatialEngine.slnx above the test binaries).");
-    }
+    private static bool IsRoot(DirectoryInfo? directory) =>
+        directory is not null && File.Exists(Path.Combine(directory.FullName, RootMarker));
 
     /// <summary>Loads a canonical <c>{version, benches: {name: {meanNs, allocatedBytes}}}</c> file.</summary>
     public static Dictionary<string, BenchSample> LoadSamples(string path)
@@ -98,22 +77,13 @@ public static class BaselineStore
         }
     }
 
-    private static bool TryGetBenches(JsonElement root, out JsonElement benches)
-    {
-        benches = default;
-        if (root.TryGetProperty("benches", out var found) && found.ValueKind == JsonValueKind.Object)
-        {
-            benches = found;
-            return true;
-        }
-
-        return false;
-    }
+    private static bool TryGetBenches(JsonElement root, out JsonElement benches) =>
+        TryProperty(root, "benches", out benches) && IsObject(benches);
 
     private static bool TryReadSample(JsonProperty bench, out BenchSample sample)
     {
         sample = default!;
-        if (!TryGetNumber(bench.Value, "meanNs", out var mean))
+        if (!TryNumber(bench.Value, "meanNs", out var mean))
         {
             return false;
         }
@@ -122,26 +92,18 @@ public static class BaselineStore
         return true;
     }
 
-    private static double ReadNumber(JsonElement value, string propertyName)
-    {
-        if (!TryGetNumber(value, propertyName, out var number))
-        {
-            return 0;
-        }
+    private static double ReadNumber(JsonElement value, string propertyName) =>
+        TryNumber(value, propertyName, out var number) ? number.GetDouble() : 0;
 
-        return number.GetDouble();
-    }
+    private static bool TryNumber(JsonElement value, string propertyName, out JsonElement number) =>
+        TryProperty(value, propertyName, out number) && IsNumber(number);
 
-    private static bool TryGetNumber(JsonElement value, string propertyName, out JsonElement number)
-    {
-        if (value.TryGetProperty(propertyName, out number) && number.ValueKind == JsonValueKind.Number)
-        {
-            return true;
-        }
+    private static bool TryProperty(JsonElement value, string propertyName, out JsonElement property) =>
+        value.TryGetProperty(propertyName, out property);
 
-        number = default;
-        return false;
-    }
+    private static bool IsNumber(JsonElement value) => value.ValueKind == JsonValueKind.Number;
+
+    private static bool IsObject(JsonElement value) => value.ValueKind == JsonValueKind.Object;
 
     /// <summary>Loads a <c>{name: {budgetNs}}</c> budgets file.</summary>
     public static Dictionary<string, BenchBudget> LoadBudgets(string path)
@@ -150,14 +112,24 @@ public static class BaselineStore
         var budgets = new Dictionary<string, BenchBudget>(StringComparer.Ordinal);
         foreach (var bench in document.RootElement.EnumerateObject())
         {
-            if (bench.Value.TryGetProperty("budgetNs", out var budget)
-                && budget.ValueKind == JsonValueKind.Number)
-            {
-                budgets[bench.Name] = new BenchBudget(bench.Name, budget.GetDouble());
-            }
+            AddBudget(budgets, bench);
         }
 
         return budgets;
+    }
+
+    private static void AddBudget(Dictionary<string, BenchBudget> budgets, JsonProperty bench)
+    {
+        if (TryBudget(bench.Value, out var budgetNs))
+        {
+            budgets[bench.Name] = new BenchBudget(bench.Name, budgetNs);
+        }
+    }
+
+    private static bool TryBudget(JsonElement value, out double budgetNs)
+    {
+        budgetNs = 0;
+        return TryNumber(value, "budgetNs", out var budget) && budget.TryGetDouble(out budgetNs);
     }
 
     /// <summary>Writes the canonical baseline file, creating the directory.</summary>

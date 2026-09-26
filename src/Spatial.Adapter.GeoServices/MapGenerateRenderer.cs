@@ -174,32 +174,10 @@ internal static class MapGenerateRenderer
         EsriFilterClause? filter,
         CancellationToken cancellationToken)
     {
-        var fields = Fields(definition.Root);
-        if (fields.Count == 0)
-        {
-            throw GeoServicesErrors.Invalid("The 'uniqueValueFields' parameter needs exactly one field.");
-        }
-
-        if (fields.Count > 1)
-        {
-            throw GeoServicesErrors.Invalid(
-                "Multi-field unique values are not supported; use exactly one 'uniqueValueFields' entry.");
-        }
-
-        var field = fields[0];
+        var field = RequireSingleUniqueField(definition.Root);
         var index = FieldIndex(dataset, field);
         var values = await DistinctValuesAsync(store, dataset, index, filter, cancellationToken);
-        if (values.Count == 0)
-        {
-            throw GeoServicesErrors.Invalid(
-                $"No features of layer '{dataset.Id}' match, so no unique values can be enumerated for field '{field}'.");
-        }
-
-        if (values.Count > MaxUniqueValues)
-        {
-            throw GeoServicesErrors.Invalid(
-                $"Field '{field}' has {values.Count} distinct values (at most {MaxUniqueValues} supported); narrow the request with 'where'.");
-        }
+        RequireEnumerableValues(dataset, field, values);
 
         var infos = values
             .OrderBy(value => value, StringComparer.Ordinal)
@@ -207,6 +185,46 @@ internal static class MapGenerateRenderer
             .ToArray();
         return new EsriRenderer("uniqueValue", Field1: field, UniqueValueInfos: infos);
     }
+
+    /// <summary>The single <c>uniqueValueFields</c> entry, or the Esri reason the request is unusable.</summary>
+    private static string RequireSingleUniqueField(JsonElement root)
+    {
+        var fields = Fields(root);
+        return fields.Count == 1 ? fields[0] : throw UnusableUniqueFields(fields.Count);
+    }
+
+    private static EsriInteropException UnusableUniqueFields(int count) =>
+        count == 0
+            ? GeoServicesErrors.Invalid("The 'uniqueValueFields' parameter needs exactly one field.")
+            : GeoServicesErrors.Invalid(
+                "Multi-field unique values are not supported; use exactly one 'uniqueValueFields' entry.");
+
+    /// <summary>Rejects a value set that is empty (nothing matched) or larger than the enumeration bound.</summary>
+    private static void RequireEnumerableValues(DatasetDescription dataset, string field, List<string> values)
+    {
+        if (values.Count == 0)
+        {
+            throw NoValues(dataset, field);
+        }
+
+        RequireBoundedValues(field, values);
+    }
+
+    private static void RequireBoundedValues(string field, List<string> values)
+    {
+        if (values.Count > MaxUniqueValues)
+        {
+            throw TooManyValues(field, values.Count);
+        }
+    }
+
+    private static EsriInteropException NoValues(DatasetDescription dataset, string field) =>
+        GeoServicesErrors.Invalid(
+            $"No features of layer '{dataset.Id}' match, so no unique values can be enumerated for field '{field}'.");
+
+    private static EsriInteropException TooManyValues(string field, int count) =>
+        GeoServicesErrors.Invalid(
+            $"Field '{field}' has {count} distinct values (at most {MaxUniqueValues} supported); narrow the request with 'where'.");
 
     private static async Task<List<double>> NumericValuesAsync(
         IFeatureStore store,

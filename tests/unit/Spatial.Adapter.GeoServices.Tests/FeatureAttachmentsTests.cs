@@ -24,12 +24,17 @@ public sealed class FeatureAttachmentsTests
     private static DatasetDescription Describe() =>
         new("test.places", "test", "places", "geometry", 4326, "Point", 2, ["id"], FakeTable.Schema);
 
+    /// <summary>The feature every per-feature attachment resource addresses in these tests.</summary>
+    private static FeatureAttachmentTargets.AttachmentTarget Target(
+        IFeatureAttachmentStore? attachments, IFeatureStore? table = null, long objectId = 1) =>
+        new(Describe(), table ?? new FakeTable(), attachments, objectId);
+
     [Fact]
     public async Task Query_lists_one_group_per_feature()
     {
         var table = new FakeTable();
         var attachments = new FakeAttachments();
-        await attachments.AddAsync("test.places", new FeatureId("2"), "photo.jpg", "image/jpeg", [1, 2, 3], "streetscape");
+        await attachments.AddAsync("test.places", new FeatureId("2"), new FeatureAttachmentWrite("photo.jpg", "image/jpeg", [1, 2, 3], "streetscape"));
 
         var body = await ExecuteAsync(FeatureAttachments.QueryAsync(
             Describe(), table, attachments, null, CancellationToken.None));
@@ -81,11 +86,11 @@ public sealed class FeatureAttachmentsTests
     [Fact]
     public async Task Parse_ids_rejects_malformed_values()
     {
-        Assert.Null(FeatureAttachments.ParseIds(null, "objectIds"));
-        Assert.Null(FeatureAttachments.ParseIds("  ", "objectIds"));
-        Assert.Equal([1, 2], FeatureAttachments.ParseIds("1,2", "objectIds"));
+        Assert.Null(FeatureAttachmentTargets.ParseIds(null, "objectIds"));
+        Assert.Null(FeatureAttachmentTargets.ParseIds("  ", "objectIds"));
+        Assert.Equal([1, 2], FeatureAttachmentTargets.ParseIds("1,2", "objectIds"));
 
-        var failure = Assert.Throws<EsriInteropException>(() => FeatureAttachments.ParseIds("abc", "objectIds"));
+        var failure = Assert.Throws<EsriInteropException>(() => FeatureAttachmentTargets.ParseIds("abc", "objectIds"));
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
         Assert.Contains("objectIds", failure.Message, StringComparison.Ordinal);
     }
@@ -94,11 +99,10 @@ public sealed class FeatureAttachmentsTests
     public async Task Infos_lists_the_stored_descriptors()
     {
         var attachments = new FakeAttachments();
-        await attachments.AddAsync("test.places", new FeatureId("1"), "a.jpg", "image/jpeg", [1]);
-        await attachments.AddAsync("test.places", new FeatureId("1"), "b.jpg", "image/jpeg", [2]);
+        await attachments.AddAsync("test.places", new FeatureId("1"), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]));
+        await attachments.AddAsync("test.places", new FeatureId("1"), new FeatureAttachmentWrite("b.jpg", "image/jpeg", [2]));
 
-        var body = await ExecuteAsync(FeatureAttachments.InfosAsync(
-            Describe(), new FakeTable(), attachments, 1, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureAttachments.InfosAsync(Target(attachments), CancellationToken.None));
 
         var infos = body.GetProperty("attachmentInfos").EnumerateArray().ToArray();
         Assert.Equal([1, 2], infos.Select(info => info.GetProperty("id").GetInt64()).ToArray());
@@ -107,8 +111,7 @@ public sealed class FeatureAttachmentsTests
     [Fact]
     public async Task Infos_without_a_capability_reports_the_empty_set()
     {
-        var body = await ExecuteAsync(FeatureAttachments.InfosAsync(
-            Describe(), new FakeTable(), null, 1, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureAttachments.InfosAsync(Target(attachments: null), CancellationToken.None));
 
         Assert.Empty(body.GetProperty("attachmentInfos").EnumerateArray());
     }
@@ -116,8 +119,8 @@ public sealed class FeatureAttachmentsTests
     [Fact]
     public async Task Infos_for_an_unknown_feature_is_not_found()
     {
-        var failure = await Assert.ThrowsAsync<EsriInteropException>(() => FeatureAttachments.InfosAsync(
-            Describe(), new FakeTable(), new FakeAttachments(), 99, CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<EsriInteropException>(
+            () => FeatureAttachments.InfosAsync(Target(new FakeAttachments(), objectId: 99), CancellationToken.None));
 
         Assert.Equal(EsriErrorCodes.NotFound, failure.Code);
     }
@@ -126,10 +129,9 @@ public sealed class FeatureAttachmentsTests
     public async Task Content_serves_the_stored_bytes()
     {
         var attachments = new FakeAttachments();
-        await attachments.AddAsync("test.places", new FeatureId("1"), "a.jpg", "image/jpeg", [7, 8, 9]);
+        await attachments.AddAsync("test.places", new FeatureId("1"), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [7, 8, 9]));
 
-        var result = await FeatureAttachments.ContentAsync(
-            Describe(), new FakeTable(), attachments, 1, 1, CancellationToken.None);
+        var result = await FeatureAttachments.ContentAsync(Target(attachments), 1, CancellationToken.None);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();
@@ -142,15 +144,15 @@ public sealed class FeatureAttachmentsTests
     [Fact]
     public async Task Content_for_an_unknown_attachment_is_not_found()
     {
-        await Assert.ThrowsAsync<SpatialException>(() => FeatureAttachments.ContentAsync(
-            Describe(), new FakeTable(), new FakeAttachments(), 1, 99, CancellationToken.None));
+        await Assert.ThrowsAsync<SpatialException>(
+            () => FeatureAttachments.ContentAsync(Target(new FakeAttachments()), 99, CancellationToken.None));
     }
 
     [Fact]
     public async Task Content_without_a_capability_is_not_found()
     {
         var failure = await Assert.ThrowsAsync<EsriInteropException>(() => FeatureAttachments.ContentAsync(
-            Describe(), new FakeTable(), null, 1, 1, CancellationToken.None));
+            Target(attachments: null), 1, CancellationToken.None));
 
         Assert.Equal(EsriErrorCodes.NotFound, failure.Code);
     }
@@ -158,9 +160,8 @@ public sealed class FeatureAttachmentsTests
     [Fact]
     public async Task Add_reports_the_assigned_id()
     {
-        var body = await ExecuteAsync(FeatureAttachments.AddAsync(
-            Describe(), new FakeTable(), new FakeAttachments(), 1,
-            new AttachmentUpload("a.jpg", "image/jpeg", [1, 2]), CancellationToken.None));
+        var body = await ExecuteAsync(FeatureAttachmentWrites.AddAsync(
+            Target(new FakeAttachments()), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1, 2]), CancellationToken.None));
 
         var added = body.GetProperty("addAttachmentResult");
         Assert.True(added.GetProperty("success").GetBoolean());
@@ -175,14 +176,11 @@ public sealed class FeatureAttachmentsTests
     {
         var failure = await Assert.ThrowsAsync<EsriInteropException>(() => operation switch
         {
-            "addAttachment" => FeatureAttachments.AddAsync(
-                Describe(), new FakeTable(), null, 1,
-                new AttachmentUpload("a.jpg", "image/jpeg", [1]), CancellationToken.None),
-            "updateAttachment" => FeatureAttachments.UpdateAsync(
-                Describe(), new FakeTable(), null, 1, 1,
-                new AttachmentUpload("a.jpg", "image/jpeg", [1]), CancellationToken.None),
-            _ => FeatureAttachments.DeleteAsync(
-                Describe(), new FakeTable(), null, 1, [1], CancellationToken.None),
+            "addAttachment" => FeatureAttachmentWrites.AddAsync(
+                Target(attachments: null), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]), CancellationToken.None),
+            "updateAttachment" => FeatureAttachmentWrites.UpdateAsync(
+                Target(attachments: null), 1, new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]), CancellationToken.None),
+            _ => FeatureAttachmentWrites.DeleteAsync(Target(attachments: null), [1], CancellationToken.None),
         });
 
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
@@ -193,11 +191,10 @@ public sealed class FeatureAttachmentsTests
     public async Task Update_replaces_the_blob_and_keeps_the_identity()
     {
         var attachments = new FakeAttachments();
-        await attachments.AddAsync("test.places", new FeatureId("1"), "a.jpg", "image/jpeg", [1]);
+        await attachments.AddAsync("test.places", new FeatureId("1"), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]));
 
-        var body = await ExecuteAsync(FeatureAttachments.UpdateAsync(
-            Describe(), new FakeTable(), attachments, 1, 1,
-            new AttachmentUpload("b.png", "image/png", [2, 3]), CancellationToken.None));
+        var body = await ExecuteAsync(FeatureAttachmentWrites.UpdateAsync(
+            Target(attachments), 1, new FeatureAttachmentWrite("b.png", "image/png", [2, 3]), CancellationToken.None));
 
         var updated = body.GetProperty("updateAttachmentResult");
         Assert.True(updated.GetProperty("success").GetBoolean());
@@ -211,10 +208,10 @@ public sealed class FeatureAttachmentsTests
     public async Task Delete_reports_each_id_with_typed_per_id_failures()
     {
         var attachments = new FakeAttachments();
-        await attachments.AddAsync("test.places", new FeatureId("1"), "a.jpg", "image/jpeg", [1]);
+        await attachments.AddAsync("test.places", new FeatureId("1"), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]));
 
-        var body = await ExecuteAsync(FeatureAttachments.DeleteAsync(
-            Describe(), new FakeTable(), attachments, 1, [1, 99], CancellationToken.None));
+        var body = await ExecuteAsync(FeatureAttachmentWrites.DeleteAsync(
+            Target(attachments), [1, 99], CancellationToken.None));
 
         var results = body.GetProperty("deleteAttachmentResults").EnumerateArray().ToArray();
         Assert.True(results[0].GetProperty("success").GetBoolean());
@@ -240,13 +237,13 @@ public sealed class FeatureAttachmentsTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operation switch
         {
             "query" => FeatureAttachments.QueryAsync(Describe(), table, attachments, null, token),
-            "infos" => FeatureAttachments.InfosAsync(Describe(), table, attachments, 1, token),
-            "content" => FeatureAttachments.ContentAsync(Describe(), table, attachments, 1, 1, token),
-            "add" => FeatureAttachments.AddAsync(
-                Describe(), table, attachments, 1, new AttachmentUpload("a.jpg", "image/jpeg", [1]), token),
-            "update" => FeatureAttachments.UpdateAsync(
-                Describe(), table, attachments, 1, 1, new AttachmentUpload("a.jpg", "image/jpeg", [1]), token),
-            _ => FeatureAttachments.DeleteAsync(Describe(), table, attachments, 1, [1], token),
+            "infos" => FeatureAttachments.InfosAsync(Target(attachments, table), token),
+            "content" => FeatureAttachments.ContentAsync(Target(attachments, table), 1, token),
+            "add" => FeatureAttachmentWrites.AddAsync(
+                Target(attachments, table), new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]), token),
+            "update" => FeatureAttachmentWrites.UpdateAsync(
+                Target(attachments, table), 1, new FeatureAttachmentWrite("a.jpg", "image/jpeg", [1]), token),
+            _ => FeatureAttachmentWrites.DeleteAsync(Target(attachments, table), [1], token),
         });
     }
 
@@ -329,8 +326,7 @@ public sealed class FeatureAttachmentsTests
         }
 
         public Task<FeatureAttachmentDescriptor> AddAsync(
-            string dataset, FeatureId featureId, string name, string contentType, byte[] content,
-            string? keywords = null, CancellationToken cancellationToken = default)
+            string dataset, FeatureId featureId, FeatureAttachmentWrite write, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var key = Key(dataset, featureId);
@@ -346,9 +342,10 @@ public sealed class FeatureAttachmentsTests
                 _blobs[key] = blobs;
             }
 
-            var descriptor = new FeatureAttachmentDescriptor(descriptors.Count + 1, name, contentType, content.Length, keywords);
+            var descriptor = new FeatureAttachmentDescriptor(
+                descriptors.Count + 1, write.Name, write.ContentType, write.Content.Length, write.Keywords);
             descriptors.Add(descriptor);
-            blobs.Add((byte[])content.Clone());
+            blobs.Add((byte[])write.Content.Clone());
             return Task.FromResult(descriptor);
         }
 
@@ -369,8 +366,8 @@ public sealed class FeatureAttachmentsTests
         }
 
         public Task<FeatureAttachmentDescriptor> UpdateAsync(
-            string dataset, FeatureId featureId, long attachmentId, string name, string contentType, byte[] content,
-            string? keywords = null, CancellationToken cancellationToken = default)
+            string dataset, FeatureId featureId, long attachmentId, FeatureAttachmentWrite write,
+            CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var key = Key(dataset, featureId);
@@ -381,9 +378,10 @@ public sealed class FeatureAttachmentsTests
                 throw SpatialException.Missing($"No attachment with identity '{attachmentId}' exists.");
             }
 
-            var descriptor = new FeatureAttachmentDescriptor(attachmentId, name, contentType, content.Length, keywords);
+            var descriptor = new FeatureAttachmentDescriptor(
+                attachmentId, write.Name, write.ContentType, write.Content.Length, write.Keywords);
             descriptors[index] = descriptor;
-            _blobs[key][index] = (byte[])content.Clone();
+            _blobs[key][index] = (byte[])write.Content.Clone();
             return Task.FromResult(descriptor);
         }
 

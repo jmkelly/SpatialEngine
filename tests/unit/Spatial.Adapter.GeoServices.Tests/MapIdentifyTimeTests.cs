@@ -97,6 +97,10 @@ public sealed class MapIdentifyTimeTests
         .. extra,
     ];
 
+    /// <summary>What one identify request resolves to: the store, its layers and the shared engine verbs.</summary>
+    private static IdentifyRequest Identify(IFeatureStore store, IReadOnlyList<MapLayerInfo> infos) =>
+        new(store, infos, 4326, Operations, Transforms);
+
     private static IReadOnlyList<MapLayerInfo> Infos(DatasetDescription dataset) =>
     [
         new MapLayerInfo(new PublishedLayer(0, dataset.Id, "Cities"), dataset, Envelope.Empty),
@@ -106,7 +110,7 @@ public sealed class MapIdentifyTimeTests
         IFeatureStore store, IReadOnlyList<MapLayerInfo> infos, (string Key, string Value)[] values)
     {
         var result = await MapIdentifyEngine.IdentifyAsync(
-            store, infos, await ParamsAsync(values), 4326, Operations, Transforms, CancellationToken.None);
+            Identify(store, infos), await ParamsAsync(values), CancellationToken.None);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();
@@ -205,8 +209,7 @@ public sealed class MapIdentifyTimeTests
 
         var failure = await Assert.ThrowsAsync<EsriInteropException>(() =>
             MapIdentifyEngine.IdentifyAsync(
-                store, Infos(Cities(Schema)), parameters,
-                4326, Operations, Transforms, CancellationToken.None));
+                Identify(store, Infos(Cities(Schema))), parameters, CancellationToken.None));
 
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }
@@ -219,8 +222,7 @@ public sealed class MapIdentifyTimeTests
 
         var failure = await Assert.ThrowsAsync<EsriInteropException>(() =>
             MapIdentifyEngine.IdentifyAsync(
-                store, Infos(Cities(Schema)), parameters,
-                4326, Operations, Transforms, CancellationToken.None));
+                Identify(store, Infos(Cities(Schema))), parameters, CancellationToken.None));
 
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }
@@ -233,8 +235,7 @@ public sealed class MapIdentifyTimeTests
 
         var failure = await Assert.ThrowsAsync<EsriInteropException>(() =>
             MapIdentifyEngine.IdentifyAsync(
-                store, Infos(Cities(Schema)), parameters,
-                4326, Operations, Transforms, CancellationToken.None));
+                Identify(store, Infos(Cities(Schema))), parameters, CancellationToken.None));
 
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
     }

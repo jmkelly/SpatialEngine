@@ -85,12 +85,17 @@ internal sealed class SpatialClientTransport
     public async Task SendNoContentAsync(HttpMethod method, string url, string? token, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, url);
-        if (!string.IsNullOrEmpty(token))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-
+        request.Headers.Authorization = Bearer(token);
         using var response = await _http.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    /// <summary>The bearer header for a token, or null (no header) when there is none.</summary>
+    private static AuthenticationHeaderValue? Bearer(string? token) =>
+        string.IsNullOrEmpty(token) ? null : new AuthenticationHeaderValue("Bearer", token);
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
         if (!response.IsSuccessStatusCode)
         {
             throw await FailAsync(response, cancellationToken);

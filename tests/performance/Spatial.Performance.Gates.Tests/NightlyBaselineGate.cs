@@ -1,6 +1,7 @@
+using Spatial.Performance.Gates;
 using Xunit.Abstractions;
 
-namespace Spatial.Performance.Gates;
+namespace Spatial.Performance.Gates.Tests;
 
 /// <summary>
 /// File-backed nightly baseline tests, suite D (T-078). Opt-in only, so

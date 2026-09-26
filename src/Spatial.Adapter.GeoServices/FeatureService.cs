@@ -75,18 +75,11 @@ internal static class FeatureService
         EsriFeatureQuery query,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken) =>
-        FeatureQueryEngine.FeatureAsync(dataset, store, objectId, query, transforms, cancellationToken);
+        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, transforms, cancellationToken);
 
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
-    public static Task<IResult> EditsAsync(
-        EsriEditOperation operation,
-        DatasetDescription dataset,
-        IFeatureStore store,
-        IFeatureEditStore editStore,
-        EsriEditRequest request,
-        CoordinateReference? layerCrs,
-        CancellationToken cancellationToken) =>
-        FeatureEditEngine.EditsAsync(operation, dataset, store, editStore, request, layerCrs, cancellationToken);
+    public static Task<IResult> EditsAsync(FeatureEditEngine.EditInvocation invocation, CancellationToken cancellationToken) =>
+        FeatureEditEngine.EditsAsync(invocation, cancellationToken);
 }
 
 /// <summary>The <c>returnIdsOnly</c> response (spec §9.1.4.4).</summary>

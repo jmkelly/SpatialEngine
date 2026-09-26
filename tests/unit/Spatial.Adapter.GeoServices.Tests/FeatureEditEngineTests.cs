@@ -30,7 +30,9 @@ public sealed class FeatureEditEngineTests
         var store = new FakeStore(table);
         var request = new EsriEditRequest(Adds("""{"attributes":{"name":"Vienna","population":1900000},"geometry":{"x":16.3738,"y":48.2082}}"""), [], [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var added = Assert.Single(body.GetProperty("addResults").EnumerateArray());
         Assert.True(added.GetProperty("success").GetBoolean());
@@ -49,7 +51,9 @@ public sealed class FeatureEditEngineTests
                 """{"attributes":{"population":1},"geometry":{"x":1,"y":1}}"""),
             [], [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var results = body.GetProperty("addResults").EnumerateArray().ToArray();
         Assert.True(results[0].GetProperty("success").GetBoolean());
@@ -65,7 +69,9 @@ public sealed class FeatureEditEngineTests
         var store = new FakeStore(table);
         var request = new EsriEditRequest([], Updates("""{"attributes":{"OBJECTID":2,"population":9999999}}"""), [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Update, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var updated = Assert.Single(body.GetProperty("updateResults").EnumerateArray());
         Assert.True(updated.GetProperty("success").GetBoolean());
@@ -83,7 +89,9 @@ public sealed class FeatureEditEngineTests
         var store = new SimpleStore(table);
         var request = new EsriEditRequest([], Updates("""{"attributes":{"OBJECTID":2,"population":9999999}}"""), [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Update, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.True(Assert.Single(body.GetProperty("updateResults").EnumerateArray()).GetProperty("success").GetBoolean());
         Assert.Equal(9999999, table.ById(2)["population"].Int64Value);
@@ -99,7 +107,9 @@ public sealed class FeatureEditEngineTests
             Updates("""{"attributes":{"OBJECTID":2,"population":1}}""", """{"attributes":{"OBJECTID":77,"population":1}}"""),
             [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Update, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var results = body.GetProperty("updateResults").EnumerateArray().ToArray();
         Assert.True(results[0].GetProperty("success").GetBoolean());
@@ -114,7 +124,9 @@ public sealed class FeatureEditEngineTests
         var store = new FakeStore(table);
         var request = new EsriEditRequest([], Updates("""{"attributes":{"population":1}}"""), [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Update, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var updated = Assert.Single(body.GetProperty("updateResults").EnumerateArray());
         Assert.False(updated.GetProperty("success").GetBoolean());
@@ -133,7 +145,9 @@ public sealed class FeatureEditEngineTests
                 """{"attributes":{"OBJECTID":3},"geometry":null}"""),
             [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Update, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var results = body.GetProperty("updateResults").EnumerateArray().ToArray();
         Assert.True(results[0].GetProperty("success").GetBoolean());
@@ -151,7 +165,9 @@ public sealed class FeatureEditEngineTests
         var store = new FakeStore(table);
         var request = new EsriEditRequest([], [], [3, 77], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var results = body.GetProperty("deleteResults").EnumerateArray().ToArray();
         Assert.True(results[0].GetProperty("success").GetBoolean());
@@ -168,7 +184,9 @@ public sealed class FeatureEditEngineTests
         Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var deleted = Assert.Single(body.GetProperty("deleteResults").EnumerateArray());
         Assert.True(deleted.GetProperty("success").GetBoolean());
@@ -184,7 +202,9 @@ public sealed class FeatureEditEngineTests
         Assert.True(EsriFilterClause.TryParse("name = 'Nowhere'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.Empty(body.GetProperty("deleteResults").EnumerateArray());
         Assert.Equal(3, table.Count);
@@ -200,7 +220,9 @@ public sealed class FeatureEditEngineTests
             Updates("""{"attributes":{"OBJECTID":1,"population":3700000}}"""),
             [2], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Apply, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Apply, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.True(Assert.Single(body.GetProperty("addResults").EnumerateArray()).GetProperty("success").GetBoolean());
         Assert.True(Assert.Single(body.GetProperty("updateResults").EnumerateArray()).GetProperty("success").GetBoolean());
@@ -216,7 +238,9 @@ public sealed class FeatureEditEngineTests
             Adds("""{"attributes":{"name":"Oslo","population":1},"geometry":{"x":0,"y":0}}"""),
             [], [], null, false);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Apply, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Apply, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.True(Assert.Single(body.GetProperty("addResults").EnumerateArray()).GetProperty("success").GetBoolean());
         Assert.Empty(body.GetProperty("updateResults").EnumerateArray());
@@ -236,7 +260,9 @@ public sealed class FeatureEditEngineTests
 
         // No transaction face, so even with rollbackOnFailure there is nothing to roll back:
         // the good feature stays while the failed one is reported per feature.
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         var results = body.GetProperty("addResults").EnumerateArray().ToArray();
         Assert.True(results[0].GetProperty("success").GetBoolean());
@@ -255,7 +281,9 @@ public sealed class FeatureEditEngineTests
                 """{"attributes":{"population":1},"geometry":{"x":1,"y":1}}"""),
             [], [], null, true);
 
-        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.All(body.GetProperty("addResults").EnumerateArray(), result => Assert.False(result.GetProperty("success").GetBoolean()));
         Assert.Equal(3, table.Count);
@@ -272,7 +300,9 @@ public sealed class FeatureEditEngineTests
             [], [], null, true);
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() =>
-            FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.Equal(SpatialException.StoreUnavailable, failure.Code);
         Assert.Equal(1, store.Rollbacks);
@@ -293,7 +323,9 @@ public sealed class FeatureEditEngineTests
             [], [], null, true);
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() =>
-            FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, CancellationToken.None));
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
 
         Assert.Equal(SpatialException.StoreUnavailable, failure.Code);
     }
@@ -309,7 +341,9 @@ public sealed class FeatureEditEngineTests
             [], [], null, true);
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            FeatureEditEngine.EditsAsync(EsriEditOperation.Add, table.Describe(), store, store, request, Crs, new CancellationToken(canceled: true)));
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, table.Describe(), store, store, request, Crs),
+                new CancellationToken(canceled: true)));
 
         Assert.Equal(0, store.Begins);
         Assert.Equal(0, store.AddCalls);
@@ -328,7 +362,9 @@ public sealed class FeatureEditEngineTests
             [], null, true);
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            FeatureEditEngine.EditsAsync(EsriEditOperation.Update, table.Describe(), store, store, request, Crs, cancelled.Token));
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store, request, Crs),
+                cancelled.Token));
 
         Assert.Equal(1, store.Rollbacks);
     }
@@ -344,7 +380,9 @@ public sealed class FeatureEditEngineTests
             [], [], null, false);
 
         await Assert.ThrowsAsync<EsriInteropException>(() =>
-            FeatureEditEngine.EditsAsync(EsriEditOperation.Add, readOnly, store, store, request, Crs, CancellationToken.None));
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Add, readOnly, store, store, request, Crs),
+                CancellationToken.None));
     }
 
     private static List<JsonElement> Adds(params string[] items) => Documents(items);

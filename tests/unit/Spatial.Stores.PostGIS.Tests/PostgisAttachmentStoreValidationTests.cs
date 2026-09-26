@@ -1,4 +1,5 @@
 using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 
 namespace Spatial.Stores.PostGIS.Tests;
@@ -36,11 +37,11 @@ public sealed class PostgisAttachmentStoreValidationTests
         var attachments = Attachments(UnreachableConnectionString);
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.AddAsync("public.places", new FeatureId("1"), name, "image/png", [1]));
+            attachments.AddAsync("public.places", new FeatureId("1"), new FeatureAttachmentWrite(name, "image/png", [1])));
         Assert.Equal(SpatialException.InvalidArguments, add.Code);
 
         var update = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.UpdateAsync("public.places", new FeatureId("1"), 1, name, "image/png", [1]));
+            attachments.UpdateAsync("public.places", new FeatureId("1"), 1, new FeatureAttachmentWrite(name, "image/png", [1])));
         Assert.Equal(SpatialException.InvalidArguments, update.Code);
     }
 
@@ -50,11 +51,11 @@ public sealed class PostgisAttachmentStoreValidationTests
         var attachments = Attachments(UnreachableConnectionString);
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.AddAsync("public.places", new FeatureId("1"), "a.bin", "application/octet-stream", null!));
+            attachments.AddAsync("public.places", new FeatureId("1"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", null!)));
         Assert.Equal(SpatialException.InvalidArguments, add.Code);
 
         var update = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.UpdateAsync("public.places", new FeatureId("1"), 1, "a.bin", "application/octet-stream", null!));
+            attachments.UpdateAsync("public.places", new FeatureId("1"), 1, new FeatureAttachmentWrite("a.bin", "application/octet-stream", null!)));
         Assert.Equal(SpatialException.InvalidArguments, update.Code);
     }
 
@@ -72,11 +73,11 @@ public sealed class PostgisAttachmentStoreValidationTests
             maxBytesPerAttachment: 4);
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.AddAsync("public.places", new FeatureId("1"), "big.bin", "application/octet-stream", [1, 2, 3, 4, 5]));
+            attachments.AddAsync("public.places", new FeatureId("1"), new FeatureAttachmentWrite("big.bin", "application/octet-stream", [1, 2, 3, 4, 5])));
         Assert.Equal(SpatialException.InvalidArguments, add.Code);
 
         var update = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.UpdateAsync("public.places", new FeatureId("1"), 1, "big.bin", "application/octet-stream", [1, 2, 3, 4, 5]));
+            attachments.UpdateAsync("public.places", new FeatureId("1"), 1, new FeatureAttachmentWrite("big.bin", "application/octet-stream", [1, 2, 3, 4, 5])));
         Assert.Equal(SpatialException.InvalidArguments, update.Code);
     }
 
@@ -93,14 +94,14 @@ public sealed class PostgisAttachmentStoreValidationTests
         Assert.Equal(SpatialException.InvalidArguments, list.Code);
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.AddAsync(dataset, feature, "a.bin", "application/octet-stream", [1]));
+            attachments.AddAsync(dataset, feature, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.InvalidArguments, add.Code);
 
         var get = await Assert.ThrowsAsync<SpatialException>(() => attachments.GetAsync(dataset, feature, 1));
         Assert.Equal(SpatialException.InvalidArguments, get.Code);
 
         var update = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.UpdateAsync(dataset, feature, 1, "a.bin", "application/octet-stream", [1]));
+            attachments.UpdateAsync(dataset, feature, 1, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.InvalidArguments, update.Code);
 
         var delete = await Assert.ThrowsAsync<SpatialException>(() =>
@@ -123,14 +124,14 @@ public sealed class PostgisAttachmentStoreValidationTests
             Assert.Equal(SpatialException.StoreUnavailable, list.Code);
 
             var add = await Assert.ThrowsAsync<SpatialException>(() =>
-                attachments.AddAsync("public.places", feature, "a.bin", "application/octet-stream", [1]));
+                attachments.AddAsync("public.places", feature, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
             Assert.Equal(SpatialException.StoreUnavailable, add.Code);
 
             var get = await Assert.ThrowsAsync<SpatialException>(() => attachments.GetAsync("public.places", feature, 1));
             Assert.Equal(SpatialException.StoreUnavailable, get.Code);
 
             var update = await Assert.ThrowsAsync<SpatialException>(() =>
-                attachments.UpdateAsync("public.places", feature, 1, "a.bin", "application/octet-stream", [1]));
+                attachments.UpdateAsync("public.places", feature, 1, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
             Assert.Equal(SpatialException.StoreUnavailable, update.Code);
 
             var delete = await Assert.ThrowsAsync<SpatialException>(() =>
@@ -153,14 +154,14 @@ public sealed class PostgisAttachmentStoreValidationTests
         Assert.Equal(SpatialException.StoreUnavailable, list.Code);
 
         var add = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.AddAsync("public.places", feature, "a.bin", "application/octet-stream", [1]));
+            attachments.AddAsync("public.places", feature, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.StoreUnavailable, add.Code);
 
         var get = await Assert.ThrowsAsync<SpatialException>(() => attachments.GetAsync("public.places", feature, 1));
         Assert.Equal(SpatialException.StoreUnavailable, get.Code);
 
         var update = await Assert.ThrowsAsync<SpatialException>(() =>
-            attachments.UpdateAsync("public.places", feature, 1, "a.bin", "application/octet-stream", [1]));
+            attachments.UpdateAsync("public.places", feature, 1, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1])));
         Assert.Equal(SpatialException.StoreUnavailable, update.Code);
 
         var delete = await Assert.ThrowsAsync<SpatialException>(() =>
@@ -178,11 +179,11 @@ public sealed class PostgisAttachmentStoreValidationTests
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             attachments.ListAsync("public.places", feature, canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            attachments.AddAsync("public.places", feature, "a.bin", "application/octet-stream", [1], cancellationToken: canceled));
+            attachments.AddAsync("public.places", feature, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]), canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             attachments.GetAsync("public.places", feature, 1, canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            attachments.UpdateAsync("public.places", feature, 1, "a.bin", "application/octet-stream", [1], cancellationToken: canceled));
+            attachments.UpdateAsync("public.places", feature, 1, new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]), canceled));
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             attachments.DeleteAsync("public.places", feature, [1], canceled));
     }

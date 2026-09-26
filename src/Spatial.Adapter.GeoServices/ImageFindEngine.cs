@@ -28,7 +28,7 @@ internal static class ImageFindEngine
         RejectOriented(parameters);
         AcceptLayer(parameters);
         var contains = parameters.GetBool("contains", true);
-        var requested = ParseFields(parameters.Get("searchFields"));
+        var requested = ImageFindSearch.ParseFields(parameters.Get("searchFields"));
         var returnGeometry = parameters.GetBool("returnGeometry", true);
         var outCrs = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
         var schema = description.CatalogSchema
@@ -43,7 +43,7 @@ internal static class ImageFindEngine
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var feature = ImageService.Feature(item, schema);
-                var matched = Match(feature, SearchFields(schema, requested), searchText, contains);
+                var matched = ImageFindSearch.Match(feature, ImageFindSearch.SearchFields(schema, requested), searchText, contains);
                 if (matched is null)
                 {
                     continue;
@@ -121,60 +121,6 @@ internal static class ImageFindEngine
 
         throw GeoServicesErrors.Invalid($"The 'layers' parameter names an unknown layer: the raster catalog is layer 0.");
     }
-
-    private static (string Field, string Value)? Match(Feature feature, IReadOnlyList<string> fields, string searchText, bool contains)
-    {
-        foreach (var field in fields)
-        {
-            if (MapFeatures.StringValue(feature, field) is not { } value)
-            {
-                continue;
-            }
-
-            var hit = contains
-                ? value.Contains(searchText, StringComparison.OrdinalIgnoreCase)
-                : value.StartsWith(searchText, StringComparison.OrdinalIgnoreCase);
-            if (hit)
-            {
-                return (field, value);
-            }
-        }
-
-        return null;
-    }
-
-    private static List<string> SearchFields(FeatureSchema schema, IReadOnlyList<string>? requested)
-    {
-        var fields = new List<string>();
-        if (requested is null)
-        {
-            for (var i = 0; i < schema.Count; i++)
-            {
-                if (schema[i].Kind == AttributeKind.String)
-                {
-                    fields.Add(schema[i].Name);
-                }
-            }
-
-            return fields;
-        }
-
-        foreach (var name in requested)
-        {
-            var index = schema.IndexOf(name);
-            if (index >= 0 && schema[index].Kind == AttributeKind.String)
-            {
-                fields.Add(name);
-            }
-        }
-
-        return fields;
-    }
-
-    private static string[]? ParseFields(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? null
-            : value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
     private static IGeometry? Transform(IGeometry? geometry, CoordinateReference? source, CoordinateReference? target, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
         geometry is not null && target is { } to && source is { } from && from != to

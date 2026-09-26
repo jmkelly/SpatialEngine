@@ -39,14 +39,19 @@ internal static class AuthTokenStore
     {
         try
         {
-            if (File.Exists(Path))
-            {
-                File.Delete(Path);
-            }
+            DeleteIfPresent();
         }
         catch (IOException)
         {
             // A missing/unwritable cache is not a successful logout.
+        }
+    }
+
+    private static void DeleteIfPresent()
+    {
+        if (File.Exists(Path))
+        {
+            File.Delete(Path);
         }
     }
 }

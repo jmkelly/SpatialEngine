@@ -42,13 +42,13 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<FeatureAttachmentDescriptor>> ListAsync(
+    public Task<IReadOnlyList<FeatureAttachmentDescriptor>> ListAsync(
         string dataset, FeatureId featureId, CancellationToken cancellationToken = default)
     {
         var name = PostgisStore.ParseDataset(dataset);
         cancellationToken.ThrowIfCancellationRequested();
         _store.RequireConfigured();
-        try
+        return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
             var description = await RequireAttachmentDatasetAsync(name, cancellationToken);
@@ -56,62 +56,35 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
             await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
             var rows = await PostgisDataStore.ReadRowsAsync(
                 connection, PostgisQueries.ListAttachments(), [name.Qualified, featureId.Value], cancellationToken);
-            return rows.Select(MapDescriptor).ToArray();
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw _store.StoreFailure(exception);
-        }
+            return (IReadOnlyList<FeatureAttachmentDescriptor>)rows.Select(MapDescriptor).ToArray();
+        });
     }
 
     /// <inheritdoc />
-    public async Task<FeatureAttachmentDescriptor> AddAsync(
-        string dataset, FeatureId featureId, string name, string contentType, byte[] content,
-        string? keywords = null, CancellationToken cancellationToken = default)
+    public Task<FeatureAttachmentDescriptor> AddAsync(
+        string dataset, FeatureId featureId, FeatureAttachmentWrite write, CancellationToken cancellationToken = default)
     {
-        RequireName(name);
-        RequireContent(content);
-        CheckQuota(name, content.Length);
+        ValidateUpload(write);
         var parsed = PostgisStore.ParseDataset(dataset);
         cancellationToken.ThrowIfCancellationRequested();
         _store.RequireConfigured();
-        try
+        return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
             var description = await RequireAttachmentDatasetAsync(parsed, cancellationToken);
             await RequireFeatureAsync(parsed, description, featureId, cancellationToken);
-            return await InsertWithRetryAsync(parsed, featureId, name, contentType, content, keywords, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw _store.StoreFailure(exception);
-        }
+            return await InsertWithRetryAsync(AttachmentWrite.For(parsed, featureId, write), 1, cancellationToken);
+        });
     }
 
     /// <inheritdoc />
-    public async Task<FeatureAttachmentContent> GetAsync(
+    public Task<FeatureAttachmentContent> GetAsync(
         string dataset, FeatureId featureId, long attachmentId, CancellationToken cancellationToken = default)
     {
         var name = PostgisStore.ParseDataset(dataset);
         cancellationToken.ThrowIfCancellationRequested();
         _store.RequireConfigured();
-        try
+        return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
             var description = await RequireAttachmentDatasetAsync(name, cancellationToken);
@@ -125,74 +98,49 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
             }
 
             return MapContent(rows[0]);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw _store.StoreFailure(exception);
-        }
+        });
     }
 
     /// <inheritdoc />
-    public async Task<FeatureAttachmentDescriptor> UpdateAsync(
-        string dataset, FeatureId featureId, long attachmentId, string name, string contentType, byte[] content,
-        string? keywords = null, CancellationToken cancellationToken = default)
+    public Task<FeatureAttachmentDescriptor> UpdateAsync(
+        string dataset, FeatureId featureId, long attachmentId, FeatureAttachmentWrite write,
+        CancellationToken cancellationToken = default)
     {
-        RequireName(name);
-        RequireContent(content);
-        CheckQuota(name, content.Length);
+        ValidateUpload(write);
         var parsed = PostgisStore.ParseDataset(dataset);
         cancellationToken.ThrowIfCancellationRequested();
         _store.RequireConfigured();
-        try
+        return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
             var description = await RequireAttachmentDatasetAsync(parsed, cancellationToken);
             await RequireFeatureAsync(parsed, description, featureId, cancellationToken);
             await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
-            var resolved = OrDefaultContentType(contentType);
+            var resolved = OrDefaultContentType(write.ContentType);
             var affected = await PostgisDataStore.ExecuteNonQueryAsync(
                 connection,
                 PostgisQueries.UpdateAttachment(),
-                [parsed.Qualified, featureId.Value, attachmentId, name, resolved, (long)content.Length, keywords, content],
+                [parsed.Qualified, featureId.Value, attachmentId, write.Name, resolved, (long)write.Content.Length,
+                    write.Keywords, write.Content],
                 cancellationToken);
             if (affected == 0)
             {
                 throw SpatialException.Missing($"No attachment with identity '{attachmentId}' exists.");
             }
 
-            return new FeatureAttachmentDescriptor(attachmentId, name, resolved, content.Length, keywords);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw _store.StoreFailure(exception);
-        }
+            return new FeatureAttachmentDescriptor(attachmentId, write.Name, resolved, write.Content.Length, write.Keywords);
+        });
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<FeatureAttachmentOutcome>> DeleteAsync(
+    public Task<IReadOnlyList<FeatureAttachmentOutcome>> DeleteAsync(
         string dataset, FeatureId featureId, IReadOnlyList<long> attachmentIds, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(attachmentIds);
         var name = PostgisStore.ParseDataset(dataset);
         cancellationToken.ThrowIfCancellationRequested();
         _store.RequireConfigured();
-        try
+        return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
             var description = await RequireAttachmentDatasetAsync(name, cancellationToken);
@@ -206,53 +154,57 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
                     PostgisQueries.DeleteAttachment(),
                     [name.Qualified, featureId.Value, attachmentId],
                     cancellationToken);
-                outcomes.Add(affected > 0
-                    ? FeatureAttachmentOutcome.Success(attachmentId)
-                    : FeatureAttachmentOutcome.Failure(
-                        attachmentId, SpatialException.NotFound, $"No attachment with identity '{attachmentId}' exists."));
+                outcomes.Add(DeleteOutcome(attachmentId, affected));
             }
 
-            return outcomes;
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw _store.StoreFailure(exception);
-        }
+            return (IReadOnlyList<FeatureAttachmentOutcome>)outcomes;
+        });
     }
 
     private async Task<FeatureAttachmentDescriptor> InsertWithRetryAsync(
-        PostgisDatasetName name, FeatureId featureId, string attachmentName, string contentType,
-        byte[] content, string? keywords, CancellationToken cancellationToken)
+        AttachmentWrite write, int attempt, CancellationToken cancellationToken)
     {
-        var resolved = OrDefaultContentType(contentType);
-        for (var attempt = 0; ; attempt++)
+        var resolved = OrDefaultContentType(write.ContentType);
+        await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
+        var nextId = await NextAttachmentIdAsync(connection, write, cancellationToken);
+        try
         {
-            await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
-            var marks = await PostgisDataStore.ReadRowsAsync(
-                connection, PostgisQueries.MaxAttachmentId(), [name.Qualified, featureId.Value], cancellationToken);
-            var nextId = Convert.ToInt64(marks[0][0], System.Globalization.CultureInfo.InvariantCulture) + 1;
-            try
-            {
-                await PostgisDataStore.ExecuteNonQueryAsync(
-                    connection,
-                    PostgisQueries.InsertAttachment(),
-                    [name.Qualified, featureId.Value, nextId, attachmentName, resolved, (long)content.Length, keywords, content],
-                    cancellationToken);
-                return new FeatureAttachmentDescriptor(nextId, attachmentName, resolved, content.Length, keywords);
-            }
-            catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation && attempt + 1 < MaxInsertAttempts)
-            {
-                // Two writers read the same high-water mark; re-read it and try the next id.
-            }
+            await PostgisDataStore.ExecuteNonQueryAsync(
+                connection,
+                PostgisQueries.InsertAttachment(),
+                [write.Dataset.Qualified, write.FeatureId.Value, nextId, write.Name, resolved,
+                    (long)write.Content.Length, write.Keywords, write.Content],
+                cancellationToken);
+            return new FeatureAttachmentDescriptor(nextId, write.Name, resolved, write.Content.Length, write.Keywords);
         }
+        catch (PostgresException exception) when (IsRacedInsert(exception))
+        {
+            return await RetryInsertAsync(write, attempt, exception, cancellationToken);
+        }
+    }
+
+    /// <summary>Re-reads the high-water mark for the next attempt, or rethrows once the attempts are spent.</summary>
+    private async Task<FeatureAttachmentDescriptor> RetryInsertAsync(
+        AttachmentWrite write, int attempt, PostgresException failure, CancellationToken cancellationToken)
+    {
+        if (attempt >= MaxInsertAttempts)
+        {
+            throw failure;
+        }
+
+        // Two writers read the same high-water mark; re-read it and try the next id.
+        return await InsertWithRetryAsync(write, attempt + 1, cancellationToken);
+    }
+
+    private static bool IsRacedInsert(PostgresException exception) =>
+        exception.SqlState == PostgresErrorCodes.UniqueViolation;
+
+    private static async Task<long> NextAttachmentIdAsync(
+        NpgsqlConnection connection, AttachmentWrite write, CancellationToken cancellationToken)
+    {
+        var marks = await PostgisDataStore.ReadRowsAsync(
+            connection, PostgisQueries.MaxAttachmentId(), [write.Dataset.Qualified, write.FeatureId.Value], cancellationToken);
+        return Convert.ToInt64(marks[0][0], System.Globalization.CultureInfo.InvariantCulture) + 1;
     }
 
     private async Task EnsureAttachmentTableAsync(CancellationToken cancellationToken)
@@ -278,10 +230,7 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
     private async Task RequireFeatureAsync(
         PostgisDatasetName name, DatasetDescription description, FeatureId featureId, CancellationToken cancellationToken)
     {
-        var identityKinds = description.IdColumns
-            .Select(column => description.Schema[description.Schema.IndexOf(column)].Kind)
-            .ToArray();
-        var values = PostgisDiagnostics.ParseFeatureIdentity(identityKinds, featureId);
+        var values = PostgisIdentity.Values(description, featureId);
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         var rows = await PostgisDataStore.ReadRowsAsync(
             connection, PostgisQueries.FeatureExists(name, description.IdColumns), values, cancellationToken);
@@ -291,28 +240,36 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         }
     }
 
-    private void CheckQuota(string name, long size)
+    /// <summary>One attachment write: the resolved target and payload, independent of the attempt that runs it.</summary>
+    private sealed record AttachmentWrite(
+        PostgisDatasetName Dataset,
+        FeatureId FeatureId,
+        string Name,
+        string ContentType,
+        byte[] Content,
+        string? Keywords)
     {
-        if (size > _maxBytesPerAttachment)
-        {
-            throw SpatialException.BadArguments(
-                $"Attachment '{name}' is {size} bytes, over the {_maxBytesPerAttachment}-byte per-attachment quota.");
-        }
+        public static AttachmentWrite For(PostgisDatasetName dataset, FeatureId featureId, FeatureAttachmentWrite write) =>
+            new(dataset, featureId, write.Name, write.ContentType, write.Content, write.Keywords);
     }
 
-    private static void RequireName(string name)
+    /// <summary>The one guard every attachment write shares: a named, non-empty body inside the per-attachment quota.</summary>
+    private void ValidateUpload(FeatureAttachmentWrite write)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(write.Name))
         {
             throw SpatialException.BadArguments("An attachment name is required.");
         }
-    }
 
-    private static void RequireContent(byte[]? content)
-    {
-        if (content is null)
+        if (write.Content is null)
         {
             throw SpatialException.BadArguments("Attachment content is required.");
+        }
+
+        if (write.Content.Length > _maxBytesPerAttachment)
+        {
+            throw SpatialException.BadArguments(
+                $"Attachment '{write.Name}' is {write.Content.Length} bytes, over the {_maxBytesPerAttachment}-byte per-attachment quota.");
         }
     }
 
@@ -326,6 +283,13 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
             (string)row[2]!,
             Convert.ToInt64(row[3], System.Globalization.CultureInfo.InvariantCulture),
             row[4] is DBNull ? null : (string?)row[4]);
+
+    /// <summary>The per-id outcome of a delete: success, or a typed not-found failure.</summary>
+    private static FeatureAttachmentOutcome DeleteOutcome(long attachmentId, int affected) =>
+        affected > 0
+            ? FeatureAttachmentOutcome.Success(attachmentId)
+            : FeatureAttachmentOutcome.Failure(
+                attachmentId, SpatialException.NotFound, $"No attachment with identity '{attachmentId}' exists.");
 
     private static FeatureAttachmentContent MapContent(IReadOnlyList<object?> row) =>
         new(MapDescriptor(row), (byte[])row[5]!);

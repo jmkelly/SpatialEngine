@@ -60,7 +60,7 @@ internal sealed class InMemoryTileCache : ITileCache
     {
         ArgumentNullException.ThrowIfNull(tile);
         cancellationToken.ThrowIfCancellationRequested();
-        if (_maxEntries <= 0 || _maxBytes <= 0 || tile.Content.LongLength > _maxBytes)
+        if (!CanStore(tile.Content.LongLength))
         {
             return ValueTask.CompletedTask;
         }
@@ -69,16 +69,22 @@ internal sealed class InMemoryTileCache : ITileCache
             RemoveVectorEntry(key);
             _vectorEntries[key] = new VectorEntry(tile, _vectorOrder.AddFirst(key));
             _vectorBytes += tile.Content.LongLength;
-            while ((_vectorBytes > _maxBytes || _vectorEntries.Count > _maxEntries) && _vectorOrder.Last is { } oldest)
-            {
-                _vectorOrder.RemoveLast();
-                if (_vectorEntries.Remove(oldest.Value, out var entry))
-                {
-                    _vectorBytes -= entry.Tile.Content.LongLength;
-                }
-            }
+            EvictVectors();
         }
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>Drops least-recently-used vector entries until both bounds hold (T-001).</summary>
+    private void EvictVectors()
+    {
+        while ((_vectorBytes > _maxBytes || _vectorEntries.Count > _maxEntries) && _vectorOrder.Last is { } oldest)
+        {
+            _vectorOrder.RemoveLast();
+            if (_vectorEntries.Remove(oldest.Value, out var entry))
+            {
+                _vectorBytes -= entry.Tile.Content.LongLength;
+            }
+        }
     }
 
     public ValueTask<RasterImage?> TryGetAsync(TileCacheKey key, CancellationToken cancellationToken = default)
@@ -144,8 +150,11 @@ internal sealed class InMemoryTileCache : ITileCache
         return ValueTask.CompletedTask;
     }
 
-    private bool CanStore(RasterImage image) =>
-        _maxEntries > 0 && _maxBytes > 0 && SizeOf(image) <= _maxBytes;
+    private bool CanStore(RasterImage image) => CanStore(SizeOf(image));
+
+    /// <summary>False when caching is disabled or the payload exceeds the byte bound (T-001).</summary>
+    private bool CanStore(long contentLength) =>
+        _maxEntries > 0 && _maxBytes > 0 && contentLength <= _maxBytes;
 
     private bool RemoveEntry(TileCacheKey key)
     {

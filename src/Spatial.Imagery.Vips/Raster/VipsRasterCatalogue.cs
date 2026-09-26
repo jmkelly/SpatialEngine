@@ -114,7 +114,10 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         var hasCatalog = VipsRasterReader.HasCatalog(descriptor);
         var extent = hasCatalog ? VipsRasterReader.Union(descriptor.Items!) : descriptor.Extent;
         var info = VipsRasterReader.ReadInfo(
-            descriptor.Path, extent, descriptor.Crs, descriptor.PixelSizeX, descriptor.PixelSizeY, descriptor.Statistics, descriptor.AttributeTable);
+            descriptor.Path,
+            new VipsRasterReader.RasterPlacement(extent, descriptor.Crs, descriptor.PixelSizeX, descriptor.PixelSizeY),
+            descriptor.Statistics,
+            descriptor.AttributeTable);
         var schema = hasCatalog ? VipsRasterReader.BuildSchema(descriptor.CatalogAttributes ?? []) : null;
         return new RasterDatasetDescription(
             dataset, descriptor.Name, descriptor.Description, info, hasCatalog, hasCatalog ? IdentityField : null, schema);
@@ -135,10 +138,11 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
             VipsRasterReader.ValidateItem(descriptor, item, attributes);
             var info = VipsRasterReader.ReadInfo(
                 item.Path,
-                item.Extent,
-                item.Crs ?? descriptor.Crs,
-                item.PixelSizeX > 0 ? item.PixelSizeX : descriptor.PixelSizeX,
-                item.PixelSizeY > 0 ? item.PixelSizeY : descriptor.PixelSizeY,
+                new VipsRasterReader.RasterPlacement(
+                    item.Extent,
+                    item.Crs ?? descriptor.Crs,
+                    item.PixelSizeX > 0 ? item.PixelSizeX : descriptor.PixelSizeX,
+                    item.PixelSizeY > 0 ? item.PixelSizeY : descriptor.PixelSizeY),
                 statistics: null);
             items.Add(new RasterCatalogItem(item.ObjectId, item.Footprint, info, VipsRasterReader.Payload(item), item.MetadataXml));
         }
@@ -168,7 +172,11 @@ public sealed class VipsRasterCatalogue : IRasterCatalogue
         var samplePixelX = topDescriptor is { PixelSizeX: > 0 } ? topDescriptor.PixelSizeX : descriptor.PixelSizeX;
         var samplePixelY = topDescriptor is { PixelSizeY: > 0 } ? topDescriptor.PixelSizeY : descriptor.PixelSizeY;
         var values = VipsRasterReader.Sample(
-            samplePath, sampleExtent, samplePixelX, samplePixelY, envelope.CenterX, envelope.CenterY, cancellationToken);
+            samplePath,
+            new VipsRasterReader.RasterPlacement(sampleExtent, descriptor.Crs, samplePixelX, samplePixelY),
+            envelope.CenterX,
+            envelope.CenterY,
+            cancellationToken);
         return new RasterIdentifyResult(top?.ObjectId, values, overlapping);
     }
 

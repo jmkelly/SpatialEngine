@@ -105,6 +105,14 @@ internal static class GeoServicesResolution
         return await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
     }
 
+    /// <summary>Whether the service is editable: the store exposes the keyed editing face (ADR-0037).</summary>
+    internal static bool IsEditable(IStoreRegistry stores, string store) =>
+        stores.EditStore(store) is not null;
+
+    /// <summary>Whether the layer advertises attachments: the store exposes the blob face (T-061, ADR-0066).</summary>
+    internal static bool HasAttachments(IStoreRegistry stores, string store) =>
+        stores.AttachmentStore(store) is not null;
+
     private static string Table(string dataset)
     {
         var dot = dataset.IndexOf('.');

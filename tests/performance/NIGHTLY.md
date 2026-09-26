@@ -21,7 +21,7 @@ reason.
    export at 60 rps, each held for 60 s at a constant offered rate
    (open-loop `PeriodicTimer`, in-process loopback, demo store only).
 3. **Baseline gate** — `SPATIAL_PERF_BASELINE=1 dotnet test
-   tests/performance/Spatial.Performance.Gates/`: parses the BDN JSON,
+   tests/performance/Spatial.Performance.Gates.Tests/`: parses the BDN JSON,
    compares against `artifacts/bench/baseline.json` and the committed
    `tests/performance/bench-budgets.json`.
 
@@ -101,7 +101,7 @@ Update flows:
   dotnet run -c Release --project tests/performance/Spatial.Performance \
     -- --filter '*' --job Medium --exporters json --artifacts artifacts/bench/raw
   SPATIAL_BENCH_DIR=artifacts/bench SPATIAL_PERF_BASELINE_UPDATE=1 \
-    dotnet test tests/performance/Spatial.Performance.Gates/ -c Release
+    dotnet test tests/performance/Spatial.Performance.Gates.Tests/ -c Release
   ```
   This only affects the local `artifacts/` copy; the shared baseline still
   advances through green nightlies. Never commit `artifacts/`.
@@ -114,8 +114,11 @@ Update flows:
 
 - `.github/workflows/perf-nightly.yml` — the nightly job.
 - `tests/performance/Spatial.Performance.Gates/` — BDN JSON parser,
-  comparer (15% + alloc guard + budgets), always-run unit tests, opt-in
-  gate/update tests.
+  comparer (15% + alloc guard + budgets) and the baseline file layout, as a
+  library so the coverage harness measures the gate's own code.
+- `tests/performance/Spatial.Performance.Gates.Tests/` — the gate's
+  always-run unit tests (pure comparer/parser plus the file layout over a
+  temp directory) and its opt-in gate/update tests.
 - `tests/performance/Spatial.HostThroughput.Tests/SustainedRunner.cs` —
   open-loop constant-rate driver; `HostSustainedRate.cs` — opt-in
   query/export sustained tests; `SustainedRunnerTests.cs` — always-run

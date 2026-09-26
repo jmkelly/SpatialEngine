@@ -89,8 +89,8 @@ public sealed class QualityLoopPass2Tests
         IntSchema,
         [value is { } number ? AttributeValue.FromInt64(number) : AttributeValue.Null]);
 
-    private static FeatureQueryEngine.MatchedFeature[] Members(params Feature[] features) =>
-        features.Select((feature, index) => new FeatureQueryEngine.MatchedFeature(index + 1, feature)).ToArray();
+    private static MatchedFeature[] Members(params Feature[] features) =>
+        features.Select((feature, index) => new MatchedFeature(index + 1, feature)).ToArray();
 
     [Fact]
     public void Aggregate_counts_rows_and_non_nulls()
@@ -206,9 +206,9 @@ public sealed class QualityLoopPass2Tests
     [Fact]
     public void ParseLayerDef_round_trips_a_where_clause()
     {
-        var clause = MapIdentifyEngine.ParseLayerDef(0, "pop > 1");
+        var clause = IdentifyFilters.ParseLayerDef(0, "pop > 1");
         Assert.NotNull(clause);
-        Assert.ThrowsAny<Exception>(() => MapIdentifyEngine.ParseLayerDef(0, "pop > "));
+        Assert.ThrowsAny<Exception>(() => IdentifyFilters.ParseLayerDef(0, "pop > "));
     }
 
     [Fact]
@@ -216,9 +216,9 @@ public sealed class QualityLoopPass2Tests
     {
         var dataset = FilterLayer();
         var scheme = EsriObjectIdScheme.For(dataset);
-        var definition = MapIdentifyEngine.ParseLayerDef(0, "pop > 100");
-        Assert.True(MapIdentifyEngine.MatchesFilters(null, dataset, null, FilterRow("a", 5, "x"), 1, null));
-        Assert.True(MapIdentifyEngine.MatchesFilters(scheme, dataset, definition, FilterRow("a", 500, "x"), 1, null));
-        Assert.False(MapIdentifyEngine.MatchesFilters(scheme, dataset, definition, FilterRow("b", 5, "x"), 2, null));
+        var definition = IdentifyFilters.ParseLayerDef(0, "pop > 100");
+        Assert.True(IdentifyFilters.MatchesFilters(null, dataset, null, FilterRow("a", 5, "x"), 1, null));
+        Assert.True(IdentifyFilters.MatchesFilters(scheme, dataset, definition, FilterRow("a", 500, "x"), 1, null));
+        Assert.False(IdentifyFilters.MatchesFilters(scheme, dataset, definition, FilterRow("b", 5, "x"), 2, null));
     }
 }

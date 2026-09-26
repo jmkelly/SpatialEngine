@@ -22,46 +22,78 @@ internal static class MapVectorTileEndpoints
             string service, [AsParameters] VectorTileAddress address, HttpContext context,
             IStoreRegistry stores, IVectorTileService encoder, ITileCache cache,
             IEnumerable<ITileScheme> schemes, CancellationToken cancellationToken) =>
-            VectorTile(catalog, registry, service, address, context, stores, encoder, cache, [.. schemes], cancellationToken));
+            VectorTile(new VectorTileCall(catalog, registry, service, address, context, stores, encoder, cache, [.. schemes])));
 
-    private static async Task<IResult> VectorTile(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, VectorTileAddress address,
-        HttpContext context, IStoreRegistry stores, IVectorTileService encoder, ITileCache cache,
-        IReadOnlyList<ITileScheme> schemes, CancellationToken cancellationToken)
+    private static async Task<IResult> VectorTile(VectorTileCall request)
     {
         try
         {
-            var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
-            var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
-            var scheme = MapServerEndpoints.MapTileScheme(schemes)
-                ?? throw GeoServicesErrors.ServiceUnavailable("No tiling scheme is configured on this host.");
-            var coordinate = new TileCoordinate(address.Z, address.X, address.Y);
-            if (!scheme.IsValid(coordinate))
-            {
-                throw GeoServicesErrors.NotFound($"Tile {address.Z}/{address.Y}/{address.X} is outside the tiling scheme.");
-            }
-
-            var sources = MapRenderEngine.Sources(stores, resolved.Store, layers, null);
-            var version = MapRenderEngine.Version(service, MapRenderEngine.Style(service, layers));
-            var key = new VectorTileCacheKey(scheme.Id, coordinate.Z, coordinate.X, coordinate.Y, version);
-            var tile = await cache.TryGetVectorAsync(key, cancellationToken);
-            var cached = tile is not null;
-            if (tile is null)
-            {
-                var vectorLayers = layers.Select((layer, index) => new VectorTileLayer(
-                    layer.Name, layer.Dataset, sources[index].Features, sources[index].Catalogue)).ToArray();
-                tile = await encoder.RenderAsync(new VectorTileRequest(scheme.Bounds(coordinate), scheme.Crs, vectorLayers), cancellationToken);
-                await cache.SetVectorAsync(key, tile, cancellationToken);
-            }
-
-            context.Response.Headers["X-Tile-Cached"] = cached ? "true" : "false";
-            return Results.Bytes(tile!.Content, tile.MediaType);
+            return await RenderAsync(request, request.Context.RequestAborted);
         }
         catch (Exception exception)
         {
             return EsriErrorMapper.Map(exception);
         }
     }
+
+    private static async Task<IResult> RenderAsync(VectorTileCall request, CancellationToken cancellationToken)
+    {
+        var resolved = await GeoServicesResolution.ResolveServiceAsync(
+            request.Catalog, request.Registry, request.Service, "MapServer", MapServiceKind.MapServer, cancellationToken);
+        var layers = await GeoServicesResolution.ListLayersAsync(request.Stores, resolved, cancellationToken);
+        var scheme = MapServerEndpoints.MapTileScheme(request.Schemes)
+            ?? throw GeoServicesErrors.ServiceUnavailable("No tiling scheme is configured on this host.");
+        var coordinate = new TileCoordinate(request.Address.Z, request.Address.X, request.Address.Y);
+        EnsureInScheme(scheme, coordinate, request.Address);
+
+        var tile = await LoadAsync(request, resolved, layers, scheme, coordinate, cancellationToken);
+        request.Context.Response.Headers["X-Tile-Cached"] = tile.Cached ? "true" : "false";
+        return Results.Bytes(tile.Tile!.Content, tile.Tile.MediaType);
+    }
+
+    private static void EnsureInScheme(ITileScheme scheme, TileCoordinate coordinate, VectorTileAddress address)
+    {
+        if (!scheme.IsValid(coordinate))
+        {
+            throw GeoServicesErrors.NotFound($"Tile {address.Z}/{address.Y}/{address.X} is outside the tiling scheme.");
+        }
+    }
+
+    /// <summary>Serves the tile from the cache when the version key is present, otherwise renders and stores it.</summary>
+    private static async Task<CachedTile> LoadAsync(
+        VectorTileCall request, ResolvedService resolved, IReadOnlyList<PublishedLayer> layers,
+        ITileScheme scheme, TileCoordinate coordinate, CancellationToken cancellationToken)
+    {
+        var sources = MapRenderEngine.Sources(request.Stores, resolved.Store, layers, null);
+        var version = MapRenderEngine.Version(request.Service, MapRenderEngine.Style(request.Service, layers));
+        var key = new VectorTileCacheKey(scheme.Id, coordinate.Z, coordinate.X, coordinate.Y, version);
+        var cached = await request.Cache.TryGetVectorAsync(key, cancellationToken);
+        if (cached is not null)
+        {
+            return new CachedTile(cached, true);
+        }
+
+        var vectorLayers = layers.Select((layer, index) => new VectorTileLayer(
+            layer.Name, layer.Dataset, sources[index].Features, sources[index].Catalogue)).ToArray();
+        var tile = await request.Encoder.RenderAsync(
+            new VectorTileRequest(scheme.Bounds(coordinate), scheme.Crs, vectorLayers), cancellationToken);
+        await request.Cache.SetVectorAsync(key, tile, cancellationToken);
+        return new CachedTile(tile, false);
+    }
+
+    /// <summary>One resolved tile call: the route's bound services and the address it addresses.</summary>
+    private sealed record VectorTileCall(
+        GeoServicesCatalog Catalog,
+        IMapRegistry Registry,
+        string Service,
+        VectorTileAddress Address,
+        HttpContext Context,
+        IStoreRegistry Stores,
+        IVectorTileService Encoder,
+        ITileCache Cache,
+        IReadOnlyList<ITileScheme> Schemes);
+
+    private sealed record CachedTile(VectorTile Tile, bool Cached);
 
     private sealed class VectorTileAddress
     {

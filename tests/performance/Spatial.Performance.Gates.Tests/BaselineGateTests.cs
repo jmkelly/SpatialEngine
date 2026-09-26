@@ -1,4 +1,6 @@
-namespace Spatial.Performance.Gates;
+using Spatial.Performance.Gates;
+
+namespace Spatial.Performance.Gates.Tests;
 
 /// <summary>
 /// Nightly baseline gate unit tests, suite D (T-078). Pure logic only:

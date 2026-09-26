@@ -149,21 +149,28 @@ public static class EsriFeatureCodec
     private static void WriteEnvelope(Utf8JsonWriter writer, IFeature feature)
     {
         var geometry = FindGeometry(feature);
-        if (geometry?.Envelope is not { } envelope || envelope.IsEmpty)
+        var envelope = ServedEnvelope(geometry);
+        if (envelope is null)
         {
             writer.WriteNull("geometry");
             return;
         }
 
+        var box = envelope.Value;
         writer.WritePropertyName("geometry");
         writer.WriteStartObject();
-        writer.WriteNumber("xmin", envelope.MinX);
-        writer.WriteNumber("ymin", envelope.MinY);
-        writer.WriteNumber("xmax", envelope.MaxX);
-        writer.WriteNumber("ymax", envelope.MaxY);
-        EsriSpatialReference.Write(writer, geometry.CoordinateReference);
+        writer.WriteNumber("xmin", box.MinX);
+        writer.WriteNumber("ymin", box.MinY);
+        writer.WriteNumber("xmax", box.MaxX);
+        writer.WriteNumber("ymax", box.MaxY);
+        EsriSpatialReference.Write(writer, geometry!.CoordinateReference);
         writer.WriteEndObject();
     }
+
+    /// <summary>The geometry's envelope, or null when there is none (absent or empty).</summary>
+    private static Envelope? ServedEnvelope(IGeometry? geometry) => HasEnvelope(geometry) ? geometry!.Envelope : null;
+
+    private static bool HasEnvelope(IGeometry? geometry) => geometry?.Envelope is { IsEmpty: false };
 
     private static IGeometry? FindGeometry(IFeature feature)
     {

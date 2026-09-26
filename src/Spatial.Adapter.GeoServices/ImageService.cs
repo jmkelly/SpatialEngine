@@ -388,13 +388,20 @@ internal static class ImageService
             return 90;
         }
 
-        if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var quality) || quality is < 0 or > 100)
-        {
-            throw GeoServicesErrors.Invalid($"'compressionQuality' must be an integer between 0 and 100, got '{value}'.");
-        }
-
-        return quality;
+        return RequireQuality(value);
     }
+
+    private static int RequireQuality(string value)
+    {
+        var quality = ParsedQuality(value);
+        return quality is >= 0 and <= 100
+            ? quality
+            : throw GeoServicesErrors.Invalid($"'compressionQuality' must be an integer between 0 and 100, got '{value}'.");
+    }
+
+    /// <summary>The parsed quality, or -1 (out of range) when the text is not an integer.</summary>
+    private static int ParsedQuality(string value) =>
+        int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var quality) ? quality : -1;
 
     /// <summary>Parses the required catalog <c>rasterIds</c> list (spec §8.0.7).</summary>
     public static IReadOnlyList<long> ParseRasterIds(string? value)

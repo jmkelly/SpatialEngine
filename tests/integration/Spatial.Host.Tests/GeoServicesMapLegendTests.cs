@@ -137,6 +137,43 @@ public sealed class GeoServicesMapLegendTests : IDisposable
         Assert.NotEmpty(layers[0].GetProperty("legend").EnumerateArray());
     }
 
+    /// <summary>
+    /// The shared <c>layers</c> selection grammar rejects an id the service
+    /// does not have with the Esri <c>not.found</c> envelope, rather than
+    /// silently dropping it from the response.
+    /// </summary>
+    [Theory]
+    [InlineData("queryDomains")]
+    [InlineData("queryLegends")]
+    public async Task Query_operations_reject_an_unknown_layer_id(string operation)
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/world/MapServer/{operation}?f=json&layers=7");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("error");
+        Assert.Equal(404, error.GetProperty("code").GetInt32());
+        Assert.Contains("Layer 7 does not exist", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A selection that resolves to every layer is not an unknown-id
+    /// request, so the show/hide/all grammar must reach the response instead
+    /// of failing the id check.
+    /// </summary>
+    [Fact]
+    public async Task Query_legends_accepts_the_all_layers_keyword()
+    {
+        var client = await MapServiceAsync();
+
+        var legends = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/queryLegends?f=json&layers=all"));
+
+        var layers = legends.GetProperty("layers").EnumerateArray().ToArray();
+        Assert.Single(layers);
+        Assert.Equal(0, layers[0].GetProperty("layerId").GetInt32());
+    }
+
     [Fact]
     public async Task Generate_renderer_classifies_equal_interval_breaks()
     {

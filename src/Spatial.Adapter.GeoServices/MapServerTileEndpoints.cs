@@ -18,14 +18,25 @@ internal static class MapServerTileEndpoints
         group.MapMethods("/{service}/MapServer/tile/{z:int}/{y:int}/{x:int}", ["GET", "POST"], (
             string service, [AsParameters] MapTileAddress address, HttpContext context, IStoreRegistry stores,
             IMapRenderer renderer, ITileCache cache, IEnumerable<ITileScheme> schemes, CancellationToken cancellationToken) =>
-            MapTile(catalog, registry, service, address, context, stores,
-                new MapTileRenderDependencies(renderer, cache, [.. schemes]), cancellationToken));
+            MapTile(new MapTileCall(
+                catalog, registry, service, address, context, stores,
+                new MapTileRenderDependencies(renderer, cache, [.. schemes]), cancellationToken)));
     }
 
-    private static async Task<IResult> MapTile(
-        GeoServicesCatalog catalog, IMapRegistry registry, string service, MapTileAddress address,
-        HttpContext context, IStoreRegistry stores, MapTileRenderDependencies render, CancellationToken cancellationToken)
+    /// <summary>One MapServer tile request's seams: the published service, the tile address and the rendering stack.</summary>
+    private sealed record MapTileCall(
+        GeoServicesCatalog Catalog,
+        IMapRegistry Registry,
+        string Service,
+        MapTileAddress Address,
+        HttpContext Context,
+        IStoreRegistry Stores,
+        MapTileRenderDependencies Render,
+        CancellationToken CancellationToken);
+
+    private static async Task<IResult> MapTile(MapTileCall call)
     {
+        var (catalog, registry, service, address, context, stores, render, cancellationToken) = call;
         try
         {
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);

@@ -27,23 +27,33 @@ internal static class RasterCatalogQuery
     {
         var dataset = Describe(description, items.Count);
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
-        var queryGeometry = FeatureQueryEngine.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
-        var matches = Match(dataset, description, items, query, queryGeometry, operations, cancellationToken);
+        var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
+        var matches = Match(
+            new CatalogMatch(description, dataset, items, query, queryGeometry), operations, cancellationToken);
         return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
     }
 
-    private static List<FeatureQueryEngine.MatchedFeature> Match(
-        DatasetDescription dataset,
-        RasterDatasetDescription description,
-        IReadOnlyList<RasterCatalogItem> items,
-        EsriFeatureQuery query,
-        IGeometry? queryGeometry,
+    /// <summary>
+    /// What the catalog match loops over: the served image, its projected
+    /// dataset description, the catalog items, the parsed query and the
+    /// pre-transformed query geometry.
+    /// </summary>
+    private sealed record CatalogMatch(
+        RasterDatasetDescription Description,
+        DatasetDescription Dataset,
+        IReadOnlyList<RasterCatalogItem> Items,
+        EsriFeatureQuery Query,
+        IGeometry? QueryGeometry);
+
+    private static List<MatchedFeature> Match(
+        CatalogMatch match,
         IGeometryOperations operations,
         CancellationToken cancellationToken)
     {
+        var (description, dataset, items, query, queryGeometry) = match;
         var schema = description.CatalogSchema ?? throw GeoServicesErrors.Invalid(
             $"Image Service '{description.Dataset}' does not include an accessible raster catalog.");
-        var matches = new List<FeatureQueryEngine.MatchedFeature>(items.Count);
+        var matches = new List<MatchedFeature>(items.Count);
         foreach (var item in items)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -51,7 +61,7 @@ internal static class RasterCatalogQuery
             var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
             if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, operations, uniqueId), cancellationToken))
             {
-                matches.Add(new FeatureQueryEngine.MatchedFeature(item.ObjectId, feature));
+                matches.Add(new MatchedFeature(item.ObjectId, feature));
             }
         }
 

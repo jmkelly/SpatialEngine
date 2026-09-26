@@ -11,6 +11,15 @@ using Spatial.Core.Geometry;
 namespace Spatial.Adapter.Ogc;
 
 /// <summary>
+/// The serving seams every WMS resource needs: the resolved map, the store
+/// and renderer services behind it, the OGC options and the request's
+/// cancellation. Grouping them keeps each operation's signature to the
+/// operation itself.
+/// </summary>
+internal sealed record WmsServing(
+    Map Map, OgcRequestServices Services, OgcOptions Options, HttpContext Context, CancellationToken CancellationToken);
+
+/// <summary>
 /// The OGC Web Map Service projection (ADR-0053 §3): GetCapabilities (1.3.0
 /// and 1.1.1 dialects), GetMap, GetLegendGraphic and GetFeatureInfo over a
 /// map's feature layers. GetMap renders the
@@ -39,29 +48,42 @@ internal static class WmsService
     {
         parameters.RequiredService("WMS");
         var map = await services.ResolveMapAsync(name, MapServiceKind.Wms, "WMS", cancellationToken);
-        var request = parameters.RequiredRequest();
-        return request.ToUpperInvariant() switch
-        {
-            "GETCAPABILITIES" => await CapabilitiesAsync(map, parameters, services, options, context, cancellationToken),
-            "GETMAP" => await GetMapAsync(map, parameters, services, cancellationToken),
-            "GETFEATUREINFO" => await GetFeatureInfoAsync(map, parameters, services, cancellationToken),
-            "GETLEGENDGRAPHIC" => await GetLegendGraphicAsync(map, parameters, services, cancellationToken),
-            _ => throw OgcServiceException.NotSupported($"The WMS operation '{request}' is not supported."),
-        };
+        var request = parameters.RequiredRequest().ToUpperInvariant();
+        return await DispatchAsync(
+            request, new WmsServing(map, services, options, context, cancellationToken), parameters);
     }
 
-    private static async Task<IResult> CapabilitiesAsync(
-        Map map, OgcParameters parameters, OgcRequestServices services, OgcOptions options, HttpContext context, CancellationToken cancellationToken)
+    /// <summary>The served WMS operations; the table is the dispatch, an unknown request is <c>OperationNotSupported</c>.</summary>
+    private static Task<IResult> DispatchAsync(string request, WmsServing serving, OgcParameters parameters) =>
+        Operations.TryGetValue(request, out var operation)
+            ? operation(serving, parameters)
+            : throw OgcServiceException.NotSupported($"The WMS operation '{request}' is not supported.");
+
+    private static readonly Dictionary<string, WmsOperation> Operations = new(StringComparer.Ordinal)
+    {
+        ["GETCAPABILITIES"] = (serving, parameters) => CapabilitiesAsync(serving, parameters),
+        ["GETMAP"] = (serving, parameters) =>
+            GetMapAsync(serving.Map, parameters, serving.Services, serving.CancellationToken),
+        ["GETFEATUREINFO"] = (serving, parameters) =>
+            GetFeatureInfoAsync(serving.Map, parameters, serving.Services, serving.CancellationToken),
+        ["GETLEGENDGRAPHIC"] = (serving, parameters) =>
+            GetLegendGraphicAsync(serving.Map, parameters, serving.Services, serving.CancellationToken),
+    };
+
+    /// <summary>One served WMS operation, uniform so the dispatch table can hold it.</summary>
+    private delegate Task<IResult> WmsOperation(WmsServing serving, OgcParameters parameters);
+
+    private static async Task<IResult> CapabilitiesAsync(WmsServing serving, OgcParameters parameters)
     {
         var version = NegotiateCapabilitiesVersion(parameters.Get("version"));
         var layers = new List<OgcLayer>();
-        foreach (var layer in OgcLayers.FeatureLayers(map))
+        foreach (var layer in OgcLayers.FeatureLayers(serving.Map))
         {
-            layers.Add(await services.LoadAsync(map, layer, cancellationToken));
+            layers.Add(await serving.Services.LoadAsync(serving.Map, layer, serving.CancellationToken));
         }
 
-        var baseUrl = BaseUrl(context, options, map.Name);
-        var xml = await WmsCapabilities.BuildAsync(map, layers, baseUrl, services, options, cancellationToken, version);
+        var baseUrl = BaseUrl(serving);
+        var xml = await WmsCapabilities.BuildAsync(serving, layers, baseUrl, version);
         return Results.Text(xml, "application/xml");
     }
 
@@ -101,11 +123,17 @@ internal static class WmsService
         {
             return await RenderMapAsync(map, parameters, services, cancellationToken);
         }
-        catch (Exception exception) when (exception is OgcServiceException or SpatialException && exceptions is not WmsExceptionsMode.Xml)
+        catch (Exception exception) when (IsRenderedFailure(exception, exceptions))
         {
             return await RenderErrorImageAsync(parameters, exceptions, services, cancellationToken);
         }
     }
+
+    /// <summary>Only a mapped failure renders as an image, and only when EXCEPTIONS asked for one.</summary>
+    private static bool IsRenderedFailure(Exception exception, WmsExceptionsMode mode) =>
+        KnownFailure(exception) && mode is not WmsExceptionsMode.Xml;
+
+    private static bool KnownFailure(Exception exception) => exception is OgcServiceException or SpatialException;
 
     private static async Task<IResult> RenderMapAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
@@ -247,14 +275,23 @@ internal static class WmsService
         Blank,
     }
 
+    /// <summary>The EXCEPTIONS values the spec names, upper-cased; an unknown value stays XML (lenient).</summary>
+    private static readonly Dictionary<string, WmsExceptionsMode> ExceptionModes = new(StringComparer.Ordinal)
+    {
+        [""] = WmsExceptionsMode.Xml,
+        ["XML"] = WmsExceptionsMode.Xml,
+        ["APPLICATION/VND.OGC.SE_XML"] = WmsExceptionsMode.Xml,
+        ["TEXT/XML"] = WmsExceptionsMode.Xml,
+        ["INIMAGE"] = WmsExceptionsMode.InImage,
+        ["APPLICATION/VND.OGC.SE_INIMAGE"] = WmsExceptionsMode.InImage,
+        ["BLANK"] = WmsExceptionsMode.Blank,
+        ["APPLICATION/VND.OGC.SE_BLANK"] = WmsExceptionsMode.Blank,
+    };
+
     private static WmsExceptionsMode ExceptionsMode(OgcParameters parameters) =>
-        parameters.Get("exceptions")?.Trim().ToUpperInvariant() switch
-        {
-            null or "" or "XML" or "APPLICATION/VND.OGC.SE_XML" or "TEXT/XML" => WmsExceptionsMode.Xml,
-            "INIMAGE" or "APPLICATION/VND.OGC.SE_INIMAGE" => WmsExceptionsMode.InImage,
-            "BLANK" or "APPLICATION/VND.OGC.SE_BLANK" => WmsExceptionsMode.Blank,
-            _ => WmsExceptionsMode.Xml,
-        };
+        ExceptionModes.TryGetValue(parameters.Get("exceptions")?.Trim().ToUpperInvariant() ?? string.Empty, out var mode)
+            ? mode
+            : WmsExceptionsMode.Xml;
 
     private static async Task<IResult> RenderErrorImageAsync(
         OgcParameters parameters, WmsExceptionsMode mode, OgcRequestServices services, CancellationToken cancellationToken)
@@ -285,12 +322,16 @@ internal static class WmsService
         return Results.Bytes(image.Content, image.MediaType);
     }
 
-    private static bool ParseTransparentDefault(string? value, bool fallback) => value?.ToUpperInvariant() switch
+    private static bool ParseTransparentDefault(string? value, bool fallback) =>
+        TransparentFlags.TryGetValue(value?.ToUpperInvariant() ?? string.Empty, out var flag) ? flag : fallback;
+
+    /// <summary>The TRANSPARENT values the spec names, upper-cased; anything else keeps the caller's fallback.</summary>
+    private static readonly Dictionary<string, bool> TransparentFlags = new(StringComparer.Ordinal)
     {
-        null => fallback,
-        "FALSE" or "0" => false,
-        "TRUE" or "1" => true,
-        _ => fallback,
+        ["FALSE"] = false,
+        ["0"] = false,
+        ["TRUE"] = true,
+        ["1"] = true,
     };
 
     private static string? OptionalColor(string? value)
@@ -318,24 +359,15 @@ internal static class WmsService
     }
 
     private static int OptionalSize(string? text, int fallback) =>
-        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
-            ? value
-            : fallback;
+        PositiveSize(text, out var value) ? value : fallback;
+
+    private static bool PositiveSize(string? text, out int value) =>
+        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value > 0;
 
     private static async Task<IResult> GetLegendGraphicAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
     {
-        var names = parameters.List("layer");
-        if (names.Count == 0)
-        {
-            throw OgcServiceException.Missing("layer");
-        }
-
-        if (names.Count > 1)
-        {
-            throw OgcServiceException.Invalid("The 'layer' parameter names a single layer.");
-        }
-
+        var names = RequireSingleLayer(parameters);
         RequireDefaultStyles(parameters.List("style"));
         var layer = OgcLayers.Select(map, names).Single();
         var loaded = await services.LoadAsync(map, layer, cancellationToken);
@@ -355,23 +387,41 @@ internal static class WmsService
         return Results.Bytes(image.Content, image.MediaType);
     }
 
+    /// <summary>GetLegendGraphic renders exactly one layer: none is <c>Missing</c>, several is <c>Invalid</c>.</summary>
+    private static IReadOnlyList<string> RequireSingleLayer(OgcParameters parameters)
+    {
+        var names = parameters.List("layer");
+        return names.Count == 1 ? names : throw SingleLayerProblem(names.Count);
+    }
+
+    private static OgcServiceException SingleLayerProblem(int count) =>
+        count == 0
+            ? OgcServiceException.Missing("layer")
+            : OgcServiceException.Invalid("The 'layer' parameter names a single layer.");
+
     private static async Task<RasterViewport> LegendViewportAsync(
         OgcRequestServices services, OgcLayer loaded, OgcParameters parameters, CancellationToken cancellationToken)
     {
-        var width = LegendSize(parameters.Get("width"), LegendWidth);
-        var height = LegendSize(parameters.Get("height"), LegendHeight);
         var extent = await OgcGeometry.ExtentAsync(
             services.Features(loaded.Store), loaded.Layer.Dataset, cancellationToken);
-        if (extent is { } box && !box.IsEmpty && box.Width > 0 && box.Height > 0)
-        {
-            return new RasterViewport(box, width, height, Crs(loaded.Description.Srid));
-        }
-
-        return new RasterViewport(new Envelope(-180, -90, 180, 90), width, height, "EPSG:4326");
+        return Drawable(extent)
+            ? new RasterViewport(extent!.Value, LegendSize(parameters, "width", LegendWidth), LegendSize(parameters, "height", LegendHeight), Crs(loaded.Description.Srid))
+            : new RasterViewport(new Envelope(-180, -90, 180, 90), LegendSize(parameters, "width", LegendWidth), LegendSize(parameters, "height", LegendHeight), "EPSG:4326");
     }
 
-    private static int LegendSize(string? text, int fallback) =>
-        text is null ? fallback : PositiveInt(text, "width");
+    /// <summary>A layer's own extent renders only when the store reported a non-degenerate box.</summary>
+    private static bool Drawable(Envelope? extent) =>
+        extent is { } box && HasArea(box);
+
+    private static bool HasArea(Envelope box) => Positive(box.Width) && Positive(box.Height);
+
+    private static bool Positive(double span) => span > 0;
+
+    private static int LegendSize(OgcParameters parameters, string name, int fallback)
+    {
+        var text = parameters.Get(name);
+        return text is null ? fallback : PositiveInt(text, name);
+    }
 
     private static async Task<IResult> GetFeatureInfoAsync(
         Map map, OgcParameters parameters, OgcRequestServices services, CancellationToken cancellationToken)
@@ -722,14 +772,22 @@ internal static class WmsService
     {
         foreach (var style in styles)
         {
-            if (!string.IsNullOrWhiteSpace(style)
-                && !string.Equals(style.Trim(), "default", StringComparison.OrdinalIgnoreCase))
-            {
-                throw OgcServiceException.StyleNotDefined(
-                    $"Style '{style}' is not defined; this service serves the default style only.");
-            }
+            RequireDefaultStyle(style);
         }
     }
+
+    private static void RequireDefaultStyle(string style)
+    {
+        if (IsNamedStyle(style))
+        {
+            throw OgcServiceException.StyleNotDefined(
+                $"Style '{style}' is not defined; this service serves the default style only.");
+        }
+    }
+
+    /// <summary>A named style is one the service does not serve: an empty entry selects the default.</summary>
+    private static bool IsNamedStyle(string style) =>
+        !string.IsNullOrWhiteSpace(style) && !string.Equals(style.Trim(), "default", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Rejects a GetFeatureInfo layer that exists on the map but is not a
@@ -752,6 +810,7 @@ internal static class WmsService
 
     private static string Crs(int srid) => $"EPSG:{srid.ToString(CultureInfo.InvariantCulture)}";
 
-    private static string BaseUrl(HttpContext context, OgcOptions options, string name) =>
-        $"{context.Request.Scheme}://{context.Request.Host}{options.Root}/{name}/wms";
+    /// <summary>The public URL a client calls, and the one the capabilities advertise.</summary>
+    private static string BaseUrl(WmsServing serving) =>
+        $"{serving.Context.Request.Scheme}://{serving.Context.Request.Host}{serving.Options.Root}/{serving.Map.Name}/wms";
 }

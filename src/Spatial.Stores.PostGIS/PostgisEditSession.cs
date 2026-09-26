@@ -14,5 +14,19 @@ internal sealed class PostgisEditSession(NpgsqlConnection connection, NpgsqlTran
 
     public NpgsqlTransaction? Transaction { get; } = transaction;
 
+    /// <summary>Builds a command on this session's connection and transaction, with the values bound positionally.</summary>
+    public NpgsqlCommand CreateCommand(string sql, object?[] values)
+    {
+        var command = Connection.CreateCommand();
+        command.Transaction = Transaction;
+        command.CommandText = sql;
+        for (var i = 0; i < values.Length; i++)
+        {
+            command.Parameters.AddWithValue($"p{i}", values[i] ?? DBNull.Value);
+        }
+
+        return command;
+    }
+
     public ValueTask DisposeAsync() => ownsConnection ? Connection.DisposeAsync() : ValueTask.CompletedTask;
 }

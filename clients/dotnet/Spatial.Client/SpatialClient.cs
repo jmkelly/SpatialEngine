@@ -3,7 +3,6 @@ using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
 using Spatial.Contracts.Transformations;
 using Spatial.Core.Features;
-using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Client;
@@ -16,19 +15,48 @@ namespace Spatial.Client;
 /// host's base address; HTTP mechanics and wire codecs live in
 /// <see cref="SpatialClientTransport"/>.
 /// </summary>
+/// <remarks>
+/// The routes are grouped into sub-clients — <see cref="Auth"/>,
+/// <see cref="Geometry"/>, <see cref="Data"/>, <see cref="Render"/>,
+/// <see cref="Maps"/> and <see cref="Tiles"/> — so each group carries its own
+/// wire types instead of this one type naming all of them (ADR-0040). Every
+/// route is still reachable directly on the client; the methods here delegate
+/// to the group that owns the route.
+/// </remarks>
 public sealed class SpatialClient
 {
     private readonly SpatialClientTransport _transport;
-    private string? _token;
+    private readonly SpatialClientSession _session;
 
     /// <summary>The tile surface (ADR-0046), split so this type's fan-out stays deliberate (ADR-0040).</summary>
     public SpatialTileClient Tiles { get; }
+
+    /// <summary>The auth surface (ADR-0071), split so this type's fan-out stays deliberate (ADR-0040).</summary>
+    public SpatialAuthClient Auth { get; }
+
+    /// <summary>The geometry and coordinate surface, split so this type's fan-out stays deliberate (ADR-0040).</summary>
+    public SpatialGeometryClient Geometry { get; }
+
+    /// <summary>The catalogue, dataset, feature and transaction surface (ADR-0040).</summary>
+    public SpatialDataClient Data { get; }
+
+    /// <summary>The render surface (ADR-0044), split so this type's fan-out stays deliberate (ADR-0040).</summary>
+    public SpatialRenderClient Render { get; }
+
+    /// <summary>The map and ingest surface (ADR-0053), split so this type's fan-out stays deliberate (ADR-0040).</summary>
+    public SpatialMapClient Maps { get; }
 
     /// <summary>Creates a client over an existing <see cref="HttpClient"/> whose base address is the host.</summary>
     public SpatialClient(HttpClient http)
     {
         _transport = new SpatialClientTransport(http);
+        _session = new SpatialClientSession();
         Tiles = new SpatialTileClient(_transport);
+        Auth = new SpatialAuthClient(_transport, _session);
+        Geometry = new SpatialGeometryClient(_transport);
+        Data = new SpatialDataClient(_transport);
+        Render = new SpatialRenderClient(_transport);
+        Maps = new SpatialMapClient(_transport, _session);
     }
 
     /// <summary>Creates a client talking to the host at <paramref name="baseAddress"/>.</summary>
@@ -40,202 +68,115 @@ public sealed class SpatialClient
     // ---- auth (ADR-0071) ----
 
     /// <summary>Authenticates a configured local user and returns an opaque bearer.</summary>
-    public async Task<AuthToken> LoginAsync(string username, string password, CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.PostAsync<AuthTokenResponse>(
-            "/api/auth/login", new LoginRequest(username, password), cancellationToken);
-        _token = response.Token;
-        return new AuthToken(response.Token, response.ExpiresAt,
-            new AuthIdentity("local", username, username, []));
-    }
+    public Task<AuthToken> LoginAsync(string username, string password, CancellationToken cancellationToken = default) =>
+        Auth.LoginAsync(username, password, cancellationToken);
 
     /// <summary>Revokes an opaque bearer.</summary>
-    public async Task LogoutAsync(string token, CancellationToken cancellationToken = default)
-    {
-        await _transport.SendNoContentAsync(HttpMethod.Post, "/api/auth/logout", token, cancellationToken);
-        if (string.Equals(_token, token, StringComparison.Ordinal)) _token = null;
-    }
+    public Task LogoutAsync(string token, CancellationToken cancellationToken = default) =>
+        Auth.LogoutAsync(token, cancellationToken);
 
     /// <summary>Rotates an opaque bearer.</summary>
-    public async Task<AuthToken> RefreshAsync(string token, CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.SendAsync<AuthTokenResponse>(
-            HttpMethod.Post, "/api/auth/refresh", null, token, cancellationToken);
-        _token = response.Token;
-        return new AuthToken(response.Token, response.ExpiresAt,
-            new AuthIdentity("local", string.Empty, string.Empty, []));
-    }
+    public Task<AuthToken> RefreshAsync(string token, CancellationToken cancellationToken = default) =>
+        Auth.RefreshAsync(token, cancellationToken);
 
     /// <summary>Reads the authenticated identity and roles.</summary>
-    public async Task<AuthIdentity> MeAsync(string token, CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.SendAsync<AuthIdentityResponse>(
-            HttpMethod.Get, "/api/auth/me", null, token, cancellationToken);
-        return new AuthIdentity(response.Issuer, response.Subject, response.Username, response.Roles);
-    }
+    public Task<AuthIdentity> MeAsync(string token, CancellationToken cancellationToken = default) =>
+        Auth.MeAsync(token, cancellationToken);
 
     // ---- geometry ----
 
-    public async Task<IGeometry> BufferAsync(IGeometry geometry, double distance, int quadrantSegments = 8, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(geometry);
-        var response = await _transport.PostAsync<GeometryResponse>(
-            "/api/geometry/buffer",
-            new BufferRequest(SpatialClientCodec.Encode(geometry), distance, quadrantSegments),
-            cancellationToken);
-        return SpatialClientCodec.Decode(response.Geometry);
-    }
+    /// <summary>Buffers a geometry by a distance in the host's working units.</summary>
+    public Task<IGeometry> BufferAsync(IGeometry geometry, double distance, int quadrantSegments = 8, CancellationToken cancellationToken = default) =>
+        Geometry.BufferAsync(geometry, distance, quadrantSegments, cancellationToken);
 
-    public async Task<IGeometry> IntersectionAsync(IGeometry left, IGeometry right, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-        var response = await _transport.PostAsync<GeometryResponse>(
-            "/api/geometry/intersection",
-            new IntersectionRequest(SpatialClientCodec.Encode(left), SpatialClientCodec.Encode(right)),
-            cancellationToken);
-        return SpatialClientCodec.Decode(response.Geometry);
-    }
+    /// <summary>Intersects two geometries.</summary>
+    public Task<IGeometry> IntersectionAsync(IGeometry left, IGeometry right, CancellationToken cancellationToken = default) =>
+        Geometry.IntersectionAsync(left, right, cancellationToken);
 
-    public async Task<bool> ValidateAsync(IGeometry geometry, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(geometry);
-        var response = await _transport.PostAsync<ValidateResponse>(
-            "/api/geometry/validate", new ValidateRequest(SpatialClientCodec.Encode(geometry)), cancellationToken);
-        return response.Valid;
-    }
+    /// <summary>Reports whether a geometry is valid, without throwing on an invalid one.</summary>
+    public Task<bool> ValidateAsync(IGeometry geometry, CancellationToken cancellationToken = default) =>
+        Geometry.ValidateAsync(geometry, cancellationToken);
 
-    public async Task<IGeometry> SimplifyAsync(IGeometry geometry, double tolerance, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(geometry);
-        var response = await _transport.PostAsync<GeometryResponse>(
-            "/api/geometry/simplify", new SimplifyRequest(SpatialClientCodec.Encode(geometry), tolerance), cancellationToken);
-        return SpatialClientCodec.Decode(response.Geometry);
-    }
+    /// <summary>Simplifies a geometry to a tolerance.</summary>
+    public Task<IGeometry> SimplifyAsync(IGeometry geometry, double tolerance, CancellationToken cancellationToken = default) =>
+        Geometry.SimplifyAsync(geometry, tolerance, cancellationToken);
 
-    // ---- transforms ----
-
+    /// <summary>Describes a coordinate reference system.</summary>
     public Task<CrsDescription> DescribeAsync(string crs, CancellationToken cancellationToken = default) =>
-        _transport.PostAsync<CrsDescription>("/api/crs/describe", new DescribeRequest(crs), cancellationToken);
+        Geometry.DescribeAsync(crs, cancellationToken);
 
-    public async Task<IGeometry> TransformAsync(IGeometry geometry, string? source, string target, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(geometry);
-        var response = await _transport.PostAsync<GeometryResponse>(
-            "/api/coordinates/transform", new TransformRequest(SpatialClientCodec.Encode(geometry), source, target), cancellationToken);
-        return SpatialClientCodec.Decode(response.Geometry);
-    }
+    /// <summary>Transforms a geometry between coordinate reference systems.</summary>
+    public Task<IGeometry> TransformAsync(IGeometry geometry, string? source, string target, CancellationToken cancellationToken = default) =>
+        Geometry.TransformAsync(geometry, source, target, cancellationToken);
 
     // ---- catalogue / datasets ----
 
-    public async Task<IReadOnlyList<DatasetSummary>> ListCatalogueAsync(
-        string store = "demo", string? pattern = null, CancellationToken cancellationToken = default)
-    {
-        var url = $"/api/catalogue?store={Uri.EscapeDataString(store)}"
-            + (pattern is null ? string.Empty : $"&pattern={Uri.EscapeDataString(pattern)}");
-        var response = await _transport.GetAsync<CatalogueResponse>(url, cancellationToken);
-        return response.Datasets;
-    }
+    /// <summary>Lists the datasets a store publishes.</summary>
+    public Task<IReadOnlyList<DatasetSummary>> ListCatalogueAsync(
+        string store = "demo", string? pattern = null, CancellationToken cancellationToken = default) =>
+        Data.ListCatalogueAsync(store, pattern, cancellationToken);
 
+    /// <summary>Describes one dataset: its fields, extent and identity column.</summary>
     public Task<DatasetDescription> DescribeDatasetAsync(
         string dataset, string store = "demo", CancellationToken cancellationToken = default) =>
-        _transport.GetAsync<DatasetDescription>(
-            $"/api/datasets/{Uri.EscapeDataString(dataset)}?store={Uri.EscapeDataString(store)}", cancellationToken);
+        Data.DescribeDatasetAsync(dataset, store, cancellationToken);
 
-    public async Task<string> CreateDatasetAsync(
-        string dataset, FeatureBatch sample, int srid, string store = "postgis", CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(sample);
-        var response = await _transport.PostAsync<CreateDatasetResponse>(
-            $"/api/datasets?store={Uri.EscapeDataString(store)}",
-            new CreateDatasetRequest(dataset, Convert.ToBase64String(FeatureBatchCodec.Encode(sample)), srid),
-            cancellationToken);
-        return response.Dataset;
-    }
+    /// <summary>Creates a dataset from a sample batch and returns its name.</summary>
+    public Task<string> CreateDatasetAsync(
+        string dataset, FeatureBatch sample, int srid, string store = "postgis", CancellationToken cancellationToken = default) =>
+        Data.CreateDatasetAsync(dataset, sample, srid, store, cancellationToken);
 
     // ---- features ----
 
-    public async Task<IReadOnlyList<FeatureBatch>> ScanAsync(
-        string dataset, string store = "demo", CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.PostAsync<FeatureBatchesResponse>(
-            $"/api/features/scan?store={Uri.EscapeDataString(store)}",
-            new ScanRequest(dataset), cancellationToken);
-        return response.Batches.Select(SpatialClientCodec.DecodeBatch).ToArray();
-    }
+    /// <summary>Scans every feature in a dataset.</summary>
+    public Task<IReadOnlyList<FeatureBatch>> ScanAsync(
+        string dataset, string store = "demo", CancellationToken cancellationToken = default) =>
+        Data.ScanAsync(dataset, store, cancellationToken);
 
-    public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    /// <summary>Queries features by extent, filter expression and store.</summary>
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
         string dataset, Contracts.BoundingBox? bbox = null, string? filter = null,
-        string store = "demo", CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.PostAsync<FeatureBatchesResponse>(
-            $"/api/features/query?store={Uri.EscapeDataString(store)}",
-            new FeatureQueryRequest(dataset, bbox is null ? null : new BboxDto(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY), filter),
-            cancellationToken);
-        return response.Batches.Select(SpatialClientCodec.DecodeBatch).ToArray();
-    }
+        string store = "demo", CancellationToken cancellationToken = default) =>
+        Data.QueryAsync(dataset, bbox, filter, store, cancellationToken);
 
-    public async Task<int> WriteAsync(
+    /// <summary>Appends features to a dataset, optionally inside a transaction, and returns the count.</summary>
+    public Task<int> WriteAsync(
         string dataset, FeatureBatch batch, string? transaction = null,
-        string store = "postgis", CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(batch);
-        var response = await _transport.PostAsync<FeatureWriteResponse>(
-            $"/api/features/write?store={Uri.EscapeDataString(store)}",
-            new FeatureWriteRequest(dataset, Convert.ToBase64String(FeatureBatchCodec.Encode(batch)), transaction),
-            cancellationToken);
-        return response.Appended;
-    }
+        string store = "postgis", CancellationToken cancellationToken = default) =>
+        Data.WriteAsync(dataset, batch, transaction, store, cancellationToken);
 
     // ---- transactions ----
 
-    public async Task<string> BeginTransactionAsync(string store = "postgis", CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.PostAsync<BeginTransactionResponse>(
-            $"/api/transactions/begin?store={Uri.EscapeDataString(store)}", new object(), cancellationToken);
-        return response.Transaction;
-    }
+    /// <summary>Begins a transaction and returns its handle.</summary>
+    public Task<string> BeginTransactionAsync(string store = "postgis", CancellationToken cancellationToken = default) =>
+        Data.BeginTransactionAsync(store, cancellationToken);
 
-    public async Task<bool> CommitTransactionAsync(string transaction, string store = "postgis", CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.PostAsync<TransactionResponse>(
-            $"/api/transactions/commit?store={Uri.EscapeDataString(store)}",
-            new TransactionRequest(transaction), cancellationToken);
-        return response.Ok;
-    }
+    /// <summary>Commits a transaction.</summary>
+    public Task<bool> CommitTransactionAsync(string transaction, string store = "postgis", CancellationToken cancellationToken = default) =>
+        Data.CommitTransactionAsync(transaction, store, cancellationToken);
 
-    public async Task<bool> RollbackTransactionAsync(string transaction, string store = "postgis", CancellationToken cancellationToken = default)
-    {
-        var response = await _transport.PostAsync<TransactionResponse>(
-            $"/api/transactions/rollback?store={Uri.EscapeDataString(store)}",
-            new TransactionRequest(transaction), cancellationToken);
-        return response.Ok;
-    }
+    /// <summary>Rolls a transaction back.</summary>
+    public Task<bool> RollbackTransactionAsync(string transaction, string store = "postgis", CancellationToken cancellationToken = default) =>
+        Data.RollbackTransactionAsync(transaction, store, cancellationToken);
 
     // ---- rendering (ADR-0044) ----
 
     /// <summary>Renders a styled vector and imagery request to encoded image bytes.</summary>
-    public async Task<RasterImage> RenderAsync(RenderRequest request, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return await _transport.PostForImageAsync("/api/render", request, cancellationToken);
-    }
+    public Task<RasterImage> RenderAsync(RenderRequest request, CancellationToken cancellationToken = default) =>
+        Render.RenderAsync(request, cancellationToken);
 
     /// <summary>Renders a map's datasets using its persisted layer styles (ADR-0053).</summary>
-    public async Task<RasterImage> RenderMapAsync(
-        string name, MapRenderRequestDto request, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        return await _transport.PostForImageAsync(
-            $"/api/maps/{Uri.EscapeDataString(name)}/render", request, cancellationToken);
-    }
+    public Task<RasterImage> RenderMapAsync(
+        string name, MapRenderRequestDto request, CancellationToken cancellationToken = default) =>
+        Render.RenderMapAsync(name, request, cancellationToken);
 
     /// <summary>Describes the configured raster formats, pixel cap and imagery sources.</summary>
     public Task<RenderCapabilitiesResponse> RenderCapabilitiesAsync(CancellationToken cancellationToken = default) =>
-        _transport.GetAsync<RenderCapabilitiesResponse>("/api/render/capabilities", cancellationToken);
+        Render.RenderCapabilitiesAsync(cancellationToken);
 
     // ---- demo ----
 
+    /// <summary>Sleeps on the host for the given milliseconds and reports the elapsed time.</summary>
     public async Task<long> SleepAsync(long milliseconds, CancellationToken cancellationToken = default)
     {
         var response = await _transport.PostAsync<SleepResponse>("/api/demo/sleep", new SleepRequest(milliseconds), cancellationToken);
@@ -246,64 +187,29 @@ public sealed class SpatialClient
 
     /// <summary>Lists every map (declared first, then runtime by name).</summary>
     public Task<IReadOnlyList<Map>> ListMapsAsync(CancellationToken cancellationToken = default) =>
-        _transport.SendAsync<IReadOnlyList<Map>>(HttpMethod.Get, "/api/maps", null, null, cancellationToken);
+        Maps.ListMapsAsync(cancellationToken);
 
     /// <summary>Gets one map by name.</summary>
     public Task<Map> GetMapAsync(string name, CancellationToken cancellationToken = default) =>
-        _transport.SendAsync<Map>(HttpMethod.Get, $"/api/maps/{Uri.EscapeDataString(name)}", null, null, cancellationToken);
+        Maps.GetMapAsync(name, cancellationToken);
 
     /// <summary>Creates or replaces a runtime map (requires the admin token).</summary>
-    public Task<Map> PutMapAsync(
-        Map map, string? adminToken = null, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(map);
-        return _transport.SendAsync<Map>(
-            HttpMethod.Put,
-            $"/api/maps/{Uri.EscapeDataString(map.Name)}",
-            SpatialClientCodec.Json(map),
-            adminToken ?? _token,
-            cancellationToken);
-    }
+    public Task<Map> PutMapAsync(Map map, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.PutMapAsync(map, adminToken, cancellationToken);
 
     /// <summary>Deletes a runtime map and reports whether it existed (requires the admin token).</summary>
-    public async Task<bool> DeleteMapAsync(
-        string name, string? adminToken = null, CancellationToken cancellationToken = default)
-    {
-        return await _transport.SendAsync<bool>(
-            HttpMethod.Delete, $"/api/maps/{Uri.EscapeDataString(name)}", null, adminToken ?? _token, cancellationToken);
-    }
+    public Task<bool> DeleteMapAsync(string name, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.DeleteMapAsync(name, adminToken, cancellationToken);
 
     /// <summary>
     /// Uploads a GeoJSON/NDJSON/CSV stream and loads it atomically into a
     /// dataset, optionally registering a publication in the same call
     /// (requires the admin token).
     /// </summary>
-    public async Task<IngestOutcome> IngestAsync(
+    public Task<IngestOutcome> IngestAsync(
         Stream content,
         IngestUpload upload,
         string? adminToken = null,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        ArgumentNullException.ThrowIfNull(upload);
-        var query = new Dictionary<string, string?>
-        {
-            ["store"] = upload.Store,
-            ["dataset"] = upload.Dataset,
-            ["srid"] = upload.Srid.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ["format"] = upload.Format,
-            ["identity"] = upload.Identity,
-            ["identityField"] = upload.IdentityField,
-            ["publish"] = upload.Publish,
-            ["sourceSrid"] = upload.SourceSrid?.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        };
-        var queryString = string.Join('&', query
-            .Where(pair => !string.IsNullOrEmpty(pair.Value))
-            .Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value!)}"));
-
-        using var multipart = new MultipartFormDataContent();
-        multipart.Add(new StreamContent(content), "file", upload.FileName);
-        return await _transport.SendAsync<IngestOutcome>(
-            HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken ?? _token, cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        Maps.IngestAsync(content, upload, adminToken, cancellationToken);
 }

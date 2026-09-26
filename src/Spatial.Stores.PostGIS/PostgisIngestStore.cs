@@ -36,33 +36,31 @@ public sealed class PostgisIngestStore : IDatasetIngest
     }
 
     /// <inheritdoc />
-    public async Task<IngestOutcome> IngestAsync(
+    public Task<IngestOutcome> IngestAsync(
         IngestRequest request, IReadOnlyList<FeatureBatch> pages, CancellationToken cancellationToken = default)
     {
         var plan = PostgisIngestPlan.Create(request, pages);
         _store.RequireConfigured();
-        try
+        return _store.RunStoreOperationAsync(async () =>
         {
-            await LoadAsync(plan, cancellationToken);
+            try
+            {
+                await LoadAsync(plan, cancellationToken).ConfigureAwait(false);
+            }
+            catch (PostgresException exception) when (IsAlreadyCreated(exception))
+            {
+                throw AlreadyExists(plan.Dataset);
+            }
+
             return new IngestOutcome(plan.Dataset.Qualified, plan.FeatureCount, plan.Srid, plan.IdentityColumn);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (PostgresException exception) when (exception.SqlState is DuplicateTable or DuplicateObject)
-        {
-            throw SpatialException.BadArguments($"Dataset '{plan.Dataset}' already exists.");
-        }
-        catch (SpatialException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            throw _store.StoreFailure(exception);
-        }
+        });
     }
+
+    private static bool IsAlreadyCreated(PostgresException exception) =>
+        exception.SqlState is DuplicateTable or DuplicateObject;
+
+    private static SpatialException AlreadyExists(PostgisDatasetName dataset) =>
+        SpatialException.BadArguments($"Dataset '{dataset}' already exists.");
 
     /// <summary>Runs the whole create + load on one connection and one transaction.</summary>
     private async Task LoadAsync(PostgisIngestPlan plan, CancellationToken cancellationToken)
@@ -73,15 +71,22 @@ public sealed class PostgisIngestStore : IDatasetIngest
         var insert = PostgisQueries.Insert(plan.Dataset, plan.Schema, plan.Srid);
         foreach (var page in plan.Pages)
         {
-            foreach (var feature in page.Features)
-            {
-                var values = PostgisRowMapper.Parameters(plan.Schema, feature, plan.Srid);
-                await using var command = PostgisDataStore.BuildCommand(connection, insert, values);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken);
-            }
+            await LoadPageAsync(connection, transaction, insert, plan, page, cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private static async Task LoadPageAsync(
+        NpgsqlConnection connection, NpgsqlTransaction transaction, string insert,
+        PostgisIngestPlan plan, FeatureBatch page, CancellationToken cancellationToken)
+    {
+        foreach (var feature in page.Features)
+        {
+            var values = PostgisRowMapper.Parameters(plan.Schema, feature, plan.Srid);
+            await using var command = PostgisDataStore.BuildCommand(connection, insert, values);
+            command.Transaction = transaction;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 }

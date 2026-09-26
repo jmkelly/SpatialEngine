@@ -9,7 +9,7 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// <summary>
 /// Quality-loop pass 3: pin <c>MapGenerateRenderer.Format</c> (CRAP 23.8,
 /// cx 7 — pure value map, so tests are the cheap lever) and
-/// <c>FeatureQueryEngine.Overlaps</c> (CRAP 21.75, cx 5) with real
+/// <c>FeatureSpatialMatcher.Overlaps</c> (CRAP 21.75, cx 5) with real
 /// Core polygons through the NTS operations (no mocks).
 /// </summary>
 public sealed class QualityLoopPass3Tests
@@ -89,6 +89,14 @@ public sealed class QualityLoopPass3Tests
         Assert.False(Overlaps(
             GeometryFactory.CreateLineString([new Coordinate(0, 0), new Coordinate(3, 3)]),
             Square(0, 0, 2, 2)));
+    }
+
+    [Fact]
+    public void Overlaps_rejects_an_intersection_of_lower_dimension()
+    {
+        // Two polygons that share only a corner: the intersection is a point,
+        // so the dimension guard rejects the pair before the contains checks.
+        Assert.False(Overlaps(Square(0, 0, 2, 2), Square(2, 2, 4, 4)));
     }
 
     private static bool Overlaps(IGeometry left, Polygon right) =>

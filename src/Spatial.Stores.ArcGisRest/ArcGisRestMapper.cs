@@ -161,21 +161,18 @@ internal static class ArcGisRestMapper
         && type.ValueKind == JsonValueKind.String
         && string.Equals(type.GetString(), "Group Layer", StringComparison.OrdinalIgnoreCase);
 
-    private static IEnumerable<JsonElement> LayerElements(JsonElement root, string property)
-    {
-        if (!root.TryGetProperty(property, out var elements) || elements.ValueKind != JsonValueKind.Array)
-        {
-            yield break;
-        }
+    private static IEnumerable<JsonElement> LayerElements(JsonElement root, string property) =>
+        ArrayOf(root, property) is { } elements ? elements.EnumerateArray().Where(IsQueryableLayer) : [];
 
-        foreach (var layer in elements.EnumerateArray())
-        {
-            if (HasNumericId(layer) && !IsGroupLayer(layer))
-            {
-                yield return layer;
-            }
-        }
-    }
+    /// <summary>The named array property, or null when it is absent or is not an array.</summary>
+    private static JsonElement? ArrayOf(JsonElement root, string property) =>
+        HasArray(root, property) ? root.GetProperty(property) : null;
+
+    private static bool HasArray(JsonElement root, string property) =>
+        root.TryGetProperty(property, out var elements) && elements.ValueKind == JsonValueKind.Array;
+
+    /// <summary>A queryable layer carries a numeric id and is not a group container.</summary>
+    private static bool IsQueryableLayer(JsonElement layer) => HasNumericId(layer) && !IsGroupLayer(layer);
 
     private static string ObjectIdField(JsonElement metadata)
     {

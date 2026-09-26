@@ -28,21 +28,27 @@ internal static class MapFindEngine
         var returnGeometry = parameters.GetBool("returnGeometry", true);
         var outCrs = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
         var selected = MapLayerSelection.Select(layers, parameters.Get("layers"));
-        var hits = await MatchAsync(store, selected, searchText, contains, requested, outCrs, returnGeometry, transforms, cancellationToken);
+        var hits = await MatchAsync(
+            store, selected, new FindQuery(searchText, contains, requested, outCrs, returnGeometry), transforms, cancellationToken);
         return EsriJson.Write(writer => WriteResults(writer, hits, returnGeometry));
     }
+
+    /// <summary>One find request's search: the text, how it matches, the fields and the result shape.</summary>
+    private sealed record FindQuery(
+        string SearchText,
+        bool Contains,
+        IReadOnlyList<string>? Fields,
+        CoordinateReference? OutCrs,
+        bool ReturnGeometry);
 
     private static async Task<List<FindHit>> MatchAsync(
         IFeatureStore store,
         IReadOnlyList<MapLayerInfo> layers,
-        string searchText,
-        bool contains,
-        IReadOnlyList<string>? requested,
-        CoordinateReference? outCrs,
-        bool returnGeometry,
+        FindQuery query,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken)
     {
+        var (searchText, contains, requested, outCrs, returnGeometry) = query;
         var hits = new List<FindHit>();
         foreach (var layer in layers)
         {

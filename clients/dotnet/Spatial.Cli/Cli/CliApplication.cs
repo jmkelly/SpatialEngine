@@ -21,52 +21,112 @@ public static class CliApplication
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(console);
 
-        ParsedCommandLine parsed;
+        var parsed = ParseOrReport(args, console);
+        if (parsed is null)
+        {
+            return ExitCodes.Usage;
+        }
+
+        return await ContinueAsync(parsed, console, gatewayFactory);
+    }
+
+    /// <summary>Parses the command line, reporting a usage error on the console; null when it does not parse.</summary>
+    private static ParsedCommandLine? ParseOrReport(string[] args, ICliConsole console)
+    {
         try
         {
-            parsed = CliParser.Parse(args);
+            return CliParser.Parse(args);
         }
         catch (CliUsageException usage)
         {
             console.ErrorWriter.WriteLine($"error: invalid.arguments: {usage.Message}");
-            return ExitCodes.Usage;
+            return null;
         }
+    }
 
-        if (parsed.WantsHelp || parsed.Group is null)
+    /// <summary>Renders help when it was asked for, otherwise runs the resolved command.</summary>
+    private static async Task<int> ContinueAsync(
+        ParsedCommandLine parsed, ICliConsole console, Func<CliSettings, ISpatialGateway>? gatewayFactory)
+    {
+        if (HelpRequested(parsed))
         {
             CliHelp.Render(console, parsed.Group, parsed.Verb);
             return ExitCodes.Success;
         }
 
-        CliSettings settings;
+        return await RunAsync(parsed, console, gatewayFactory);
+    }
+
+    private static bool HelpRequested(ParsedCommandLine parsed) => parsed.WantsHelp || parsed.Group is null;
+
+    /// <summary>One resolved invocation: its command line, settings, output and catalogued command.</summary>
+    private sealed record Invocation(ParsedCommandLine Parsed, CliSettings Settings, CliOutput Output, CliCommandInfo Command)
+    {
+        public string Label => $"{Parsed.Group} {Parsed.Verb}";
+    }
+
+    private static async Task<int> RunAsync(
+        ParsedCommandLine parsed, ICliConsole console, Func<CliSettings, ISpatialGateway>? gatewayFactory)
+    {
+        var settings = ResolveOrReport(parsed, console);
+        if (settings is null)
+        {
+            return ExitCodes.Usage;
+        }
+
+        return await RunCommandAsync(parsed, settings, console, gatewayFactory);
+    }
+
+    /// <summary>Resolves the invocation's settings, reporting a usage error; null when they do not resolve.</summary>
+    private static CliSettings? ResolveOrReport(ParsedCommandLine parsed, ICliConsole console)
+    {
         try
         {
-            settings = CliSettings.Resolve(parsed);
+            return CliSettings.Resolve(parsed);
         }
         catch (CliUsageException usage)
         {
             new CliOutput(console, parsed.Has("json"), parsed.Has("quiet"), parsed.Has("verbose"))
                 .Error($"{parsed.Group} {parsed.Verb}", "invalid.arguments", usage.Message);
-            return ExitCodes.Usage;
+            return null;
         }
+    }
 
+    private static async Task<int> RunCommandAsync(
+        ParsedCommandLine parsed, CliSettings settings, ICliConsole console, Func<CliSettings, ISpatialGateway>? gatewayFactory)
+    {
         var output = new CliOutput(console, settings.Json, settings.Quiet, settings.Verbose);
+        var command = FindOrReport(parsed, output, console);
+        return command is null
+            ? ExitCodes.Usage
+            : await RunAsync(new Invocation(parsed, settings, output, command), console, gatewayFactory);
+    }
+
+    /// <summary>The catalogued command, or null after reporting an unknown command and its help.</summary>
+    private static CliCommandInfo? FindOrReport(ParsedCommandLine parsed, CliOutput output, ICliConsole console)
+    {
         var label = $"{parsed.Group} {parsed.Verb}";
-        if (CliCommandCatalog.Find(parsed.Group, parsed.Verb) is not { } command)
+        if (CliCommandCatalog.Find(parsed.Group!, parsed.Verb) is { } command)
         {
-            output.Error(label, "invalid.arguments", $"Unknown command '{label}'.");
-            CliHelp.Render(console, parsed.Group, parsed.Verb);
+            return command;
+        }
+
+        output.Error(label, "invalid.arguments", $"Unknown command '{label}'.");
+        CliHelp.Render(console, parsed.Group, parsed.Verb);
+        return null;
+    }
+
+    private static async Task<int> RunAsync(
+        Invocation invocation, ICliConsole console, Func<CliSettings, ISpatialGateway>? gatewayFactory)
+    {
+        if (UnknownOption(invocation.Parsed, invocation.Command) is { } unknown)
+        {
+            invocation.Output.Error(invocation.Label, "invalid.arguments", $"Unknown option '--{unknown}'.");
+            CliHelp.Render(console, invocation.Parsed.Group, invocation.Parsed.Verb);
             return ExitCodes.Usage;
         }
 
-        if (UnknownOption(parsed, command) is { } unknown)
-        {
-            output.Error(label, "invalid.arguments", $"Unknown option '--{unknown}'.");
-            CliHelp.Render(console, parsed.Group, parsed.Verb);
-            return ExitCodes.Usage;
-        }
-
-        return await ExecuteAsync(command, settings, parsed, output, label, gatewayFactory);
+        return await ExecuteAsync(invocation, console, gatewayFactory);
     }
 
     /// <summary>The first supplied option the resolved command (or the globals) does not accept.</summary>
@@ -87,21 +147,19 @@ public static class CliApplication
     }
 
     private static async Task<int> ExecuteAsync(
-        CliCommandInfo command,
-        CliSettings settings,
-        ParsedCommandLine parsed,
-        CliOutput output,
-        string label,
+        Invocation invocation,
+        ICliConsole console,
         Func<CliSettings, ISpatialGateway>? gatewayFactory)
     {
         try
         {
+            var settings = invocation.Settings;
             var context = new CliContext(
-                command.Group,
-                command.Verb,
+                invocation.Command.Group,
+                invocation.Command.Verb,
                 settings,
-                new CliArguments(parsed, command),
-                output,
+                new CliArguments(invocation.Parsed, invocation.Command),
+                invocation.Output,
                 (gatewayFactory ?? DefaultGateway)(settings));
             using (context.Gateway)
             {
@@ -110,7 +168,7 @@ public static class CliApplication
         }
         catch (Exception exception)
         {
-            return Report(exception, output, label, settings.Host);
+            return Report(exception, invocation.Output, invocation.Label, invocation.Settings.Host);
         }
     }
 
