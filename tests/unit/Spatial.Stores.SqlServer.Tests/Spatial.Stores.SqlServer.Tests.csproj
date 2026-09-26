@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Unit tests for the SQL Server provider's private adapters (ADR-0072): the
+    Unit tests for the SQL Server provider's private adapters (ADR-0073): the
     WKB interchange, schema discovery, row mapping, the filter language,
     SQL generation, secrets redaction and argument validation — all DB-free
     (the containerised integration suite in tests/integration covers the

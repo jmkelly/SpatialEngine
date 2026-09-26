@@ -12,7 +12,7 @@ namespace Spatial.Host.Tests;
 /// scheme discovery, cache invalidation and the failure mapping
 /// for unknown schemes, out-of-range tiles and unconfigured formats.
 /// </summary>
-public sealed class TileEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class TileEndpointsTests : IClassFixture<PostgisHostFactory>
 {
     private const string StyleDocument =
         """
@@ -22,9 +22,9 @@ public sealed class TileEndpointsTests : IClassFixture<WebApplicationFactory<Pro
               "paint": { "circle-color": "#ffd166", "circle-radius": 6 } } ] }
         """;
 
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PostgisHostFactory _factory;
 
-    public TileEndpointsTests(WebApplicationFactory<Program> factory)
+    public TileEndpointsTests(PostgisHostFactory factory)
     {
         _factory = factory;
     }

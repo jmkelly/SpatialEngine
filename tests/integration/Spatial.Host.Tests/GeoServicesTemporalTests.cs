@@ -10,13 +10,13 @@ namespace Spatial.Host.Tests;
 /// Server ignores <c>time</c> on non-time-aware layers); date-typed filtering
 /// itself is proved by the unit tests over date-bearing features.
 /// </summary>
-public sealed class GeoServicesTemporalTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesTemporalTests : IClassFixture<PostgisHostFactory>
 {
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0/query";
 
     private readonly HttpClient _client;
 
-    public GeoServicesTemporalTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesTemporalTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

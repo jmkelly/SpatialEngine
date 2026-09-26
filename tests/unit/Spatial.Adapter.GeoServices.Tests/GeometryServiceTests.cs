@@ -88,6 +88,70 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
+    public async Task Project_accepts_the_esri_docs_wrapper()
+    {
+        // Parity playground verbatim: project packages its point as
+        // {"geometryType": "...", "geometries": [...]}. The localhost side
+        // must project it exactly like the public Esri service instead of
+        // failing with "carries none of the Esri shapes".
+        var result = await DispatchAsync("project",
+            ("geometries", """{"geometryType":"esriGeometryPoint","geometries":[{"x":-117,"y":34}]}"""),
+            ("inSR", "4326"),
+            ("outSR", "3857"));
+
+        var projected = result.GetProperty("geometries")[0];
+        Assert.True(Math.Abs(projected.GetProperty("x").GetDouble() - -13024380.0) < 1000);
+        Assert.True(Math.Abs(projected.GetProperty("y").GetDouble() - 4028802.0) < 1000);
+    }
+
+    [Fact]
+    public async Task Buffer_accepts_the_esri_docs_wrapper()
+    {
+        // Parity playground verbatim shape (planarised: the engine has no
+        // geodesic verb, so the sample buffers planar in the projected
+        // bufferSR exactly as the host documents).
+        var result = await DispatchAsync("buffer",
+            ("geometries", """{"geometryType":"esriGeometryPoint","geometries":[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]}"""),
+            ("inSR", "4326"),
+            ("bufferSR", "3857"),
+            ("outSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        Assert.Equal(1, result.GetProperty("geometries").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Label_points_accepts_the_docs_polygons_alias()
+    {
+        // Esri-docs verbatim: labelPoints names its input 'polygons', not
+        // 'geometries'. The localhost side must answer like the public
+        // service instead of demanding 'geometries'.
+        var result = await DispatchAsync("labelpoints",
+            ("polygons", """[{"rings":[[[0,0],[2,0],[2,2],[0,2],[0,0]]]}]"""),
+            ("sr", "4326"));
+
+        Assert.Single(result.GetProperty("geometries").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Relation_accepts_the_esri_docs_names()
+    {
+        // Esri-docs verbatim: geometries1/geometries2 with sr1/sr2 and a
+        // named esriSpatialRel* relation. The point sits clearly inside the
+        // square (never on its boundary) so both sides answer 1.
+        var result = await DispatchAsync("relation",
+            ("geometries1", """[{"rings":[[[-118,33],[-116,33],[-116,35],[-118,35],[-118,33]]]}]"""),
+            ("geometries2", """[{"x":-117,"y":34}]"""),
+            ("sr1", "4326"),
+            ("sr2", "4326"),
+            ("relation", "esriSpatialRelContains"));
+
+        var relations = result.GetProperty("relations").EnumerateArray().Select(value => value.GetInt32()).ToArray();
+        Assert.Equal([1], relations);
+    }
+
+    [Fact]
     public async Task Project_requires_out_sr()
     {
         await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("project", ("geometries", "[]")));

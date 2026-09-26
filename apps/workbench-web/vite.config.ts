@@ -5,6 +5,9 @@ import react from "@vitejs/plugin-react";
 // the host API to the locally running Spatial.Host (default 5199, overridable
 // with VITE_DEV_HOST). The production build is served by the host itself
 // (Spatial:WebRoot, ADR-0031) — same origin, no proxy involved.
+// `/arcgis` rides the same proxy so the Parity page's GeoServices `<img>` and
+// `fetch` URLs (built from hostBaseUrl, which falls back to the Vite origin)
+// reach the host port instead of 404ing on the dev server.
 const devHost = process.env.VITE_DEV_HOST ?? "http://127.0.0.1:5199";
 
 // Dev convenience for remote access (e.g. over a private Tailscale network):
@@ -28,6 +31,7 @@ export default defineConfig({
     ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
     proxy: {
       "/api": devHost,
+      "/arcgis": devHost,
       "/health": devHost,
       "/openapi": devHost,
     },

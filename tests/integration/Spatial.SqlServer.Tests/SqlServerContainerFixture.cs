@@ -4,7 +4,7 @@ using Testcontainers.MsSql;
 namespace Spatial.SqlServer.Tests;
 
 /// <summary>
-/// The containerised SQL Server fixture (ADR-0072): a Testcontainers SQL
+/// The containerised SQL Server fixture (ADR-0073): a Testcontainers SQL
 /// Server image started once per test class. When the Docker daemon is not
 /// reachable the fixture records an explicit skip reason; every test checks it
 /// through <c>Skip.If</c> (never a silent no-op). The fixture also seeds the

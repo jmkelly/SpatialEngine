@@ -656,8 +656,11 @@ internal sealed record EsriFeatureQuery(
 
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
-        Reject(parameters, "returnZ", "Z output is not supported.");
-        Reject(parameters, "returnM", "M output is not supported.");
+        // QGIS sends returnM=false&returnZ=false on every per-feature fetch,
+        // so only a true value (M/Z output the engine cannot produce) is
+        // rejected; false is the default and is accepted.
+        RejectTrue(parameters, "returnZ", "Z output is not supported.");
+        RejectTrue(parameters, "returnM", "M output is not supported.");
         // T-024 silent-ignore audit: every served-allowlist parameter the
         // engine cannot honour is rejected by name, so a client never gets a
         // silently narrowed query. Dropping any of these would change the
@@ -688,6 +691,33 @@ internal sealed record EsriFeatureQuery(
         if (parameters.Has(name))
         {
             throw GeoServicesErrors.Invalid($"The '{name}' parameter is not supported: {message}");
+        }
+    }
+
+    /// <summary>
+    /// Rejects a boolean output flag only when it requests output the engine
+    /// cannot produce: an absent or false value is the default (no M/Z) and
+    /// is accepted, a true value is rejected as unsupported, and a
+    /// non-boolean value is rejected as invalid.
+    /// </summary>
+    private static void RejectTrue(EsriRequestParameters parameters, string name, string message)
+    {
+        var value = parameters.Get(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "false":
+            case "0":
+                return;
+            case "true":
+            case "1":
+                throw GeoServicesErrors.Invalid($"The '{name}' parameter is not supported: {message}");
+            default:
+                throw GeoServicesErrors.Invalid($"The '{name}' parameter must be a boolean ('true'/'false'), got '{value}'.");
         }
     }
 }

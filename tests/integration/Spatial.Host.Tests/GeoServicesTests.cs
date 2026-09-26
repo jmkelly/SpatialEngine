@@ -11,13 +11,13 @@ namespace Spatial.Host.Tests;
 /// Geometry Service operations and the read-only Feature Service query,
 /// driven over HTTP against the real host.
 /// </summary>
-public sealed class GeoServicesTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesTests : IClassFixture<PostgisHostFactory>
 {
     private const string Root = "/arcgis/rest/services";
 
     private readonly HttpClient _client;
 
-    public GeoServicesTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     [Fact]
     public async Task The_feature_server_root_lists_layers_and_tables()

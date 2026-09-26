@@ -54,7 +54,7 @@ internal static class StoreServices
     }
 
     /// <summary>
-    /// The SQL Server store (ADR-0072): the same contract faces as PostGIS,
+    /// The SQL Server store (ADR-0073): the same contract faces as PostGIS,
     /// keyed <c>sqlserver</c>. Unconfigured (no connection string) it throws
     /// <c>store.unavailable</c> naming the setting.
     /// </summary>

@@ -354,6 +354,31 @@ public sealed class SpatialClientTests
             stub.Client.PutMapAsync(map, cancellationToken: new CancellationToken(canceled: true)));
     }
 
+    [Fact]
+    public async Task Seed_posts_the_document_and_decodes_the_summary()
+    {
+        using var stub = new StubClient(new StubHttpHandler(request =>
+        {
+            Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+            Assert.Equal("secret", request.Headers.Authorization?.Parameter);
+            return StubHttpHandler.Json(
+                """{"store":"memory","ingested":2,"reused":0,"published":1,"failures":[]}""");
+        }));
+        var document = new SeedRequest(
+            [new SeedSource("public.cities", "https://example.test/cities.geojson", "geojson", 4326)],
+            [new SeedMap("SeedCities", [MapServiceKind.FeatureServer], [])]);
+
+        var summary = await stub.Client.SeedAsync(document, adminToken: "secret");
+
+        Assert.Equal("memory", summary.Store);
+        Assert.Equal(2, summary.Ingested);
+        Assert.Equal(1, summary.Published);
+        Assert.Empty(summary.Failures);
+        var exchange = Assert.Single(stub.Handler.Exchanges);
+        Assert.Equal(HttpMethod.Post, exchange.Request.Method);
+        Assert.Equal("/api/seed", exchange.Request.RequestUri?.AbsolutePath);
+    }
+
     private static HttpResponseMessage Image(byte[] bytes, string mediaType, int width, int height)
     {
         var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };

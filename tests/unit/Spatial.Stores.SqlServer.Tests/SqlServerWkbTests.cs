@@ -6,7 +6,7 @@ using Spatial.Stores.SqlServer.Geometry;
 namespace Spatial.Stores.SqlServer.Tests;
 
 /// <summary>
-/// The WKB interchange (ADR-0072): OGC well-known binary in, core geometry
+/// The WKB interchange (ADR-0073): OGC well-known binary in, core geometry
 /// out and back, byte-deterministic, with the SRID/CRS and layout rules the
 /// SQL Server provider promises. Malformed payloads fail with a typed format
 /// error; a CRS conflict and a Z/M layout are refused rather than mangled.

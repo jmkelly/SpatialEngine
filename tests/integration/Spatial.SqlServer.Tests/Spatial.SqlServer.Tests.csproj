@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Containerised SQL Server integration tests (ADR-0072): drive the
+    Containerised SQL Server integration tests (ADR-0073): drive the
     sqlserver@1 provider against a real SQL Server container (Testcontainers)
     — catalogue, schema discovery, scan/query streaming, canonical batch
     decoding, writing, transactions, cancellation and secrets redaction.

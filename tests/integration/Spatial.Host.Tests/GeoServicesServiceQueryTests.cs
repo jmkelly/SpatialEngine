@@ -10,13 +10,13 @@ namespace Spatial.Host.Tests;
 /// layer-level <c>.../&lt;id&gt;/query</c> is served today, so the service
 /// route 404s while it is unmounted.
 /// </summary>
-public sealed class GeoServicesServiceQueryTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesServiceQueryTests : IClassFixture<PostgisHostFactory>
 {
     private const string Service = "/arcgis/rest/services/demo/FeatureServer";
 
     private readonly HttpClient _client;
 
-    public GeoServicesServiceQueryTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesServiceQueryTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

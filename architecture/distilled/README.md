@@ -118,7 +118,8 @@ shape is noted in brackets.
 | 0062 | ~~Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals~~ — superseded by 0070 (vector tiles back in scope). |
 | 0070 | Vector tiles (MVT) and OGC API Tiles are in scope; live MVT, TileJSON and collection tile resources are implemented; `.vtpk` packaging still needs its own ADR. |
 | 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
-| 0072 | SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests. |
+| 0072 | The host integration suite starts its own PostGIS container and configures the store from it, so no `SPATIAL_POSTGIS_CONNECTION` is needed to run the tests. |
+| 0073 | SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests. |
 
 ## How to change the architecture
 

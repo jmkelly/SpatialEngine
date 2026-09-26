@@ -7,6 +7,7 @@ public static class SpatialApi
 {
     public static void MapSpatialApi(
         this IEndpointRouteBuilder app,
+        IHostEnvironment environment,
         AdminOptions admin,
         IngestOptions ingest,
         AuthOptions authOptions,
@@ -20,5 +21,6 @@ public static class SpatialApi
         MapTileEndpoints.Map(app);
         TileEndpoints.Map(app);
         AdminEndpoints.Map(app, admin, ingest, authOptions, auth);
+        SeedEndpoints.Map(app, environment, admin, ingest, authOptions, auth);
     }
 }

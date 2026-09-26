@@ -100,7 +100,10 @@ dotnet run --project src/Spatial.DevHost
 ```
 
 The Aspire dashboard prints the workbench, host and Seq endpoints; host logs
-stream to the Seq UI (ADR-0045). Prefer to skip Docker? Serve the built
+stream to the Seq UI (ADR-0045). The composition also re-seeds the `Census`
+map on every boot (the Parity page's localhost panel), since the `memory`
+store is wiped by a restart — the full realistic dataset is still an
+explicit `./eng/seed.sh`. Prefer to skip Docker? Serve the built
 workbench from the host as above.
 
 ### Verify the whole thing
@@ -255,7 +258,7 @@ arrives as a second issuer, not a rewrite.
 | `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade |
 | `src/Spatial.Stores.ArcGisRest` | ArcGIS REST consuming store |
 | `src/Spatial.Stores.PostGIS` | PostGIS store: catalogue, features, transactions, editing |
-| `src/Spatial.Stores.SqlServer` | SQL Server store: the same faces over `geometry`/`geography` columns (ADR-0072) |
+| `src/Spatial.Stores.SqlServer` | SQL Server store: the same faces over `geometry`/`geography` columns (ADR-0073) |
 | `src/Spatial.Stores.Demo` | Docker-free demo store and cancellable sleep |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host (DI composition) |
 | `src/Spatial.DevHost` | Aspire dev host for the local development profile |

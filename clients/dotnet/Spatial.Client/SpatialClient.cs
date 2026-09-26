@@ -212,4 +212,13 @@ public sealed class SpatialClient
         string? adminToken = null,
         CancellationToken cancellationToken = default) =>
         Maps.IngestAsync(content, upload, adminToken, cancellationToken);
+
+    /// <summary>
+    /// Runs a seed document against a Development host: download, ingest and
+    /// publish in one call (ADR-0070). Delegates to the map and ingest group
+    /// that owns the route (ADR-0040).
+    /// </summary>
+    public Task<SeedResponse> SeedAsync(
+        SeedRequest request, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.SeedAsync(request, adminToken, cancellationToken);
 }

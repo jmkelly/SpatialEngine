@@ -10,14 +10,14 @@ namespace Spatial.Host.Tests;
 /// including their paging and result-shape exclusivity rules, driven over
 /// HTTP against the real host.
 /// </summary>
-public sealed class GeoServicesQueryShapeTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesQueryShapeTests : IClassFixture<PostgisHostFactory>
 {
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0";
     private const string Points = "/arcgis/rest/services/demo/FeatureServer/1";
 
     private readonly HttpClient _client;
 
-    public GeoServicesQueryShapeTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesQueryShapeTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

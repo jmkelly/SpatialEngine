@@ -1,4 +1,4 @@
-# ADR-0072: SQL Server data store provider
+# ADR-0073: SQL Server data store provider
 
 Status: Accepted
 

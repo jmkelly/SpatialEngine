@@ -11,7 +11,7 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
-- **SQL Server store provider** (ADR-0072, T-113): `Spatial.Stores.SqlServer`
+- **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and
   attachment faces on Microsoft.Data.SqlClient, wired into the host under the
   store key `sqlserver` (`Spatial:SqlServer:ConnectionString` or
@@ -20,6 +20,22 @@ this file together, then tag the release (`RELEASING.md`).
   sidecar, only XY geometries are written (Z/M is refused, not flattened), and
   the store-backed matrix is proven against a real SQL Server container with
   Testcontainers alongside a DB-free unit suite.
+
+### Fixed
+
+- **Fused-cache MapServer root advertises the tile scheme reference**
+  (ADR-0048): a tiled MapServer root now serves its spatial reference,
+  `initialExtent`/`fullExtent` and units in the tiling SR (layer extents
+  reprojected server-side, Web-Mercator inputs clamped to validity) instead
+  of the data CRS. Advertising 4326 extents alongside a 3857 `tileInfo`
+  made QGIS derive Null-Island tile indices for a real canvas — every tile
+  request 200, every tile blank. Untiled roots still advertise the data CRS.
+- **MapServer tile/root diagnostic logging**: one `Debug` event per tile
+  resolves the requested address to its rendered geography and scheme, and
+  the root logs its advertised SR/extents versus the tile-scheme SR, so a
+  client fetching the wrong tiles is distinguishable from the server
+  rendering the wrong geography.
+
 
 ## [0.3.0] - 2026-09-15
 

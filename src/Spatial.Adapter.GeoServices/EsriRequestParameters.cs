@@ -35,6 +35,13 @@ internal sealed class EsriRequestParameters
     /// <summary>The raw value, or null when the parameter is absent.</summary>
     public string? Get(string name) => _values.TryGetValue(name, out var value) ? value : null;
 
+    /// <summary>
+    /// The merged request parameters, for diagnostics only. GeoServices export
+    /// parameters carry no secrets, so the adapter may log them to isolate a
+    /// failing export client (ADR-0045, like <c>OgcParameters.Values</c>).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Values => _values;
+
     /// <summary>Whether the parameter was supplied (even with an empty value).</summary>
     public bool Has(string name) => _values.ContainsKey(name);
 

@@ -169,7 +169,7 @@ consumes a remote ArcGIS REST service as a keyed
 
 The `store` query selects `demo` (default, always available), `memory`
 (writable, ephemeral, ADR-0042), `postgis` (ADR-0010/0028) or `sqlserver`
-(ADR-0072) — the last two need configuration. Ingest defaults to `memory` so
+(ADR-0073) — the last two need configuration. Ingest defaults to `memory` so
 the database-free upload path works out of the box.
 
 ## Configuration
@@ -179,7 +179,7 @@ the database-free upload path works out of the box.
 | `Spatial:Postgis:ConnectionString` | PostGIS connection string (empty = unconfigured; every PostGIS call throws `store.unavailable`) |
 | `SPATIAL_POSTGIS_CONNECTION` | Env fallback for the connection string — the **only** secret channel |
 | `Spatial:SqlServer:ConnectionString` | SQL Server connection string (empty = unconfigured; every SQL Server call throws `store.unavailable`) |
-| `SPATIAL_SQLSERVER_CONNECTION` | Env fallback for the SQL Server connection string (ADR-0072) |
+| `SPATIAL_SQLSERVER_CONNECTION` | Env fallback for the SQL Server connection string (ADR-0073) |
 | `Spatial:WebRoot` | Built workbench directory; when set, `GET /` serves it |
 | `Spatial:GeoServices:Root` | GeoServices URL prefix (default `/arcgis/rest/services`) |
 | `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only); projected to declared Feature maps at composition |
@@ -232,6 +232,10 @@ injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
 - `eng/seed.sh` (over `tools/seed/`) fetches real public data, ingests it
   (including a server-side reprojection) and publishes styled feature and map
   services through the neutral admin API — an on-demand realistic dataset.
+  Against a Development host it POSTs the manifest to `POST /api/seed`, which
+  runs the same pipeline server-side with no restart (ADR-0070; token-gated
+  only when a token is configured, unmounted outside Development); older
+  hosts get the legacy download → ingest → publish drive.
 - `clients/dotnet/Spatial.Cli` is a dependency-free console client of the same
   public API (ADR-0052): datasets, maps/layers/styles and a declarative
   `spatial.json` project file, with GeoServices endpoint output. See `cli.md`.

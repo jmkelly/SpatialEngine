@@ -6,7 +6,7 @@ using Spatial.Stores.SqlServer;
 namespace Spatial.SqlServer.Tests;
 
 /// <summary>
-/// The containerised data-path tests (ADR-0072 as the SQL Server provider
+/// The containerised data-path tests (ADR-0073 as the SQL Server provider
 /// follows ADR-0033): catalogue, schema discovery, scan/query with canonical
 /// feature batches, bbox and parameterised attribute filtering, writing,
 /// result-table creation, transactions (commit/rollback), cancellation and

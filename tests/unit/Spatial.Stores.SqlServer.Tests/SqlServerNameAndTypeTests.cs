@@ -5,7 +5,7 @@ using Spatial.Stores.SqlServer.Core;
 namespace Spatial.Stores.SqlServer.Tests;
 
 /// <summary>
-/// The provider's pure argument surface (ADR-0072): the dataset-identifier
+/// The provider's pure argument surface (ADR-0073): the dataset-identifier
 /// grammar that is the injection barrier, the field-name rules for discovered
 /// column names, and the SQL Server type mapping. Every rejection names the
 /// exact problem, because these messages reach a client.

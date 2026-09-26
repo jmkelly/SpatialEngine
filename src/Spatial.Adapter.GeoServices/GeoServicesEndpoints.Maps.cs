@@ -1,8 +1,8 @@
 using System.Collections.Frozen;
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
-
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
@@ -20,8 +20,8 @@ internal static class MapServerEndpoints
 {
     internal static void MapMapServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
-        group.MapMethods("/{service}/MapServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, IEnumerable<ITileScheme> schemes, CancellationToken cancellationToken) =>
-            MapServerMetadata.MapServerRoot(new(catalog, registry, service, context, stores, cancellationToken), schemes));
+        group.MapMethods("/{service}/MapServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, IEnumerable<ITileScheme> schemes, ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
+            MapServerMetadata.MapServerRoot(new(catalog, registry, service, context, stores, cancellationToken), schemes, transforms, loggerFactory));
         group.MapMethods("/{service}/MapServer/layers", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             MapServerMetadata.MapAllLayers(new(catalog, registry, service, context, stores, cancellationToken)));
         group.MapMethods("/{service}/MapServer/{layerId:int}", ["GET", "POST"], (string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>

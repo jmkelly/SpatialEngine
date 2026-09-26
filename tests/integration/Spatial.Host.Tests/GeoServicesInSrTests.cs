@@ -8,11 +8,11 @@ namespace Spatial.Host.Tests;
 /// T-020: inSR is honoured for query geometry. The same 3857 envelope is
 /// empty when misread as 4326 but finds Berlin once declared as 3857.
 /// </summary>
-public sealed class GeoServicesInSrTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesInSrTests : IClassFixture<PostgisHostFactory>
 {
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0";
     private readonly HttpClient _client;
-    public GeoServicesInSrTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesInSrTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

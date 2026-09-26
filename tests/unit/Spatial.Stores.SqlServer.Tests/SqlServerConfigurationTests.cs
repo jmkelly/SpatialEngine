@@ -4,7 +4,7 @@ using Spatial.Stores.SqlServer.Configuration;
 namespace Spatial.Stores.SqlServer.Tests;
 
 /// <summary>
-/// The connection configuration and the store's argument surface (ADR-0072):
+/// The connection configuration and the store's argument surface (ADR-0073):
 /// the secret never reaches a diagnostic, an unconfigured store fails with
 /// <c>store.unavailable</c> naming the setting, and a client-supplied dataset
 /// identifier never becomes SQL.

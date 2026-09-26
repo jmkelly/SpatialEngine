@@ -11,13 +11,13 @@ namespace Spatial.Host.Tests;
 /// a typed <c>invalid.arguments</c> failure naming the JSON surface
 /// (ADR-0035) across the catalog and every served root.
 /// </summary>
-public sealed class GeoServicesCatalogHonestyTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesCatalogHonestyTests : IClassFixture<PostgisHostFactory>
 {
     private static readonly string[] ServedTypes = ["GeometryServer", "FeatureServer", "MapServer", "ImageServer"];
 
     private readonly HttpClient _client;
 
-    public GeoServicesCatalogHonestyTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesCatalogHonestyTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     [Fact]
     public async Task The_catalog_advertises_only_served_types()

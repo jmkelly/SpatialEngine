@@ -8,7 +8,7 @@ using Spatial.Stores.SqlServer.Data;
 namespace Spatial.Stores.SqlServer.Tests;
 
 /// <summary>
-/// The generated T-SQL (ADR-0072): every statement is built from validated
+/// The generated T-SQL (ADR-0073): every statement is built from validated
 /// dataset identifiers and discovered column names, brackets its identifiers,
 /// and never carries a client literal. Also the pure ingest plan and the
 /// provider error mapping.

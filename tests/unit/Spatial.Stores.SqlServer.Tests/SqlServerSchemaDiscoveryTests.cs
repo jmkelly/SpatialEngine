@@ -9,7 +9,7 @@ using Spatial.Stores.SqlServer.Geometry;
 namespace Spatial.Stores.SqlServer.Tests;
 
 /// <summary>
-/// Pure schema discovery and row mapping (ADR-0072): catalogue rows to a
+/// Pure schema discovery and row mapping (ADR-0073): catalogue rows to a
 /// <see cref="DatasetDescription"/>, the geometry facts a dataset implies, and
 /// boxed provider values to core features.
 /// </summary>

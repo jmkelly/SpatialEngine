@@ -1,7 +1,7 @@
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
-
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
@@ -44,8 +44,9 @@ internal static class ImageServerEndpoints
         group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageServerRootResources.Root(new(catalog, registry, service, context, stores, cancellationToken), options));
         group.MapMethods("/{service}/ImageServer/exportImage", ["GET", "POST"], (
-            string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            ImageServerRootResources.Export(new(catalog, registry, service, context, stores, cancellationToken), transforms));
+            string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms,
+            ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
+            ImageServerRootResources.Export(new(catalog, registry, service, context, stores, cancellationToken), transforms, loggerFactory));
         group.MapMethods("/{service}/ImageServer/exportTiles", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             MapOfflineRejects.ImageExportTiles(catalog, registry, service, cancellationToken));

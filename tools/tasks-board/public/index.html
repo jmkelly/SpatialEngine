@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spatial Engine task board</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b0f14'/%3E%3Crect x='3' y='4' width='4' height='8' fill='%234fc3f7'/%3E%3Crect x='9' y='6' width='4' height='6' fill='%234ade80'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="board">
+      <header class="board-header">
+        <div class="brand"><span class="brand-mark">▚</span> TASK BOARD</div>
+        <nav class="filters" id="filters">
+          <button class="filter active" data-status="open">Open</button>
+          <button class="filter" data-status="ready">Ready</button>
+          <button class="filter" data-status="claimed">Claimed</button>
+          <button class="filter" data-status="review">Review</button>
+          <button class="filter" data-status="blocked">Blocked</button>
+          <button class="filter" data-status="done">Done</button>
+          <button class="filter" data-status="all">All</button>
+        </nav>
+        <label class="search">
+          <input id="search" type="search" placeholder="filter by id, title, agent…" autocomplete="off" />
+        </label>
+        <button class="investigate" id="investigate" disabled title="Ask a Paseo agent to triage the lapsed claims">
+          Investigate lapsed<span id="investigate-count"></span>
+        </button>
+        <div class="live" title="Last snapshot poll">
+          <span class="dot" id="conn-dot"></span>
+          <span class="small muted" id="conn-text">connecting…</span>
+        </div>
+      </header>
+
+      <section class="stats" id="stats"></section>
+
+      <main class="content">
+        <table class="tasks">
+          <thead>
+            <tr>
+              <th class="col-id">id</th>
+              <th class="col-pri" title="priority">p</th>
+              <th class="col-status">status</th>
+              <th>title</th>
+              <th class="col-area">area</th>
+              <th class="col-agent">agent</th>
+              <th class="col-when">updated</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <p class="empty muted" id="empty" hidden>nothing matches this view</p>
+      </main>
+
+      <footer class="board-footer">
+        <span class="small muted" id="db-path"></span>
+        <span class="small muted">read-only — the CLI owns every transition</span>
+      </footer>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
+
+    <dialog class="sheet" id="sheet">
+      <div class="sheet-head">
+        <strong id="sheet-id"></strong>
+        <div class="sheet-actions">
+          <button class="mini" id="sheet-investigate">Investigate</button>
+          <button class="close" id="sheet-close" aria-label="close">✕</button>
+        </div>
+      </div>
+      <div class="sheet-body" id="sheet-body"></div>
+    </dialog>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

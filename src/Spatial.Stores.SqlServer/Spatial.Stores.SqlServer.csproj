@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The SQL Server data store (ADR-0033, ADR-0072): the in-process
+    The SQL Server data store (ADR-0033, ADR-0073): the in-process
     implementation of IDataCatalogue, IFeatureStore, IFeatureLookup and
     ITransactionStore — plus the granular editing, ingest and attachment
     faces — on Microsoft.Data.SqlClient, linked by Spatial.Host. Connection

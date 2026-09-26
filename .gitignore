@@ -53,3 +53,5 @@ playwright-report/
 *.tasks.db
 *.tasks.db-wal
 *.tasks.db-shm
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

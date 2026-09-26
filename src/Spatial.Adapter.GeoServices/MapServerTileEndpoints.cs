@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
@@ -11,16 +12,17 @@ namespace Spatial.Adapter.GeoServices;
 /// rendering seam and cached. Split from <see cref="MapExportEndpoints"/>
 /// so the export facade keeps only the export fan-out.
 /// </summary>
-internal static class MapServerTileEndpoints
+internal static partial class MapServerTileEndpoints
 {
     internal static void MapTileRoutes(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
         group.MapMethods("/{service}/MapServer/tile/{z:int}/{y:int}/{x:int}", ["GET", "POST"], (
             string service, [AsParameters] MapTileAddress address, HttpContext context, IStoreRegistry stores,
-            IMapRenderer renderer, ITileCache cache, IEnumerable<ITileScheme> schemes, CancellationToken cancellationToken) =>
+            IMapRenderer renderer, ITileCache cache, IEnumerable<ITileScheme> schemes,
+            ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
             MapTile(new MapTileCall(
                 catalog, registry, service, address, context, stores,
-                new MapTileRenderDependencies(renderer, cache, [.. schemes]), cancellationToken)));
+                new MapTileRenderDependencies(renderer, cache, [.. schemes], loggerFactory), cancellationToken)));
     }
 
     /// <summary>One MapServer tile request's seams: the published service, the tile address and the rendering stack.</summary>
@@ -37,6 +39,7 @@ internal static class MapServerTileEndpoints
     private static async Task<IResult> MapTile(MapTileCall call)
     {
         var (catalog, registry, service, address, context, stores, render, cancellationToken) = call;
+        var logger = render.LoggerFactory.CreateLogger(typeof(MapServerTileEndpoints));
         try
         {
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
@@ -55,6 +58,19 @@ internal static class MapServerTileEndpoints
             if (image is null)
             {
                 var viewport = new RasterViewport(scheme.Bounds(coordinate), scheme.TileSize, scheme.TileSize, scheme.Crs);
+
+                // Diagnostic seam: one Debug event per tile resolves the
+                // requested address to the rendered geography, so a client
+                // fetching the wrong tiles (a canvas parked at Null Island,
+                // say) is distinguishable from the server rendering the
+                // wrong geography.
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    var bounds = viewport.Bounds;
+                    LogTile(logger, service, address.Z, address.Y, address.X, scheme.Id, scheme.Crs,
+                        bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
+                }
+
                 var sources = MapRenderEngine.Sources(stores, resolved.Store, layers, null);
                 image = await render.Renderer.RenderAsync(
                     new MapRenderRequest(viewport, style, sources, null, RasterFormat.Png, 90, null, true, 1.0), cancellationToken);
@@ -66,9 +82,29 @@ internal static class MapServerTileEndpoints
         }
         catch (Exception exception)
         {
+            if (exception is not OperationCanceledException)
+            {
+                LogTileFailed(logger, exception, service, address.Z, address.Y, address.X);
+            }
+
             return EsriErrorMapper.Map(exception);
         }
     }
+
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Debug,
+        Message = "MapServer tile {Service} {Z}/{Y}/{X} via scheme '{Scheme}' ({Crs}): bounds [{MinX},{MinY},{MaxX},{MaxY}]")]
+    private static partial void LogTile(
+        ILogger logger, string service, int z, int y, int x, string scheme, string crs,
+        double minX, double minY, double maxX, double maxY);
+
+    [LoggerMessage(
+        EventId = 2,
+        Level = LogLevel.Warning,
+        Message = "MapServer tile {Service} {Z}/{Y}/{X} failed")]
+    private static partial void LogTileFailed(
+        ILogger logger, Exception exception, string service, int z, int y, int x);
 }
 
 /// <summary>The MapServer tile address bound from the route via <c>[AsParameters]</c> (ADR-0040).</summary>
@@ -82,4 +118,5 @@ internal sealed class MapTileAddress
 }
 
 /// <summary>The render seams one MapServer tile request needs, grouped so the handler stays within the parameter budget (ADR-0040).</summary>
-internal sealed record MapTileRenderDependencies(IMapRenderer Renderer, ITileCache Cache, IReadOnlyList<ITileScheme> Schemes);
+internal sealed record MapTileRenderDependencies(
+    IMapRenderer Renderer, ITileCache Cache, IReadOnlyList<ITileScheme> Schemes, ILoggerFactory LoggerFactory);

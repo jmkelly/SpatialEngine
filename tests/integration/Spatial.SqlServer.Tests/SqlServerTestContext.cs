@@ -4,7 +4,7 @@ using Spatial.Stores.SqlServer;
 namespace Spatial.SqlServer.Tests;
 
 /// <summary>
-/// The context of the containerised SQL Server tests (ADR-0072): a
+/// The context of the containerised SQL Server tests (ADR-0073): a
 /// <see cref="SqlServerStore"/> over the container's connection string plus
 /// SQL helpers for seeding and assertions. Tests skip when Docker is
 /// unavailable (see the fixture).

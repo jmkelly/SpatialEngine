@@ -10,7 +10,7 @@ using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 namespace Spatial.Stores.SqlServer;
 
 /// <summary>
-/// The SQL Server store (ADR-0033, ADR-0072): a direct, in-process
+/// The SQL Server store (ADR-0033, ADR-0073): a direct, in-process
 /// implementation of <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
 /// <see cref="IFeatureLookup"/> and <see cref="ITransactionStore"/> on
 /// Microsoft.Data.SqlClient. SqlClient types, T-SQL and WKB stay inside this

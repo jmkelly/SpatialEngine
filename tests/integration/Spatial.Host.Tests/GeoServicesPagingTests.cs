@@ -10,11 +10,11 @@ namespace Spatial.Host.Tests;
 /// (1000); the factor multiplies the cap. The REST JS queryAllFeatures loop
 /// sends returnExceededLimitFeatures=true and pages off maxRecordCount.
 /// </summary>
-public sealed class GeoServicesPagingTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesPagingTests : IClassFixture<PostgisHostFactory>
 {
     private const string WorldCities = "/arcgis/rest/services/demo/FeatureServer/2";
     private readonly HttpClient _client;
-    public GeoServicesPagingTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesPagingTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

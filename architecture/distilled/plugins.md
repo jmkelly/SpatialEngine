@@ -10,7 +10,7 @@ Microsoft DI — keyed services where two stores serve one contract:
 - `IDataCatalogue`/`IFeatureStore` keyed `"demo"` (`DemoStore`, always
   available), `"memory"` (`MemoryStore`, ADR-0042), `"postgis"`
   (`PostgisStore`, ADR-0010/0028), `"sqlserver"` (`SqlServerStore`,
-  ADR-0072) — each database store needs a connection string — and one key per
+  ADR-0073) — each database store needs a connection string — and one key per
   configured ArcGIS REST service (`ArcGisRestStore`, ADR-0035).
 - `IFeatureEditStore` keyed `"memory"`, `"postgis"` and `"sqlserver"`
   (ADR-0037/0072); the demo and ArcGIS REST stores are read-only and do not

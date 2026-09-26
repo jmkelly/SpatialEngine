@@ -31,6 +31,20 @@ public sealed class EsriValueParserTests
     }
 
     [Fact]
+    public void ParseGeometries_reads_the_esri_docs_wrapper_object()
+    {
+        // The project/buffer/relation operations package inputs as
+        // {"geometryType": "...", "geometries": [...]} (Esri docs verbatim,
+        // also the parity playground's project sample): the wrapper must
+        // unwrap to its inner array, not fail as a shapeless object.
+        var geometries = EsriValueParser.ParseGeometries(
+            """{"geometryType":"esriGeometryPoint","geometries":[{"x":-117,"y":34}]}""", null);
+
+        var point = Assert.IsType<Point>(Assert.Single(geometries));
+        Assert.Equal(new Coordinate(-117, 34), point.Coordinate);
+    }
+
+    [Fact]
     public void ParseGeometries_reads_the_simple_coordinate_syntax()
     {
         var geometries = EsriValueParser.ParseGeometries(" 7 , 8 ", null);
