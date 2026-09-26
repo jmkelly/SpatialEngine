@@ -11,6 +11,11 @@ namespace Spatial.Host.Tests;
 /// The typed host API over the in-process services (ADR-0033): geometry,
 /// transforms, demo catalogue/features/sleep and PostGIS-unconfigured
 /// behaviour, driven through the .NET client SDK against the real host.
+/// This class deliberately keeps the plain
+/// <see cref="WebApplicationFactory{TEntryPoint}"/>: with no store
+/// configured, the PostGIS routes answer <c>store.unavailable</c> — the
+/// contract <see cref="PostgisHostFactory"/> and its container cannot prove
+/// (ADR-0072).
 /// </summary>
 public sealed class HostApiTests : IClassFixture<WebApplicationFactory<Program>>
 {

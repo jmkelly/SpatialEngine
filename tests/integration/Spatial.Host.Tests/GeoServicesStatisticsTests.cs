@@ -12,11 +12,11 @@ namespace Spatial.Host.Tests;
 /// exceeds-limit flag and the capability-flag honesty pass, replaying
 /// research/compat/ground-truth/feature-layer0.DamageAssessment.json.
 /// </summary>
-public sealed class GeoServicesStatisticsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesStatisticsTests : IClassFixture<PostgisHostFactory>
 {
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0";
     private readonly HttpClient _client;
-    public GeoServicesStatisticsTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesStatisticsTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

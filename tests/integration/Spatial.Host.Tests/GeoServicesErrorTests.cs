@@ -12,13 +12,13 @@ namespace Spatial.Host.Tests;
 /// clients (GDAL/QGIS/service meshes) key off status. Every envelope carries
 /// a <c>details</c> array.
 /// </summary>
-public sealed class GeoServicesErrorTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesErrorTests : IClassFixture<PostgisHostFactory>
 {
     private const string Root = "/arcgis/rest/services";
 
     private readonly HttpClient _client;
 
-    public GeoServicesErrorTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesErrorTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<(HttpStatusCode Status, JsonElement Error)> GetErrorAsync(string path)
     {

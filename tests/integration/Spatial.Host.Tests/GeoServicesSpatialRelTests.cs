@@ -11,11 +11,11 @@ namespace Spatial.Host.Tests;
 /// for point-vs-polygon, Touches needs a boundary case. Quantization is an
 /// honest 400; geometryPrecision rounds; maxAllowableOffset is accepted.
 /// </summary>
-public sealed class GeoServicesSpatialRelTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesSpatialRelTests : IClassFixture<PostgisHostFactory>
 {
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0";
     private readonly HttpClient _client;
-    public GeoServicesSpatialRelTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesSpatialRelTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     private async Task<JsonElement> GetJsonAsync(string path)
     {

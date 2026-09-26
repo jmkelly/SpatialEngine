@@ -60,3 +60,9 @@ Service behaviour tests live with each implementation
 PostGIS behaviour by the containerised suite
 (`tests/integration/Spatial.PostGIS.Tests`, Testcontainers, skips without
 Docker).
+
+The host suite supplies its own PostGIS too (ADR-0072): one Testcontainers
+database per test process, wired into the host as
+`Spatial:Postgis:ConnectionString`, so `dotnet test` needs no
+`SPATIAL_POSTGIS_CONNECTION`. Hosts the suite starts deliberately without a
+store (the `store.unavailable` contract) use a plain factory.

@@ -9,7 +9,7 @@ namespace Spatial.Host.Tests;
 /// adapter validates the requested fields against the layer schema and orders
 /// the matched features in memory before pagination (never as SQL).
 /// </summary>
-public sealed class GeoServicesOrderByTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesOrderByTests : IClassFixture<PostgisHostFactory>
 {
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0/query";
 
@@ -18,7 +18,7 @@ public sealed class GeoServicesOrderByTests : IClassFixture<WebApplicationFactor
 
     private readonly HttpClient _client;
 
-    public GeoServicesOrderByTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesOrderByTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     [Fact]
     public async Task Order_by_population_defaults_to_ascending()

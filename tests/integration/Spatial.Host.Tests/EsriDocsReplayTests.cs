@@ -38,7 +38,7 @@ namespace Spatial.Host.Tests;
 /// snapshot (layer 0): the wire shape is Esri's, the rows are ours, and no
 /// FeatureServer behaviour was changed to satisfy the suite.
 /// </remarks>
-public sealed class EsriDocsReplayTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class EsriDocsReplayTests : IClassFixture<PostgisHostFactory>
 {
     private static readonly string FixtureDir =
         Path.Combine(AppContext.BaseDirectory, "esri-docs-fixtures", "geometryserver");
@@ -58,7 +58,7 @@ public sealed class EsriDocsReplayTests : IClassFixture<WebApplicationFactory<Pr
 
     private readonly HttpClient _client;
 
-    public EsriDocsReplayTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public EsriDocsReplayTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     public static IEnumerable<object[]> CaseNames() =>
         Manifest.GetProperty("cases").EnumerateArray()
@@ -322,7 +322,7 @@ public sealed class EsriDocsMapServerReplayTests : IDisposable
     private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-esri-map-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PostgisHostFactory _factory;
     private HttpClient? _client;
 
     public EsriDocsMapServerReplayTests() =>
@@ -508,10 +508,11 @@ public sealed class EsriDocsMapServerReplayTests : IDisposable
         return client;
     }
 
-    private sealed class MapReplayFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class MapReplayFactory(string publicationsPath) : PostgisHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            base.ConfigureWebHost(builder);
             builder.UseSetting("Spatial:Admin:Token", Token);
             builder.UseSetting("Spatial:Maps:Path", publicationsPath);
         }

@@ -9,13 +9,13 @@ namespace Spatial.Host.Tests;
 /// Red test first: replays real-client (GDAL ESRIJSON driver, pygeoapi)
 /// request shapes with <c>f=pjson</c> against the serve surface.
 /// </summary>
-public sealed class GeoServicesFormatTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GeoServicesFormatTests : IClassFixture<PostgisHostFactory>
 {
     private const string Root = "/arcgis/rest/services";
 
     private readonly HttpClient _client;
 
-    public GeoServicesFormatTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public GeoServicesFormatTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     [Theory]
     [InlineData("/arcgis/rest/services?f=pjson")]

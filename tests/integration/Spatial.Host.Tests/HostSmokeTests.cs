@@ -7,13 +7,15 @@ namespace Spatial.Host.Tests;
 /// <summary>
 /// Smoke tests proving the spatial host is an independently executable
 /// process: it serves health and metadata endpoints with no desktop shell,
-/// no plugins loaded and no external services (ADR-0018).
+/// no plugins loaded and nothing for the operator to configure (ADR-0018).
+/// The PostGIS store is configured from the test container (ADR-0072), and
+/// health does not depend on it.
 /// </summary>
-public sealed class HostSmokeTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HostSmokeTests : IClassFixture<PostgisHostFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PostgisHostFactory _factory;
 
-    public HostSmokeTests(WebApplicationFactory<Program> factory)
+    public HostSmokeTests(PostgisHostFactory factory)
     {
         _factory = factory;
     }

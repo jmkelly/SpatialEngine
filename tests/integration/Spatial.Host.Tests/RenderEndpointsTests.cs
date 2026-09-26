@@ -10,11 +10,11 @@ namespace Spatial.Host.Tests;
 /// bytes, capability discovery, and the failure mapping for unsupported
 /// formats, unknown datasets and resource caps.
 /// </summary>
-public sealed class RenderEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RenderEndpointsTests : IClassFixture<PostgisHostFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly PostgisHostFactory _factory;
 
-    public RenderEndpointsTests(WebApplicationFactory<Program> factory)
+    public RenderEndpointsTests(PostgisHostFactory factory)
     {
         _factory = factory;
     }

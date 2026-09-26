@@ -19,7 +19,7 @@ namespace Spatial.Host.Tests;
 /// deltas, and live pins for the catalog scope (no unserved types) and the
 /// 499 cancellation contract (mapper-pinned, not HTTP-replayable).
 /// </summary>
-public sealed class EsriDocsParityPolicyTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class EsriDocsParityPolicyTests : IClassFixture<PostgisHostFactory>
 {
     private static readonly string CorpusDir =
         Path.Combine(AppContext.BaseDirectory, "esri-docs-fixtures");
@@ -31,7 +31,7 @@ public sealed class EsriDocsParityPolicyTests : IClassFixture<WebApplicationFact
 
     private readonly HttpClient _client;
 
-    public EsriDocsParityPolicyTests(WebApplicationFactory<Program> factory) => _client = factory.CreateClient();
+    public EsriDocsParityPolicyTests(PostgisHostFactory factory) => _client = factory.CreateClient();
 
     /// <summary>Every fixture case in every suite is classified strict or lenient — no orphans either way.</summary>
     [Fact]
