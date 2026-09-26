@@ -168,8 +168,9 @@ consumes a remote ArcGIS REST service as a keyed
 `IDataCatalogue`/`IFeatureStore` (`Spatial.Stores.ArcGisRest`).
 
 The `store` query selects `demo` (default, always available), `memory`
-(writable, ephemeral, ADR-0042) or `postgis` (needs configuration). Ingest
-defaults to `memory` so the database-free upload path works out of the box.
+(writable, ephemeral, ADR-0042), `postgis` (ADR-0010/0028) or `sqlserver`
+(ADR-0072) — the last two need configuration. Ingest defaults to `memory` so
+the database-free upload path works out of the box.
 
 ## Configuration
 
@@ -177,6 +178,8 @@ defaults to `memory` so the database-free upload path works out of the box.
 | --- | --- |
 | `Spatial:Postgis:ConnectionString` | PostGIS connection string (empty = unconfigured; every PostGIS call throws `store.unavailable`) |
 | `SPATIAL_POSTGIS_CONNECTION` | Env fallback for the connection string — the **only** secret channel |
+| `Spatial:SqlServer:ConnectionString` | SQL Server connection string (empty = unconfigured; every SQL Server call throws `store.unavailable`) |
+| `SPATIAL_SQLSERVER_CONNECTION` | Env fallback for the SQL Server connection string (ADR-0072) |
 | `Spatial:WebRoot` | Built workbench directory; when set, `GET /` serves it |
 | `Spatial:GeoServices:Root` | GeoServices URL prefix (default `/arcgis/rest/services`) |
 | `Spatial:GeoServices:Services` | Logical Esri service `{name, store, type}` entries (`FeatureServer` only); projected to declared Feature maps at composition |
@@ -254,9 +257,9 @@ injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
 | Local development | PostGIS container; hot reload; demo store for Docker-free work |
 
 Container configuration is environment based: `SPATIAL__WEBROOT` selects the
-built workbench, `SPATIAL_POSTGIS_CONNECTION` the store (absent → the store
-reports `store.unavailable`), `ASPNETCORE_URLS` the bind address. See
-`RELEASING.md`.
+built workbench, `SPATIAL_POSTGIS_CONNECTION` / `SPATIAL_SQLSERVER_CONNECTION`
+the stores (absent → the store reports `store.unavailable`), `ASPNETCORE_URLS`
+the bind address. See `RELEASING.md`.
 
 Invariants: one public API/contract set/TS SDK/React app in every profile;
 host independently executable; browser tests run against the host directly.

@@ -8,15 +8,21 @@ Implementations are linked .NET projects composed by `Spatial.Host` with
 Microsoft DI — keyed services where two stores serve one contract:
 
 - `IDataCatalogue`/`IFeatureStore` keyed `"demo"` (`DemoStore`, always
-  available), `"postgis"` (`PostgisStore`, needs a connection string) and
-  one key per configured ArcGIS REST service (`ArcGisRestStore`, ADR-0035).
-- `IFeatureEditStore` keyed `"postgis"` only (ADR-0037); the demo and
-  ArcGIS REST stores are read-only and do not implement it.
-- `IFeatureLookup` keyed `"postgis"` only (ADR-0038), resolving the canonical
-  `PostgisStore`; the demo and ArcGIS REST stores do not implement it and
+  available), `"memory"` (`MemoryStore`, ADR-0042), `"postgis"`
+  (`PostgisStore`, ADR-0010/0028), `"sqlserver"` (`SqlServerStore`,
+  ADR-0072) — each database store needs a connection string — and one key per
+  configured ArcGIS REST service (`ArcGisRestStore`, ADR-0035).
+- `IFeatureEditStore` keyed `"memory"`, `"postgis"` and `"sqlserver"`
+  (ADR-0037/0072); the demo and ArcGIS REST stores are read-only and do not
+  implement it.
+- `IFeatureLookup` keyed `"memory"`, `"postgis"` and `"sqlserver"`
+  (ADR-0038/0072); the demo and ArcGIS REST stores do not implement it and
   callers fall back to the scan.
-- `ITransactionStore` keyed `"postgis"` only; the demo and ArcGIS stores are
-  read-only.
+- `ITransactionStore` keyed `"memory"`, `"postgis"` and `"sqlserver"`; the
+  demo and ArcGIS stores are read-only.
+- `IDatasetIngest` and `IFeatureAttachmentStore` keyed `"memory"`,
+  `"postgis"` and `"sqlserver"` (ADR-0041/0065); the SQL Server provider owns
+  the same `spatial_attachments` sidecar shape as PostGIS.
 - `IGeometryOperations`, `IGeometryMeasures`, `IGeometryProcessing`,
   `IGeometryRelations`, `ICrsDirectory`, `ICoordinateTransforms`,
   `IDemoWork`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and

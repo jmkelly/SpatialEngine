@@ -1,6 +1,8 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Spatial.Client;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
 using Spatial.Core.Geometry;
@@ -102,6 +104,21 @@ public sealed class HostApiTests : IClassFixture<WebApplicationFactory<Program>>
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         await Assert.ThrowsAsync<TaskCanceledException>(() => Client.SleepAsync(10_000, cts.Token));
+    }
+
+    [Fact]
+    public async Task The_sqlserver_store_is_wired_and_unconfigured_without_a_connection_string()
+    {
+        var stores = _factory.Services.GetRequiredService<IStoreRegistry>();
+        Assert.NotNull(stores.Catalogue("sqlserver"));
+        Assert.NotNull(stores.Features("sqlserver"));
+        Assert.NotNull(stores.EditStore("sqlserver"));
+        Assert.NotNull(stores.Transactions("sqlserver"));
+        Assert.NotNull(stores.Ingest("sqlserver"));
+
+        var catalogue = await Assert.ThrowsAsync<SpatialClientException>(() => Client.ListCatalogueAsync("sqlserver"));
+        Assert.Equal(503, catalogue.StatusCode);
+        Assert.Equal("store.unavailable", catalogue.Code);
     }
 
     [Fact]

@@ -12,6 +12,7 @@
     <Project Path="src/Spatial.Stores.Demo/Spatial.Stores.Demo.csproj" />
     <Project Path="src/Spatial.Stores.Memory/Spatial.Stores.Memory.csproj" />
     <Project Path="src/Spatial.Stores.PostGIS/Spatial.Stores.PostGIS.csproj" />
+    <Project Path="src/Spatial.Stores.SqlServer/Spatial.Stores.SqlServer.csproj" />
     <Project Path="src/Spatial.Maps/Spatial.Maps.csproj" />
     <Project Path="src/Spatial.Stores.ArcGisRest/Spatial.Stores.ArcGisRest.csproj" />
     <Project Path="src/Spatial.Imagery.Vips/Spatial.Imagery.Vips.csproj" />
@@ -33,6 +34,7 @@
     <Project Path="tests/unit/Spatial.Stores.Demo.Tests/Spatial.Stores.Demo.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.Memory.Tests/Spatial.Stores.Memory.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.PostGIS.Tests/Spatial.Stores.PostGIS.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.Stores.SqlServer.Tests/Spatial.Stores.SqlServer.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Maps.Tests/Spatial.Maps.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.ArcGisRest.Tests/Spatial.Stores.ArcGisRest.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Rendering.Skia.Tests/Spatial.Rendering.Skia.Tests.csproj" />
@@ -53,5 +55,6 @@
   <Folder Name="/tests/integration/">
     <Project Path="tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj" />
     <Project Path="tests/integration/Spatial.PostGIS.Tests/Spatial.PostGIS.Tests.csproj" />
+    <Project Path="tests/integration/Spatial.SqlServer.Tests/Spatial.SqlServer.Tests.csproj" />
   </Folder>
 </Solution>

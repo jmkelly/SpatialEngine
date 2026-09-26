@@ -6,14 +6,16 @@ namespace Spatial.Host.Api;
 
 /// <summary>
 /// Store-aware data routes (ADR-0033): every request names its store
-/// (<c>demo</c> by default, <c>postgis</c> when configured). The demo store
-/// is always available; PostGIS throws <c>store.unavailable</c> without a
-/// connection string.
+/// (<c>demo</c> by default, <c>postgis</c> or <c>sqlserver</c> when
+/// configured). The demo store is always available; the database stores throw
+/// <c>store.unavailable</c> without a connection string.
 /// </summary>
 internal static class StoreEndpoints
 {
     public const string Demo = "demo";
     public const string Postgis = "postgis";
+
+    public const string SqlServer = "sqlserver";
 
     /// <summary>
     /// The seams every admin-authorized store route needs: the caller's

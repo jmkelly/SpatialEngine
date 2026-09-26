@@ -7,6 +7,20 @@ All notable changes to Spatial Engine are documented here. The format follows
 The product version is single-sourced in `Directory.Build.props`; update it and
 this file together, then tag the release (`RELEASING.md`).
 
+## [Unreleased]
+
+### Added
+
+- **SQL Server store provider** (ADR-0072, T-113): `Spatial.Stores.SqlServer`
+  implements the catalogue, feature, lookup, transaction, editing, ingest and
+  attachment faces on Microsoft.Data.SqlClient, wired into the host under the
+  store key `sqlserver` (`Spatial:SqlServer:ConnectionString` or
+  `SPATIAL_SQLSERVER_CONNECTION`). Geometry crosses as OGC WKB, a dataset's CRS
+  is discovered from its data and then from a provider-owned `spatial_datasets`
+  sidecar, only XY geometries are written (Z/M is refused, not flattened), and
+  the store-backed matrix is proven against a real SQL Server container with
+  Testcontainers alongside a DB-free unit suite.
+
 ## [0.3.0] - 2026-09-15
 
 ### Added

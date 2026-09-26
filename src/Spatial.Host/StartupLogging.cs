@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Spatial.Host.Api;
 using Spatial.Stores.PostGIS;
+using Spatial.Stores.SqlServer;
 
 namespace Spatial.Host;
 
@@ -17,20 +18,27 @@ internal static partial class StartupLogging
     {
         var logger = app.Logger;
         var postgisConfigured = !string.IsNullOrWhiteSpace(app.Services.GetRequiredService<PostgisOptions>().ConnectionString);
+        var sqlServerConfigured = !string.IsNullOrWhiteSpace(app.Services.GetRequiredService<SqlServerOptions>().ConnectionString);
         var adminEnabled = AdminOptions.FromConfiguration(app.Configuration).Enabled;
         var seqEnabled = app.Services.GetRequiredService<LoggingSettings>().SeqEnabled;
         var webRoot = app.Configuration["Spatial:WebRoot"];
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "unknown";
         var environmentName = app.Environment.EnvironmentName;
         var postgisState = postgisConfigured ? "configured" : "unconfigured";
+        var sqlServerState = sqlServerConfigured ? "configured" : "unconfigured";
         var adminState = adminEnabled ? "enabled" : "disabled";
         var seqState = seqEnabled ? "enabled" : "disabled";
 
-        LogStarted(logger, version, environmentName, postgisState, adminState, seqState);
+        LogStarted(logger, version, environmentName, postgisState, sqlServerState, adminState, seqState);
 
         if (!postgisConfigured)
         {
             LogPostgisUnconfigured(logger, "Spatial:Postgis:ConnectionString", PostgisOptions.EnvironmentVariable);
+        }
+
+        if (!sqlServerConfigured)
+        {
+            LogSqlServerUnconfigured(logger, "Spatial:SqlServer:ConnectionString", SqlServerOptions.EnvironmentVariable);
         }
 
         if (!adminEnabled)
@@ -47,15 +55,21 @@ internal static partial class StartupLogging
     [LoggerMessage(
         EventId = 1,
         Level = LogLevel.Information,
-        Message = "Spatial.Host {Version} starting in {EnvironmentName}; PostGIS {PostgisState}, admin routes {AdminState}, Seq sink {SeqState}")]
+        Message = "Spatial.Host {Version} starting in {EnvironmentName}; PostGIS {PostgisState}, SQL Server {SqlServerState}, admin routes {AdminState}, Seq sink {SeqState}")]
     private static partial void LogStarted(
-        ILogger logger, string version, string environmentName, string postgisState, string adminState, string seqState);
+        ILogger logger, string version, string environmentName, string postgisState, string sqlServerState, string adminState, string seqState);
 
     [LoggerMessage(
         EventId = 2,
         Level = LogLevel.Warning,
         Message = "The PostGIS store is not configured; requests to the 'postgis' store will fail with store.unavailable. Set {Setting} or {EnvironmentVariable}.")]
     private static partial void LogPostgisUnconfigured(ILogger logger, string setting, string environmentVariable);
+
+    [LoggerMessage(
+        EventId = 5,
+        Level = LogLevel.Warning,
+        Message = "The SQL Server store is not configured; requests to the 'sqlserver' store will fail with store.unavailable. Set {Setting} or {EnvironmentVariable}.")]
+    private static partial void LogSqlServerUnconfigured(ILogger logger, string setting, string environmentVariable);
 
     [LoggerMessage(
         EventId = 3,

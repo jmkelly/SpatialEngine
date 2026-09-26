@@ -14,6 +14,7 @@ reflects the state at decision time.
 | --- | --- | --- |
 | Core geometry / feature types, codecs | `core.md` | 0001, 0004, 0009, 0020, 0029, 0032 |
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
+| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
 | Which services exist + their contracts | `contracts.md` | 0033 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
@@ -117,6 +118,7 @@ shape is noted in brackets.
 | 0062 | ~~Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals~~ — superseded by 0070 (vector tiles back in scope). |
 | 0070 | Vector tiles (MVT) and OGC API Tiles are in scope; live MVT, TileJSON and collection tile resources are implemented; `.vtpk` packaging still needs its own ADR. |
 | 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
+| 0072 | SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests. |
 
 ## How to change the architecture
 

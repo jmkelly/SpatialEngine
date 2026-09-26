@@ -3,13 +3,14 @@ using Spatial.Contracts.Providers;
 using Spatial.Stores.Demo;
 using Spatial.Stores.Memory;
 using Spatial.Stores.PostGIS;
+using Spatial.Stores.SqlServer;
 
 namespace Spatial.Host;
 
 /// <summary>
 /// Registers the keyed data stores (ADR-0033): the read-only demo store, the
-/// ephemeral writable in-memory provider (ADR-0042) and the PostGIS store,
-/// each exposed through the granular service faces it actually
+/// ephemeral writable in-memory provider (ADR-0042), the PostGIS store and
+/// the SQL Server store, each exposed through the granular service faces it actually
 /// implements. Split from the composition root so its fan-out stays
 /// deliberate (ADR-0040).
 /// </summary>
@@ -24,6 +25,7 @@ internal static class StoreServices
         ConfigureDemo(builder);
         ConfigureMemory(builder);
         ConfigurePostgis(builder);
+        ConfigureSqlServer(builder);
     }
 
     private static void ConfigureDemo(WebApplicationBuilder builder)
@@ -49,6 +51,34 @@ internal static class StoreServices
         builder.Services.AddKeyedSingleton<IFeatureAttachmentStore>("memory", (services, _) => services.GetRequiredService<MemoryAttachments>());
         builder.Services.AddKeyedSingleton<ITransactionStore>("memory", (services, _) => services.GetRequiredService<MemoryStore>());
         builder.Services.AddKeyedSingleton<IDatasetIngest>("memory", (services, _) => services.GetRequiredService<MemoryIngest>());
+    }
+
+    /// <summary>
+    /// The SQL Server store (ADR-0072): the same contract faces as PostGIS,
+    /// keyed <c>sqlserver</c>. Unconfigured (no connection string) it throws
+    /// <c>store.unavailable</c> naming the setting.
+    /// </summary>
+    private static void ConfigureSqlServer(WebApplicationBuilder builder)
+    {
+        var sqlServerOptions = builder.Configuration.GetSection("Spatial:SqlServer").Get<SqlServerOptions>()
+            ?? SqlServerOptions.FromEnvironment();
+        if (string.IsNullOrWhiteSpace(sqlServerOptions.ConnectionString))
+        {
+            sqlServerOptions = SqlServerOptions.FromEnvironment();
+        }
+
+        builder.Services.AddSingleton(sqlServerOptions);
+        builder.Services.AddSingleton<SqlServerStore>();
+        builder.Services.AddSingleton<SqlServerAttachmentStore>();
+        builder.Services.AddSingleton<SqlServerEditStore>();
+        builder.Services.AddSingleton<SqlServerIngestStore>();
+        builder.Services.AddKeyedSingleton<IDataCatalogue>("sqlserver", (services, _) => services.GetRequiredService<SqlServerStore>());
+        builder.Services.AddKeyedSingleton<IFeatureStore>("sqlserver", (services, _) => services.GetRequiredService<SqlServerStore>());
+        builder.Services.AddKeyedSingleton<IFeatureAttachmentStore>("sqlserver", (services, _) => services.GetRequiredService<SqlServerAttachmentStore>());
+        builder.Services.AddKeyedSingleton<IFeatureEditStore>("sqlserver", (services, _) => services.GetRequiredService<SqlServerEditStore>());
+        builder.Services.AddKeyedSingleton<IFeatureLookup>("sqlserver", (services, _) => services.GetRequiredService<SqlServerStore>());
+        builder.Services.AddKeyedSingleton<ITransactionStore>("sqlserver", (services, _) => services.GetRequiredService<SqlServerStore>());
+        builder.Services.AddKeyedSingleton<IDatasetIngest>("sqlserver", (services, _) => services.GetRequiredService<SqlServerIngestStore>());
     }
 
     private static void ConfigurePostgis(WebApplicationBuilder builder)

@@ -220,8 +220,8 @@ docker run --rm -p 8080:8080 \
 
 Point QGIS, the ArcGIS Maps SDK, or the workbench at `:8080` and the same
 catalog/feature/map/image/OGC routes serve your data. The demo store and the
-GeoServices FeatureServer are always available; the PostGIS store is
-advertised once its connection string is configured. See `RELEASING.md` for
+GeoServices FeatureServer are always available; the PostGIS and SQL Server
+stores are advertised once their connection strings are configured. See `RELEASING.md` for
 the version/tag checklist and `CHANGELOG.md` for what shipped.
 
 ### Auth today, auth next
@@ -255,6 +255,7 @@ arrives as a second issuer, not a rewrite.
 | `src/Spatial.Adapter.GeoServices` | GeoServices REST serving facade |
 | `src/Spatial.Stores.ArcGisRest` | ArcGIS REST consuming store |
 | `src/Spatial.Stores.PostGIS` | PostGIS store: catalogue, features, transactions, editing |
+| `src/Spatial.Stores.SqlServer` | SQL Server store: the same faces over `geometry`/`geography` columns (ADR-0072) |
 | `src/Spatial.Stores.Demo` | Docker-free demo store and cancellable sleep |
 | `src/Spatial.Host` | Independently executable ASP.NET Core host (DI composition) |
 | `src/Spatial.DevHost` | Aspire dev host for the local development profile |

@@ -80,7 +80,7 @@ public sealed class ArchitectureGuardTests
     public void Contracts_source_names_no_raster_or_third_party_type()
     {
         var root = Path.Combine(Repository.Value.Root, "src", "Spatial.Contracts");
-        var forbidden = new[] { "NetVips", "Vips", "SkiaSharp", "Npgsql", "NetTopologySuite", "ProjNET", "Microsoft.AspNetCore" };
+        var forbidden = new[] { "NetVips", "Vips", "SkiaSharp", "Npgsql", "Microsoft.Data.SqlClient", "NetTopologySuite", "ProjNET", "Microsoft.AspNetCore" };
         var violations = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
@@ -150,6 +150,7 @@ public sealed class ArchitectureGuardTests
             "Spatial.Stores.Demo",
             "Spatial.Stores.Memory",
             "Spatial.Stores.PostGIS",
+            "Spatial.Stores.SqlServer",
             "Spatial.Maps",
             "Spatial.Adapter.GeoServices",
             "Spatial.Adapter.Ogc",
@@ -268,6 +269,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Stores.Demo",
         "Spatial.Stores.Memory",
         "Spatial.Stores.PostGIS",
+        "Spatial.Stores.SqlServer",
         "Spatial.Maps",
         "Spatial.Adapter.GeoServices",
         "Spatial.Adapter.Ogc",
@@ -286,6 +288,7 @@ public sealed class ArchitectureGuardTests
         "Spatial.Stores.Demo",
         "Spatial.Stores.Memory",
         "Spatial.Stores.PostGIS",
+        "Spatial.Stores.SqlServer",
         "Spatial.Maps",
         "Spatial.Adapter.GeoServices",
         "Spatial.Adapter.Ogc",
@@ -320,6 +323,7 @@ public sealed class ArchitectureGuardTests
             ["Spatial.Operations.NetTopologySuite"] = ["NetTopologySuite"],
             ["Spatial.Transformations.ProjNet"] = ["ProjNET"],
             ["Spatial.Stores.PostGIS"] = ["Npgsql"],
+            ["Spatial.Stores.SqlServer"] = ["Microsoft.Data.SqlClient"],
             ["Spatial.Rendering.Skia"] =
             [
                 "HarfBuzzSharp.NativeAssets.Linux",

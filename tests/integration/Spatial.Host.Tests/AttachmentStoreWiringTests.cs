@@ -7,8 +7,9 @@ namespace Spatial.Host.Tests;
 
 /// <summary>
 /// T-060 host wiring (T-088 extends it to PostGIS): the additive
-/// <c>IFeatureAttachmentStore</c> capability resolves for the memory store
-/// and the PostGIS sidecar table, and is absent everywhere else (demo is
+/// <c>IFeatureAttachmentStore</c> capability resolves for the memory store,
+/// the PostGIS sidecar table and the SQL Server sidecar table, and is absent
+/// everywhere else (demo is
 /// read-only). T-061 serves the
 /// HTTP surface on the capability: layers backed by the memory store
 /// advertise <c>hasAttachments</c>, while capability-less stores keep the
@@ -34,6 +35,14 @@ public sealed class AttachmentStoreWiringTests : IDisposable
         var stores = _factory.Services.GetRequiredService<IStoreRegistry>();
 
         Assert.NotNull(stores.AttachmentStore("postgis"));
+    }
+
+    [Fact]
+    public void The_sqlserver_store_exposes_the_attachment_capability()
+    {
+        var stores = _factory.Services.GetRequiredService<IStoreRegistry>();
+
+        Assert.NotNull(stores.AttachmentStore("sqlserver"));
     }
 
     [Fact]

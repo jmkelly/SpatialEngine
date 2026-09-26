@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The SQL Server data store (ADR-0033, ADR-0072): the in-process
+    implementation of IDataCatalogue, IFeatureStore, IFeatureLookup and
+    ITransactionStore — plus the granular editing, ingest and attachment
+    faces — on Microsoft.Data.SqlClient, linked by Spatial.Host. Connection
+    secrets come from host configuration (SqlServerOptions). SqlClient
+    types, T-SQL and WKB live inside this package's private adapters
+    (ADR-0005) and never cross a public boundary.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.Contracts\Spatial.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tests pin the private adapters' conversion and validation behaviour. -->
+    <InternalsVisibleTo Include="Spatial.Stores.SqlServer.Tests" />
+    <InternalsVisibleTo Include="Spatial.SqlServer.Tests" />
+  </ItemGroup>
+
+</Project>
