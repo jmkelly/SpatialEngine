@@ -107,28 +107,34 @@ internal static class EsriErrorMapper
 {
     public static IResult Map(Exception exception)
     {
+        var failure = Describe(exception);
+        return Envelope(failure.EsriCode, failure.Message, failure.HttpStatus);
+    }
+
+    /// <summary>
+    /// Describes a failure as its Esri code, HTTP status and message, so
+    /// request logging can carry the same values the wire envelope carries
+    /// (ADR-0045) without duplicating the mapping.
+    /// </summary>
+    internal static EsriFailure Describe(Exception exception)
+    {
         if (exception is EsriInteropException interop)
         {
-            return Envelope(interop.Code, interop.Message, HttpFor(interop.Code));
+            return new EsriFailure(interop.Code, HttpFor(interop.Code), interop.Message);
         }
 
         if (exception is SpatialException spatial)
         {
-            return EngineFailure(spatial);
+            var code = CodeFor(spatial.Code);
+            return new EsriFailure(code, HttpFor(code), spatial.Message);
         }
 
         if (exception is OperationCanceledException)
         {
-            return Envelope(EsriErrorCodes.RequestCancelled, "The request was cancelled.", StatusCodes.Status499ClientClosedRequest);
+            return new EsriFailure(EsriErrorCodes.RequestCancelled, StatusCodes.Status499ClientClosedRequest, "The request was cancelled.");
         }
 
-        return Envelope(EsriErrorCodes.ServerError, "The operation failed.", StatusCodes.Status500InternalServerError);
-    }
-
-    private static IResult EngineFailure(SpatialException spatial)
-    {
-        var code = CodeFor(spatial.Code);
-        return Envelope(code, spatial.Message, HttpFor(code));
+        return new EsriFailure(EsriErrorCodes.ServerError, StatusCodes.Status500InternalServerError, "The operation failed.");
     }
 
     /// <summary>Maps a per-feature edit failure to the Esri result error code (ADR-0037).</summary>
@@ -202,3 +208,6 @@ internal static class EsriErrorMapper
 
 /// <summary>The Esri error envelope root.</summary>
 internal sealed record EsriErrorResponse(EsriError Error);
+
+/// <summary>The mapped Esri code, HTTP status and message of one failure.</summary>
+internal sealed record EsriFailure(int EsriCode, int HttpStatus, string Message);

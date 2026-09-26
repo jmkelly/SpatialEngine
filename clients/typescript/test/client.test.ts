@@ -348,3 +348,29 @@ test("maps and ingest hit the admin routes", async (t) => {
     "POST /api/ingest",
   ]);
 });
+
+test("seed posts the manifest document", async (t) => {
+  const host = await fakeHost({
+    "/api/seed": () => ({
+      status: 200,
+      body: JSON.stringify({ store: "memory", ingested: 1, reused: 0, published: 1, failures: [] }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  const result = await client.seed(
+    {
+      sources: [{ id: "public.parks", url: "https://example.test/parks.geojson", format: "geojson", srid: 4326 }],
+      maps: [{ name: "parks", services: ["feature"], layers: [{ dataset: "public.parks", geometry: "polygon" }] }],
+      store: "memory",
+    },
+    "secret",
+  );
+  assert.equal(result.ingested, 1);
+  assert.equal(result.published, 1);
+  assert.deepEqual(result.failures, []);
+
+  assert.deepEqual(host.requests, ["POST /api/seed"]);
+});

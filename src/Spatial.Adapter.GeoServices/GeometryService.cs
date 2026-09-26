@@ -402,12 +402,144 @@ internal static class GeometryService
 
     private static IResult Relation(EsriRequestParameters parameters, IGeometryRelations relations, CancellationToken cancellationToken)
     {
-        var spatialReference = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
-        var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), spatialReference);
-        var other = EsriValueParser.ParseGeometry(parameters.Require("geometry"), spatialReference);
-        var pattern = parameters.Require("relationParam");
-        var results = geometries.Select(geometry => relations.Relate(geometry, other, pattern, cancellationToken) ? 1 : 0).ToArray();
+        // Esri-docs verbatim (parity playground): geometries1/geometries2
+        // with sr1/sr2 (modern docs use one shared 'sr') and a named
+        // 'relation'. The legacy single-pair names ('geometries' vs one
+        // 'geometry' with a DE-9IM 'relationParam') keep working.
+        var spatialReference = EsriValueParser.ParseSpatialReference(parameters.Get("sr"))
+            ?? EsriValueParser.ParseSpatialReference(parameters.Get("sr1"))
+            ?? EsriValueParser.ParseSpatialReference(parameters.Get("sr2"));
+        RejectMismatchedRelationReferences(parameters);
+        var geometries = RelationInputs(parameters, "geometries", "geometries1", spatialReference);
+        var others = RelationInputs(parameters, "geometry", "geometries2", spatialReference);
+        var predicate = RelationPredicate(parameters);
+        var results = geometries
+            .Select(geometry => others.Any(other => predicate(geometry, other, relations, cancellationToken)) ? 1 : 0)
+            .ToArray();
         return EsriJson.Value(new RelationResponse(results));
+    }
+
+    private static List<IGeometry> RelationInputs(
+        EsriRequestParameters parameters, string primary, string alias, CoordinateReference? fallback)
+    {
+        var raw = parameters.Get(primary);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            raw = parameters.Get(alias);
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The '{primary}' parameter is required (alias '{alias}' is also accepted).");
+        }
+
+        return EsriValueParser.ParseGeometries(raw, fallback);
+    }
+
+    private static void RejectMismatchedRelationReferences(EsriRequestParameters parameters)
+    {
+        var first = parameters.Get("sr1");
+        var second = parameters.Get("sr2");
+        if (string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(second))
+        {
+            return;
+        }
+
+        if (!string.Equals(first.Trim(), second.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw GeoServicesErrors.Invalid(
+                "The 'sr1'/'sr2' spatial references differ: project both arrays to one shared reference first.");
+        }
+    }
+
+    /// <summary>
+    /// Resolves the relation test: a DE-9IM <c>relationParam</c> (plain or
+    /// <c>RELATE(G1, G2, 'pattern')</c>) answers through the engine relate
+    /// verb, and the named <c>relation</c> values with an exact DE-9IM
+    /// equivalent map to it (intersects via negated disjoint). Dimension-
+    /// dependent names stay an honest reject naming the supported set.
+    /// </summary>
+    private static Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> RelationPredicate(
+        EsriRequestParameters parameters)
+    {
+        var named = parameters.Get("relation");
+        var custom = parameters.Get("relationParam");
+        if (string.IsNullOrWhiteSpace(named))
+        {
+            // Legacy callers name only the DE-9IM pattern.
+            var pattern = string.IsNullOrWhiteSpace(custom)
+                ? throw GeoServicesErrors.Invalid("The 'relation' parameter is required ('relationParam' holds a DE-9IM pattern).")
+                : ParseRelationPattern(custom);
+            return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
+        }
+
+        var relation = named.Trim();
+        if (IsRelationPattern(relation))
+        {
+            return (left, right, relations, token) => relations.Relate(left, right, relation, token);
+        }
+
+        if (string.Equals(relation, "esriSpatialRelRelation", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(relation, "esriGeometryRelationRelation", StringComparison.OrdinalIgnoreCase))
+        {
+            var pattern = string.IsNullOrWhiteSpace(custom)
+                ? throw GeoServicesErrors.Invalid("The 'relationParam' parameter is required when 'relation' is a custom relation.")
+                : ParseRelationPattern(custom);
+            return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
+        }
+
+        if (string.Equals(relation, "esriSpatialRelIntersects", StringComparison.OrdinalIgnoreCase))
+        {
+            return (left, right, relations, token) => !relations.Relate(left, right, "FF*FF****", token);
+        }
+
+        if (string.Equals(relation, "esriSpatialRelDisjoint", StringComparison.OrdinalIgnoreCase))
+        {
+            return (left, right, relations, token) => relations.Relate(left, right, "FF*FF****", token);
+        }
+
+        if (string.Equals(relation, "esriSpatialRelContains", StringComparison.OrdinalIgnoreCase))
+        {
+            return (left, right, relations, token) => relations.Relate(left, right, "T*****FF*", token);
+        }
+
+        if (string.Equals(relation, "esriSpatialRelWithin", StringComparison.OrdinalIgnoreCase))
+        {
+            return (left, right, relations, token) => relations.Relate(left, right, "T*F**F***", token);
+        }
+
+        if (string.Equals(relation, "esriSpatialRelEquals", StringComparison.OrdinalIgnoreCase))
+        {
+            return (left, right, relations, token) => relations.Relate(left, right, "T*F**FFF*", token);
+        }
+
+        throw GeoServicesErrors.Invalid(
+            $"The 'relation' value '{named}' is not supported: the engine tests DE-9IM patterns " +
+            "(esriSpatialRelIntersects/Disjoint/Contains/Within/Equals, or esriSpatialRelRelation with a 'relationParam' pattern).");
+    }
+
+    private static bool IsRelationPattern(string value) =>
+        value.Length == 9 && value.All(character => character is 'T' or 'F' or '*' or '0');
+
+    /// <summary>Unwraps the Shape Comparison Language form <c>RELATE(G1, G2, 'pattern')</c> to its pattern.</summary>
+    private static string ParseRelationPattern(string value)
+    {
+        var trimmed = value.Trim();
+        if (!trimmed.StartsWith("RELATE(", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed;
+        }
+
+        var firstQuote = trimmed.IndexOfAny(['\'', '"']);
+        var lastQuote = trimmed.LastIndexOfAny(['\'', '"']);
+        if (firstQuote < 0 || lastQuote <= firstQuote)
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'relationParam' value '{value}' is not a DE-9IM pattern or RELATE(G1, G2, 'pattern').");
+        }
+
+        return trimmed.Substring(firstQuote + 1, lastQuote - firstQuote - 1);
     }
 
     private static IResult Densify(EsriRequestParameters parameters, IGeometryProcessing processing, CancellationToken cancellationToken)
@@ -417,7 +549,7 @@ internal static class GeometryService
     }
 
     private static IResult LabelPoints(EsriRequestParameters parameters, IGeometryMeasures measures, CancellationToken cancellationToken) =>
-        Geometries(InputGeometries(parameters).Select(geometry => measures.LabelPoint(geometry, cancellationToken)));
+        Geometries(InputGeometries(parameters, "polygons", "polys").Select(geometry => measures.LabelPoint(geometry, cancellationToken)));
 
     private static List<IGeometry> InputGeometries(EsriRequestParameters parameters, params string[] aliases)
     {

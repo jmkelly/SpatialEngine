@@ -103,7 +103,7 @@ internal static class HostComposition
 
         var adminOptions = AdminOptions.FromConfiguration(configuration);
         var ingestOptions = IngestOptions.FromConfiguration(configuration);
-        app.MapSpatialApi(adminOptions, ingestOptions);
+        app.MapSpatialApi(app.Environment, adminOptions, ingestOptions);
 
         // The Esri GeoServices boundary adapter (ADR-0035): mounted at
         // Spatial:GeoServices:Root, independent of the engine's own typed API.

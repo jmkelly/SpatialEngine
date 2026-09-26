@@ -90,7 +90,10 @@ dotnet run --project src/Spatial.DevHost
 ```
 
 The Aspire dashboard prints the workbench, host and Seq endpoints; host logs
-stream to the Seq UI (ADR-0045). Prefer to skip Docker? Serve the built
+stream to the Seq UI (ADR-0045). The composition also re-seeds the `Census`
+map on every boot (the Parity page's localhost panel), since the `memory`
+store is wiped by a restart — the full realistic dataset is still an
+explicit `./eng/seed.sh`. Prefer to skip Docker? Serve the built
 workbench from the host as above.
 
 ### Verify the whole thing

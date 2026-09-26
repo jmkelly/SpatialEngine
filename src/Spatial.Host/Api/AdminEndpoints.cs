@@ -95,8 +95,9 @@ internal static class AdminEndpoints
     /// missing raster provider never becomes a published service that fails on
     /// every request: a feature layer must exist in its store's catalogue and an
     /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
+    /// Shared with the seed endpoint, which publishes through the same rule.
     /// </summary>
-    private static async Task EnsureLayersAreServableAsync(IStoreRegistry stores, Map map, CancellationToken token)
+    internal static async Task EnsureLayersAreServableAsync(IStoreRegistry stores, Map map, CancellationToken token)
     {
         foreach (var layer in map.Layers)
         {
@@ -146,22 +147,22 @@ internal static class AdminEndpoints
         {
             var query = context.Request.Query;
             var dataset = Required(query, "dataset");
-            var srid = ParseSrid(Required(query, "srid"));
+            var srid = IngestPipeline.ParseSrid(Required(query, "srid"));
             var store = query["store"].ToString();
             if (string.IsNullOrWhiteSpace(store))
             {
                 store = DefaultIngestStore;
             }
 
-            var format = ParseFormat(ingest, query["format"].ToString());
+            var format = IngestPipeline.ParseFormat(ingest, query["format"].ToString());
             var identityField = EmptyToNull(query["identityField"].ToString());
-            var identity = ParseIdentity(query["identity"].ToString());
-            var sourceSrid = ParseOptionalSrid(query["sourceSrid"].ToString());
+            var identity = IngestPipeline.ParseIdentity(query["identity"].ToString());
+            var sourceSrid = IngestPipeline.ParseOptionalSrid(query["sourceSrid"].ToString());
             var target = stores.Ingest(store)
                 ?? throw SpatialException.BadArguments($"Store '{store}' does not support ingest.");
 
             var decoded = await DecodeAsync(context, ingest, format, sourceSrid ?? srid, identityField);
-            var pages = ConvertIfNeeded(decoded.Pages, sourceSrid, srid, transforms, token);
+            var pages = IngestPipeline.ConvertIfNeeded(decoded, sourceSrid, srid, transforms, token);
             var outcome = await target.IngestAsync(
                 new IngestRequest(dataset, srid, identity, identityField), pages, token);
 
@@ -174,24 +175,11 @@ internal static class AdminEndpoints
     }
 
     /// <summary>Decodes the upload body (raw or multipart) under the byte and feature caps.</summary>
-    private static async Task<DecodedDataset> DecodeAsync(
+    private static async Task<IReadOnlyList<FeatureBatch>> DecodeAsync(
         HttpContext context, IngestOptions ingest, IngestFormat format, int srid, string? identityField)
     {
         await using var body = await ReadUploadAsync(context.Request, ingest.MaxBytes);
-        var decoded = DatasetDecoder.Decode(body, format, new DecodeOptions
-        {
-            Srid = srid,
-            BatchSize = ingest.BatchSize,
-            IdentityField = identityField,
-        });
-        var features = decoded.Pages.Sum(page => (long)page.Count);
-        if (features > ingest.MaxFeatures)
-        {
-            throw SpatialException.BadArguments(
-                $"The upload has {features} features, above the configured maximum of {ingest.MaxFeatures}.");
-        }
-
-        return decoded;
+        return IngestPipeline.DecodePages(body, format, srid, ingest, identityField);
     }
 
     private static async Task<IngestOutcome> WithMapAsync(
@@ -277,105 +265,6 @@ internal static class AdminEndpoints
         return buffer;
     }
 
-    private static int ParseSrid(string value) =>
-        int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var srid) && srid > 0
-            ? srid
-            : throw SpatialException.BadArguments($"The 'srid' query parameter must be a positive integer, got '{value}'.");
-
-    private static int? ParseOptionalSrid(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var srid) && srid > 0
-            ? srid
-            : throw SpatialException.BadArguments($"The 'sourceSrid' query parameter must be a positive integer, got '{value}'.");
-    }
-
-    /// <summary>
-    /// Reprojects decoded pages from the source CRS to the target SRID through
-    /// the engine's transform service (ADR-0047): uploads may carry data in a
-    /// curated CRS and still land in one declared column CRS. A missing or
-    /// equal source SRID is a pass-through, so the common 4326 case costs
-    /// nothing and the codec stays free of algorithms.
-    /// </summary>
-    private static IReadOnlyList<FeatureBatch> ConvertIfNeeded(
-        IReadOnlyList<FeatureBatch> pages, int? sourceSrid, int targetSrid, ICoordinateTransforms transforms, CancellationToken token)
-    {
-        if (sourceSrid is not { } source || source == targetSrid)
-        {
-            return pages;
-        }
-
-        var sourceCrs = $"EPSG:{source}";
-        var targetCrs = $"EPSG:{targetSrid}";
-        var converted = new List<FeatureBatch>(pages.Count);
-        foreach (var page in pages)
-        {
-            var features = new Feature[page.Count];
-            for (var index = 0; index < page.Count; index++)
-            {
-                features[index] = ConvertFeature(page[index], sourceCrs, targetCrs, transforms, token);
-            }
-
-            converted.Add(new FeatureBatch(page.Schema, features));
-        }
-
-        return converted;
-    }
-
-    private static Feature ConvertFeature(
-        Feature feature, string source, string target, ICoordinateTransforms transforms, CancellationToken token)
-    {
-        var attributes = new AttributeValue[feature.Attributes.Count];
-        for (var index = 0; index < attributes.Length; index++)
-        {
-            var value = feature.Attributes[index];
-            attributes[index] = value.Kind == AttributeKind.Geometry && !value.IsNull
-                ? AttributeValue.FromGeometry(transforms.Transform(value.GeometryValue, source, target, token))
-                : value;
-        }
-
-        return new Feature(feature.Id, feature.Schema, attributes);
-    }
-
-    private static IngestFormat ParseFormat(IngestOptions ingest, string name)
-    {
-        var normalised = name.Trim().ToLowerInvariant();
-        if (normalised.Length == 0)
-        {
-            throw SpatialException.BadArguments("The 'format' query parameter is required (geojson, ndjson or csv).");
-        }
-
-        if (!ingest.Formats.Contains(normalised, StringComparer.OrdinalIgnoreCase))
-        {
-            throw SpatialException.BadArguments(
-                $"Format '{name}' is not enabled; accepted formats are {string.Join(", ", ingest.Formats)}.");
-        }
-
-        return normalised switch
-        {
-            "geojson" => IngestFormat.GeoJson,
-            "ndjson" or "geojsonl" => IngestFormat.NewlineDelimitedGeoJson,
-            "csv" => IngestFormat.Csv,
-            _ => throw SpatialException.BadArguments($"Format '{name}' is not a supported ingest format."),
-        };
-    }
-
-    private static IngestIdentity ParseIdentity(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return IngestIdentity.Auto;
-        }
-
-        return Enum.TryParse<IngestIdentity>(name, ignoreCase: true, out var identity)
-            ? identity
-            : throw SpatialException.BadArguments($"Unknown identity mode '{name}'; expected none, auto or source.");
-    }
-
     private static string Required(IQueryCollection query, string key)
     {
         var value = query[key].ToString();
@@ -386,8 +275,8 @@ internal static class AdminEndpoints
 
     private static string? EmptyToNull(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
-    /// <summary>Returns a 401/403 result when the request is not authorised, otherwise null.</summary>
-    private static IResult? Authorize(HttpContext context, AdminOptions admin)
+    /// <summary>Returns a 401/403 result when the request is not authorised, otherwise null. Shared with the seed endpoint.</summary>
+    internal static IResult? Authorize(HttpContext context, AdminOptions admin)
     {
         var presented = PresentedToken(context);
         if (presented is null)

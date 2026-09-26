@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
@@ -45,8 +46,8 @@ internal static class ImageServerEndpoints
         group.MapMethods("/{service}/ImageServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageServerRoot(catalog, registry, service, context, stores, options, cancellationToken));
         group.MapMethods("/{service}/ImageServer/exportImage", ["GET", "POST"], (
-            string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            ImageExport(catalog, registry, service, context, stores, transforms, cancellationToken));
+            string service, HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
+            ImageExport(catalog, registry, service, context, stores, transforms, loggerFactory, cancellationToken));
         group.MapMethods("/{service}/ImageServer/exportTiles", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             MapOfflineRejects.ImageExportTiles(catalog, registry, service, cancellationToken));
@@ -157,17 +158,38 @@ internal static class ImageServerEndpoints
 
     private static async Task<IResult> ImageExport(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context,
-        IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+        IStoreRegistry stores, ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger(typeof(ImageServerEndpoints));
+        EsriRequestParameters? parameters = null;
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             var image = await ImageFileHandlers.ResolveImageAsync(catalog, registry, service, stores, cancellationToken);
             var rasterId = ImageFileHandlers.ParseExportRasterId(parameters, image.Description, service);
-            return await ImageFileHandlers.ExportImageAsync(image, parameters, context, transforms, rasterId, defaultBbox: null, defaultCrs: null, cancellationToken);
+            var result = await ImageFileHandlers.ExportImageAsync(image, parameters, context, transforms, rasterId, defaultBbox: null, defaultCrs: null, cancellationToken);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                var values = GeoServicesExportLogging.FormatParameters(parameters);
+                GeoServicesExportLogging.LogImageExportCompleted(
+                    logger, context.Request.Method, context.Request.Path.Value ?? "/",
+                    service, values);
+            }
+
+            return result;
         }
         catch (Exception exception)
         {
+            if (exception is not OperationCanceledException && logger.IsEnabled(LogLevel.Warning))
+            {
+                var failure = EsriErrorMapper.Describe(exception);
+                var values = GeoServicesExportLogging.FormatParameters(parameters);
+                GeoServicesExportLogging.LogImageExportFailed(
+                    logger, exception, context.Request.Method, context.Request.Path.Value ?? "/",
+                    service, failure.EsriCode, failure.HttpStatus, failure.Message,
+                    values);
+            }
+
             return EsriErrorMapper.Map(exception);
         }
     }

@@ -32,6 +32,22 @@ internal static class EsriValueParser
         if (trimmed.StartsWith('{'))
         {
             using var document = JsonDocument.Parse(trimmed);
+            // The Esri-docs wrapper the project/buffer/relation operations
+            // package inputs as: {"geometryType": "...", "geometries": [...] }.
+            // Unwrap to the inner array so the localhost side answers exactly
+            // like the public service instead of failing as a shapeless object.
+            if (document.RootElement.TryGetProperty("geometries", out var inner)
+                && inner.ValueKind == JsonValueKind.Array)
+            {
+                var geometries = new List<IGeometry>(inner.GetArrayLength());
+                foreach (var element in inner.EnumerateArray())
+                {
+                    geometries.Add(EsriGeometryCodec.Decode(element, fallback));
+                }
+
+                return geometries;
+            }
+
             return [EsriGeometryCodec.Decode(document.RootElement, fallback)];
         }
 

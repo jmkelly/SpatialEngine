@@ -160,6 +160,45 @@ public sealed class EsriFeatureQueryTests
         Assert.Contains($"'{name}'", exception.Message);
     }
 
+    [Theory]
+    [InlineData("returnM", "false")]
+    [InlineData("returnM", "0")]
+    [InlineData("returnZ", "false")]
+    [InlineData("returnZ", "0")]
+    public async Task False_return_m_and_z_are_accepted(string name, string value)
+    {
+        // QGIS always sends returnM=false&returnZ=false on per-feature fetches.
+        var query = await ParseAsync((name, value));
+
+        Assert.Null(query.ObjectIds);
+    }
+
+    [Theory]
+    [InlineData("returnM", "true")]
+    [InlineData("returnM", "1")]
+    [InlineData("returnZ", "true")]
+    [InlineData("returnZ", "1")]
+    public async Task True_return_m_and_z_are_rejected(string name, string value)
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, value)));
+
+        Assert.Contains($"'{name}'", exception.Message);
+    }
+
+    [Fact]
+    public async Task The_qgis_per_feature_query_shape_parses()
+    {
+        var query = await ParseAsync(
+            ("objectIds", "1"),
+            ("returnGeometry", "true"),
+            ("outFields", "*"),
+            ("returnM", "false"),
+            ("returnZ", "false"));
+
+        Assert.Equal([1L], query.ObjectIds);
+        Assert.True(query.ReturnGeometry);
+    }
+
     [Fact]
     public async Task A_malformed_where_clause_is_rejected()
     {

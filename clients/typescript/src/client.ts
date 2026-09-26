@@ -41,6 +41,60 @@ export interface IngestResult {
   map?: null | Map;
 }
 
+/** One downloadable source of a development seed document (ADR-0070). */
+export interface SeedSource {
+  id: string;
+  url: string;
+  format: string;
+  srid: number;
+  sourceSrid?: null | number;
+  identity?: null | string;
+  identityField?: null | string;
+}
+
+/** One layer of a seeded map, with the compact draw recipe. */
+export interface SeedMapLayer {
+  dataset: string;
+  name?: null | string;
+  geometry?: string;
+  style?: null | { color?: string; opacity?: number; lineWidth?: number; radius?: number; visible?: boolean };
+  kind?: string;
+}
+
+/** One map published by a development seed document (ADR-0070). */
+export interface SeedMap {
+  name: string;
+  services: string[];
+  layers: SeedMapLayer[];
+  description?: null | string;
+  copyright?: null | string;
+}
+
+/** A development seed document: downloadable sources plus maps to publish (ADR-0070). */
+export interface SeedDocument {
+  sources: SeedSource[];
+  maps: SeedMap[];
+  store?: string;
+  force?: boolean;
+  only?: null | string[];
+}
+
+/** One per-item seed failure; the run itself still returns 200. */
+export interface SeedFailure {
+  target: string;
+  code: string;
+  message: string;
+}
+
+/** The seed summary: counts plus per-item failures (ADR-0070). */
+export interface SeedResult {
+  store: string;
+  ingested: number;
+  reused: number;
+  published: number;
+  failures: SeedFailure[];
+}
+
 /**
  * The TypeScript SDK client for the typed spatial host API (ADR-0033): a
  * fetch-based client — browser and Node compatible — with one method per
@@ -301,6 +355,19 @@ export class SpatialClient {
     return this.send<IngestResult>("POST", `/api/ingest?${query.toString()}`, {
       body: form,
       headers: authorization(adminToken),
+      signal,
+    });
+  }
+
+  /**
+   * Runs a seed document against a Development host: download, ingest and
+   * publish in one call (ADR-0070; requires the admin token when one is
+   * configured). Hosts without the endpoint answer 404.
+   */
+  async seed(document: SeedDocument, adminToken?: string, signal?: AbortSignal): Promise<SeedResult> {
+    return this.send<SeedResult>("POST", "/api/seed", {
+      body: JSON.stringify(document),
+      headers: { "content-type": "application/json", ...authorization(adminToken) },
       signal,
     });
   }

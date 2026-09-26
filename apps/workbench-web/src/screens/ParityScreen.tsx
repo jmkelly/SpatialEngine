@@ -18,6 +18,9 @@ import {
   parseBbox,
   parseSize,
   prettyJson,
+  probeExportUrl,
+  summarizeExportProbe,
+  type ExportProbe,
   type GeometryOperation,
   type ParityBbox,
   type ParitySize,
@@ -328,8 +331,31 @@ function ImagePanels(props: {
 
 function ExportPanel({ title, testId, url, serviceKind }: { title: string; testId: string; url: string; serviceKind: string }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [probe, setProbe] = useState<ExportProbe | null>(null);
+  const [probing, setProbing] = useState(false);
   // The URL is the identity: a new bbox/service restarts the load state.
-  useEffect(() => setState("loading"), [url]);
+  useEffect(() => {
+    setState("loading");
+    setProbe(null);
+    setProbing(false);
+    // Structured breadcrumb: the exact URL the panel asked for, so the host
+    // log's export event (same service + bbox/size/sr values) can be matched.
+    console.info(`[parity] ${serviceKind} loading (${testId}): ${url}`);
+  }, [url, serviceKind, testId]);
+  const handleError = () => {
+    setState("error");
+    setProbing(true);
+    console.error(`[parity] ${serviceKind} failed to load (${testId}): ${url}`);
+    // The <img> element reports no status or body: fetch the same URL so the
+    // panel can show the HTTP status and the Esri error reason instead of a
+    // generic "may be unreachable" note. Failures of the probe itself stay a
+    // value (CORS/network), never a throw.
+    void probeExportUrl(url).then((result) => {
+      setProbe(result);
+      setProbing(false);
+      console.error(`[parity] ${serviceKind} diagnostics (${testId}): ${summarizeExportProbe(result)} :: ${url}`);
+    });
+  };
   return (
     <figure className="parity-panel" data-testid={`parity-${testId}-panel`}>
       <figcaption>
@@ -343,7 +369,7 @@ function ExportPanel({ title, testId, url, serviceKind }: { title: string; testI
         src={url}
         alt={`${title} ${serviceKind}`}
         onLoad={() => setState("ready")}
-        onError={() => setState("error")}
+        onError={handleError}
       />
       <figcaption className="small">
         <a className="muted endpoint-url" href={url} target="_blank" rel="noreferrer" data-testid={`parity-${testId}-url`}>
@@ -352,6 +378,21 @@ function ExportPanel({ title, testId, url, serviceKind }: { title: string; testI
         {state === "error" && (
           <span className="parity-error" data-testid={`parity-${testId}-error`}>
             {" "}the export did not load — the service may be unreachable or the bbox outside its extent.
+          </span>
+        )}
+        {state === "error" && probing && probe === null && (
+          <span className="muted small" data-testid={`parity-${testId}-diagnostics`}>
+            {" "}checking the endpoint (status, content type, service answer)…
+          </span>
+        )}
+        {state === "error" && probe !== null && (
+          <span className="muted small" data-testid={`parity-${testId}-diagnostics`}>
+            {" "}endpoint answered {probe.httpStatus === null ? "without an HTTP status" : `HTTP ${probe.httpStatus}`}
+            {probe.contentType !== null && ` (${probe.contentType})`}
+            {probe.errorMessage !== null && `: ${probe.errorMessage}`}
+            {probe.errorMessage === null && probe.snippet !== null && `: ${probe.snippet.slice(0, 160)}`}
+            {probe.probeError !== null && `: the diagnostic fetch failed (${probe.probeError})`}
+            .{" "}Match this URL against the host log's export event (same service, bbox, size, sr).
           </span>
         )}
       </figcaption>

@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
@@ -12,12 +16,12 @@ namespace Spatial.Adapter.GeoServices;
 /// and tile routes live in <see cref="MapExportEndpoints"/>, which renders
 /// through the SDK render contract.
 /// </summary>
-internal static class MapServerEndpoints
+internal static partial class MapServerEndpoints
 {
     internal static void MapMapServer(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
-        group.MapMethods("/{service}/MapServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, IEnumerable<ITileScheme> schemes, CancellationToken cancellationToken) =>
-            MapServerRoot(catalog, registry, service, context, stores, schemes, cancellationToken));
+        group.MapMethods("/{service}/MapServer", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, IEnumerable<ITileScheme> schemes, ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
+            MapServerRoot(catalog, registry, service, context, stores, schemes, transforms, loggerFactory, cancellationToken));
         group.MapMethods("/{service}/MapServer/layers", ["GET", "POST"], (string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             MapAllLayers(catalog, registry, service, context, stores, cancellationToken));
         group.MapMethods("/{service}/MapServer/{layerId:int}", ["GET", "POST"], (string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
@@ -88,8 +92,9 @@ internal static class MapServerEndpoints
 
     private static async Task<IResult> MapServerRoot(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IStoreRegistry stores,
-        IEnumerable<ITileScheme> schemes, CancellationToken cancellationToken)
+        IEnumerable<ITileScheme> schemes, ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger(typeof(MapServerEndpoints));
         try
         {
             var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
@@ -97,7 +102,20 @@ internal static class MapServerEndpoints
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
             var infos = await MapServerResources.ReadLayersAsync(Store(stores, resolved.Store), Catalogue(stores, resolved.Store), layers, cancellationToken);
-            return EsriJson.Value(MapServerResources.Root(service, infos, MapTileScheme(schemes), resolved.Description, resolved.Copyright));
+            var scheme = MapTileScheme(schemes);
+            var root = MapServerResources.Root(service, infos, scheme, resolved.Description, resolved.Copyright, transforms, cancellationToken);
+            // Diagnostic seam: the advertised service SR, full extent and
+            // tile-scheme SR must agree for a fused-cache service — a client
+            // deriving tile indices from contradictory metadata fetches the
+            // wrong tiles while every request still returns 200.
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                var extent = root.FullExtent;
+                LogRoot(logger, service, root.SpatialReference?.Wkid, extent?.Xmin, extent?.Ymin, extent?.Xmax, extent?.Ymax,
+                    extent?.SpatialReference?.Wkid, root.SingleFusedMapCache, root.TileInfo?.SpatialReference?.Wkid);
+            }
+
+            return EsriJson.Value(root);
         }
         catch (Exception exception)
         {
@@ -408,4 +426,13 @@ internal static class MapServerEndpoints
         var registered = schemes.ToArray();
         return registered.FirstOrDefault(scheme => MapServerResources.SridOf(scheme.Crs) == 3857) ?? registered.FirstOrDefault();
     }
+
+    [LoggerMessage(
+        EventId = 1,
+        Level = LogLevel.Information,
+        Message = "MapServer root {Service} advertises spatial reference {SrWkid}, full extent [{MinX},{MinY},{MaxX},{MaxY}] ({ExtentWkid}), fused cache {FusedCache}, tileInfo SR {TileWkid}")]
+    private static partial void LogRoot(
+        ILogger logger, string service, int? srWkid,
+        double? minX, double? minY, double? maxX, double? maxY, int? extentWkid,
+        bool fusedCache, int? tileWkid);
 }

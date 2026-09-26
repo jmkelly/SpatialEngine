@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
@@ -8,26 +9,30 @@ namespace Spatial.Adapter.GeoServices;
 /// <summary>
 /// The Map Server export route (spec §4.0.4, ADR-0048). The tile route
 /// lives with <see cref="MapServerTileEndpoints"/> so this facade keeps
-/// only the export fan-out.
+/// only the export fan-out. One structured event per request carries the
+/// service and the request values (ADR-0045), so a blank parity panel is
+/// diagnosable from the log alone.
 /// </summary>
-internal static class MapExportEndpoints
+internal static partial class MapExportEndpoints
 {
     internal static void MapExportRoutes(RouteGroupBuilder group, GeoServicesCatalog catalog, IMapRegistry registry)
     {
         group.MapMethods("/{service}/MapServer/export", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, IMapRenderer renderer,
-            ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            MapExport(catalog, registry, service, context, stores, renderer, transforms, cancellationToken));
+            ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken) =>
+            MapExport(catalog, registry, service, context, stores, renderer, transforms, loggerFactory, cancellationToken));
         MapServerTileEndpoints.MapTileRoutes(group, catalog, registry);
     }
 
     private static async Task<IResult> MapExport(
         GeoServicesCatalog catalog, IMapRegistry registry, string service, HttpContext context, IStoreRegistry stores,
-        IMapRenderer renderer, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+        IMapRenderer renderer, ICoordinateTransforms transforms, ILoggerFactory loggerFactory, CancellationToken cancellationToken)
     {
+        var logger = loggerFactory.CreateLogger(typeof(MapExportEndpoints));
+        EsriRequestParameters? parameters = null;
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+            parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var effective = MapDynamicLayers.Apply(
                 await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken),
@@ -54,11 +59,29 @@ internal static class MapExportEndpoints
             if (string.Equals(parameters.Get("f"), "image", StringComparison.OrdinalIgnoreCase))
             {
                 var image = await renderer.RenderAsync(request, cancellationToken);
+                if (logger.IsEnabled(LogLevel.Information))
+                {
+                    var values = GeoServicesExportLogging.FormatParameters(parameters);
+                    GeoServicesExportLogging.LogMapExportCompleted(
+                        logger, context.Request.Method, context.Request.Path.Value ?? "/",
+                        service, image.Width, image.Height, image.Content.LongLength, image.MediaType,
+                        values);
+                }
+
                 GeoServicesResponses.WriteImageHeaders(context, image);
                 return Results.Bytes(image.Content, image.MediaType);
             }
 
             var dpi = MapRenderEngine.Dpi(parameters.Get("dpi"));
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                var values = GeoServicesExportLogging.FormatParameters(parameters);
+                GeoServicesExportLogging.LogMapExportCompleted(
+                    logger, context.Request.Method, context.Request.Path.Value ?? "/",
+                    service, width, height, 0, "application/json",
+                    values);
+            }
+
             return EsriJson.Value(new EsriMapExportResponse(
                 GeoServicesResponses.ExportHref(context),
                 width,
@@ -68,6 +91,16 @@ internal static class MapExportEndpoints
         }
         catch (Exception exception)
         {
+            if (exception is not OperationCanceledException && logger.IsEnabled(LogLevel.Warning))
+            {
+                var failure = EsriErrorMapper.Describe(exception);
+                var values = GeoServicesExportLogging.FormatParameters(parameters);
+                GeoServicesExportLogging.LogMapExportFailed(
+                    logger, exception, context.Request.Method, context.Request.Path.Value ?? "/",
+                    service, failure.EsriCode, failure.HttpStatus, failure.Message,
+                    values);
+            }
+
             return EsriErrorMapper.Map(exception);
         }
     }

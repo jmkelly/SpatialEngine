@@ -48,26 +48,33 @@ const selectedSources = sources.filter((source) => matches(only, source.id));
 const selectedServices = services.filter((service) => matches(only, service.name));
 
 if (!dryRun) {
-  for (const source of selectedSources) {
-    try {
-      await seedSource(source);
-    } catch (error) {
-      failures.push(`${source.id}: ${error.message}`);
-      console.error(`  ✗ ${source.id}: ${error.message}`);
+  // Prefer the host's seed endpoint (ADR-0070): one manifest POST that the
+  // host runs server-side, so token-less development hosts seed without a
+  // restart. Hosts without the endpoint answer 404/405 and get the legacy
+  // download → ingest → publish drive below.
+  const handled = await seedViaEndpoint();
+  if (!handled) {
+    for (const source of selectedSources) {
+      try {
+        await seedSource(source);
+      } catch (error) {
+        failures.push(`${source.id}: ${error.message}`);
+        console.error(`  ✗ ${source.id}: ${error.message}`);
+      }
     }
-  }
 
-  for (const service of selectedServices) {
-    try {
-      await seedService(service);
-    } catch (error) {
-      failures.push(`${service.name}: ${error.message}`);
-      console.error(`  ✗ ${service.name}: ${error.message}`);
+    for (const service of selectedServices) {
+      try {
+        await seedService(service);
+      } catch (error) {
+        failures.push(`${service.name}: ${error.message}`);
+        console.error(`  ✗ ${service.name}: ${error.message}`);
+      }
     }
-  }
 
-  if (verify) {
-    await verifyServices(selectedServices);
+    if (verify) {
+      await verifyServices(selectedServices);
+    }
   }
 } else {
   console.log(`Would ingest ${selectedSources.length} dataset(s) and publish ${selectedServices.length} service(s) against ${host} (${store}).`);
@@ -75,6 +82,77 @@ if (!dryRun) {
 
 summarise();
 process.exit(failures.length === 0 ? 0 : 1);
+
+// ---- endpoint (ADR-0070) -------------------------------------------------------
+
+/**
+ * POSTs the manifest to the host's development seed endpoint. Returns true
+ * when the host handled the seed (success or failure); returns false on
+ * 404/405 so the caller falls back to the legacy drive.
+ */
+async function seedViaEndpoint() {
+  const payload = {
+    store,
+    force,
+    only: only ? [...only] : null,
+    sources: sources.map((source) => ({
+      id: source.id,
+      url: source.url,
+      format: source.format,
+      srid: source.srid,
+      sourceSrid: source.sourceSrid ?? null,
+      identity: source.identity ?? null,
+      identityField: source.identityField ?? null,
+    })),
+    maps: services.map((service) => ({
+      name: service.name,
+      services: service.services,
+      description: service.description ?? null,
+      copyright: service.copyright ?? null,
+      layers: service.layers.map((layer) => ({
+        dataset: layer.dataset,
+        name: layer.name ?? null,
+        geometry: layer.geometry ?? "mixed",
+        style: layer.style ?? null,
+        kind: layer.kind ?? "feature",
+      })),
+    })),
+  };
+
+  let response;
+  try {
+    response = await request("/api/seed", { method: "POST", json: payload });
+  } catch (error) {
+    console.error(`  ✗ seed endpoint unreachable: ${error.message}; falling back to the legacy drive`);
+    return false;
+  }
+
+  if (response.status === 404 || response.status === 405) {
+    return false;
+  }
+
+  if (!response.ok) {
+    failures.push(`seed: ${await message(response)}`);
+    console.error(`  ✗ seed: ${await message(response)}`);
+    return true;
+  }
+
+  ingested = response.body.ingested ?? 0;
+  reused = response.body.reused ?? 0;
+  published = response.body.published ?? 0;
+  console.log(`• seed endpoint — ${ingested} loaded, ${reused} reused, ${published} published`);
+  for (const failure of response.body.failures ?? []) {
+    failures.push(`${failure.target}: ${failure.code} ${failure.message}`);
+    console.error(`  ✗ ${failure.target}: ${failure.code} ${failure.message}`);
+  }
+
+  if (verify) {
+    const selected = services.filter((service) => matches(only, service.name));
+    await verifyServices(selected);
+  }
+
+  return true;
+}
 
 // ---- sources -----------------------------------------------------------------
 

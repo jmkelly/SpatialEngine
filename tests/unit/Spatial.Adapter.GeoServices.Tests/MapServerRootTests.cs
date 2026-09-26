@@ -2,6 +2,7 @@ using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
+using Spatial.Transformations.ProjNet;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 
@@ -51,7 +52,7 @@ public sealed class MapServerRootTests
     [Fact]
     public void The_root_advertises_the_served_surface()
     {
-        var root = MapServerResources.Root("world", [Layer()], new FakeScheme(), null, null);
+        var root = MapServerResources.Root("world", [Layer()], new FakeScheme(), null, null, new ProjNetTransforms(), CancellationToken.None);
 
         Assert.True(root.SupportsDynamicLayers);
         Assert.True(root.SupportsTimeRelation);
@@ -64,10 +65,41 @@ public sealed class MapServerRootTests
     [Fact]
     public void The_root_without_a_scheme_is_not_a_fused_cache()
     {
-        var root = MapServerResources.Root("world", [Layer()], null, null, null);
+        var root = MapServerResources.Root("world", [Layer()], null, null, null, new ProjNetTransforms(), CancellationToken.None);
 
         Assert.False(root.SingleFusedMapCache);
         Assert.Null(root.TileInfo);
         Assert.False(root.ExportTilesAllowed);
+    }
+
+    [Fact]
+    public void The_tiled_root_advertises_the_tile_scheme_reference()
+    {
+        // QGIS derives tile indices from the root's spatial reference and
+        // full extent: a fused-cache root advertising the data CRS (4326)
+        // while its tileInfo is 3857 makes QGIS fetch Null-Island tiles for
+        // an Australia canvas — every request 200, every tile blank ocean.
+        var root = MapServerResources.Root(
+            "world", [Layer()], new FakeScheme(), null, null,
+            new ProjNetTransforms(), CancellationToken.None);
+
+        Assert.Equal(3857, root.SpatialReference?.Wkid);
+        Assert.Equal("esriMeters", root.Units);
+        Assert.Equal(3857, root.FullExtent?.SpatialReference?.Wkid);
+        Assert.Equal(3857, root.InitialExtent?.SpatialReference?.Wkid);
+        // 0..10 degrees reprojected to metres, not echoed back as degrees.
+        Assert.True(root.FullExtent!.Xmax > 1_000_000);
+    }
+
+    [Fact]
+    public void The_untiled_root_keeps_the_data_reference()
+    {
+        var root = MapServerResources.Root(
+            "world", [Layer()], null, null, null,
+            new ProjNetTransforms(), CancellationToken.None);
+
+        Assert.Equal(4326, root.SpatialReference?.Wkid);
+        Assert.Equal("esriDecimalDegrees", root.Units);
+        Assert.Equal(10, root.FullExtent!.Xmax);
     }
 }

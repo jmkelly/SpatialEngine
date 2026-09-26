@@ -15,12 +15,15 @@ import {
   buildMapExportUrl,
   diffIsClean,
   diffJsonLines,
+  extractEsriErrorMessage,
   formatBbox,
   localGeometryRoot,
   localServiceRoots,
   parseBbox,
   parseSize,
   prettyJson,
+  probeExportUrl,
+  summarizeExportProbe,
 } from "../src/parity.ts";
 
 test("parseBbox accepts comma-separated bounds", () => {
@@ -95,6 +98,10 @@ test("buildFeatureCountUrl asks for the count shape only", () => {
   assert.equal(url.searchParams.get("returnCountOnly"), "true");
   assert.equal(url.searchParams.get("geometry"), "-125,25,-65,50");
   assert.equal(url.searchParams.get("f"), "json");
+});
+
+test("the localhost map default is the Census service so both Map panels render the same US-bbox image", () => {
+  assert.equal(ParityDefaults.localMap, "Census");
 });
 
 test("localServiceRoots points both panels at the host's public GeoServices surface", () => {
@@ -172,4 +179,87 @@ test("diffJsonLines falls back to a block change on oversized answers", () => {
 
 test("formatBbox round-trips through parseBbox", () => {
   assert.equal(formatBbox(parseBbox(ParityDefaults.bbox)!), ParityDefaults.bbox);
+});
+
+test("the union sample is valid JSON with two closed polygons", () => {
+  const params = new URLSearchParams(GeometrySamples.union);
+  const geometries = JSON.parse(params.get("geometries")!);
+  assert.equal(geometries.length, 2);
+  for (const geometry of geometries) {
+    const ring = geometry.rings[0];
+    assert.ok(ring.length >= 4, "each polygon ring stays closed");
+    assert.deepEqual(ring[0], ring[ring.length - 1]);
+  }
+});
+
+test("the buffer sample stays planar so both sides answer alike", () => {
+  const params = new URLSearchParams(GeometrySamples.buffer);
+  assert.equal(params.get("geodesic"), "false");
+  assert.ok(params.get("bufferSR") !== null, "a projected bufferSR keeps metre units planar");
+  const wrapper = JSON.parse(params.get("geometries")!);
+  assert.ok(Array.isArray(wrapper.geometries), "the Esri-docs wrapper keeps its inner array");
+});
+
+test("the project sample keeps the Esri-docs wrapper the host unwraps", () => {
+  const params = new URLSearchParams(GeometrySamples.project);
+  const wrapper = JSON.parse(params.get("geometries")!);
+  assert.equal(wrapper.geometryType, "esriGeometryPoint");
+  assert.deepEqual(wrapper.geometries, [{ x: -117, y: 34 }]);
+});
+
+test("the relation sample names geometries1/geometries2 with the polygon containing the point", () => {
+  const params = new URLSearchParams(GeometrySamples.relation);
+  assert.ok(params.get("geometries1")!.includes("rings"), "geometries1 holds the containing square");
+  assert.ok(params.get("geometries2")!.includes('"x":-117'), "geometries2 holds the inside point");
+  assert.equal(params.get("relation"), "esriSpatialRelContains");
+});
+
+test("the measure samples omit unit params so both sides read sr units", () => {
+  for (const operation of ["generalize", "densify", "areasAndLengths", "lengths", "distance"] as const) {
+    const params = new URLSearchParams(GeometrySamples[operation]);
+    for (const unit of ["deviationUnit", "lengthUnit", "areaUnit", "distanceUnit"]) {
+      assert.equal(params.get(unit), null, `${operation} must not carry ${unit}`);
+    }
+  }
+});
+
+test("extractEsriErrorMessage reads the envelope reason and stays null otherwise", () => {
+  assert.equal(
+    extractEsriErrorMessage('{"error":{"code":404,"message":"Service \'Missing\' does not exist.","details":[]}}'),
+    "Service 'Missing' does not exist.",
+  );
+  assert.equal(extractEsriErrorMessage("<html>nope</html>"), null);
+  assert.equal(extractEsriErrorMessage('{"ok":true}'), null);
+});
+
+test("probeExportUrl captures the status, content type and Esri reason", async () => {
+  const probe = await probeExportUrl("http://localhost/export?f=image", async () => ({
+    status: 404,
+    headers: { get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null) },
+    text: async () => '{"error":{"code":404,"message":"Service \'Missing\' does not exist.","details":[]}}',
+  }));
+  assert.equal(probe.httpStatus, 404);
+  assert.equal(probe.contentType, "application/json");
+  assert.equal(probe.errorMessage, "Service 'Missing' does not exist.");
+  assert.equal(probe.probeError, null);
+  assert.ok(probe.snippet?.includes("Missing"));
+  assert.ok(summarizeExportProbe(probe).includes("404"));
+  assert.ok(summarizeExportProbe(probe).includes("Missing"));
+});
+
+test("probeExportUrl truncates long bodies and keeps fetch failures a value", async () => {
+  const long = await probeExportUrl("http://localhost/export?f=image", async () => ({
+    status: 500,
+    headers: { get: () => "text/html" },
+    text: async () => `x`.repeat(2000),
+  }));
+  assert.equal(long.snippet?.length, 500);
+  assert.equal(long.errorMessage, null);
+
+  const blocked = await probeExportUrl("http://localhost/export?f=image", async () => {
+    throw new TypeError("Failed to fetch");
+  });
+  assert.equal(blocked.httpStatus, null);
+  assert.equal(blocked.probeError, "Failed to fetch");
+  assert.ok(summarizeExportProbe(blocked).includes("Failed to fetch"));
 });

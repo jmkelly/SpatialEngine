@@ -54,23 +54,35 @@ internal static class MapServerResources
     /// live-rendered per scheme, so <c>exportTilesAllowed</c> stays false;
     /// offline packaging is T-041's scope).
     /// </summary>
+    /// <remarks>
+    /// A fused-cache root is a tile-matrix document: the spatial reference,
+    /// extents and units are served in the tiling SR, exactly as Esri's
+    /// cached services do. Tile clients derive indices from these members,
+    /// so advertising the data CRS here while <c>tileInfo</c> is 3857 makes
+    /// QGIS fetch Null-Island tiles for an Australia canvas (every request
+    /// 200, every tile blank ocean). Without a scheme the map SRID stands.
+    /// </remarks>
     public static EsriMapServerRoot Root(
-        string mapName, IReadOnlyList<MapLayerInfo> layers, ITileScheme? scheme, string? description, string? copyright)
+        string mapName, IReadOnlyList<MapLayerInfo> layers, ITileScheme? scheme, string? description, string? copyright,
+        ICoordinateTransforms transforms, CancellationToken cancellationToken)
     {
         var mapSrid = MapSrid(layers);
-        var extent = FullExtent(layers, mapSrid);
+        var tileSrid = scheme is null ? 0 : SridOf(scheme.Crs);
+        var (srid, extent) = tileSrid > 0
+            ? (tileSrid, TileExtent(layers, tileSrid, scheme!.Crs, transforms, cancellationToken))
+            : (mapSrid, FullExtent(layers, mapSrid));
         return new EsriMapServerRoot(
             CurrentVersion,
             "SpatialEngine Map Service",
             mapName,
             description,
             copyright,
-            EsriLayerModel.SpatialReference(mapSrid),
+            EsriLayerModel.SpatialReference(srid),
             scheme is not null,
             TileInfo(scheme),
             extent,
             extent,
-            Units(mapSrid),
+            Units(srid),
             Capabilities,
             SupportedImageFormatTypes,
             [.. layers.Select(Reference)],
@@ -141,6 +153,65 @@ internal static class MapServerResources
 
         return Extent(union, mapSrid);
     }
+
+    /// <summary>
+    /// The fused-cache service extent: every layer's extent reprojected into
+    /// the tiling SR and unioned, so the advertised full extent names the
+    /// same geography the tiles render.
+    /// </summary>
+    private static EsriExtent? TileExtent(
+        IReadOnlyList<MapLayerInfo> layers, int tileSrid, string tileCrs,
+        ICoordinateTransforms transforms, CancellationToken cancellationToken)
+    {
+        var union = Envelope.Empty;
+        foreach (var layer in layers)
+        {
+            if (layer.Extent.IsEmpty)
+            {
+                continue;
+            }
+
+            var projected = layer.Dataset.Srid == tileSrid || layer.Dataset.Srid <= 0
+                ? layer.Extent
+                : ProjectExtent(layer.Extent, layer.Dataset.Srid, tileSrid, tileCrs, transforms, cancellationToken);
+            union = union.Union(projected);
+        }
+
+        return Extent(union, tileSrid);
+    }
+
+    /// <summary>The Web-Mercator valid latitude range (spec §4.0 tiling).</summary>
+    private const double WebMercatorMaxLatitude = 85.05112878;
+
+    /// <summary>Geographic SRIDs whose ordinates are degrees (the <see cref="Units"/> set).</summary>
+    private static readonly HashSet<int> GeographicSrids = [4326, 4258, 4269, 4277, 4171];
+
+    /// <summary>
+    /// Reprojects an envelope by transforming its ring. A geographic source
+    /// reprojected to Web-Mercator is clamped to validity first, so a world
+    /// extent (Antarctica reaches -90) projects instead of failing.
+    /// </summary>
+    private static Envelope ProjectExtent(
+        Envelope extent, int sourceSrid, int targetSrid, string targetCrs,
+        ICoordinateTransforms transforms, CancellationToken cancellationToken)
+    {
+        var source = CoordinateReference.Epsg(sourceSrid);
+        var ring = new[]
+        {
+            new Coordinate(extent.MinX, ClampLatitude(extent.MinY, sourceSrid, targetSrid)),
+            new Coordinate(extent.MinX, ClampLatitude(extent.MaxY, sourceSrid, targetSrid)),
+            new Coordinate(extent.MaxX, ClampLatitude(extent.MaxY, sourceSrid, targetSrid)),
+            new Coordinate(extent.MaxX, ClampLatitude(extent.MinY, sourceSrid, targetSrid)),
+            new Coordinate(extent.MinX, ClampLatitude(extent.MinY, sourceSrid, targetSrid)),
+        };
+        var polygon = GeometryFactory.CreatePolygon(GeometryFactory.CreateLineString(ring, source), null, source);
+        return transforms.Transform(polygon, source.ToString(), targetCrs, cancellationToken).Envelope ?? Envelope.Empty;
+    }
+
+    private static double ClampLatitude(double y, int sourceSrid, int targetSrid) =>
+        targetSrid == 3857 && GeographicSrids.Contains(sourceSrid)
+            ? Math.Clamp(y, -WebMercatorMaxLatitude, WebMercatorMaxLatitude)
+            : y;
 
     private static EsriExtent? Extent(Envelope extent, int srid) =>
         extent.IsEmpty ? null : new EsriExtent(extent.MinX, extent.MinY, extent.MaxX, extent.MaxY, EsriLayerModel.SpatialReference(srid));
