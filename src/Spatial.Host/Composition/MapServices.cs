@@ -1,6 +1,7 @@
 using Spatial.Adapter.GeoServices;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Host.Api;
 using Spatial.Maps;
 using Spatial.Stores.ArcGisRest;
 
@@ -31,6 +32,11 @@ internal static class MapServices
                     : catalogue.ListAsync(null, cancellationToken);
             }));
         ConfigureRemote(builder);
+        // The development seed endpoint's bounded download client (ADR-0070):
+        // one shared instance with a fetch timeout; per-source byte caps are
+        // enforced while reading, reusing the ingest maximum.
+        builder.Services.AddSingleton<ISeedSourceFetcher>(_ =>
+            new HttpSeedFetcher(new HttpClient { Timeout = TimeSpan.FromSeconds(100) }));
     }
 
     /// <summary>Projects the legacy GeoServices service map plus the neutral declared list into one registry seed.</summary>

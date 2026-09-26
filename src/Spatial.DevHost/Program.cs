@@ -43,8 +43,11 @@ internal static class AppComposition
             .WithEnvironment("SPATIAL_SEQ_URL", seq.GetEndpoint("http"))
             .WaitFor(postgis);
 
-        // The Vite dev server proxies /api, /health and /openapi to the host
-        // (apps/workbench-web/vite.config.ts). Aspire assigns the host port, so the
+        ConfigureHostLogging(host);
+        ConfigureParitySeed(builder, host);
+
+        // The Vite dev server proxies /api, /arcgis, /health and /openapi to
+        // the host (apps/workbench-web/vite.config.ts). Aspire assigns the host port, so the
         // proxy target is passed explicitly rather than hard-coded.
         //
         // Aspire launches JS apps with NODE_ENV=production, but `vite dev` needs a
@@ -61,6 +64,34 @@ internal static class AppComposition
 
         builder.Build().Run();
         return 0;
+    }
+
+    // The workbench Parity page's localhost panel renders the seed `Census`
+    // map, but the seed targets the `memory` store, so every stack restart
+    // wipes it (and the map registry keeps advertising the dataset-less
+    // service, ADR-0070). This boot step re-seeds just that map once the
+    // host is healthy: one states file, no token (the DevHost configures
+    // none, so the dev-only seed endpoint is open on loopback). The full
+    // realistic dataset is still an explicit `eng/seed.sh`. Offline boots
+    // leave this resource failed while the host and workbench run fine.
+    private static void ConfigureParitySeed(IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> host)
+    {
+        builder.AddExecutable("parity-seed", "node", "../../tools/seed", "seed.mjs", "--only=public.us_states,Census")
+            .WithEnvironment("SPATIAL_SEED_HOST", host.GetEndpoint("http"))
+            .WaitFor(host);
+    }
+
+    // Log-level knob for local diagnosis (ADR-0045): SPATIAL_LOG_LEVEL=Debug
+    // ships the per-tile Debug events to Seq; SPATIAL_ASPNET_LOG_LEVEL=Debug
+    // adds framework routing detail for unmatched (framework 404) requests.
+    // Unset, the committed appsettings behaviour (Information/Warning) applies.
+    private static void ConfigureHostLogging<T>(IResourceBuilder<T> host)
+        where T : IResourceWithEndpoints, IResourceWithEnvironment
+    {
+        host.WithEnvironment("Logging__LogLevel__Default",
+            Environment.GetEnvironmentVariable("SPATIAL_LOG_LEVEL") ?? "Information");
+        host.WithEnvironment("Logging__LogLevel__Microsoft.AspNetCore",
+            Environment.GetEnvironmentVariable("SPATIAL_ASPNET_LOG_LEVEL") ?? "Warning");
     }
 
     // Opt-in remote development access (e.g. over a private Tailscale network).

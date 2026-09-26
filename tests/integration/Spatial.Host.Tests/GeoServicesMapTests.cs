@@ -121,7 +121,13 @@ public sealed class GeoServicesMapTests : IDisposable
 
         Assert.Equal("Map,Query,Data", root.GetProperty("capabilities").GetString());
         Assert.True(root.GetProperty("singleFusedMapCache").GetBoolean());
-        Assert.Equal(4326, root.GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        // A fused-cache root is a tile-matrix document: the service reference
+        // follows the tile scheme (3857), not the data CRS, or tile clients
+        // derive Null-Island indices for a real canvas.
+        Assert.Equal(3857, root.GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        Assert.Equal("esriMeters", root.GetProperty("units").GetString());
+        Assert.Equal(3857, root.GetProperty("fullExtent").GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        Assert.True(root.GetProperty("fullExtent").GetProperty("xmax").GetDouble() > 1_000_000);
         Assert.True(root.GetProperty("tileInfo").GetProperty("lods").GetArrayLength() > 0);
         Assert.True(root.GetProperty("fullExtent").GetProperty("xmax").GetDouble() > 0);
         Assert.Equal(0, root.GetProperty("layers")[0].GetProperty("id").GetInt32());
@@ -174,6 +180,21 @@ public sealed class GeoServicesMapTests : IDisposable
             new FormUrlEncodedContent([new KeyValuePair<string, string>("returnCountOnly", "true"), new KeyValuePair<string, string>("f", "json")]));
 
         Assert.True((await BodyAsync(response)).GetProperty("count").GetInt32() > 0);
+    }
+
+    [Fact]
+    public async Task Query_accepts_the_qgis_per_feature_shape()
+    {
+        // QGIS fetches one feature at a time with objectIds + returnM/Z=false.
+        var client = await MapServiceAsync();
+
+        var ids = await BodyAsync(await client.GetAsync($"{Root}/world/MapServer/0/query?f=json&returnIdsOnly=true"));
+        var first = ids.GetProperty("objectIds").EnumerateArray().First().GetInt64();
+
+        var feature = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/0/query?f=json&objectIds={first}&returnGeometry=true&outFields=*&returnM=false&returnZ=false"));
+
+        Assert.NotEmpty(feature.GetProperty("features").EnumerateArray());
     }
 
     [Fact]

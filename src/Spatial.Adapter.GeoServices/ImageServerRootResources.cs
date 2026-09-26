@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
@@ -29,19 +30,41 @@ internal static class ImageServerRootResources
     }
 
     /// <summary>The <c>exportImage</c> resource (spec §8.4): the requested frame as encoded image bytes.</summary>
-    internal static async Task<IResult> Export(ImageServerRequest request, ICoordinateTransforms transforms)
+    internal static async Task<IResult> Export(
+        ImageServerRequest request, ICoordinateTransforms transforms, ILoggerFactory loggerFactory)
     {
+        var logger = loggerFactory.CreateLogger(typeof(ImageServerRootResources));
+        EsriRequestParameters? parameters = null;
         try
         {
             var scope = await ImageServerScope.ReadAsync(request);
             var image = await scope.ImageAsync();
             var rasterId = ImageFileHandlers.ParseExportRasterId(scope.Parameters, image.Description, request.Service);
-            return await ImageFileHandlers.ExportImageAsync(
+            var result = await ImageFileHandlers.ExportImageAsync(
                 new(image, scope.Parameters, transforms, rasterId, DefaultBbox: null, DefaultCrs: null),
                 request.Context, request.CancellationToken);
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                var values = GeoServicesExportLogging.FormatParameters(parameters ?? scope.Parameters);
+                GeoServicesExportLogging.LogImageExportCompleted(
+                    logger, request.Context.Request.Method, request.Context.Request.Path.Value ?? "/",
+                    request.Service, values);
+            }
+
+            return result;
         }
         catch (Exception exception)
         {
+            if (exception is not OperationCanceledException && logger.IsEnabled(LogLevel.Warning))
+            {
+                var failure = EsriErrorMapper.Describe(exception);
+                var values = GeoServicesExportLogging.FormatParameters(parameters);
+                GeoServicesExportLogging.LogImageExportFailed(
+                    logger, exception, request.Context.Request.Method, request.Context.Request.Path.Value ?? "/",
+                    request.Service, failure.EsriCode, failure.HttpStatus, failure.Message,
+                    values);
+            }
+
             return EsriErrorMapper.Map(exception);
         }
     }

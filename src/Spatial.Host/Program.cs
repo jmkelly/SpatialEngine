@@ -112,7 +112,7 @@ internal static class HostComposition
         var authOptions = app.Services.GetRequiredService<AuthOptions>();
         var auth = app.Services.GetRequiredService<IAuthService>();
         AuthEndpoints.Map(app);
-        app.MapSpatialApi(adminOptions, ingestOptions, authOptions, auth);
+        app.MapSpatialApi(app.Environment, adminOptions, ingestOptions, authOptions, auth);
 
         // The boundary adapters (Esri GeoServices + admin, OGC, discovery):
         // mounted last, after the engine's own typed API, by

@@ -127,6 +127,13 @@ export const services = [
     layers: [{ dataset: "public.world_places_mercator", name: "Places (Mercator)", geometry: "point", style: palette.mercator }],
   },
   {
+    name: "Census",
+    services: ["map", "feature"],
+    description: "Census-2000-shaped states for Parity-page comparison with the Esri Census MapServer states layer (same US bbox).",
+    copyright: "Natural Earth",
+    layers: [{ dataset: "public.us_states", name: "States", geometry: "polygon", style: palette.state }],
+  },
+  {
     name: "WorldReference",
     services: ["map"],
     description: "A styled reference map: countries, lakes, rivers and places.",

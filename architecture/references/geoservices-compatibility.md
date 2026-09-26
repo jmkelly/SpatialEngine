@@ -316,8 +316,9 @@ is rejected by name (never silently ignored) and named here with its reason:
   Half-parsing notations is explicitly out; a real codec needs its own
   package decision (new ADR) plus an engine verb.
 - `returnZ`/`returnM`: the engine geometry model carries Z/M but the Esri
-  codec serves 2D; Z/M output is explicitly rejected rather than silently
-  dropped.
+  codec serves 2D; a true value (requesting Z/M output) is explicitly
+  rejected rather than silently dropped, while false — the default every
+  client such as QGIS sends — is accepted.
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.

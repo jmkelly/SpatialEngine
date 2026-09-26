@@ -62,7 +62,13 @@ the SDK render/tile contracts.
    no store extent verb). `units` maps the map SRID to the Esri units
    constant; the map SR is the first layer's SRID. A dataset-heavy service
    pays a scan per root request — accepted for now, with a store extent
-   capability recorded as the future fix.
+   capability recorded as the future fix. *Amendment (QGIS fused-cache
+   interop): when a tile scheme is served (`singleFusedMapCache`), the
+   root is a tile-matrix document — the spatial reference, both extents
+   and units follow the tiling SR (layer extents reprojected into it,
+   Web-Mercator inputs clamped to validity), exactly as Esri's cached
+   services do. Advertising the data CRS there while `tileInfo` is 3857
+   makes tile clients derive Null-Island indices for a real canvas.*
 5. **Tiles.** `singleFusedMapCache` is `true` and `tileInfo` is projected
    from the registered Web-Mercator `ITileScheme` LODs; uncached tiles are
    rendered on demand and cached (ADR-0046).

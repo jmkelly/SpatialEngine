@@ -84,4 +84,21 @@ public sealed class SpatialMapClient
         return await _transport.SendAsync<IngestOutcome>(
             HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken ?? _session.Token, cancellationToken);
     }
+
+    /// <summary>
+    /// Runs a seed document against a Development host: download, ingest and
+    /// publish in one call (ADR-0070). Admin route, so it defaults to the
+    /// bearer the client last authenticated with.
+    /// </summary>
+    public async Task<SeedResponse> SeedAsync(
+        SeedRequest request, string? adminToken = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await _transport.SendAsync<SeedResponse>(
+            HttpMethod.Post,
+            "/api/seed",
+            SpatialClientCodec.Json(request),
+            adminToken ?? _session.Token,
+            cancellationToken);
+    }
 }

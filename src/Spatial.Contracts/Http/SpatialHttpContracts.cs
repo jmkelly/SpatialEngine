@@ -54,3 +54,53 @@ public sealed record AuthIdentityResponse(string Issuer, string Subject, string 
 // ---- errors ----
 
 public sealed record ErrorResponse(string Code, string Message);
+
+// ---- seed (ADR-0070) ----
+
+// Mirrors tools/seed/manifest.mjs so the seed tool can POST its manifest
+// verbatim: one downloadable source per dataset, one map per service.
+public sealed record SeedSource(
+    string Id,
+    string Url,
+    string Format,
+    int Srid,
+    int? SourceSrid = null,
+    string? Identity = null,
+    string? IdentityField = null);
+
+public sealed record SeedLayerStyle(
+    string? Color = null,
+    double? Opacity = null,
+    double? LineWidth = null,
+    double? Radius = null,
+    bool? Visible = null);
+
+public sealed record SeedMapLayer(
+    string Dataset,
+    string? Name = null,
+    string Geometry = "mixed",
+    SeedLayerStyle? Style = null,
+    MapLayerKind Kind = MapLayerKind.Feature);
+
+public sealed record SeedMap(
+    string Name,
+    IReadOnlyList<MapServiceKind> Services,
+    IReadOnlyList<SeedMapLayer> Layers,
+    string? Description = null,
+    string? Copyright = null);
+
+public sealed record SeedRequest(
+    IReadOnlyList<SeedSource> Sources,
+    IReadOnlyList<SeedMap> Maps,
+    string Store = "memory",
+    bool Force = false,
+    IReadOnlyList<string>? Only = null);
+
+public sealed record SeedFailure(string Target, string Code, string Message);
+
+public sealed record SeedResponse(
+    string Store,
+    int Ingested,
+    int Reused,
+    int Published,
+    IReadOnlyList<SeedFailure> Failures);

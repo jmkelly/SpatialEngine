@@ -22,6 +22,17 @@ node tools/seed/seed.mjs --list
 node tools/seed/seed.mjs --dry-run
 ```
 
+## How it reaches the host
+
+`seed.mjs` first POSTs the manifest to `POST /api/seed` (ADR-0070): on a
+Development host the seed runs server-side — download, decode, reproject,
+atomic ingest, map publication — so a token-less host (such as the Aspire
+DevHost's) seeds with no restart. The endpoint requires the admin token only
+when one is configured and does not exist outside Development. Hosts that
+answer 404/405 get the legacy drive instead: `seed.mjs` downloads each
+source itself and walks `POST /api/ingest` + `PUT /api/maps/{name}` with the
+configured token.
+
 ## What it seeds
 
 Everything is data in [`manifest.mjs`](./manifest.mjs) — add an entry to add a
@@ -46,6 +57,13 @@ source or a service.
 - Map services (MapServer, ADR-0048): `WorldReference`, `WorldAtlas`,
   `SeismicMap` — each layer's persisted style (ADR-0047) is lowered to
   `drawingInfo`.
+- `Census` (MapServer + FeatureServer): the `public.us_states` states as a
+  Census-2000-shaped `States` layer, so the workbench Parity page's Map tab
+  compares like for like (Esri `Census` vs localhost `Census` over the same
+  US bbox) instead of a world reference map against US census data. The
+  Aspire DevHost re-seeds just this map on every boot (`parity-seed` step),
+  because restarts wipe the `memory` store; anything beyond it is an
+  explicit `./eng/seed.sh`.
 
 ## Conformance host and the qgis map
 

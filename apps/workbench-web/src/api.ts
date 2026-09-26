@@ -5,6 +5,9 @@ import { SpatialClient } from "@spatial/client";
  * generated TypeScript SDK over the public host API. The host URL is the
  * same origin by default (the host serves the built workbench, ADR-0031);
  * VITE_SPATIAL_HOST_URL overrides it for development against a remote host.
+ * In local `vite dev` leave it unset: the dev server proxies /api, /arcgis,
+ * /health and /openapi to VITE_DEV_HOST (default http://127.0.0.1:5199), so
+ * the same-origin base still reaches the host port.
  *
  * `hostBaseUrl` exposes the same base for the composer's copyable endpoint
  * URLs, so they point at the host the SDK actually talks to.

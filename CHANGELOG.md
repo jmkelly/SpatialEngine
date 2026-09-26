@@ -7,6 +7,23 @@ All notable changes to Spatial Engine are documented here. The format follows
 The product version is single-sourced in `Directory.Build.props`; update it and
 this file together, then tag the release (`RELEASING.md`).
 
+## [Unreleased]
+
+### Fixed
+
+- **Fused-cache MapServer root advertises the tile scheme reference**
+  (ADR-0048): a tiled MapServer root now serves its spatial reference,
+  `initialExtent`/`fullExtent` and units in the tiling SR (layer extents
+  reprojected server-side, Web-Mercator inputs clamped to validity) instead
+  of the data CRS. Advertising 4326 extents alongside a 3857 `tileInfo`
+  made QGIS derive Null-Island tile indices for a real canvas — every tile
+  request 200, every tile blank. Untiled roots still advertise the data CRS.
+- **MapServer tile/root diagnostic logging**: one `Debug` event per tile
+  resolves the requested address to its rendered geography and scheme, and
+  the root logs its advertised SR/extents versus the tile-scheme SR, so a
+  client fetching the wrong tiles is distinguishable from the server
+  rendering the wrong geography.
+
 ## [0.3.0] - 2026-09-15
 
 ### Added

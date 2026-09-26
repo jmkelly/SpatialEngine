@@ -41,14 +41,15 @@ export const EsriImageRoot =
 /**
  * The page defaults. The bbox covers the contiguous United States: inside
  * the Census MapServer full extent (ground-truth fullExtent
- * -179.6,17.9,-65.2,71.4) and inside the world-extent T-066A seed services
- * (`WorldReference` map, `WorldCountries` features).
+ * -179.6,17.9,-65.2,71.4) and inside the seed `Census` map's states, so the
+ * Map tab compares like for like (Esri Census vs localhost Census) instead
+ * of a world reference map against US census data.
  */
 export const ParityDefaults = {
   bbox: "-125,25,-66,50",
   sr: 4326,
   size: "800,600",
-  localMap: "WorldReference",
+  localMap: "Census",
   esriMap: EsriCensusMapRoot,
   localFeature: "WorldCountries",
   localLayer: 0,
@@ -213,10 +214,10 @@ export const GeometrySamples: Record<GeometryOperation, string> = {
     `&inSR=4326&outSR=3857&f=json`,
   buffer:
     `geometries={"geometryType":"esriGeometryPoint","geometries":[{"x":-117,"y":34}]}` +
-    `&inSR=4326&outSR=4326&distances=10&unit=9036&unionResults=false&geodesic=true&f=json`,
+    `&inSR=4326&bufferSR=3857&outSR=4326&distances=10&unit=9036&unionResults=false&geodesic=false&f=json`,
   generalize:
     `geometries=[{"paths":[[[-117,34],[-116,34],[-116,33]]]}]` +
-    `&sr=4326&maxDeviation=0.01&deviationUnit=9036&f=json`,
+    `&sr=4326&maxDeviation=0.01&f=json`,
   simplify:
     `geometries=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,34]]]}]` +
     `&sr=4326&f=json`,
@@ -225,31 +226,32 @@ export const GeometrySamples: Record<GeometryOperation, string> = {
     `&geometry={"rings":[[[-116.5,34.5],[-115.5,34.5],[-115.5,33.5],[-116.5,34.5]]]}` +
     `&sr=4326&f=json`,
   union:
-    `geometries=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,34]]]}` +
-    `,"rings":[[[-116.5,34.5],[-115.5,34.5],[-115.5,33.5],[-116.5,34.5]]]}]` +
+    `geometries=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,33],[-117,34]]]}` +
+    `,{"rings":[[[-116.5,34.5],[-115.5,34.5],[-115.5,33.5],[-116.5,33.5],[-116.5,34.5]]]}]` +
     `&sr=4326&f=json`,
   difference:
-    `geometries=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,34]]]}]` +
-    `&geometry={"rings":[[[-116.5,34.5],[-115.5,34.5],[-115.5,33.5],[-116.5,34.5]]]}` +
+    `geometries=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,33],[-117,34]]]}]` +
+    `&geometry={"rings":[[[-116.5,34.5],[-115.5,34.5],[-115.5,33.5],[-116.5,33.5],[-116.5,34.5]]]}` +
     `&sr=4326&f=json`,
   convexHull:
-    `geometries=[{"x":-117,"y":34},{"x":-116,"y":33}]&sr=4326&f=json`,
+    `geometries=[{"x":-117,"y":34},{"x":-116,"y":34},{"x":-116,"y":33}]&sr=4326&f=json`,
   densify:
-    `geometries=[{"paths":[[[-117,34],[-116,34]]]}]` +
-    `&sr=4326&maxSegmentLength=0.1&lengthUnit=9036&geodesic=false&f=json`,
+    `geometries=[{"paths":[[[-117,34],[-116,34]]]}` +
+    `&sr=4326&maxSegmentLength=0.1&geodesic=false&f=json`,
   areasAndLengths:
     `polygons=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,34]]]}]` +
-    `&sr=4326&lengthUnit=9036&areaUnit=9036&calculationType=planar&f=json`,
+    `&sr=4326&calculationType=planar&f=json`,
   lengths:
     `polylines=[{"paths":[[[-117,34],[-116,34]]]}]` +
-    `&sr=4326&lengthUnit=9036&calculationType=planar&geodesic=false&f=json`,
+    `&sr=4326&calculationType=planar&geodesic=false&f=json`,
   distance:
     `geometry1={"x":-117,"y":34}&geometry2={"x":-116,"y":33}` +
-    `&sr=4326&distanceUnit=9036&geodesic=false&f=json`,
+    `&sr=4326&geodesic=false&f=json`,
   labelPoints:
     `polygons=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,34]]]}]&sr=4326&f=json`,
   relation:
-    `geometries1=[{"x":-117,"y":34}]&geometries2=[{"rings":[[[-118,35],[-116,35],[-116,33],[-118,35]]]}]` +
+    `geometries1=[{"rings":[[[-118,33],[-116,33],[-116,35],[-118,35],[-118,33]]]}]` +
+    `&geometries2=[{"x":-117,"y":34}]` +
     `&sr1=4326&sr2=4326&relation=esriSpatialRelContains&f=json`,
   findTransformations: `inSR=4326&outSR=3857&f=json`,
 };
@@ -339,4 +341,86 @@ export function localServiceRoots(hostBaseUrl: string, service: string): { map: 
 /** The localhost Geometry Service root, under the host the workbench talks to. */
 export function localGeometryRoot(hostBaseUrl: string): string {
   return `${hostBaseUrl.replace(/\/+$/, "")}/arcgis/rest/services/Geometry/GeometryServer`;
+}
+
+/** The longest probe body kept for diagnostics (an Esri error envelope is far shorter). */
+export const ExportProbeSnippetLimit = 500;
+
+/** The outcome of probing an export URL after its `<img>` failed to render. */
+export interface ExportProbe {
+  httpStatus: number | null;
+  contentType: string | null;
+  snippet: string | null;
+  errorMessage: string | null;
+  probeError: string | null;
+}
+
+/** The minimal fetch shape the probe needs (structural, so tests can stub it). */
+export interface ExportProbeResponse {
+  status: number;
+  headers: { get(name: string): string | null };
+  text(): Promise<string>;
+}
+
+export type ExportProbeFetch = (url: string) => Promise<ExportProbeResponse>;
+
+/**
+ * Probes an export URL after its `<img>` failed: the image element reports
+ * no status or body, so a `fetch` of the same URL captures the HTTP status,
+ * content type and the first bytes of the answer (usually the Esri error
+ * envelope). A rejected fetch (CORS, network, abort) stays a value with
+ * `probeError` set — the panels render it instead of throwing.
+ */
+export async function probeExportUrl(url: string, fetchFn?: ExportProbeFetch): Promise<ExportProbe> {
+  const fetchImpl: ExportProbeFetch =
+    fetchFn ?? ((requestUrl: string) => (globalThis.fetch as unknown as ExportProbeFetch)(requestUrl));
+  try {
+    const response = await fetchImpl(url);
+    const contentType = response.headers?.get("content-type") ?? null;
+    let bodyText = "";
+    try {
+      bodyText = await response.text();
+    } catch {
+      bodyText = "";
+    }
+    const snippet = bodyText === "" ? null : bodyText.slice(0, ExportProbeSnippetLimit);
+    return {
+      httpStatus: response.status,
+      contentType,
+      snippet,
+      errorMessage: extractEsriErrorMessage(bodyText),
+      probeError: null,
+    };
+  } catch (error) {
+    return {
+      httpStatus: null,
+      contentType: null,
+      snippet: null,
+      errorMessage: null,
+      probeError: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/** Extracts `error.message` from an Esri error envelope; null when the body is not one. */
+export function extractEsriErrorMessage(bodyText: string): string | null {
+  try {
+    const body = JSON.parse(bodyText) as { error?: { message?: unknown } };
+    return typeof body?.error?.message === "string" ? body.error.message : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One-line human summary of a probe for the panel and the console: the HTTP
+ * status, the Esri reason when the body carried one, and the probe failure
+ * when the fetch itself never answered.
+ */
+export function summarizeExportProbe(probe: ExportProbe): string {
+  if (probe.probeError !== null) return `the diagnostic fetch failed (${probe.probeError}) — the endpoint may be unreachable or block cross-origin reads`;
+  const status = probe.httpStatus === null ? "no HTTP status" : `HTTP ${probe.httpStatus}`;
+  if (probe.errorMessage !== null) return `${status}: ${probe.errorMessage}`;
+  if (probe.snippet !== null) return `${status} (${probe.contentType ?? "unknown content type"}): ${probe.snippet.slice(0, 160)}`;
+  return `${status} with an empty answer`;
 }

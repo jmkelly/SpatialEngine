@@ -229,6 +229,10 @@ injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
 - `eng/seed.sh` (over `tools/seed/`) fetches real public data, ingests it
   (including a server-side reprojection) and publishes styled feature and map
   services through the neutral admin API — an on-demand realistic dataset.
+  Against a Development host it POSTs the manifest to `POST /api/seed`, which
+  runs the same pipeline server-side with no restart (ADR-0070; token-gated
+  only when a token is configured, unmounted outside Development); older
+  hosts get the legacy download → ingest → publish drive.
 - `clients/dotnet/Spatial.Cli` is a dependency-free console client of the same
   public API (ADR-0052): datasets, maps/layers/styles and a declarative
   `spatial.json` project file, with GeoServices endpoint output. See `cli.md`.
