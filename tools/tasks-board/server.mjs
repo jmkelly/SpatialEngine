@@ -3,17 +3,19 @@
 //
 // A small, read-only web app over the development task queue
 // (tools/tasks/tasks.mjs): queue state, status counts and the event log,
-// pushed to the browser over Server-Sent Events. It is development
+// refreshed by the browser polling a snapshot. It is development
 // infrastructure — no ADR, no `src/` code, no product surface — and it is wired
 // into the Aspire AppHost as a resource so `aspire start` brings it up with a
 // link on the dashboard.
 //
-// It never writes: the CLI owns every transition, and this only reads the same
-// shared SQLite database. Run it directly with `eng/board`, or let Aspire pick
-// the port (it sets PORT / a URL env var, see resolvePort).
+// It never writes to the queue: the CLI owns every transition. The one action
+// it offers, "investigate", does not write either — it hands the task ids to
+// `paseo run`, and that agent drives the CLI like any other. Run it directly
+// with `eng/board`, or let Aspire pick the port (it sets PORT, see
+// resolvePort).
 
 import { DatabaseSync } from 'node:sqlite';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -186,6 +188,222 @@ function changeOf(board, sinceCursor) {
   return { cursor: snap.cursor, now: snap.now, stats: snap.stats, tasks: snap.tasks, events: fresh };
 }
 
+// ---------------------------------------------------------------------------
+// investigate: hand task ids to a Paseo agent
+//
+// The board stays out of the queue's write path. "Investigate" is a request for
+// a second opinion, not a transition: the spawned agent reads the task, looks
+// for salvageable work on its branch, and then drives the same `eng/tasks` CLI
+// a human would. Nothing here touches the database.
+
+const MAX_BODY = 64 * 1024;
+const INVESTIGATE_TIMEOUT_MS = 20_000;
+const PROVIDER_LOOKUP_TIMEOUT_MS = 10_000;
+
+/**
+ * Which provider to launch the triage agent with.
+ *
+ * `paseo run` refuses to guess (MISSING_PROVIDER), and hardcoding a model here
+ * would rot the moment the human switches. So: an explicit override wins, and
+ * otherwise the board reuses the provider this project was actually last worked
+ * on, read from Paseo's own agent list. Failing that, say what to set rather
+ * than guessing.
+ */
+export function resolveProvider(env = process.env, run = execFileSync) {
+  const override = (env.TASKS_BOARD_PROVIDER ?? '').trim();
+  if (override) return override;
+
+  let agents;
+  try {
+    agents = JSON.parse(
+      run('paseo', ['ls', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    );
+  } catch {
+    agents = [];
+  }
+  const here = path.basename(REPO_ROOT);
+  const match = (Array.isArray(agents) ? agents : []).find(
+    (a) => a?.provider && (a.cwd ?? '').replace(/^~/, '').endsWith(here)
+  );
+  if (match) return match.provider;
+  throw new Error(
+    'no provider to launch with: set TASKS_BOARD_PROVIDER (e.g. `claude/opus`), ' +
+      'or start an agent in this project once so the board can reuse its provider'
+  );
+}
+
+// Paseo reports failures as a JSON body on stderr; surfacing that raw is noise,
+// so lift out the message and keep the code for the caller.
+function paseoError(stderr) {
+  const raw = stderr.trim();
+  try {
+    const parsed = JSON.parse(raw);
+    const err = parsed?.error ?? parsed;
+    if (typeof err === 'string') return err;
+    if (err?.message) return `${err.message}${err.code ? ` (${err.code})` : ''}`;
+  } catch {
+    // Not JSON: fall through to the raw text.
+  }
+  return raw;
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY) {
+        reject(new Error('request body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8').trim();
+      if (!raw) return resolve({});
+      try {
+        resolve(JSON.parse(raw));
+      } catch {
+        reject(new Error('request body is not valid JSON'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+// Only the browser tab this server served may call an endpoint that spends
+// money and starts a process. The custom header is the guard: a cross-origin
+// page cannot set one without a CORS preflight, and this server never answers
+// preflights, so a hostile page cannot reach it. The Host check keeps a rebound
+// DNS name from reaching it either.
+function isSameOriginCaller(req) {
+  const host = (req.headers.host ?? '').replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  const local = host === '127.0.0.1' || host === 'localhost' || host === '::1';
+  return local && req.headers['x-taskboard'] === '1';
+}
+
+function factsAbout(task) {
+  const lines = [
+    `  ${task.id}  ${task.title}`,
+    `    status=${task.status} area=${task.area || '?'} priority=${task.priority}`,
+    `    claimed by ${task.agent ?? '?'} at ${task.claimed_at ?? '?'}` +
+      (task.lease_until ? `, lease lapsed at ${task.lease_until}` : ''),
+  ];
+  for (const [label, value] of [
+    ['branch', task.branch],
+    ['worktree', task.worktree],
+    ['commit', task.commit_sha],
+    ['pr', task.pr ? `#${task.pr}` : null],
+    ['blocked on', task.blocked_on],
+  ]) {
+    if (value) lines.push(`    ${label}=${value}`);
+  }
+  if (task.note) lines.push(`    note: ${task.note}`);
+  return lines.join('\n');
+}
+
+export function investigationPrompt(tasks) {
+  const ids = tasks.map((t) => t.id).join(', ');
+  return [
+    'You are investigating lapsed claims in the Spatial Engine development task queue',
+    `(${REPO_ROOT}). These tasks are still in status \`claimed\` but their lease has expired,`,
+    'so the agent that took them stopped without submitting anything. Nobody knows whether the',
+    'work was done, partly done, or never started.',
+    '',
+    'Tasks to investigate:',
+    ...tasks.map(factsAbout),
+    '',
+    'For each task, establish what actually happened before deciding anything:',
+    '',
+    '  1. `eng/tasks show <id>` for the full body, dependencies and event history.',
+    '  2. If it records a branch, worktree, commit or PR, check whether that work exists:',
+    '     `git log`, `git branch -a`, `gh pr list`. Salvageable work must not be redone.',
+    '  3. Only then decide, and act with the CLI:',
+    '       - the work exists but was never handed off -> `eng/tasks submit <id> --commit <sha> --pr <n>`',
+    '       - nothing usable was produced             -> `eng/tasks reclaim` is NOT enough on its',
+    '         own, so re-queue it for a fresh agent and say so in your report',
+    '       - the task is obsolete or already done    -> `eng/tasks cancel <id> --note "<why>"`',
+    '',
+    'Rules that are not negotiable:',
+    '  - The queue is shared state. Do not edit tasks.db directly; use `eng/tasks`.',
+    '  - Never mark a task `done` yourself: that is `eng/tasks done`, and only after',
+    '    `eng/verify.sh` is green on main. Claiming, investigating and cancelling are yours.',
+    '  - Do not delete or rewrite history; `cancel` with a note is the honest record.',
+    '  - Do not start implementing the underlying work. You are triaging, not finishing.',
+    '',
+    `Report per task: what you found, the evidence (branch, commit or PR), and the action you`,
+    'took or recommend. Be conservative — when the evidence is ambiguous, leave the task',
+    `claimed and say so rather than guessing. The task ids are: ${ids}.`,
+  ].join('\n');
+}
+
+/**
+ * Start a background Paseo agent to triage the given task ids. Resolves with
+ * the agent descriptor the daemon returns; it never waits for the work itself.
+ */
+export function investigate(db, ids, { provider } = {}) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return Promise.reject(new Error('no task ids given'));
+  }
+  const wanted = [...new Set(ids.map(String))];
+  const tasks = wanted
+    .map((id) => taskRows(db).find((t) => t.id === id))
+    .filter(Boolean);
+  if (tasks.length === 0) return Promise.reject(new Error('no such task'));
+  const open = tasks.filter((t) => OPEN_STATUSES.includes(t.status));
+  if (open.length === 0) return Promise.reject(new Error('no open task among those ids'));
+
+  const prompt = investigationPrompt(open);
+  const title = `Investigate ${open.map((t) => t.id).join(', ')}`;
+
+  let args;
+  try {
+    args = ['run', '--json', '--background', '--provider', provider ?? resolveProvider(), '--title', title, '--cwd', REPO_ROOT, '--label', 'taskboard=investigate', prompt];
+  } catch (err) {
+    return Promise.reject(err);
+  }
+
+  return new Promise((resolve, reject) => {
+    const child = spawn('paseo', args, { cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+
+    let out = '';
+    let err = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error('paseo did not answer in time; check `paseo ls`'));
+    }, INVESTIGATE_TIMEOUT_MS);
+
+    child.stdout.on('data', (c) => (out += c));
+    child.stderr.on('data', (c) => (err += c));
+    child.on('error', (e) => {
+      clearTimeout(timer);
+      reject(new Error(`cannot run paseo: ${e.message}`));
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (code !== 0) return reject(new Error(paseoError(err) || `paseo exited ${code}`));
+      let agent;
+      try {
+        const parsed = JSON.parse(out);
+        agent = Array.isArray(parsed) ? parsed[0] : parsed;
+      } catch {
+        return reject(new Error('paseo returned no agent descriptor'));
+      }
+      if (!agent?.id) return reject(new Error('paseo returned no agent id'));
+      resolve({
+        provider,
+        agentId: agent.id,
+        shortId: agent.shortId ?? agent.id.slice(0, 8),
+        status: agent.status ?? 'running',
+        title,
+        tasks: open.map((t) => t.id),
+      });
+    });
+  });
+}
+
 const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -284,6 +502,17 @@ export function createBoard({
       } catch (err) {
         sendJson(res, 500, { error: String(err?.message ?? err) });
       }
+      return;
+    }
+
+    if (route === '/api/investigate' && req.method === 'POST') {
+      if (!isSameOriginCaller(req)) {
+        return sendJson(res, 403, { error: 'same-origin calls only' });
+      }
+      readBody(req)
+        .then((body) => investigate(board.db, body.ids))
+        .then((result) => sendJson(res, 202, result))
+        .catch((err) => sendJson(res, 400, { error: String(err?.message ?? err) }));
       return;
     }
 
