@@ -15,19 +15,34 @@ internal sealed class StylePropertyBag
 {
     private readonly JsonElement _element;
     private readonly string _label;
+    private readonly ExpressionInterner? _interner;
     private readonly HashSet<string> _consumed = new(StringComparer.Ordinal);
 
-    public StylePropertyBag(JsonElement element, string label)
+    public StylePropertyBag(JsonElement element, string label, ExpressionInterner? interner = null)
     {
         _element = element;
         _label = label;
+        _interner = interner;
     }
 
-    public StyleColor Color(string name, StyleColor fallback)
+    /// <summary>
+    /// Reads a colour property: a CSS colour string compiles to a constant, an
+    /// array to a per-feature expression whose type is checked here. The
+    /// constant is the fallback an expression falls back to when it yields no
+    /// value for a feature.
+    /// </summary>
+    public (StyleColor Constant, StyleExpression? Expression) Color(string name, StyleColor fallback)
     {
         if (!TryGet(name, out var value))
         {
-            return fallback;
+            return (fallback, null);
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            var expression = ExpressionReader.Read(value, _interner);
+            ExpressionTypes.ExpectColor(name, expression);
+            return (fallback, expression);
         }
 
         if (value.ValueKind != JsonValueKind.String || !StyleColorParser.TryParse(value.GetString(), out var color))
@@ -35,14 +50,22 @@ internal sealed class StylePropertyBag
             throw SpatialException.BadArguments($"Unsupported value for '{name}': expected a CSS colour.");
         }
 
-        return color;
+        return (color, null);
     }
 
-    public double Number(string name, double fallback)
+    /// <summary>Reads a number property: a JSON number compiles to a constant, an array to an expression.</summary>
+    public (double Constant, StyleExpression? Expression) Number(string name, double fallback)
     {
         if (!TryGet(name, out var value))
         {
-            return fallback;
+            return (fallback, null);
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            var expression = ExpressionReader.Read(value, _interner);
+            ExpressionTypes.ExpectNumber(name, expression);
+            return (fallback, expression);
         }
 
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out var number))
@@ -50,8 +73,10 @@ internal sealed class StylePropertyBag
             throw SpatialException.BadArguments($"Unsupported value for '{name}': expected a number.");
         }
 
-        return number;
+        return (number, null);
     }
+
+    public double ConstantNumber(string name, double fallback) => Number(name, fallback).Constant;
 
     public bool Bool(string name, bool fallback)
     {

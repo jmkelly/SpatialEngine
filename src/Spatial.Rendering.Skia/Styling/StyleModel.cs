@@ -25,20 +25,127 @@ internal enum LineJoinStyle
 }
 
 /// <summary>A colour-plus-geometry draw recipe, compiled once per style layer.</summary>
-internal abstract record PaintRecipe;
+internal abstract record PaintRecipe
+{
+    /// <summary>
+    /// Resolves the data-driven half against one feature, yielding a constant
+    /// recipe the rasterizer can batch. A recipe with no expressions returns
+    /// itself, so a constant style pays nothing per feature.
+    /// </summary>
+    public abstract PaintRecipe Resolve(ExpressionScope scope);
 
-internal sealed record BackgroundPaint(StyleColor Color) : PaintRecipe;
+    /// <summary>Whether any of the recipe's properties is data-driven.</summary>
+    public abstract bool IsDataDriven();
+}
 
-internal sealed record FillPaint(StyleColor Fill, StyleColor Outline, double OutlineWidth) : PaintRecipe;
+internal sealed record BackgroundPaint(StyleColor Color, BackgroundExpressions? Expressions = null) : PaintRecipe
+{
+    public override bool IsDataDriven() => Expressions is not null;
+
+    public override PaintRecipe Resolve(ExpressionScope scope) => this with
+    {
+        Color = Expressions is null ? Color : PaintExpressions.Tinted(
+            scope,
+            Expressions.Color,
+            PaintOpacity.Resolve(scope, Expressions.ConstantOpacity, Expressions.Opacity, "background-opacity"),
+            "background-color",
+            Color),
+        Expressions = null,
+    };
+}
+
+internal sealed record FillPaint(
+    StyleColor Fill,
+    StyleColor Outline,
+    double OutlineWidth,
+    FillExpressions? Expressions = null) : PaintRecipe
+{
+    public override bool IsDataDriven() => Expressions is not null;
+
+    public override PaintRecipe Resolve(ExpressionScope scope)
+    {
+        if (Expressions is null)
+        {
+            return this;
+        }
+
+        var alpha = PaintOpacity.Resolve(scope, Expressions.ConstantOpacity, Expressions.Opacity, "fill-opacity");
+        return this with
+        {
+            Fill = PaintExpressions.Tinted(scope, Expressions.Color, alpha, "fill-color", Fill),
+            Outline = PaintExpressions.Tinted(scope, Expressions.Outline, alpha, "fill-outline-color", Outline),
+            OutlineWidth = PaintExpressions.Size(scope, Expressions.OutlineWidth, "fill-outline-width", OutlineWidth),
+            Expressions = null,
+        };
+    }
+}
 
 internal sealed record LinePaint(
     StyleColor Stroke,
     double Width,
     IReadOnlyList<double> Dash,
     LineCapStyle Cap,
-    LineJoinStyle Join) : PaintRecipe;
+    LineJoinStyle Join,
+    LineExpressions? Expressions = null) : PaintRecipe
+{
+    public override bool IsDataDriven() => Expressions is not null;
 
-internal sealed record CirclePaint(StyleColor Fill, double Radius, StyleColor Stroke, double StrokeWidth) : PaintRecipe;
+    public override PaintRecipe Resolve(ExpressionScope scope)
+    {
+        if (Expressions is null)
+        {
+            return this;
+        }
+
+        var alpha = PaintOpacity.Resolve(scope, Expressions.ConstantOpacity, Expressions.Opacity, "line-opacity");
+        return this with
+        {
+            Stroke = PaintExpressions.Tinted(scope, Expressions.Color, alpha, "line-color", Stroke),
+            Width = PaintExpressions.Size(scope, Expressions.Width, "line-width", Width),
+            Expressions = null,
+        };
+    }
+}
+
+internal sealed record CirclePaint(
+    StyleColor Fill,
+    double Radius,
+    StyleColor Stroke,
+    double StrokeWidth,
+    CircleExpressions? Expressions = null) : PaintRecipe
+{
+    public override bool IsDataDriven() => Expressions is not null;
+
+    public override PaintRecipe Resolve(ExpressionScope scope)
+    {
+        if (Expressions is null)
+        {
+            return this;
+        }
+
+        var alpha = PaintOpacity.Resolve(scope, Expressions.ConstantOpacity, Expressions.Opacity, "circle-opacity");
+        return this with
+        {
+            Fill = PaintExpressions.Tinted(scope, Expressions.Color, alpha, "circle-color", Fill),
+            Radius = PaintExpressions.Size(scope, Expressions.Radius, "circle-radius", Radius),
+            Stroke = PaintExpressions.Tinted(scope, Expressions.StrokeColor, alpha, "circle-stroke-color", Stroke),
+            StrokeWidth = PaintExpressions.Size(scope, Expressions.StrokeWidth, "circle-stroke-width", StrokeWidth),
+            Expressions = null,
+        };
+    }
+}
+
+/// <summary>
+/// Resolves a data-driven recipe's alpha: the authored constant when the
+/// opacity is not itself an expression, otherwise the opacity resolved for
+/// this feature.
+/// </summary>
+internal static class PaintOpacity
+{
+    public static double Resolve(
+        ExpressionScope scope, double constantOpacity, StyleExpression? opacity, string property) =>
+        opacity is null ? constantOpacity : PaintExpressions.Number(scope, opacity, property, constantOpacity);
+}
 
 /// <summary>Where a label's box sits relative to its anchor point (MapLibre's <c>text-anchor</c>).</summary>
 internal enum SymbolAnchor
@@ -76,7 +183,31 @@ internal sealed record SymbolOptions(
     double IconSize,
     bool AllowIconOverlap);
 
-internal sealed record SymbolPaint(SymbolOptions Options) : PaintRecipe;
+internal sealed record SymbolPaint(SymbolOptions Options, SymbolExpressions? Expressions = null) : PaintRecipe
+{
+    public override bool IsDataDriven() => Expressions is not null;
+
+    public override PaintRecipe Resolve(ExpressionScope scope)
+    {
+        if (Expressions is null)
+        {
+            return this;
+        }
+
+        var alpha = PaintOpacity.Resolve(scope, Expressions.ConstantOpacity, Expressions.Opacity, "text-opacity");
+        return this with
+        {
+            Options = Options with
+            {
+                Color = PaintExpressions.Tinted(scope, Expressions.Color, alpha, "text-color", Options.Color),
+                HaloColor = PaintExpressions.Tinted(
+                    scope, Expressions.HaloColor, alpha, "text-halo-color", Options.HaloColor),
+                HaloWidth = PaintExpressions.Size(scope, Expressions.HaloWidth, "text-halo-width", Options.HaloWidth),
+            },
+            Expressions = null,
+        };
+    }
+}
 
 /// <summary>One compiled style layer: identity, dataset key, zoom window, predicate and paint.</summary>
 internal sealed record DrawLayer(

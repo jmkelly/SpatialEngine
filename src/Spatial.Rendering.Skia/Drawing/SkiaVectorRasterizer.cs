@@ -11,10 +11,24 @@ internal sealed record SceneLayer(DrawLayer Layer, IReadOnlyList<IGeometry> Geom
 {
     /// <summary>The resolved symbol candidates (empty for non-symbol layers).</summary>
     public IReadOnlyList<SymbolFeature> Symbols { get; init; } = [];
+
+    /// <summary>
+    /// One entry per drawn feature with the paint resolved for it. Empty when
+    /// the layer's paint is constant, in which case the whole geometry list
+    /// draws with the layer's own recipe.
+    /// </summary>
+    public IReadOnlyList<PaintRun> Runs { get; init; } = [];
 }
 
+/// <summary>One feature's placed geometry with the constant paint resolved for it.</summary>
+internal sealed record PaintRun(IGeometry Geometry, PaintRecipe Paint);
+
 /// <summary>One symbol candidate: the placed geometry plus the text/icon resolved from its attributes.</summary>
-internal sealed record SymbolFeature(IGeometry Geometry, string? Text, string? Icon);
+internal sealed record SymbolFeature(IGeometry Geometry, string? Text, string? Icon)
+{
+    /// <summary>The symbol paint resolved for this feature (null when the layer's paint is constant).</summary>
+    public SymbolOptions? Options { get; init; }
+}
 
 /// <summary>The ordered draw list and canvas background for one rasterization.</summary>
 internal sealed record RenderScene(IReadOnlyList<SceneLayer> Layers, StyleColor? Background);
@@ -49,6 +63,12 @@ internal static class SkiaVectorRasterizer
     private static void Draw(
         SKCanvas canvas, SceneLayer layer, ViewportProjection projection, List<SKRect> collision, BundledFont? font, SpriteRegistry sprites)
     {
+        if (layer.Runs.Count > 0)
+        {
+            DrawResolved(canvas, layer, projection);
+            return;
+        }
+
         switch (layer.Layer.Paint)
         {
             case BackgroundPaint:
@@ -66,6 +86,32 @@ internal static class SkiaVectorRasterizer
                 SkiaSymbolRasterizer.Draw(
                     new SymbolDrawContext(canvas, symbol.Options, projection, collision, font!, sprites), layer.Symbols);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Draws a data-driven layer, batching the features that resolved to the
+    /// same paint into one path so a step or match ramp keeps the fill/stroke
+    /// batching the constant path has. Run order is first appearance, so the
+    /// draw order is the feature order and stays deterministic.
+    /// </summary>
+    private static void DrawResolved(SKCanvas canvas, SceneLayer layer, ViewportProjection projection)
+    {
+        foreach (var run in layer.Runs.GroupBy(run => run.Paint))
+        {
+            var geometries = run.Select(item => item.Geometry).ToArray();
+            switch (run.Key)
+            {
+                case FillPaint fill:
+                    DrawFill(canvas, geometries, fill, projection);
+                    break;
+                case LinePaint line:
+                    DrawLine(canvas, geometries, line, projection);
+                    break;
+                case CirclePaint circle:
+                    DrawCircles(canvas, geometries, circle, projection);
+                    break;
+            }
         }
     }
 

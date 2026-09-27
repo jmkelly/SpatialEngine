@@ -20,15 +20,31 @@ namespace Spatial.Performance;
 public class TileRenderBenchmarks
 {
     private const string Dataset = "bench.cities";
+
+    // The constant style: one colour, one radius, no per-feature work.
     private const string Style = """
         { "version": 8, "layers": [
             { "id": "cities", "type": "circle", "source-layer": "bench.cities",
               "paint": { "circle-color": "#ffd166", "circle-radius": 4 } } ] }
         """;
 
+    // The same draw, data-driven: two layers read the same compiled radius
+    // expression, so the per-feature cache is what keeps the second layer's
+    // read a probe rather than an evaluation (T-u2x.19).
+    private const string ExpressionStyle = """
+        { "version": 8, "layers": [
+            { "id": "radius", "type": "circle", "source-layer": "bench.cities",
+              "paint": { "circle-color": "#ffd166",
+                         "circle-radius": ["interpolate", ["linear"], ["get", "population"], 0, 2, 1e6, 8] } },
+            { "id": "colour", "type": "circle", "source-layer": "bench.cities",
+              "paint": { "circle-color": ["match", ["get", "name"], "City 1", "#ff0000", "#ffd166"],
+                         "circle-radius": ["interpolate", ["linear"], ["get", "population"], 0, 2, 1e6, 8] } } ] }
+        """;
+
     private MapRenderer _renderer = null!;
     private MapRenderRequest _empty = null!;
     private MapRenderRequest _points = null!;
+    private MapRenderRequest _expressions = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -39,6 +55,8 @@ public class TileRenderBenchmarks
             viewport, Style, [new MapLayerSource(Dataset, new BenchStore([]), new BenchCatalogue())]);
         _points = new MapRenderRequest(
             viewport, Style, [new MapLayerSource(Dataset, new BenchStore(Grid(200)), new BenchCatalogue())]);
+        _expressions = new MapRenderRequest(
+            viewport, ExpressionStyle, [new MapLayerSource(Dataset, new BenchStore(Grid(200)), new BenchCatalogue())]);
     }
 
     [Benchmark(Description = "Skia tile render 256px (empty layer)", Baseline = true)]
@@ -46,6 +64,9 @@ public class TileRenderBenchmarks
 
     [Benchmark(Description = "Skia tile render 256px (200 points)")]
     public async Task<int> Render_PointsTile() => (await _renderer.RenderAsync(_points)).Content.Length;
+
+    [Benchmark(Description = "Skia tile render 256px (200 points, data-driven paint)")]
+    public async Task<int> Render_ExpressionPointsTile() => (await _renderer.RenderAsync(_expressions)).Content.Length;
 
     private static Feature[] Grid(int count)
     {
@@ -73,6 +94,7 @@ public class TileRenderBenchmarks
         public static readonly FeatureSchema Value = new(
         [
             new FieldDefinition("name", AttributeKind.String),
+            new FieldDefinition("population", AttributeKind.Int64),
             new FieldDefinition("geometry", AttributeKind.Geometry),
         ]);
     }

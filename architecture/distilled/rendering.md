@@ -1,6 +1,7 @@
 # Raster Rendering
 
-The condensed form of ADR-0044 (and ADR-0049 for labels/symbols): turn the
+The condensed form of ADR-0044 (and ADR-0049 for labels/symbols,
+ADR-0074 for the expression dialect): turn the
 engine's vector outputs into styled raster output over a NetVips imagery
 pipeline. Read the
 ADR for the decision and the research at
@@ -98,11 +99,16 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   `fill-outline-color`, `fill-outline-width`; `line-color/-opacity/-width/`
   `-dasharray/-cap/-join`; `circle-color/-radius/-opacity/-stroke-color/`
   `-stroke-width`; `text-color/-opacity`, `text-halo-color/-width`.
+- Every documented colour, opacity and size property above also accepts a
+  **MapLibre expression** instead of a constant (T-u2x.19); the constant
+  remains the value an expression falls back to when it has none for a
+  feature. Symbol *layout* keys stay constant — expressions there are a
+  separate bead.
 - Symbol layout (ADR-0049): `text-field` (a `{attribute}` template),
   `text-font` (the bundled Noto Sans aliases only), `text-size`,
   `text-anchor`, `text-offset` (ems), `text-padding`, `text-allow-overlap`,
   `icon-image` (a bundled sprite name), `icon-size`, `icon-allow-overlap`.
-  `symbol-placement: line`, expressions and unknown keys are rejected.
+  `symbol-placement: line` and unknown keys are rejected.
 - Fonts come only from the embedded Noto Sans Regular 2.003 (OFL-1.1);
   sprites only from the embedded `Resources/Sprites/*.svg` (the bundled
   `default-marker`), never a URL. `icon-image` resolves at draw time; an
@@ -111,10 +117,39 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   order, features sorted by identity then source envelope centre, with
   `*-allow-overlap` bypassing the collision test.
 - Filter operators: `==`, `!=`, `has`, `!has`, `in`, `all`, `any`, `none`,
-  `!` over `IFeature` attributes (never SQL).
+  `!` over `IFeature` attributes (never SQL). A filter that nests an
+  expression anywhere is read as an **expression filter** instead, and must
+  yield a boolean; the two dialects never mix halfway.
 - An unknown layer type, paint property, filter expression or visibility is a
   typed `invalid.arguments` naming it — unsupported input is rejected, never
   flattened.
+
+### Expressions
+
+A partial MapLibre expression dialect, compiled once per style document into an
+immutable node tree and evaluated per feature:
+
+- **Terms**: literals and `["literal", …]`, `["get", name]`,
+  `["get", name, fallback]`, `["has", name]`, `["zoom"]`, `["id"]`,
+  `["geometry-type"]`, `["var", name]`, `["let", …]`.
+- **Operators**: `==` `!=` `<` `<=` `>` `>=`; `all` `any` `!`; `in`; `+` `-`
+  `*` `/` `%` and unary `-`; `concat`; `case`; `match` (with a label list);
+  `coalesce`; `step`; `interpolate` over `["linear"]` or
+  `["exponential", base]`, interpolating numbers and colours per channel.
+- **Typed, not coerced**: the compiler rejects an expression whose static type
+  does not fit the property (`'circle-color' expects a colour, but … yields a
+  number`) and a value discovered per feature is rejected the same way at
+  render time. A number is *not* a colour, so the MapLibre idiom of ramping a
+  number into a colour needs colour stops; `to-color` and `at-interpolate`
+  are not served.
+- **An expression with no value for a feature** (a missing attribute) falls
+  back to the property's documented constant rather than failing the render.
+- **Once per feature, not per property**: the scene builder keeps one
+  `ExpressionScope` per feature for the whole style, and identical expression
+  text compiles to one shared node, so an expression read by several
+  properties across several layers is evaluated once per feature. The counters
+  are measured — `MapRenderer.LastStatistics` (internal) and the
+  `Render_ExpressionPointsTile` benchmark — not asserted in a comment.
 
 ## Host routes and configuration
 
@@ -155,6 +190,15 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   rasterized pixel assertions, the render facade with fakes, and the libvips
   traps (sRGB interpretation before `composite2`, equal band counts,
   premultiplied input, stride padding).
+- Expressions: a MapLibre conformance table (every served operator, with and
+  without an interpolation exponent, plus zoom/geometry-type/id/let-var),
+  the typed rejections (a number for a colour property, an attribute of the
+  wrong type, a negative size, a filter that is not boolean, an unbound `var`,
+  a non-ascending stop), a per-feature render proving data-driven paint and
+  expression filters reach the raster, and a measurement that the second
+  layer's read of an expression is a memo hit rather than a second
+  evaluation. The committed golden render is unchanged: a style that uses no
+  expression compiles to the same constant recipe it always did.
 - Host: content type/format, error mapping, pixel cap.
 - Clients: `.NET` `SpatialClient.RenderAsync` / `RenderCapabilitiesAsync` /
   `Tiles.VectorTileAsync`; TypeScript `render` / `renderCapabilities` /
@@ -186,4 +230,5 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
 Offline `.vtpk` packaging and `exportTiles` are not part of this phase;
 live MVT, OGC API Tiles and the existing raster tile surface are supported.
 A GPU backend is not planned. Within the symbol subset, line placement,
-expressions, sprite sheets and text transforms are not claimed.
+sprite sheets and text transforms are not claimed, and the expression dialect
+serves neither symbol layout nor `to-color`/`at-interpolate`.
