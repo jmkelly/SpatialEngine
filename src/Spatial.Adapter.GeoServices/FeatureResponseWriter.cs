@@ -404,7 +404,7 @@ internal static class FeatureResponseWriter
         && int.TryParse(crs.Code, NumberStyles.None, CultureInfo.InvariantCulture, out var epsg)
         && WkidMap.TryFromEpsg(epsg, out _);
 
-    private static void WriteFields(Utf8JsonWriter writer, DatasetDescription dataset)
+    internal static void WriteFields(Utf8JsonWriter writer, DatasetDescription dataset)
     {
         writer.WritePropertyName("fields");
         writer.WriteStartArray();

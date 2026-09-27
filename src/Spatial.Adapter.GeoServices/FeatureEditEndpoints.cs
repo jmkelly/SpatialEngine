@@ -35,6 +35,16 @@ internal static class FeatureEditEndpoints
         group.MapPost("/{service}/FeatureServer/{layerId:int}/applyEdits", (
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
             FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Apply, auth, authEnabled, legacyToken), cancellationToken));
+
+        // Relate and unrelate (spec §9.1.10/§9.1.11, ADR-0074) are edits, so
+        // they travel the same gate as the four verbs above rather than a new
+        // mechanism: a relationship change moves a key on a stored record.
+        group.MapPost("/{service}/FeatureServer/{layerId:int}/relate", (
+            HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            RelationshipEdit(new FeatureRelationshipEditContext(catalog, registry, context, service, layerId, stores, EsriRelationshipOperation.Relate, auth, authEnabled, legacyToken), cancellationToken));
+        group.MapPost("/{service}/FeatureServer/{layerId:int}/unrelate", (
+            HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
+            RelationshipEdit(new FeatureRelationshipEditContext(catalog, registry, context, service, layerId, stores, EsriRelationshipOperation.Unrelate, auth, authEnabled, legacyToken), cancellationToken));
     }
 
     /// <summary>
@@ -45,24 +55,51 @@ internal static class FeatureEditEndpoints
     {
         try
         {
-            var parameters = await EsriRequestParameters.ReadAsync(request.Context, cancellationToken);
-            EsriFormat.Ensure(parameters.Get("f"));
-            if (request.AuthEnabled)
-            {
-                await AuthGuard.RequireRoleAsync(
-                    request.Auth!,
-                    Bearer(request.Context),
-                    request.LegacyToken,
-                    AuthGuard.AdminRole,
-                    cancellationToken);
-            }
-
+            var parameters = await AuthorizeAsync(request.Context, request.Auth, request.AuthEnabled, request.LegacyToken, cancellationToken);
             return await FeatureEditRequests.ApplyAsync(request, parameters, cancellationToken);
         }
         catch (Exception exception)
         {
             return EsriErrorMapper.Map(exception);
         }
+    }
+
+    /// <summary>
+    /// One relate or unrelate request: the same negotiation and the same
+    /// admin gate as the four edit verbs above, then the relationship write.
+    /// </summary>
+    private static async Task<IResult> RelationshipEdit(FeatureRelationshipEditContext request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var parameters = await AuthorizeAsync(request.Context, request.Auth, request.AuthEnabled, request.LegacyToken, cancellationToken);
+            return request.Operation == EsriRelationshipOperation.Relate
+                ? await FeatureRelationshipWrites.RelateAsync(request, parameters, cancellationToken)
+                : await FeatureRelationshipWrites.UnrelateAsync(request, parameters, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            return EsriErrorMapper.Map(exception);
+        }
+    }
+
+    /// <summary>
+    /// The preamble every edit-gated route shares: negotiate <c>f=json</c>,
+    /// read the merged parameters and require the admin token (ADR-0065 §3).
+    /// Naming it once keeps the feature-edit and relationship-edit paths on
+    /// one gate.
+    /// </summary>
+    private static async Task<EsriRequestParameters> AuthorizeAsync(
+        HttpContext context, IAuthService? auth, bool authEnabled, string? legacyToken, CancellationToken cancellationToken)
+    {
+        var parameters = await EsriRequestParameters.ReadAsync(context, cancellationToken);
+        EsriFormat.Ensure(parameters.Get("f"));
+        if (authEnabled)
+        {
+            await AuthGuard.RequireRoleAsync(auth!, Bearer(context), legacyToken, AuthGuard.AdminRole, cancellationToken);
+        }
+
+        return parameters;
     }
 
     private static string? Bearer(HttpContext context)

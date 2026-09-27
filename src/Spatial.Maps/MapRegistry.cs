@@ -371,8 +371,37 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
                 $"Declared map '{mapName}' layer '{layer.Dataset}' has unknown kind '{layer.Kind}'.");
         }
 
-        return new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, kind, layer.Store);
+        return new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, kind, layer.Store, Relationships(mapName, layer));
     }
+
+    private static LayerRelationship[]? Relationships(string mapName, DeclaredLayerOptions layer)
+    {
+        if (layer.Relationships.Count == 0)
+        {
+            return null;
+        }
+
+        return layer.Relationships.Select(relationship => new LayerRelationship(
+                relationship.Name,
+                relationship.RelatedLayerId,
+                relationship.PrimaryKeyColumn,
+                relationship.RelatedKeyColumn,
+                ParseCardinality(mapName, relationship),
+                relationship.TitleField,
+                relationship.Join is null
+                    ? null
+                    : new LayerRelationshipJoin(
+                        relationship.Join.Dataset,
+                        relationship.Join.PrimaryKeyColumn,
+                        relationship.Join.RelatedKeyColumn)))
+            .ToArray();
+    }
+
+    private static LayerRelationshipCardinality ParseCardinality(string mapName, DeclaredRelationshipOptions relationship) =>
+        Enum.TryParse<LayerRelationshipCardinality>(relationship.Cardinality, ignoreCase: true, out var cardinality) && Enum.IsDefined(cardinality)
+            ? cardinality
+            : throw SpatialException.BadArguments(
+                $"Declared map '{mapName}' relationship '{relationship.Name}' has unknown cardinality '{relationship.Cardinality}'.");
 }
 
 /// <summary>The versioned on-disk map document (ADR-0053 §2).</summary>

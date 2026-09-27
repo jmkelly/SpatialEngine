@@ -38,7 +38,7 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (root/layers/layer/query/identify/fi
 
 | `generateRenderer` (server classification) | — | **Missing** | S4; same gap as Feature (shared classification engine absent) |
 | `queryDomains` / `queryLegends` (service-level domain/legend queries) | — | **Missing** | S4 `query-domains-map-service/`, `query-legends-map-service/` |
-| `queryRelatedRecords` (map-service variant) | — | **Missing** | S4; no relationship model |
+| `queryRelatedRecords` (map-service variant) | — | **Missing** | S4; the FeatureServer serves it (ADR-0074); the MapServer has no per-layer query surface to hang it on |
 | `exportTiles` + `estimateExportTileSize` (offline tile packages) | — | **Missing** | S4; our tiles are live-rendered only, no packaging/job model (ADR-0033: no jobs) |
 | WMTS (`.../WMTS`, `WMTSClientCapabilities`, tile row) | — | **Missing** | S4 `wmts-*-map-service/`; we serve no WMTS endpoint (see `tiles.md`) |
 | KML (`generateKml`, `kml-image`) | — | **Missing** | S4; no KML surface anywhere in tree |
