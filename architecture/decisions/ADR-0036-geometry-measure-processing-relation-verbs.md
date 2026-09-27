@@ -45,6 +45,7 @@ The GeoServices adapter maps:
 | `areasAndLengths`, `lengths`, `distance`, `labelPoints` | `IGeometryMeasures` |
 | `convexHull`, `difference`, `union`, `densify`, `simplify` (repair) | `IGeometryProcessing` |
 | `relation` | `IGeometryRelations` |
+| Feature Service `spatialRel` (`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`) | `IGeometryRelations` (DE-9IM patterns, envelope-prefiltered) |
 | `project` | `ICoordinateTransforms` |
 | `generalize`, `buffer`, `intersect` | `IGeometryOperations` |
 
@@ -61,6 +62,13 @@ The GeoServices adapter maps:
   self-intersecting ring into its valid parts.
 - New verbs are still pure and synchronous; long work remains the caller's
   cancellable request (ADR-0033).
+- `Relate` is the one face the query path uses as well as the geometry
+  service: the Feature Service `spatialRel` verbs are its DE-9IM patterns
+  (`T*****FF*` contains, `T*F**F***` within, `F***T****` touches, and the
+  point, overlaps and crosses variants selected by geometry dimension),
+  with the envelope tests kept as the pre-filter so the exact predicate runs
+  only on candidates. No contract change — the interface was already
+  registered; only the adapter's dependency set grew.
 
 ## References
 

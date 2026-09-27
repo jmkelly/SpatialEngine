@@ -22,6 +22,7 @@ internal static class RasterCatalogQuery
         IReadOnlyList<RasterCatalogItem> items,
         EsriFeatureQuery query,
         IGeometryOperations operations,
+        IGeometryRelations relations,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken)
     {
@@ -29,7 +30,7 @@ internal static class RasterCatalogQuery
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
         var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
         var matches = Match(
-            new CatalogMatch(description, dataset, items, query, queryGeometry), operations, cancellationToken);
+            new CatalogMatch(description, dataset, items, query, queryGeometry), operations, relations, cancellationToken);
         return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
     }
 
@@ -48,6 +49,7 @@ internal static class RasterCatalogQuery
     private static List<MatchedFeature> Match(
         CatalogMatch match,
         IGeometryOperations operations,
+        IGeometryRelations relations,
         CancellationToken cancellationToken)
     {
         var (description, dataset, items, query, queryGeometry) = match;
@@ -59,7 +61,7 @@ internal static class RasterCatalogQuery
             cancellationToken.ThrowIfCancellationRequested();
             var feature = ImageService.Feature(item, schema);
             var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
-            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, operations, uniqueId), cancellationToken))
+            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, operations, relations, uniqueId), cancellationToken))
             {
                 matches.Add(new MatchedFeature(item.ObjectId, feature));
             }

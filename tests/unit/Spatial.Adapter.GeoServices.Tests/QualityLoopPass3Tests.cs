@@ -99,9 +99,9 @@ public sealed class QualityLoopPass3Tests
         Assert.False(Overlaps(Square(0, 0, 2, 2), Square(2, 2, 4, 4)));
     }
 
-    private static bool Overlaps(IGeometry left, Polygon right) =>
-        FeatureSpatialMatcher.Overlaps(
-            left, right, left.Envelope!.Value, right.Envelope!.Value, Operations, CancellationToken.None);
+    private static bool Overlaps(IGeometry left, IGeometry right) =>
+        SpatialRelationPredicates.Overlaps(
+            GeometryPair.Of(left, right)!.Value, new NtsGeometryRelations(), CancellationToken.None);
 
     private static Polygon Square(double minX, double minY, double maxX, double maxY) =>
         GeometryFactory.CreatePolygon(

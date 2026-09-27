@@ -21,13 +21,14 @@ internal static class FeatureQueryEngine
         IFeatureStore store,
         EsriFeatureQuery query,
         IGeometryOperations operations,
+        IGeometryRelations relations,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken)
     {
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
-        var matches = await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, operations, scheme), cancellationToken);
+        var matches = await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, operations, relations, scheme), cancellationToken);
         return Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
     }
 

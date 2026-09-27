@@ -57,8 +57,8 @@ internal static class ImageServerEndpoints
             ImageQueryResources.Identify(new(catalog, registry, service, context, stores, cancellationToken)));
         group.MapMethods("/{service}/ImageServer/query", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores,
-            IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            ImageQueryResources.Query(new(catalog, registry, service, context, stores, cancellationToken), operations, transforms));
+            IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            ImageQueryResources.Query(new(catalog, registry, service, context, stores, cancellationToken), operations, relations, transforms));
         group.MapMethods("/{service}/ImageServer/download", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>
             ImageFileHandlers.ImageDownload(new(catalog, registry, service, context, stores, cancellationToken), options));

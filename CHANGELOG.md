@@ -21,6 +21,23 @@ this file together, then tag the release (`RELEASING.md`).
   the store-backed matrix is proven against a real SQL Server container with
   Testcontainers alongside a DB-free unit suite.
 
+### Changed
+
+- **Feature Service `spatialRel` is exact DE-9IM, not envelope arithmetic**
+  (ADR-0036, SpatialEngine-u2x.2): `Contains`, `Within`, `Touches`,
+  `Overlaps` and `Crosses` on the Feature/Map query and Image Service
+  catalog paths are now intersection patterns over
+  `IGeometryRelations.Relate`, with the envelope tests kept as the
+  pre-filter. The interior results are unchanged; the boundary cases the
+  approximation documented as approximate now follow OGC semantics, so three
+  answers change: a containee lying *on* the container's boundary is no
+  longer `Contains`, a point or line on a feature's boundary is now
+  `Touches`, and a line crossing a feature is no longer `Touches`.
+  `Intersects` stays the non-empty intersection and
+  `esriSpatialRelEnvelopeIntersects` stays the envelope test. The Geometry
+  Service `relation` operation, which already mapped the same verbs to the
+  same patterns, is unchanged.
+
 ### Fixed
 
 - **Fused-cache MapServer root advertises the tile scheme reference**
