@@ -23,6 +23,7 @@ public sealed class FeatureServiceQueryTests
     private static readonly CoordinateReference Crs4326 = CoordinateReference.Epsg(4326);
 
     private static readonly NtsGeometryOperations Operations = new();
+    private static readonly NtsGeometryRelations Relations = new();
 
     private static readonly ProjNetTransforms Transforms = new();
 
@@ -84,7 +85,7 @@ public sealed class FeatureServiceQueryTests
         EsriFeatureQuery query,
         CancellationToken cancellationToken = default)
     {
-        var result = await FeatureResponseWriter.ServiceQueryAsync(layers, store, query, Operations, Transforms, cancellationToken);
+        var result = await FeatureResponseWriter.ServiceQueryAsync(layers, store, query, Operations, Relations, Transforms, cancellationToken);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();

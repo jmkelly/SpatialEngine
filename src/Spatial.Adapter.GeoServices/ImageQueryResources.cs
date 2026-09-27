@@ -41,7 +41,7 @@ internal static class ImageQueryResources
 
     /// <summary>The <c>query</c> resource (spec §8.5): the catalog items the query grammar selects.</summary>
     internal static async Task<IResult> Query(
-        ImageServerRequest request, IGeometryOperations operations, ICoordinateTransforms transforms)
+        ImageServerRequest request, IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms)
     {
         try
         {
@@ -50,7 +50,7 @@ internal static class ImageQueryResources
             var layerCrs = EsriLayerModel.LayerCoordinateReference(MapServerResources.SridOf(image.Description.Raster.Crs));
             var query = EsriFeatureQuery.Parse(scope.Parameters, layerCrs);
             var items = await image.Catalogue.ListItemsAsync(image.Dataset, request.CancellationToken);
-            return RasterCatalogQuery.Query(image.Description, items, query, operations, transforms, request.CancellationToken);
+            return RasterCatalogQuery.Query(image.Description, items, query, operations, relations, transforms, request.CancellationToken);
         }
         catch (Exception exception)
         {

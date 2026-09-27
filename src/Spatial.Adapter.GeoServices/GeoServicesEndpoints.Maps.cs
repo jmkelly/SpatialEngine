@@ -40,8 +40,8 @@ internal static class MapServerEndpoints
             MapServerOperationEndpoints.MapImage(new(catalog, registry, service, context, stores, cancellationToken), layerId, imageId));
         group.MapMethods("/{service}/MapServer/{layerId:int}/query", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores,
-            IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            MapServerOperationEndpoints.MapQuery(new(catalog, registry, service, context, stores, cancellationToken), layerId, operations, transforms));
+            IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            MapServerOperationEndpoints.MapQuery(new(catalog, registry, service, context, stores, cancellationToken), layerId, operations, relations, transforms));
         group.MapMethods("/{service}/MapServer/identify", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores,
             IGeometryOperations operations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>

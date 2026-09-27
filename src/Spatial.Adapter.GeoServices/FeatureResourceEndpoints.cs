@@ -30,10 +30,11 @@ internal static class FeatureResourceEndpoints
             int layerId,
             IStoreRegistry stores,
             IGeometryOperations operations,
+            IGeometryRelations relations,
             ICoordinateTransforms transforms,
             CancellationToken cancellationToken) =>
             FeatureQuery(
-                new FeatureQueryContext(catalog, registry, context, service, layerId, stores, operations, transforms),
+                new FeatureQueryContext(catalog, registry, context, service, layerId, stores, operations, relations, transforms),
                 cancellationToken));
     }
 
@@ -65,7 +66,7 @@ internal static class FeatureResourceEndpoints
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
-            return await FeatureService.QueryAsync(description, store, query, request.Operations, request.Transforms, cancellationToken);
+            return await FeatureService.QueryAsync(description, store, query, request.Operations, request.Relations, request.Transforms, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -94,4 +95,5 @@ internal sealed record FeatureQueryContext(
     int LayerId,
     IStoreRegistry Stores,
     IGeometryOperations Operations,
+    IGeometryRelations Relations,
     ICoordinateTransforms Transforms);

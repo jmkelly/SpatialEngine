@@ -60,14 +60,14 @@ internal static class MapServerOperationEndpoints
     }
 
     public static async Task<IResult> MapQuery(
-        MapServerRequest request, int layerId, IGeometryOperations operations, ICoordinateTransforms transforms)
+        MapServerRequest request, int layerId, IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms)
     {
         try
         {
             var scope = await MapServerScope.OpenAsync(request);
             var description = await scope.DescribeAsync(layerId);
             var query = EsriFeatureQuery.Parse(scope.Parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
-            return await FeatureService.QueryAsync(description, scope.Store, query, operations, transforms, request.CancellationToken);
+            return await FeatureService.QueryAsync(description, scope.Store, query, operations, relations, transforms, request.CancellationToken);
         }
         catch (Exception exception)
         {
