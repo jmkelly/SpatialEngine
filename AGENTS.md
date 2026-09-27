@@ -24,7 +24,8 @@ interop surface.
 ## Commands
 
 - `eng/verify.sh` — format, build, full tests; the gate before done.
-- `eng/tasks` — the local development task queue (capture, claim, status).
+- `bd` — the development task queue (capture, claim, status). Run `bd prime`
+  for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
 - `eng/seed.sh` — on-demand realistic dataset: fetch public data, ingest
   (with engine-side reprojection) and publish styled feature/map services.
@@ -33,20 +34,28 @@ interop surface.
 
 ## Task queue
 
-Work is tracked in a local SQLite queue, not in git. Drive it with
-`eng/tasks` (details in `tools/tasks/README.md`):
+Work is tracked in [beads](https://github.com/gastownhall/beads) (`bd`), not in
+git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 
-- Capture: `eng/tasks add "…" --area <area> --priority 3`
-- Pick: `eng/tasks next --claim --agent <id> --json` — never start unclaimed work.
-- Hand off: `eng/tasks submit <id> --commit <sha> --pr <n>` (status `review`).
-- Complete: `eng/tasks done <id>` — only after `eng/verify.sh` is green on
-  `main`; `--verify` runs the gate first.
-- Recovery: `eng/tasks reclaim` after a crashed agent's lease expires.
+- Capture: `bd create --title="…" --description="…" --priority 2 -l <area>`
+- Pick: `bd ready` then `bd update <id> --claim` — never start unclaimed work.
+- Hand off: label the bead `needs-merge` with the commit and PR in `--notes`.
+- Complete: `bd close <id> --reason="…"` — only after `eng/verify.sh` is green
+  on `main`, never on the branch.
+- Recovery: `bd reclaim` after a crashed agent's lease expires.
 
-Areas route through `architecture/distilled/README.md`. The DB is shared by
-all git worktrees (`eng/tasks where`) and is local state, not history: record
-provenance with the `Task: <id>` commit trailer. This is development
-infrastructure, so it carries no ADR.
+Areas are labels and route through `architecture/distilled/README.md`. The
+database lives in the **git common dir** (`.beads/` beside the shared `.git`),
+so every worktree sees one queue — `bd where` prints the resolved path. It is
+local coordination state, not history: beads versions it in Dolt, and commit
+provenance goes in the bead plus the `Task: <id>` commit trailer. Bead ids
+issued before the migration are the old `T-NNN` sequence; new ones are
+`T-<hash>`. This is development infrastructure, so it carries no ADR.
+
+Migration note: the previous `eng/tasks` SQLite queue was replaced by beads on
+2026-09-27. `tools/migrate-tasks-to-beads.py` is the one-shot mapping (status,
+priority 1..5 → 0..4, area → label, agent/branch/commit → notes) and is kept
+only as the record of that mapping.
 
 ## Detail on demand
 

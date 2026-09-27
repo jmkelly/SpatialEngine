@@ -370,8 +370,8 @@ with pointer). Follow-up tasks must land the red test before the fix.
 
 ## 4. Follow-ups spawned
 
-High-value items spawned with `eng/tasks add --area interop.esri` (see
-`eng/tasks list`); each requires the red test before the fix:
+High-value items spawned with `bd create -l interop.esri` (see
+`bd list`); each requires the red test before the fix:
 T1→T-016, T2→T-017, T3→T-018, T4→T-019, T5→T-020, T6→T-021, T7→T-022,
 T7b+T8→T-023, T9→T-024, T10→T-025, T11→T-026, T13→T-027, T14→T-028.
 T12/T15 are dismissals recorded here, no tasks.

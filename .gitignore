@@ -48,7 +48,11 @@ StrykerOutput/
 test-results/
 playwright-report/
 
-# --- Local development task queue (tools/tasks) ---
+# --- Local development task queue (beads; lives in the git common dir) ---
+.beads/
+.beads.gate.lock
+# Retired spatial-tasks SQLite queue, kept ignored in case a stale worktree
+# still resolves one.
 .spatial-tasks/
 *.tasks.db
 *.tasks.db-wal

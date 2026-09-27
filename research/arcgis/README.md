@@ -95,7 +95,7 @@ Policy:
   `EsriLiveRefreshTests` and are skipped unless `SPATIAL_ESRI_LIVE=1`.
 - `eng/verify.sh` never invokes the refresh script (pinned by
   `EsriRefreshGateTests`). Drift a refresh finds is filed via
-  `eng/tasks add --area interop.esri`, never fixed by editing expectations
+  `bd create -l interop.esri`, never fixed by editing expectations
   or product code in the refresh itself.
 
 ## Current corpus

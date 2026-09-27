@@ -59,15 +59,9 @@ internal static class AppComposition
             .WithEnvironment("VITE_DEV_HOST", host.GetEndpoint("http"))
             .WithEnvironment("NODE_ENV", "development");
 
-        // The read-only task board over the development queue
-        // (tools/tasks-board/server.mjs). It reads the same shared SQLite file
-        // the CLI writes and pushes updates over SSE; it has no endpoint of its
-        // own to depend on, so it starts with the rest and never blocks it.
-        // WithHttpEndpoint(env: "PORT") gives it a dashboard link and hands it
-        // the port to bind (server.mjs resolves PORT/urls/ASPNETCORE_URLS).
-        builder
-            .AddExecutable("taskboard", "node", "../../tools/tasks-board/server.mjs")
-            .WithHttpEndpoint(env: "PORT");
+        // The read-only task board (tools/tasks-board/server.mjs) was retired
+        // when eng/tasks was replaced by beads; it shelled out to the old CLI.
+        // Use `bd ready` / `bd list`, or `bd serve` for the HTTP API, instead.
 
         ConfigureHostRemoteAccess(host);
         ConfigureWorkbenchRemoteAccess(workbench);

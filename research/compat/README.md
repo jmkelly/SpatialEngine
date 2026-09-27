@@ -38,7 +38,7 @@ Prior art (not duplicated, referenced): `architecture/references/geoservices-com
 
 Every gap row below names the status **Have / Partial / Missing / Non-goal**,
 the in-tree evidence (`file:line`), and the follow-up task (all filed in
-`eng/tasks`, area `interop.*`). Non-goals are rejected by name in code, never
+`bd`, label `interop.*`). Non-goals are rejected by name in code, never
 silently ignored.
 
 ## Confidence log (the loop, until 99%)

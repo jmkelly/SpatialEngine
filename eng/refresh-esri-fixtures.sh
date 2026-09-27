@@ -29,7 +29,7 @@
 #   - Live probes live in EsriLiveRefreshTests and are skipped unless
 #     SPATIAL_ESRI_LIVE=1 (nightly/explicit only).
 #   - Public endpoints only, no credentials, no secrets in the repo.
-#   - Drift the script finds is filed via `eng/tasks add --area interop.esri`
+#   - Drift the script finds is filed via `bd create -l interop.esri`
 #     (a refresh PR shows only fixture diffs); expectations are never
 #     "fixed" by editing product code here, and product behaviour is never
 #     changed to match drift.
@@ -221,7 +221,7 @@ echo "== diff summary =="
 echo "SAME: $SAME  DRIFT: $DRIFT  UNREACHABLE: $UNREACHABLE  (mode: $MODE)"
 if [[ "$DRIFT" != "0" ]]; then
   echo "Drift found: file it, do not fix product code here, e.g."
-  echo "  eng/tasks add \"Esri fixture drift: <probe> <missing keys>\" --area interop.esri --priority 3"
+  echo "  bd create --title=\"Esri fixture drift: <probe> <missing keys>\" --priority 2 -l interop.esri"
 fi
 echo "PR gate remains offline: eng/verify.sh never invokes this script"
 echo "(pinned by EsriRefreshGateTests.Refresh_script_is_not_part_of_the_default_gate)."
