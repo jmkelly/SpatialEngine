@@ -7,7 +7,7 @@
     "path": "/arcgis/rest/services/Geometry/GeometryServer/simplify",
     "query": "geometries=%5B%7B%22rings%22%3A%5B%5B%5B0%2C0%5D%2C%5B2%2C2%5D%2C%5B2%2C0%5D%2C%5B0%2C2%5D%2C%5B0%2C0%5D%5D%5D%7D%5D&sr=4326&f=json"
   },
-  "expectStatus": 200,
+  "expectStatus": 400,
   "esriResponse": {
     "geometries": [
       {
@@ -52,9 +52,10 @@
       }
     ]
   },
-  "notes": "simplify is topological repair (not Douglas-Peucker): the self-crossing bow-tie splits into two valid rings. generalize with maxDeviation=0 would leave it whole.",
+  "notes": "Esri's simplify is generalization parameterised by deviation/value (\u00a77.0.5), the same verb as generalize, so the engine asks IGeometryOperations.Simplify for the tolerance. This recorded request omits the tolerance and the recorded answer repairs the bow-tie into two valid rings; the engine serves the spec's parameterised generalization instead of the repair, and a tolerance-free request fails by name rather than generalizing with no tolerance. The bow-tie is covered as served in tests/unit/Spatial.Adapter.GeoServices.Tests/GeometryServiceSimplifyTests.cs and over HTTP in Spatial.Host.Tests.GeoServicesTests.",
   "knownDeltas": [
-    "Ring order/orientation follows NTS repair, not Esri; validity + part count are the parity contract."
+    "The recorded request carries no tolerance: Esri's own answer for it is a topological repair, which the engine does not map onto any operation (IGeometryProcessing.Repair has no Esri name). The engine rejects the request with invalid.arguments naming 'deviation'.",
+    "With a tolerance the engine's simplify matches generalize (Douglas-Peucker); a self-intersecting ring is generalized, not repaired."
   ],
   "expect": {
     "geometries": [
@@ -102,5 +103,9 @@
         }
       }
     ]
+  },
+  "expectError": {
+    "code": 400,
+    "messageContains": "'deviation' parameter is required for simplify"
   }
 }

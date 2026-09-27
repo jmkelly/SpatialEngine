@@ -67,7 +67,7 @@ engine is x-first for every CRS (`contracts.md`).
 | GeoServices op | Engine | Status |
 | --- | --- | --- |
 | `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string |
-| `simplify` (topological repair; §7.0.5) | `Validate` only | **Missing** — engine has no MakeValid/repair |
+| `simplify` (generalization; §7.0.5) | `Simplify` | **Present** — tolerance from `deviation`, or mutually exclusively from `value`; one of the two is required |
 | `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` | **Partial** — planar transform-then-buffer with `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances`, `quadrantSegments`; `geodesic`/`unionResults` honestly rejected, linear units need a projected buffer CRS |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
 | `lengths` | — | Missing (same) |
@@ -75,7 +75,7 @@ engine is x-first for every CRS (`contracts.md`).
 | `labelPoints` | — | Missing |
 | `distance` | — | Missing |
 | `densify` | — | Missing |
-| `generalize` (Douglas-Peucker; §7.0.13) | `Simplify` | **Present, wrong name** |
+| `generalize` (Douglas-Peucker; §7.0.13) | `Simplify` | **Present** — tolerance from `maxDeviation` |
 | `convexHull` | — | Missing |
 | `offset` | — | Missing |
 | `trimExtend` | — | Missing |
@@ -86,11 +86,21 @@ engine is x-first for every CRS (`contracts.md`).
 | `reshape` | — | Missing |
 | `union` | — | Missing (`Buffer.unionResults` is not the op) |
 
-**Semantic trap:** the engine's `Simplify` is Douglas-Peucker
-(`contracts.md`, `README.md`), which is GeoServices **`generalize`**.
-GeoServices **`simplify`** repairs self-intersections/overlapping rings
-(§7.0.5.3 example: one ring → two rings). Mapping by name silently
-produces the wrong result.
+**Generalization:** both `generalize` (§7.0.13) and `simplify` (§7.0.5)
+are Douglas-Peucker generalization, so both map to the engine's `Simplify`
+(`contracts.md`), under their own parameter names: `maxDeviation` for
+`generalize`, `deviation` (or, mutually exclusively, `value`) for
+`simplify`. Neither accepts a request without a tolerance, and neither
+touches a self-intersecting ring other than by thinning it.
+
+**Repair:** topological repair is `IGeometryProcessing.Repair` (NTS
+`GeometryFixer`, ADR-0036) and no Esri Geometry Service operation names
+it. A captured `simplify` request that omits the tolerance came back from
+Esri repaired into two rings (`tests/fixtures/esri-docs/geometryserver/
+simplify-bowtie.json`); the engine does not reproduce that, because the
+operation whose name says generalization does not repair. The fixture
+replays the recorded request and pins the honest `invalid.arguments`
+reject instead.
 
 **Buffer semantics trap:** GeoServices applies a `unit`, can buffer in a
 third CRS (`bufferSR`) and geodesically for points/multipoints in a
@@ -180,9 +190,12 @@ Ordered by dependency:
    plus the simple comma syntax and `{"url": ...}` form — the latter is an
    SSRF concern and should be rejected).
 2. WKID↔EPSG mapping; decide whether to accept `{wkt}`.
-3. Additional verbs: `generalize` (reuse `Simplify`), `Simplify`-as-repair
-   (MakeValid), `union`/`difference`, area/length, distance, densify,
-   convex hull, offset — **delivered**; so are the `spatialRel` predicates,
+3. Additional verbs: `generalize` and `simplify` (both `Simplify`, each
+   with its own tolerance parameter), `union`/`difference`, area/length,
+   distance, densify, convex hull, offset — **delivered**; topological
+   repair is `IGeometryProcessing.Repair` with no Esri operation name, so
+   it is reachable through the engine API and not through this facade.
+   The `spatialRel` predicates are delivered too,
    as exact DE-9IM intersection patterns over `IGeometryRelations.Relate`
    (ADR-0036) behind the query path's envelope pre-filter.
 4. Array/parameter conventions and `outFields`/`returnGeometry`/`outSR`

@@ -11,8 +11,9 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// <summary>
 /// The Geometry Service dispatcher (spec §7): each operation maps protocol
 /// arguments onto the engine verbs, rejects unsupported modifiers and returns
-/// the shaped result. The semantic trap is pinned: <c>generalize</c> is
-/// simplification, <c>simplify</c> is topological repair.
+/// the shaped result. The generalization surface is pinned here for
+/// <c>generalize</c> and in <see cref="GeometryServiceSimplifyTests"/> for
+/// <c>simplify</c>, whose tolerance arrives as <c>deviation</c>/<c>value</c>.
 /// </summary>
 public sealed class GeometryServiceTests
 {
@@ -609,15 +610,6 @@ public sealed class GeometryServiceTests
             ("geometries", """[{"rings":[[[0,0],[2,0],[2,2],[0,2],[0,0]]]},{"rings":[[[2,0],[4,0],[4,2],[2,2],[2,0]]]}]"""));
 
         Assert.Equal(1, result.GetProperty("geometries").GetArrayLength());
-    }
-
-    [Fact]
-    public async Task Simplify_repairs_a_self_intersecting_ring()
-    {
-        var result = await DispatchAsync("simplify",
-            ("geometries", """[{"rings":[[[0,0],[2,2],[2,0],[0,2],[0,0]]]}]"""));
-
-        Assert.Equal(2, result.GetProperty("geometries")[0].GetProperty("rings").GetArrayLength());
     }
 
     [Fact]

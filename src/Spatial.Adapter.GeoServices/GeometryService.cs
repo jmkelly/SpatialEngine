@@ -13,9 +13,13 @@ namespace Spatial.Adapter.GeoServices;
 /// no algorithms: <c>project</c> calls <see cref="ICoordinateTransforms"/>,
 /// the planar verbs call <see cref="IGeometryOperations"/>,
 /// <see cref="IGeometryMeasures"/>, <see cref="IGeometryProcessing"/> and
-/// <see cref="IGeometryRelations"/>. The semantic trap is explicit:
-/// <c>generalize</c> is Douglas-Peucker (Simplify) and <c>simplify</c> is
-/// topological repair (Repair) — never the same verb.
+/// <see cref="IGeometryRelations"/>. The semantic trap is explicit: both
+/// <c>generalize</c> and <c>simplify</c> are Douglas-Peucker generalization
+/// and take the same engine verb under their own parameter names
+/// (<c>maxDeviation</c> and <c>deviation</c>/<c>value</c> respectively).
+/// Topological repair is <see cref="IGeometryProcessing.Repair"/> and has no
+/// Esri operation name, so nothing maps to it — mapping it to
+/// <c>simplify</c> would silently generalize nothing and repair instead.
 /// </summary>
 internal static class GeometryService
 {
@@ -44,7 +48,7 @@ internal static class GeometryService
             ["convexhull"] = (parameters, capabilities, token) => ConvexHull(parameters, capabilities.Processing, token),
             ["difference"] = (parameters, capabilities, token) => Difference(parameters, capabilities.Processing, token),
             ["union"] = (parameters, capabilities, token) => Union(parameters, capabilities.Processing, token),
-            ["simplify"] = (parameters, capabilities, token) => Simplify(parameters, capabilities.Processing, token),
+            ["simplify"] = (parameters, capabilities, token) => Simplify(parameters, capabilities.Operations, token),
             ["relation"] = (parameters, capabilities, token) => Relation(parameters, capabilities.Relations, token),
             ["densify"] = (parameters, capabilities, token) => Densify(parameters, capabilities.Processing, token),
             ["labelpoints"] = (parameters, capabilities, token) => LabelPoints(parameters, capabilities.Measures, token),
@@ -83,6 +87,8 @@ internal static class GeometryService
 
     private static IResult Generalize(EsriRequestParameters parameters, IGeometryOperations operations, CancellationToken cancellationToken)
     {
+        // Spec §7.0.13: generalize generalizes by `maxDeviation`, the maximum
+        // allowable deviation in the units of the spatial reference.
         var spatialReference = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
         var deviation = ParseDouble(parameters.Require("maxDeviation"), "maxDeviation");
         var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), spatialReference);
@@ -397,8 +403,58 @@ internal static class GeometryService
     private static IResult Union(EsriRequestParameters parameters, IGeometryProcessing processing, CancellationToken cancellationToken) =>
         Geometries([processing.Union(InputGeometries(parameters), cancellationToken)]);
 
-    private static IResult Simplify(EsriRequestParameters parameters, IGeometryProcessing processing, CancellationToken cancellationToken) =>
-        Geometries(InputGeometries(parameters).Select(geometry => processing.Repair(geometry, cancellationToken)));
+    /// <summary>
+    /// Spec §7.0.5: <c>simplify</c> is generalization, not topological repair.
+    /// The tolerance is <c>deviation</c> — the maximum allowable deviation in
+    /// the units of the spatial reference — or, mutually exclusively,
+    /// <c>value</c>, the same quantity for a client that names it that way.
+    /// One of the two is required, so a request that carries neither fails by
+    /// name instead of generalizing with no tolerance at all.
+    /// </summary>
+    private static IResult Simplify(EsriRequestParameters parameters, IGeometryOperations operations, CancellationToken cancellationToken)
+    {
+        // The tolerance is validated before the payload, so a request that is
+        // wrong in both ways names the parameter it is most likely to fix.
+        var tolerance = SimplifyTolerance(parameters);
+        var spatialReference = EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
+        var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), spatialReference);
+        return Geometries(geometries.Select(geometry => operations.Simplify(geometry, tolerance, cancellationToken)));
+    }
+
+    /// <summary>The one tolerance <c>simplify</c> accepts, or a typed failure naming what is wrong with it.</summary>
+    private static double SimplifyTolerance(EsriRequestParameters parameters)
+    {
+        var deviation = OptionalTolerance(parameters, "deviation");
+        var value = OptionalTolerance(parameters, "value");
+        return (deviation, value) switch
+        {
+            (not null, not null) => throw GeoServicesErrors.Invalid(
+                "The 'deviation' and 'value' parameters are mutually exclusive; send one tolerance."),
+            (not null, null) => deviation.Value,
+            (null, not null) => value.Value,
+            _ => throw GeoServicesErrors.Invalid(
+                "The 'deviation' parameter is required for simplify; 'value' is the alternative spelling of the same tolerance."),
+        };
+    }
+
+    /// <summary>
+    /// A tolerance parameter, or <c>null</c> when it was not sent. A value that
+    /// is present but unusable fails here, naming the parameter, rather than
+    /// reaching the engine.
+    /// </summary>
+    private static double? OptionalTolerance(EsriRequestParameters parameters, string name)
+    {
+        var raw = parameters.Get(name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var tolerance = ParseDouble(raw, name);
+        return tolerance >= 0
+            ? tolerance
+            : throw GeoServicesErrors.Invalid($"'{name}' must be non-negative, got '{raw}'.");
+    }
 
     private static IResult Relation(EsriRequestParameters parameters, IGeometryRelations relations, CancellationToken cancellationToken)
     {

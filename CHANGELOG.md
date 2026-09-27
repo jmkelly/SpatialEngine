@@ -23,6 +23,17 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **Geometry Service `simplify` is generalization again** (ADR-0036, §7.0.5):
+  it now calls `IGeometryOperations.Simplify` (Douglas-Peucker) with the
+  tolerance the request carries — `deviation`, or mutually exclusively
+  `value` — the same engine verb `generalize` already used under its
+  `maxDeviation` name. It used to call `IGeometryProcessing.Repair`
+  (topological MakeValid) and ignore both parameters, so a valid geometry
+  came back whole and a self-intersecting one was silently repaired instead
+  of thinned. A request with neither tolerance, with both, or with a
+  negative one is now a named `invalid.arguments` failure. Topological
+  repair keeps its engine verb and its home: no Esri operation names it, so
+  nothing in the facade maps to it.
 - **Feature Service `spatialRel` is exact DE-9IM, not envelope arithmetic**
   (ADR-0036, SpatialEngine-u2x.2): `Contains`, `Within`, `Touches`,
   `Overlaps` and `Crosses` on the Feature/Map query and Image Service

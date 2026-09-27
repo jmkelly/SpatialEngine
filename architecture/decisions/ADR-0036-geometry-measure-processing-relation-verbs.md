@@ -13,10 +13,11 @@ verbs and to keep spatial algorithms out of the adapter. The GeoServices
 Geometry Service (spec §7) needs more than `IGeometryOperations`' four verbs
 (`buffer`, `intersection`, `validate`, `simplify`): `areasAndLengths`,
 `lengths`, `distance`, `labelPoints`, `convexHull`, `difference`, `union`,
-`densify`, `relation` and `simplify`-as-repair. `IGeometryOperations` also
-carries two different meanings under one name: its `Simplify` is
-Douglas-Peucker generalization, while GeoServices `simplify` is topological
-repair.
+`densify` and `relation`. `IGeometryOperations` carries the one verb two
+GeoServices names share: both `generalize` (§7.0.13) and `simplify`
+(§7.0.5) are Douglas-Peucker generalization, and its `Simplify` is exactly
+that. Topological repair is wanted too — no Esri operation names it, so
+nothing in the protocol maps to it.
 
 The geoservices-implementation-plan §5 leaves the interface granularity open
 between "one extended `IGeometryOperations`" and split faces.
@@ -43,23 +44,26 @@ The GeoServices adapter maps:
 | GeoServices | Verb |
 | --- | --- |
 | `areasAndLengths`, `lengths`, `distance`, `labelPoints` | `IGeometryMeasures` |
-| `convexHull`, `difference`, `union`, `densify`, `simplify` (repair) | `IGeometryProcessing` |
+| `convexHull`, `difference`, `union`, `densify` | `IGeometryProcessing` |
 | `relation` | `IGeometryRelations` |
 | Feature Service `spatialRel` (`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`) | `IGeometryRelations` (DE-9IM patterns, envelope-prefiltered) |
 | `project` | `ICoordinateTransforms` |
-| `generalize`, `buffer`, `intersect` | `IGeometryOperations` |
+| `generalize`, `simplify` (`deviation`/`value`), `buffer`, `intersect` | `IGeometryOperations` |
 
 ## Consequences
 
 - Three additive interfaces in `Spatial.PluginSdk` and three additive
   implementations in `Spatial.Operations.NetTopologySuite`, registered by
   `Spatial.Host`. No existing contract changes.
-- The semantic trap is resolved structurally: `generalize` and `simplify`
-  map to different engine verbs (`Simplify` and `Repair`), with an explicit
-  regression test that a self-intersecting ring is repaired into valid parts
-  while generalization leaves it alone.
-- Repair uses NTS `GeometryFixer` (the OGC MakeValid port); it splits a
-  self-intersecting ring into its valid parts.
+- The name trap is resolved structurally: `generalize` and `simplify` both
+  call `Simplify`, each with its own tolerance parameter (`maxDeviation`,
+  `deviation`/`value`), with a regression test that a self-intersecting ring
+  is thinned rather than repaired.
+- `Repair` stays an engine verb with no protocol name. It uses NTS
+  `GeometryFixer` (the OGC MakeValid port) and splits a self-intersecting
+  ring into its valid parts, reachable through the engine API only: an Esri
+  operation that aliased it to `simplify` would generalize nothing and
+  repair instead, which is what the wiring used to do.
 - New verbs are still pure and synchronous; long work remains the caller's
   cancellable request (ADR-0033).
 - `Relate` is the one face the query path uses as well as the geometry
