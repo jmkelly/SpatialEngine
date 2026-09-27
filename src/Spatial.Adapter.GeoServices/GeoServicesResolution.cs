@@ -110,7 +110,7 @@ internal static class GeoServicesResolution
         stores.EditStore(store) is not null;
 
     /// <summary>
-    /// The relationships a published layer declares (ADR-0074). A
+    /// The relationships a published layer declares (ADR-0077). A
     /// configuration-declared whole-store service publishes no declaration,
     /// so it advertises none.
     /// </summary>
@@ -154,5 +154,5 @@ internal static class GeoServicesResolution
     }
 }
 
-/// <summary>The layer a relationship targets (ADR-0074): the store its records live in, its published identity and its catalogue description.</summary>
+/// <summary>The layer a relationship targets (ADR-0077): the store its records live in, its published identity and its catalogue description.</summary>
 internal sealed record RelatedLayer(string Store, PublishedLayer Layer, DatasetDescription Description);

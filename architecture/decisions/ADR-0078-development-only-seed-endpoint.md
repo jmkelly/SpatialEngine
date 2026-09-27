@@ -4,7 +4,7 @@ date: 2026-09-20
 deciders: maintainer + agent
 ---
 
-# ADR-0070: A development-only seed endpoint
+# ADR-0078: A development-only seed endpoint
 
 ## Context
 

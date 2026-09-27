@@ -4,7 +4,7 @@ date: 2026-09-27
 deciders: maintainer + agent
 ---
 
-# ADR-0074: Relationships are declared on the map, traversed with the query engine
+# ADR-0077: Relationships are declared on the map, traversed with the query engine
 
 ## Context
 

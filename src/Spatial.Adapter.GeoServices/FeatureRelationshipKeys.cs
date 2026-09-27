@@ -6,13 +6,13 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Builds the key equality clauses a relationship traversal filters the
-/// related layer with (ADR-0074). The engine holds no join operator, so the
+/// related layer with (ADR-0077). The engine holds no join operator, so the
 /// declaration's two columns become ordinary terms of the same closed
 /// where-grammar the query path already uses: the traversal never invents a
 /// filter language and never forwards client text as structure, it renders
 /// key values it read from stored features and parses the result with the
 /// engine's own parser. Key kinds are validated to match at declaration time
-/// (ADR-0074 §2), so an equality is only ever built from a comparable pair.
+/// (ADR-0077 §2), so an equality is only ever built from a comparable pair.
 /// </summary>
 internal static class FeatureRelationshipKeys
 {

@@ -110,7 +110,7 @@ internal static class AdminEndpoints
     /// missing raster provider never becomes a published service that fails on
     /// every request: a feature layer must exist in its store's catalogue and an
     /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
-    /// Declared relationships (ADR-0074) are checked against the same live
+    /// Declared relationships (ADR-0077) are checked against the same live
     /// schemas here, at declaration time, so a relationship over a column that
     /// does not exist never reaches a served service.
     /// </summary>

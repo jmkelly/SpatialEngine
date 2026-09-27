@@ -4,7 +4,7 @@ namespace Spatial.Contracts;
 
 /// <summary>
 /// Buffering by a ground distance in metres whatever the geometry's
-/// coordinate reference system (ADR-0074). The GeoServices <c>buffer</c>
+/// coordinate reference system (ADR-0075). The GeoServices <c>buffer</c>
 /// operation's <c>geodesic</c> option and a linear <c>unit</c> against a
 /// geographic CRS both need this; the planar
 /// <see cref="IGeometryOperations.Buffer"/> only understands the units of the
@@ -13,7 +13,7 @@ namespace Spatial.Contracts;
 /// The contract is a capability, not a claim of exactness: implementations
 /// reach the ground distance by reprojecting onto an extent-sized working
 /// plane and buffering there, which is within a stated tolerance of the true
-/// geodesic (0.05% relative, ADR-0074). A caller needing exactness, or a
+/// geodesic (0.05% relative, ADR-0075). A caller needing exactness, or a
 /// working extent beyond the stated limit, gets
 /// <see cref="SpatialException"/> with code <c>invalid.arguments</c>.
 ///

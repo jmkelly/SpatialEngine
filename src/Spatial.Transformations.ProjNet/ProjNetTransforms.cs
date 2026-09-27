@@ -154,7 +154,7 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     /// <summary>
     /// Applies a math transform to every coordinate, preserving shapes, empty
     /// geometries, layouts and Z/M ordinates, and stamping the target CRS.
-    /// Internal so the geodesic buffer (ADR-0074) can run the same
+    /// Internal so the geodesic buffer (ADR-0075) can run the same
     /// transformation over its own working plane, which is not a catalogue
     /// CRS and so cannot go through <see cref="Transform"/>.
     /// </summary>

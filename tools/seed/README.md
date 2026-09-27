@@ -24,7 +24,7 @@ node tools/seed/seed.mjs --dry-run
 
 ## How it reaches the host
 
-`seed.mjs` first POSTs the manifest to `POST /api/seed` (ADR-0070): on a
+`seed.mjs` first POSTs the manifest to `POST /api/seed` (ADR-0078): on a
 Development host the seed runs server-side — download, decode, reproject,
 atomic ingest, map publication — so a token-less host (such as the Aspire
 DevHost's) seeds with no restart. The endpoint requires the admin token only

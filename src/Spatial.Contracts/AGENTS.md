@@ -29,7 +29,7 @@ implementations and the host — never the reverse.
   styled differently in different maps.
 - `LayerRelationship`/`LayerRelationshipCardinality`/`LayerRelationshipJoin`
   — a map layer's declared relationships to the map's other layers
-  (ADR-0074): two key columns plus a cardinality, with a join dataset for
+  (ADR-0077): two key columns plus a cardinality, with a join dataset for
   many-to-many. The declaration is publication state, so it lives on
   `MapLayer` and never in a store.
 - `IDatasetIngest` + `IngestRequest`/`IngestOutcome`/`IngestIdentity` —

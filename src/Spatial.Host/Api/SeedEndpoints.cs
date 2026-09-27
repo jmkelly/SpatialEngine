@@ -8,7 +8,7 @@ namespace Spatial.Host.Api;
 
 /// <summary>
 /// Downloads a seed source over HTTP(S) under the ingest byte cap
-/// (ADR-0070). Only absolute http(s) URLs are fetched; anything else is
+/// (ADR-0078). Only absolute http(s) URLs are fetched; anything else is
 /// <c>invalid.arguments</c>, so <c>file://</c> and other local schemes stay
 /// rejected. Transport failures surface as <see cref="SpatialException"/>
 /// failures the runner records per item.
@@ -155,7 +155,7 @@ internal static class SeedStyle
 
 /// <summary>
 /// Runs a seed document: download → decode → reproject → atomic ingest per
-/// source, then map publication per service entry (ADR-0070). Sources and
+/// source, then map publication per service entry (ADR-0078). Sources and
 /// maps selected out by <c>only</c> are skipped; every other failure is
 /// recorded per item and the run continues, mirroring the seed tool's
 /// summary semantics.
@@ -319,7 +319,7 @@ internal sealed class SeedRunner(
 }
 
 /// <summary>
-/// The development seed endpoint (ADR-0070): <c>POST /api/seed</c> runs a
+/// The development seed endpoint (ADR-0078): <c>POST /api/seed</c> runs a
 /// seed document against the running host, so demo data no longer needs a
 /// restart. Mounted only in Development; in production the route does not
 /// exist. Enforces the admin gate through the shared
@@ -371,7 +371,7 @@ internal static class SeedEndpoints
         {
             // Unlike the upload and map routes (unmounted without a token), the
             // seed route stays mounted in Development and only enforces the
-            // admin gate when a policy is configured (ADR-0070). Inside the
+            // admin gate when a policy is configured (ADR-0078). Inside the
             // try so a failed gate maps through the shared error mapper, like
             // every other admin route.
             if (route.Admin.Enabled || route.AuthOptions.Enabled)

@@ -6,7 +6,7 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The relate and unrelate writes (spec §9.1.10/§9.1.11, ADR-0074): they
+/// The relate and unrelate writes (spec §9.1.10/§9.1.11, ADR-0077): they
 /// move the same key a traversal reads, so a related record the read cannot
 /// see is a record the write cannot have moved. A one-to-one or one-to-many
 /// declaration sets the related layer's key column; a many-to-many one adds

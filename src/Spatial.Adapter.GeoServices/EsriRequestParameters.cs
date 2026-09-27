@@ -49,7 +49,7 @@ internal sealed class EsriRequestParameters
     /// The same parameters without the named ones. A resource that reuses the
     /// query parser for a different layer than the one its own ids address —
     /// <c>queryRelatedRecords</c> parses the related layer's query while its
-    /// <c>objectIds</c> name the origin layer's features (ADR-0074) — drops
+    /// <c>objectIds</c> name the origin layer's features (ADR-0077) — drops
     /// the ids that no longer belong to the query it is about to parse.
     /// </summary>
     public EsriRequestParameters Without(params string[] names)

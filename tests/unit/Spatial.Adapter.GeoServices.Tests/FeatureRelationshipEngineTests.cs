@@ -10,7 +10,7 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
-/// The <c>queryRelatedRecords</c> traversal (spec §9.1.5, ADR-0074) driven
+/// The <c>queryRelatedRecords</c> traversal (spec §9.1.5, ADR-0077) driven
 /// directly over fakes: the served shape, the related layer's own filter and
 /// projection, and cancellation. The fakes deliberately ignore their
 /// <see cref="CancellationToken"/>, so a cancelled token must still abort the

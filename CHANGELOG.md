@@ -11,7 +11,7 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
-- **Ground-distance buffering** (ADR-0074, SpatialEngine-u2x.14): the
+- **Ground-distance buffering** (ADR-0075, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
   `IGeodesicBuffering` contract verb implemented as
@@ -37,7 +37,7 @@ this file together, then tag the release (`RELEASING.md`).
   built on first use, and the ProjNet Pseudo-Mercator workaround is
   untouched.
 - **Relationships are declared, traversed and written**
-  (ADR-0074, SpatialEngine-u2x.22): a map layer now declares how its records
+  (ADR-0077, SpatialEngine-u2x.22): a map layer now declares how its records
   relate to another of the map's layers over two key columns
   (`LayerRelationship`: one-to-one, one-to-many, or many-to-many through a
   join dataset), validated structurally when the map is stored and against

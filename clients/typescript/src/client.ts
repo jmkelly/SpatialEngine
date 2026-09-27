@@ -53,7 +53,7 @@ export interface IngestResult {
   map?: null | Map;
 }
 
-/** One downloadable source of a development seed document (ADR-0070). */
+/** One downloadable source of a development seed document (ADR-0078). */
 export interface SeedSource {
   id: string;
   url: string;
@@ -73,7 +73,7 @@ export interface SeedMapLayer {
   kind?: string;
 }
 
-/** One map published by a development seed document (ADR-0070). */
+/** One map published by a development seed document (ADR-0078). */
 export interface SeedMap {
   name: string;
   services: string[];
@@ -82,7 +82,7 @@ export interface SeedMap {
   copyright?: null | string;
 }
 
-/** A development seed document: downloadable sources plus maps to publish (ADR-0070). */
+/** A development seed document: downloadable sources plus maps to publish (ADR-0078). */
 export interface SeedDocument {
   sources: SeedSource[];
   maps: SeedMap[];
@@ -98,7 +98,7 @@ export interface SeedFailure {
   message: string;
 }
 
-/** The seed summary: counts plus per-item failures (ADR-0070). */
+/** The seed summary: counts plus per-item failures (ADR-0078). */
 export interface SeedResult {
   store: string;
   ingested: number;
@@ -411,7 +411,7 @@ export class SpatialClient {
 
   /**
    * Runs a seed document against a Development host: download, ingest and
-   * publish in one call (ADR-0070; requires the admin token when one is
+   * publish in one call (ADR-0078; requires the admin token when one is
    * configured). Hosts without the endpoint answer 404.
    */
   async seed(document: SeedDocument, adminToken?: string, signal?: AbortSignal): Promise<SeedResult> {

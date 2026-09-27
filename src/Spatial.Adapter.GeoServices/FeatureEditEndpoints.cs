@@ -36,7 +36,7 @@ internal static class FeatureEditEndpoints
             HttpContext context, string service, int layerId, IStoreRegistry stores, CancellationToken cancellationToken) =>
             FeatureEdit(new FeatureEditContext(catalog, registry, context, service, layerId, stores, EsriEditOperation.Apply, auth, authEnabled, legacyToken), cancellationToken));
 
-        // Relate and unrelate (spec §9.1.10/§9.1.11, ADR-0074) are edits, so
+        // Relate and unrelate (spec §9.1.10/§9.1.11, ADR-0077) are edits, so
         // they travel the same gate as the four verbs above rather than a new
         // mechanism: a relationship change moves a key on a stored record.
         group.MapPost("/{service}/FeatureServer/{layerId:int}/relate", (

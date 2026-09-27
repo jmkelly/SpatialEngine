@@ -8,7 +8,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Serves <c>queryRelatedRecords</c> (spec §9.1.5) over a declared
-/// relationship (ADR-0074). The traversal is the ordinary query path pointed
+/// relationship (ADR-0077). The traversal is the ordinary query path pointed
 /// at a different layer: the declaration names the two key columns, the
 /// origin record's key becomes an equality term in the closed where-grammar,
 /// and the related layer is matched, ordered and projected exactly as

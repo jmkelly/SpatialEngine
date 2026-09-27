@@ -5,7 +5,7 @@ using Spatial.Core.Features;
 namespace Spatial.Maps;
 
 /// <summary>
-/// Live-schema validation of a map's declared relationships (ADR-0074). The
+/// Live-schema validation of a map's declared relationships (ADR-0077). The
 /// structural shape of a declaration — name, cardinality, join pairing, and
 /// the target being another published feature layer — is pure and lives in
 /// <see cref="MapValidator"/>; what only a store can answer is whether the

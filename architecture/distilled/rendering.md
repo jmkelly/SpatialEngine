@@ -1,7 +1,7 @@
 # Raster Rendering
 
 The condensed form of ADR-0044 (and ADR-0049 for labels/symbols,
-ADR-0074 for the expression dialect): turn the
+ADR-0076 for the expression dialect): turn the
 engine's vector outputs into styled raster output over a NetVips imagery
 pipeline. Read the
 ADR for the decision and the research at
