@@ -14,9 +14,9 @@ reflects the state at decision time.
 | --- | --- | --- |
 | Core geometry / feature types, codecs | `core.md` | 0001, 0004, 0009, 0020, 0029, 0032 |
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
-| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072 |
+| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
-| Which services exist + their contracts | `contracts.md` | 0033 |
+| Which services exist + their contracts | `contracts.md` | 0033, 0074 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048 |
 | Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0037, 0038 |
@@ -120,6 +120,7 @@ shape is noted in brackets.
 | 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
 | 0072 | The host integration suite starts its own PostGIS container and configures the store from it, so no `SPATIAL_POSTGIS_CONNECTION` is needed to run the tests. |
 | 0073 | SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests. |
+| 0074 | The feature-query contract is a core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`; pushdown is per-conjunct and best-effort with residual in-memory evaluation; reductions are an additive `IFeatureAggregateStore` face; the published `filter` text is parsed once at the boundary and the per-provider filter languages are retired. |
 
 ## How to change the architecture
 
