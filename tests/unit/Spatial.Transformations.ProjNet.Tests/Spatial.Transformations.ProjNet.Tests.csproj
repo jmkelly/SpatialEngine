@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
   </ItemGroup>
 
 </Project>

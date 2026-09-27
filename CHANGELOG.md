@@ -11,6 +11,20 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Ground-distance buffering** (ADR-0074, SpatialEngine-u2x.14): the
+  GeoServices `buffer` operation now serves a linear `unit` against a
+  geographic buffer CRS — the commonest request there is — through a new
+  `IGeodesicBuffering` contract verb implemented as
+  `ProjNetGeodesicBuffering`. It reprojects onto a local transverse Mercator
+  sized by the work, buffers, and projects back: within **0.05% relative of
+  the geodesic** for a working radius up to 300 km, and a typed
+  `invalid.arguments` failure naming the radius and the remedy past that
+  instead of a shape it cannot stand behind. `geodesic=true` is served on
+  that path and refused by name against an angular unit, no unit or a
+  projected `bufferSR`; `unionResults=true` dissolves the per-input buffers
+  into one geometry. The projected-`bufferSR` planar path is unchanged and
+  remains the exact answer inside a valid zone.
+
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and
   attachment faces on Microsoft.Data.SqlClient, wired into the host under the

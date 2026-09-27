@@ -98,21 +98,32 @@ internal static class GeometryService
     private static IResult Buffer(EsriRequestParameters parameters, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
     {
         // Spec §7.0.6: buffered in bufferSR ?? outSR ?? inSR, returned in
-        // outSR ?? bufferSR ?? inSR. The engine buffers planar, so a linear
-        // unit against a geographic buffer CRS stays rejected (no geodesic
-        // verb); with a projected bufferSR the request is a
-        // transform-then-buffer via ICoordinateTransforms.
-        RejectUnsupportedBufferOptions(parameters);
+        // outSR ?? bufferSR ?? inSR. Two distances are possible meanings for
+        // the same request and both are served, because the engine has the
+        // verbs for them (ADR-0074):
+        //  - a linear unit against a geographic buffer CRS is a ground
+        //    distance, so it goes through IGeodesicBuffering (the reproject-
+        //    and-buffer within the tolerance that verb states);
+        //  - everything else is the planar IGeometryOperations.Buffer, in
+        //    the buffer CRS, reached through ICoordinateTransforms.
         var fallback = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"))
             ?? EsriValueParser.ParseSpatialReference(parameters.Get("sr"));
-        var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), fallback);
+        var bufferSr = EsriValueParser.ParseSpatialReference(parameters.Get("bufferSR"));
+        var outSr = EsriValueParser.ParseSpatialReference(parameters.Get("outSR"));
+        // A CRS-less input is interpreted in the buffer CRS, so parse it with
+        // that stamp: the ground-distance verb reads the reference off the
+        // geometry, exactly as the planar path resolves it.
+        var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), fallback ?? bufferSr ?? outSr);
         var work = new BufferWork(
             geometries,
             fallback,
-            EsriValueParser.ParseSpatialReference(parameters.Get("bufferSR")),
-            EsriValueParser.ParseSpatialReference(parameters.Get("outSR")),
+            bufferSr,
+            outSr,
             EsriValueParser.ParseDoubles(parameters.Require("distances"), "distances"),
-            ParseOptionalInt(parameters, "quadrantSegments", 8));
+            ParseOptionalInt(parameters, "quadrantSegments", 8),
+            ParseUnitCode(parameters),
+            parameters.GetBool("geodesic", false),
+            parameters.GetBool("unionResults", false));
         if (work.Distances.Count != 1 && work.Distances.Count != work.Geometries.Count)
         {
             throw GeoServicesErrors.Invalid("'distances' must hold one value or one value per input geometry.");
@@ -121,27 +132,40 @@ internal static class GeometryService
         var results = new IGeometry[work.Geometries.Count];
         for (var i = 0; i < work.Geometries.Count; i++)
         {
-            results[i] = BufferOne(work, i, parameters, capabilities, cancellationToken);
+            results[i] = BufferOne(work, i, capabilities, cancellationToken);
         }
 
-        return Geometries(results);
+        return work.UnionResults
+            ? Geometries([UnionResults(results, capabilities, cancellationToken)])
+            : Geometries(results);
     }
 
-    private static void RejectUnsupportedBufferOptions(EsriRequestParameters parameters)
+    /// <summary>
+    /// <c>unionResults=true</c> dissolves the per-input buffers into one
+    /// geometry, so the result array holds a single member. The dissolve is
+    /// only meaningful in one CRS, so inputs that resolve to different
+    /// references are refused by name.
+    /// </summary>
+    private static IGeometry UnionResults(IGeometry[] results, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
     {
-        if (parameters.GetBool("geodesic", false))
+        var reference = results[0].CoordinateReference;
+        foreach (var result in results.Skip(1))
         {
-            throw GeoServicesErrors.Invalid("The 'geodesic' parameter is not supported: the engine buffers planar; project first (bufferSR) and buffer without geodesic.");
+            if (result.CoordinateReference != reference)
+            {
+                throw GeoServicesErrors.Invalid(
+                    "'unionResults' needs every input in one spatial reference: the inputs resolve to different references. Name a shared 'outSR'.");
+            }
         }
 
-        // unionResults=false is the Esri default and matches engine behavior
-        // (one result array per input), so it is accepted leniently like
-        // geodesic=false; unionResults=true has no engine verb and stays
-        // rejected by name.
-        if (parameters.GetBool("unionResults", false))
-        {
-            throw GeoServicesErrors.Invalid("The 'unionResults' parameter is not supported: unionResults is not supported; the result is an array per input.");
-        }
+        return capabilities.Processing.Union([.. results], cancellationToken);
+    }
+
+    /// <summary>The <c>unit</c> code, or <c>null</c> when distances are already in buffer-CRS units.</summary>
+    private static int? ParseUnitCode(EsriRequestParameters parameters)
+    {
+        var raw = parameters.Get("unit");
+        return string.IsNullOrWhiteSpace(raw) ? null : ParseUnitCode(raw);
     }
 
     private sealed record BufferWork(
@@ -150,23 +174,93 @@ internal static class GeometryService
         CoordinateReference? BufferSr,
         CoordinateReference? OutSr,
         IReadOnlyList<double> Distances,
-        int Segments);
+        int Segments,
+        int? Unit,
+        bool Geodesic,
+        bool UnionResults)
+    {
+        public double Distance(int index) => Distances.Count == 1 ? Distances[0] : Distances[index];
+    }
 
-    private static IGeometry BufferOne(BufferWork work, int index, EsriRequestParameters parameters, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
+    private static IGeometry BufferOne(BufferWork work, int index, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
     {
         // CRS-less inputs are interpreted in the buffer CRS, as before.
         var source = BufferSource(work, index);
         var bufferCrs = work.BufferSr ?? work.OutSr ?? source;
-        var distance = (work.Distances.Count == 1 ? work.Distances[0] : work.Distances[index])
-            * BufferDistanceFactor(parameters, capabilities.Catalogue, bufferCrs, cancellationToken);
+        var kind = BufferKind(capabilities.Catalogue, bufferCrs, cancellationToken);
+        var distance = work.Distance(index);
+
+        // A linear distance against a geographic buffer CRS is a ground
+        // distance: metres along the earth, not degrees on a plane. That is
+        // the request the old facade rejected by name.
+        if (work.Unit is { } code && !EsriUnits.IsAngular(code) && kind == CrsKind.Geographic)
+        {
+            EsriUnits.TryGetLinear(code, out _, out var metresPerUnit);
+            var buffered = GeodesicBuffer(capabilities, work.Geometries[index], distance * metresPerUnit, work.Segments, cancellationToken);
+            var geodesicTarget = BufferTarget(work, source);
+            return DiffersFrom(geodesicTarget, source)
+                ? capabilities.Transforms.Transform(buffered, source?.ToString(), geodesicTarget!.Value.ToString(), cancellationToken)
+                : buffered;
+        }
+
+        RejectGeodesic(work, bufferCrs, kind);
+        var planarDistance = distance * PlanarDistanceFactor(work, bufferCrs, kind);
         var working = DiffersFrom(bufferCrs, source)
             ? capabilities.Transforms.Transform(work.Geometries[index], source?.ToString(), bufferCrs!.Value.ToString(), cancellationToken)
             : work.Geometries[index];
-        var buffered = capabilities.Operations.Buffer(working, distance, work.Segments, cancellationToken);
+        var expanded = capabilities.Operations.Buffer(working, planarDistance, work.Segments, cancellationToken);
         var target = BufferTarget(work, source);
         return DiffersFrom(target, bufferCrs)
-            ? capabilities.Transforms.Transform(buffered, bufferCrs?.ToString(), target!.Value.ToString(), cancellationToken)
-            : buffered;
+            ? capabilities.Transforms.Transform(expanded, bufferCrs?.ToString(), target!.Value.ToString(), cancellationToken)
+            : expanded;
+    }
+
+    /// <summary>
+    /// The ground-distance verb, called through the adapter's choke point so
+    /// a structured engine failure becomes the Esri invalid-parameters code
+    /// with the reason intact (ADR-0035).
+    /// </summary>
+    private static IGeometry GeodesicBuffer(
+        GeometryServiceCapabilities capabilities,
+        IGeometry geometry,
+        double distanceMetres,
+        int segments,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return capabilities.GeodesicBuffers.Buffer(geometry, distanceMetres, segments, cancellationToken);
+        }
+        catch (SpatialException exception)
+        {
+            throw GeoServicesErrors.Invalid(exception.Message, exception);
+        }
+    }
+
+    /// <summary>
+    /// <c>geodesic</c> is served where a ground distance is what the request
+    /// means. It is refused elsewhere rather than answered planar, so a
+    /// caller never gets a planar answer for a request that asked for a
+    /// geodesic one.
+    /// </summary>
+    private static void RejectGeodesic(BufferWork work, CoordinateReference? bufferCrs, CrsKind? kind)
+    {
+        if (!work.Geodesic)
+        {
+            return;
+        }
+
+        if (kind == CrsKind.Projected)
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'geodesic' parameter is not supported against the projected buffer CRS {bufferCrs}: ground-distance buffering is served for a geographic buffer CRS; drop 'geodesic', or drop the projected 'bufferSR' and name a linear 'unit'.");
+        }
+
+        throw GeoServicesErrors.Invalid(
+            "The 'geodesic' parameter needs a linear 'unit' against a geographic buffer CRS: the engine buffers ground distances in metres, not degrees. "
+            + (work.Unit is null
+                ? "Name a linear 'unit' (for example 9001 for metres) or drop 'geodesic' to buffer the distances as degrees."
+                : $"Unit code {work.Unit} is angular; name a linear one, or drop 'geodesic' to buffer the distances as degrees."));
     }
 
     private static CoordinateReference? BufferTarget(BufferWork work, CoordinateReference? source) =>
@@ -174,6 +268,9 @@ internal static class GeometryService
 
     private static CoordinateReference? BufferSource(BufferWork work, int index) =>
         work.Geometries[index].CoordinateReference ?? work.Fallback ?? work.BufferSr ?? work.OutSr;
+
+    private static CrsKind? BufferKind(ICrsDirectory catalogue, CoordinateReference? bufferCrs, CancellationToken cancellationToken) =>
+        bufferCrs is null ? null : catalogue.Describe(bufferCrs.Value.ToString(), cancellationToken).Kind;
 
     private static bool DiffersFrom(CoordinateReference? left, CoordinateReference? right) =>
         left.HasValue && left.Value != right;
@@ -183,24 +280,23 @@ internal static class GeometryService
     /// <c>unit</c> the distances are already in buffer-CRS units (metres for
     /// the catalogue's projected CRSs, degrees for geographic ones); with a
     /// linear <c>unit</c> the buffer CRS must be projected (metres), with an
-    /// angular <c>unit</c> it must be geographic (degrees).
+    /// angular <c>unit</c> it must be geographic (degrees). A linear unit
+    /// against a geographic CRS never reaches here — it is a ground distance
+    /// and goes to <see cref="GeodesicBuffer"/>.
     /// </summary>
-    private static double BufferDistanceFactor(EsriRequestParameters parameters, ICrsDirectory catalogue, CoordinateReference? bufferCrs, CancellationToken cancellationToken)
+    private static double PlanarDistanceFactor(BufferWork work, CoordinateReference? bufferCrs, CrsKind? kind)
     {
-        var raw = parameters.Get("unit");
-        if (string.IsNullOrWhiteSpace(raw))
+        if (work.Unit is not { } code)
         {
             return 1.0;
         }
 
-        var code = ParseUnitCode(raw);
         if (bufferCrs is null)
         {
             throw GeoServicesErrors.Invalid("'unit' requires a spatial reference: name 'bufferSR' (or 'inSR'/'sr') so distances have units.");
         }
 
-        var kind = catalogue.Describe(bufferCrs.Value.ToString(), cancellationToken).Kind;
-        return ResolveUnitFactor(code, bufferCrs, kind);
+        return ResolveUnitFactor(code, bufferCrs.Value, kind);
     }
 
     /// <summary>
@@ -224,7 +320,7 @@ internal static class GeometryService
         return code;
     }
 
-    private static double ResolveUnitFactor(int code, CoordinateReference? bufferCrs, CrsKind kind)
+    private static double ResolveUnitFactor(int code, CoordinateReference bufferCrs, CrsKind? kind)
     {
         var angular = EsriUnits.IsAngular(code);
         if (!angular && kind == CrsKind.Projected && EsriUnits.TryGetLinear(code, out _, out var metres))
@@ -241,14 +337,16 @@ internal static class GeometryService
         if (!angular)
         {
             throw GeoServicesErrors.Invalid(
-                $"Unit code {code} is linear but the buffer CRS {bufferCrs} is {kind}: " +
-                "the planar engine cannot buffer metres in degrees (no geodesic verb). Name a projected 'bufferSR'.");
+                $"Unit code {code} is linear but the buffer CRS {bufferCrs} is {Describe(kind)}: " +
+                "the engine buffers ground distances against a geographic CRS and metres in a projected one. Name a projected 'bufferSR'.");
         }
 
         throw GeoServicesErrors.Invalid(
-            $"Unit code {code} is angular but the buffer CRS {bufferCrs} is {kind}: " +
+            $"Unit code {code} is angular but the buffer CRS {bufferCrs} is {Describe(kind)}: " +
             "name a geographic 'bufferSR' or a linear unit with a projected 'bufferSR'.");
     }
+
+    private static string Describe(CrsKind? kind) => kind?.ToString().ToLowerInvariant() ?? "unclassified";
 
     /// <summary>
     /// The datum-transformation lookup (10.x <c>findTransformations</c>): an
@@ -706,7 +804,8 @@ internal sealed record GeometryServiceCapabilities(
     IGeometryProcessing Processing,
     IGeometryRelations Relations,
     ICoordinateTransforms Transforms,
-    ICrsDirectory Catalogue);
+    ICrsDirectory Catalogue,
+    IGeodesicBuffering GeodesicBuffers);
 
 /// <summary>The Geometry Service resource shape.</summary>
 internal sealed record GeometryServerInfo(double CurrentVersion, string ServiceDescription, string Capabilities);

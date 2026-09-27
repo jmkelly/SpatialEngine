@@ -23,7 +23,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeometryService.cs` (dispatch +
 |---|---|---|---|
 | `project` | served | **Have** | `GeometryService.cs:Operations["project"]` → `ICoordinateTransforms.Transform` |
 | `generalize` (Douglas-Peucker) | served | **Have** | `→ IGeometryOperations.Simplify` (name trap documented in `geoservices-compatibility.md` §2) |
-| `buffer` | served | **Partial** | planar transform-then-buffer: `unit` (curated `EsriUnits` table, linear+angular) + `bufferSR`/`outSR`/`inSR` chaining per spec §7.0.6; `geodesic=false` accepted as planar, `geodesic=true`/`unionResults` rejected (`GeometryService.cs:Buffer`) |
+| `buffer` | served | **Partial** | both paths: a projected `bufferSR` is the unchanged planar transform-then-buffer, and a **linear `unit` against a geographic buffer CRS is a ground distance** served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative for a working radius up to 300 km, ADR-0074), so it needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results (`GeometryService.cs:Buffer`) |
 | `intersect` | served | **Have** | `→ IGeometryOperations.Intersection` (disjoint→empty matches spec) |
 | `simplify` (topological repair/MakeValid) | served | **Have** | `→ IGeometryProcessing.Repair` (NTS `GeometryFixer`) |
 | `areasAndLengths`, `lengths` | served | **Have** | `→ IGeometryMeasures.Area/Length` |
@@ -47,15 +47,17 @@ Score: **15/21 served**, 5 edit-topology non-goals + 1 notation non-goal row
 `geoservices-compatibility.md` §2 predates ADR-0036 and is superseded by this
 matrix.
 
-## 2. Semantic traps (served but planar — must stay documented)
+## 2. Semantic traps (served but bounded — must stay documented)
 
 - Buffer/geodesic: ArcGIS buffers points geodesically in geographic CRSs and
-  honours `unit`/`bufferSR`; ours is planar transform-then-buffer.
-  `distances=1000&unit=9001` against a 4326 geometry with a projected
-  `bufferSR` reproduces the projected result (transform to the buffer CRS,
-  planar buffer in metres, transform to `outSR`). A linear `unit` against a
-  geographic buffer CRS stays 400 (no geodesic verb: name a projected
-  `bufferSR`); an angular `unit` (9101/9102) buffers planar degrees.
+  honours `unit`/`bufferSR`; ours has both paths. A projected `bufferSR` is
+  still the exact answer (transform to the buffer CRS, planar buffer in
+  metres, transform to `outSR`). A linear `unit` against a geographic
+  buffer CRS goes to `IGeodesicBuffering`, which reprojects onto a local
+  plane and buffers there: within 0.05% of the geodesic for a working radius
+  up to 300 km, and a typed refusal past that (ADR-0074). An angular `unit`
+  (9101/9102) still buffers planar degrees, and `geodesic=true` with one is
+  refused by name because the ground-distance verb works in metres.
 - Measures are planar (XY); simplify preserves Z, algorithms ignore M.
 
 ## 3. Follow-ups (landed as T-044)
