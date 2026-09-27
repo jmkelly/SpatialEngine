@@ -4,7 +4,7 @@ date: 2026-09-27
 deciders: maintainer + agent
 ---
 
-# ADR-0074: The MapLibre style dialect is a compiled expression tree with a per-feature scope
+# ADR-0076: The MapLibre style dialect is a compiled expression tree with a per-feature scope
 
 ## Context
 

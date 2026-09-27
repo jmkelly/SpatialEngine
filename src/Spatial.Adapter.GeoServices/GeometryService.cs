@@ -100,7 +100,7 @@ internal static class GeometryService
         // Spec §7.0.6: buffered in bufferSR ?? outSR ?? inSR, returned in
         // outSR ?? bufferSR ?? inSR. Two distances are possible meanings for
         // the same request and both are served, because the engine has the
-        // verbs for them (ADR-0074):
+        // verbs for them (ADR-0075):
         //  - a linear unit against a geographic buffer CRS is a ground
         //    distance, so it goes through IGeodesicBuffering (the reproject-
         //    and-buffer within the tolerance that verb states);

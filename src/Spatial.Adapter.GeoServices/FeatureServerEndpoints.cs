@@ -70,7 +70,7 @@ internal static class FeatureServerEndpoints
     }
 
     /// <summary>
-    /// The layer's advertised relationships (ADR-0074): its declared
+    /// The layer's advertised relationships (ADR-0077): its declared
     /// relationships projected onto the Esri shape, with the related layer's
     /// published name as the display title. A layer that declares none (and
     /// every layer of a configuration-declared whole-store service) advertises

@@ -34,7 +34,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | Feature (object) resource `.../<layerId>/<objectId>` | served | **Have** | `GeoServicesEndpoints.cs` (REST-JS `getFeature` proof) |
 | Service-level `/query` (query across all layers) | — | **Missing** | S1 lists `query-feature-service/`; we only serve layer-level `.../<id>/query` |
 | `generateRenderer` (classBreaks/uniqueValue server-side classification) | — | **Missing** | S4 `generate-renderer/`; no route; our renderers are client-persisted style projections (ADR-0050) |
-| `queryRelatedRecords` (relationship traversal) | served | **Have** | `FeatureRelationshipEngine.cs` over map-declared relationships (ADR-0074); `relationships` metadata on the layer, related layer's own `where`/`outFields`, `relate`/`unrelate` behind the edit gate |
+| `queryRelatedRecords` (relationship traversal) | served | **Have** | `FeatureRelationshipEngine.cs` over map-declared relationships (ADR-0077); `relationships` metadata on the layer, related layer's own `where`/`outFields`, `relate`/`unrelate` behind the edit gate |
 | Attachments (`attachmentInfos`, `addAttachment`, `deleteAttachments`, `updateAttachment`) | — | **Missing** | S4 `add-attachment/` etc.; no attachment store or route |
 | `htmlPopup`, layer `image` resource | — | **Missing** | non-goal §7.1 (no engine model) |
 | `queryBins` / `queryTopFeatures` / `queryAnalytic` (aggregation/binning extensions) | — | **Missing** | S4; engine serves `outStatistics` but not bin/top-features/analytic shapes |

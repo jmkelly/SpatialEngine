@@ -39,7 +39,7 @@ internal static class FeatureWriteModelEndpoints
             FeatureLayerQueryHandlers.FeatureValidateSql(
                 new(catalog, registry, service, context, stores, cancellationToken), layerId));
 
-        // The relationship traversal (spec §9.1.5, ADR-0074): a read over a
+        // The relationship traversal (spec §9.1.5, ADR-0077): a read over a
         // declared relationship, gated on nothing beyond feature-query auth
         // because it reads the same records query does. The relate/unrelate
         // writes are mounted with the edit verbs' admin gate instead.

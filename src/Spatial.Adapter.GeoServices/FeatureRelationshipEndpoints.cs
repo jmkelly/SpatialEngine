@@ -3,7 +3,7 @@ using Spatial.Contracts;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The relationship read handler (spec §9.1.5, ADR-0074): one call that
+/// The relationship read handler (spec §9.1.5, ADR-0077): one call that
 /// negotiates <c>f=json</c>, maps every failure onto the Esri envelope and
 /// hands the traversal its parameters. The relate/unrelate writes are not
 /// here — they are edits and travel the edit routes' admin gate

@@ -5,7 +5,7 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
-/// Pins the relationship projection and traversal vocabulary (ADR-0074): the
+/// Pins the relationship projection and traversal vocabulary (ADR-0077): the
 /// engine cardinality mapped onto the Esri relationship types, the advertised
 /// metadata shape, the key terms the traversal filters the related layer
 /// with, and the <c>relationshipId</c> resolution. Everything here is pure, so

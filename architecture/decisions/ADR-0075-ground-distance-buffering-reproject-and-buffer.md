@@ -4,7 +4,7 @@ date: 2026-09-27
 deciders: maintainer + agent
 ---
 
-# ADR-0074: Ground-distance buffering is reproject-and-buffer, within a stated tolerance
+# ADR-0075: Ground-distance buffering is reproject-and-buffer, within a stated tolerance
 
 ## Context
 

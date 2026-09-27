@@ -48,7 +48,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 
 ## Ground-distance buffering (`IGeodesicBuffering`, ProjNet)
 
-Added by ADR-0074 so a linear distance against a geographic CRS means
+Added by ADR-0075 so a linear distance against a geographic CRS means
 metres on the ground rather than degrees on a plane. Pure and cancellable.
 
 | Method | Input | Output | Behaviour |
@@ -215,7 +215,7 @@ host injects `source-layer` when it assembles a render document. The OGC
 WMS/WFS projection lives in `Spatial.Adapter.Ogc`, reads the same map and
 keyed stores, and adds no contract: it renders through `IMapRenderer` and
 queries through `IFeatureStore`. A layer may also declare `Relationships`
-(`LayerRelationship`, ADR-0074): two key columns plus a cardinality, with a
+(`LayerRelationship`, ADR-0077): two key columns plus a cardinality, with a
 join dataset for many-to-many. The declaration is publication state, so it
 lives on the layer and never in a store; `MapValidator` checks its shape and
 `MapRelationshipSchemas` checks it against the live schemas where a

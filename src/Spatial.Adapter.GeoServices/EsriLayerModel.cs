@@ -106,7 +106,7 @@ internal static class EsriLayerModel
     /// <c>hasAttachments</c> with its <c>attachmentProperties</c> (T-061,
     /// ADR-0066); every other layer reports <c>hasAttachments: false</c>.
     /// A layer that declares relationships advertises them as
-    /// <c>relationships</c> (ADR-0074); every other layer omits the key.
+    /// <c>relationships</c> (ADR-0077); every other layer omits the key.
     /// </summary>
     public static EsriLayer Describe(
         int id,
@@ -211,7 +211,7 @@ internal sealed record EsriLayer(
     IReadOnlyList<EsriRelationship>? Relationships = null);
 
 /// <summary>
-/// One advertised relationship (spec §9.1 <c>relationships</c>, ADR-0074):
+/// One advertised relationship (spec §9.1 <c>relationships</c>, ADR-0077):
 /// the declared name, which doubles as the <c>id</c> clients address with
 /// <c>relationshipId</c> (the engine assigns no numeric relationship ids),
 /// the related layer's id, the display title and the Esri relationship-type

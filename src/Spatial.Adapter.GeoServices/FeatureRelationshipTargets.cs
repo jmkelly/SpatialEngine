@@ -6,7 +6,7 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// Resolves what a relationship request addresses (ADR-0074): the origin
+/// Resolves what a relationship request addresses (ADR-0077): the origin
 /// layer, the declaration the <c>relationshipId</c> names and the related
 /// layer it points at, each with the store its records live in. Shared by
 /// the read traversal and the relate/unrelate writes, so a write can never

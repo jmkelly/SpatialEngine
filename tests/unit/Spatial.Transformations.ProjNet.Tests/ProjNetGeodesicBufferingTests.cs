@@ -6,7 +6,7 @@ using Spatial.Transformations.ProjNet;
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// The ground-distance (geodesic) buffer of ADR-0074: a working plane sized
+/// The ground-distance (geodesic) buffer of ADR-0075: a working plane sized
 /// by the work's own extent, reproducing a geodesic buffer within the
 /// tolerance the ADR states. The reference is a Vincenty inverse on WGS 84
 /// computed here, so the test does not trust the projection it is checking.

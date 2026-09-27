@@ -8,7 +8,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The related layer's own query, as <c>queryRelatedRecords</c> parses it
-/// (ADR-0074): the layer's <c>where</c>, field projection, geometry,
+/// (ADR-0077): the layer's <c>where</c>, field projection, geometry,
 /// <c>spatialRel</c> and <c>outSR</c>, read through the same parser the
 /// per-layer <c>query</c> uses so the two agree on what a filter means. The
 /// parameters that address the <em>origin</em> layer

@@ -147,7 +147,7 @@ internal static class MapValidator
     }
 
     /// <summary>
-    /// Structural relationship validation (ADR-0074): every relationship
+    /// Structural relationship validation (ADR-0077): every relationship
     /// names a layer of this map, carries identifier-shaped column names and
     /// a name unique within its layer, and pairs the many-to-many
     /// cardinality with a join dataset and every other cardinality with
