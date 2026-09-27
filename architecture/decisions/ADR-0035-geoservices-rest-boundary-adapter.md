@@ -84,7 +84,7 @@ model — principles 1–2, plan §4.2).
 
 Geometry verbs the facade needs but the engine lacks (`generalize`,
 `union`, `difference`, `densify`, `convexHull`, `offset`, area/length,
-distance, relation, `simplify`-as-repair, …) are added to
+distance, relation, `simplify`, …) are added to
 `Spatial.PluginSdk` operation interfaces and implemented by
 `Spatial.Operations.NetTopologySuite`. The adapter contains no spatial
 algorithms (principle 1); it only maps protocol to verbs.

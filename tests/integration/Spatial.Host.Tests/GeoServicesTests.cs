@@ -1,8 +1,6 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Spatial.Client;
-using Spatial.Esri.Codec;
 
 namespace Spatial.Host.Tests;
 
@@ -92,25 +90,40 @@ public sealed class GeoServicesTests : IClassFixture<PostgisHostFactory>
     }
 
     [Fact]
-    public async Task Generalize_and_simplify_are_distinct_operations()
+    public async Task Simplify_generalizes_by_deviation_like_generalize_does()
     {
-        // A self-intersecting bow-tie: generalize (Douglas-Peucker) leaves the
-        // single invalid ring; simplify (repair) splits it into valid parts.
+        // A self-intersecting bow-tie: both names are generalization, so both
+        // keep one ring and neither repairs it. Topological repair is
+        // IGeometryProcessing.Repair and no Esri operation names it.
         const string bowTie = """{"rings":[[[0,0],[2,2],[2,0],[0,2],[0,0]]]}""";
 
         var generalized = await GetJsonAsync(
             $"{Root}/Geometry/GeometryServer/generalize?geometries=" + Uri.EscapeDataString($"[{bowTie}]") + "&maxDeviation=0&f=json");
-        var repaired = await GetJsonAsync(
-            $"{Root}/Geometry/GeometryServer/simplify?geometries=" + Uri.EscapeDataString($"[{bowTie}]") + "&f=json");
+        var simplified = await GetJsonAsync(
+            $"{Root}/Geometry/GeometryServer/simplify?geometries=" + Uri.EscapeDataString($"[{bowTie}]") + "&deviation=0.5&f=json");
 
-        var client = new SpatialClient(_client);
-        var original = EsriGeometryCodec.Decode(JsonDocument.Parse(bowTie).RootElement);
-        var repairedGeometry = EsriGeometryCodec.Decode(repaired.GetProperty("geometries")[0]);
-
-        Assert.False(await client.ValidateAsync(original));
-        Assert.True(await client.ValidateAsync(repairedGeometry));
         Assert.Equal(1, generalized.GetProperty("geometries")[0].GetProperty("rings").GetArrayLength());
-        Assert.Equal(2, repaired.GetProperty("geometries")[0].GetProperty("rings").GetArrayLength());
+        Assert.Equal(1, simplified.GetProperty("geometries")[0].GetProperty("rings").GetArrayLength());
+        Assert.Equal(4, simplified.GetProperty("geometries")[0].GetProperty("rings")[0].GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Simplify_without_a_tolerance_is_a_named_400()
+    {
+        // Spec §7.0.5: the tolerance is `deviation`, or `value` — one of
+        // them, never neither and never both. No tolerance means no
+        // generalization, so the request fails instead of guessing.
+        const string bowTie = """{"rings":[[[0,0],[2,2],[2,0],[0,2],[0,0]]]}""";
+
+        var missing = await _client.GetAsync(
+            $"{Root}/Geometry/GeometryServer/simplify?geometries=" + Uri.EscapeDataString($"[{bowTie}]") + "&f=json");
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.Contains("deviation", (await missing.Content.ReadAsStringAsync()), StringComparison.Ordinal);
+
+        var both = await _client.GetAsync(
+            $"{Root}/Geometry/GeometryServer/simplify?geometries=" + Uri.EscapeDataString($"[{bowTie}]") + "&deviation=1&value=1&f=json");
+        Assert.Equal(HttpStatusCode.BadRequest, both.StatusCode);
+        Assert.Contains("mutually exclusive", (await both.Content.ReadAsStringAsync()), StringComparison.Ordinal);
     }
 
     [Fact]

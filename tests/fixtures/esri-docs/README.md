@@ -122,5 +122,10 @@ read-only catalog (ingest is the write path).
   Follow-up: `eng/tasks add` alias task (filed by T-064).
 - `buffer` vertices differ from Esri (NTS quadrant segmentation vs PE);
   the replay pins structure + area/length semantics, not vertex equality.
-- `generalize` is Douglas-Peucker and `simplify` is topological repair —
-  never the same verb (GeometryService docs); the fixtures pin that split.
+- `simplify` is generalization like `generalize`, parameterised by
+  `deviation` (or, mutually exclusively, `value`) rather than by
+  `maxDeviation`; the engine serves the same Douglas-Peucker verb under both
+  names. The recorded `simplify-bowtie` request omits the tolerance and Esri
+  answers it with a topological repair, so the fixture replays that request
+  verbatim and pins the engine's honest `invalid.arguments` reject instead of
+  mapping repair onto an operation whose name says generalization.
