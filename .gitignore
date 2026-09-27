@@ -59,3 +59,14 @@ playwright-report/
 *.tasks.db-shm
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Beads / Dolt files (added by bd init)
+# .beads/ is already ignored above; the embedded Dolt store lives inside it.
+.dolt/
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
+
+# Python bytecode (tools/ scripts and their tests)
+__pycache__/
+*.py[co]
