@@ -29,7 +29,7 @@ internal static class FeatureQueryEngine
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
         var matches = await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, operations, relations, scheme), cancellationToken);
-        return Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
+        return Project(dataset, matches, query, layerCrs, transforms, operations, cancellationToken);
     }
 
     /// <summary>
@@ -45,6 +45,7 @@ internal static class FeatureQueryEngine
         EsriFeatureQuery query,
         CoordinateReference? layerCrs,
         ICoordinateTransforms transforms,
+        IGeometryOperations operations,
         CancellationToken cancellationToken)
     {
         var ordered = FeatureOrdering.Apply([.. matches], FeatureOrdering.Compile(dataset, query));
@@ -80,7 +81,7 @@ internal static class FeatureQueryEngine
 
         var page = FeaturePaging.Page(ordered, query);
         var features = page.Items
-            .Select(item => FeatureProjection.TransformFeature(item, query, layerCrs, transforms, cancellationToken))
+            .Select(item => FeatureProjection.TransformFeature(item, query, layerCrs, transforms, operations, cancellationToken))
             .ToArray();
         return FeatureResponseWriter.WriteFeatures(dataset, layerCrs, query, features, page.Exceeded, page.NextToken);
     }

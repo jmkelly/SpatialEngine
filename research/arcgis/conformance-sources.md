@@ -126,7 +126,7 @@ It covers the happy path of each verb, not the parameter surface below.
 | `objectIds` | supported | — |
 | `spatialRel` (8 relations) | partial: 2 of 8 accepted | T7b |
 | `outStatistics`/`groupByFieldsForStatistics`/`having` | explicitly rejected 400 | T4 |
-| `quantizationParameters` | silently ignored | T8 |
+| `quantizationParameters` | served (ADR-0079) | T8 |
 | dates: epoch-ms attributes | supported; `time` param + date where-literals rejected/unsupported | T7 |
 | `f=json` | supported; `f=pjson`/`geojson`/`html`/`pbf*` rejected 400 | T1, T2, T15 |
 | MapServer `export`/`identify`/`find` | served; `identify` ignores `layerDefs` | T11 |
@@ -275,6 +275,12 @@ with pointer). Follow-up tasks must land the red test before the fix.
   in `src/`; full-precision coordinates are returned as if requested.
 - Effort: **M** to implement, **S** to explicitly reject. Red test first;
   rejecting silently-wrong output is the acceptable minimal fix.
+- Resolved (SpatialEngine-u2x.3, ADR-0079): all three are served.
+  `quantizationParameters` snaps x/y/z/m to the view grid anchored on the
+  extent, `maxAllowableOffset` is honoured as a deviation allowance through
+  `IGeometryOperations.Generalize`, and `geometryPrecision` was already
+  rounding. The `supportsQuantization` capability flag (§1.2) is still not
+  emitted by the layer metadata, so the REST JS gate stays false.
 
 ### T9. Silent-ignore audit: `sqlFormat`, `resultType`, `gdbVersion`, `historicMoment`, `datumTransformation`, `returnCentroid`, `distance`/`units`, `relationParam`, `text` (serve)
 - Request: each of `…/0/query?sqlFormat=standard`, `?resultType=tile`,

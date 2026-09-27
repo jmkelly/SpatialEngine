@@ -21,9 +21,10 @@ and bounds as raster entries (ADR-0046/0070).
 | `Buffer` | geometry, distance, optional quadrantSegments (default 8) | geometry | OGC buffer; negative erodes |
 | `Intersection` | left, right | geometry | disjoint inputs succeed with empty result |
 | `Validate` | geometry | bool | invalid geometry = successful `false`, never a failure |
-| `Simplify` | geometry, tolerance | geometry | Douglas-Peucker; zero returns unchanged |
+| `Simplify` | geometry, tolerance | geometry | Douglas-Peucker; the tolerance is an algorithm parameter, so it may empty a small ring |
+| `Generalize` | geometry, maxDisplacement | geometry | Douglas-Peucker at a deviation *allowance* (ADR-0079): returns input vertices only, keeps every input vertex within the allowance, and returns the input unchanged when the allowance cannot be spent without changing the geometry's kind (or is zero) |
 
-All four: **pure, cancellable** (`CancellationToken`, honoured before the
+All five: **pure, cancellable** (`CancellationToken`, honoured before the
 algorithm runs). Geometry crosses as Base64 SGEOM — never JSON geometry.
 NTS adapter notes: open rings closed before processing (core does not
 require closure); algorithms are planar (computed results are XY; simplify

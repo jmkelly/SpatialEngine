@@ -8,8 +8,8 @@ namespace Spatial.Host.Tests;
 /// T-023: remaining spatialRel predicates + quantization/geometryPrecision policy.
 /// Points (cities) against envelope queries: Within/Intersects find Berlin,
 /// Contains (point contains envelope) is empty, Overlaps/Crosses are false
-/// for point-vs-polygon, Touches needs a boundary case. Quantization is an
-/// honest 400; geometryPrecision rounds; maxAllowableOffset is accepted.
+/// for point-vs-polygon, Touches needs a boundary case. Quantization
+/// quantizes; geometryPrecision rounds; maxAllowableOffset is honoured.
 /// </summary>
 public sealed class GeoServicesSpatialRelTests : IClassFixture<PostgisHostFactory>
 {
@@ -80,12 +80,16 @@ public sealed class GeoServicesSpatialRelTests : IClassFixture<PostgisHostFactor
     }
 
     [Fact]
-    public async Task Quantization_is_honestly_rejected()
+    public async Task Quantization_returns_a_quantized_geometry()
     {
         var quantization = Uri.EscapeDataString("""{"mode":"view","originPosition":"upperLeft","tolerance":1.09,"extent":{"xmin":0,"ymin":0,"xmax":10,"ymax":10}}""");
-        var error = await GetErrorAsync($"{Cities}/query?where=1%3D1&returnGeometry=true&quantizationParameters={quantization}&f=json");
-        Assert.Equal(400, error.GetProperty("code").GetInt32());
-        Assert.Contains("quantizationParameters", error.GetProperty("message").GetString());
+        var result = await GetJsonAsync($"{Cities}/query?where=" + Uri.EscapeDataString("name = 'Berlin'") + $"&quantizationParameters={quantization}&f=json");
+
+        var geometry = result.GetProperty("features")[0].GetProperty("geometry");
+        // Berlin is 13.405/52.52; the grid is anchored on the view extent, so
+        // x snaps to the 12th step of 1.09 and y to the 39th step below 10.
+        Assert.Equal(12 * 1.09, geometry.GetProperty("x").GetDouble(), 6);
+        Assert.Equal(10 + (39 * 1.09), geometry.GetProperty("y").GetDouble(), 6);
     }
 
     [Fact]
@@ -98,9 +102,19 @@ public sealed class GeoServicesSpatialRelTests : IClassFixture<PostgisHostFactor
     }
 
     [Fact]
-    public async Task Max_allowable_offset_is_accepted()
+    public async Task Max_allowable_offset_is_honoured_and_zero_is_full_precision()
     {
-        var result = await GetJsonAsync($"{Cities}/query?where=" + Uri.EscapeDataString("name = 'Berlin'") + "&maxAllowableOffset=10&f=json");
-        Assert.Single(result.GetProperty("features").EnumerateArray());
+        var full = await GetJsonAsync($"{Cities}/query?where=" + Uri.EscapeDataString("name = 'Berlin'") + "&f=json");
+        var zero = await GetJsonAsync($"{Cities}/query?where=" + Uri.EscapeDataString("name = 'Berlin'") + "&maxAllowableOffset=0&f=json");
+        var wide = await GetJsonAsync($"{Cities}/query?where=" + Uri.EscapeDataString("name = 'Berlin'") + "&maxAllowableOffset=1000&f=json");
+
+        // The demo layer's city points are single vertices, so the allowance
+        // has nothing to spend: the response is the stored point either way,
+        // which is what "deviate by at most n" promises. The polygon path is
+        // pinned by the adapter unit tests.
+        Assert.Equal(
+            full.GetProperty("features")[0].GetProperty("geometry").GetProperty("x").GetDouble(),
+            zero.GetProperty("features")[0].GetProperty("geometry").GetProperty("x").GetDouble());
+        Assert.Single(wide.GetProperty("features").EnumerateArray());
     }
 }
