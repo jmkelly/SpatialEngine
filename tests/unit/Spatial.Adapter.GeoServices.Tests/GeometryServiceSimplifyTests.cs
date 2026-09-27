@@ -29,7 +29,8 @@ public sealed class GeometryServiceSimplifyTests
         new NtsGeometryProcessing(),
         new NtsGeometryRelations(),
         new ProjNetTransforms(),
-        new ProjNetTransforms());
+        new ProjNetTransforms(),
+        new ProjNetGeodesicBuffering(Operations, new NtsGeometryProcessing()));
 
     /// <summary>The reproduction: a thousand-vertex ring generalized by five units.</summary>
     private const int VertexCount = 1000;
