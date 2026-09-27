@@ -7,12 +7,29 @@ beads queue is the only queue.
 """
 import json
 import sqlite3
+import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-DB = sys.argv[1] if len(sys.argv) > 1 else \
-    "/home/james/Projects/SpatialEngine/.git/spatial-tasks/tasks.db"
-OUT = sys.argv[2] if len(sys.argv) > 2 else "/tmp/spatial-tasks.jsonl"
+
+def default_db_path(cwd=None):
+    """Locate the old queue via the repo's git common dir.
+
+    AGENTS.md puts the queue in the git common dir (`.beads/`'s equivalent)
+    so every worktree shares one copy. A worktree's own `.git` is a file, not a
+    directory, so resolve through git rather than assuming a layout.
+    """
+    result = subprocess.run(
+        ["git", "rev-parse", "--git-common-dir"],
+        cwd=cwd, check=True, capture_output=True, text=True)
+    common = Path(result.stdout.strip())
+    # git reports a relative path (".git") inside the repo itself and an
+    # absolute one from a linked worktree, so anchor it to the repo we asked
+    # about rather than to this process's cwd.
+    if not common.is_absolute():
+        common = Path(cwd or Path.cwd()) / common
+    return common.resolve() / "spatial-tasks" / "tasks.db"
 
 # spatial-tasks: 1..5 with 1 = most urgent.
 # beads: 0..4 with 0 = critical, 4 = lowest.
@@ -53,13 +70,18 @@ def ts(value):
         return None
 
 
-def main():
-    conn = sqlite3.connect(DB)
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    db = Path(argv[0]) if len(argv) > 0 else default_db_path()
+    out_path = Path(argv[1]) if len(argv) > 1 else Path(
+        "/tmp/spatial-tasks.jsonl")
+
+    conn = sqlite3.connect(db)
     conn.row_factory = sqlite3.Row
     tasks = conn.execute("select * from tasks order by seq").fetchall()
 
     known = {t["id"] for t in tasks}
-    out = []
+    issues_out = []
     skipped_deps = []
 
     for t in tasks:
@@ -134,19 +156,21 @@ def main():
         if deps:
             issue["dependencies"] = deps
 
-        out.append(issue)
+        issues_out.append(issue)
 
-    with open(OUT, "w") as fh:
-        for rec in out:
+    with out_path.open("w") as fh:
+        for rec in issues_out:
             fh.write(json.dumps(rec) + "\n")
 
-    edges = sum(len(r.get("dependencies", ())) for r in out)
-    print(f"wrote {len(out)} records to {OUT}")
-    print(f"  issues:      {len(out)}")
-    print(f"  deps:        {edges}")
-    if skipped_deps:
-        print(f"  SKIPPED deps pointing at unknown ids: {skipped_deps}")
+    return issues_out, skipped_deps, db, out_path
 
 
 if __name__ == "__main__":
-    main()
+    issues_out, skipped_deps, db, out_path = main()
+    edges = sum(len(r.get("dependencies", ())) for r in issues_out)
+    print(f"read {db}")
+    print(f"wrote {len(issues_out)} records to {out_path}")
+    print(f"  issues:      {len(issues_out)}")
+    print(f"  deps:        {edges}")
+    if skipped_deps:
+        print(f"  SKIPPED deps pointing at unknown ids: {skipped_deps}")
