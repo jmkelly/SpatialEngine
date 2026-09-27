@@ -74,13 +74,35 @@ stores and maps across the engine (`IStoreRegistry`, `IMapRegistry`).
 Esri-protocol catalog concepts keep Esri's `Catalog` spelling
 (`GeoServicesCatalog`, raster catalog items) — both spellings are deliberate.
 
+**The feature query plan (ADR-0074, decided, not yet implemented).** The
+feature read becomes a plan value, `Spatial.Core.Features.Query.FeatureQuery`:
+identity restriction, a `Predicate` tree over `FieldRef`/`Literal`, an
+optional `BoundingBox`, a projection field list, an `Order` (with the store
+appending the identity tie-break so paging is stable), `Limit`/`Offset` and an
+optional opaque `Cursor`; the read returns
+`FeatureQueryPage(Batches, NextCursor, TotalCount?)` where a null
+`TotalCount` means "not computed". Reductions are an additive
+`IFeatureAggregateStore` face (`CountAsync`/`DistinctAsync`/`AggregateAsync`),
+the ADR-0033 optional-capability pattern, so a store without it still answers
+reads correctly. Pushdown is per-conjunct and best-effort: a provider pushes
+what its dialect can express and evaluates the residual in memory, so a valid
+plan is never refused for a dialect gap and the result always equals
+evaluating the plan over the whole dataset. The one filter text in the system
+is the published `filter` query parameter on `GET /api/features/query`, parsed
+once at the boundary into a `Predicate`; the per-provider filter lexers,
+parsers and SQL builders are retired, and the Esri `where` grammar compiles to
+the same tree instead of evaluating features. The plan's spatial component
+stays the `BoundingBox` pre-filter: the DE-9IM `spatialRel` verbs remain an
+adapter-side verb (ADR-0036). Predicate *evaluation* is implementation code
+and never enters `Spatial.Core`.
+
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |
 | `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns) |
 | `CreateAsync` | dataset id, **sample batch**, SRID | table from batch schema; geometry column at SRID |
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
-| `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering |
+| `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering. **ADR-0074 decides** that this becomes one core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`, with reductions (count/distinct/aggregate) on an additive `IFeatureAggregateStore` face; not yet implemented — see the ADR-0074 note below |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face, implemented by PostGIS only (ADR-0038) |

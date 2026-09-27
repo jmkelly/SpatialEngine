@@ -18,6 +18,10 @@ Microsoft DI — keyed services where two stores serve one contract:
 - `IFeatureLookup` keyed `"memory"`, `"postgis"` and `"sqlserver"`
   (ADR-0038/0072); the demo and ArcGIS REST stores do not implement it and
   callers fall back to the scan.
+- `IFeatureAggregateStore` is the reduction face of the query plan
+  (ADR-0074): keyed by whichever stores implement it, absent for the rest,
+  and callers compute the reduction over the returned page. Not yet
+  implemented.
 - `ITransactionStore` keyed `"memory"`, `"postgis"` and `"sqlserver"`; the
   demo and ArcGIS stores are read-only.
 - `IDatasetIngest` and `IFeatureAttachmentStore` keyed `"memory"`,
