@@ -182,8 +182,9 @@ composition (ADR-0033) allows a new route group / module without touching
    subset or reject it.
 3. **CRS identity (ADR-0009):** Esri WKIDs are not EPSG codes
    (spec example uses **102113**, Web Mercator; modern Esri uses 102100;
-   EPSG is 3857). The curated catalogue is 15 EPSG CRSs and no WKT. A
-   facade needs a WKID↔EPSG map (and a WKT decision).
+   EPSG is 3857). The catalogue is a set of enumerated EPSG CRSs plus the
+   generated UTM families, and there is no WKT input. A facade needs a
+   WKID↔EPSG map (and a WKT decision).
 
 The plan already positions ArcGIS REST as a **provider** (§5 architecture
 diagram), i.e. the consume direction is the one the architecture
