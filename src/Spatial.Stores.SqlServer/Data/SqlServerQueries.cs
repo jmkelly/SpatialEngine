@@ -37,13 +37,15 @@ internal static class SqlServerQueries
     /// A single tuple carries <c>TOP 1</c> (the primary-key predicate is
     /// already unique); a batch has no limit because each tuple matches at
     /// most one row. Both the identity columns and the dataset identifier are
-    /// discovered identifiers, never client text.
+    /// discovered identifiers, never client text, and the rest of a query plan
+    /// (ADR-0074) is <c>AND</c>ed onto the same statement.
     /// </summary>
     public static string SelectByIdentity(
         SqlServerDatasetName dataset,
         IFeatureSchema schema,
         IReadOnlyList<string> identityColumns,
-        int count)
+        int count,
+        string? predicate = null)
     {
         var limit = count == 1 ? "TOP 1 " : string.Empty;
         var builder = new StringBuilder($"SELECT {limit}{SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE ");
@@ -59,7 +61,7 @@ internal static class SqlServerQueries
                 .Append(')');
         }
 
-        return builder.ToString();
+        return predicate is null ? builder.ToString() : builder.Append(" AND (").Append(predicate).Append(')').ToString();
     }
 
     /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry as WKB).</summary>

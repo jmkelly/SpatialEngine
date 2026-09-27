@@ -65,7 +65,7 @@ public sealed class WorldCitiesLazinessTests
         var store = new DemoStore();
 
         var scanned = await store.ScanAsync("demo.points");
-        var queried = await store.QueryAsync("demo.points", new BoundingBox(-5, -4, -5, -4));
+        var queried = await store.QueryAsync("demo.points", new FeatureQuery(BoundingBox: new BoundingBox(-5, -4, -5, -4)));
 
         Assert.Equal(loadedBefore, WorldCities.IsLoaded);
         Assert.Equal(110, scanned.SelectMany(batch => batch.Features).Count());
@@ -79,7 +79,7 @@ public sealed class WorldCitiesLazinessTests
         var stopwatch = Stopwatch.StartNew();
 
         await store.ListAsync();
-        await store.QueryAsync("demo.points", new BoundingBox(-5, -4, -5, -4));
+        await store.QueryAsync("demo.points", new FeatureQuery(BoundingBox: new BoundingBox(-5, -4, -5, -4)));
 
         stopwatch.Stop();
         Assert.True(

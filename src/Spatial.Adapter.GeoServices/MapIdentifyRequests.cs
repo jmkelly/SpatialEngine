@@ -2,6 +2,7 @@ using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
+using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices;
 
@@ -29,7 +30,7 @@ internal sealed record IdentifyServices(IFeatureStore Store, IGeometryOperations
 
 /// <summary>The per-request identify selection: layer filters, the buffered query geometry and its result shape.</summary>
 internal sealed record IdentifyQuery(
-    IReadOnlyDictionary<int, string>? LayerDefs,
+    IReadOnlyDictionary<int, EsriWhere>? LayerDefs,
     IReadOnlyDictionary<int, MapTimeExtent>? Times,
     IGeometry QueryGeometry,
     CoordinateReference? IdentifyCrs,

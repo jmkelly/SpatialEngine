@@ -3,6 +3,8 @@ using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 
+using Spatial.Core.Features.Query;
+
 namespace Spatial.Rendering.Skia.Tests;
 
 /// <summary>An identity transform, so placement is a no-op when CRS agree.</summary>
@@ -80,17 +82,17 @@ internal sealed class FakeStore(FeatureSchema schema, params Feature[] features)
 {
     public BoundingBox? LastBbox { get; private set; }
 
-    public string? LastFilter { get; private set; }
+    public Predicate? LastWhere { get; private set; }
 
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
     public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        LastBbox = bbox;
-        LastFilter = filter;
+        LastBbox = query.BoundingBox;
+        LastWhere = query.Where;
         IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(schema, features)];
         return Task.FromResult(batches);
     }

@@ -18,7 +18,7 @@ namespace Spatial.Adapter.GeoServices;
 /// </list>
 /// Anything else (quantile/natural-breaks methods, multi-field unique values)
 /// is a typed <c>invalid.arguments</c>, never a silent fallback. The scan
-/// honours <c>where</c> (the shared <see cref="EsriFilterClause"/> grammar)
+/// honours <c>where</c> (the shared <see cref="EsriWhere"/> grammar)
 /// and cancellation. This is the single <c>generateRenderer</c>
 /// implementation for map-service layers; the feature write-model track
 /// (T-038) must reuse it rather than duplicate it.
@@ -102,14 +102,14 @@ internal static class MapGenerateRenderer
         return new ClassificationDefinition(type.GetString()!, root);
     }
 
-    private static EsriFilterClause? ParseWhere(string? where)
+    private static EsriWhere? ParseWhere(string? where)
     {
         if (string.IsNullOrWhiteSpace(where) || string.Equals(where.Trim(), "1=1", StringComparison.Ordinal))
         {
             return null;
         }
 
-        if (!EsriFilterClause.TryParse(where, out var clause, out var error))
+        if (!EsriWhere.TryParse(where, out var clause, out var error))
         {
             throw GeoServicesErrors.Invalid($"The 'where' parameter is not supported: {error}");
         }
@@ -121,7 +121,7 @@ internal static class MapGenerateRenderer
         IFeatureStore store,
         DatasetDescription dataset,
         ClassificationDefinition definition,
-        EsriFilterClause? filter,
+        EsriWhere? filter,
         CancellationToken cancellationToken)
     {
         var field = RequiredString(definition.Root, "classificationField", definition.RawType);
@@ -171,7 +171,7 @@ internal static class MapGenerateRenderer
         IFeatureStore store,
         DatasetDescription dataset,
         ClassificationDefinition definition,
-        EsriFilterClause? filter,
+        EsriWhere? filter,
         CancellationToken cancellationToken)
     {
         var field = RequireSingleUniqueField(definition.Root);
@@ -230,7 +230,7 @@ internal static class MapGenerateRenderer
         IFeatureStore store,
         DatasetDescription dataset,
         int index,
-        EsriFilterClause? filter,
+        EsriWhere? filter,
         string field,
         CancellationToken cancellationToken)
     {
@@ -253,7 +253,7 @@ internal static class MapGenerateRenderer
         return values;
     }
 
-    private static bool MatchesFilter(Feature feature, long ordinal, EsriObjectIdScheme scheme, EsriFilterClause? filter, int index) =>
+    private static bool MatchesFilter(Feature feature, long ordinal, EsriObjectIdScheme scheme, EsriWhere? filter, int index) =>
         Matches(feature, ordinal, scheme, filter) && !feature[index].IsNull;
 
     private static double StatisticNumber(AttributeValue value, string field) => value.Kind switch
@@ -268,7 +268,7 @@ internal static class MapGenerateRenderer
         IFeatureStore store,
         DatasetDescription dataset,
         int index,
-        EsriFilterClause? filter,
+        EsriWhere? filter,
         CancellationToken cancellationToken)
     {
         var values = new HashSet<string>(StringComparer.Ordinal);
@@ -294,7 +294,7 @@ internal static class MapGenerateRenderer
         return [.. values];
     }
 
-    private static bool Matches(Feature feature, long ordinal, EsriObjectIdScheme scheme, EsriFilterClause? filter)
+    private static bool Matches(Feature feature, long ordinal, EsriObjectIdScheme scheme, EsriWhere? filter)
     {
         if (filter is null)
         {
@@ -307,7 +307,7 @@ internal static class MapGenerateRenderer
                 "The identity column of the layer is not an integer.");
         }
 
-        return filter.Matches(feature, new EsriSyntheticField(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId)));
+        return EsriPredicateEvaluator.Matches(filter.Predicate, feature, new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId)));
     }
 
     private static int FieldIndex(DatasetDescription dataset, string field)

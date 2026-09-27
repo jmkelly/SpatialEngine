@@ -140,7 +140,7 @@ internal static class FeatureRelationshipTargets
         foreach (var batch in await store.ScanAsync(description.Id, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            rows.AddRange(batch.Features.Where(feature => term.Matches(feature)));
+            rows.AddRange(batch.Features.Where(feature => EsriPredicateEvaluator.Matches(term.Predicate, feature)));
         }
 
         return new JoinRows(description, store, rows);

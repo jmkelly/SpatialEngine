@@ -181,7 +181,7 @@ public sealed class FeatureEditEngineTests
     {
         var table = new FakeTable();
         var store = new FakeStore(table);
-        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        Assert.True(EsriWhere.TryParse("name = 'Berlin'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
         var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
@@ -238,7 +238,7 @@ public sealed class FeatureEditEngineTests
     {
         var table = new FakeTable();
         var store = new SimpleStore(table);
-        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        Assert.True(EsriWhere.TryParse("name = 'Berlin'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
         var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
@@ -256,7 +256,7 @@ public sealed class FeatureEditEngineTests
     {
         var table = new FakeTable();
         var store = new FakeStore(table);
-        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        Assert.True(EsriWhere.TryParse("name = 'Berlin'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
         var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
@@ -273,7 +273,7 @@ public sealed class FeatureEditEngineTests
         var table = new FakeTable();
         using var cancelled = new CancellationTokenSource();
         var store = new FakeStore(table) { OnScan = () => cancelled.Cancel() };
-        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        Assert.True(EsriWhere.TryParse("name = 'Berlin'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
@@ -290,7 +290,7 @@ public sealed class FeatureEditEngineTests
     {
         var table = new FakeTable();
         var store = new FakeStore(table);
-        Assert.True(EsriFilterClause.TryParse("name = 'Nowhere'", out var where, out var error), error);
+        Assert.True(EsriWhere.TryParse("name = 'Nowhere'", out var where, out var error), error);
         var request = new EsriEditRequest([], [], [], where, false);
 
         var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
@@ -624,7 +624,7 @@ public sealed class FeatureEditEngineTests
             return Task.FromResult(batches);
         }
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
             ScanAsync(dataset, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
@@ -768,7 +768,7 @@ public sealed class FeatureEditEngineTests
             return Task.FromResult(batches);
         }
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
             ScanAsync(dataset, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)

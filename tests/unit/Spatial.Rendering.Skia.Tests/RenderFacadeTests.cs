@@ -1,5 +1,6 @@
 using SkiaSharp;
 using Spatial.Contracts;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Rendering.Skia.Tests;
@@ -47,12 +48,15 @@ public sealed class RenderFacadeTests
         var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
         var request = Request(store) with
         {
-            Layers = [new MapLayerSource("demo.cities", store, new FakeCatalogue(4326), "name='London'")],
+            Layers = [new MapLayerSource("demo.cities", store, new FakeCatalogue(4326), FeatureFilter.Parse("name = 'London'"))],
         };
 
         await renderer.RenderAsync(request);
 
-        Assert.Equal("name='London'", store.LastFilter);
+        var pushed = Assert.IsType<Predicate.Compare>(store.LastWhere);
+        Assert.Equal(new FieldRef("name"), pushed.Field);
+        Assert.Equal(ComparisonOperator.Equals, pushed.Operator);
+        Assert.Equal(Literal.FromText("London"), pushed.Value);
     }
 
     [Fact]

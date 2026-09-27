@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Spatial.Contracts;
+using Spatial.Esri.Codec;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
 
@@ -24,14 +25,14 @@ internal static class MapRenderEngine
     /// <c>time</c> extent (T-040) when the layer honours time.
     /// </summary>
     public static IReadOnlyList<MapLayerSource> Sources(
-        IStoreRegistry stores, string store, IReadOnlyList<PublishedLayer> layers, IReadOnlyDictionary<int, string>? layerDefs,
+        IStoreRegistry stores, string store, IReadOnlyList<PublishedLayer> layers, IReadOnlyDictionary<int, EsriWhere>? definitions,
         IReadOnlyDictionary<int, MapTimeExtent>? times = null)
     {
         var features = stores.Features(store);
         var catalogue = stores.Catalogue(store);
         return layers
             .Select(layer => new MapLayerSource(
-                layer.Dataset, features, catalogue, layerDefs?.GetValueOrDefault(layer.Id), times?.GetValueOrDefault(layer.Id)))
+                layer.Dataset, features, catalogue, definitions?.GetValueOrDefault(layer.Id)?.Predicate, times?.GetValueOrDefault(layer.Id)))
             .ToArray();
     }
 

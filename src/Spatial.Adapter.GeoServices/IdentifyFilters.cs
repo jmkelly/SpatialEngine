@@ -23,7 +23,7 @@ internal static class IdentifyFilters
     public static bool MatchesFilters(
         EsriObjectIdScheme? scheme,
         DatasetDescription dataset,
-        EsriFilterClause? definition,
+        EsriWhere? definition,
         Feature feature,
         long ordinal,
         MapTimeExtent? extent)
@@ -43,21 +43,11 @@ internal static class IdentifyFilters
     }
 
     /// <summary>
-    /// Parses one layer's <c>layerDefs</c> clause. The clause was validated
-    /// when the <c>layerDefs</c> object parsed, so its re-rendered form always
-    /// parses; a failure here is still typed rather than silent.
-    /// </summary>
-    public static EsriFilterClause ParseLayerDef(int layerId, string where) =>
-        EsriFilterClause.TryParse(where, out var clause, out var error) && clause is not null
-            ? clause
-            : throw GeoServicesErrors.Invalid($"'layerDefs' clause for layer {layerId} is not supported: {error}.");
-
-    /// <summary>
     /// Applies one layer's definition to a feature, resolving the synthetic
     /// <c>OBJECTID</c> exactly as the query path does.
     /// </summary>
     public static bool MatchesDefinition(
-        EsriObjectIdScheme scheme, DatasetDescription dataset, EsriFilterClause definition, Feature feature, long ordinal)
+        EsriObjectIdScheme scheme, DatasetDescription dataset, EsriWhere definition, Feature feature, long ordinal)
     {
         if (!scheme.TryResolve(feature, ordinal, out var objectId))
         {
@@ -65,6 +55,6 @@ internal static class IdentifyFilters
                 $"The identity column of layer '{dataset.Id}' is not an integer.");
         }
 
-        return definition.Matches(feature, new EsriSyntheticField(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId)));
+        return EsriPredicateEvaluator.Matches(definition.Predicate, feature, new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId)));
     }
 }

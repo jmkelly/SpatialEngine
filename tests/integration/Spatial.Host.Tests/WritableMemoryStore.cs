@@ -71,10 +71,11 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatur
         }
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
         lock (_gate)
         {
+            var bbox = query.BoundingBox;
             var features = bbox is null
                 ? _features
                 : _features.Where(feature => Intersects(feature, bbox)).ToList();
@@ -278,8 +279,8 @@ public sealed class ScanOnlyMemoryStore : IFeatureStore, ITransactionStore
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         _store.ScanAsync(dataset, cancellationToken);
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
-        _store.QueryAsync(dataset, bbox, filter, cancellationToken);
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        _store.QueryAsync(dataset, query, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
         _store.WriteAsync(dataset, batch, transaction, cancellationToken);

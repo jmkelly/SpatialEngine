@@ -121,7 +121,7 @@ public sealed class DemoStoreTests
     [Fact]
     public async Task The_world_cities_query_filters_by_bounding_box()
     {
-        var batches = await _store.QueryAsync("demo.world_cities", new BoundingBox(-74.1, 40.7, -74.0, 40.8));
+        var batches = await _store.QueryAsync("demo.world_cities", new FeatureQuery(BoundingBox: new BoundingBox(-74.1, 40.7, -74.0, 40.8)));
 
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         Assert.Contains(features, feature => feature.Id.Value == "wd-5128581");
@@ -155,7 +155,7 @@ public sealed class DemoStoreTests
     [Fact]
     public async Task The_query_filters_by_bounding_box()
     {
-        var batches = await _store.QueryAsync("demo.points", new BoundingBox(-5, -4, -5, -4));
+        var batches = await _store.QueryAsync("demo.points", new FeatureQuery(BoundingBox: new BoundingBox(-5, -4, -5, -4)));
 
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         Assert.Single(features);
@@ -163,10 +163,33 @@ public sealed class DemoStoreTests
     }
 
     [Fact]
-    public async Task Attribute_filters_are_rejected()
+    public async Task The_query_filters_by_attribute_predicate()
+    {
+        // ADR-0074: the demo store has no SQL to push down to, so it evaluates
+        // the plan over its generated catalogue.
+        var batches = await _store.QueryAsync("demo.points", new FeatureQuery(Where: FeatureFilter.Parse("value > 0")));
+
+        var features = batches.SelectMany(batch => batch.Features).ToArray();
+        Assert.NotEmpty(features);
+        Assert.All(features, feature => Assert.True(feature["value"].DoubleValue > 0));
+    }
+
+    [Fact]
+    public async Task A_bounding_box_and_a_predicate_narrow_together()
+    {
+        var batches = await _store.QueryAsync("demo.points", new FeatureQuery(
+            BoundingBox: new BoundingBox(-5, -4, -5, -4),
+            Where: FeatureFilter.Parse("value > -100")));
+
+        var features = batches.SelectMany(batch => batch.Features).ToArray();
+        Assert.Equal("point-000", Assert.Single(features).Id.Value);
+    }
+
+    [Fact]
+    public async Task A_predicate_on_an_unknown_field_is_invalid_arguments()
     {
         var exception = await Assert.ThrowsAsync<SpatialException>(() =>
-            _store.QueryAsync("demo.points", null, "value > 1"));
+            _store.QueryAsync("demo.points", new FeatureQuery(Where: FeatureFilter.Parse("mystery = 1"))));
 
         Assert.Equal(SpatialException.InvalidArguments, exception.Code);
     }

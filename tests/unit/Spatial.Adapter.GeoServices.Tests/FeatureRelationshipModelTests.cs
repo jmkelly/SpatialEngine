@@ -163,8 +163,8 @@ public sealed class FeatureRelationshipModelTests
 
         var clause = FeatureRelationshipKeys.Parse(FeatureRelationshipKeys.Equality("parent_id", feature[0])!);
 
-        Assert.True(clause.Matches(feature));
-        Assert.False(clause.Matches(new Feature(new FeatureId("2"), schema, [AttributeValue.FromInt64(7), AttributeValue.FromString("other")])));
+        Assert.True(EsriPredicateEvaluator.Matches(clause.Predicate, feature));
+        Assert.False(EsriPredicateEvaluator.Matches(clause.Predicate, new Feature(new FeatureId("2"), schema, [AttributeValue.FromInt64(7), AttributeValue.FromString("other")])));
     }
 
     [Fact]

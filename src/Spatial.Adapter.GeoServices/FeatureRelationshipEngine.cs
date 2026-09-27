@@ -133,7 +133,7 @@ internal static class FeatureRelationshipEngine
     /// its join rows name for a many-to-many one. An origin record the join
     /// does not reach answers the constant false term, never every record.
     /// </summary>
-    private static async Task<EsriFilterClause> KeyTermAsync(
+    private static async Task<EsriWhere> KeyTermAsync(
         Traversal traversal, Feature originFeature, AttributeValue key)
     {
         var relationship = traversal.Target.Relationship;

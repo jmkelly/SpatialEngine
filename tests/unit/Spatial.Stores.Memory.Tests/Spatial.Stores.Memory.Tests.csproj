@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\conformance\Spatial.PredicateConformance\Spatial.PredicateConformance.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
   </ItemGroup>

@@ -80,17 +80,27 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
 
     /// <inheritdoc />
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
-        QueryAsync(dataset, bbox: null, filter: null, cancellationToken);
+        QueryAsync(dataset, FeatureQuery.All, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         var layerId = ArcGisRestMapper.ParseLayerId(dataset);
         using var metadata = await GetJsonAsync(LayerUrl(layerId), [], cancellationToken);
         var description = ArcGisRestMapper.Describe(layerId, metadata.RootElement);
-        var where = ArcGisRestMapper.RenderWhere(filter);
-        var features = await FetchAllAsync(description, bbox, where, ArcGisRestMapper.PageSize(metadata.RootElement), cancellationToken);
+        if (query.Ids is { Count: > 0 })
+        {
+            // Rejected by name rather than ignored: the remote read is a
+            // where-clause query, and an identity restriction is a different
+            // remote request this store does not make.
+            throw SpatialException.BadArguments(
+                "The ArcGIS REST store does not support the identity restriction of a feature query plan; query the remote layer's own objectIds instead.");
+        }
+
+        var where = ArcGisRestMapper.RenderWhere(query.Where);
+        var features = await FetchAllAsync(description, query.BoundingBox, where, ArcGisRestMapper.PageSize(metadata.RootElement), cancellationToken);
         return [new FeatureBatch(description.Schema, features)];
     }
 

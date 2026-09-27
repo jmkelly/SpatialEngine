@@ -77,22 +77,63 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
     }
 
     public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
-        if (filter is not null)
-        {
-            throw SpatialException.BadArguments("The in-memory store supports bbox queries only; attribute filters are not supported.");
-        }
-
         return Task.FromResult(_catalog.WithLock<IReadOnlyList<FeatureBatch>>(() =>
         {
             var found = _catalog.Find(dataset);
-            var features = bbox is null
-                ? found.Features
-                : found.Features.Where(feature => Intersects(found, feature, bbox)).ToList();
-            return Page(found, features);
+            return Page(found, Select(found, query));
         }));
+    }
+
+    /// <summary>
+    /// The features a plan selects, in dataset order: the identity
+    /// restriction, the bounding-box pre-filter and the attribute predicate
+    /// (ADR-0074 §4). The predicate's fields are resolved against the dataset
+    /// schema once, so an unknown column is a typed invalid-argument failure
+    /// before any feature is read.
+    /// </summary>
+    private static List<Feature> Select(MemoryDataset dataset, FeatureQuery query)
+    {
+        var indexes = query.Where is null
+            ? []
+            : query.Where.Fields().Select(field => Resolve(dataset, field.Name)).ToArray();
+
+        IEnumerable<Feature> features = dataset.Features;
+        if (query.Ids is { Count: > 0 })
+        {
+            var wanted = new HashSet<FeatureId>(query.Ids);
+            features = features.Where(feature => wanted.Contains(feature.Id));
+        }
+
+        if (query.BoundingBox is { } bbox)
+        {
+            features = features.Where(feature => Intersects(dataset, feature, bbox));
+        }
+
+        if (query.Where is not null)
+        {
+            var predicate = query.Where;
+            features = features.Where(feature => MemoryPredicate.Matches(predicate, feature));
+        }
+
+        return features.ToList();
+    }
+
+    /// <summary>The attribute index of a filter field, or a typed invalid-argument failure naming the available fields.</summary>
+    private static int Resolve(MemoryDataset dataset, string field)
+    {
+        var index = dataset.Schema.IndexOf(field);
+        if (index < 0)
+        {
+            var fields = string.Join(", ", dataset.Schema.Fields.Select(known => $"'{known.Name}'"));
+            throw SpatialException.BadArguments(
+                $"The filter column '{field}' is not a field of this dataset; available fields: {fields}.");
+        }
+
+        return index;
     }
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)

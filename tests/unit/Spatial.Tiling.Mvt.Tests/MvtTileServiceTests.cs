@@ -117,7 +117,7 @@ public sealed class MvtTileServiceTests
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<string> CreateAsync(string dataset, FeatureBatch sample, int srid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<FeatureBatch>>(
                 [.. _features.Select(feature => new FeatureBatch(feature.Schema, [feature]))]);
     }
