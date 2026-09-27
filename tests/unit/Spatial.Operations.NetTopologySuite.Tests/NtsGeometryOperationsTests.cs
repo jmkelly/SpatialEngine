@@ -178,6 +178,95 @@ public sealed class NtsGeometryOperationsTests
     }
 
     [Fact]
+    public void Generalize_keeps_every_input_vertex_within_the_allowance_and_drops_vertices()
+    {
+        var circle = RingCircle(1000, 180);
+
+        var generalized = Assert.IsType<Polygon>(_operations.Generalize(circle, 10));
+
+        Assert.True(generalized.ExteriorRing.Sequence.Count < circle.ExteriorRing.Sequence.Count);
+        for (var i = 0; i < circle.ExteriorRing.Sequence.Count; i++)
+        {
+            var vertex = circle.ExteriorRing.Sequence.GetCoordinate(i);
+            Assert.True(Deviation(generalized, vertex) <= 10, $"the vertex at index {i} is {Deviation(generalized, vertex)} away, over the 10 allowed.");
+        }
+    }
+
+    [Fact]
+    public void Generalize_only_returns_vertices_of_the_input()
+    {
+        var zigzag = GeometryFactory.CreateLineString(
+            [new Coordinate(0, 0), new Coordinate(1, 1), new Coordinate(2, 0), new Coordinate(3, 1), new Coordinate(4, 0)]);
+
+        var generalized = Assert.IsType<LineString>(_operations.Generalize(zigzag, 0.5));
+
+        var input = new HashSet<Coordinate>();
+        for (var i = 0; i < zigzag.Sequence.Count; i++)
+        {
+            input.Add(zigzag.Sequence.GetCoordinate(i));
+        }
+
+        for (var i = 0; i < generalized.Sequence.Count; i++)
+        {
+            Assert.Contains(generalized.Sequence.GetCoordinate(i), input);
+        }
+    }
+
+    [Fact]
+    public void A_zero_allowance_returns_the_input_untouched()
+    {
+        var circle = RingCircle(1000, 180);
+
+        var generalized = _operations.Generalize(circle, 0);
+
+        Assert.Same(circle, generalized);
+    }
+
+    [Fact]
+    public void An_allowance_wider_than_the_geometry_keeps_its_kind()
+    {
+        var square = RingSquare(-1, -1, 1, 1);
+
+        // Douglas-Peucker alone empties this ring; the allowance is a
+        // ceiling, so the feature keeps its geometry.
+        Assert.True(_operations.Simplify(square, 100).IsEmpty);
+
+        var generalized = _operations.Generalize(square, 100);
+
+        Assert.Same(square, generalized);
+    }
+
+    [Fact]
+    public void A_negative_generalize_allowance_is_invalid()
+    {
+        var exception = Assert.Throws<SpatialException>(() =>
+            _operations.Generalize(GeometryFactory.CreatePoint(0, 0), -0.5));
+
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("non-negative", exception.Message);
+    }
+
+    [Fact]
+    public void A_non_finite_generalize_allowance_is_invalid()
+    {
+        var exception = Assert.Throws<SpatialException>(() =>
+            _operations.Generalize(GeometryFactory.CreatePoint(0, 0), double.PositiveInfinity));
+
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("finite", exception.Message);
+    }
+
+    [Fact]
+    public void A_cancelled_generalize_throws_operation_cancelled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            _operations.Generalize(RingCircle(1000, 180), 10, cts.Token));
+    }
+
+    [Fact]
     public void A_cancelled_call_throws_operation_cancelled()
     {
         using var cts = new CancellationTokenSource();
@@ -242,4 +331,42 @@ public sealed class NtsGeometryOperationsTests
     private static Polygon Bowtie() =>
         GeometryFactory.CreatePolygon(
             [new Coordinate(0, 0), new Coordinate(1, 1), new Coordinate(0, 1), new Coordinate(1, 0), new Coordinate(0, 0)]);
+
+    /// <summary>A closed circle of <paramref name="segments"/> chords, so the input is dense.</summary>
+    private static Polygon RingCircle(double radius, int segments)
+    {
+        var ring = new Coordinate[segments + 1];
+        for (var i = 0; i < ring.Length; i++)
+        {
+            var radians = 2 * Math.PI * i / segments;
+            ring[i] = new Coordinate(radius * Math.Cos(radians), radius * Math.Sin(radians));
+        }
+
+        return GeometryFactory.CreatePolygon(GeometryFactory.CreateLineString(ring));
+    }
+
+    /// <summary>The planar distance from a point to the nearest segment of a polygon's rings.</summary>
+    private static double Deviation(Polygon polygon, Coordinate point)
+    {
+        var closest = double.MaxValue;
+        foreach (var ring in new[] { polygon.ExteriorRing }.Concat(polygon.InteriorRings))
+        {
+            for (var i = 0; i + 1 < ring.Sequence.Count; i++)
+            {
+                var start = ring.Sequence.GetCoordinate(i);
+                var end = ring.Sequence.GetCoordinate(i + 1);
+                var dx = end.X - start.X;
+                var dy = end.Y - start.Y;
+                var lengthSquared = (dx * dx) + (dy * dy);
+                var t = lengthSquared <= 0
+                    ? 0
+                    : Math.Clamp((((point.X - start.X) * dx) + ((point.Y - start.Y) * dy)) / lengthSquared, 0, 1);
+                var gapX = point.X - (start.X + (t * dx));
+                var gapY = point.Y - (start.Y + (t * dy));
+                closest = Math.Min(closest, Math.Sqrt((gapX * gapX) + (gapY * gapY)));
+            }
+        }
+
+        return closest;
+    }
 }

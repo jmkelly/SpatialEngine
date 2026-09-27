@@ -30,6 +30,7 @@ internal sealed record EsriFeatureQuery(
     int? MaxRecordCountFactor,
     int? GeometryPrecision,
     double? MaxAllowableOffset,
+    EsriQuantization? Quantization,
     EsriTimeExtent? Time,
     bool ReturnEnvelope,
     CoordinateReference? DefaultSr,
@@ -93,9 +94,9 @@ internal sealed record EsriFeatureQuery(
         var defaultSr = EsriValueParser.ParseSpatialReference(parameters.Get("defaultSR"));
         var inSr = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         var maxRecordCountFactor = ParseMaxRecordCountFactor(parameters.Get("maxRecordCountFactor"));
-        RejectQuantization(parameters);
         var geometryPrecision = ParseGeometryPrecision(parameters.Get("geometryPrecision"));
         var maxAllowableOffset = ParseMaxAllowableOffset(parameters.Get("maxAllowableOffset"));
+        var quantization = EsriQuantization.Parse(parameters.Get("quantizationParameters"));
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
@@ -118,6 +119,7 @@ internal sealed record EsriFeatureQuery(
             maxRecordCountFactor,
             geometryPrecision,
             maxAllowableOffset,
+            quantization,
             ParseTime(parameters.Get("time")),
             parameters.GetBool("returnEnvelope", false),
             defaultSr,
@@ -614,14 +616,6 @@ internal sealed record EsriFeatureQuery(
         }
 
         return factor;
-    }
-
-    private static void RejectQuantization(EsriRequestParameters parameters)
-    {
-        if (parameters.Has("quantizationParameters"))
-        {
-            throw GeoServicesErrors.Invalid("The 'quantizationParameters' parameter is not supported: quantized responses are not served; request full-precision geometries.");
-        }
     }
 
     private static int? ParseGeometryPrecision(string? value)

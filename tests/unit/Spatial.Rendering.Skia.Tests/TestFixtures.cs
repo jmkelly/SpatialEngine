@@ -56,6 +56,8 @@ internal sealed class FakeOperations : IGeometryOperations
         SimplifyCalls++;
         return geometry;
     }
+
+    public IGeometry Generalize(IGeometry geometry, double maxDisplacement, CancellationToken cancellationToken = default) => geometry;
 }
 
 /// <summary>An imagery service that records the composite request.</summary>

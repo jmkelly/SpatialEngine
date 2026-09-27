@@ -305,9 +305,11 @@ Ordered by dependency:
   "degenerate" and rejected it only as a containment). `Intersects` stays the
   non-empty intersection and `esriSpatialRelEnvelopeIntersects` stays the
   envelope test. `esriSpatialRelIndexIntersects` stays rejected with a named
-  alternative. `quantizationParameters` is honestly rejected,
-  `geometryPrecision` rounds every ordinate, `maxAllowableOffset` is
-  accepted (full precision returned) (T-023).
+  alternative. `quantizationParameters` now snaps every ordinate (x, y, z
+  and m) to the view grid and spends the rest of the budget on the same
+  generalization verb, `geometryPrecision` rounds every ordinate, and
+  `maxAllowableOffset` is honoured as a deviation allowance rather than
+  accepted and ignored (T-023, T8, ADR-0075).
 - Consume status update: the ArcGIS REST provider sends
   `orderByFields=<objectIdField>` on every paged query for a stable paging
   sequence; the ImageServer operation surface is pinned by reconnaissance tests
@@ -363,9 +365,13 @@ is rejected by name (never silently ignored) and named here with its reason:
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.
-- `quantizationParameters` responses (T8): quantized output is not served;
-  honestly rejected, while `geometryPrecision` (rounds every ordinate) and
-  `maxAllowableOffset` (accepted, full precision returned) are honoured.
+- `quantizationParameters`/`maxAllowableOffset` (T8): no longer a non-goal.
+  Both are served through `IGeometryOperations.Generalize`, the verb that
+  states a deviation allowance rather than an algorithm tolerance
+  (ADR-0075): the response stays within the allowance, keeps its geometry
+  kind even when the allowance is wider than the feature, and is
+  byte-identical to full precision at an allowance of zero. An unservable
+  `mode` or `originPosition` is still rejected by name.
 - Full-text `text`, `sqlFormat`, `resultType`, `gdbVersion`,
   `historicMoment`, `datumTransformation`, `returnCentroid`,
   `distance`/`units`, `relationParam`, `returnTrueCurves`,

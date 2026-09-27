@@ -75,8 +75,9 @@ internal static class FeatureService
         long objectId,
         EsriFeatureQuery query,
         ICoordinateTransforms transforms,
+        IGeometryOperations operations,
         CancellationToken cancellationToken) =>
-        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, transforms, cancellationToken);
+        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, transforms, operations, cancellationToken);
 
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
     public static Task<IResult> EditsAsync(FeatureEditEngine.EditInvocation invocation, CancellationToken cancellationToken) =>

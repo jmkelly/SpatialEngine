@@ -11,6 +11,20 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **A deviation allowance is its own geometry verb** (ADR-0075,
+  SpatialEngine-u2x.3): the Feature Service `query` now honours
+  `maxAllowableOffset` instead of accepting it and returning full precision,
+  and serves `quantizationParameters` instead of rejecting it by name. Both
+  go through the new `IGeometryOperations.Generalize`, which states how far
+  the answer may be from the true geometry rather than how coarsely the
+  algorithm should thin it: every returned vertex is a vertex of the input,
+  every input vertex stays within the allowance, and an allowance too wide to
+  spend without changing a feature's geometry kind returns the input
+  unchanged — so an offset of zero is byte-identical to full precision.
+  `quantizationParameters` snaps x, y, z and m to the view grid anchored on
+  the request's extent, then spends the rest of the budget on the same verb;
+  an unservable `mode` or `originPosition` is still rejected by name.
+
 - **Ground-distance buffering** (ADR-0074, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
