@@ -48,18 +48,24 @@ about its accuracy limits (below).
      compatibility check by construction.
 2. **The reference implementation is `Spatial.Transformations.ProjNet`
    (provider `projnet@1`)** on ProjNet 2.1.0, with a private adapter and a
-   curated embedded EPSG catalogue of twelve common CRSs (WGS 84, ETRS89,
-   NAD83, OSGB36, RGF93; Web Mercator, five UTM zones, British National
-   Grid, Lambert-93). The catalogue is **built programmatically** through
-   ProjNet's factory, not parsed from EPSG WKT: ProjNet 2.1's WKT reader
-   maps the "Popular Visualisation Pseudo-Mercator" projection class to a
-   plain Mercator_1SP, which distorts Web Mercator northings by ~33 km.
+   embedded EPSG catalogue: the common geographic and projected CRSs
+   written out (WGS 84, ETRS89, NAD83, OSGB36, RGF93; Web Mercator,
+   British National Grid, Lambert-93) plus projected **families** generated
+   from one parameter template — the UTM grid over all sixty zones in both
+   hemispheres (EPSG 32601-32660 and 32701-32760) and the ETRS89 and NAD83
+   UTM bands over their own datums. Generating the families is what makes
+   "the code the client actually has" servable: enumerating instances left
+   every zone but the listed ones an `invalid.arguments` failure. The
+   catalogue is **built programmatically** through ProjNet's factory, not
+   parsed from EPSG WKT: ProjNet 2.1's WKT reader maps the "Popular
+   Visualisation Pseudo-Mercator" projection class to a plain Mercator_1SP,
+   which distorts Web Mercator northings by ~33 km.
 3. **Axis order**: the engine convention is x-first for every CRS — x is
    longitude for geographic, easting for projected, y the second axis.
    Describe reports the CRS's declared axes; the adapter needs no swaps.
 4. **Errors** are `invalid.arguments` naming the value: missing, malformed or
-   unknown CRS identities (the catalogue serves only its documented EPSG
-   subset), a source argument conflicting with the geometry's own CRS, and
+   unknown CRS identities (the catalogue serves its documented CRSs and the
+   generated UTM families, nothing else), a source argument conflicting with the geometry's own CRS, and
    transformed coordinates outside the target CRS's valid area (a non-finite
    result is an actionable error, never poisoned geometry). Anything else is
    a provider failure. Both capabilities are inline, cancellable, pure.

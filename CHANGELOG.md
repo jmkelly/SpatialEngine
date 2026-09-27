@@ -24,6 +24,18 @@ this file together, then tag the release (`RELEASING.md`).
   projected `bufferSR`; `unionResults=true` dissolves the per-input buffers
   into one geometry. The projected-`bufferSR` planar path is unchanged and
   remains the exact answer inside a valid zone.
+- **UTM zone families in the built-in CRS catalogue** (ADR-0027,
+  SpatialEngine-u2x.6): the catalogue now *generates* the projected families
+  it used to enumerate by hand — the UTM grid over all sixty zones in both
+  hemispheres (EPSG 32601-32660 and 32701-32760) plus the ETRS89 and NAD83
+  UTM bands over their own datums — from one Transverse Mercator parameter
+  template. `Describe` and `Transform` therefore succeed for any UTM zone
+  instead of failing with `invalid.arguments` outside the seven zones that
+  were typed out. A generated zone is byte-identical to the hand-written row
+  it replaces (the served coordinates of all fifteen pre-existing codes are
+  pinned to the last bit), the catalogue is still built once with each CRS
+  built on first use, and the ProjNet Pseudo-Mercator workaround is
+  untouched.
 
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and
