@@ -36,6 +36,20 @@ this file together, then tag the release (`RELEASING.md`).
   pinned to the last bit), the catalogue is still built once with each CRS
   built on first use, and the ProjNet Pseudo-Mercator workaround is
   untouched.
+- **Relationships are declared, traversed and written**
+  (ADR-0074, SpatialEngine-u2x.22): a map layer now declares how its records
+  relate to another of the map's layers over two key columns
+  (`LayerRelationship`: one-to-one, one-to-many, or many-to-many through a
+  join dataset), validated structurally when the map is stored and against
+  the live schemas where the declaration happens. The declaring layer
+  advertises the relationship in its `relationships` metadata, the Feature
+  Service serves `queryRelatedRecords` over it (the related layer's own
+  `where`, `outFields`, `geometry`/`spatialRel`, `time` and `outSR` all
+  apply), and `relate`/`unrelate` move the same key behind the existing
+  admin-token edit gate, one result per origin/related pair. The
+  `geoservices-compatibility.md` §7.1 non-goal that listed
+  `queryRelatedRecords` (and, wrongly, attachments) as absent is now
+  corrected.
 
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and

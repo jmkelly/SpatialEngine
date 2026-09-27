@@ -23,6 +23,7 @@ internal static class MapValidator
     private static readonly Regex NamePattern = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
     private static readonly Regex DatasetPattern = new(@"^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$", RegexOptions.Compiled);
     private static readonly Regex RasterDatasetPattern = new(@"^[A-Za-z_][A-Za-z0-9_.\-]*$", RegexOptions.Compiled);
+    private static readonly Regex ColumnPattern = new(@"^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.Compiled);
 
     /// <summary>Validates and normalises a map, assigning any negative layer ids.</summary>
     public static Map Normalize(Map map, int nextLayerId)
@@ -31,6 +32,13 @@ internal static class MapValidator
         ValidateHeader(map);
         return map with { Layers = NormalizeLayers(map, nextLayerId) };
     }
+
+    /// <summary>
+    /// A relationship column is an ordinary attribute name: identifier-shaped
+    /// and nothing else, so a declaration can never smuggle SQL structure
+    /// into the closed where-grammar the traversal builds from it.
+    /// </summary>
+    internal static bool IsValidColumn(string? column) => column is not null && ColumnPattern.IsMatch(column);
 
     private static void ValidateHeader(Map map)
     {
@@ -118,6 +126,7 @@ internal static class MapValidator
         }
 
         RequireLayers(map, hasFeature, hasImage);
+        ValidateRelationships(map, layers);
         return layers;
     }
 
@@ -134,6 +143,110 @@ internal static class MapValidator
         {
             throw SpatialException.BadArguments(
                 $"Map '{map.Name}' enables the image service but has no image layer.");
+        }
+    }
+
+    /// <summary>
+    /// Structural relationship validation (ADR-0074): every relationship
+    /// names a layer of this map, carries identifier-shaped column names and
+    /// a name unique within its layer, and pairs the many-to-many
+    /// cardinality with a join dataset and every other cardinality with
+    /// none. The live schemas the columns must exist in are checked where a
+    /// declaration happens, against the catalogue (the stores are
+    /// providers, so the registry never opens one).
+    /// </summary>
+    private static void ValidateRelationships(Map map, IReadOnlyList<MapLayer> layers)
+    {
+        var byId = layers.ToDictionary(layer => layer.LayerId);
+        foreach (var layer in layers)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var relationship in layer.Relationships ?? [])
+            {
+                if (!NamePattern.IsMatch(relationship.Name ?? string.Empty))
+                {
+                    throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' has a relationship on layer {layer.LayerId} named '{relationship.Name}': expected a flat identifier [A-Za-z_][A-Za-z0-9_]*.");
+                }
+
+                if (!names.Add(relationship.Name!))
+                {
+                    throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' declares relationship '{relationship.Name}' more than once on layer {layer.LayerId}.");
+                }
+
+                if (layer.Kind != MapLayerKind.Feature)
+                {
+                    throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' relationship '{relationship.Name}' is declared on layer {layer.LayerId}, which is not a feature layer.");
+                }
+
+                if (!byId.TryGetValue(relationship.RelatedLayerId, out _))
+                {
+                    throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' relationship '{relationship.Name}' on layer {layer.LayerId} targets layer {relationship.RelatedLayerId}, which the map does not publish.");
+                }
+
+                if (byId[relationship.RelatedLayerId].Kind != MapLayerKind.Feature)
+                {
+                    throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' relationship '{relationship.Name}' on layer {layer.LayerId} targets layer {relationship.RelatedLayerId}, which is not a feature layer.");
+                }
+
+                foreach (var column in new[] { relationship.PrimaryKeyColumn, relationship.RelatedKeyColumn })
+                {
+                    if (!IsValidColumn(column))
+                    {
+                        throw SpatialException.BadArguments(
+                            $"Map '{map.Name}' relationship '{relationship.Name}' names column '{column}': expected an identifier [A-Za-z_][A-Za-z0-9_]*.");
+                    }
+                }
+
+                if (!Enum.IsDefined(relationship.Cardinality))
+                {
+                    throw SpatialException.BadArguments(
+                        $"Map '{map.Name}' relationship '{relationship.Name}' has unknown cardinality {relationship.Cardinality}.");
+                }
+
+                ValidateJoin(map, layer, relationship);
+            }
+        }
+    }
+
+    private static void ValidateJoin(Map map, MapLayer layer, LayerRelationship relationship)
+    {
+        var many = relationship.Cardinality == LayerRelationshipCardinality.ManyToMany;
+        if (many && relationship.Join is null)
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' relationship '{relationship.Name}' is many-to-many and needs a join dataset.");
+        }
+
+        if (!many)
+        {
+            if (relationship.Join is { } unexpected)
+            {
+                throw SpatialException.BadArguments(
+                    $"Map '{map.Name}' relationship '{relationship.Name}' is {relationship.Cardinality} and cannot name the join dataset '{unexpected.Dataset}'.");
+            }
+
+            return;
+        }
+
+        var join = relationship.Join!;
+        if (!DatasetPattern.IsMatch(join.Dataset ?? string.Empty))
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' relationship '{relationship.Name}' has join dataset '{join.Dataset}': expected schema.table with only [a-z0-9_].");
+        }
+
+        foreach (var column in new[] { join.PrimaryKeyColumn, join.RelatedKeyColumn })
+        {
+            if (!IsValidColumn(column))
+            {
+                throw SpatialException.BadArguments(
+                    $"Map '{map.Name}' relationship '{relationship.Name}' names join column '{column}': expected an identifier [A-Za-z_][A-Za-z0-9_]*.");
+            }
         }
     }
 

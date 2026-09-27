@@ -98,15 +98,23 @@ internal static class EsriLayerModel
     ];
 
     /// <summary>
-    /// Builds the full layer metadata (spec §9.1). Layers with a string-or-guid
+    /// One layer's full metadata (spec §9.1). Layers with a string-or-guid
     /// identity column advertise it as <c>uniqueIdField</c> (11.5+) so
     /// clients can discover up front the field <c>uniqueIds</c> /
     /// <c>returnUniqueIdsOnly</c> serve (T-036); every other layer omits it.
     /// A layer whose store exposes the attachment face advertises
     /// <c>hasAttachments</c> with its <c>attachmentProperties</c> (T-061,
     /// ADR-0066); every other layer reports <c>hasAttachments: false</c>.
+    /// A layer that declares relationships advertises them as
+    /// <c>relationships</c> (ADR-0074); every other layer omits the key.
     /// </summary>
-    public static EsriLayer Describe(int id, DatasetDescription dataset, bool editable, bool hasAttachments = false, bool isTable = false)
+    public static EsriLayer Describe(
+        int id,
+        DatasetDescription dataset,
+        bool editable,
+        bool hasAttachments = false,
+        bool isTable = false,
+        IReadOnlyList<EsriRelationship>? relationships = null)
     {
         var uniqueScheme = EsriUniqueIdScheme.For(dataset);
         EsriUniqueIdField? uniqueIdField = uniqueScheme is null
@@ -131,7 +139,8 @@ internal static class EsriLayerModel
             QueryCapabilities,
             uniqueIdField,
             HasAttachments: hasAttachments,
-            AttachmentProperties: hasAttachments ? AttachmentProperties : null);
+            AttachmentProperties: hasAttachments ? AttachmentProperties : null,
+            Relationships: relationships is { Count: > 0 } ? relationships : null);
     }
 
     /// <summary>The layer's Esri spatial reference, or null when the SRID is unknown to the map.</summary>
@@ -198,7 +207,17 @@ internal sealed record EsriLayer(
     EsriAdvancedQueryCapabilities AdvancedQueryCapabilities,
     EsriUniqueIdField? UniqueIdField = null,
     bool HasAttachments = false,
-    IReadOnlyList<EsriAttachmentProperty>? AttachmentProperties = null);
+    IReadOnlyList<EsriAttachmentProperty>? AttachmentProperties = null,
+    IReadOnlyList<EsriRelationship>? Relationships = null);
+
+/// <summary>
+/// One advertised relationship (spec §9.1 <c>relationships</c>, ADR-0074):
+/// the declared name, which doubles as the <c>id</c> clients address with
+/// <c>relationshipId</c> (the engine assigns no numeric relationship ids),
+/// the related layer's id, the display title and the Esri relationship-type
+/// constant the engine cardinality maps to.
+/// </summary>
+internal sealed record EsriRelationship(string Id, string Name, int RelatedLayerId, string Title, string Type);
 
 /// <summary>
 /// One advertised attachment field (spec §9.1 <c>attachmentProperties</c>):

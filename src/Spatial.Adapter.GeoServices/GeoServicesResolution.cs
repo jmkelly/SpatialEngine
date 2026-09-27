@@ -109,6 +109,40 @@ internal static class GeoServicesResolution
     internal static bool IsEditable(IStoreRegistry stores, string store) =>
         stores.EditStore(store) is not null;
 
+    /// <summary>
+    /// The relationships a published layer declares (ADR-0074). A
+    /// configuration-declared whole-store service publishes no declaration,
+    /// so it advertises none.
+    /// </summary>
+    internal static IReadOnlyList<LayerRelationship> Relationships(ResolvedService resolved, int layerId) =>
+        resolved.Layers?.FirstOrDefault(layer => layer.LayerId == layerId)?.Relationships ?? [];
+
+    /// <summary>
+    /// The store a published layer's records live in: its own override, else
+    /// the map's. A relationship that crosses a per-layer store override
+    /// resolves its related layer through the same rule.
+    /// </summary>
+    internal static string LayerStore(ResolvedService resolved, int layerId) =>
+        resolved.Layers?.FirstOrDefault(layer => layer.LayerId == layerId)?.Store ?? resolved.Store;
+
+    /// <summary>
+    /// The related layer a relationship points at: its store, its published
+    /// name and its catalogue description. An unknown layer id is
+    /// <c>not.found</c>, so a declaration can never traverse into nothing.
+    /// </summary>
+    internal static async Task<RelatedLayer> RelatedLayerAsync(
+        IStoreRegistry stores, ResolvedService resolved, LayerRelationship relationship, CancellationToken cancellationToken)
+    {
+        var layers = await ListLayersAsync(stores, resolved, cancellationToken);
+        var layer = layers.FirstOrDefault(candidate => candidate.Id == relationship.RelatedLayerId)
+            ?? throw GeoServicesErrors.NotFound(
+                $"Relationship '{relationship.Name}' targets layer {relationship.RelatedLayerId}, which this service does not publish.");
+        return new RelatedLayer(
+            LayerStore(resolved, layer.Id),
+            layer,
+            await stores.Catalogue(LayerStore(resolved, layer.Id)).DescribeAsync(layer.Dataset, cancellationToken));
+    }
+
     /// <summary>Whether the layer advertises attachments: the store exposes the blob face (T-061, ADR-0066).</summary>
     internal static bool HasAttachments(IStoreRegistry stores, string store) =>
         stores.AttachmentStore(store) is not null;
@@ -119,3 +153,6 @@ internal static class GeoServicesResolution
         return dot < 0 ? dataset : dataset[(dot + 1)..];
     }
 }
+
+/// <summary>The layer a relationship targets (ADR-0074): the store its records live in, its published identity and its catalogue description.</summary>
+internal sealed record RelatedLayer(string Store, PublishedLayer Layer, DatasetDescription Description);
