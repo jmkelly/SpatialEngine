@@ -49,8 +49,14 @@ internal static class FeatureService
     }
 
     /// <summary>Builds one layer's metadata (spec §9.1), advertising attachments exactly when the store serves them.</summary>
-    public static EsriLayer Layer(int layerId, DatasetDescription dataset, bool editable, bool isTable = false, bool hasAttachments = false) =>
-        EsriLayerModel.Describe(layerId, dataset, editable, hasAttachments, isTable);
+    public static EsriLayer Layer(
+        int layerId,
+        DatasetDescription dataset,
+        bool editable,
+        bool isTable = false,
+        bool hasAttachments = false,
+        IReadOnlyList<EsriRelationship>? relationships = null) =>
+        EsriLayerModel.Describe(layerId, dataset, editable, hasAttachments, isTable, relationships);
 
     /// <summary>Executes a query and writes the spec §9.1.4.3 response.</summary>
     public static Task<IResult> QueryAsync(

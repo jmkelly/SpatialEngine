@@ -45,6 +45,24 @@ internal sealed class EsriRequestParameters
     /// <summary>Whether the parameter was supplied (even with an empty value).</summary>
     public bool Has(string name) => _values.ContainsKey(name);
 
+    /// <summary>
+    /// The same parameters without the named ones. A resource that reuses the
+    /// query parser for a different layer than the one its own ids address —
+    /// <c>queryRelatedRecords</c> parses the related layer's query while its
+    /// <c>objectIds</c> name the origin layer's features (ADR-0074) — drops
+    /// the ids that no longer belong to the query it is about to parse.
+    /// </summary>
+    public EsriRequestParameters Without(params string[] names)
+    {
+        var values = new Dictionary<string, string>(_values, StringComparer.OrdinalIgnoreCase);
+        foreach (var name in names)
+        {
+            values.Remove(name);
+        }
+
+        return new EsriRequestParameters(values);
+    }
+
     /// <summary>A boolean parameter (<c>true</c>/<c>false</c>), or the fallback when absent.</summary>
     public bool GetBool(string name, bool fallback)
     {
