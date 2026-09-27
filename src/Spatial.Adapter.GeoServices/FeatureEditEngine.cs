@@ -14,7 +14,9 @@ namespace Spatial.Adapter.GeoServices;
 /// integer identity column and whose store implements
 /// <see cref="IFeatureEditStore"/> (ADR-0037); partial updates and per-object
 /// deletes resolve their targets through <see cref="IFeatureLookup"/> when the
-/// store provides it (ADR-0038). Split out of <see cref="FeatureService"/> so
+/// store provides it (ADR-0038); a <c>where</c> delete matches the dataset in
+/// one read and deletes the features that read already resolved, so it never
+/// reads them twice. Split out of <see cref="FeatureService"/> so
 /// the facade stays a thin per-operation surface (ADR-0040).
 /// </summary>
 internal static class FeatureEditEngine
@@ -214,12 +216,13 @@ internal static class FeatureEditEngine
     private static async Task<List<EsriEditResult>> DeleteRangeAsync(EditSession session, EsriEditRequest request)
     {
         session.ThrowIfCancelled();
-        var targetIds = request.Deletes;
-        if (request.DeleteWhere is { } where)
-        {
-            targetIds = await MatchIdsAsync(session, where);
-        }
+        return request.DeleteWhere is { } where
+            ? await DeleteMatchesAsync(session, where)
+            : await DeleteIdsAsync(session, request.Deletes);
+    }
 
+    private static async Task<List<EsriEditResult>> DeleteIdsAsync(EditSession session, IReadOnlyList<long> targetIds)
+    {
         var results = new EsriEditResult?[targetIds.Count];
         if (targetIds.Count == 0)
         {
@@ -252,10 +255,40 @@ internal static class FeatureEditEngine
         return Finalise(results);
     }
 
-    private static async Task<List<long>> MatchIdsAsync(EditSession session, EsriFilterClause where)
+    /// <summary>
+    /// Deletes the features a <c>where</c> clause matches. The match reads the
+    /// dataset and hands back the features themselves, so the delete never
+    /// reads them a second time: no <see cref="IFeatureLookup"/> round trip
+    /// over identities the scan already resolved, and no second full scan on
+    /// a store without the lookup face.
+    /// </summary>
+    private static async Task<List<EsriEditResult>> DeleteMatchesAsync(EditSession session, EsriFilterClause where)
+    {
+        var matched = await MatchAsync(session, where);
+        var results = new EsriEditResult?[matched.Count];
+        if (matched.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = new List<FeatureId>(matched.Count);
+        var positions = new List<int>(matched.Count);
+        for (var i = 0; i < matched.Count; i++)
+        {
+            ids.Add(matched[i].Id);
+            positions.Add(i);
+        }
+
+        var outcomes = await session.EditStore.DeleteAsync(session.Dataset.Id, ids, session.Transaction, session.CancellationToken);
+        ApplyOutcomes(outcomes, positions, results, session.Scheme);
+        return Finalise(results);
+    }
+
+    /// <summary>The features of the dataset a <c>where</c> clause matches, in scan order.</summary>
+    private static async Task<List<Feature>> MatchAsync(EditSession session, EsriFilterClause where)
     {
         var batches = await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken);
-        var ids = new List<long>();
+        var matched = new List<Feature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
@@ -268,11 +301,11 @@ internal static class FeatureEditEngine
 
             if (where.Matches(feature, new EsriSyntheticField(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId))))
             {
-                ids.Add(objectId);
+                matched.Add(feature);
             }
         }
 
-        return ids;
+        return matched;
     }
 
     private static async Task<Dictionary<long, Feature>> IndexAsync(EditSession session)
