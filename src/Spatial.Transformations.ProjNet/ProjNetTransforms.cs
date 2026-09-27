@@ -74,7 +74,7 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
                 math = MathTransforms.GetOrAdd(key, _ => Transformations.CreateFromCoordinateSystems(sourceSystem, targetSystem).MathTransform);
             }
 
-            return TransformGeometry(geometry, math, new CoordinateReference(targetIdentity.Authority, targetIdentity.Code));
+            return Apply(geometry, math, new CoordinateReference(targetIdentity.Authority, targetIdentity.Code));
         }
         catch (SpatialException)
         {
@@ -151,7 +151,14 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         [GeometryType.GeometryCollection] = (geometry => ((GeometryCollection)geometry).Geometries, (parts, crs) => new GeometryCollection(parts, crs)),
     };
 
-    private static IGeometry TransformGeometry(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
+    /// <summary>
+    /// Applies a math transform to every coordinate, preserving shapes, empty
+    /// geometries, layouts and Z/M ordinates, and stamping the target CRS.
+    /// Internal so the geodesic buffer (ADR-0074) can run the same
+    /// transformation over its own working plane, which is not a catalogue
+    /// CRS and so cannot go through <see cref="Transform"/>.
+    /// </summary>
+    internal static IGeometry Apply(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
     {
         if (geometry.IsEmpty)
         {
@@ -170,7 +177,7 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     private static IGeometry TransformComposite(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
     {
         var (parts, build) = Composites[geometry.Type];
-        var transformed = parts(geometry).Select(part => TransformGeometry(part, math, null)).ToArray();
+        var transformed = parts(geometry).Select(part => Apply(part, math, null)).ToArray();
         return build(transformed, target);
     }
 

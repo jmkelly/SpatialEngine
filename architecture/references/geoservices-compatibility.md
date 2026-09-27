@@ -68,7 +68,7 @@ engine is x-first for every CRS (`contracts.md`).
 | --- | --- | --- |
 | `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string |
 | `simplify` (topological repair; §7.0.5) | `Validate` only | **Missing** — engine has no MakeValid/repair |
-| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` | **Partial** — planar transform-then-buffer with `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances`, `quadrantSegments`; `geodesic`/`unionResults` honestly rejected, linear units need a projected buffer CRS |
+| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0074), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
 | `lengths` | — | Missing (same) |
 | `relation` (DE-9IM `relationParam`) | — | Missing |
@@ -84,7 +84,7 @@ engine is x-first for every CRS (`contracts.md`).
 | `difference` | — | Missing |
 | `intersect` | `Intersection` | **Partial** — `(array, geometry)` vs `(left, right)`; engine disjoint→empty (spec-compatible) |
 | `reshape` | — | Missing |
-| `union` | — | Missing (`Buffer.unionResults` is not the op) |
+| `union` | `IGeometryProcessing.Union` | **Present** — a single CRS for the inputs, as the operation assumes |
 
 **Semantic trap:** the engine's `Simplify` is Douglas-Peucker
 (`contracts.md`, `README.md`), which is GeoServices **`generalize`**.
@@ -94,11 +94,18 @@ produces the wrong result.
 
 **Buffer semantics trap:** GeoServices applies a `unit`, can buffer in a
 third CRS (`bufferSR`) and geodesically for points/multipoints in a
-geographic CRS. The engine buffer is planar transform-then-buffer: a
-`distances=1000` + `unit=9001` request against a 4326 geometry with a
-projected `bufferSR` reproduces the projected result, but a linear `unit`
-against a geographic buffer CRS stays rejected (no geodesic verb) and an
-angular `unit` buffers planar degrees.
+geographic CRS. The engine has both paths. A projected `bufferSR` reproduces
+the projected result exactly, and remains the answer when the extent is too
+large for a local plane. A linear `unit` against a geographic buffer CRS is
+a ground distance: it goes to `IGeodesicBuffering`, which reprojects onto a
+transverse Mercator working plane centred on the work and buffers there
+(ADR-0074). That is within **0.05% relative of the geodesic** for a working
+radius (input envelope half-diagonal plus the distance) up to **300 km**;
+past that the engine refuses with the radius, the limit and the remedy
+instead of answering with a shape it cannot stand behind. An angular `unit`
+still buffers planar degrees, and `geodesic=true` is refused there (the
+engine's ground-distance verb works in metres). `unionResults=true`
+dissolves the per-input buffers into one geometry.
 
 ## 3. Feature Service (spec §9)
 
@@ -228,6 +235,18 @@ Ordered by dependency:
 - Recorded Geometry Service non-goals: `offset`, `cut`, `reshape`,
   `trimExtend` and `autoComplete` have no engine verb; the facade rejects
   them with a typed `invalid.arguments` failure and does not advertise them.
+- Serving status update (ADR-0074, supersedes the T-044 note below):
+  `buffer` serves a **linear `unit` against a geographic buffer CRS** through
+  `IGeodesicBuffering` — reproject onto a local transverse Mercator, planar
+  buffer, project back — so the commonest request (`distances=1000&unit=9001`
+  against a 4326 geometry) no longer needs a projected `bufferSR`. Tolerance:
+  0.05% relative for a working radius up to 300 km; past that a typed
+  `invalid.arguments` failure naming the radius and the remedy.
+  `geodesic=true` is served on that path and refused by name against an
+  angular unit, no unit or a projected `bufferSR`. `unionResults=true`
+  dissolves the per-input buffers into one geometry. The planar path
+  (projected `bufferSR`, angular `unit`, no `unit`) is unchanged and remains
+  the exact answer inside a valid zone.
 - Serving status update (T-044): `buffer` honours `unit` (curated linear +
   angular code table, factors verified against the hosted service) with
   `bufferSR`/`outSR`/`inSR` chaining per spec §7.0.6 via

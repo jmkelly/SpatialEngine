@@ -46,6 +46,27 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `IGeometryProcessing` | `Densify` | segment length cap |
 | `IGeometryRelations` | `Relate` | DE-9IM intersection pattern |
 
+## Ground-distance buffering (`IGeodesicBuffering`, ProjNet)
+
+Added by ADR-0074 so a linear distance against a geographic CRS means
+metres on the ground rather than degrees on a plane. Pure and cancellable.
+
+| Method | Input | Output | Behaviour |
+| --- | --- | --- | --- |
+| `Buffer` | geometry, distance in **metres**, optional quadrantSegments (default 8) | geometry in the input's CRS | negative erodes; the geometry must carry a geographic CRS |
+
+- Reproject-and-buffer onto a local transverse Mercator (unit scale, centred
+  on the work, on the source's own datum), planar buffer, project back.
+  **Stated tolerance: 0.05% relative for a working radius (the part's
+  envelope half-diagonal plus the distance) up to 300 km**
+  (`WorkingRadiusLimitMetres`, `StatedRelativeTolerance`).
+- Past the limit, within 89° of a pole, without a CRS, or against a
+  projected CRS: `invalid.arguments` naming the reason. Never a silently
+  wrong shape.
+- Each part of a multi-part geometry gets its own plane, then the parts are
+  dissolved — so the tolerance follows the part's extent, not the
+  collection's.
+
 ## Transformations (`ICrsDirectory`, `ICoordinateTransforms`, ProjNet)
 
 | Method | Input | Output | Behaviour |

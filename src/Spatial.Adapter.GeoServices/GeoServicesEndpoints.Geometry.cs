@@ -17,10 +17,10 @@ internal static class GeometryServerEndpoints
         group.MapMethods("/Geometry/GeometryServer/{operation}", ["GET", "POST"], (
             HttpContext context, string operation, IGeometryOperations geometry, IGeometryMeasures measures,
             IGeometryProcessing processing, IGeometryRelations relations, ICoordinateTransforms transforms,
-            ICrsDirectory catalogue, CancellationToken cancellationToken) =>
+            ICrsDirectory catalogue, IGeodesicBuffering geodesicBuffers, CancellationToken cancellationToken) =>
             GeometryOperation(
                 context, operation,
-                new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms, catalogue),
+                new GeometryServiceCapabilities(geometry, measures, processing, relations, transforms, catalogue, geodesicBuffers),
                 cancellationToken));
     }
 

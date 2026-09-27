@@ -25,7 +25,8 @@ public sealed class GeometryServiceTests
         new NtsGeometryProcessing(),
         new NtsGeometryRelations(),
         Transforms,
-        Transforms);
+        Transforms,
+        new ProjNetGeodesicBuffering(Operations, new NtsGeometryProcessing()));
 
     private static async Task<EsriRequestParameters> ParamsAsync(params (string Key, string Value)[] values)
     {
@@ -231,14 +232,13 @@ public sealed class GeometryServiceTests
             ("distances", "1,2,3")));
     }
 
-    [Theory]
-    [InlineData("geodesic")]
-    public async Task Buffer_rejects_unsupported_modifiers(string name)
+    [Fact]
+    public async Task Buffer_rejects_a_non_boolean_modifier()
     {
         await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
             ("geometries", """[{"x":0,"y":0}]"""),
             ("distances", "1"),
-            (name, "x")));
+            ("geodesic", "perhaps")));
     }
 
     [Fact]
@@ -253,14 +253,40 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
-    public async Task Buffer_rejects_unionResults_true_by_name()
+    public async Task Buffer_serves_unionResults_true_as_one_dissolved_geometry()
+    {
+        // Two overlapping squares buffered and dissolved: the result array
+        // holds a single geometry, and it is a valid one.
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0},{"x":0.01,"y":0}]"""),
+            ("inSR", "4326"),
+            ("distances", "1"),
+            ("unit", "9102"),
+            ("unionResults", "true"));
+
+        var geometries = result.GetProperty("geometries");
+        Assert.Equal(1, geometries.GetArrayLength());
+        var rings = geometries[0].GetProperty("rings");
+        Assert.Equal(1, rings.GetArrayLength());
+
+        // The dissolved pair spans both 1-degree circles and no more, which
+        // is the whole claim: one geometry, not two, and not a bigger one.
+        var xs = rings[0].EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        var ys = rings[0].EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+        Assert.InRange(xs.Max() - xs.Min(), 2.005, 2.015);
+        Assert.InRange(ys.Max() - ys.Min(), 1.995, 2.005);
+    }
+
+    [Fact]
+    public async Task Buffer_rejects_unionResults_across_mixed_input_references()
     {
         var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
-            ("geometries", """[{"x":0,"y":0}]"""),
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}},{"x":0,"y":0,"spatialReference":{"wkid":4258}}]"""),
             ("distances", "1"),
+            ("unit", "9102"),
             ("unionResults", "true")));
 
-        Assert.Contains("unionResults", exception.Message);
+        Assert.Contains("unionResults", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -336,15 +362,155 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
-    public async Task Buffer_rejects_a_linear_unit_in_a_geographic_buffer_crs()
+    public async Task Buffer_serves_a_linear_unit_against_a_geographic_crs()
     {
-        // The planar engine cannot buffer metres in degrees (no geodesic
-        // verb): the caller must name a projected bufferSR.
-        await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+        // The shape of the request clients actually send: metres against a
+        // 4326 geometry, with no projected bufferSR to think of. 1000 m at
+        // the equator is about 0.009 degrees — a degree buffer would be
+        // 111 km, so the two cannot be confused.
+        var result = await DispatchAsync("buffer",
             ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
             ("inSR", "4326"),
             ("distances", "1000"),
+            ("unit", "9001"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var xs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        var ys = ring.EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+        Assert.Equal(4326, result.GetProperty("geometries")[0].GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        Assert.InRange(xs.Max() - xs.Min(), 0.017, 0.019);
+        Assert.InRange(ys.Max() - ys.Min(), 0.017, 0.019);
+    }
+
+    [Fact]
+    public async Task Buffer_serves_a_linear_unit_against_a_geographic_buffer_sr()
+    {
+        // Naming the geographic CRS as the buffer CRS is the same request
+        // said out loud; it must not fall back to a degree buffer.
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0}]"""),
+            ("bufferSR", "4326"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var ys = ring.EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+        Assert.InRange(ys.Max() - ys.Min(), 0.017, 0.019);
+    }
+
+    [Fact]
+    public async Task Buffer_serves_geodesic_true_with_a_linear_unit()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("distances", "1000"),
+            ("unit", "9001"),
+            ("geodesic", "true"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var ys = ring.EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+        Assert.InRange(ys.Max() - ys.Min(), 0.017, 0.019);
+    }
+
+    [Fact]
+    public async Task Buffer_returns_a_ground_distance_buffer_in_out_sr()
+    {
+        // The ground buffer happens in the geographic CRS and comes back
+        // projected, so outSR still means outSR.
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("outSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        var buffered = result.GetProperty("geometries")[0];
+        Assert.Equal(3857, buffered.GetProperty("spatialReference").GetProperty("wkid").GetInt32());
+        var ring = buffered.GetProperty("rings")[0];
+        var xs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        Assert.InRange(xs.Max() - xs.Min(), 1800.0, 2200.0);
+    }
+
+    [Fact]
+    public async Task Buffer_erodes_through_a_negative_distance_in_metres()
+    {
+        // A 0.2-degree square (about 22 km across at the equator) eroded by
+        // 5 km keeps a polygon whose edges have moved in by 5 km measured on
+        // the ground, which is 0.045 degrees and not the same thing.
+        var result = await DispatchAsync("buffer",
+            ("geometries", """{"rings":[[[-0.1,-0.1],[0.1,-0.1],[0.1,0.1],[-0.1,0.1],[-0.1,-0.1]]],"spatialReference":{"wkid":4326}}"""),
+            ("inSR", "4326"),
+            ("distances", "-5000"),
+            ("unit", "9001"));
+
+        var ring = result.GetProperty("geometries")[0].GetProperty("rings")[0];
+        var xs = ring.EnumerateArray().Select(point => point[0].GetDouble()).ToArray();
+        var ys = ring.EnumerateArray().Select(point => point[1].GetDouble()).ToArray();
+        Assert.InRange(xs.Max() - xs.Min(), 0.108, 0.112);
+        Assert.InRange(ys.Max() - ys.Min(), 0.108, 0.112);
+    }
+
+    [Fact]
+    public async Task Buffer_buffers_a_distance_per_geometry_in_metres()
+    {
+        var result = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0},{"x":0,"y":0}]"""),
+            ("inSR", "4326"),
+            ("distances", "1000,2000"),
+            ("unit", "9001"));
+
+        var geometries = result.GetProperty("geometries");
+        var first = geometries[0].GetProperty("rings")[0].EnumerateArray()
+            .Select(point => point[1].GetDouble()).ToArray();
+        var second = geometries[1].GetProperty("rings")[0].EnumerateArray()
+            .Select(point => point[1].GetDouble()).ToArray();
+        Assert.InRange(first.Max() - first.Min(), 0.017, 0.019);
+        Assert.InRange(second.Max() - second.Min(), 0.035, 0.037);
+    }
+
+    [Fact]
+    public async Task Buffer_refuses_a_ground_buffer_past_the_stated_tolerance()
+    {
+        // A small feature buffered by 500 km would not hold the stated 0.05%
+        // tolerance, so the engine says why instead of answering wrongly.
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("distances", "500000"),
             ("unit", "9001")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("bufferSR", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Buffer_rejects_geodesic_true_with_an_angular_unit()
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("distances", "1"),
+            ("unit", "9102"),
+            ("geodesic", "true")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("linear 'unit'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Buffer_rejects_geodesic_true_with_a_projected_buffer_sr()
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("bufferSR", "3857"),
+            ("distances", "1000"),
+            ("unit", "9001"),
+            ("geodesic", "true")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("projected", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
