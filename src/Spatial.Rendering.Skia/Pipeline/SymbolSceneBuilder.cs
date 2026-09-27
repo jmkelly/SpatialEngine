@@ -24,15 +24,14 @@ internal sealed class SymbolSceneBuilder
         _operations = operations;
     }
 
-    public SceneLayer Build(
-        DrawLayer layer, LayerFeatures features, RasterViewport viewport, SymbolPaint symbol, CancellationToken cancellationToken)
+    public SceneLayer Build(DrawLayer layer, LayerDraw draw)
     {
-        var candidates = Candidates(layer, features);
+        var candidates = Candidates(layer, draw);
         var symbols = new List<SymbolFeature>(candidates.Count);
         foreach (var (feature, geometry) in candidates)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (Resolve(symbol.Options, feature, geometry, features, viewport, cancellationToken) is { } resolved)
+            draw.Token.ThrowIfCancellationRequested();
+            if (Resolve(layer, feature, geometry, draw) is { } resolved)
             {
                 symbols.Add(resolved);
             }
@@ -41,12 +40,13 @@ internal sealed class SymbolSceneBuilder
         return new SceneLayer(layer, []) { Symbols = symbols };
     }
 
-    private static List<(IFeature Feature, IGeometry Geometry)> Candidates(DrawLayer layer, LayerFeatures features)
+    private static List<(IFeature Feature, IGeometry Geometry)> Candidates(DrawLayer layer, LayerDraw draw)
     {
         var candidates = new List<(IFeature Feature, IGeometry Geometry)>();
-        foreach (var feature in features.Features)
+        foreach (var feature in draw.Features.Features)
         {
-            if (layer.Filter.Matches(feature) && FeatureGeometry(feature, features.GeometryColumn) is { } geometry)
+            if (FeatureGeometry(feature, draw.Features.GeometryColumn) is { } geometry
+                && layer.Filter.Matches(draw.Scopes.For(feature, geometry)))
             {
                 candidates.Add((feature, geometry));
             }
@@ -56,23 +56,26 @@ internal sealed class SymbolSceneBuilder
         return candidates;
     }
 
-    private SymbolFeature? Resolve(
-        SymbolOptions options,
-        IFeature feature,
-        IGeometry geometry,
-        LayerFeatures features,
-        RasterViewport viewport,
-        CancellationToken cancellationToken)
+    private SymbolFeature? Resolve(DrawLayer layer, IFeature feature, IGeometry geometry, LayerDraw draw)
     {
-        var placed = GeometryPipeline.Place(geometry, features, viewport, _transforms, _operations, cancellationToken);
-        if (GeometryPipeline.SimplifyAndCull(placed, 0, viewport.Bounds, _operations, cancellationToken) is not { } shaped)
+        var placed = GeometryPipeline.Place(geometry, draw.Features, draw.Viewport, _transforms, _operations, draw.Token);
+        if (GeometryPipeline.SimplifyAndCull(placed, 0, draw.Viewport.Bounds, _operations, draw.Token) is not { } shaped)
         {
             return null;
         }
 
-        var text = SymbolTemplateResolver.Resolve(options.TextField, feature);
-        var icon = options.IconImage is { } template ? SymbolTemplateResolver.Resolve(template, feature) : null;
-        return text is not null || icon is not null ? new SymbolFeature(shaped, text, icon) : null;
+        var symbol = (SymbolPaint)layer.Paint;
+        var text = SymbolTemplateResolver.Resolve(symbol.Options.TextField, feature);
+        var icon = symbol.Options.IconImage is { } template ? SymbolTemplateResolver.Resolve(template, feature) : null;
+        if (text is null && icon is null)
+        {
+            return null;
+        }
+
+        var options = symbol.Expressions is null
+            ? null
+            : ((SymbolPaint)symbol.Resolve(draw.Scopes.For(feature, geometry))).Options;
+        return new SymbolFeature(shaped, text, icon) { Options = options };
     }
 
     private static IGeometry? FeatureGeometry(IFeature feature, string column)

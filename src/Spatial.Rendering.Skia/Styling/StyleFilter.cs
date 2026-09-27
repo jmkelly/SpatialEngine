@@ -14,6 +14,12 @@ internal abstract record StyleFilter
 
     public abstract bool Matches(IFeature feature);
 
+    /// <summary>
+    /// Matches with the full evaluation context (feature, geometry type, zoom).
+    /// The legacy operator filters do not read it; an expression filter does.
+    /// </summary>
+    public virtual bool Matches(ExpressionScope scope) => Matches(scope.Feature!);
+
     /// <summary>Reads a field tolerantly: an unknown field yields <see cref="AttributeValue.Null"/>.</summary>
     protected static AttributeValue Read(IFeature feature, string field)
     {
@@ -111,4 +117,17 @@ internal sealed record AnyFilter(IReadOnlyList<StyleFilter> Filters) : StyleFilt
 internal sealed record NotFilter(StyleFilter Filter) : StyleFilter
 {
     public override bool Matches(IFeature feature) => !Filter.Matches(feature);
+}
+
+/// <summary>
+/// A <c>filter</c> written in the expression dialect rather than the legacy
+/// operator grammar: the compiled expression must yield a boolean, and it is
+/// evaluated against the feature's full scope, so <c>geometry-type</c> and
+/// <c>zoom</c> are available to a filter.
+/// </summary>
+internal sealed record ExpressionFilter(StyleExpression Expression) : StyleFilter
+{
+    public override bool Matches(IFeature feature) => Matches(new ExpressionScope(feature, null, 0));
+
+    public override bool Matches(ExpressionScope scope) => scope.Evaluate(Expression).AsFlag();
 }

@@ -28,36 +28,37 @@ internal static class SkiaSymbolRasterizer
     {
         using var skFont = BundledFont.CreateFont(context.Options.Size);
         var metrics = skFont.Metrics;
-        var hasText = !string.IsNullOrEmpty(context.Options.TextField);
-        var halo = context.Options.HaloWidth > 0 && context.Options.HaloColor.Alpha > 0;
 
         foreach (var feature in features)
         {
+            // A data-driven symbol paint resolves per feature; the font stays
+            // layer-level because text-size is a layout property, not paint.
+            var options = feature.Options ?? context.Options;
             if (AnchorPoint(feature.Geometry, context.Projection) is not { } anchor)
             {
                 continue;
             }
 
-            PlaceIcon(context, feature.Icon, anchor);
-            if (hasText && !string.IsNullOrEmpty(feature.Text))
+            PlaceIcon(context, options, feature.Icon, anchor);
+            if (!string.IsNullOrEmpty(options.TextField) && !string.IsNullOrEmpty(feature.Text))
             {
-                PlaceText(context, feature.Text, skFont, metrics, anchor, halo);
+                PlaceText(context, options, feature.Text, skFont, metrics, anchor);
             }
         }
     }
 
     private static void PlaceText(
         SymbolDrawContext context,
+        SymbolOptions options,
         string text,
         SKFont skFont,
         SKFontMetrics metrics,
-        (float X, float Y) anchor,
-        bool halo)
+        (float X, float Y) anchor)
     {
         var shaped = context.Font.Shaper.Shape(text, skFont);
         var width = shaped.Width;
         var height = metrics.Descent - metrics.Ascent;
-        var options = context.Options;
+        var halo = options.HaloWidth > 0 && options.HaloColor.Alpha > 0;
         var (left, top) = Align(
             anchor.X + (float)(options.OffsetX * options.Size),
             anchor.Y + (float)(options.OffsetY * options.Size),
@@ -81,7 +82,7 @@ internal static class SkiaSymbolRasterizer
         context.Canvas.DrawShapedText(context.Font.Shaper, text, left, baseline, SKTextAlign.Left, skFont, fill);
     }
 
-    private static void PlaceIcon(SymbolDrawContext context, string? icon, (float X, float Y) anchor)
+    private static void PlaceIcon(SymbolDrawContext context, SymbolOptions options, string? icon, (float X, float Y) anchor)
     {
         if (string.IsNullOrEmpty(icon))
         {
@@ -90,13 +91,13 @@ internal static class SkiaSymbolRasterizer
 
         var picture = context.Sprites.Get(icon);
         var cull = picture.CullRect;
-        var scale = (float)context.Options.IconSize;
+        var scale = (float)options.IconSize;
         var width = cull.Width * scale;
         var height = cull.Height * scale;
         var left = anchor.X - width / 2;
         var top = anchor.Y - height / 2;
 
-        if (!Place(context.Collision, new SKRect(left, top, left + width, top + height), IconPadding, context.Options.AllowIconOverlap))
+        if (!Place(context.Collision, new SKRect(left, top, left + width, top + height), IconPadding, options.AllowIconOverlap))
         {
             return;
         }

@@ -9,11 +9,11 @@ namespace Spatial.Rendering.Skia.Styling;
 /// <summary>
 /// Compiles a MapLibre-style document into the internal <see cref="CompiledStyle"/>
 /// draw plan. The documented subset is <c>background</c>, <c>fill</c>,
-/// <c>line</c>, <c>circle</c> and <c>symbol</c> layers with a flat paint
-/// recipe, a MapLibre <c>filter</c> expression and (for symbols) the
-/// documented layout keys; unsupported types and properties fail with a typed
-/// <c>invalid.arguments</c> instead of being flattened. Compiled plans are
-/// cached by the style document hash.
+/// <c>line</c>, <c>circle</c> and <c>symbol</c> layers with a flat or
+/// expression-valued paint recipe, a MapLibre <c>filter</c> and (for symbols)
+/// the documented layout keys; unsupported types and properties fail with a
+/// typed <c>invalid.arguments</c> instead of being flattened. Compiled plans
+/// are cached by the style document hash.
 /// </summary>
 internal sealed class StyleCompiler
 {
@@ -57,9 +57,10 @@ internal sealed class StyleCompiler
             }
 
             var compiled = new List<DrawLayer>(layers.GetArrayLength());
+            var interner = new ExpressionInterner();
             foreach (var layer in layers.EnumerateArray())
             {
-                compiled.Add(ReadLayer(layer));
+                compiled.Add(ReadLayer(layer, interner));
             }
 
             if (compiled.Count == 0)
@@ -71,7 +72,7 @@ internal sealed class StyleCompiler
         }
     }
 
-    private static DrawLayer ReadLayer(JsonElement layer)
+    private static DrawLayer ReadLayer(JsonElement layer, ExpressionInterner interner)
     {
         if (layer.ValueKind != JsonValueKind.Object)
         {
@@ -91,12 +92,12 @@ internal sealed class StyleCompiler
 
         var visible = ReadVisibility(layer);
         var filter = layer.TryGetProperty("filter", out var filterElement) && filterElement.ValueKind != JsonValueKind.Null
-            ? FilterReader.Read(filterElement)
+            ? FilterReader.Read(filterElement, interner)
             : StyleFilter.Always;
         var layout = layer.TryGetProperty("layout", out var layoutElement) ? layoutElement : default;
         var paint = layer.TryGetProperty("paint", out var paintElement)
-            ? PaintReader.Read(kind, paintElement, layout)
-            : PaintReader.Read(kind, default, layout);
+            ? PaintReader.Read(kind, paintElement, layout, interner)
+            : PaintReader.Read(kind, default, layout, interner);
         return new DrawLayer(id, dataset, kind, minZoom, maxZoom, visible, filter, paint);
     }
 

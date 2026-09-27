@@ -10,8 +10,10 @@ namespace Spatial.Rendering.Skia.Pipeline;
 /// <see cref="MapRenderRequest.ReferenceDpi"/> and grow linearly with the
 /// request DPI, so a WMS GetMap at 192 dpi prints the same physical sizes as
 /// the 96-dpi authoring. Geometry placement and the output frame are
-/// untouched — only symbology scales. The transform runs after the compiler
-/// cache, so cached plans are never mutated.
+/// untouched — only symbology scales. A data-driven size is scaled by a
+/// multiply node over its expression, not by a rewrite of the tree. The
+/// transform runs after the compiler cache, so cached plans are never
+/// mutated.
 /// </summary>
 internal static class DpiScaling
 {
@@ -37,23 +39,44 @@ internal static class DpiScaling
     private static PaintRecipe Scale(PaintRecipe paint, double ratio) =>
         Scalers.TryGetValue(paint.GetType(), out var scale) ? scale(paint, ratio) : paint;
 
-    private static FillPaint ScaleFill(FillPaint fill, double ratio) =>
-        fill with { OutlineWidth = fill.OutlineWidth * ratio };
+    private static FillPaint ScaleFill(FillPaint fill, double ratio) => fill with
+    {
+        OutlineWidth = fill.OutlineWidth * ratio,
+        Expressions = fill.Expressions is null ? null : fill.Expressions with
+        {
+            OutlineWidth = Scale(fill.Expressions.OutlineWidth, ratio),
+        },
+    };
 
     private static LinePaint ScaleLine(LinePaint line, double ratio) => line with
     {
         Width = line.Width * ratio,
         Dash = line.Dash.Select(dash => dash * ratio).ToArray(),
+        Expressions = line.Expressions is null ? null : line.Expressions with
+        {
+            Width = Scale(line.Expressions.Width, ratio),
+        },
     };
 
     private static CirclePaint ScaleCircle(CirclePaint circle, double ratio) => circle with
     {
         Radius = circle.Radius * ratio,
         StrokeWidth = circle.StrokeWidth * ratio,
+        Expressions = circle.Expressions is null ? null : circle.Expressions with
+        {
+            Radius = Scale(circle.Expressions.Radius, ratio),
+            StrokeWidth = Scale(circle.Expressions.StrokeWidth, ratio),
+        },
     };
 
-    private static SymbolPaint ScaleSymbol(SymbolPaint symbol, double ratio) =>
-        symbol with { Options = Scale(symbol.Options, ratio) };
+    private static SymbolPaint ScaleSymbol(SymbolPaint symbol, double ratio) => symbol with
+    {
+        Options = Scale(symbol.Options, ratio),
+        Expressions = symbol.Expressions is null ? null : symbol.Expressions with
+        {
+            HaloWidth = Scale(symbol.Expressions.HaloWidth, ratio),
+        },
+    };
 
     private static SymbolOptions Scale(SymbolOptions options, double ratio) => options with
     {
@@ -64,4 +87,12 @@ internal static class DpiScaling
         Padding = options.Padding * ratio,
         IconSize = options.IconSize * ratio,
     };
+
+    /// <summary>
+    /// Scales a data-driven size: a multiply node over the compiled expression,
+    /// so the cached plan is never mutated and a size that is the same for
+    /// every feature stays the same for every feature.
+    /// </summary>
+    private static ScaledExpression? Scale(StyleExpression? expression, double ratio) =>
+        expression is null ? null : new ScaledExpression(expression, ratio);
 }
