@@ -107,7 +107,7 @@ angular `unit` buffers planar degrees.
 | Catalog (§3): folders + `services[{name,type}]` | `GET /api/catalogue`: spatial `DatasetSummary[]` | Different concept |
 | `FeatureServer` root: `layers[]`, `tables[]` (§9.0) | — | **Served** — spatial datasets under `layers`, datasets without a geometry field under `tables` (stable ids from the single id space; table metadata reports `type: Table` and supports the safe query subset) |
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
-| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served, only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate). The service-level `FeatureServer/query` (S1) fans the same subset across layers and tables with `layerDefs` (all three syntaxes) and returns one feature set, count, or id list per layer (ADR-0061); layer-only shapes (extent, distinct, statistics, unique ids) name the layer route instead |
+| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served — the last five as exact DE-9IM predicates (ADR-0036), the first two as the envelope and intersection tests they name — and only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate). The service-level `FeatureServer/query` (S1) fans the same subset across layers and tables with `layerDefs` (all three syntaxes) and returns one feature set, count, or id list per layer (ADR-0061); layer-only shapes (extent, distinct, statistics, unique ids) name the layer route instead |
 | `generateRenderer` (S4, feature-service layer) | — | **Served** — the single T-039 classifier (`MapGenerateRenderer`, ADR-0055) reused on the FeatureServer surface; byte-identical renderers on both surfaces (ADR-0061) |
 | `validateSQL` (S4, feature-service layer) | — | **Served** — server-side WHERE validation returning the S4 `isValidSQL` shape with 3001/3002/3008 codes; `expression`/`statement` validate as not-supported, never run (ADR-0061) |
 | `queryBins` / `queryTopFeatures` / `queryAnalytic` (S4) | — | Honestly rejected — mounted typed `invalid.arguments` naming the served alternative (`outStatistics`+`groupByFieldsForStatistics`; `orderByFields`+`resultRecordCount`); unadvertised (ADR-0061) |
@@ -262,9 +262,12 @@ Ordered by dependency:
   and `maxRecordCountFactor` multiplies the page cap (`maxRecordCount × factor`,
   default 1), so oversized `resultRecordCount` values cap honestly (T-021).
 - Serving status update: `Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are
-  served via the envelope + intersection verbs (boundary-exactness needs a
-  boundary verb the engine does not expose); `esriSpatialRelIndexIntersects`
-  stays rejected with a named alternative. `quantizationParameters` is honestly
+  served as the exact OGC DE-9IM predicates over
+  `IGeometryRelations.Relate`, behind the envelope pre-filter
+  (ADR-0036) — so a query filling a feature's hole touches rather than
+  matches `Contains`, and collinear or crossing lines do not touch;
+  `esriSpatialRelIndexIntersects` stays rejected with a named alternative.
+  `quantizationParameters` is honestly
   rejected, `geometryPrecision` rounds every ordinate, `maxAllowableOffset` is
   accepted (full precision returned) (T-023).
 - Consume status update: the ArcGIS REST provider sends

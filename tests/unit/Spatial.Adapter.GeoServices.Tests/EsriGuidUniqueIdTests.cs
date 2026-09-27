@@ -24,6 +24,8 @@ public sealed class EsriGuidUniqueIdTests
 
     private static readonly NtsGeometryOperations Operations = new();
 
+    private static readonly NtsGeometryRelations Relations = new();
+
     private static readonly ProjNetTransforms Transforms = new();
 
     private static readonly Guid IdA = Guid.Parse("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
@@ -84,7 +86,7 @@ public sealed class EsriGuidUniqueIdTests
 
     private static async Task<JsonElement> QueryBodyAsync(DatasetDescription dataset, IFeatureStore store, EsriFeatureQuery query)
     {
-        var result = await FeatureService.QueryAsync(dataset, store, query, Operations, Transforms, CancellationToken.None);
+        var result = await FeatureService.QueryAsync(dataset, store, query, Operations, Relations, Transforms, CancellationToken.None);
         return await BodyAsync(result);
     }
 
@@ -238,6 +240,6 @@ public sealed class EsriGuidUniqueIdTests
         await cancelled.CancelAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () => await FeatureService.QueryAsync(
-            dataset, store, query, Operations, Transforms, cancelled.Token));
+            dataset, store, query, Operations, Relations, Transforms, cancelled.Token));
     }
 }

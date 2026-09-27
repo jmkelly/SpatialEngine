@@ -32,6 +32,7 @@ internal static class FeatureResponseWriter
         IFeatureStore store,
         EsriFeatureQuery shared,
         IGeometryOperations operations,
+        IGeometryRelations relations,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken)
     {
@@ -47,7 +48,7 @@ internal static class FeatureResponseWriter
             var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
             var scheme = EsriObjectIdScheme.For(layer.Description);
             var queryGeometry = FeatureProjection.TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
-            matched.Add((layer, await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, operations, scheme), cancellationToken)));
+            matched.Add((layer, await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, operations, relations, scheme), cancellationToken)));
         }
 
         return EsriJson.Write(writer =>

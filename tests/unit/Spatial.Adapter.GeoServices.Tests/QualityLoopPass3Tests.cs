@@ -9,12 +9,12 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// <summary>
 /// Quality-loop pass 3: pin <c>MapGenerateRenderer.Format</c> (CRAP 23.8,
 /// cx 7 — pure value map, so tests are the cheap lever) and
-/// <c>FeatureSpatialMatcher.Overlaps</c> (CRAP 21.75, cx 5) with real
+/// <c>SpatialRelationPredicates.Overlaps</c> (CRAP 21.75, cx 5) with real
 /// Core polygons through the NTS operations (no mocks).
 /// </summary>
 public sealed class QualityLoopPass3Tests
 {
-    private static readonly NtsGeometryOperations Operations = new();
+    private static readonly NtsGeometryRelations Relations = new();
 
     [Theory]
     [InlineData(42L, "42")]
@@ -99,9 +99,8 @@ public sealed class QualityLoopPass3Tests
         Assert.False(Overlaps(Square(0, 0, 2, 2), Square(2, 2, 4, 4)));
     }
 
-    private static bool Overlaps(IGeometry left, Polygon right) =>
-        FeatureSpatialMatcher.Overlaps(
-            left, right, left.Envelope!.Value, right.Envelope!.Value, Operations, CancellationToken.None);
+    private static bool Overlaps(IGeometry left, IGeometry right) =>
+        SpatialRelationPredicates.Overlaps(Relations, left, right, CancellationToken.None);
 
     private static Polygon Square(double minX, double minY, double maxX, double maxY) =>
         GeometryFactory.CreatePolygon(

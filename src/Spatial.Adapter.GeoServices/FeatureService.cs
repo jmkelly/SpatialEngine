@@ -58,9 +58,10 @@ internal static class FeatureService
         IFeatureStore store,
         EsriFeatureQuery query,
         IGeometryOperations operations,
+        IGeometryRelations relations,
         ICoordinateTransforms transforms,
         CancellationToken cancellationToken) =>
-        FeatureQueryEngine.QueryAsync(dataset, store, query, operations, transforms, cancellationToken);
+        FeatureQueryEngine.QueryAsync(dataset, store, query, operations, relations, transforms, cancellationToken);
 
     /// <summary>
     /// Reads one feature by its Esri <c>OBJECTID</c> (the Feature resource,

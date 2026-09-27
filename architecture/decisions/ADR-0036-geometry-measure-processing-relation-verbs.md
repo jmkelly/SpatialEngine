@@ -45,6 +45,7 @@ The GeoServices adapter maps:
 | `areasAndLengths`, `lengths`, `distance`, `labelPoints` | `IGeometryMeasures` |
 | `convexHull`, `difference`, `union`, `densify`, `simplify` (repair) | `IGeometryProcessing` |
 | `relation` | `IGeometryRelations` |
+| Feature Service `spatialRel` `Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`, ImageServer catalog query | `IGeometryRelations` |
 | `project` | `ICoordinateTransforms` |
 | `generalize`, `buffer`, `intersect` | `IGeometryOperations` |
 
@@ -61,6 +62,15 @@ The GeoServices adapter maps:
   self-intersecting ring into its valid parts.
 - New verbs are still pure and synchronous; long work remains the caller's
   cancellable request (ADR-0033).
+- `IGeometryRelations` serves the Feature Service `spatialRel` relations as
+  well as the `relation` operation. The match predicates are the OGC DE-9IM
+  patterns — `T*****FF*` for contains (one pattern covering area-in-area,
+  line-in-area and point-in-area), dimension-keyed patterns for overlaps and
+  crosses, and the three disjoint-interior patterns for touches — evaluated
+  only on the candidates the envelope pre-filter admits. A served relation
+  is therefore the exact OGC predicate, not an envelope approximation.
+  `IGeometryOperations` still answers `EnvelopeIntersects`/`Intersects`,
+  which are envelope and intersection tests by definition.
 
 ## References
 

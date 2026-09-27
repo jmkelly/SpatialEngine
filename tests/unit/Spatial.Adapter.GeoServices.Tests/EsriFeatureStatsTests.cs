@@ -26,6 +26,8 @@ public sealed class EsriFeatureStatsTests
 
     private static readonly NtsGeometryOperations Operations = new();
 
+    private static readonly NtsGeometryRelations Relations = new();
+
     private static readonly ProjNetTransforms Transforms = new();
 
     private static readonly FeatureSchema Schema = new(
@@ -61,7 +63,7 @@ public sealed class EsriFeatureStatsTests
 
     private static async Task<JsonElement> QueryBodyAsync(DatasetDescription dataset, IFeatureStore store, EsriFeatureQuery query)
     {
-        var result = await FeatureService.QueryAsync(dataset, store, query, Operations, Transforms, CancellationToken.None);
+        var result = await FeatureService.QueryAsync(dataset, store, query, Operations, Relations, Transforms, CancellationToken.None);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();
@@ -332,6 +334,6 @@ public sealed class EsriFeatureStatsTests
         await cancelled.CancelAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () => await FeatureService.QueryAsync(
-            dataset, store, query, Operations, Transforms, cancelled.Token));
+            dataset, store, query, Operations, Relations, Transforms, cancelled.Token));
     }
 }
