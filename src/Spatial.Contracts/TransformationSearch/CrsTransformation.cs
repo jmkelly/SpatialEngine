@@ -22,16 +22,48 @@ public sealed record CrsAreaOfUse(string Name, double XMin, double YMin, double 
 public sealed record HelmertParameters(double Tx, double Ty, double Tz, double Rx, double Ry, double Rz, double ScalePpm);
 
 /// <summary>
-/// One step of a candidate transformation: a single Helmert operation, the
-/// direction it runs in (<c>TransformForward</c> false means the operation is
-/// applied in reverse — a datum shift is invertible) and the method name
-/// clients display.
+/// A datum shift read out of a published grid bundle (ADR-0105): the sub-grid
+/// that answered, the file it was read from, the format it is stored in, how
+/// the shift is interpolated, and the block of ground the grid covers.
+/// <para>
+/// This is a step's parameters in place of a <see cref="HelmertParameters"/>,
+/// not a seventh Helmert column, because a grid shift is not a seven-parameter
+/// transformation in any sense a client could apply: it is a table the
+/// provider looks the point up in, and the only honest way to publish one is
+/// to name the table. The coverage is published because it is the grid's real
+/// extent — a point outside it is not a slightly worse shift but no shift
+/// at all, which is what tells a client the provider falls back rather than
+/// extrapolates.
+/// </para>
+/// </summary>
+public sealed record GridShiftParameters(
+    string GridName,
+    string FileName,
+    string Format,
+    string Interpolation,
+    double XMin,
+    double YMin,
+    double XMax,
+    double YMax);
+
+/// <summary>
+/// One step of a candidate transformation: a single operation, the direction it
+/// runs in (<c>TransformForward</c> false means the operation is applied in
+/// reverse — a datum shift is invertible) and the method name clients display.
+/// <para>
+/// A step is either a Helmert operation or a grid shift, and exactly one of
+/// <paramref name="Parameters"/> and <paramref name="GridShift"/> is set: a
+/// grid has no seven parameters to publish, and inventing a zero Helmert to
+/// stand in for one would be a decorative value a client could mistake for a
+/// real one.
+/// </para>
 /// </summary>
 public sealed record CrsTransformationStep(
     string Name,
     bool TransformForward,
     string Method,
-    HelmertParameters Parameters);
+    HelmertParameters? Parameters,
+    GridShiftParameters? GridShift = null);
 
 /// <summary>
 /// One candidate from a datum-transformation search: a named operation with

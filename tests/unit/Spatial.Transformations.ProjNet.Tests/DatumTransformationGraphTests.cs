@@ -1,5 +1,6 @@
 using Spatial.Contracts;
 using Spatial.Contracts.TransformationSearch;
+using Spatial.Transformations.ProjNet.Grids;
 using static Spatial.Transformations.ProjNet.Tests.GraphInvoker;
 
 namespace Spatial.Transformations.ProjNet.Tests;
@@ -46,7 +47,7 @@ public sealed class DatumTransformationGraphTests
         var applied = candidates[0];
         Assert.Single(applied.Steps);
         Assert.True(applied.Steps[0].TransformForward);
-        var parameters = applied.Steps[0].Parameters;
+        var parameters = Helmert(applied.Steps[0]);
         // The exact inverse of a Helmert is not the negated forward
         // translation - the 20 ppm scale and the sub-arcsecond rotations move
         // it by centimetres - so these are the composed values, not the
@@ -76,7 +77,7 @@ public sealed class DatumTransformationGraphTests
 
         var reduced = candidates[^1];
         Assert.EndsWith("_Geocentric_Translation", reduced.Name, StringComparison.Ordinal);
-        var parameters = reduced.Steps[0].Parameters;
+        var parameters = Helmert(reduced.Steps[0]);
         Assert.Equal(0.0, parameters.Rx, 9);
         Assert.Equal(0.0, parameters.ScalePpm, 9);
         // OSGB36's rotations are nearly an arcsecond, so dropping them costs
@@ -116,7 +117,7 @@ public sealed class DatumTransformationGraphTests
         var alpha = Shifted("Alpha", 100.0, 3.0, -9.0, 40.0, -3.0, 52.0);
         var beta = Shifted("Beta", 400.0, 2.0, -4.0, 41.0, 2.0, 55.0);
 
-        var candidates = DatumTransformationGraph.Search(alpha, beta);
+        var candidates = DatumTransformationGraph.Search(alpha, beta, DatumShiftGridRegistry.Empty);
 
         var composed = candidates[0];
         Assert.Equal("Alpha_To_Beta_Helmert", composed.Name);
@@ -203,5 +204,17 @@ public sealed class DatumTransformationGraphTests
 
         Assert.Throws<OperationCanceledException>(() =>
             Search(new CrsTransformationQuery("EPSG:4326", "EPSG:27700"), cancelled.Token));
+    }
+
+    /// <summary>
+    /// A step's Helmert parameters, asserting the step is a Helmert one: a grid
+    /// step publishes no seven parameters, and a test that read them without
+    /// saying which kind of step it was holding would pass for the wrong
+    /// reason.
+    /// </summary>
+    private static HelmertParameters Helmert(CrsTransformationStep step)
+    {
+        Assert.Null(step.GridShift);
+        return Assert.IsType<HelmertParameters>(step.Parameters);
     }
 }

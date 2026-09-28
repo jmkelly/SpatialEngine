@@ -1,4 +1,5 @@
 using Spatial.Contracts.TransformationSearch;
+using Spatial.Transformations.ProjNet.Grids;
 
 namespace Spatial.Transformations.ProjNet.Tests;
 
@@ -9,15 +10,33 @@ namespace Spatial.Transformations.ProjNet.Tests;
 /// </summary>
 internal static class GraphInvoker
 {
-    private static readonly ProjNetTransforms Directory = new();
-
     /// <summary>The ranked candidates between two CRSs, optionally filtered by area of interest.</summary>
     public static IReadOnlyList<CrsTransformation> Search(string source, string target, CrsAreaOfUse? areaOfInterest = null) =>
-        Directory.FindTransformations(new CrsTransformationQuery(source, target, areaOfInterest));
+        Search(source, target, DatumShiftGridRegistry.Empty, areaOfInterest);
+
+    /// <summary>
+    /// The ranked candidates with the grid registry the host was configured
+    /// with, so a test can publish the same search with and without a
+    /// deployed bundle.
+    /// </summary>
+    public static IReadOnlyList<CrsTransformation> Search(
+        string source,
+        string target,
+        DatumShiftGridRegistry datumShiftGridRegistry,
+        CrsAreaOfUse? areaOfInterest = null) =>
+        new ProjNetTransforms(datumShiftGridRegistry)
+            .FindTransformations(new CrsTransformationQuery(source, target, areaOfInterest));
 
     /// <summary>The search with a caller-supplied token, for the failure paths.</summary>
     public static IReadOnlyList<CrsTransformation> Search(CrsTransformationQuery query, CancellationToken cancellationToken) =>
-        Directory.FindTransformations(query, cancellationToken);
+        Search(query, DatumShiftGridRegistry.Empty, cancellationToken);
+
+    /// <summary>The search with a caller-supplied token and a configured grid registry.</summary>
+    public static IReadOnlyList<CrsTransformation> Search(
+        CrsTransformationQuery query,
+        DatumShiftGridRegistry datumShiftGridRegistry,
+        CancellationToken cancellationToken) =>
+        new ProjNetTransforms(datumShiftGridRegistry).FindTransformations(query, cancellationToken);
 
     /// <summary>A geographic area of interest in degrees (x = longitude, y = latitude).</summary>
     public static CrsAreaOfUse NewArea(double xMin, double yMin, double xMax, double yMax) =>

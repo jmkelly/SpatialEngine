@@ -1,3 +1,4 @@
+using Spatial.Contracts.TransformationSearch;
 using Spatial.Core.Geometry;
 using static Spatial.Transformations.ProjNet.Tests.GraphInvoker;
 using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
@@ -23,7 +24,7 @@ public sealed class TransformationGraphControlPointTests
     public async Task The_published_Helmert_reproduces_the_London_control_point()
     {
         var published = Search("EPSG:4326", "EPSG:4277")[0];
-        var parameters = published.Steps[0].Parameters;
+        var parameters = Helmert(published.Steps[0]);
         var (lon, lat) = Apply(
             parameters.Tx, parameters.Ty, parameters.Tz,
             parameters.Rx, parameters.Ry, parameters.Rz, parameters.ScalePpm,
@@ -42,7 +43,7 @@ public sealed class TransformationGraphControlPointTests
     {
         var candidates = Search("EPSG:4326", "EPSG:27700");
         var reduced = candidates[^1];
-        var parameters = reduced.Steps[0].Parameters;
+        var parameters = Helmert(reduced.Steps[0]);
         var (lon, lat) = Apply(
             parameters.Tx, parameters.Ty, parameters.Tz, 0.0, 0.0, 0.0, 0.0,
             ControlPoints.London.Lon, ControlPoints.London.Lat);
@@ -126,5 +127,17 @@ public sealed class TransformationGraphControlPointTests
         }
 
         return (longitude * 180.0 / Math.PI, latitude * 180.0 / Math.PI);
+    }
+
+    /// <summary>
+    /// A step's Helmert parameters, asserting the step is a Helmert one. A grid
+    /// step publishes no seven parameters (ADR-0105), so a test that read them
+    /// without saying which kind of step it held would pass for the wrong
+    /// reason.
+    /// </summary>
+    private static HelmertParameters Helmert(CrsTransformationStep step)
+    {
+        Assert.Null(step.GridShift);
+        return Assert.IsType<HelmertParameters>(step.Parameters);
     }
 }

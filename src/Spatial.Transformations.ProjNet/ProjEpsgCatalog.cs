@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using ProjCs = ProjNet.CoordinateSystems;
 
@@ -54,6 +55,41 @@ internal static class ProjEpsgCatalog
 
     /// <summary>The EPSG codes served by this catalogue, generated families included.</summary>
     public static IEnumerable<int> Codes => Entries.Keys;
+
+    /// <summary>
+    /// The coordinate system a code builds, or null when the catalogue does not
+    /// serve it. The counterpart to <see cref="GeographicBaseOf"/>, so a
+    /// transform can pair a code's own system with the geographic base it is
+    /// measured on.
+    /// </summary>
+    public static ProjCs.CoordinateSystem? SystemOf(int code) =>
+        TryGet(code, out var system) ? system : null;
+
+    /// <summary>
+    /// The geographic coordinate system a CRS is expressed on: the CRS's own
+    /// system for a geographic one, and a build of its base for a projected
+    /// one. A datum shift is a shift between geographic coordinates, so this
+    /// is what a grid-backed transform measures the point on before shifting it
+    /// (ADR-0105). The base is built once per code and cached, because it is
+    /// the same construction the projected CRS's own builder does and is needed
+    /// on the transform's hot path.
+    /// </summary>
+    public static ProjCs.CoordinateSystem? GeographicBaseOf(int code)
+    {
+        if (!Entries.TryGetValue(code, out var entry))
+        {
+            return null;
+        }
+
+        if (entry.Definition.Value is not ProjectedDefinition projected)
+        {
+            return entry.System.Value;
+        }
+
+        return GeographicBases.GetOrAdd(code, _ => Build(projected.Base));
+    }
+
+    private static readonly ConcurrentDictionary<int, ProjCs.CoordinateSystem> GeographicBases = new();
 
     /// <summary>Test pin: whether a code's coordinate system has been built yet (the catalogue builds each one once, on first use).</summary>
     public static bool IsBuilt(int code) =>

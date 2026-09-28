@@ -4,6 +4,7 @@ using Spatial.Contracts;
 using Spatial.Contracts.Transformations;
 using Spatial.Contracts.TransformationSearch;
 using Spatial.Core.Geometry;
+using Spatial.Transformations.ProjNet.Grids;
 using ProjCs = ProjNet.CoordinateSystems;
 using ProjTf = ProjNet.CoordinateSystems.Transformations;
 
@@ -32,6 +33,34 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     /// catalogue's CRS pairs.
     /// </summary>
     private static readonly ConcurrentDictionary<(int Source, int Target), ProjTf.MathTransform> MathTransforms = new();
+
+    /// <summary>
+    /// The datum shift grids this host was configured with (ADR-0105). A host
+    /// with no configured grid directory holds the empty registry, and every
+    /// datum is shifted the classic Helmert way exactly as before — the grid
+    /// path is additive, and a host that deploys nothing loses nothing.
+    /// </summary>
+    private readonly DatumShiftGridRegistry _grids;
+
+    public ProjNetTransforms()
+        : this([])
+    {
+    }
+
+    /// <summary>
+    /// Builds the transformation service over the datum shift grids found in
+    /// the given directories, in priority order (ADR-0105). The host passes
+    /// its configured directories and nothing else: the registry that resolves
+    /// them stays inside this assembly, because it is a detail of this
+    /// provider rather than something a composition root should hold.
+    /// </summary>
+    public ProjNetTransforms(IEnumerable<string> gridDirectories)
+        : this(DatumShiftGridRegistry.Load([.. gridDirectories]))
+    {
+    }
+
+    internal ProjNetTransforms(DatumShiftGridRegistry grids) =>
+        _grids = grids ?? DatumShiftGridRegistry.Empty;
 
     /// <summary>Test pin (T-087): the cached math transform for a pair, when present.</summary>
     internal static bool TryGetCachedMathTransform(int sourceCode, int targetCode, out ProjTf.MathTransform? math) =>
@@ -66,7 +95,7 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         var from = DatumOf(query.Source);
         var to = DatumOf(query.Target);
         cancellationToken.ThrowIfCancellationRequested();
-        return DatumTransformationGraph.Search(from, to, query.AreaOfInterest);
+        return DatumTransformationGraph.Search(from, to, _grids, query.AreaOfInterest);
     }
 
     /// <summary>
