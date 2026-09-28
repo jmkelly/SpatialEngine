@@ -86,7 +86,12 @@ total, a digest, and a length the host reports. Four rules make it safe:
   to resume from**. A client that is behind is told how far behind.
 - An append below it is accepted only when the re-sent bytes are identical to
   what is staged. This is the lost-acknowledgement case, and it is the same
-  document or it is a refusal.
+  document or it is a refusal. **The cap on such a chunk is measured from the
+  offset it was addressed at, not from the staged length** — otherwise the
+  re-sent overlap is counted as though it were new content and a client
+  answering the question this protocol exists to make it answerable is refused
+  for a limit it cannot breach. The bytes an append actually *adds* are still
+  held to the declared total and to `MaxBytes`.
 - A refused append changes nothing. The chunk is read to a scratch file within
   the caps and matched in full before a single byte is appended, and the
   staged length is the length of the file, not a number the state file claims —

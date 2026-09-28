@@ -108,7 +108,13 @@ public sealed class FileUploadStaging : IUploadStaging
         }
 
         var limit = total is { } declared ? Math.Min(declared, MaxBytes) : MaxBytes;
-        var staged = await ReceiveAsync(id, chunk, limit - received, cancellationToken).ConfigureAwait(false);
+        // Room is measured from the offset the chunk was addressed at, not from
+        // the staged length: a chunk addressed below the staged length repeats
+        // bytes that are already there, and refusing it for not fitting would
+        // turn the lost-acknowledgement resume into a dead end. The bytes it
+        // actually adds are still bounded — `received + (room - overlap)` never
+        // exceeds `limit`, so the declared total and the cap both still hold.
+        var staged = await ReceiveAsync(id, chunk, limit - append.Offset, append.Offset, cancellationToken).ConfigureAwait(false);
         await VerifyOverlapAsync(id, append.Offset, staged, cancellationToken).ConfigureAwait(false);
 
         // The chunk's first byte belongs at `offset`, so the bytes before the
@@ -177,18 +183,17 @@ public sealed class FileUploadStaging : IUploadStaging
     /// take the staged document past its declared total or the byte cap. The
     /// staged upload is untouched until the whole chunk is in hand.
     /// </summary>
-    private async Task<string> ReceiveAsync(string id, Stream chunk, long room, CancellationToken cancellationToken)
+    private async Task<string> ReceiveAsync(string id, Stream chunk, long room, long offset, CancellationToken cancellationToken)
     {
         if (room < 0)
         {
             throw SpatialException.BadArguments(
                 $"Upload '{id}' is already at the maximum of {MaxBytes} byte(s) this host accepts.");
         }
-
         var scratch = Scratch(id);
         try
         {
-            await CopyAsync(id, chunk, scratch, room, cancellationToken).ConfigureAwait(false);
+            await CopyAsync(id, chunk, scratch, room, offset, cancellationToken).ConfigureAwait(false);
             return scratch;
         }
         catch
@@ -198,7 +203,7 @@ public sealed class FileUploadStaging : IUploadStaging
         }
     }
 
-    private static async Task<long> CopyAsync(string id, Stream source, string scratch, long room, CancellationToken cancellationToken)
+    private static async Task<long> CopyAsync(string id, Stream source, string scratch, long room, long offset, CancellationToken cancellationToken)
     {
         var buffer = new byte[64 * 1024];
         long total = 0;
@@ -210,7 +215,7 @@ public sealed class FileUploadStaging : IUploadStaging
             if (total > room)
             {
                 throw SpatialException.BadArguments(
-                    $"The chunk does not fit: upload '{id}' has {room} byte(s) of room left.");
+                    $"The chunk does not fit: upload '{id}' accepts at most {room} more byte(s) from offset {offset}.");
             }
 
             await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);

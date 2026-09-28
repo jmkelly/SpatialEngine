@@ -244,6 +244,121 @@ public sealed class UploadStagingTests : IDisposable
         Assert.Equal(0, (await staging.DescribeAsync("cancel")).Received);
     }
 
+    [Fact]
+    public async Task An_append_cancelled_mid_chunk_stages_no_part_of_it_and_resumes_from_the_same_offset()
+    {
+        // A pre-cancelled token proves nothing about durability: the request dies
+        // before a byte is read. This one delivers half a chunk and is cancelled
+        // while the rest is still in flight, which is the case ADR-0083 §3
+        // claims is safe — the staged length is the file's length, so half a
+        // chunk never becomes half an upload.
+        var staging = Staging();
+        await staging.StartAsync("midflight", 6, null);
+        await staging.AppendAsync("midflight", Chunk("abc"), new UploadAppend(0, 6));
+
+        using var cancellation = new CancellationTokenSource();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            staging.AppendAsync("midflight", new InterruptingStream(Encoding.UTF8.GetBytes("def"), cancellation), new UploadAppend(3, 6), cancellation.Token));
+
+        // The interrupted half must not be counted: the document is still the
+        // three bytes that were acknowledged, and the client resumes from there.
+        Assert.Equal(3, (await staging.DescribeAsync("midflight")).Received);
+
+        var resumed = await staging.AppendAsync("midflight", Chunk("def"), new UploadAppend(3, 6));
+        Assert.Equal(6, resumed.Received);
+        Assert.True(resumed.Complete);
+    }
+
+    [Fact]
+    public async Task Bytes_left_staged_by_an_interrupted_append_are_reported_rather_than_replayed_over()
+    {
+        // The other half of the ADR-0083 §3 claim. If an append is cut after
+        // its bytes reached the staged file but before the state was written,
+        // the next append must not be told its offset is ahead of the staging —
+        // that is the difference between a resume and a restart.
+        var staging = Staging();
+        await staging.StartAsync("torn", 6, null);
+        await staging.AppendAsync("torn", Chunk("abc"), new UploadAppend(0, 6));
+
+        // Stand in for the interrupted write: the bytes are on disk, the state
+        // file never learned about them.
+        await File.AppendAllTextAsync(Path.Combine(_directory, "torn.part"), "d");
+
+        Assert.Equal(4, (await staging.DescribeAsync("torn")).Received);
+
+        // Re-sending from the offset the client believes in is an overlap, not a
+        // gap, and is accepted because the bytes it repeats do match.
+        var resumed = await staging.AppendAsync("torn", Chunk("def"), new UploadAppend(3, 6));
+        Assert.Equal(6, resumed.Received);
+        Assert.True(resumed.Complete);
+    }
+
+    [Fact]
+    public async Task An_overlapping_chunk_cannot_smuggle_past_the_declared_total()
+    {
+        // Accepting a chunk addressed below the staged length widens what the
+        // staging will read, so the cap has to hold on the offset the chunk was
+        // addressed at and not merely on the overlap it happens to repeat.
+        var staging = Staging();
+        await staging.StartAsync("smuggle", 6, null);
+        await staging.AppendAsync("smuggle", Chunk("abc"), new UploadAppend(0, 6));
+
+        // "abcdef" addressed at 0 repeats the three staged bytes and adds three,
+        // which is exactly the declared document and must be accepted.
+        Assert.Equal(6, (await staging.AppendAsync("smuggle", Chunk("abcdef"), new UploadAppend(0, 6))).Received);
+
+        // Anything longer is not, even though most of it is re-sent bytes.
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            staging.AppendAsync("smuggle", Chunk("abcdefghij"), new UploadAppend(0, 6)));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Equal(6, (await staging.DescribeAsync("smuggle")).Received);
+    }
+
+    /// <summary>
+    /// A chunk that hands over part of itself and is then cancelled, which is
+    /// what a dropped connection looks like from inside the staging.
+    /// </summary>
+    private sealed class InterruptingStream(byte[] bytes, CancellationTokenSource cancellation) : Stream
+    {
+        private int _served;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => bytes.Length;
+
+        public override long Position
+        {
+            get => _served;
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (_served >= 2)
+            {
+                // The rest of the chunk never arrives; the request is cancelled
+                // while the body is still being read.
+                cancellation.Cancel();
+                throw new OperationCanceledException(cancellation.Token);
+            }
+
+            buffer[offset] = bytes[_served++];
+            return 1;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     /// <summary>A clock the tests move by hand, so expiry needs no sleeping.</summary>
     private sealed class MovableClock(DateTimeOffset now) : TimeProvider
     {

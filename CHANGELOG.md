@@ -129,6 +129,20 @@ this file together, then tag the release (`RELEASING.md`).
   between the two upload paths is now the one `IngestPageCap` helper, so both
   count the same way and answer with the same message.
 
+### Fixed
+
+- **A resumed upload is no longer refused for "the chunk does not fit"** (ADR-0083
+  §3, SpatialEngine-u2x.27): the staging bounded an incoming chunk against the
+  bytes already staged rather than against the offset the chunk was addressed
+  at. A client resuming from the offset the host itself had reported — after a
+  lost acknowledgement, or after an append interrupted once its bytes had
+  reached the staged file — was answering a question the resume protocol exists
+  to make answerable, and was turned away by a cap check that the overlapping
+  bytes were never going to breach. The bound is now measured from the chunk's
+  own offset, so the re-sent overlap counts for what it is and the bytes an
+  append actually adds are still held to the declared total and to
+  `Spatial:Ingest:MaxBytes`.
+
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries
   `supportsQuantization` — at the top level, where the ArcGIS REST JS gate
