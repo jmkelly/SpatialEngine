@@ -128,6 +128,7 @@ shape is noted in brackets.
 | 0085 | Query `distance`/`units` band, `returnCentroid` (`IGeometryMeasures.Centroid`) and `returnZ`/`returnM` output selection are served; the Z/M loss was Esri-JSON codec depth, not the engine. |
 | 0086 | The CRS catalogue is vendored EPSG WKT read by a reader of our own (ProjNet's cannot read WKT2, and reads the widely published `Mercator_1SP` spelling of 3857 as a plain Mercator); a definition carries the datum's shift, while the accuracy and area of use of that shift live in a separate registered-operation table, because WKT states neither. |
 | 0087 | Datum transformations are contract values with area of use, accuracy and parameters; `findTransformations` is a ranked, area-filtered search and `project` accepts the operation it applies. |
+| 0089 | An ADR number is reserved before the record is written: the allocator reads the base plus the working tree and takes the number in the repository's shared git dir, so a parallel branch is turned away at allocation rather than renumbered at merge. |
 
 ## How to change the architecture
 

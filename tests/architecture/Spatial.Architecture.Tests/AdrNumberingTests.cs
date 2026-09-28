@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Spatial.Architecture.Tests;
@@ -12,7 +14,10 @@ namespace Spatial.Architecture.Tests;
 ///
 /// The rule: the first record to claim a number keeps it, and a later
 /// colliding record takes the next free number (SpatialEngine-u2x.24). This
-/// suite enforces the invariant that made the collision harmful.
+/// suite enforces the invariant that made the collision harmful, and — since
+/// enforcing it after the merge is what left the renumbering to the
+/// coordinator — it also enforces that the allocator, which reserves a number
+/// before the record is written, agrees with the tree (SpatialEngine-u2x.29).
 /// </summary>
 public sealed class AdrNumberingTests
 {
@@ -152,6 +157,99 @@ public sealed class AdrNumberingTests
         var register = end < 0 ? readme[heading..] : readme[heading..end];
 
         return RegisterRow.Matches(register).Select(match => match.Groups["number"].Value);
+    }
+
+    /// <summary>The number the allocator would hand to a new branch today.</summary>
+    [Fact]
+    public void The_allocator_hands_out_a_number_no_record_claims()
+    {
+        // The reservation (tools/adr-next-number.py --reserve) is the step
+        // that stops parallel branches picking the same number
+        // (SpatialEngine-u2x.29). It is only as good as the claim set it reads,
+        // so this suite holds the allocator to the tree: the number it hands
+        // out has to be free in architecture/decisions, or the first branch to
+        // use it is a merge-time collision.
+        var claimed = DecisionRecords().Select(record => record.Number).ToList();
+        var handed = Allocator().Output;
+
+        Assert.Matches(@"^\d{4}$", handed);
+        Assert.DoesNotContain(handed, claimed);
+        Assert.Equal(
+            (int.Parse(Highest(claimed), CultureInfo.InvariantCulture) + 1)
+                .ToString("D4", CultureInfo.InvariantCulture),
+            handed);
+    }
+
+    /// <summary>
+    /// <c>--check</c> is the gate a worker runs immediately before writing its
+    /// record, so it has to refuse every number that is already spoken for and
+    /// clear the one that is not. A <c>--check</c> that wrongly passed is the
+    /// collision arriving late; one that wrongly failed is a branch unable to
+    /// finish. Every number in the tree is asked about in one run: the gate is
+    /// not worth a minute of process start-up.
+    /// </summary>
+    [Fact]
+    public void The_allocator_check_gate_agrees_with_the_records()
+    {
+        var claimed = DecisionRecords().Select(record => record.Number).ToList();
+        var next = (int.Parse(Highest(claimed), CultureInfo.InvariantCulture) + 1)
+            .ToString("D4", CultureInfo.InvariantCulture);
+
+        // The tool prints the number and nothing else when it is free, and a
+        // sentence naming the holder when it is not.
+        var verdicts = Allocator(["--check", .. claimed, next]);
+        var cleared = verdicts.Output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => !line.Contains("ADR-", StringComparison.Ordinal))
+            .ToList();
+
+        var violations = claimed
+            .Where(number => cleared.Contains(number))
+            .Select(number => $"ADR-{number} has a record, but --check reports "
+                              + "it as free, so a branch would write a second "
+                              + "record claiming it.")
+            .ToList();
+
+        if (!cleared.Contains(next))
+        {
+            violations.Add(
+                $"--check refuses {next} ({verdicts.Output}) but no record " +
+                "claims that number, so a branch holding it would be blocked.");
+        }
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>The highest number in the tree, as the four digits it is filed under.</summary>
+    private static string Highest(IEnumerable<string> numbers) =>
+        numbers.OrderBy(number => number, StringComparer.Ordinal).Last();
+
+    /// <summary>Runs the allocator from the repository root.</summary>
+    private static (int ExitCode, string Output, string Error) Allocator(
+        params string[] arguments)
+    {
+        var start = new ProcessStartInfo
+        {
+            FileName = "python3",
+            WorkingDirectory = Root.Value,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        start.ArgumentList.Add("tools/adr-next-number.py");
+        foreach (var argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(start) ?? throw new InvalidOperationException(
+            "python3 could not be started; the ADR allocator is run with it, " +
+            "and without it a branch has no way to reserve a number.");
+
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return (process.ExitCode, output.Trim(), error.Trim());
     }
 
     /// <summary>Every bare ADR number cited by the text, with repeats.</summary>
