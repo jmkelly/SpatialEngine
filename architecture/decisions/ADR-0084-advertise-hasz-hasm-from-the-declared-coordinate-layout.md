@@ -69,10 +69,12 @@ modifier — the parse is a proof, never a guess.
 
 ### 3. Every other store reports `Xy`
 
-SQL Server's `geometry`/`geography` types have no Z or M storage at all, and
-the ArcGIS REST provider's description is built without one, so both land on the
-default. Neither is a claim the engine cannot back; both are follow-ups to make
-the knowledge real rather than a default.
+SQL Server's `geometry`/`geography` types have no Z or M storage at all, so it
+lands on the default and always will. The ArcGIS REST provider started here
+too, and **ADR-0091 amends this section**: it proves the layout from the remote
+layer's own `hasZ`/`hasM` declaration — the same class of schema evidence as a
+declared column type — and asks the remote for the ordinates it advertises, so
+the flag and the read path cannot drift.
 
 ### 4. The layer metadata
 
@@ -106,6 +108,8 @@ layer therefore **omits** both keys rather than reporting `false`, and a table
 - ADR-0028 (PostGIS store and schema discovery)
 - ADR-0035 (GeoServices boundary adapter)
 - ADR-0081 (advertised query capability flags — the honesty rule applied)
+- ADR-0091 (amends §3: the ArcGIS REST store proves its ordinates from the
+  layer's own declaration)
 - `architecture/references/geoservices-compatibility.md` §4, §7
 - `research/arcgis/conformance-sources.md` §1.1–1.2
 - `research/compat/feature-service.md` §1–2

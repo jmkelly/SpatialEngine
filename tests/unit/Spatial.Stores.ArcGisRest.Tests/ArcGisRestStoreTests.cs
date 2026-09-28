@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Spatial.Contracts;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Stores.ArcGisRest.Tests;
 
@@ -23,6 +24,19 @@ public sealed class ArcGisRestStoreTests
             { "name": "name", "type": "esriFieldTypeString", "nullable": true },
             { "name": "population", "type": "esriFieldTypeInteger", "nullable": true }
           ]
+        }
+        """;
+
+    private const string ZLayerMetadata = """
+        {
+          "id": 0,
+          "name": "Dams",
+          "type": "Feature Layer",
+          "geometryType": "esriGeometryPoint",
+          "objectIdField": "OBJECTID",
+          "spatialReference": { "wkid": 4326 },
+          "hasZ": true,
+          "hasM": false
         }
         """;
 
@@ -105,6 +119,105 @@ public sealed class ArcGisRestStoreTests
         var description = await store.DescribeAsync("arcgis.l0");
 
         Assert.Equal("objectid", Assert.Single(description.IdColumns));
+    }
+
+    [Theory]
+    [InlineData(true, true, "xyzm")]
+    [InlineData(true, false, "xyz")]
+    [InlineData(false, true, "xym")]
+    [InlineData(false, false, "xy")]
+    public async Task Describe_carries_the_remote_layers_declared_ordinates(bool hasZ, bool hasM, string expectedLayout)
+    {
+        // The remote layer's own hasZ/hasM declaration is the proof (ADR-0091):
+        // a proxied 3D layer must not be described as 2D, or the GeoServices
+        // layer metadata advertises nothing for it.
+        var metadata = $$"""
+            {
+              "id": 0, "name": "Dams", "geometryType": "esriGeometryPoint", "objectIdField": "OBJECTID",
+              "spatialReference": { "wkid": 4326 }, "hasZ": {{hasZ.ToString().ToLowerInvariant()}}, "hasM": {{hasM.ToString().ToLowerInvariant()}},
+              "fields": [
+                { "name": "OBJECTID", "type": "esriFieldTypeOID" },
+                { "name": "SHAPE", "type": "esriFieldTypeGeometry" }
+              ]
+            }
+            """;
+        var store = Store(Handler(Route(ServiceRoot, metadata)));
+
+        var description = await store.DescribeAsync("arcgis.l0");
+
+        Assert.Equal(expectedLayout, LayoutName(description.GeometryLayout));
+    }
+
+    [Theory]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","objectIdField":"OBJECTID","spatialReference":{"wkid":4326}}""")]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","objectIdField":"OBJECTID","spatialReference":{"wkid":4326},"hasZ":"true","hasM":1}""")]
+    [InlineData("""{"id":0,"name":"Cities","geometryType":"esriGeometryPoint","objectIdField":"OBJECTID","spatialReference":{"wkid":4326},"hasZ":null}""")]
+    public async Task Describe_reports_two_dimensional_when_the_remote_proves_nothing(string metadata)
+    {
+        // A layer that omits the flags, or declares them in a shape Esri never
+        // sends, proves nothing: the honest answer is the default layout, not a
+        // guess and not a failure.
+        var store = Store(Handler(Route(ServiceRoot, metadata)));
+
+        var description = await store.DescribeAsync("arcgis.l0");
+
+        Assert.Equal(CoordinateLayout.Xy, description.GeometryLayout);
+    }
+
+    [Fact]
+    public async Task Query_asks_the_remote_for_the_ordinates_the_layer_declares()
+    {
+        // A hasZ layer only returns Z when the query asks for it, so the read
+        // path has to carry the declared layout or the description over-claims.
+        var handler = Handler(Route(ServiceRoot, ZLayerMetadata, QueryPage()));
+        var store = Store(handler);
+
+        await store.QueryAsync("arcgis.l0", new BoundingBox(1, 2, 3, 4));
+
+        var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
+        Assert.Contains("returnZ=true", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("returnM=true", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Query_omits_ordinate_selection_for_a_two_dimensional_layer()
+    {
+        var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
+        var store = Store(handler);
+
+        await store.QueryAsync("arcgis.l0");
+
+        var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
+        Assert.DoesNotContain("returnZ", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("returnM", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Scan_keeps_the_ordinates_the_layer_declares()
+    {
+        // The end of the claim: a hasZ layer is asked for Z and the scan hands
+        // the elevation on, so advertising hasZ is backed all the way through.
+        // The response geometry states its own hasZ, the reader's rule for a
+        // three-ordinate Esri point.
+        var handler = Handler(Route(ServiceRoot, ZLayerMetadata, QueryPage(
+            """{"attributes":{"OBJECTID":7},"geometry":{"x":13.405,"y":52.52,"z":34.5,"hasZ":true}}""")));
+        var store = Store(handler);
+
+        var batches = await store.ScanAsync("arcgis.l0");
+
+        var point = Assert.IsType<Point>(Assert.Single(Assert.Single(batches).Features)["geometry"].GeometryValue);
+        Assert.Equal(34.5, point.Coordinate!.Value.Z);
+    }
+
+    [Fact]
+    public async Task Describe_surfaces_a_cancelled_read_as_store_unavailable()
+    {
+        var store = Store(Handler(_ => throw new TaskCanceledException()));
+
+        var exception = await Assert.ThrowsAsync<SpatialException>(
+            () => store.DescribeAsync("arcgis.l0", new CancellationToken(canceled: true)));
+
+        Assert.Equal(SpatialException.StoreUnavailable, exception.Code);
     }
 
     [Fact]
@@ -323,6 +436,15 @@ public sealed class ArcGisRestStoreTests
 
         Assert.Equal(SpatialException.StoreUnavailable, exception.Code);
     }
+
+    private static string LayoutName(CoordinateLayout layout) => layout switch
+    {
+        CoordinateLayout.Xy => "xy",
+        CoordinateLayout.Xyz => "xyz",
+        CoordinateLayout.Xym => "xym",
+        CoordinateLayout.Xyzm => "xyzm",
+        _ => throw new ArgumentOutOfRangeException(nameof(layout), layout, "Unknown coordinate layout."),
+    };
 
     private static ArcGisRestStore Store(HttpMessageHandler handler) =>
         new(new HttpClient(handler), new ArcGisRestServiceOptions { Name = "remote", Url = BaseUrl });
