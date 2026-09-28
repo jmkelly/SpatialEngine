@@ -214,6 +214,61 @@ public sealed class SpatialClient
         Maps.IngestAsync(content, upload, adminToken, cancellationToken);
 
     /// <summary>
+    /// Stages a large upload in resumable chunks and ingests it (ADR-0089).
+    /// The driver asks the host where the staging got to, continues from there
+    /// and ingests once every byte has landed.
+    /// </summary>
+    public Task<IngestOutcome> IngestResumableAsync(
+        Stream content,
+        IngestUpload upload,
+        ResumableUpload? options = null,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default) =>
+        ResumableIngest.UploadAsync(this, content, upload, options, adminToken, cancellationToken);
+
+    /// <summary>Opens a staged upload (requires the admin token).</summary>
+    public Task<UploadState> StartUploadAsync(
+        string? uploadId,
+        long? totalBytes = null,
+        string? sha256 = null,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default) =>
+        Maps.StartUploadAsync(uploadId, totalBytes, sha256, adminToken, cancellationToken);
+
+    /// <summary>How much of a staged upload has landed (requires the admin token).</summary>
+    public Task<UploadState> GetUploadAsync(
+        string uploadId, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.GetUploadAsync(uploadId, adminToken, cancellationToken);
+
+    /// <summary>Lists every staged upload (requires the admin token).</summary>
+    public Task<IReadOnlyList<UploadState>> ListUploadsAsync(
+        string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.ListUploadsAsync(adminToken, cancellationToken);
+
+    /// <summary>Appends one chunk of a staged upload (requires the admin token).</summary>
+    public Task<UploadState> AppendUploadAsync(
+        string uploadId,
+        Stream content,
+        long offset,
+        long? totalBytes = null,
+        string? sha256 = null,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default) =>
+        Maps.AppendUploadAsync(uploadId, content, offset, totalBytes, sha256, adminToken, cancellationToken);
+
+    /// <summary>Discards a staged upload (requires the admin token).</summary>
+    public Task<bool> DeleteUploadAsync(
+        string uploadId, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.DeleteUploadAsync(uploadId, adminToken, cancellationToken);
+
+    /// <summary>
+    /// Ingests a staged upload rather than a body (requires the admin token).
+    /// </summary>
+    public Task<IngestOutcome> IngestUploadAsync(
+        string uploadId, IngestUpload upload, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Maps.IngestUploadAsync(uploadId, upload, adminToken, cancellationToken);
+
+    /// <summary>
     /// Runs a seed document against a Development host: download, ingest and
     /// publish in one call (ADR-0078). Delegates to the map and ingest group
     /// that owns the route (ADR-0040).

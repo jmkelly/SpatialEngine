@@ -229,8 +229,8 @@ the version/tag checklist and `CHANGELOG.md` for what shipped.
 
 ### Auth today, auth next
 
-Today mutations (`PUT`/`DELETE /api/maps`, `POST /api/ingest`, the Esri admin
-projection) are gated by a single static admin token (`Spatial:Admin:Token` /
+Today mutations (`PUT`/`DELETE /api/maps`, `POST /api/ingest`, the staged
+upload routes under `/api/uploads`, the Esri admin projection) are gated by a single static admin token (`Spatial:Admin:Token` /
 `SPATIAL_ADMIN_TOKEN`); reads are anonymous and the token is never logged or
 echoed. That is the bootstrap, not the destination.
 

@@ -160,8 +160,9 @@ boundary are separate ADRs in their own plans.
   (config only, redacted, never in request bodies/logs) and the
   redaction tests are extended to the admin path.
 - Ingest is a cancellable request with configured caps, not a job
-  (ADR-0033). Large-file streaming and resumable upload are later work —
-  streaming landed in ADR-0082; resumable upload is still open.
+  (ADR-0033). Large-file streaming and resumable upload were later work:
+  streaming landed in ADR-0082, resumable upload in ADR-0089 (a staged
+  upload the load request names, chunked in bytes rather than in features).
 - Two follow-on ADRs are prerequisites for their phases: a writable
   in-memory provider for the database-free profile, and omit-identity-on-
   insert for editing uploaded layers. Neither blocks phase-one ingest +
