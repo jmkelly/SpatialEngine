@@ -462,14 +462,75 @@ internal static class ProjWkt
     /// <summary>
     /// The WKT projection methods this reader resolves, by normalised name.
     /// <para>
-    /// The list is deliberately short: it holds the projections the vendored
-    /// definitions use and no others, because resolving a method name to a
-    /// ProjNet projection is a claim that the two compute the same thing, and
-    /// that claim is only worth making for a method verified against a PROJ
-    /// reference. Anything else is a named, actionable failure rather than a
-    /// silent approximation, so a definition is never served with numbers that
-    /// are quietly wrong.
+    /// The list is deliberately short: it holds the projections whose ProjNet
+    /// implementation has been measured against PROJ and found to agree, and
+    /// no others, because resolving a method name to a ProjNet projection is a
+    /// claim that the two compute the same thing, and that claim is only
+    /// worth making for a method that has been checked. Anything else is a
+    /// named, actionable failure rather than a silent approximation, so a
+    /// definition is never served with numbers that are quietly wrong.
     /// </para>
+    /// <para>
+    /// The measurements (SpatialEngine-u2x.26), against PROJ 9.8.1 through
+    /// pyproj — always_xy, on each definition's own ellipsoid, with no datum
+    /// shift, forward and inverse, at points inside the definition's area of
+    /// use. "PROJ" is the reference: a ProjNet projection is in this list
+    /// only where it lands on PROJ's own coordinates for a named EPSG code.
+    /// The control points are in
+    /// <c>ProjWktProjectionMethodTests</c>.
+    /// </para>
+    /// <list type="table">
+    /// <listheader>
+    /// <term>WKT method</term>
+    /// <term>EPSG</term>
+    /// <term>measured against</term>
+    /// <term>outcome</term>
+    /// </listheader>
+    /// <item>
+    /// <term>Transverse Mercator</term><term>9807</term><term>EPSG:27700</term>
+    /// <term>in the map; the 27700/UTM control points hold to 1 cm</term>
+    /// </item>
+    /// <item>
+    /// <term>Lambert Conformal Conic (2SP)</term><term>9801</term><term>EPSG:2154</term>
+    /// <term>in the map; the byte-identical pre-change table holds</term>
+    /// </item>
+    /// <item>
+    /// <term>Mercator (variant A)</term><term>9804</term><term>EPSG:3395</term>
+    /// <term>in the map; agrees with EPSG Guidance Note 7-2 to the last bit</term>
+    /// </item>
+    /// <item>
+    /// <term>Popular Visualisation Pseudo Mercator</term><term>1024</term><term>EPSG:3857</term>
+    /// <term>intercepted above, not read as a method</term>
+    /// </item>
+    /// <item>
+    /// <term>Albers Equal Area</term><term>9822</term><term>EPSG:5070, EPSG:3005</term>
+    /// <term>added by u2x.26: agrees to 1e-6 m over the Conus, false offsets included</term>
+    /// </item>
+    /// <item>
+    /// <term>Lambert Azimuthal Equal Area</term><term>9820</term><term>EPSG:3035, EPSG:3571, EPSG:3574</term>
+    /// <term>added by u2x.26: agrees to 1e-6 m, the 4,321 km false offsets included</term>
+    /// </item>
+    /// <item>
+    /// <term>Polar Stereographic (variant A)</term><term>9810</term><term>EPSG:5041, EPSG:5482</term>
+    /// <term>added by u2x.26: agrees to 1e-6 m at both poles, 2,000 km offsets included</term>
+    /// </item>
+    /// <item>
+    /// <term>Hotine Oblique Mercator (variant B)</term><term>9815</term><term>EPSG:2056, EPSG:2057</term>
+    /// <term>added by u2x.26: agrees to 1e-6 m; variant B is the no-rotation form</term>
+    /// </item>
+    /// <item>
+    /// <term>Polar Stereographic (variant B)</term><term>9829</term><term>EPSG:3031, EPSG:3032</term>
+    /// <term>left out: ProjNet has no latitude-of-standard-parallel parameter (527 km of error)</term>
+    /// </item>
+    /// <item>
+    /// <term>Hotine Oblique Mercator (variant A)</term><term>9812</term><term>EPSG:3078, EPSG:3375</term>
+    /// <term>left out: ProjNet applies the false offsets at the projection centre, PROJ at the natural origin (2,047 km)</term>
+    /// </item>
+    /// <item>
+    /// <term>Krovak</term><term>9819</term><term>EPSG:5513, EPSG:2065</term>
+    /// <term>left out: the arithmetic agrees but the axes are the south-oriented ones, and the catalogue serves easting/northing</term>
+    /// </item>
+    /// </list>
     /// </summary>
     private static readonly Dictionary<string, string> Projections = new()
     {
@@ -481,6 +542,14 @@ internal static class ProjWkt
         [Normalise("Mercator (variant A)")] = "Mercator_1SP",
         [Normalise("Mercator variant A")] = "Mercator_1SP",
         [Normalise("Mercator_1SP")] = "Mercator_1SP",
+        [Normalise("Albers Equal Area")] = "Albers_Conic_Equal_Area",
+        [Normalise("Albers_Conic_Equal_Area")] = "Albers_Conic_Equal_Area",
+        [Normalise("Lambert Azimuthal Equal Area")] = "Lambert_Azimuthal_Equal_Area",
+        [Normalise("Lambert_Azimuthal_Equal_Area")] = "Lambert_Azimuthal_Equal_Area",
+        [Normalise("Polar Stereographic (variant A)")] = "Polar_Stereographic",
+        [Normalise("Polar_Stereographic")] = "Polar_Stereographic",
+        [Normalise("Hotine Oblique Mercator (variant B)")] = "Hotine_Oblique_Mercator",
+        [Normalise("Hotine_Oblique_Mercator")] = "Hotine_Oblique_Mercator",
     };
 
     /// <summary>
@@ -518,6 +587,20 @@ internal static class ProjWkt
         [Normalise("Latitude of second standard parallel")] = "standard_parallel_2",
         [Normalise("latitude_of_2nd_standard_parallel")] = "standard_parallel_2",
         [Normalise("Standard_Parallel_2")] = "standard_parallel_2",
+
+        // The oblique Mercator's own parameters, which EPSG 9815 states as
+        // the azimuth of the initial line and the angle from the rectified to
+        // the skew grid. They are read because the no-rotation (variant B)
+        // form is the one ProjNet and PROJ agree on; the variant A
+        // definitions are not in the method map, so nothing that reaches
+        // here depends on the difference between the two conventions.
+        [Normalise("Azimuth of initial line")] = "azimuth",
+        [Normalise("azimuth")] = "azimuth",
+        [Normalise("Angle from Rectified to Skew Grid")] = "rectified_grid_angle",
+        [Normalise("rectified_grid_angle")] = "rectified_grid_angle",
+        [Normalise("Scale factor at projection centre")] = "scale_factor",
+        [Normalise("Easting at projection centre")] = "false_easting",
+        [Normalise("Northing at projection centre")] = "false_northing",
     };
 
     // ---- the WKT grammar: nodes are KEYWORD["text", item...], items are nodes, quoted text or numbers ----

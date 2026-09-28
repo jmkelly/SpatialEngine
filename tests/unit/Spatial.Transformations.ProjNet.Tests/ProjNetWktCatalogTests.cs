@@ -260,7 +260,53 @@ public sealed class ProjNetWktCatalogTests
             - (35 * e6 / 3072) * Math.Sin(6 * phi));
     }
 
-    /// <summary>A WKT-defined CRS inverts back to the coordinates it was given.</summary>
+    /// <summary>
+    /// The Conus Albers, the one definition the method map held back: it was
+    /// not vendored while Albers was unverified, and it is served now that
+    /// ProjNet's Albers has been measured against PROJ and agrees
+    /// (<see cref="ProjWktProjectionMethodTests"/>). The control points are
+    /// PROJ 9.8.1's own for EPSG:5070, so this is the widened method map
+    /// measured end to end through the service, on a definition whose
+    /// projection is not a Mercator, a Transverse Mercator or a Lambert.
+    /// <para>
+    /// The tolerance is 5 mm rather than a fraction of a millimetre because
+    /// this path goes through the datum transformation graph: WGS 84 in,
+    /// NAD83 out, and a geodetic-to-geocentric-to-geodetic round trip is only
+    /// the identity to about two millimetres. The projection itself agrees
+    /// with PROJ to a micrometre, which
+    /// <see cref="ProjWktProjectionMethodTests"/> measures on the projection
+    /// alone.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(-122.33, 47.6, -1968025.5402744517, 3008409.0761157167)]
+    [InlineData(-87.63, 41.88, 688859.4285168712, 2127843.0480303406)]
+    [InlineData(-120.0, 34.0, -2177334.7661539624, 1491382.7731987587)]
+    [InlineData(-96.0, 23.0, 0.0, 0.0)]
+    public async Task The_catalogue_serves_the_Conus_Albers_where_PROJ_puts_it(
+        double longitude, double latitude, double easting, double northing)
+    {
+        var coordinate = (await Project(longitude, latitude, 5070)).Coordinate!.Value;
+
+        Assert.InRange(Math.Abs(coordinate.X - easting), 0.0, 0.005);
+        Assert.InRange(Math.Abs(coordinate.Y - northing), 0.0, 0.005);
+    }
+
+    [Fact]
+    public async Task The_Conus_Albers_describes_its_own_projection_and_datum()
+    {
+        var description = await DescribeAsync("crs", "EPSG:5070");
+
+        Assert.Equal("NAD83 / Conus Albers", description.Name);
+        Assert.Equal(CrsKind.Projected, description.Kind);
+        Assert.Equal("North American Datum 1983", description.Datum);
+        Assert.Equal("GRS 1980", description.Ellipsoid!.Name);
+        Assert.Equal("Albers_Conic_Equal_Area", Assert.IsType<ProjectedDefinition>(ProjEpsgCatalog.DefinitionOf(5070)).ProjectionClass);
+    }
+
+    /// <summary>
+    /// A WKT-defined CRS inverts back to the coordinates it was given.
+    /// </summary>
     [Theory]
     [InlineData(3395)]
     [InlineData(2193)]

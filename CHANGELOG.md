@@ -55,6 +55,26 @@ this file together, then tag the release (`RELEASING.md`).
   not gridded (followed up as SpatialEngine-9vg) and an `nvarchar(max)` text
   column cannot be a key.
 
+- **Albers Equal Area, Lambert Azimuthal Equal Area, Polar Stereographic
+  (variant A) and Hotine Oblique Mercator (variant B) join the WKT method
+  map, and the catalogue serves the Conus Albers** (ADR-0027,
+  SpatialEngine-u2x.26). The WKT reader resolved only four projection
+  methods, and every one of them is now a claim measured against PROJ 9.8.1
+  rather than an assumption: each candidate was projected forward and inverse
+  at points inside its area of use, on its own ellipsoid, and compared with
+  PROJ's own coordinates for a named EPSG definition. Four more methods agree
+  to a micrometre and are resolved, with the outcome for every candidate
+  recorded in a table on the reader. **ProjNet's Albers agrees with PROJ to
+  a micrometre over the whole conus** — the open question that kept EPSG:5070
+  out of the catalogue is resolved, and EPSG:5070 is served. Three methods
+  diverge and stay out as named failures: Polar Stereographic (variant B)
+  has no latitude-of-standard-parallel parameter (527 km of northing),
+  Hotine Oblique Mercator (variant A) applies the false offsets at the
+  projection centre where PROJ applies them at the natural origin (2,047 km),
+  and Krovak computes the right magnitudes in the south-oriented axis
+  convention the catalogue does not serve. Each divergence is sized in a
+  test, so closing one has to move a number.
+
 - **`to-color`, `at-interpolate` and `cubic-bezier` in the MapLibre style
   dialect** (ADR-0088, SpatialEngine-ymh): the three interpolation constructs
   ADR-0076 named as unserved. `["to-color", value]` is the one coercion the

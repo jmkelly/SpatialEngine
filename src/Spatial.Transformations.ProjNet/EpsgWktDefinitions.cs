@@ -62,6 +62,17 @@ internal static class EpsgWktDefinitions
         PROJCRS["WGS 84 / World Mercator",BASEGEOGCRS{base},CONVERSION["World Mercator",METHOD["Mercator (variant A)",ID["EPSG",9804]],PARAMETER["Latitude of natural origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8802]],PARAMETER["Scale factor at natural origin",1,SCALEUNIT["unity",1],ID["EPSG",8805]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3395]]
         """;
 
+    /// <summary>
+    /// EPSG:5070, the Conus Albers: the definition the catalogue held back
+    /// while the Albers was unverified. It is here because ProjNet's Albers
+    /// has since been measured against PROJ and agrees to within a
+    /// micrometre over the whole conus, false offsets included
+    /// (<see cref="ProjWktProjectionMethodTests"/>).
+    /// </summary>
+    private const string ConusAlbers = """
+        PROJCRS["NAD83 / Conus Albers",BASEGEOGCRS{base},CONVERSION["Conus Albers",METHOD["Albers Equal Area",ID["EPSG",9822]],PARAMETER["Latitude of false origin",23,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8821]],PARAMETER["Longitude of false origin",-96,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8822]],PARAMETER["Latitude of 1st standard parallel",29.5,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8823]],PARAMETER["Latitude of 2nd standard parallel",45.5,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8824]],PARAMETER["Easting at false origin",0,LENGTHUNIT["metre",1],ID["EPSG",8826]],PARAMETER["Northing at false origin",0,LENGTHUNIT["metre",1],ID["EPSG",8827]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",5070]]
+        """;
+
     private const string BritishNationalGrid = """
         PROJCRS["OSGB36 / British National Grid",BASEGEOGCRS{base},CONVERSION["British National Grid",METHOD["Transverse Mercator",ID["EPSG",9807]],PARAMETER["Latitude of natural origin",49,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",-2,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8802]],PARAMETER["Scale factor at natural origin",0.9996012717,SCALEUNIT["unity",1],ID["EPSG",8805]],PARAMETER["False easting",400000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",-100000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",27700]]
         """;
@@ -107,6 +118,7 @@ internal static class EpsgWktDefinitions
     [
         (3857, WebMercator, Wgs84),
         (3395, WorldMercator, Wgs84),
+        (5070, ConusAlbers, Nad83),
         (27700, BritishNationalGrid, OsGb36),
         (2154, Lambert93, Rgf93V1),
         (2193, NewZealandTransverseMercator, NzGd2000),
