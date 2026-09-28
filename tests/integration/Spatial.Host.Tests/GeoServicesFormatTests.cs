@@ -80,6 +80,74 @@ public sealed class GeoServicesFormatTests : IClassFixture<PostgisHostFactory>
         Assert.False(capabilities.GetProperty("useStandardizedQueries").GetBoolean());
     }
 
+    /// <summary>
+    /// SpatialEngine-u2x.25 / ADR-0081: the layer advertises the two
+    /// capability flags the served query surface earns but did not claim.
+    /// <c>supportsQuantization</c> is the gate ArcGIS REST JS reads before it
+    /// sends <c>quantizationParameters</c>; the query path has served it since
+    /// ADR-0079, so the false gate was costing the tiled client its
+    /// quantization.
+    /// <c>supportsPaginationOnAggregatedQueries</c> is true because an
+    /// <c>outStatistics</c> query pages and reports
+    /// <c>exceededTransferLimit</c> + <c>resultPaginationToken</c>
+    /// (<see cref="GeoServicesStatisticsTests.Statistics_pages_report_exceeded_limit"/>).
+    /// </summary>
+    [Fact]
+    public async Task Layer_advertises_the_served_quantization_and_pagination_flags()
+    {
+        var layer = await GetJsonAsync($"{Root}/demo/FeatureServer/0?f=json");
+
+        // The REST JS gate, at the layer root and inside the capability object.
+        Assert.True(layer.GetProperty("supportsQuantization").GetBoolean());
+        var capabilities = layer.GetProperty("advancedQueryCapabilities");
+        Assert.True(capabilities.GetProperty("supportsQuantization").GetBoolean());
+        Assert.True(capabilities.GetProperty("supportsPaginationOnAggregatedQueries").GetBoolean());
+    }
+
+    /// <summary>
+    /// The other half of ADR-0081: a flag the facade does not earn stays
+    /// absent rather than advertised <c>false</c>. A client that branches on a
+    /// key it can read is being told a capability exists; omitting it is the
+    /// honest answer for <c>distance</c>/<c>trueCurve</c>/<c>lod</c>/
+    /// <c>datumTransformation</c>/<c>analytic</c> (all rejected by name) and
+    /// for the edit-side and write-model operations the facade does not serve.
+    /// </summary>
+    [Fact]
+    public async Task Layer_omits_the_capability_flags_the_facade_does_not_serve()
+    {
+        var layer = await GetJsonAsync($"{Root}/demo/FeatureServer/0?f=json");
+        var capabilities = layer.GetProperty("advancedQueryCapabilities");
+
+        foreach (var unserved in new[]
+        {
+            "supportsTrueCurve",
+            "supportsLod",
+            "supportsQueryWithDistance",
+            "supportsQueryWithDatumTransformation",
+            "supportsQueryAnalytic",
+            "supportsQueryAttachments",
+        })
+        {
+            Assert.False(
+                capabilities.TryGetProperty(unserved, out _),
+                $"advancedQueryCapabilities.{unserved} is advertised but the facade does not serve it.");
+        }
+
+        foreach (var unserved in new[]
+        {
+            // Quantization on the edit path is not served (ADR-0079 is query-side).
+            "supportsQuantizationEditMode",
+            "supportsCalculate",
+            "supportsValidateSQL",
+            "supportsRollbackOnFailureParameter",
+        })
+        {
+            Assert.False(
+                layer.TryGetProperty(unserved, out _),
+                $"{unserved} is advertised but the facade does not serve it.");
+        }
+    }
+
     [Fact]
     public async Task Service_root_advertises_truthful_query_capabilities()
     {

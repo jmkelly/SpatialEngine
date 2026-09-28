@@ -11,6 +11,24 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **The Feature Server layer advertises the capability flags its query surface
+  earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries
+  `supportsQuantization` — at the top level, where the ArcGIS REST JS gate
+  reads it, and inside `advancedQueryCapabilities`, where the S3 layer
+  reference pins it — so a tiled web-map client finally sends the
+  `quantizationParameters` the engine has served since ADR-0079 instead of
+  seeing a false gate and asking for full precision. Alongside it,
+  `advancedQueryCapabilities.supportsPaginationOnAggregatedQueries` is true,
+  because an `outStatistics` response pages and reports
+  `exceededTransferLimit` with a `resultPaginationToken`. The rest of the flag
+  family stays absent rather than advertised `false`: each unserved flag
+  (`supportsTrueCurve`, `supportsLod`, `supportsQueryWithDistance`,
+  `supportsQueryWithDatumTransformation`, `supportsQueryAnalytic`,
+  `supportsQuantizationEditMode`, `supportsValidateSQL`, `supportsCalculate`,
+  …) names behaviour the facade rejects by name, and a key a client can read
+  is a claim. A table — a dataset with no geometry field — omits the per-layer
+  quantization flag, having no coordinates to quantize.
+
 - **Deeper label placement: candidates, priority, line placement, font faces
   and a marker set** (ADR-0080, SpatialEngine-u2x.20): a label is no longer
   offered a single position. Each feature generates ordered candidates — a

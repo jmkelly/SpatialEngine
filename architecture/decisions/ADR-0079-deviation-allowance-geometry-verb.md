@@ -118,6 +118,11 @@ ignored: a `mode` the engine does not implement must not look like one it did.
   ArcGIS REST JS `supportsQuantization` gate stays false. That is a metadata
   gap, tracked separately, not part of this decision.
 
+> **Update (2026-09-28):** closed by ADR-0081, which advertises
+> `supportsQuantization` on the layer resource (and in
+> `advancedQueryCapabilities`) because this decision made it servable. The
+> paragraph above stands as the record of the state at decision time.
+
 ## References
 
 - ADR-0005 (implementation types stay in their implementation)

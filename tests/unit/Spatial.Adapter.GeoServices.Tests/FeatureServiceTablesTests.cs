@@ -57,4 +57,18 @@ public sealed class FeatureServiceTablesTests
         Assert.Equal("Table", EsriLayerModel.Describe(1, Tabular("demo.counts"), editable: false, isTable: true).Type);
         Assert.Equal("Feature Layer", EsriLayerModel.Describe(0, Spatial("demo.places"), editable: false, isTable: false).Type);
     }
+
+    /// <summary>
+    /// ADR-0081: quantization is a geometry capability, so a table (a dataset
+    /// served under <c>tables</c> because its schema carries no geometry
+    /// field) omits the flag — null, and so dropped by the facade's
+    /// <c>WhenWritingNull</c> options — rather than claiming a coordinate grid
+    /// it has no coordinates for.
+    /// </summary>
+    [Fact]
+    public void A_table_omits_the_quantization_flag_a_spatial_layer_advertises()
+    {
+        Assert.True(EsriLayerModel.Describe(0, Spatial("demo.places"), editable: false, isTable: false).SupportsQuantization);
+        Assert.Null(EsriLayerModel.Describe(1, Tabular("demo.counts"), editable: false, isTable: true).SupportsQuantization);
+    }
 }
