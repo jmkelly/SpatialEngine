@@ -289,6 +289,15 @@ Ordered by dependency:
   (T-019). pygeoapi's connect gate still fails its
   `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
   facade serves Esri JSON only.
+- Serving status update: the layer resource advertises
+  `supportsQuantization` (top level, where the ArcGIS REST JS gate reads it,
+  and inside `advancedQueryCapabilities`) and
+  `advancedQueryCapabilities.supportsPaginationOnAggregatedQueries`, both
+  proved by the behaviour that earns them — quantized ordinates (ADR-0079)
+  and an `outStatistics` response that pages with
+  `exceededTransferLimit`/`resultPaginationToken`. A flag the facade does not
+  earn is omitted rather than emitted as `false` (ADR-0081). A table (a
+  dataset with no geometry field) omits the per-layer quantization flag.
 - Serving status update: `inSR` is honoured for query geometry (T-020) — the
   input geometry is interpreted in `inSR` (including the simple comma syntax
   which carries no reference) and transformed to the layer CRS before matching.

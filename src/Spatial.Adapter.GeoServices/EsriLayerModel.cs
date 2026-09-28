@@ -29,12 +29,16 @@ internal static class EsriLayerModel
     public const string SupportedQueryFormats = "JSON";
 
     /// <summary>
-    /// The truthful query flags: pagination/orderBy honoured,
-    /// distinct values, query extent and statistics/having served,
-    /// COUNT DISTINCT and percentile statistics served, defaultSR
-    /// honoured (T-036), closed where-grammar (not standardized queries),
-    /// and no full-text search (no full-text indexes, so the searchable
-    /// list is empty).
+    /// The truthful query flags: pagination/orderBy honoured, including over
+    /// an aggregated (<c>outStatistics</c>) response, which pages and reports
+    /// <c>exceededTransferLimit</c> like any other query; distinct values,
+    /// query extent and statistics/having served, COUNT DISTINCT and
+    /// percentile statistics served, <c>quantizationParameters</c> quantized
+    /// onto the requested view grid (ADR-0079), defaultSR honoured (T-036),
+    /// closed where-grammar (not standardized queries), and no full-text
+    /// search (no full-text indexes, so the searchable list is empty).
+    /// These describe the served query surface, which is the same for every
+    /// layer, so the service root advertises the same object.
     /// </summary>
     public static readonly EsriAdvancedQueryCapabilities QueryCapabilities = new(
         SupportsPagination: true,
@@ -43,6 +47,8 @@ internal static class EsriLayerModel
         SupportsDistinct: true,
         SupportsHavingClause: true,
         SupportsReturningQueryExtent: true,
+        SupportsPaginationOnAggregatedQueries: true,
+        SupportsQuantization: true,
         UseStandardizedQueries: false,
         SupportsCountDistinct: true,
         SupportsPercentileStatistics: true,
@@ -107,6 +113,10 @@ internal static class EsriLayerModel
     /// ADR-0066); every other layer reports <c>hasAttachments: false</c>.
     /// A layer that declares relationships advertises them as
     /// <c>relationships</c> (ADR-0077); every other layer omits the key.
+    /// A spatial layer advertises <c>supportsQuantization</c> — the flag the
+    /// ArcGIS REST JS gate reads before it sends <c>quantizationParameters</c>
+    /// — because the query path has served it since ADR-0079; a table omits
+    /// it, having no coordinates to quantize (ADR-0081).
     /// </summary>
     public static EsriLayer Describe(
         int id,
@@ -137,6 +147,7 @@ internal static class EsriLayerModel
             SupportsDefaultSR: true,
             SupportsAdvancedQueries: true,
             QueryCapabilities,
+            SupportsQuantization: isTable ? null : true,
             uniqueIdField,
             HasAttachments: hasAttachments,
             AttachmentProperties: hasAttachments ? AttachmentProperties : null,
@@ -205,6 +216,7 @@ internal sealed record EsriLayer(
     bool SupportsDefaultSR,
     bool SupportsAdvancedQueries,
     EsriAdvancedQueryCapabilities AdvancedQueryCapabilities,
+    bool? SupportsQuantization = null,
     EsriUniqueIdField? UniqueIdField = null,
     bool HasAttachments = false,
     IReadOnlyList<EsriAttachmentProperty>? AttachmentProperties = null,
@@ -239,13 +251,17 @@ internal sealed record EsriUniqueIdField(string Name, bool IsSystemMaintained);
 /// <summary>
 /// The query flags clients branch on (spec §9.1 layer resource). Every value
 /// is proved by the behaviour it names: pagination and orderBy are honoured
-/// by <c>FeatureQueryEngine</c>, distinct values, query extent and
+/// by <c>FeatureQueryEngine</c> — including over an aggregated
+/// <c>outStatistics</c> response, which <c>FeatureStatisticsEngine</c> pages
+/// with the same offset/record-count pair — distinct values, query extent and
 /// statistics/having are served, COUNT DISTINCT (returnCountOnly with
-/// returnDistinctValues) and percentile statistics are served, defaultSR is
-/// honoured on both sides of the request (T-036), full-text search is
-/// rejected by name so the flag is false and the searchable-fields list is
-/// empty, and the closed where-grammar is not the standardized SQL the flag
-/// names.
+/// returnDistinctValues) and percentile statistics are served, coordinates
+/// are quantized onto the <c>quantizationParameters</c> view grid (ADR-0079),
+/// defaultSR is honoured on both sides of the request (T-036), full-text
+/// search is rejected by name so the flag is false and the searchable-fields
+/// list is empty, and the closed where-grammar is not the standardized SQL
+/// the flag names. A flag the facade does not earn is absent from this
+/// object rather than present and false (ADR-0081).
 /// </summary>
 internal sealed record EsriAdvancedQueryCapabilities(
     bool SupportsPagination,
@@ -254,6 +270,8 @@ internal sealed record EsriAdvancedQueryCapabilities(
     bool SupportsDistinct,
     bool SupportsHavingClause,
     bool SupportsReturningQueryExtent,
+    bool SupportsPaginationOnAggregatedQueries,
+    bool SupportsQuantization,
     bool UseStandardizedQueries,
     bool SupportsCountDistinct,
     bool SupportsPercentileStatistics,

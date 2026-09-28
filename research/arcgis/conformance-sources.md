@@ -281,6 +281,17 @@ with pointer). Follow-up tasks must land the red test before the fix.
   `IGeometryOperations.Generalize`, and `geometryPrecision` was already
   rounding. The `supportsQuantization` capability flag (§1.2) is still not
   emitted by the layer metadata, so the REST JS gate stays false.
+- Resolved (SpatialEngine-u2x.25, ADR-0081): the flag is emitted. The layer
+  resource advertises `supportsQuantization` at the top level (where the
+  REST JS gate reads it) and inside `advancedQueryCapabilities` (where §1.2
+  pins it), plus
+  `advancedQueryCapabilities.supportsPaginationOnAggregatedQueries`, which
+  the `outStatistics` paging already earns. The rest of the §1.2 family
+  (`supportsTrueCurve`, `supportsLod`, `supportsQueryWithDistance`,
+  `supportsQueryWithDatumTransformation`, `supportsQueryAnalytic`, …) stays
+  absent: each names a request parameter the facade rejects by name, so the
+  flag would be a lie a client branches on. A table omits the per-layer flag
+  — it has no coordinates to quantize.
 
 ### T9. Silent-ignore audit: `sqlFormat`, `resultType`, `gdbVersion`, `historicMoment`, `datumTransformation`, `returnCentroid`, `distance`/`units`, `relationParam`, `text` (serve)
 - Request: each of `…/0/query?sqlFormat=standard`, `?resultType=tile`,
