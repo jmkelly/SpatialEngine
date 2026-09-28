@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Measurement spike for SpatialEngine-u2x.21.2: how many tiles a single-layer
+    edit or single-layer style save throws out of the tile cache on a
+    realistically published multi-layer map, against how long a re-render of
+    those tiles takes. It is a spike harness, not a product project: it lives
+    under eng/ and is deliberately NOT in SpatialEngine.slnx, so the build,
+    coverage and metrics gates stay exactly as they were. Run it with
+    eng/spike-u2x-tile-cache.sh.
+
+    It references implementation projects directly (like
+    eng/spike-u2x-query-baseline does), because the point of the spike is to
+    time the real renderer, the real tiling scheme and the real store, not a
+    copy of them. The one thing it cannot reach is Spatial.Host's internal
+    TileService/cache/version helpers, which Mirror.cs reproduces and checks
+    against a live host with the host option (see HostCheck.cs).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Spatial.Spike.TileCache</AssemblyName>
+    <RootNamespace>Spatial.Spike.TileCache</RootNamespace>
+    <!-- A spike harness has no tests; keep it out of the default gate. -->
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Imagery.Vips\Spatial.Imagery.Vips.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Tiling.WebMercator\Spatial.Tiling.WebMercator.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      NetVips/NetVips.Native are the versions Spatial.Imagery.Vips already
+      pins in Directory.Packages.props (no new package enters the
+      repository). The spike uses them to time a serve-time layer composite,
+      the step a per-layer cache design would add to every request.
+    -->
+    <PackageReference Include="NetVips" />
+    <PackageReference Include="NetVips.Native" />
+  </ItemGroup>
+
+</Project>
