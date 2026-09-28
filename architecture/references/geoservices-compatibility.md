@@ -289,7 +289,7 @@ Ordered by dependency:
   (T-019). pygeoapi's connect gate still fails its
   `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
   facade serves Esri JSON only.
-- Serving status update (SpatialEngine-u2x.16, ADR-0083): the three
+- Serving status update (SpatialEngine-u2x.16, ADR-0085): the three
   "no engine verb" query rejects are served. `distance`/`units` is a band
   measured from the query geometry and applied as a buffer **in the layer
   CRS** — the Geometry Service's transform-then-buffer rule, with the unit
@@ -381,7 +381,7 @@ is rejected by name (never silently ignored) and named here with its reason:
   name with a typed `invalid.arguments` failure and does not advertise them.
   Half-parsing notations is explicitly out; a real codec needs its own
   package decision (new ADR) plus an engine verb.
-- `returnZ`/`returnM` (SpatialEngine-u2x.16, ADR-0083): **served**. Checked
+- `returnZ`/`returnM` (SpatialEngine-u2x.16, ADR-0085): **served**. Checked
   rather than assumed: `Spatial.Core`'s canonical binary codec round-trips
   `Xyzm` exactly, and the Esri codec reads and writes Z/M ordinates. The loss
   was codec depth, not the engine — the writer emitted a three-ordinate Esri
@@ -415,7 +415,7 @@ is rejected by name (never silently ignored) and named here with its reason:
   approximated with a hidden timestamp column, which would answer a
   different question.
 - `distance`/`units` and `returnCentroid`: were here as "the engine has no
-  verb" and are **served** (SpatialEngine-u2x.16, ADR-0083) — see §7.
+  verb" and are **served** (SpatialEngine-u2x.16, ADR-0085) — see §7.
 - Token 498/499 → `store.unavailable` (T12): by design — the engine taxonomy
   has no auth-error code and the provider takes a static token; the
   characterisation test pins the mapping.

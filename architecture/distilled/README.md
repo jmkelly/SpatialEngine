@@ -124,7 +124,6 @@ shape is noted in brackets.
 | 0074 | The MapLibre style dialect compiles colour/opacity/size properties as an expression tree evaluated once per feature over a shared scope; a number is not a colour, and unsupported input is a typed `invalid.arguments`. |
 | 0075 | Label placement generates ordered candidates (point offsets, or repeated positions along a line) and selects them by `symbol-sort-key` in a pass of its own; the text face is a digest-pinned registry with a documented fallback chain, so an unknown `text-font` is never an error. |
 | 0074 | The feature-query contract is a core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`; pushdown is per-conjunct and best-effort with residual in-memory evaluation; reductions are an additive `IFeatureAggregateStore` face; the published `filter` text is parsed once at the boundary and the per-provider filter languages are retired. |
-<<<<<<< HEAD
 | 0083 | A store may report a per-dataset content version (`IVersionedFeatureStore`); every tile cache key (raster and MVT) folds it in, so a write invalidates the tiles derived from that data with no manual flush. |
 | 0085 | Query `distance`/`units` band, `returnCentroid` (`IGeometryMeasures.Centroid`) and `returnZ`/`returnM` output selection are served; the Z/M loss was Esri-JSON codec depth, not the engine. |
 

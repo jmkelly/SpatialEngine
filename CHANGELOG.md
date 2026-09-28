@@ -12,7 +12,7 @@ this file together, then tag the release (`RELEASING.md`).
 ### Added
 
 - **Query `distance`/`units` band, `returnCentroid` and `returnZ`/`returnM`**
-  (ADR-0083, SpatialEngine-u2x.16): the three §7.1 query rejects that were
+  (ADR-0085, SpatialEngine-u2x.16): the three §7.1 query rejects that were
   really engine verbs are served. `distance` is a band from the query
   geometry applied as a buffer in the layer CRS, with the unit code resolved
   from the same curated table and projected/geographic rule the Geometry
@@ -134,7 +134,7 @@ this file together, then tag the release (`RELEASING.md`).
 ### Changed
 
 - **The Esri geometry writer states its `hasZ`/`hasM` flags**
-  (ADR-0083, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is
+  (ADR-0085, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is
   Z when only `hasZ` is set and M when only `hasM` is set — the codec's own
   read rule — so a 3D geometry was being written in a form the same codec
   would read back with the wrong ordinate. Checked as the bead asked: the

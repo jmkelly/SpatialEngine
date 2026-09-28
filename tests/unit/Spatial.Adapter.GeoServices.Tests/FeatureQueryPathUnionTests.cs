@@ -16,12 +16,12 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// the deviation allowance of ADR-0079 (<c>maxAllowableOffset</c> and
 /// <c>quantizationParameters</c>, SpatialEngine-u2x.3) and the distance band,
 /// <c>returnCentroid</c> and <c>returnZ</c>/<c>returnM</c> output selection of
-/// ADR-0083 (SpatialEngine-u2x.16).
+/// ADR-0085 (SpatialEngine-u2x.16).
 ///
 /// The two landed on the same seam — the per-feature projection and the match
 /// geometry — from opposite directions, so each side's own suite proved only
 /// its half: ADR-0079 pinned
-/// <c>FeatureProjection.TransformFeature</c> and ADR-0083 pinned
+/// <c>FeatureProjection.TransformFeature</c> and ADR-0085 pinned
 /// <c>FeatureProjection.MatchGeometry</c>, each called directly. A resolution
 /// that threaded one of the two verbs at those call sites and dropped the
 /// other satisfied both suites and silently served full precision, or a
@@ -87,7 +87,7 @@ public sealed class FeatureQueryPathUnionTests
         var ring = feature.GetProperty("geometry").GetProperty("rings")[0];
         Assert.True(ring.GetArrayLength() < 182, "the 181-vertex circle came back whole; the allowance was not applied on the query path.");
 
-        // ADR-0083: the centroid rides beside the geometry, the Z/M flags state
+        // ADR-0085: the centroid rides beside the geometry, the Z/M flags state
         // which ordinates the coordinate arrays carry.
         // Measured from the response geometry, which the allowance moved, so
         // the centroid is near the ring's centre rather than exactly on it.
@@ -115,7 +115,7 @@ public sealed class FeatureQueryPathUnionTests
             Assert.Equal(0, (int)Math.Round(vertex[1].GetDouble()) % 100);
         }
 
-        // ADR-0083: the centroid is measured from the response geometry, which
+        // ADR-0085: the centroid is measured from the response geometry, which
         // generalization moved, and is still written beside it.
         Assert.Equal(3857, feature.GetProperty("centroid").GetProperty("spatialReference").GetProperty("wkid").GetInt32());
     }

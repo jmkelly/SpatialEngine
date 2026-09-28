@@ -4,7 +4,7 @@ date: 2026-09-28
 deciders: maintainer + agent
 ---
 
-# ADR-0083: The distance band, the per-feature centroid and the Z/M output selection are served
+# ADR-0085: The distance band, the per-feature centroid and the Z/M output selection are served
 
 ## Context
 
