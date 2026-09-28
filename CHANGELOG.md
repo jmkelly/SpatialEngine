@@ -308,6 +308,22 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **The feature query answers `Intersects` with the OGC intersect patterns,
+  not by building the intersection** (ADR-0036, SpatialEngine-51k):
+  `spatialRel=esriSpatialRelIntersects` was exact but materialised
+  `Intersection(feature, query)` for every candidate the envelope pre-filter
+  admitted, on a path that runs per feature — an overlay per row to answer a
+  question the DE-9IM pattern table already answers. It now reads the four OGC
+  intersect patterns (`T********`, `*T*******`, `***T*****`, `****T****` —
+  the interiors meet, either interior reaches the other's boundary, or the
+  boundaries meet) out of the one `SpatialRelationPredicates` table the other
+  verbs read, behind the same envelope pre-filter and with no `Intersection`
+  call on the query path. The patterns are tried as four short-circuiting
+  `Relate` calls because a DE-9IM pattern is a single nine-character matrix
+  and the grammar takes no `|` alternation. The Geometry Service `relation`
+  reads the same table entry, so both endpoints still answer one way; the
+  answers are unchanged, since a non-empty intersection is exactly this
+  union.
 - **Geometry Service `relation` serves the named Touches, Overlaps and
   Crosses relations** (ADR-0036, SpatialEngine-zpz): `relation=esriSpatialRelTouches
   |esriSpatialRelOverlaps|esriSpatialRelCrosses` used to be rejected by name,

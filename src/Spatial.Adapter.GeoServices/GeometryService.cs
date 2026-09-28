@@ -698,11 +698,6 @@ internal static class GeometryService
             return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
         }
 
-        if (string.Equals(relation, "esriSpatialRelIntersects", StringComparison.OrdinalIgnoreCase))
-        {
-            return (left, right, relations, token) => !relations.Relate(left, right, "FF*FF****", token);
-        }
-
         if (string.Equals(relation, "esriSpatialRelDisjoint", StringComparison.OrdinalIgnoreCase))
         {
             return (left, right, relations, token) => relations.Relate(left, right, "FF*FF****", token);
@@ -720,7 +715,9 @@ internal static class GeometryService
 
         // The dimension-aware verbs are read out of the one pattern table the
         // feature query path tests with, so the same verb has one answer
-        // whichever endpoint serves it (SpatialEngine-zpz).
+        // whichever endpoint serves it (SpatialEngine-zpz). Intersects joins
+        // them there for the same reason (SpatialEngine-51k): both endpoints
+        // answer it from the OGC intersect patterns.
         if (TryNamedRelation(relation, out var dimensionAware))
         {
             return dimensionAware;
@@ -737,13 +734,15 @@ internal static class GeometryService
     }
 
     /// <summary>
-    /// The named predicate for the relations whose DE-9IM pattern is
-    /// dimension-dependent, read from <see cref="SpatialRelationPredicates"/>
-    /// — the one pattern table the feature query path tests with (ADR-0036),
-    /// so there is no second copy of a pattern string to drift. The left
-    /// geometry plays the feature and the right the query, the roles the
-    /// query path gives them (SpatialEngine-2ve owns whether that is the
-    /// direction the protocol wants for every verb).
+    /// The named predicate for the relations read out of
+    /// <see cref="SpatialRelationPredicates"/> — the one pattern table the
+    /// feature query path tests with (ADR-0036), so there is no second copy of
+    /// a pattern string to drift. That covers the dimension-dependent verbs
+    /// and, since SpatialEngine-51k, <c>Intersects</c>: both endpoints answer
+    /// it from the OGC intersect patterns rather than from a built
+    /// intersection. The left geometry plays the feature and the right the
+    /// query, the roles the query path gives them (SpatialEngine-2ve owns
+    /// whether that is the direction the protocol wants for every verb).
     /// </summary>
     private static bool TryNamedRelation(
         string relation, out Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> predicate)
@@ -760,6 +759,10 @@ internal static class GeometryService
         else if (Matches(relation, "esriSpatialRelCrosses"))
         {
             matched = SpatialRelationPredicates.Crosses;
+        }
+        else if (Matches(relation, "esriSpatialRelIntersects"))
+        {
+            matched = SpatialRelationPredicates.Intersects;
         }
 
         predicate = (left, right, relations, token) =>
