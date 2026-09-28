@@ -112,7 +112,7 @@ JSON geometry therefore never enters core values or SDK contracts; this is
 the same clarification ADR-0035 §2 made for the serving facade. Malformed
 or unsupported input is a typed `invalid.arguments` and nothing partial is
 returned. Streams and size/page caps bound resource use; `IAsyncEnumerable`
-ingest is a later evolution, not phase one — delivered by ADR-0075, which
+ingest is a later evolution, not phase one — delivered by ADR-0082, which
 also makes the decode honour a declared source CRS and report what it did.
 
 **5. The neutral host API is the product surface; Esri admin is a gated
@@ -161,7 +161,7 @@ boundary are separate ADRs in their own plans.
   redaction tests are extended to the admin path.
 - Ingest is a cancellable request with configured caps, not a job
   (ADR-0033). Large-file streaming and resumable upload are later work —
-  streaming landed in ADR-0075; resumable upload is still open.
+  streaming landed in ADR-0082; resumable upload is still open.
 - Two follow-on ADRs are prerequisites for their phases: a writable
   in-memory provider for the database-free profile, and omit-identity-on-
   insert for editing uploaded layers. Neither blocks phase-one ingest +

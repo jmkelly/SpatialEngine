@@ -5,7 +5,7 @@ deciders: maintainer + agent
 amends: ADR-0041
 ---
 
-# ADR-0075: Ingest honours the source CRS, reports the decode, and streams
+# ADR-0082: Ingest honours the source CRS, reports the decode, and streams
 
 ## Context
 

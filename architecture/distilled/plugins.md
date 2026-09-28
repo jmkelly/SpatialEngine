@@ -61,7 +61,7 @@ In order of preference for new implementations:
   streaming decode and the decode report: Core only, no ASP.NET or
   HttpClient, and no reference to `Spatial.Contracts` — it reaches a
   coordinate transform through its own `IIngestReprojection` seam, which the
-  host adapts (ADR-0041, ADR-0075).
+  host adapts (ADR-0041, ADR-0082).
 - Implementations (`Spatial.Operations.*`, `Spatial.Transformations.*`,
   `Spatial.Stores.*`, `Spatial.Maps`, `Spatial.Rendering.*`, `Spatial.Imagery.*`,
   `Spatial.Tiling.*`) — reference Core + SDK only; third-party packages
