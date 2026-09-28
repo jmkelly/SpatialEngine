@@ -16,9 +16,13 @@ Sources (checked 2026-09-14):
   `ground-truth/map-root-cached.WorldTopo.json` (`singleFusedMapCache` + `tileInfo` 24 LODs),
   `ground-truth/map-layers.Census.json`, `ground-truth/map-legend.Census.json`
 
-Our surface: `GeoServicesEndpoints.Maps.cs` (root/layers/layer/query/identify/find/image),
+Our surface: `GeoServicesEndpoints.Maps.cs` (routes), `MapServerOperationEndpoints.cs`
+(root/layers/layer/query/identify/find/image), `MapServerLegendEndpoints.cs`
+(legend/queryDomains/queryLegends), `MapOfflineRejects.cs`
+(exportTiles/WMTS/KML/jobs), `MapVectorTileEndpoints.cs` (MVT),
 `MapExportEndpoints` (`GeoServicesEndpoints.MapExport.cs`, export + `tile/{z}/{y}/{x}`),
-`MapServerResources.cs`, `MapRenderEngine.cs`, `MapStyleProjection.cs`.
+`MapServerResources.cs`, `MapRenderEngine.cs`, `MapStyleProjection.cs`,
+`MapGenerateRenderer.cs`, `MapLegend.cs`, `MapIdentifyPlan.cs`/`MapIdentifyMatcher.cs`.
 
 ## 1. Resources & operations
 
@@ -33,18 +37,19 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (root/layers/layer/query/identify/fi
 | `export` (png/jpg/webp/tiff; `bbox/bboxSR/imageSR/size/layers/layerOption/layerDefs/format/transparent/dpi`; `f=image` bytes or `{href}`) | served | **Have** | `GeoServicesEndpoints.MapExport.cs`; `MapRenderEngine.cs` (T-040: `time`/`layerTimeOptions`/`timeRelation`, `dynamicLayers`, `layerOption`, ADR-0058) |
 | `tile/{z}/{y}/{x}` Web-Mercator tile | served | **Have** | `MapExportEndpoints`; `IMapRenderer`+`ITileScheme` (ADR-0046/0048) |
 | `<layerId>/images/<imageId>` (§4.7 picture-symbol images) | typed `not.found` | **Non-goal** | `GeoServicesEndpoints.Maps.cs:MapImage` (ADR-0050: no picture symbols) |
-| `legend` (per-layer symbology legend) | — | **Missing** | S4 `legend-map-service/`; G1 `map-legend.Census.json` is the replay fixture; no route in `Maps.cs` |
+| `legend` (per-layer symbology legend) | served | **Have** | `GeoServicesEndpoints.Maps.cs:29` → `MapServerLegendEndpoints.MapLegend` → `MapLegend.Legend`: one legend layer per published layer, projected from the persisted style so it always agrees with the layer metadata `drawingInfo`; replayed against G1 `map-legend.Census.json` (ADR-0055) |
 | `dynamicLayers` / `dynamicLayerTable` (per-request layer redefinition) | served | **Have** | S1/S4; `export` rebinds `mapLayer` sources with a `drawingInfo` override over the projected subset (T-040, ADR-0058); new data sources stay honestly rejected |
 
-| `generateRenderer` (server classification) | — | **Missing** | S4; same gap as Feature (shared classification engine absent) |
-| `queryDomains` / `queryLegends` (service-level domain/legend queries) | — | **Missing** | S4 `query-domains-map-service/`, `query-legends-map-service/` |
-| `queryRelatedRecords` (map-service variant) | — | **Missing** | S4; the FeatureServer serves it (ADR-0077); the MapServer has no per-layer query surface to hang it on |
-| `exportTiles` + `estimateExportTileSize` (offline tile packages) | — | **Missing** | S4; our tiles are live-rendered only, no packaging/job model (ADR-0033: no jobs) |
-| WMTS (`.../WMTS`, `WMTSClientCapabilities`, tile row) | — | **Missing** | S4 `wmts-*-map-service/`; we serve no WMTS endpoint (see `tiles.md`) |
-| KML (`generateKml`, `kml-image`) | — | **Missing** | S4; no KML surface anywhere in tree |
-| `image` (map image resource) / `htmlPopup` / attachments on map layers | — | **Missing** | S4; same non-model gaps as Feature |
-| Async (`.../MapServer/jobs`, `map-service-job/result/input`) | — | **Non-goal** | S4; no job model by architecture (ADR-0033) |
-| `time` / `layerTimeOptions` / `timeRelation` on export/identify | partial | **Partial** | live roots advertise `supportsTimeRelation` and `export` honours all three (T-040, ADR-0058); `identify` still ignores `time` (follow-up) |
+| `generateRenderer` (server classification) | served | **Have** | `GeoServicesEndpoints.Maps.cs:35` → `MapServerOperationEndpoints.MapGenerateRenderer` → `MapGenerateRenderer.GenerateAsync`: equal-interval `classBreaksDef` and single-field `uniqueValueDef` over the layer's data, with the same typed rejects. The FeatureServer reuses this one classifier (ADR-0055, ADR-0061 §2) |
+| `queryDomains` / `queryLegends` (service-level domain/legend queries) | served | **Have** | `GeoServicesEndpoints.Maps.cs:31,33` → `MapServerLegendEndpoints`: the projected domains and the per-layer legend of the selected layers (all layers when `layers` is absent), over the shared bare-id / show-hide-all selection grammar; an unknown layer id is a typed `not.found` (ADR-0055) |
+| `queryRelatedRecords` (map-service variant) | — | **Missing** | no `MapServer/{layerId}/queryRelatedRecords` route is mounted: `MapServer/{layerId}/query` delegates to `FeatureService.QueryAsync` and relationship traversal is served on the FeatureServer surface over map-declared relationships (ADR-0077). Nothing on the map surface advertises it, so a client is not misled — it asks the FeatureServer |
+| `exportTiles` + `estimateExportTileSize` (offline tile packages) | mounted, honestly rejected | **Non-goal** | `MapOfflineRejects.cs`: both resolve the service (an unknown one stays `not.found`) and then fail typed `invalid.arguments` — packaging needs a job model the host does not have (ADR-0033) — naming the live alternatives `tile/{z}/{y}/{x}` and `export` (ADR-0060 §1) |
+| WMTS (`.../WMTS`, `WMTSClientCapabilities`, tile row) | mounted, honestly rejected | **Non-goal** | `.../MapServer/WMTS` and `.../MapServer/WMTS/{*rest}` (covering `WMTS/1.0.0/WMTSCapabilities.xml`) reject by name, naming `tile/{z}/{y}/{x}`; WMTS serving is closed, and live tiles come from the neutral and Esri routes (ADR-0060 §2) |
+| KML (`generateKml`, `kml-image`) | mounted, honestly rejected | **Non-goal** | `generateKml` and `kml/{*rest}` (covering `kml/mapImage.kmz`) reject by name; no KML surface is served anywhere in the tree (ADR-0060 §3) |
+| `htmlPopup` / attachments on map layers | — | **Missing** | no MapServer popup or attachment route is mounted, and the layer metadata is honest about it: `esriServerHTMLPopupTypeNone` and `hasAttachments: false` (`MapServerResources.Layer`). The served attachment surface is the FeatureServer, which advertises the face per store (ADR-0066); the map image resource is the separate typed-`not.found` row above |
+| Live vector tiles (`MapServer/vectorTile/{z}/{y}/{x}`, `VectorTileServer/tile/{z}/{y}/{x}`) | served | **Have** | `MapVectorTileEndpoints.cs`: a live MVT view over the same service/scheme/cache contracts as the raster tiles, plus the map-scoped OGC landing, collections, TileJSON and negotiated tile data (ADR-0070, which superseded ADR-0062's "no MVT" decision). Offline `.vtpk` packaging stays a non-goal (ADR-0033, ADR-0060) |
+| Async (`.../MapServer/jobs`, `map-service-job/result/input`) | mounted, honestly rejected | **Non-goal** | `.../MapServer/jobs` and `.../MapServer/jobs/{*rest}` (one job, its results, its inputs) reject by name: long-running work runs as cancellable tasks, not observable jobs, so there is nothing to poll and clients await the synchronous `export`/tile response (ADR-0033, ADR-0060 §4) |
+| `time` / `layerTimeOptions` on export and identify | served | **Have** | `export` serves the temporal selection (T-040, ADR-0058) and `identify` now plans the same one, reusing the export grammar, so dated hits filter exactly as `query` and `export` do (`MapIdentifyPlan.cs`, `MapIdentifyMatcher`); live roots advertise `supportsTimeRelation`. `timeRelation` is validated on both paths but only the overlaps relation is applied — the one honest gap, stated in §2 |
 | `layerOption` (`all\|visible\|top`), `gdbVersion`, `mapRangeValues`, `datumTransformations` on export | partial | **Partial** | `layerOption` validated and served (T-040, ADR-0058); `gdbVersion`/`mapRangeValues`/`datumTransformations` still ignored (speculative per §2) |
 
 | Cached-service fields (`singleFusedMapCache`, `tileInfo` LODs, `storageInfo`, `exportTilesAllowed`) on root | served | **Have** | `singleFusedMapCache`+`tileInfo` per served scheme (LOD rows replayed vs G1, T-040), `exportTilesAllowed:false` (packaging is T-041); `storageInfo` honestly absent (no stored cache) |
@@ -59,11 +64,28 @@ Have: `bbox`, `size`, `bboxSR`, `imageSR`, `layers`, `layerOption`,
 `scale`/`mapScale` enforcement, `historicMoment` — speculative until a
 client trace shows them.
 
+**One honest gap in the temporal surface, stated rather than implied:**
+`timeRelation` is parsed and validated on both `export` and `identify`
+(`MapExportTime.ParseTimeRelation`) — an undocumented value is a typed
+rejection — but the served window is the overlaps relation on both paths:
+the parsed relation is not applied to the resolved time window
+(`MapExportLayers.cs:38`, `MapIdentifyPlan.cs:31` discard it), while the
+root advertises `supportsTimeRelation: true` (ADR-0058). The time window
+that `time` and `layerTimeOptions` actually produce is correct for the
+overlaps relation; `esriTimeRelationContains`/`Within` are accepted and
+behave as overlaps. Applying the relation, or advertising the flag
+truthfully, is filed as a follow-up rather than papered over here.
+
 ## 3. Follow-ups (filed)
 
 - T-D Map missing resources: `legend`, `queryDomains`/`queryLegends`, `generateRenderer`
-  (replay G1 `map-legend.Census.json` red-first).
+  (replay G1 `map-legend.Census.json` red-first). **Done (ADR-0055).**
 - T-E Map export parity: `time`/`layerTimeOptions`, `dynamicLayers`, `layerOption`,
   cached-root fields honesty (`exportTilesAllowed`, `singleFusedMapCache`).
+  **Done (ADR-0058).** The one row that did not close is the `timeRelation`
+  application noted in §2, filed as its own follow-up.
 - T-F Map offline/async surface: `exportTiles`+estimate, WMTS, KML, async jobs —
-  scoping task (WMTS/KML detail spawns from `tiles.md` T-K).
+  scoping task (WMTS/KML detail spawns from `tiles.md` T-M). **Closed as
+  documented non-goals, mounted and rejected by name (ADR-0060); vector tiles
+  landed as a live surface (ADR-0070), which is the same close `tiles.md` T-M
+  records.**
