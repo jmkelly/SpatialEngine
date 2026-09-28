@@ -940,23 +940,52 @@ internal sealed record TransformationEntry(
                 candidate.AreaOfUse.YMax));
 }
 
-/// <summary>One step of a candidate: the operation, the direction it runs in, and the parameters it applies.</summary>
-internal sealed record TransformationStep(string Name, bool TransformForward, string Method, TransformationHelmert Helmert)
+/// <summary>
+/// One step of a candidate: the operation, the direction it runs in, and the
+/// parameters it applies. Exactly one of <c>helmert</c> and <c>grid</c> is
+/// present — a grid shift has no seven parameters, and a step that published
+/// zeroes beside them would be a decoration a client could mistake for an
+/// operation (ADR-0105).
+/// </summary>
+internal sealed record TransformationStep(
+    string Name,
+    bool TransformForward,
+    string Method,
+    TransformationHelmert? Helmert,
+    TransformationGrid? Grid = null)
 {
     public static TransformationStep From(CrsTransformationStep step) =>
         new(
             step.Name,
             step.TransformForward,
             step.Method,
-            new TransformationHelmert(
-                step.Parameters.Tx,
-                step.Parameters.Ty,
-                step.Parameters.Tz,
-                step.Parameters.Rx,
-                step.Parameters.Ry,
-                step.Parameters.Rz,
-                step.Parameters.ScalePpm));
+            step.Parameters is null
+                ? null
+                : new TransformationHelmert(
+                    step.Parameters.Tx,
+                    step.Parameters.Ty,
+                    step.Parameters.Tz,
+                    step.Parameters.Rx,
+                    step.Parameters.Ry,
+                    step.Parameters.Rz,
+                    step.Parameters.ScalePpm),
+            step.GridShift is null
+                ? null
+                : new TransformationGrid(
+                    step.GridShift.GridName,
+                    step.GridShift.FileName,
+                    step.GridShift.Format,
+                    step.GridShift.Interpolation));
 }
+
+/// <summary>
+/// A grid-shift step, published as the table it is: which sub-grid answered,
+/// from which bundle, in which format, interpolated how. A client cannot apply
+/// a grid itself without the bundle, so what it needs is enough to know which
+/// operation it is looking at and that the engine read it from real data
+/// (ADR-0105).
+/// </summary>
+internal sealed record TransformationGrid(string Name, string File, string Format, string Interpolation);
 
 /// <summary>The seven parameters of a Helmert step: metres, arc-seconds, parts per million (EPSG method 9606).</summary>
 internal sealed record TransformationHelmert(double Tx, double Ty, double Tz, double Rx, double Ry, double Rz, double Scale);
