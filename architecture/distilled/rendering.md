@@ -110,6 +110,22 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   remains the value an expression falls back to when it has none for a
   feature. Symbol *layout* keys stay constant — expressions there are a
   separate bead.
+- **Degenerate line geometry** (SpatialEngine-a74): a two-point segment has
+  zero area, and a vertical one also has zero extent in x, but neither is a
+  reason to drop it. A `line` layer strokes every orientation — horizontal,
+  vertical, diagonal and reversed alike — with the `line-width` the style
+  carries, on both the constant and the data-driven paint path, because the
+  stroke is what gives a segment its pixels, not the geometry's area. The
+  viewport cull keeps a zero-width envelope that touches the viewport edge.
+  Two members of the class are edge behaviours rather than strokes, matching
+  MapLibre: both endpoints coincident (a zero-length segment) draws nothing
+  under `line-cap: butt`, and draws the cap itself — a dot one line width
+  across — under `round` or `square`; and a LineString with fewer than two
+  points is not a segment, so it strokes nothing under any cap. A `line`
+  geometry on a `fill` layer fills nothing, and a `fill` geometry on a
+  `line` layer strokes nothing. `LineOrientationRenderTests` pins all of it;
+  the committed golden render uses point features only, so nothing before it
+  pinned a line's orientation.
 - Symbol layout (ADR-0049, ADR-0080): `text-field` (a `{attribute}` template,
   newlines split a multi-line label), `text-font` (a fallback-ordered list of
   face names), `text-size`, `text-anchor`, `text-offset` (ems), `text-padding`,
