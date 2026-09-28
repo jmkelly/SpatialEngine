@@ -153,6 +153,120 @@ public sealed class GeometryServiceTests
         Assert.Equal([1], relations);
     }
 
+    /// <summary>
+    /// The named relations the Geometry Service serves out of the one DE-9IM
+    /// pattern table the feature query path uses, so the same verb has one
+    /// answer whichever endpoint serves it (SpatialEngine-zpz).
+    ///
+    /// The fixture is the same unit square feature and the same twelve query
+    /// geometries whose hand-computed DE-9IM matrix
+    /// <see cref="FeatureSpatialRelationTests"/> pins the query path against:
+    /// the matrix rows are the feature's components and the columns the
+    /// query's, in interior/boundary/exterior order. Every expected value
+    /// below is copied from that table's Touches/Overlaps/Crosses columns, so
+    /// a second copy of a pattern string cannot drift from the first.
+    /// </summary>
+    [Theory]
+    [InlineData("square-equal", false)]
+    [InlineData("square-inner", false)]
+    [InlineData("square-overlap", false)]
+    [InlineData("square-corner", false)]
+    [InlineData("square-above", true)]
+    [InlineData("line-crossing", false)]
+    [InlineData("line-inside", false)]
+    [InlineData("line-on-boundary", true)]
+    [InlineData("point-inside", false)]
+    [InlineData("point-on-boundary", true)]
+    [InlineData("point-outside", false)]
+    [InlineData("square-outside", false)]
+    public async Task Relation_touches_needs_disjoint_interiors_and_meeting_boundaries(string query, bool expected) =>
+        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelTouches"));
+
+    [Theory]
+    [InlineData("square-equal", false)]
+    [InlineData("square-inner", false)]
+    [InlineData("square-overlap", true)]
+    [InlineData("square-corner", false)]
+    [InlineData("square-above", false)]
+    [InlineData("line-crossing", false)]
+    [InlineData("line-inside", false)]
+    [InlineData("line-on-boundary", false)]
+    [InlineData("point-inside", false)]
+    [InlineData("point-on-boundary", false)]
+    [InlineData("point-outside", false)]
+    [InlineData("square-outside", false)]
+    public async Task Relation_overlaps_needs_equal_dimensions_and_a_partial_overlap(string query, bool expected) =>
+        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelOverlaps"));
+
+    [Theory]
+    [InlineData("square-equal", false)]
+    [InlineData("square-inner", false)]
+    [InlineData("square-overlap", false)]
+    [InlineData("square-corner", false)]
+    [InlineData("square-above", false)]
+    [InlineData("line-crossing", true)]
+    [InlineData("line-inside", false)]
+    [InlineData("line-on-boundary", false)]
+    [InlineData("point-inside", false)]
+    [InlineData("point-on-boundary", false)]
+    [InlineData("point-outside", false)]
+    [InlineData("square-outside", false)]
+    public async Task Relation_crosses_needs_a_mixed_dimension_meeting(string query, bool expected) =>
+        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelCrosses"));
+
+    [Fact]
+    public async Task Relation_rejects_a_relation_name_it_does_not_serve()
+    {
+        var error = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("relation",
+            ("geometries1", """[{"rings":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}]"""),
+            ("geometries2", """[{"x":5,"y":5}]"""),
+            ("relation", "esriSpatialRelSpans")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, error.Code);
+        Assert.Contains("esriSpatialRelSpans", error.Message);
+    }
+
+    /// <summary>The unit square against the fixture query geometry, under the named relation.</summary>
+    private static async Task<bool> RelatesAsync(string query, string relation)
+    {
+        var result = await DispatchAsync("relation",
+            ("geometries1", """[{"rings":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}]"""),
+            ("geometries2", $"[{QueryGeometry(query)}]"),
+            ("relation", relation));
+
+        return result.GetProperty("relations")[0].GetInt32() == 1;
+    }
+
+    /// <summary>
+    /// The fixture query geometries as Esri JSON, keyed by the names the
+    /// DE-9IM matrix table in <see cref="FeatureSpatialRelationTests"/> uses:
+    /// the same shapes, so the expected values are read across, not re-derived.
+    /// </summary>
+    private static string QueryGeometry(string name) => name switch
+    {
+        "square-equal" => Square(0, 0, 10, 10),
+        "square-inner" => Square(2, 2, 4, 4),
+        "square-overlap" => Square(5, 5, 15, 15),
+        "square-corner" => Square(0, 0, 4, 4),
+        "square-above" => Square(0, 10, 10, 20),
+        "line-crossing" => Line(0, 5, 20, 5),
+        "line-inside" => Line(2, 2, 8, 8),
+        "line-on-boundary" => Line(0, 0, 0, 10),
+        "point-inside" => Point(5, 5),
+        "point-on-boundary" => Point(0, 5),
+        "point-outside" => Point(20, 20),
+        "square-outside" => Square(20, 20, 30, 30),
+        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown fixture geometry"),
+    };
+
+    private static string Square(double minX, double minY, double maxX, double maxY) =>
+        $$"""{"rings":[[[{{minX}},{{minY}}],[{{maxX}},{{minY}}],[{{maxX}},{{maxY}}],[{{minX}},{{maxY}}],[{{minX}},{{minY}}]]]}""";
+
+    private static string Line(double x1, double y1, double x2, double y2) =>
+        $$"""{"paths":[[[{{x1}},{{y1}}],[{{x2}},{{y2}}]]]}""";
+
+    private static string Point(double x, double y) => $$"""{"x":{{x}},"y":{{y}}}""";
+
     [Fact]
     public async Task Project_requires_out_sr()
     {
