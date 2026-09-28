@@ -122,6 +122,38 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **One predicate grammar across the engine** (ADR-0074, ADR-0083,
+  SpatialEngine-u2x.8): the store filter is a core-typed `Predicate` tree
+  instead of a string, and there is one grammar instead of three. The
+  PostGIS and SQL Server `*Filter{Lexer,Parser,Sql}` trios — two copies of
+  one SQL-flavoured mini-language, ~800 lines each — are gone, replaced by
+  one parsed-at-the-boundary tree and two thin per-provider compilers that
+  keep the parameterisation guarantee. The Esri `where` grammar now
+  *parses* to that tree and hands it to the store instead of evaluating
+  features (`EsriFilterLogic` is retired), and the in-memory store evaluates
+  the whole vocabulary for the first time rather than refusing filters as
+  "bbox queries only". The `filter` query parameter keeps its published
+  syntax, and the demo catalogue filters for the first time too. A shared
+  conformance fixture (one dataset, one row set, 29 cases) is answered by
+  memory, PostGIS and SQL Server alike, and an unknown column is still a
+  typed `invalid.arguments` on every one of them.
+- **A pushdown is allowed only where it is identity-preserving**
+  (ADR-0083, SpatialEngine-u2x.8): an attribute clause reaches a store only
+  when the layer's `OBJECTID` is store-derived. A layer whose `OBJECTID` is
+  the scan ordinal (ADR-0037) keeps the clause as a residual per-feature
+  match, because a store returning only the matching rows renumbers that
+  key — so the same feature would come back with an id that depends on the
+  query, breaking `objectIds`, `returnIdsOnly`, paging and the edit
+  round-trip.
+- **A filter literal binds as its column's kind** (ADR-0083,
+  SpatialEngine-u2x.8): a guid-formatted string binds as a `Guid`, and a
+  number against a date-time column binds as the instant it already is. A
+  string literal against a `uuid` column used to compile to `uuid = @p0`
+  with a text parameter, which is not an operator Postgres has, so the
+  query failed at execution as `store.unavailable` for a filter that should
+  have matched rows. A pair that means nothing to the reference evaluator
+  (`uuid = 5`, `bit < true`, `LIKE` on a non-text column) now answers the
+  same constant the evaluator does, rather than coercing or failing.
 - **Geometry Service `simplify` is generalization again** (ADR-0036, §7.0.5):
   it now calls `IGeometryOperations.Simplify` (Douglas-Peucker) with the
   tolerance the request carries — `deviation`, or mutually exclusively

@@ -17,9 +17,22 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class FeatureSpatialMatcher
 {
+    /// <summary>
+    /// The features that match the query. The attribute <c>where</c> clause is
+    /// handed to the store as a predicate (ADR-0074 §7) so the filter is
+    /// answered by the provider — pushed down to SQL where the store has a
+    /// dialect for it, evaluated in memory where it has not — instead of
+    /// being tested feature by feature here. The facets a store cannot
+    /// express (ids, unique ids, <c>time</c>, the topology verbs) stay
+    /// per-feature matches on the rows the store returned.
+    /// </summary>
     internal static async Task<List<MatchedFeature>> MatchAsync(QuerySpec spec, CancellationToken cancellationToken)
     {
-        var batches = await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken);
+        var pushdown = EsriWhereResolver.Pushdown(spec.Query.Where, spec.Scheme, spec.Dataset);
+        var batches = pushdown is null
+            ? await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken)
+            : await spec.Store.QueryAsync(
+                spec.Dataset.Id, new FeatureQuery(Where: pushdown), cancellationToken);
         var matches = new List<MatchedFeature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
@@ -32,7 +45,9 @@ internal static class FeatureSpatialMatcher
             }
 
             var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
-            if (Matches(new MatchCandidate(spec.Query, feature, objectId, spec.QueryGeometry, spec.Operations, spec.Relations, uniqueId), cancellationToken))
+            var candidate = new MatchCandidate(
+                spec.Query, feature, objectId, spec.QueryGeometry, spec.Operations, spec.Relations, uniqueId, WherePushedDown: pushdown is not null);
+            if (Matches(candidate, cancellationToken))
             {
                 matches.Add(new MatchedFeature(objectId, feature));
             }
@@ -76,9 +91,17 @@ internal static class FeatureSpatialMatcher
         match.Query.UniqueIds is not { } wanted
         || (match.UniqueId is not null && wanted.Contains(match.UniqueId, StringComparer.Ordinal));
 
+    /// <summary>
+    /// The attribute clause. A store pushdown has already applied it; this is
+    /// the residual case — a clause naming the synthetic <c>OBJECTID</c> of a
+    /// layer with no integer identity column, which no store can read.
+    /// </summary>
     private static bool MatchesWhere(MatchCandidate match) =>
-        match.Query.Where is not { } where
-        || where.Matches(match.Feature, SyntheticObjectId(match.ObjectId));
+        match.WherePushedDown
+        || EsriPredicateEvaluator.Matches(
+            match.Query.Where?.Predicate,
+            match.Feature,
+            new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(match.ObjectId)));
 
     private static bool MatchesTimeWindow(MatchCandidate match) =>
         match.Query.Time is not { } time || MatchesTime(match.Feature, time);
@@ -108,10 +131,6 @@ internal static class FeatureSpatialMatcher
     private static bool Within(DateTimeOffset value, EsriTimeExtent time) =>
         value.ToUnixTimeMilliseconds() >= (time.StartMs ?? long.MinValue)
         && value.ToUnixTimeMilliseconds() <= (time.EndMs ?? long.MaxValue);
-
-    /// <summary>The synthetic <c>OBJECTID</c> a where clause may reference (ADR-0037).</summary>
-    private static EsriSyntheticField SyntheticObjectId(long objectId) =>
-        new(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId));
 
     private static bool SpatialMatch(
         Feature feature,
@@ -203,5 +222,6 @@ internal static class FeatureSpatialMatcher
         IGeometry? QueryGeometry,
         IGeometryOperations Operations,
         IGeometryRelations Relations,
-        string? UniqueId = null);
+        string? UniqueId = null,
+        bool WherePushedDown = false);
 }

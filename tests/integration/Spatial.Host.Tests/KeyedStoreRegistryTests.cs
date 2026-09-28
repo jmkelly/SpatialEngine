@@ -54,7 +54,7 @@ public sealed class KeyedStoreRegistryTests
             throw new NotSupportedException();
 
         public Task<IReadOnlyList<Spatial.Core.Features.FeatureBatch>> QueryAsync(
-            string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<int> WriteAsync(string dataset, Spatial.Core.Features.FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>

@@ -16,7 +16,7 @@ internal sealed record EsriEditRequest(
     IReadOnlyList<JsonElement> Adds,
     IReadOnlyList<JsonElement> Updates,
     IReadOnlyList<long> Deletes,
-    EsriFilterClause? DeleteWhere,
+    EsriWhere? DeleteWhere,
     bool RollbackOnFailure)
 {
     private static readonly List<JsonElement> Empty = [];
@@ -125,14 +125,14 @@ internal sealed record EsriEditRequest(
         return ids;
     }
 
-    private static EsriFilterClause? ParseWhere(string? value)
+    private static EsriWhere? ParseWhere(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        if (!EsriFilterClause.TryParse(value, out var clause, out var error))
+        if (!EsriWhere.TryParse(value, out var clause, out var error))
         {
             throw GeoServicesErrors.Invalid($"The 'where' clause is not supported: {error}.");
         }

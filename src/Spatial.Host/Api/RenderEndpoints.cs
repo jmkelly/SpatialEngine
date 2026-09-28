@@ -66,7 +66,7 @@ internal static class RenderEndpoints
                 layer.Dataset,
                 StoreEndpoints.ResolveFeatures(stores, store),
                 StoreEndpoints.ResolveCatalogue(stores, store),
-                layer.Filter));
+                FeatureFilter.Parse(layer.Filter)));
         }
 
         return resolved;

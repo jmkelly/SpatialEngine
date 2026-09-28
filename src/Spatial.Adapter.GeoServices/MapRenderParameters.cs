@@ -23,10 +23,11 @@ internal static class MapRenderParameters
 
     /// <summary>
     /// Parses a <c>layerDefs</c> JSON object (<c>{"0":"where"}</c>) into a
-    /// per-layer store filter. Each clause is parsed with the shared safe
-    /// grammar and re-rendered, so client text never becomes SQL structure.
+    /// per-layer where clause compiled to the engine's one predicate
+    /// vocabulary (ADR-0074), so client text never becomes SQL structure and
+    /// the clause reaches the store as a plan rather than as a string.
     /// </summary>
-    public static IReadOnlyDictionary<int, string>? ParseLayerDefs(string? value)
+    public static IReadOnlyDictionary<int, EsriWhere>? ParseLayerDefs(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -39,7 +40,7 @@ internal static class MapRenderParameters
             throw GeoServicesErrors.Invalid(InvalidLayerDefs);
         }
 
-        var defs = new Dictionary<int, string>();
+        var defs = new Dictionary<int, EsriWhere>();
         foreach (var property in document.RootElement.EnumerateObject())
         {
             if (TryReadDefinition(property, out var id, out var where))
@@ -67,9 +68,9 @@ internal static class MapRenderParameters
     /// Reads one <c>{"id":"where"}</c> entry: a non-integer name or an
     /// unsupported clause is invalid, a blank clause is skipped.
     /// </summary>
-    private static bool TryReadDefinition(JsonProperty property, out int id, out string where)
+    private static bool TryReadDefinition(JsonProperty property, out int id, out EsriWhere where)
     {
-        where = string.Empty;
+        where = EsriWhere.None;
         if (!int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out id))
         {
             throw GeoServicesErrors.Invalid($"'layerDefs' names layer '{property.Name}', which is not an integer id.");
@@ -80,12 +81,12 @@ internal static class MapRenderParameters
             return false;
         }
 
-        if (!EsriFilterClause.TryParse(property.Value.GetString()!, out var clause, out var error))
+        if (!EsriWhere.TryParse(property.Value.GetString()!, out var clause, out var error))
         {
             throw GeoServicesErrors.Invalid($"'layerDefs' clause for layer {id} is not supported: {error}.");
         }
 
-        where = clause!.ToWhere();
+        where = clause!;
         return true;
     }
 

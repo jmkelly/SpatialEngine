@@ -76,9 +76,9 @@ internal static class FeatureRelationshipKeys
     /// a stored key value or a validated column name, so a parse failure is a
     /// key value the grammar cannot express, not a client error.
     /// </summary>
-    public static EsriFilterClause Parse(string text)
+    public static EsriWhere Parse(string text)
     {
-        if (!EsriFilterClause.TryParse(text, out var clause, out var error) || clause is null)
+        if (!EsriWhere.TryParse(text, out var clause, out var error) || clause is null)
         {
             throw GeoServicesErrors.Invalid($"The relationship key term '{text}' is not a valid where clause: {error}.");
         }

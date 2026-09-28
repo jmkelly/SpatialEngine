@@ -40,9 +40,9 @@ internal static class MapIdentifyMatcher
         List<IdentifyHit> hits,
         CancellationToken cancellationToken)
     {
-        var definition = query.LayerDefs?.GetValueOrDefault(layer.Layer.Id) is { } where
-            ? IdentifyFilters.ParseLayerDef(layer.Layer.Id, where)
-            : null;
+        // The clause was compiled to the engine's predicate vocabulary when
+        // the layerDefs parameter parsed, so there is no text left to parse.
+        var definition = query.LayerDefs?.GetValueOrDefault(layer.Layer.Id);
         var scheme = definition is null ? null : EsriObjectIdScheme.For(layer.Dataset);
         var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Dataset.Srid);
         var localQuery = Transform(query.QueryGeometry, layerCrs, services.Transforms, cancellationToken);

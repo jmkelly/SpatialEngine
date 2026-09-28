@@ -106,7 +106,7 @@ public sealed class SqlServerConfigurationTests
         await using var store = new SqlServerStore(new SqlServerOptions { ConnectionString = ConnectionString });
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync(
-            "dbo.places", new Spatial.Contracts.BoundingBox(10, 10, 1, 1)));
+            "dbo.places", new FeatureQuery(BoundingBox: new Spatial.Contracts.BoundingBox(10, 10, 1, 1))));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }

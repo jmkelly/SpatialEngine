@@ -1,4 +1,5 @@
 using System.Globalization;
+using Spatial.Adapter.GeoServices;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
@@ -71,16 +72,22 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatur
         }
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        // The plan is honoured, not just the box: the facade now hands the
+        // attribute clause to the store, so a double that dropped it would
+        // silently widen every filtered query. The reference semantics are the
+        // engine's one, so this reuses the engine's evaluator rather than
+        // inventing a third copy of them in a test double.
         lock (_gate)
         {
-            var features = bbox is null
-                ? _features
-                : _features.Where(feature => Intersects(feature, bbox)).ToList();
-            IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(Schema, features.ToArray())];
+            IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(Schema, _features.Where(Matches).ToArray())];
             return Task.FromResult(batches);
         }
+
+        bool Matches(Feature feature) =>
+            (query.BoundingBox is not { } bbox || Intersects(feature, bbox))
+            && (query.Where is null || EsriPredicateEvaluator.Matches(query.Where, feature));
     }
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
@@ -278,8 +285,8 @@ public sealed class ScanOnlyMemoryStore : IFeatureStore, ITransactionStore
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         _store.ScanAsync(dataset, cancellationToken);
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
-        _store.QueryAsync(dataset, bbox, filter, cancellationToken);
+    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        _store.QueryAsync(dataset, query, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
         _store.WriteAsync(dataset, batch, transaction, cancellationToken);

@@ -1,205 +1,167 @@
 using System.Globalization;
 using System.Text;
-using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Esri.Codec;
 
 /// <summary>
-/// The safe attribute-filter grammar shared by both GeoServices directions
-/// (ADR-0035): AND / OR / parentheses / comparisons / LIKE / IS [NOT] NULL
-/// over a dataset's fields. The serving facade parses a client <c>where</c>
-/// and evaluates it over the store's features; the consuming provider parses
-/// the engine's filter grammar and renders a remote <c>where</c>. Either way
-/// the grammar is closed — anything outside it is rejected, so client text
-/// never becomes SQL structure.
+/// One parsed Esri <c>where</c> clause (ADR-0035, ADR-0074 §7): the
+/// core-typed <see cref="Predicate"/> the clause compiles to plus the fields it
+/// references. The Esri grammar is a front-end syntax over the engine's one
+/// predicate vocabulary, not a second language and not a feature evaluator —
+/// the clause is compiled here and answered by a store, which is what lets the
+/// GeoServices paths push an attribute filter down instead of testing every
+/// feature in the adapter.
 /// </summary>
-public sealed class EsriFilterClause
+public sealed record EsriWhere(Predicate? Predicate, IReadOnlyList<string> ReferencedFields)
 {
-    private readonly Node _root;
+    private static readonly IReadOnlyList<string> NoFields = [];
 
-    private EsriFilterClause(Node root) => _root = root;
+    /// <summary>The clause that matches every feature (no <c>where</c> sent).</summary>
+    public static EsriWhere None { get; } = new(null, NoFields);
 
     /// <summary>Parses a complete where clause, or reports the offending position.</summary>
-    public static bool TryParse(string text, out EsriFilterClause? clause, out string error)
+    public static bool TryParse(string text, out EsriWhere? where, out string error)
     {
         ArgumentNullException.ThrowIfNull(text);
+        if (!EsriWhereText.TryCompile(text, out var predicate, out error))
+        {
+            where = null;
+            return false;
+        }
+
+        where = new EsriWhere(predicate, predicate!.Fields().Select(field => field.Name).ToArray());
+        return true;
+    }
+
+    /// <summary>
+    /// Conjoins two clauses: both must match. Adjacent conjunctions flatten,
+    /// so a service-level query can AND a shared <c>where</c> with a per-layer
+    /// <c>layerDefs</c> clause without re-parsing rendered text.
+    /// </summary>
+    public EsriWhere And(EsriWhere other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        if (Predicate is null)
+        {
+            return other;
+        }
+
+        if (other.Predicate is null)
+        {
+            return this;
+        }
+
+        var terms = new List<Predicate>();
+        terms.AddRange(Predicate is Predicate.Every every ? every.Terms : [Predicate]);
+        terms.AddRange(other.Predicate is Predicate.Every otherAnd ? otherAnd.Terms : [other.Predicate]);
+        return new EsriWhere(new Predicate.Every(terms), ReferencedFields.Concat(other.ReferencedFields).Distinct(StringComparer.Ordinal).ToArray());
+    }
+
+    /// <summary>Renders the clause as an Esri <c>where</c> string (for the consuming provider).</summary>
+    public string ToWhere() => Predicate is null ? string.Empty : EsriWhereText.Render(Predicate);
+}
+
+/// <summary>
+/// The Esri <c>where</c> grammar: the lexer, the parser that compiles the
+/// text to a <see cref="Predicate"/>, and the renderer that turns a predicate
+/// back into Esri text for the consuming provider. The Esri-only parts of the
+/// grammar fold to core values at parse time rather than entering the engine's
+/// vocabulary (ADR-0074 §7): <c>TIMESTAMP</c> and
+/// <c>CURRENT_TIMESTAMP ± INTERVAL</c> become date-time literals, and a
+/// literal-to-literal comparison such as <c>1=1</c> becomes a
+/// <see cref="Predicate.Constant"/>.
+/// </summary>
+public static class EsriWhereText
+{
+    /// <summary>
+    /// Compiles Esri <c>where</c> text to the engine's one predicate
+    /// vocabulary, or reports the offending position.
+    /// </summary>
+    internal static bool TryCompile(string text, out Predicate? predicate, out string error)
+    {
         if (!Lexer.TryTokenize(text, out var tokens, out error))
         {
-            clause = null;
+            predicate = null;
             return false;
         }
 
         var parser = new Parser(tokens);
-        if (!parser.TryExpression(out var root, out error))
+        if (!parser.TryExpression(out var compiled, out error))
         {
-            clause = null;
+            predicate = null;
             return false;
         }
 
         if (parser.Current.Kind != TokenKind.End)
         {
             error = $"unexpected '{parser.Current.Text}' at position {parser.Current.Position} (expected the end of the where clause)";
-            clause = null;
+            predicate = null;
             return false;
         }
 
-        clause = new EsriFilterClause(root);
+        predicate = compiled;
         return true;
     }
 
-    /// <summary>
-    /// Evaluates the clause over a feature. Unknown field names and
-    /// incomparable type pairs are typed invalid-argument failures.
-    /// </summary>
-    public bool Matches(IFeature feature) => Matches(feature, null);
-
-    /// <summary>
-    /// Evaluates the clause over a feature, resolving
-    /// <paramref name="syntheticField"/> (for example a facade's
-    /// <c>OBJECTID</c>) when the feature schema does not carry it.
-    /// </summary>
-    public bool Matches(IFeature feature, EsriSyntheticField? syntheticField)
+    /// <summary>Renders a predicate as an Esri <c>where</c> string.</summary>
+    public static string Render(Predicate predicate)
     {
-        ArgumentNullException.ThrowIfNull(feature);
-        return _root.Evaluate(feature, syntheticField);
-    }
-
-    /// <summary>Renders the clause as an Esri <c>where</c> string (for the consuming provider).</summary>
-    public string ToWhere() => _root.Render();
-
-    /// <summary>
-    /// The field names the clause references, in first-appearance order
-    /// (comparison and <c>IS NULL</c> operands; constant comparisons such as
-    /// <c>1=1</c> reference none). The serving facade validates them against
-    /// the layer schema (<c>validateSQL</c>); the provider renders them into
-    /// a remote <c>where</c>.
-    /// </summary>
-    public IReadOnlyList<string> ReferencedFields => _root.Fields().Distinct(StringComparer.Ordinal).ToArray();
-
-    /// <summary>
-    /// Conjoins two clauses: both must match. Adjacent conjunctions flatten
-    /// so a service-level query can AND a shared <c>where</c> with a per-layer
-    /// <c>layerDefs</c> clause without re-parsing rendered text.
-    /// </summary>
-    public EsriFilterClause And(EsriFilterClause other)
-    {
-        ArgumentNullException.ThrowIfNull(other);
-        if (_root is AndNode left && other._root is AndNode right)
+        ArgumentNullException.ThrowIfNull(predicate);
+        return predicate switch
         {
-            return new EsriFilterClause(new AndNode([.. left.Terms, .. right.Terms]));
-        }
-
-        if (_root is AndNode single)
-        {
-            return new EsriFilterClause(new AndNode([.. single.Terms, other._root]));
-        }
-
-        if (other._root is AndNode flipped)
-        {
-            return new EsriFilterClause(new AndNode([_root, .. flipped.Terms]));
-        }
-
-        return new EsriFilterClause(new AndNode([_root, other._root]));
+            Predicate.Every every => Group("AND", every.Terms),
+            Predicate.Some some => Group("OR", some.Terms),
+            Predicate.Constant constant => constant.Value ? "1 = 1" : "1 = 0",
+            Predicate.IsNull isNull => $"{isNull.Field.Name} IS {(isNull.Negated ? "NOT " : string.Empty)}NULL",
+            Predicate.IsIn isIn => $"{isIn.Field.Name} {(isIn.Negated ? "NOT IN" : "IN")} ({string.Join(", ", isIn.Values.Select(Render))})",
+            Predicate.Compare compare => $"{compare.Field.Name} {OperatorText(compare.Operator)} {Render(compare.Value)}",
+            // Unreachable while the vocabulary is closed: the base record has a
+            // private constructor, so no node outside these six can exist. It
+            // reports a future node rather than emitting a broken clause.
+            _ => throw EsriInteropException.Invalid($"A {predicate.GetType().Name} has no Esri where-clause shape."),
+        };
     }
 
-    private abstract record Node
+    /// <summary>The Esri where-clause rendering of a comparison operator.</summary>
+    public static string OperatorText(ComparisonOperator comparison) => comparison switch
     {
-        public abstract bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField);
+        ComparisonOperator.Equals => "=",
+        ComparisonOperator.NotEquals => "<>",
+        ComparisonOperator.LessThan => "<",
+        ComparisonOperator.LessOrEqual => "<=",
+        ComparisonOperator.GreaterThan => ">",
+        ComparisonOperator.GreaterOrEqual => ">=",
+        ComparisonOperator.Like => "LIKE",
+        _ => throw EsriInteropException.Invalid($"Unknown comparison operator {comparison}."),
+    };
 
-        public abstract string Render();
-
-        public virtual IEnumerable<string> Fields() => [];
-    }
-
-    private sealed record AndNode(IReadOnlyList<Node> Terms) : Node
+    /// <summary>The Esri where-clause rendering of a literal.</summary>
+    public static string Render(Literal literal) => literal.Kind switch
     {
-        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField)
-        {
-            foreach (var term in Terms)
-            {
-                if (!term.Evaluate(feature, syntheticField))
-                {
-                    return false;
-                }
-            }
+        LiteralKind.String => "'" + (literal.Text ?? string.Empty).Replace("'", "''", StringComparison.Ordinal) + "'",
+        LiteralKind.Integer => literal.Text ?? string.Empty,
+        LiteralKind.Decimal => literal.Number.ToString("R", CultureInfo.InvariantCulture),
+        LiteralKind.Boolean => literal.Boolean ? "TRUE" : "FALSE",
+        LiteralKind.DateTime => "TIMESTAMP '" + DateTimeOffset
+            .FromUnixTimeMilliseconds((long)literal.Number)
+            .UtcDateTime
+            .ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "'",
+        _ => "NULL",
+    };
 
-            return true;
-        }
+    /// <summary>Parenthesises a group so a nested conjunction or disjunction keeps its precedence.</summary>
+    private static string Group(string conjunction, IReadOnlyList<Predicate> terms) =>
+        "(" + string.Join($" {conjunction} ", terms.Select(Render)) + ")";
 
-        public override string Render() => "(" + string.Join(" AND ", Terms.Select(term => term.Render())) + ")";
-
-        public override IEnumerable<string> Fields() => Terms.SelectMany(term => term.Fields());
-    }
-
-    private sealed record OrNode(IReadOnlyList<Node> Terms) : Node
-    {
-        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField)
-        {
-            foreach (var term in Terms)
-            {
-                if (term.Evaluate(feature, syntheticField))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public override string Render() => "(" + string.Join(" OR ", Terms.Select(term => term.Render())) + ")";
-
-        public override IEnumerable<string> Fields() => Terms.SelectMany(term => term.Fields());
-    }
-
-    private sealed record IsNullNode(string Field, bool Negated) : Node
-    {
-        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField) =>
-            EsriFilterLogic.FieldValue(feature, Field, syntheticField).IsNull != Negated;
-
-        public override string Render() => $"{Field} IS {(Negated ? "NOT " : string.Empty)}NULL";
-
-        public override IEnumerable<string> Fields() => [Field];
-    }
-
-    /// <summary>
-    /// A field-independent predicate whose value is fixed when the clause is
-    /// parsed, such as the Esri match-all <c>1=1</c> (and <c>1=0</c>). It
-    /// references no column, so evaluating it never touches the feature.
-    /// </summary>
-    private sealed record ConstantNode(bool Value, string Text) : Node
-    {
-        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField) => Value;
-
-        public override string Render() => Text;
-    }
-
-    private sealed record ComparisonNode(string Field, ComparisonOperator Operator, Literal Value) : Node
-    {
-        public override bool Evaluate(IFeature feature, EsriSyntheticField? syntheticField)
-        {
-            var attribute = EsriFilterLogic.FieldValue(feature, Field, syntheticField);
-            if (attribute.IsNull)
-            {
-                return false;
-            }
-
-            return Operator == ComparisonOperator.Like
-                ? EsriFilterLogic.MatchesLike(attribute, Value)
-                : EsriFilterLogic.Compare(attribute, Operator, Value);
-        }
-
-        public override string Render() => $"{Field} {EsriFilterLogic.OperatorText(Operator)} {Value.Render()}";
-
-        public override IEnumerable<string> Fields() => [Field];
-    }
-
-    private enum TokenKind
+    internal enum TokenKind
     {
         Identifier,
         String,
         Number,
         LeftParen,
         RightParen,
+        Comma,
         Equals,
         NotEquals,
         LessThan,
@@ -207,6 +169,7 @@ public sealed class EsriFilterClause
         GreaterThan,
         GreaterOrEqual,
         Like,
+        In,
         Is,
         Not,
         Null,
@@ -222,9 +185,9 @@ public sealed class EsriFilterClause
         End,
     }
 
-    private readonly record struct Token(TokenKind Kind, string Text, int Position);
+    internal readonly record struct Token(TokenKind Kind, string Text, int Position);
 
-    private static class Lexer
+    internal static class Lexer
     {
         public static bool TryTokenize(string text, out List<Token> tokens, out string error)
         {
@@ -382,6 +345,7 @@ public sealed class EsriFilterClause
         {
             ['('] = TokenKind.LeftParen,
             [')'] = TokenKind.RightParen,
+            [','] = TokenKind.Comma,
             ['='] = TokenKind.Equals,
             ['<'] = TokenKind.LessThan,
             ['>'] = TokenKind.GreaterThan,
@@ -396,6 +360,7 @@ public sealed class EsriFilterClause
             ["AND"] = TokenKind.And,
             ["OR"] = TokenKind.Or,
             ["LIKE"] = TokenKind.Like,
+            ["IN"] = TokenKind.In,
             ["IS"] = TokenKind.Is,
             ["NOT"] = TokenKind.Not,
             ["NULL"] = TokenKind.Null,
@@ -409,15 +374,15 @@ public sealed class EsriFilterClause
         private static char Peek(string text, int index) => index < text.Length ? text[index] : '\0';
     }
 
-    private sealed class Parser(IReadOnlyList<Token> tokens)
+    internal sealed class Parser(IReadOnlyList<Token> tokens)
     {
         private int _index;
 
         public Token Current => tokens[_index];
 
-        public bool TryExpression(out Node expression, out string error) => TryOr(out expression, out error);
+        public bool TryExpression(out Predicate expression, out string error) => TryOr(out expression, out error);
 
-        private bool TryOr(out Node expression, out string error)
+        private bool TryOr(out Predicate expression, out string error)
         {
             if (!TryAnd(out var first, out error))
             {
@@ -425,7 +390,7 @@ public sealed class EsriFilterClause
                 return false;
             }
 
-            var terms = new List<Node> { first };
+            var terms = new List<Predicate> { first };
             while (Current.Kind == TokenKind.Or)
             {
                 _index++;
@@ -438,11 +403,11 @@ public sealed class EsriFilterClause
                 terms.Add(next);
             }
 
-            expression = terms.Count == 1 ? terms[0] : new OrNode(terms);
+            expression = terms.Count == 1 ? terms[0] : new Predicate.Some(terms);
             return true;
         }
 
-        private bool TryAnd(out Node expression, out string error)
+        private bool TryAnd(out Predicate expression, out string error)
         {
             if (!TryTerm(out var first, out error))
             {
@@ -450,7 +415,7 @@ public sealed class EsriFilterClause
                 return false;
             }
 
-            var terms = new List<Node> { first };
+            var terms = new List<Predicate> { first };
             while (Current.Kind == TokenKind.And)
             {
                 _index++;
@@ -463,11 +428,11 @@ public sealed class EsriFilterClause
                 terms.Add(next);
             }
 
-            expression = terms.Count == 1 ? terms[0] : new AndNode(terms);
+            expression = terms.Count == 1 ? terms[0] : new Predicate.Every(terms);
             return true;
         }
 
-        private bool TryTerm(out Node expression, out string error)
+        private bool TryTerm(out Predicate expression, out string error)
         {
             if (Current.Kind == TokenKind.LeftParen)
             {
@@ -480,6 +445,7 @@ public sealed class EsriFilterClause
                 if (Current.Kind != TokenKind.RightParen)
                 {
                     error = $"expected ')' at position {Current.Position}, found '{Current.Text}'";
+                    expression = null!;
                     return false;
                 }
 
@@ -487,11 +453,6 @@ public sealed class EsriFilterClause
                 return true;
             }
 
-            return TryComparison(out expression, out error);
-        }
-
-        private bool TryComparison(out Node expression, out string error)
-        {
             if (Current.Kind is TokenKind.Number or TokenKind.String or TokenKind.True or TokenKind.False or TokenKind.Null
                 or TokenKind.Timestamp or TokenKind.CurrentTimestamp)
             {
@@ -505,14 +466,19 @@ public sealed class EsriFilterClause
                 return false;
             }
 
-            var field = Current.Text;
+            var field = new FieldRef(Current.Text);
             _index++;
             if (Current.Kind == TokenKind.Is)
             {
                 return TryIsNull(field, out expression, out error);
             }
 
-            if (!TryOperator(out var comparisonOperator, out error))
+            if (IsInAhead())
+            {
+                return TryIsIn(field, out expression, out error);
+            }
+
+            if (!TryOperator(out var comparison, out error))
             {
                 expression = null!;
                 return false;
@@ -524,30 +490,35 @@ public sealed class EsriFilterClause
                 return false;
             }
 
-            expression = new ComparisonNode(field, comparisonOperator, literal);
+            expression = new Predicate.Compare(field, comparison, literal);
             return true;
         }
 
         /// <summary>
         /// Parses a comparison between two literals (for example the Esri
-        /// match-all <c>1=1</c>). The value is constant, so it is evaluated
-        /// once when parsed rather than per feature.
+        /// match-all <c>1=1</c>). It references no field, so it becomes the
+        /// plan's own constant rather than a test of a column.
         /// </summary>
-        private bool TryConstantComparison(out Node expression, out string error)
+        private bool TryConstantComparison(out Predicate expression, out string error)
         {
-            if (!TryValue(out var left, out error) || !TryOperator(out var comparisonOperator, out error) || !TryValue(out var right, out error))
+            if (!TryValue(out var left, out error)
+                || !TryOperator(out var comparison, out error)
+                || !TryValue(out var right, out error))
             {
                 expression = null!;
                 return false;
             }
 
-            expression = new ConstantNode(
-                EsriFilterLogic.EvaluateConstant(left, comparisonOperator, right),
-                $"{left.Render()} {EsriFilterLogic.OperatorText(comparisonOperator)} {right.Render()}");
+            expression = new Predicate.Constant(ConstantTruth(left, comparison, right));
             return true;
         }
 
-        private bool TryIsNull(string field, out Node expression, out string error)
+        /// <summary>Whether the test after the field is a membership test (<c>IN</c> or <c>NOT IN</c>) rather than a comparison.</summary>
+        private bool IsInAhead() =>
+            Current.Kind == TokenKind.In
+            || (Current.Kind == TokenKind.Not && _index + 1 < tokens.Count && tokens[_index + 1].Kind == TokenKind.In);
+
+        private bool TryIsNull(FieldRef field, out Predicate expression, out string error)
         {
             _index++;
             var negated = false;
@@ -565,14 +536,64 @@ public sealed class EsriFilterClause
             }
 
             _index++;
-            expression = new IsNullNode(field, negated);
+            expression = new Predicate.IsNull(field, negated);
             error = string.Empty;
             return true;
         }
 
-        private bool TryOperator(out ComparisonOperator comparisonOperator, out string error)
+        private bool TryIsIn(FieldRef field, out Predicate expression, out string error)
         {
-            comparisonOperator = Current.Kind switch
+            var negated = false;
+            if (Current.Kind == TokenKind.Not)
+            {
+                negated = true;
+                _index++;
+            }
+
+            _index++;
+            if (Current.Kind != TokenKind.LeftParen)
+            {
+                error = $"expected '(' after IN at position {Current.Position}, found '{Current.Text}'";
+                expression = null!;
+                return false;
+            }
+
+            _index++;
+            if (!TryValue(out var first, out error))
+            {
+                expression = null!;
+                return false;
+            }
+
+            var values = new List<Literal> { first };
+            while (Current.Kind == TokenKind.Comma)
+            {
+                _index++;
+                if (!TryValue(out var next, out error))
+                {
+                    expression = null!;
+                    return false;
+                }
+
+                values.Add(next);
+            }
+
+            if (Current.Kind != TokenKind.RightParen)
+            {
+                error = $"expected ')' to close IN at position {Current.Position}, found '{Current.Text}'";
+                expression = null!;
+                return false;
+            }
+
+            _index++;
+            expression = new Predicate.IsIn(field, values, negated);
+            error = string.Empty;
+            return true;
+        }
+
+        private bool TryOperator(out ComparisonOperator comparison, out string error)
+        {
+            comparison = Current.Kind switch
             {
                 TokenKind.Equals => ComparisonOperator.Equals,
                 TokenKind.NotEquals => ComparisonOperator.NotEquals,
@@ -583,7 +604,7 @@ public sealed class EsriFilterClause
                 TokenKind.Like => ComparisonOperator.Like,
                 _ => (ComparisonOperator)(-1),
             };
-            if ((int)comparisonOperator < 0)
+            if ((int)comparison < 0)
             {
                 error = $"expected a comparison operator at position {Current.Position}, found '{Current.Text}'";
                 return false;
@@ -598,7 +619,10 @@ public sealed class EsriFilterClause
         {
             if (Current.Kind == TokenKind.String)
             {
-                return TryStringLiteral(out literal, out error);
+                literal = Literal.FromText(Current.Text);
+                error = string.Empty;
+                _index++;
+                return true;
             }
 
             if (Current.Kind == TokenKind.Number)
@@ -608,54 +632,20 @@ public sealed class EsriFilterClause
 
             if (Current.Kind is TokenKind.True or TokenKind.False)
             {
-                return TryBooleanLiteral(out literal, out error);
-            }
-
-            if (Current.Kind == TokenKind.Null)
-            {
-                literal = new Literal(LiteralKind.Null, null, 0, false);
+                literal = Literal.FromBoolean(Current.Kind == TokenKind.True);
                 error = string.Empty;
                 _index++;
                 return true;
             }
 
-            return TryTemporalLiteral(out literal, out error);
-        }
-
-        private bool TryStringLiteral(out Literal literal, out string error)
-        {
-            literal = new Literal(LiteralKind.String, Current.Text, 0, false);
-            error = string.Empty;
-            _index++;
-            return true;
-        }
-
-        private bool TryNumberLiteral(out Literal literal, out string error)
-        {
-            if (!double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            if (Current.Kind == TokenKind.Null)
             {
-                error = $"'{Current.Text}' is not a valid numeric literal at position {Current.Position}";
-                literal = default;
-                return false;
+                literal = Literal.Null;
+                error = string.Empty;
+                _index++;
+                return true;
             }
 
-            var decimalPoint = Current.Text.Contains('.');
-            literal = new Literal(decimalPoint ? LiteralKind.Decimal : LiteralKind.Integer, null, number, false);
-            error = string.Empty;
-            _index++;
-            return true;
-        }
-
-        private bool TryBooleanLiteral(out Literal literal, out string error)
-        {
-            literal = new Literal(LiteralKind.Boolean, null, 0, Current.Kind == TokenKind.True);
-            error = string.Empty;
-            _index++;
-            return true;
-        }
-
-        private bool TryTemporalLiteral(out Literal literal, out string error)
-        {
             if (Current.Kind == TokenKind.Timestamp)
             {
                 return TryTimestampLiteral(out literal, out error);
@@ -669,6 +659,23 @@ public sealed class EsriFilterClause
             error = $"expected a literal value at position {Current.Position}, found '{Current.Text}'";
             literal = default;
             return false;
+        }
+
+        private bool TryNumberLiteral(out Literal literal, out string error)
+        {
+            if (!double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            {
+                error = $"'{Current.Text}' is not a valid numeric literal at position {Current.Position}";
+                literal = default;
+                return false;
+            }
+
+            // A whole number is carried verbatim, so a value wider than a
+            // double keeps every digit when it is bound to a store parameter.
+            literal = Current.Text.Contains('.') ? Literal.FromNumber(number) : Literal.FromInteger(Current.Text);
+            error = string.Empty;
+            _index++;
+            return true;
         }
 
         /// <summary>
@@ -686,22 +693,26 @@ public sealed class EsriFilterClause
                 return false;
             }
 
-            if (!TryParseDateTime(Current.Text, out var milliseconds))
+            if (!DateTimeOffset.TryParse(
+                    Current.Text,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var parsed))
             {
                 error = $"'{Current.Text}' is not a valid date-time literal at position {Current.Position}";
                 literal = default;
                 return false;
             }
 
-            literal = new Literal(LiteralKind.DateTime, null, milliseconds, false);
+            literal = Literal.FromMilliseconds(parsed.ToUnixTimeMilliseconds());
             error = string.Empty;
             _index++;
             return true;
         }
 
         /// <summary>
-        /// Parses <c>CURRENT_TIMESTAMP</c> with optional <c>± INTERVAL n UNIT</c>
-        /// offset, evaluated once when parsed.
+        /// Parses <c>CURRENT_TIMESTAMP</c> with an optional
+        /// <c>± INTERVAL n UNIT</c> offset, folded to one instant when parsed.
         /// </summary>
         private bool TryCurrentTimestamp(out Literal literal, out string error)
         {
@@ -718,7 +729,7 @@ public sealed class EsriFilterClause
                 }
             }
 
-            literal = new Literal(LiteralKind.DateTime, null, moment.ToUnixTimeMilliseconds(), false);
+            literal = Literal.FromMilliseconds(moment.ToUnixTimeMilliseconds());
             error = string.Empty;
             return true;
         }
@@ -732,7 +743,8 @@ public sealed class EsriFilterClause
             }
 
             _index++;
-            if (Current.Kind != TokenKind.Number || !double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount))
+            if (Current.Kind != TokenKind.Number
+                || !double.TryParse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount))
             {
                 error = $"expected an INTERVAL amount at position {Current.Position}, found '{Current.Text}'";
                 return false;
@@ -750,18 +762,6 @@ public sealed class EsriFilterClause
             moment = negative ? moment.Subtract(offset) : moment.Add(offset);
             error = string.Empty;
             return true;
-        }
-
-        private static bool TryParseDateTime(string text, out long milliseconds)
-        {
-            if (DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
-            {
-                milliseconds = parsed.ToUnixTimeMilliseconds();
-                return true;
-            }
-
-            milliseconds = 0;
-            return false;
         }
 
         /// <summary>
@@ -787,10 +787,87 @@ public sealed class EsriFilterClause
             ["YEARS"] = years => TimeSpan.FromDays(365 * years),
         };
     }
+
+    /// <summary>
+    /// The truth of a literal-to-literal comparison. A null operand, a
+    /// mismatch of literal kinds, or an operator the kind does not support is
+    /// false — the same reading the evaluator and the SQL back ends give.
+    /// </summary>
+    private static bool ConstantTruth(Literal left, ComparisonOperator comparison, Literal right)
+    {
+        if (left.Kind == LiteralKind.Null || right.Kind == LiteralKind.Null)
+        {
+            return false;
+        }
+
+        if (left.Kind == LiteralKind.Boolean && right.Kind == LiteralKind.Boolean)
+        {
+            return comparison switch
+            {
+                ComparisonOperator.Equals => left.Boolean == right.Boolean,
+                ComparisonOperator.NotEquals => left.Boolean != right.Boolean,
+                _ => false,
+            };
+        }
+
+        if (left.Kind == LiteralKind.String && right.Kind == LiteralKind.String)
+        {
+            return comparison == ComparisonOperator.Like
+                ? EsriLikePattern.IsMatch(left.Text ?? string.Empty, right.Text ?? string.Empty)
+                : Satisfies(StringComparer.Ordinal.Compare(left.Text, right.Text), comparison);
+        }
+
+        return Number(left) is { } first
+            && Number(right) is { } second
+            && Satisfies(first.CompareTo(second), comparison);
+    }
+
+    /// <summary>The numeric value of a literal, when it has one.</summary>
+    private static double? Number(Literal literal) => literal.Kind switch
+    {
+        LiteralKind.Decimal or LiteralKind.DateTime => literal.Number,
+        LiteralKind.Integer when double.TryParse(literal.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var integer) => integer,
+        _ => null,
+    };
+
+    private static bool Satisfies(int comparison, ComparisonOperator comparison2) => comparison2 switch
+    {
+        ComparisonOperator.Equals => comparison == 0,
+        ComparisonOperator.NotEquals => comparison != 0,
+        ComparisonOperator.LessThan => comparison < 0,
+        ComparisonOperator.LessOrEqual => comparison <= 0,
+        ComparisonOperator.GreaterThan => comparison > 0,
+        ComparisonOperator.GreaterOrEqual => comparison >= 0,
+        _ => false,
+    };
 }
 
-/// <summary>
-/// One value a where clause may reference that is not in the feature schema,
-/// such as the GeoServices facade's synthetic <c>OBJECTID</c> (ADR-0037).
-/// </summary>
-public readonly record struct EsriSyntheticField(string Name, AttributeValue Value);
+/// <summary>The whole-value <c>LIKE</c> patterns of the where grammar.</summary>
+public static class EsriLikePattern
+{
+    private static readonly TimeSpan MatchTimeout = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Whether the value matches the pattern, where <c>%</c> is any run of
+    /// characters and <c>_</c> is exactly one. The pattern is anchored at both
+    /// ends, so it is a whole-value test rather than a substring search.
+    /// </summary>
+    public static bool IsMatch(string value, string pattern) =>
+        System.Text.RegularExpressions.Regex.IsMatch(value, ToRegex(pattern), System.Text.RegularExpressions.RegexOptions.CultureInvariant, MatchTimeout);
+
+    private static string ToRegex(string pattern)
+    {
+        var builder = new StringBuilder("^");
+        foreach (var character in pattern)
+        {
+            builder.Append(character switch
+            {
+                '%' => ".*",
+                '_' => ".",
+                _ => System.Text.RegularExpressions.Regex.Escape(character.ToString()),
+            });
+        }
+
+        return builder.Append('$').ToString();
+    }
+}

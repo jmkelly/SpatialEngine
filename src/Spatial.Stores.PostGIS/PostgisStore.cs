@@ -5,7 +5,6 @@ using Spatial.Core.Features;
 using Spatial.Stores.PostGIS.Configuration;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
-using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 
 namespace Spatial.Stores.PostGIS;
 
@@ -82,18 +81,16 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
     }
 
     public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset,
-        CoreBoundingBox? bbox = null,
-        string? filter = null,
-        CancellationToken cancellationToken = default)
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         var name = ParseDataset(dataset);
         RequireConfigured();
-        ValidateBoundingBox(bbox);
-        return RunStoreOperationAsync(() => Features.QueryAsync(name, bbox, filter, cancellationToken));
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Features.QueryAsync(name, query, cancellationToken));
     }
 
-    private static void ValidateBoundingBox(CoreBoundingBox? bbox)
+    private static void ValidateBoundingBox(BoundingBox? bbox)
     {
         if (bbox is { } box && !IsOrdered(box))
         {
@@ -101,7 +98,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         }
     }
 
-    private static bool IsOrdered(CoreBoundingBox box) => box.MinX <= box.MaxX && box.MinY <= box.MaxY;
+    private static bool IsOrdered(BoundingBox box) => box.MinX <= box.MaxX && box.MinY <= box.MaxY;
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Feature>> GetAsync(

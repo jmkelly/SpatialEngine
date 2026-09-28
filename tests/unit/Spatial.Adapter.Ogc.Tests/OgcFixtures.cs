@@ -78,8 +78,9 @@ internal static class OgcFixtures
             Task.FromResult(Page());
 
         public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-            string id, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+            string id, FeatureQuery query, CancellationToken cancellationToken = default)
         {
+            var bbox = query.BoundingBox;
             var matched = bbox is null
                 ? _features
                 : _features.Where(feature => Matches(feature, bbox)).ToList();

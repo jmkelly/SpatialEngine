@@ -113,20 +113,14 @@ internal static class ArcGisRestMapper
             ? SpatialException.Missing($"The ArcGIS REST service could not find the resource: {message}")
             : SpatialException.Unavailable($"The ArcGIS REST service failed ({code}): {message}");
     }
-    public static string? RenderWhere(string? filter)
-    {
-        if (string.IsNullOrWhiteSpace(filter))
-        {
-            return null;
-        }
-
-        if (!EsriFilterClause.TryParse(filter, out var clause, out var error))
-        {
-            throw SpatialException.BadArguments($"The filter could not be translated to an ArcGIS where clause: {error}.");
-        }
-
-        return clause!.ToWhere();
-    }
+    /// <summary>
+    /// The remote <c>where</c> for a query plan's predicate (ADR-0074): the
+    /// plan is rendered back into the remote service's own where syntax, so
+    /// the filter is pushed to ArcGIS rather than applied to the pages the
+    /// service returns. A plan with no predicate asks for everything.
+    /// </summary>
+    public static string? RenderWhere(Spatial.Core.Features.Query.Predicate? where) =>
+        where is null ? null : EsriWhereText.Render(where);
 
     public static string EnvelopeSpatialReference(int srid) =>
         WkidMap.TryFromEpsg(srid, out var wkid)

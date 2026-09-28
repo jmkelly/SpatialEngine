@@ -302,7 +302,7 @@ public sealed class FeatureAttachmentsTests
         }
 
         public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-            string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
             ScanAsync(dataset, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>

@@ -55,14 +55,15 @@ public sealed class MapRenderParametersTests
     }
 
     [Fact]
-    public void ParseLayerDefs_parses_and_rerenders_each_clause()
+    public void ParseLayerDefs_compiles_each_clause_to_the_shared_predicate()
     {
         var defs = MapRenderParameters.ParseLayerDefs("""{"0":"name = 'x'","2":"population >= 5","7":""}""");
 
         Assert.NotNull(defs);
         Assert.Equal(2, defs.Count);
-        Assert.Equal("name = 'x'", defs[0]);
-        Assert.Equal("population >= 5", defs[2]);
+        Assert.Equal("name = 'x'", defs[0].ToWhere());
+        Assert.Equal("population >= 5", defs[2].ToWhere());
+        Assert.Equal(["name"], defs[0].ReferencedFields);
     }
 
     [Theory]

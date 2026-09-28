@@ -30,10 +30,16 @@ internal static class PostgisQueries
     /// A single tuple carries <c>LIMIT 1</c> (the primary-key predicate is
     /// already unique); a batch has no limit because each tuple matches at
     /// most one row. Both the identity columns and the dataset identifier are
-    /// discovered identifiers, never client text.
+    /// discovered identifiers, never client text, and the rest of a query
+    /// plan (ADR-0074) is <c>AND</c>ed onto the same statement — the identity
+    /// values come first, so the plan's own parameters continue after them.
     /// </summary>
     public static string SelectByIdentity(
-        PostgisDatasetName dataset, IFeatureSchema schema, IReadOnlyList<string> identityColumns, int count)
+        PostgisDatasetName dataset,
+        IFeatureSchema schema,
+        IReadOnlyList<string> identityColumns,
+        int count,
+        string? predicate = null)
     {
         var builder = new StringBuilder($"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE ");
         for (var feature = 0; feature < count; feature++)
@@ -57,7 +63,13 @@ internal static class PostgisQueries
             builder.Append(')');
         }
 
-        return count == 1 ? builder.Append(" LIMIT 1").ToString() : builder.ToString();
+        var statement = builder.ToString();
+        if (predicate is not null)
+        {
+            statement += $" AND ({predicate})";
+        }
+
+        return count == 1 ? statement + " LIMIT 1" : statement;
     }
 
     /// <summary>Insert for one feature of a writing batch (one bound parameter per field; geometry via EWKB with the column SRID enforced).</summary>

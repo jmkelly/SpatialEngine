@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Shared conformance fixture for the feature-query plan (ADR-0074): the one
+    dataset, row set and case list that the in-memory store, the PostGIS store
+    and the SQL Server store all answer, so their answers can be compared
+    instead of asserted three times. Test support only — no test runner, no
+    provider or protocol type; it references the contract and Core like every
+    other consumer.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

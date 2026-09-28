@@ -1,18 +1,20 @@
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Contracts;
 
 /// <summary>
 /// One feature layer resolved for an MVT tile. The feature store and catalogue
-/// are core-typed service seams; no provider or encoder type crosses this
-/// contract (ADR-0005/ADR-0070).
+/// are core-typed service seams, and the attribute filter is the core-typed
+/// predicate every store answers (ADR-0074); no provider or encoder type
+/// crosses this contract (ADR-0005/ADR-0070).
 /// </summary>
 public sealed record VectorTileLayer(
     string Name,
     string Dataset,
     IFeatureStore Features,
     IDataCatalogue Catalogue,
-    string? Filter = null);
+    Predicate? Where = null);
 
 /// <summary>
 /// A tile in its scheme CRS. Bounds are x-first; <paramref name="Extent"/> is

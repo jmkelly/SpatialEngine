@@ -19,7 +19,7 @@ namespace Spatial.Adapter.GeoServices;
 internal static class FeatureServiceQuery
 {
     /// <summary>One layer's <c>layerDefs</c> overrides: its definition expression and its output fields.</summary>
-    internal sealed record LayerDef(EsriFilterClause? Where, IReadOnlyList<string>? OutFields);
+    internal sealed record LayerDef(EsriWhere? Where, IReadOnlyList<string>? OutFields);
 
     /// <summary>
     /// Parses the <c>layerDefs</c> parameter in its three S1 syntaxes: the
@@ -240,7 +240,7 @@ internal static class FeatureServiceQuery
     }
 
     /// <summary>Parses the optional <c>where</c> of one array-syntax <c>layerDefs</c> entry.</summary>
-    private static EsriFilterClause? ParseArrayEntryWhere(JsonElement element, int layerId)
+    private static EsriWhere? ParseArrayEntryWhere(JsonElement element, int layerId)
     {
         if (!element.TryGetProperty("where", out var whereElement))
         {
@@ -281,9 +281,9 @@ internal static class FeatureServiceQuery
         return outFields;
     }
 
-    private static EsriFilterClause ParseWhere(string where, int layerId)
+    private static EsriWhere ParseWhere(string where, int layerId)
     {
-        if (!EsriFilterClause.TryParse(where, out var clause, out var error))
+        if (!EsriWhere.TryParse(where, out var clause, out var error))
         {
             throw GeoServicesErrors.Invalid(
                 $"The 'layerDefs' WHERE clause for layer {layerId} is not supported: {error}.");

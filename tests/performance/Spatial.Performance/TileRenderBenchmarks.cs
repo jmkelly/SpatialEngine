@@ -111,7 +111,7 @@ public class TileRenderBenchmarks
             throw new NotSupportedException();
 
         public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-            string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
         {
             IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(BenchSchema.Value, features)];
             return Task.FromResult(batches);

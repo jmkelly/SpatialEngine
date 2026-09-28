@@ -255,14 +255,7 @@ internal static class FeatureEditEngine
         return Finalise(results);
     }
 
-    /// <summary>
-    /// Deletes the features a <c>where</c> clause matches. The match reads the
-    /// dataset and hands back the features themselves, so the delete never
-    /// reads them a second time: no <see cref="IFeatureLookup"/> round trip
-    /// over identities the scan already resolved, and no second full scan on
-    /// a store without the lookup face.
-    /// </summary>
-    private static async Task<List<EsriEditResult>> DeleteMatchesAsync(EditSession session, EsriFilterClause where)
+    private static async Task<List<EsriEditResult>> DeleteMatchesAsync(EditSession session, EsriWhere where)
     {
         var matched = await MatchAsync(session, where);
         var results = new EsriEditResult?[matched.Count];
@@ -285,7 +278,7 @@ internal static class FeatureEditEngine
     }
 
     /// <summary>The features of the dataset a <c>where</c> clause matches, in scan order.</summary>
-    private static async Task<List<Feature>> MatchAsync(EditSession session, EsriFilterClause where)
+    private static async Task<List<Feature>> MatchAsync(EditSession session, EsriWhere where)
     {
         var batches = await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken);
         var matched = new List<Feature>();
@@ -299,7 +292,7 @@ internal static class FeatureEditEngine
                 continue;
             }
 
-            if (where.Matches(feature, new EsriSyntheticField(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId))))
+            if (EsriPredicateEvaluator.Matches(where.Predicate, feature, new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId))))
             {
                 matched.Add(feature);
             }
