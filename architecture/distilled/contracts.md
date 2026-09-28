@@ -8,7 +8,7 @@ The typed contracts in `Spatial.Contracts`. Implements ADR-0033
 
 | Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
-| `RenderAsync` | `VectorTileRequest` (tile bounds/CRS, extent and resolved `VectorTileLayer`s) | `VectorTile` | Cancellable MVT 2.1 bytes; queries each layer, reprojects through `ICoordinateTransforms`, and never exposes protobuf types. |
+| `RenderAsync` | `VectorTileRequest` (tile bounds/CRS, extent and resolved `VectorTileLayer`s) | `VectorTile` | Cancellable MVT 2.1 bytes; queries each layer, reprojects through `ICoordinateTransforms`, and never exposes protobuf types. Rejects a tile whose bounds have no extent on an axis, whose CRS is blank or whose extent is outside 1..65536 as `invalid.arguments`. |
 
 `ITileCache` also carries the MVT bytes through its optional
 `TryGetVectorAsync` / `SetVectorAsync` faces, preserving the same ownership

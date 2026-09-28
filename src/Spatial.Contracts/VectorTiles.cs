@@ -15,8 +15,10 @@ public sealed record VectorTileLayer(
     string? Filter = null);
 
 /// <summary>
-/// A tile in its scheme CRS. Bounds are x-first; <paramref name="Extent"/> is
-/// the integer coordinate space used by the encoded geometry (normally 4096).
+/// A tile in its scheme CRS. Bounds are x-first and must have extent on both
+/// axes — a frame the integer coordinate space can address;
+/// <paramref name="Extent"/> is the integer coordinate space used by the
+/// encoded geometry (normally 4096).
 /// </summary>
 public sealed record VectorTileRequest(
     Envelope Bounds,
@@ -30,7 +32,10 @@ public sealed record VectorTile(byte[] Content, string MediaType = "application/
 /// <summary>
 /// Reads resolved feature layers and encodes one MVT tile. Implementations
 /// own querying, reprojection, clipping policy and protobuf encoding; callers
-/// own scheme/cache orchestration.
+/// own scheme/cache orchestration. A tile is rejected as
+/// <c>invalid.arguments</c> when it is not renderable — bounds without extent
+/// on an axis, a blank CRS, or an extent outside 1..65536 — rather than
+/// encoding geometry it cannot place.
 /// </summary>
 public interface IVectorTileService
 {

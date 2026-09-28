@@ -98,6 +98,48 @@ public sealed class MvtTileServiceTests
         Assert.Equal(SpatialException.InvalidArguments, error.Code);
     }
 
+    /// <summary>
+    /// A tile whose bounds collapse on one axis is not an addressable frame:
+    /// the encoder would divide by a zero extent and saturate every vertex to
+    /// <c>long.MaxValue</c>, which is a corrupt tile rather than a thin one.
+    /// </summary>
+    [Theory]
+    [InlineData(5, -9, 5, 9)]
+    [InlineData(-9, 5, 9, 5)]
+    public async Task RenderAsync_rejects_bounds_with_no_extent_on_one_axis(
+        double minX, double minY, double maxX, double maxY)
+    {
+        var schema = new FeatureSchema([new FieldDefinition("geometry", AttributeKind.Geometry)]);
+        var feature = new Feature(new FeatureId("7"), schema, [
+            AttributeValue.FromGeometry(GeometryFactory.CreateLineString([new Coordinate(minX, minY), new Coordinate(minX, maxY)])),
+        ]);
+        var service = new MvtTileService(new NoopTransforms());
+
+        var error = await Assert.ThrowsAsync<SpatialException>(() => service.RenderAsync(new VectorTileRequest(
+            new Envelope(minX, minY, maxX, maxY), "EPSG:3857",
+            [new VectorTileLayer("lines", "demo.lines", new Store(feature), new Catalogue(schema))])));
+
+        Assert.Equal(SpatialException.InvalidArguments, error.Code);
+        Assert.Equal(
+            "A vector tile needs bounds with extent on both axes, a CRS and an extent between 1 and 65536.",
+            error.Message);
+    }
+
+    [Fact]
+    public void WriteGeometry_encodes_a_vertical_line_in_a_tile_of_real_extent()
+    {
+        // The healthy twin of the degenerate case: same geometry shape, a tile
+        // that actually has a frame. The bytes are pinned so a guard on the
+        // degenerate case cannot quietly move ordinary vertices.
+        var line = GeometryFactory.CreateLineString([new Coordinate(5, -9), new Coordinate(5, 9)]);
+
+        var bytes = MvtTileWriter.WriteGeometry(line, new Envelope(0, -10, 10, 10), 4096);
+
+        // MoveTo(2048,4096) then LineTo(0,-8192) — the x ordinate is constant
+        // and the y delta is the full frame, as a vertical line encodes.
+        Assert.Equal("098020E63C0A00CB39", Convert.ToHexString(bytes));
+    }
+
     [Fact]
     public async Task RenderAsync_honours_cancellation()
     {

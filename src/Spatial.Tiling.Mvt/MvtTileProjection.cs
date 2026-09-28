@@ -11,6 +11,15 @@ namespace Spatial.Tiling.Mvt;
 /// </summary>
 internal static class MvtTileProjection
 {
+    /// <summary>
+    /// A tile frame is addressable only when it has extent on both axes: the
+    /// encoder divides by those extents, so a zero (or non-finite) one is not a
+    /// thin tile but a frame the MVT coordinate space cannot address. A caller
+    /// asking for one is asking for geometry that cannot be placed, so it is
+    /// rejected rather than clamped onto a centre line it never asked for.
+    /// </summary>
+    public static bool HasExtent(Envelope bounds) => bounds.Width > 0 && bounds.Height > 0;
+
     /// <summary>The query bounds for a tile rectangle, in the source CRS.</summary>
     public static BoundingBox ToSourceBounds(
         ICoordinateTransforms transforms,

@@ -28,19 +28,28 @@ public sealed class MvtTileService : IVectorTileService
         return new VectorTile(MvtTileWriter.WriteTile(layers));
     }
 
-    /// <summary>A tile needs finite bounds, a CRS and an extent the MVT encoder can address.</summary>
+    /// <summary>A tile needs a frame with extent on both axes, a CRS and an extent the MVT encoder can address.</summary>
     private static void RequireRenderableTile(VectorTileRequest request)
     {
         if (!IsRenderableTile(request))
         {
-            throw SpatialException.BadArguments("A vector tile needs finite bounds, a CRS and an extent between 1 and 65536.");
+            throw SpatialException.BadArguments(UnrenderableTile);
         }
     }
 
+    /// <summary>The one message every unrenderable tile rejects with, so the reason is the same whatever failed.</summary>
+    internal const string UnrenderableTile =
+        "A vector tile needs bounds with extent on both axes, a CRS and an extent between 1 and 65536.";
+
     private static bool IsRenderableTile(VectorTileRequest request) => HasUsableFrame(request) && InRange(request.Extent);
 
+    /// <summary>
+    /// Extent on both axes is also what makes the bounds finite: a non-finite
+    /// bound yields a non-positive or NaN extent, so <see cref="MvtTileProjection.HasExtent"/>
+    /// rejects empty, inverted and collapsed bounds alike.
+    /// </summary>
     private static bool HasUsableFrame(VectorTileRequest request) =>
-        !request.Bounds.IsEmpty && !string.IsNullOrWhiteSpace(request.Crs);
+        MvtTileProjection.HasExtent(request.Bounds) && !string.IsNullOrWhiteSpace(request.Crs);
 
     private static bool InRange(int extent) => extent is >= 1 and <= 65536;
 
