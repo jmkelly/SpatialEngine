@@ -70,14 +70,24 @@ internal static class PostgisRowMapper
     };
 
     /// <summary>Converts one raw value to its attribute; null → Null, otherwise per-kind dispatch.</summary>
-    private static AttributeValue MapAttribute(FieldDefinition field, object? value)
+    private static AttributeValue MapAttribute(FieldDefinition field, object? value) => MapValue(field.Kind, value);
+
+    /// <summary>
+    /// Converts one raw value to an attribute of the given kind. Public to the
+    /// provider's plan reader (ADR-0074), which reduces rows the database
+    /// aggregated: a <c>COUNT</c> arrives as <c>long</c> and a <c>SUM</c> over
+    /// an integer column as <c>numeric</c>, and both are mapped here to the
+    /// kinds the shared reference reports, so a pushed-down value and a
+    /// reference value are the same value.
+    /// </summary>
+    internal static AttributeValue MapValue(AttributeKind kind, object? value)
     {
         if (value is null or DBNull)
         {
             return AttributeValue.Null;
         }
 
-        return Converters[field.Kind](value);
+        return Converters[kind](value);
     }
 
     private static readonly Dictionary<AttributeKind, Func<object?, AttributeValue>> Converters = new()

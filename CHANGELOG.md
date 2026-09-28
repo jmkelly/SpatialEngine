@@ -122,6 +122,39 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **The store query surface does the shaping, not the adapter**
+  (ADR-0084, SpatialEngine-u2x.9 + SpatialEngine-u2x.9.1): `outFields` becomes
+  the store's projection, `orderByFields` the store's ordering,
+  `resultOffset`/`resultRecordCount` its page start and cap, and
+  `returnCountOnly`, `returnDistinctValues` and `outStatistics` become the
+  store's own count, distinct set and grouped aggregate over a new optional
+  `IFeatureAggregateStore` face. A read answers a `FeatureQueryPage` — the
+  batches, a continuation cursor, and the total when the store computed it
+  cheaply — so a `returnCountOnly` on a large PostGIS table is a `COUNT(*)`
+  rather than a materialised scan, and an `outStatistics` response is a
+  `GROUP BY`. A plan is validated once, against the dataset's schema, at the
+  boundary that received it, so an unknown `outFields` entry or a negative cap
+  is still the same typed `invalid.arguments`.
+- **The Esri `where` clause rides in the store's plan** (ADR-0084, ADR-0083,
+  SpatialEngine-u2x.9.1): a served `where` now compiles to the plan's
+  `Predicate` and is answered by the store rather than by the adapter, but
+  only on a layer whose `OBJECTID` is store-derived — a layer whose `OBJECTID`
+  is the scan ordinal keeps the clause per-feature, so a filtered feature never
+  comes back with an id that depends on the query. The same rule now applies
+  *inside* the PostGIS and SQL Server stores: a dataset with no identity column
+  names its features by the ordinal of the read, so a `WHERE` that reached SQL
+  would renumber them, and such a dataset keeps the restriction in the caller.
+  No served `OBJECTID` value changes.
+- **The reference is one piece of code** (ADR-0084, SpatialEngine-u2x.9.1): the
+  in-memory reference executor and the reference predicate evaluator live
+  together in `Spatial.Querying`, so the in-memory store, the demo store, the
+  ArcGIS REST store and every store that evaluates a plan in memory share one
+  definition of the plan's semantics instead of one per provider. A store that
+  pushes the restriction into its own dialect finishes the plan with the shared
+  executor, and the pushdown-equals-reference suite — now run against PostGIS
+  *and* SQL Server, and extended to plans that carry a predicate beside the
+  order, the cap and the box — holds every provider to it, values and feature
+  identities alike.
 - **One predicate grammar across the engine** (ADR-0074, ADR-0083,
   SpatialEngine-u2x.8): the store filter is a core-typed `Predicate` tree
   instead of a string, and there is one grammar instead of three. The

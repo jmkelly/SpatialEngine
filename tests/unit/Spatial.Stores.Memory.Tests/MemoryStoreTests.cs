@@ -162,7 +162,7 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        var batches = await store.QueryAsync("memory.cities", new FeatureQuery(BoundingBox: new BoundingBox(-1, 47, 4, 50)));
+        var batches = (await store.QueryAsync("memory.cities", new FeatureQuery(BoundingBox: new BoundingBox(-1, 47, 4, 50)))).Batches;
 
         Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
     }
@@ -176,8 +176,8 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        var batches = await store.QueryAsync(
-            "memory.cities", new FeatureQuery(Where: FeatureFilter.Parse("name = 'Berlin'")));
+        var batches = (await store.QueryAsync(
+            "memory.cities", new FeatureQuery(Where: FeatureFilter.Parse("name = 'Berlin'")))).Batches;
 
         Assert.Equal(["1"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
     }
@@ -187,9 +187,9 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        var batches = await store.QueryAsync("memory.cities", new FeatureQuery(
+        var batches = (await store.QueryAsync("memory.cities", new FeatureQuery(
             BoundingBox: new BoundingBox(-1, 47, 4, 50),
-            Where: FeatureFilter.Parse("name != 'Nowhere'")));
+            Where: FeatureFilter.Parse("name != 'Nowhere'")))).Batches;
 
         Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
     }
@@ -199,8 +199,8 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        var batches = await store.QueryAsync(
-            "memory.cities", new FeatureQuery(Ids: [new FeatureId("2")]));
+        var batches = (await store.QueryAsync(
+            "memory.cities", new FeatureQuery(Ids: [new FeatureId("2")]))).Batches;
 
         Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
     }

@@ -31,8 +31,8 @@ internal static class FeatureSpatialMatcher
         var pushdown = EsriWhereResolver.Pushdown(spec.Query.Where, spec.Scheme, spec.Dataset);
         var batches = pushdown is null
             ? await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken)
-            : await spec.Store.QueryAsync(
-                spec.Dataset.Id, new FeatureQuery(Where: pushdown), cancellationToken);
+            : (await spec.Store.QueryAsync(
+                spec.Dataset.Id, new FeatureQuery(Where: pushdown), cancellationToken)).Batches;
         var matches = new List<MatchedFeature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))

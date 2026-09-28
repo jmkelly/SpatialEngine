@@ -73,7 +73,7 @@ public class FeatureQueryBenchmarks
     [Benchmark(Description = "MemoryStore bbox query (2k points, ~1% match)", Baseline = true)]
     public async Task<int> Query_Bbox()
     {
-        var batches = await _store.QueryAsync(Dataset, new FeatureQuery(BoundingBox: new BoundingBox(0, 0, 1, 0.2)));
+        var batches = (await _store.QueryAsync(Dataset, new FeatureQuery(BoundingBox: new BoundingBox(0, 0, 1, 0.2)))).Batches;
         return batches.Sum(batch => batch.Count);
     }
 }

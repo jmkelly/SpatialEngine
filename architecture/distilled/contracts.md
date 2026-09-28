@@ -102,8 +102,8 @@ stores and maps across the engine (`IStoreRegistry`, `IMapRegistry`).
 Esri-protocol catalog concepts keep Esri's `Catalog` spelling
 (`GeoServicesCatalog`, raster catalog items) — both spellings are deliberate.
 
-**The feature query plan (ADR-0074, decided, not yet implemented).** The
-feature read becomes a plan value, `Spatial.Core.Features.Query.FeatureQuery`:
+**The feature query plan (ADR-0074, ADR-0084, implemented).** The
+feature read is a plan value, `Spatial.Contracts.FeatureQuery`:
 identity restriction, a `Predicate` tree over `FieldRef`/`Literal`, an
 optional `BoundingBox`, a projection field list, an `Order` (with the store
 appending the identity tie-break so paging is stable), `Limit`/`Offset` and an
@@ -112,10 +112,17 @@ optional opaque `Cursor`; the read returns
 `TotalCount` means "not computed". Reductions are an additive
 `IFeatureAggregateStore` face (`CountAsync`/`DistinctAsync`/`AggregateAsync`),
 the ADR-0033 optional-capability pattern, so a store without it still answers
-reads correctly. Pushdown is per-conjunct and best-effort: a provider pushes
+reads correctly; `FeatureReductionFallback` reduces for a caller whose store
+has no such face. Pushdown is per-conjunct and best-effort: a provider pushes
 what its dialect can express and evaluates the residual in memory, so a valid
 plan is never refused for a dialect gap and the result always equals
-evaluating the plan over the whole dataset. The one filter text in the system
+evaluating the plan over the whole dataset. The one definition of that
+evaluation is `Spatial.Querying`: `FeaturePlanExecutor` selects, orders, pages
+and projects, `FeaturePlanExecutor.Finish` is the shaping half for a store that
+already applied the restriction, and `ReferencePredicate` is the one predicate
+evaluator every store and every test double goes through. A plan is validated
+once, against the dataset's schema, by `FeatureQueryValidation` at the boundary
+that received it. The one filter text in the system
 is the published `filter` query parameter on `GET /api/features/query`, parsed
 once at the boundary into a `Predicate`; the per-provider filter lexers,
 parsers and SQL builders are retired, and the Esri `where` grammar compiles to
@@ -129,7 +136,11 @@ Two rules keep the back ends answering the same rows for the same plan
 layer's `OBJECTID` is store-derived (an integer identity column); on a layer
 whose `OBJECTID` is the scan ordinal (ADR-0037) the clause stays a residual
 per-feature match, because a store that returns only the matching rows would
-renumber the key. And a literal binds as its **column's** kind, never its
+renumber the key. The same rule holds one level down, inside the store: a
+PostGIS or SQL Server dataset with no identity column names its features by the
+ordinal of the read, so a `WHERE` that reached SQL would renumber them, and
+such a dataset keeps its restriction in the caller and selects over the whole
+read. And a literal binds as its **column's** kind, never its
 own: a guid-formatted string binds as a `Guid`, a number against a date-time
 column binds as the instant it already is, and a pair that means nothing to
 the reference evaluator (`uuid = 5`, `bit < true`, `LIKE` on a non-text
@@ -143,7 +154,7 @@ coercing or failing. Which pairs are answerable at all is one table,
 | `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns) |
 | `CreateAsync` | dataset id, **sample batch**, SRID | table from batch schema; geometry column at SRID |
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
-| `QueryAsync` | dataset id, `FeatureQuery` plan (optional `Ids`, `Where` predicate, `BoundingBox`) | the plan's rows as `FeatureBatch` pages. **Landed (this bead):** identity restriction, predicate tree and bbox. **ADR-0074 §5 still open:** projection, ordering, `Limit`/`Offset`, cursor and the `FeatureQueryPage` read face with `NextCursor`/`TotalCount` |
+| `QueryAsync` | dataset id, `FeatureQuery` plan (optional `Ids`, `Where` predicate, `BoundingBox`, `Projection`, `Order`, `Limit`, `Offset`, `Cursor`) | the plan's page: a `FeatureQueryPage(Batches, NextCursor, TotalCount?)`. `TotalCount` is nullable and `null` means *not computed*, never zero. `Offset` and `Cursor` are alternatives, never composed; a store appends the feature identity as a final ascending sort key, so the total order is deterministic (ADR-0084) |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038) |

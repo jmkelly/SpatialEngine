@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 
@@ -214,11 +215,9 @@ public sealed class FeatureRelationshipEngineTests
                         ? [new FeatureBatch(Parents.Schema, [ParentsTable])]
                         : [new FeatureBatch(ChildSchema, [ChildrenTable, Kreuzberg, Orphan])]);
 
-            public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+            public Task<FeatureQueryPage> QueryAsync(
                 string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
-                // The plan is honoured rather than dropped, so a traversal that
-                // pushed a clause down is not silently answered with every row.
-                ScanAsync(dataset, cancellationToken);
+                Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
 
             public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
                 Task.FromResult(batch.Count);

@@ -4,7 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
+using Spatial.Querying;
 
 namespace Spatial.Adapter.Ogc.Tests;
 
@@ -141,9 +143,9 @@ public sealed class WfsFeatureIdsTests
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<FeatureBatch>>([new FeatureBatch(Schema, FeaturesOf(dataset))]);
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+        public Task<FeatureQueryPage> QueryAsync(
             string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<FeatureBatch>>([new FeatureBatch(Schema, FeaturesOf(dataset))]);
+            Task.FromResult(FeaturePlanExecutor.Execute(Schema, FeaturesOf(dataset), query, cancellationToken));
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

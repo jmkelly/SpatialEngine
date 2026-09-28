@@ -137,9 +137,8 @@ public static class PredicateConformanceSuite
                 BoundingBox: testCase.BoundingBox is { } box
                     ? new Spatial.Contracts.BoundingBox(box.MinX, box.MinY, box.MaxX, box.MaxY)
                     : null);
-            var batches = await store.QueryAsync(dataset, plan, cancellationToken);
-            var codes = batches
-                .SelectMany(batch => batch.Features)
+            var page = await store.QueryAsync(dataset, plan, cancellationToken);
+            var codes = page.Features
                 .Select(feature => feature["code"].StringValue)
                 .Order(StringComparer.Ordinal)
                 .ToArray();

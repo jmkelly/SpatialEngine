@@ -28,9 +28,9 @@ internal sealed class MvtLayerReader(ICoordinateTransforms transforms)
         var description = await layer.Catalogue.DescribeAsync(layer.Dataset, cancellationToken).ConfigureAwait(false);
         var source = $"EPSG:{description.Srid}";
         var queryBounds = MvtTileProjection.ToSourceBounds(transforms, request.Bounds, request.Crs, source, cancellationToken);
-        var batches = await layer.Features
+        var batches = (await layer.Features
             .QueryAsync(layer.Dataset, new FeatureQuery(BoundingBox: queryBounds, Where: layer.Where), cancellationToken)
-            .ConfigureAwait(false);
+            .ConfigureAwait(false)).Batches;
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         var schema = features.FirstOrDefault()?.Schema ?? description.Schema;
         var geometryIndex = FindGeometry(schema);

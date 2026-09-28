@@ -1,6 +1,8 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Memory;
 
@@ -14,7 +16,7 @@ namespace Spatial.Stores.Memory;
 /// dataset. Diagnostics state that; it is a development-and-CI provider, not
 /// a persistence guarantee.
 /// </summary>
-public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore
+public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, IFeatureAggregateStore, ITransactionStore
 {
     private const int BatchSize = 512;
 
@@ -76,64 +78,72 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
         }));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    /// <summary>
+    /// The plan read: the reference executor over the dataset, so the
+    /// in-memory provider defines the plan's semantics — the identity
+    /// restriction, the attribute predicate, the bounding-box pre-filter, the
+    /// order and the page — rather than approximating them (ADR-0074 §4). It is
+    /// also the fallback every pushdown is measured against, which is why the
+    /// executor is shared rather than copied here.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
         string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_catalog.WithLock<IReadOnlyList<FeatureBatch>>(() =>
+        return Task.FromResult(_catalog.WithLock<FeatureQueryPage>(() =>
         {
             var found = _catalog.Find(dataset);
-            return Page(found, Select(found, query));
+            return FeaturePlanExecutor.Execute(found.Schema, found.Features, query, cancellationToken);
         }));
     }
 
     /// <summary>
-    /// The features a plan selects, in dataset order: the identity
-    /// restriction, the bounding-box pre-filter and the attribute predicate
-    /// (ADR-0074 §4). The predicate's fields are resolved against the dataset
-    /// schema once, so an unknown column is a typed invalid-argument failure
-    /// before any feature is read.
+    /// The count, distinct and aggregate faces, over the reference executor.
+    /// The in-memory provider has nothing to push down, so implementing the
+    /// optional face is not slower than not implementing it: the answer is the
+    /// same and the caller does not have to know which stores reduce.
     /// </summary>
-    private static List<Feature> Select(MemoryDataset dataset, FeatureQuery query)
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
-        var indexes = query.Where is null
-            ? []
-            : query.Where.Fields().Select(field => Resolve(dataset, field.Name)).ToArray();
-
-        IEnumerable<Feature> features = dataset.Features;
-        if (query.Ids is { Count: > 0 })
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_catalog.WithLock(() =>
         {
-            var wanted = new HashSet<FeatureId>(query.Ids);
-            features = features.Where(feature => wanted.Contains(feature.Id));
-        }
-
-        if (query.BoundingBox is { } bbox)
-        {
-            features = features.Where(feature => Intersects(dataset, feature, bbox));
-        }
-
-        if (query.Where is not null)
-        {
-            var predicate = query.Where;
-            features = features.Where(feature => MemoryPredicate.Matches(predicate, feature));
-        }
-
-        return features.ToList();
+            var found = _catalog.Find(dataset);
+            return FeatureReduction.CountFeatures(
+                FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken));
+        }));
     }
 
-    /// <summary>The attribute index of a filter field, or a typed invalid-argument failure naming the available fields.</summary>
-    private static int Resolve(MemoryDataset dataset, string field)
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
     {
-        var index = dataset.Schema.IndexOf(field);
-        if (index < 0)
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(distinct);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_catalog.WithLock(() =>
         {
-            var fields = string.Join(", ", dataset.Schema.Fields.Select(known => $"'{known.Name}'"));
-            throw SpatialException.BadArguments(
-                $"The filter column '{field}' is not a field of this dataset; available fields: {fields}.");
-        }
+            var found = _catalog.Find(dataset);
+            return FeatureReduction.Distinct(
+                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), distinct);
+        }));
+    }
 
-        return index;
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(aggregate);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_catalog.WithLock(() =>
+        {
+            var found = _catalog.Find(dataset);
+            return FeatureReduction.Aggregate(
+                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), aggregate);
+        }));
     }
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
@@ -206,15 +216,4 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
         return batches;
     }
 
-    private static bool Intersects(MemoryDataset dataset, Feature feature, BoundingBox bbox)
-    {
-        var index = dataset.Schema.IndexOf(dataset.GeometryColumn);
-        if (index < 0 || feature[index].Kind != AttributeKind.Geometry || feature[index].GeometryValue.Envelope is not { } envelope)
-        {
-            return false;
-        }
-
-        return envelope.MinX <= bbox.MaxX && envelope.MaxX >= bbox.MinX
-            && envelope.MinY <= bbox.MaxY && envelope.MaxY >= bbox.MinY;
-    }
 }

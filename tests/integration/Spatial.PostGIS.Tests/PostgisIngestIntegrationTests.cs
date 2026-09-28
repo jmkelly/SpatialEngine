@@ -151,7 +151,7 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
         Assert.Equal("ml", feature["magType"].StringValue);
 
         // The quoted name also resolves as a filter column.
-        var filtered = await context.Store.QueryAsync(dataset, new FeatureQuery(Where: FeatureFilter.Parse("LABELRANK = '5'")));
+        var filtered = (await context.Store.QueryAsync(dataset, new FeatureQuery(Where: FeatureFilter.Parse("LABELRANK = '5'")))).Batches;
         Assert.Single(filtered.SelectMany(batch => batch.Features));
     }
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 using Spatial.Operations.NetTopologySuite;
@@ -85,17 +86,9 @@ public sealed class EsriFeatureStatsTests
             return Task.FromResult(batches);
         }
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
-        {
-            // The plan is honoured, not just discarded: the facade hands the
-            // attribute clause to the store, so a double that dropped it would
-            // silently widen every filtered query — a percentile over an empty
-            // match would come back as a percentile over everything.
-            cancellationToken.ThrowIfCancellationRequested();
-            IReadOnlyList<FeatureBatch> batches =
-                [new FeatureBatch(Schema, _features.Where(feature => EsriPredicateEvaluator.Matches(query.Where, feature)).ToArray())];
-            return Task.FromResult(batches);
-        }
+        public Task<FeatureQueryPage> QueryAsync(
+    string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+    Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
             Task.FromResult(0);

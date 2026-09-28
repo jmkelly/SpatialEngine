@@ -1,6 +1,7 @@
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Memory.Tests;
 
@@ -49,7 +50,7 @@ public sealed class MemoryPredicateTests
     private static bool Matches(string filter, Feature? feature = null)
     {
         Assert.True(FeatureFilterText.TryParse(filter, out var predicate, out var error), error);
-        return MemoryPredicate.Matches(predicate!, feature ?? Row());
+        return ReferencePredicate.Matches(predicate!, feature ?? Row());
     }
 
     [Fact]
@@ -189,8 +190,8 @@ public sealed class MemoryPredicateTests
         // spell it.
         var row = Row(population: long.MinValue, name: null!);
 
-        Assert.True(MemoryPredicate.Matches(Predicate.All, row));
-        Assert.False(MemoryPredicate.Matches(Predicate.None, row));
+        Assert.True(ReferencePredicate.Matches(Predicate.All, row));
+        Assert.False(ReferencePredicate.Matches(Predicate.None, row));
     }
 
     [Fact]
@@ -198,7 +199,7 @@ public sealed class MemoryPredicateTests
     {
         Assert.True(FeatureFilterText.TryParse("missing = 1", out var predicate, out _));
 
-        var exception = Assert.Throws<Spatial.Contracts.SpatialException>(() => MemoryPredicate.Matches(predicate!, Row()));
+        var exception = Assert.Throws<Spatial.Contracts.SpatialException>(() => ReferencePredicate.Matches(predicate!, Row()));
 
         Assert.Equal(Spatial.Contracts.SpatialException.InvalidArguments, exception.Code);
         Assert.Contains("'missing'", exception.Message);

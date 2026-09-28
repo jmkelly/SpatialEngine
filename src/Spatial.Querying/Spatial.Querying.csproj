@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The shared semantics of a feature query plan (ADR-0074 §4-§6): the
+    in-memory reference executor every provider's pushdown must reproduce
+    exactly, the store-issued page cursor codec, and the caller-side
+    reduction a store that does not implement IFeatureAggregateStore falls
+    back to. One copy of the reference, so "pushdown equals reference" is a
+    comparison against the same code rather than against a re-implementation.
+    References Core and SDK only, takes no packages, like the other engine
+    libraries: no NTS, no Npgsql, no EF.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.Querying</AssemblyName>
+    <RootNamespace>Spatial.Querying</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.Contracts\Spatial.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

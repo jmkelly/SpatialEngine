@@ -3,7 +3,9 @@ using Spatial.Adapter.GeoServices;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
+using Spatial.Querying;
 
 namespace Spatial.Host.Tests;
 
@@ -72,22 +74,25 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatur
         }
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The plan read over the reference executor: this double is a store a
+    /// hosted query is answered by, so it answers the whole plan — the
+    /// identity restriction, the attribute clause, the bounding box, the order
+    /// and the page — rather than only the members the test happens to assert
+    /// on. A double that dropped a clause would silently widen every filtered
+    /// query, and one that invented its own semantics would be a third copy of
+    /// the engine's.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
-        // The plan is honoured, not just the box: the facade now hands the
-        // attribute clause to the store, so a double that dropped it would
-        // silently widen every filtered query. The reference semantics are the
-        // engine's one, so this reuses the engine's evaluator rather than
-        // inventing a third copy of them in a test double.
+        cancellationToken.ThrowIfCancellationRequested();
+        Feature[] selected;
         lock (_gate)
         {
-            IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(Schema, _features.Where(Matches).ToArray())];
-            return Task.FromResult(batches);
+            selected = [.. _features];
         }
 
-        bool Matches(Feature feature) =>
-            (query.BoundingBox is not { } bbox || Intersects(feature, bbox))
-            && (query.Where is null || EsriPredicateEvaluator.Matches(query.Where, feature));
+        return Task.FromResult(FeaturePlanExecutor.Execute(Schema, selected, query, cancellationToken));
     }
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
@@ -285,7 +290,7 @@ public sealed class ScanOnlyMemoryStore : IFeatureStore, ITransactionStore
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         _store.ScanAsync(dataset, cancellationToken);
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+    public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
         _store.QueryAsync(dataset, query, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>

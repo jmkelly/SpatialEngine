@@ -2,6 +2,8 @@ using Microsoft.Data.SqlClient;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 using Spatial.Stores.SqlServer.Configuration;
 using Spatial.Stores.SqlServer.Core;
 using Spatial.Stores.SqlServer.Data;
@@ -11,7 +13,8 @@ namespace Spatial.Stores.SqlServer;
 /// <summary>
 /// The SQL Server store (ADR-0033, ADR-0073): a direct, in-process
 /// implementation of <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
-/// <see cref="IFeatureLookup"/> and <see cref="ITransactionStore"/> on
+/// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/> and
+/// <see cref="ITransactionStore"/> on
 /// Microsoft.Data.SqlClient. SqlClient types, T-SQL and WKB stay inside this
 /// assembly (ADR-0005). This type is the composition root of the store: it
 /// validates arguments, maps failures and owns the lifecycle, while the
@@ -25,7 +28,7 @@ namespace Spatial.Stores.SqlServer;
 /// identifiers/field names/filters throw <c>invalid.arguments</c>;
 /// diagnostics are redacted (database name only, never the secret).
 /// </summary>
-public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
+public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
 {
     private readonly SqlServerConnectionConfiguration _configuration;
     private readonly SqlServerStorage _storage;
@@ -84,15 +87,97 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureLook
         return RunStoreOperationAsync(() => Features.ScanAsync(name, cancellationToken));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    /// <summary>
+    /// The plan read: the restriction — the identity restriction, the
+    /// attribute predicate and the bounding-box pre-filter, all as bound T-SQL
+    /// (ADR-0074) — is pushed to the database, and the shared reference
+    /// executor finishes the plan over the rows it returned, so the answers
+    /// are the contract's answers and not T-SQL's (ADR-0074 §4). Pushing the
+    /// shaping members down is a follow-up that has to reproduce the
+    /// reference's null ordering, collation and total order exactly.
+    /// </summary>
+    public async Task<FeatureQueryPage> QueryAsync(
         string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         var name = ParseDataset(dataset);
         RequireConfigured();
         ValidateBoundingBox(query.BoundingBox);
-        return RunStoreOperationAsync(() => Features.QueryAsync(name, query, cancellationToken));
+        return await RunStoreOperationAsync(async () =>
+        {
+            var (schema, selected) = await SelectAsync(name, query, cancellationToken);
+            return FeaturePlanExecutor.Finish(schema, selected, query, cancellationToken);
+        });
     }
+
+    /// <summary>The count of the features a plan selects, over the pushed-down restriction.</summary>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        ReduceAsync(dataset, query, selected => FeatureReduction.CountFeatures(selected.Features), cancellationToken);
+
+    /// <summary>The deduplicated field combinations a plan selects.</summary>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(distinct);
+        return ReduceAsync(dataset, query, selected => FeatureReduction.Distinct(selected.Schema, selected.Features, distinct), cancellationToken);
+    }
+
+    /// <summary>The grouped reduction a plan selects.</summary>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(aggregate);
+        return ReduceAsync(dataset, query, selected => FeatureReduction.Aggregate(selected.Schema, selected.Features, aggregate), cancellationToken);
+    }
+
+    /// <summary>
+    /// Every feature a plan's <em>restriction</em> selects. The plan is
+    /// validated against the dataset's schema first, so an unknown field or a
+    /// negative cap is the typed <c>invalid.arguments</c> the contract promises
+    /// rather than whatever T-SQL would have made of it (ADR-0074 §1). The
+    /// shaping members (projection, order, cap, cursor) are stripped, because a
+    /// reduction must see the whole selected set.
+    /// </summary>
+    /// <remarks>
+    /// The restriction is pushed into T-SQL where the dataset's features can
+    /// still be named afterwards, and applied here over the whole read where
+    /// they cannot: a dataset with no identity column names its features by the
+    /// ordinal of the read, so a <c>WHERE</c> that returned only some of the
+    /// rows would renumber them — the same feature would come back with an id
+    /// that depends on the query, breaking <c>objectIds</c>,
+    /// <c>returnIdsOnly</c>, paging and the edit round-trip (ADR-0083). Either
+    /// way this is the reference's selected set, not T-SQL's.
+    /// </remarks>
+    private async Task<(FeatureSchema Schema, List<Feature> Features)> SelectAsync(
+        SqlServerDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
+    {
+        var description = await Features.DescribeAsync(name, cancellationToken);
+        var schema = (FeatureSchema)description.Schema;
+        var plan = Restriction(query);
+        FeatureQueryValidation.Validate(schema, plan);
+
+        var restricts = plan.Ids is not null || plan.BoundingBox is not null || plan.Where is not null;
+        var pushed = !restricts || description.IdColumns.Count > 0;
+        var batches = pushed
+            ? await Features.QueryAsync(name, plan, cancellationToken)
+            : await Features.ScanAsync(name, cancellationToken);
+        var rows = batches.SelectMany(batch => batch.Features).ToList();
+        return (schema, pushed ? rows : FeaturePlanExecutor.Select(schema, rows, plan, cancellationToken));
+    }
+
+    private Task<TResult> ReduceAsync<TResult>(
+        string dataset, FeatureQuery query, Func<(FeatureSchema Schema, List<Feature> Features), TResult> reduce, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(async () => reduce(await SelectAsync(name, query, cancellationToken)));
+    }
+
+    /// <summary>A plan with only its restriction: a reduction must see every selected row.</summary>
+    private static FeatureQuery Restriction(FeatureQuery query) =>
+        query with { Projection = null, Order = null, Limit = null, Offset = null, Cursor = null };
 
     private static void ValidateBoundingBox(BoundingBox? bbox)
     {

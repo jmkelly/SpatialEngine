@@ -174,8 +174,8 @@ public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainer
         Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
 
-        var batches = await context.Store.QueryAsync(
-            "dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(13.0, 52.0, 13.5, 53.0)));
+        var batches = (await context.Store.QueryAsync(
+            "dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(13.0, 52.0, 13.5, 53.0)))).Batches;
 
         var names = batches.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray();
         Assert.Equal(["Berlin"], names);
@@ -189,12 +189,12 @@ public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainer
 
         // A box with no width or no height degenerates to a line or a point;
         // the envelope must stay a valid geometry rather than a collapsed ring.
-        var vertical = await context.Store.QueryAsync("dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(13.405, 50.0, 13.405, 55.0)));
+        var vertical = (await context.Store.QueryAsync("dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(13.405, 50.0, 13.405, 55.0)))).Batches;
         Assert.Equal(
             ["Berlin"],
             vertical.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var point = await context.Store.QueryAsync("dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(2.3522, 48.8566, 2.3522, 48.8566)));
+        var point = (await context.Store.QueryAsync("dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(2.3522, 48.8566, 2.3522, 48.8566)))).Batches;
         Assert.Equal(
             ["Paris"],
             point.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
@@ -218,20 +218,20 @@ public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainer
         Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
 
-        var byName = await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("name = 'Berlin'")));
+        var byName = (await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("name = 'Berlin'")))).Batches;
         Assert.Equal(["Berlin"], byName.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var like = await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("name LIKE 'P%'")));
+        var like = (await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("name LIKE 'P%'")))).Batches;
         Assert.Equal(["Paris"], like.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var prefix = await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("id < 3 AND name <> 'London'")));
+        var prefix = (await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("id < 3 AND name <> 'London'")))).Batches;
         Assert.Equal(["Berlin"], prefix.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var isNull = await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("name IS NOT NULL")));
+        var isNull = (await context.Store.QueryAsync("dbo.places", new FeatureQuery(Where: FeatureFilter.Parse("name IS NOT NULL")))).Batches;
         Assert.Equal(3, isNull.Sum(batch => batch.Count));
 
-        var filteredBox = await context.Store.QueryAsync(
-            "dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(-1.0, 48.0, 15.0, 54.0), Where: FeatureFilter.Parse("id = 3")));
+        var filteredBox = (await context.Store.QueryAsync(
+            "dbo.places", new FeatureQuery(BoundingBox: new BoundingBox(-1.0, 48.0, 15.0, 54.0), Where: FeatureFilter.Parse("id = 3")))).Batches;
         Assert.Equal(["Paris"], filteredBox.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
         var unknownColumn = await Assert.ThrowsAsync<SpatialException>(() =>

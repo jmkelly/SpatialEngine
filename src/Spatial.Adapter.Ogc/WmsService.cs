@@ -470,8 +470,8 @@ internal static class WmsService
         var box = new Envelope(point.X - tolerance, point.Y - tolerance, point.X + tolerance, point.Y + tolerance);
         var projected = OgcGeometry.Transform(box, viewportCrs, Crs(layer.Description.Srid), services.Transforms, cancellationToken);
         var bbox = new BoundingBox(projected.MinX, projected.MinY, projected.MaxX, projected.MaxY);
-        var batches = await services.Features(layer.Store)
-            .QueryAsync(layer.Layer.Dataset, new FeatureQuery(BoundingBox: bbox), cancellationToken);
+        var batches = (await services.Features(layer.Store)
+            .QueryAsync(layer.Layer.Dataset, new FeatureQuery(BoundingBox: bbox), cancellationToken)).Batches;
         return batches.SelectMany(batch => batch.Features).ToArray();
     }
 

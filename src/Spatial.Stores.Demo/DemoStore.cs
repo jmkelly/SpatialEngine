@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Demo;
 
@@ -12,7 +14,7 @@ namespace Spatial.Stores.Demo;
 /// Read-only (writes and dataset creation throw <c>invalid.arguments</c>);
 /// the demo sleep is a cancellable delay reporting progress.
 /// </summary>
-public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
+public sealed class DemoStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IDemoWork
 {
     private const int BatchSize = 64;
 
@@ -74,42 +76,30 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
     }
 
     /// <summary>
-    /// The features a query plan selects: the identity restriction, the
-    /// bounding-box pre-filter and the attribute predicate, evaluated in
-    /// process over the generated catalogue (ADR-0074 §2 — a store without a
-    /// pushdown answers the plan itself).
+    /// The plan read and the reduction faces: the reference executor over the
+    /// procedural dataset, so the demo provider answers every plan — the
+    /// identity restriction, the attribute predicate, the bounding-box
+    /// pre-filter, the order and the page — and every reduction correctly
+    /// (ADR-0074 §2: a store without a pushdown answers the plan itself; §4,
+    /// §6: the reference is what a pushdown is compared against).
     /// </summary>
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        cancellationToken.ThrowIfCancellationRequested();
-        var bbox = query.BoundingBox;
-        var found = Find(dataset);
-        IEnumerable<Feature> selected = found.Features;
-        if (query.Ids is { Count: > 0 })
-        {
-            var wanted = new HashSet<FeatureId>(query.Ids);
-            selected = selected.Where(feature => wanted.Contains(feature.Id));
-        }
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
 
-        if (bbox is not null)
-        {
-            selected = selected.Where(feature => Intersects(feature, found, bbox));
-        }
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
 
-        if (query.Where is { } where)
-        {
-            // Resolve the predicate's fields against the catalogue's schema
-            // once, so an unknown column is a typed invalid-argument failure
-            // before any feature is read.
-            RequireKnownFields(found, where);
-            selected = selected.Where(feature => DemoPredicate.Matches(where, feature));
-        }
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
 
-        var features = selected.ToArray();
-        IReadOnlyList<FeatureBatch> paged = Page(features, found.SchemaFields);
-        return Task.FromResult(paged);
-    }
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
     {
@@ -162,32 +152,5 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
         }
 
         return batches;
-    }
-
-    /// <summary>The typed failure for a predicate over a field the dataset does not have.</summary>
-    private static void RequireKnownFields(DemoDataset dataset, Core.Features.Query.Predicate where)
-    {
-        foreach (var field in where.Fields())
-        {
-            if (dataset.SchemaFields.IndexOf(field.Name) < 0)
-            {
-                var fields = string.Join(", ", dataset.SchemaFields.Fields.Select(known => $"'{known.Name}'"));
-                throw SpatialException.BadArguments(
-                    $"The filter column '{field.Name}' is not a field of this dataset; available fields: {fields}.");
-            }
-        }
-    }
-
-    private static bool Intersects(Feature feature, DemoDataset dataset, BoundingBox bbox)
-    {
-        var box = dataset.BoxFor(feature.Id);
-        if (box is null)
-        {
-            return false;
-        }
-
-        var value = box.Value;
-        return value.MinX <= bbox.MaxX && value.MaxX >= bbox.MinX
-            && value.MinY <= bbox.MaxY && value.MaxY >= bbox.MinY;
     }
 }

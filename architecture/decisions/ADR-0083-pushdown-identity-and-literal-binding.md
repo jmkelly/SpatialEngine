@@ -112,26 +112,36 @@ negated or plain truth value, because removing a never-matching value from a
 
 ## Consequences
 
-- `Spatial.Stores.Memory` remains the reference evaluator, and the shared
-  conformance fixture (`tests/conformance/Spatial.PredicateConformance`) is what
-  makes the compilers and the evaluators one vocabulary rather than three
-  dialects: the PostGIS and SQL Server suites run it against live containers, so
-  a type that binds wrongly is a red test, not a runtime error in a host.
+- The one reference evaluator is `Spatial.Querying.ReferencePredicate`, beside
+  the shared reference executor rather than inside one store (amended by
+  SpatialEngine-u2x.9.1, the union with the plan read): the in-memory store,
+  the demo store, every store that evaluates a plan in memory and every test
+  double go through it, so "the reference" is one piece of code instead of one
+  per provider. The shared conformance fixture
+  (`tests/conformance/Spatial.PredicateConformance`) and the pushdown-equals-
+  reference suite (`tests/conformance/Spatial.QueryConformance`) are what make
+  the compilers and the evaluators one vocabulary rather than three dialects:
+  the PostGIS and SQL Server suites run them against live containers, so a type
+  that binds wrongly is a red test, not a runtime error in a host.
 - A new store provider must implement the same kind-aware binding, or its
   answers will drift from the reference on exactly the cases above. The
   conformance suite is the check; there is no capability flag for it.
 - The pushdown rule is a property of the layer, so a provider cannot widen it:
   a store that could answer the clause still is not asked to, because the
-  renumbering happens above the store. Work that pushes *more* into the store —
-  the feature-match envelope — has to keep this in view, since anything that
-  changes which rows a read returns changes the ordinal unless the layer's
-  object id is store-derived.
+  renumbering happens above the store. It is also a property of the
+  <em>dataset</em> inside the store, which is where the union with the plan
+  read found the same rule needed a second copy: a PostGIS or SQL Server dataset
+  with no identity column names its features by the ordinal of the read, so a
+  `WHERE` that reached SQL would renumber them. Both stores therefore keep the
+  restriction and select over the whole read for such a dataset (ADR-0084,
+  SpatialEngine-u2x.9.1), and the query conformance suite compares feature
+  identities, not just values, so the renumbering is a red test.
 - Both rules are invisible to a client: no parameter, response shape or
   capability flag changed. The `where` text, the `filter` query parameter and
   the served `OBJECTID` values are the same ones they were.
-- The two residual/evaluator copies the change leaves in place (`MemoryPredicate`
-  and the facade's own) are the open structural question ADR-0074 deferred, and
-  stay deferred.
+- The facade's own residual evaluator stays in place, and is the open
+  structural question ADR-0074 deferred: it is the one case the pushdown rule
+  deliberately does not cover.
 
 ## Alternatives
 

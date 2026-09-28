@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 
-namespace Spatial.Stores.Memory;
+namespace Spatial.Querying;
 
 /// <summary>
 /// The reference evaluator of the predicate vocabulary (ADR-0074 §4): it
@@ -24,10 +24,17 @@ namespace Spatial.Stores.Memory;
 /// <item><c>LIKE</c> is a whole-value pattern match where <c>%</c> is any
 /// run and <c>_</c> is one character.</item>
 /// </list>
-/// It is store code, never Core: evaluation is an implementation concern
-/// (ADR-0074 §2).
+/// <para>
+/// It is implementation code, never Core: evaluation is an implementation
+/// concern (ADR-0074 §2). It lives beside the reference executor rather than
+/// inside a store, because it is <em>the</em> reference: the plan executor
+/// applies it, every store that evaluates a plan in memory goes through it,
+/// and the conformance suite compares a provider's pushed-down answer against
+/// it case by case. A second copy of these semantics is a second definition,
+/// which is what ADR-0074 §3 retired.
+/// </para>
 /// </summary>
-internal static class MemoryPredicate
+public static class ReferencePredicate
 {
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromSeconds(1);
 

@@ -65,6 +65,12 @@ internal sealed class SqlServerFeatures(SqlServerStorage storage, SqlServerCatal
             SqlServerQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
     }
 
+    /// <summary>The dataset's discovered description: its schema, identity
+    /// columns and SRID, which the plan is validated against.</summary>
+    public Task<DatasetDescription> DescribeAsync(
+        SqlServerDatasetName name, CancellationToken cancellationToken) =>
+        catalogue.DescribeAsync(name, cancellationToken);
+
     /// <summary>The features the dataset's identity columns name, or nothing when it has no identity.</summary>
     public async Task<IReadOnlyList<Feature>> ByIdentityAsync(
         SqlServerDatasetName name, IReadOnlyList<FeatureId> ids, CancellationToken cancellationToken)

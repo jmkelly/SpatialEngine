@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The pushdown-equals-reference conformance suite (ADR-0075 §3): one suite,
+    run against every store, comparing each store's own answer for a plan and
+    a reduction with the shared reference executor's answer over the same
+    fixture. A dialect that drifts is a failing test, not a different number
+    in production. The fixture carries the cases where a pushdown is tempted to
+    differ: ties in the order key, nulls in the key and in a summed field,
+    single-row groups, and an empty set.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.QueryConformance</AssemblyName>
+    <RootNamespace>Spatial.QueryConformance</RootNamespace>
+    <!-- Test support, not a test project: the suite is run by each store's own
+         tests, and the runner must not try to execute the library itself. -->
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Querying\Spatial.Querying.csproj" />
+  </ItemGroup>
+
+</Project>
