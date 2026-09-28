@@ -6,28 +6,11 @@ namespace Spatial.Rendering.Skia.Styling;
 /// <summary>
 /// Reads a <c>symbol</c> layer's <c>layout</c> and <c>paint</c> into the
 /// internal <see cref="SymbolPaint"/>. The documented MapLibre subset is
-/// text labels over the bundled font plus optional embedded SVG icons; an
-/// unsupported key is a typed <c>invalid.arguments</c> naming it.
+/// text labels over the bundled font family plus optional embedded SVG icons;
+/// an unsupported key is a typed <c>invalid.arguments</c> naming it.
 /// </summary>
 internal static class SymbolReader
 {
-    /// <summary>
-    /// Font names accepted by <c>text-font</c>. The engine bundles one Regular
-    /// face (Noto Sans, ADR-0049); the MapLibre default names are accepted as
-    /// aliases to it so a vanilla style compiles, and any other name is
-    /// rejected rather than silently substituted.
-    /// </summary>
-    private static readonly HashSet<string> SupportedFonts = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Noto Sans",
-        "Noto Sans Regular",
-        "Open Sans",
-        "Open Sans Regular",
-        "Arial Unicode MS",
-        "Arial Unicode MS Regular",
-        "sans-serif",
-    };
-
     private static readonly Dictionary<string, SymbolAnchor> Anchors = new(StringComparer.Ordinal)
     {
         ["center"] = SymbolAnchor.Center,
@@ -39,6 +22,13 @@ internal static class SymbolReader
         ["top-right"] = SymbolAnchor.TopRight,
         ["bottom-left"] = SymbolAnchor.BottomLeft,
         ["bottom-right"] = SymbolAnchor.BottomRight,
+    };
+
+    private static readonly Dictionary<string, SymbolTextTransform> Transforms = new(StringComparer.Ordinal)
+    {
+        ["none"] = SymbolTextTransform.None,
+        ["uppercase"] = SymbolTextTransform.Uppercase,
+        ["lowercase"] = SymbolTextTransform.Lowercase,
     };
 
     public static SymbolPaint Read(JsonElement layout, JsonElement paint, ExpressionInterner? interner = null)
@@ -65,6 +55,15 @@ internal static class SymbolReader
         var iconImage = layoutBag.String("icon-image", null);
         var iconSize = layoutBag.ConstantNumber("icon-size", 1.0);
         var allowIconOverlap = layoutBag.Bool("icon-allow-overlap", false);
+        var placement = ReadPlacement(layoutBag.String("symbol-placement", "point"));
+        var spacing = layoutBag.ConstantNumber("symbol-spacing", 250.0);
+        var sortKey = layoutBag.ConstantNumber("symbol-sort-key", 0.0);
+        var symbolAllowOverlap = layoutBag.OptionalBool("symbol-allow-overlap");
+        var ignorePlacement = layoutBag.Bool("symbol-ignore-placement", false);
+        var textTransform = ReadTransform(layoutBag.String("text-transform", "none"));
+        var letterSpacing = layoutBag.ConstantNumber("text-letter-spacing", 0.0);
+        var lineHeight = layoutBag.ConstantNumber("text-line-height", 1.2);
+        var rotate = layoutBag.ConstantNumber("text-rotate", 0.0);
         layoutBag.RejectUnsupported();
 
         if (string.IsNullOrEmpty(textField) && string.IsNullOrEmpty(iconImage))
@@ -72,47 +71,68 @@ internal static class SymbolReader
             throw SpatialException.BadArguments("A 'symbol' layer requires 'text-field' or 'icon-image'.");
         }
 
-        AssertFonts(fonts);
         PaintReader.AssertNonNegative(size, "text-size");
         PaintReader.AssertNonNegative(padding, "text-padding");
         PaintReader.AssertNonNegative(haloWidth, "text-halo-width");
         PaintReader.AssertNonNegative(iconSize, "icon-size");
+        PaintReader.AssertNonNegative(spacing, "symbol-spacing");
+        PaintReader.AssertNonNegative(letterSpacing, "text-letter-spacing");
+        if (spacing == 0)
+        {
+            throw SpatialException.BadArguments("Unsupported value for 'symbol-spacing': expected a positive number.");
+        }
+
+        if (lineHeight <= 0)
+        {
+            throw SpatialException.BadArguments("Unsupported value for 'text-line-height': expected a positive number.");
+        }
+
         var dataDriven = colorExpression is not null || opacityExpression is not null
             || haloColorExpression is not null || haloWidthExpression is not null;
         var alpha = dataDriven ? 1.0 : opacity;
-        return new SymbolPaint(new SymbolOptions(
-            textField ?? string.Empty,
-            fonts,
-            size,
-            color.ScaleAlpha(alpha),
-            haloColor.ScaleAlpha(alpha),
-            haloWidth,
-            anchor,
-            offsetX,
-            offsetY,
-            padding,
-            allowTextOverlap,
-            iconImage,
-            iconSize,
-            allowIconOverlap),
+        return new SymbolPaint(new SymbolOptions
+        {
+            TextField = textField ?? string.Empty,
+            Fonts = fonts,
+            Size = size,
+            Color = color.ScaleAlpha(alpha),
+            HaloColor = haloColor.ScaleAlpha(alpha),
+            HaloWidth = haloWidth,
+            Anchor = anchor,
+            OffsetX = offsetX,
+            OffsetY = offsetY,
+            Padding = padding,
+            AllowTextOverlap = allowTextOverlap,
+            IconImage = iconImage,
+            IconSize = iconSize,
+            AllowIconOverlap = allowIconOverlap,
+            Placement = placement,
+            Spacing = spacing,
+            SortKey = sortKey,
+            AllowOverlap = symbolAllowOverlap,
+            IgnorePlacement = ignorePlacement,
+            TextTransform = textTransform,
+            LetterSpacing = letterSpacing,
+            LineHeight = lineHeight,
+            Rotate = rotate,
+        },
             dataDriven
                 ? new SymbolExpressions(colorExpression, opacityExpression, haloColorExpression, haloWidthExpression, opacity)
                 : null);
     }
 
-    private static void AssertFonts(IReadOnlyList<string> fonts)
-    {
-        if (fonts.Count == 0)
+    private static SymbolPlacement ReadPlacement(string? placement) =>
+        placement switch
         {
-            return;
-        }
+            null or "point" => SymbolPlacement.Point,
+            "line" => SymbolPlacement.Line,
+            _ => throw SpatialException.BadArguments($"Unsupported value for 'symbol-placement': '{placement}'."),
+        };
 
-        if (!fonts.Any(SupportedFonts.Contains))
-        {
-            throw SpatialException.BadArguments(
-                $"Unsupported 'text-font' [{string.Join(", ", fonts)}]; the renderer bundles Noto Sans Regular.");
-        }
-    }
+    private static SymbolTextTransform ReadTransform(string? transform) =>
+        transform is not null && Transforms.TryGetValue(transform, out var value)
+            ? value
+            : throw SpatialException.BadArguments($"Unsupported value for 'text-transform': '{transform}'.");
 
     private static SymbolAnchor ReadAnchor(string? text)
     {

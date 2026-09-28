@@ -223,15 +223,19 @@ two dashed roads and four city points composed over the imagery floor.
 4. **Tiles + cache**: tile addressing, parallel batch, content-addressed
    cache keyed by style/dataset hashes.
 5. **Labels/symbols**: `SkiaSharp.HarfBuzz` shaping + a placement/collision
-   pass + `Svg.Skia` for sprite symbols (the largest remaining chunk).
+   pass + `Svg.Skia` for sprite symbols (the largest remaining chunk; landed
+   in ADR-0049 and deepened by ADR-0075).
 6. **Only then** consider a GPU backend or MapLibre Native parity, each with
    its own measured ADR.
 
 ## Open questions
 
 - **Label collision** is the one place a naive Skia renderer diverges
-  visibly from MapLibre; its placement algorithm is non-trivial.
-- **Style-spec coverage**: expressions, `*-pattern`, `symbol-placement`,
+  visibly from MapLibre; its placement algorithm is non-trivial. The engine
+  now generates ordered candidates and selects them by `symbol-sort-key`
+  (ADR-0075); curved and variable-along-a-line placement remain the gap.
+- **Style-spec coverage**: expressions (served for paint, ADR-0074),
+  `symbol-placement: line` (served, ADR-0075), `*-pattern`, sprite sheets,
   raster sources. Fixed subset first, documented compatibility.
 - **Cache invalidation** across dataset versions and style changes.
 - **CRS**: Web Mercator + plate carrée first; other viewports need

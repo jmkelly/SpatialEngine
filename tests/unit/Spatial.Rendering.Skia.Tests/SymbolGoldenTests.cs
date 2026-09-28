@@ -5,14 +5,14 @@ using Spatial.Core.Geometry;
 namespace Spatial.Rendering.Skia.Tests;
 
 /// <summary>
-/// A fixed-extent symbol render pinned against a committed golden image. On
-/// the CI Linux image the PNG bytes must match exactly; on other platforms a
-/// bounded per-pixel tolerance is allowed (ADR-0049). Set
-/// <c>SPATIAL_GOLDEN_UPDATE=1</c> to regenerate the golden.
+/// Fixed-extent symbol renders pinned against committed golden images: one for
+/// point placement and one for line placement with a bold face, a sprite and a
+/// text transform (ADR-0049, ADR-0075). On the CI Linux image the PNG bytes
+/// must match exactly; on other platforms a bounded per-pixel tolerance is
+/// allowed. Set <c>SPATIAL_GOLDEN_UPDATE=1</c> to regenerate a golden.
 /// </summary>
 public sealed class SymbolGoldenTests
 {
-    private const string GoldenName = "symbols.png";
     private const int Tolerance = 8;
     private const double MaxMismatchRatio = 0.01;
 
@@ -27,11 +27,64 @@ public sealed class SymbolGoldenTests
               "paint": { "text-color": "#ffffff", "text-halo-color": "#0b1220", "text-halo-width": 2 } } ] }
         """;
 
+    private const string LineStyle = """
+        { "version": 8, "layers": [
+            { "id": "bg", "type": "background", "paint": { "background-color": "#101820" } },
+            { "id": "rivers", "type": "line", "source-layer": "demo.rivers",
+              "paint": { "line-color": "#2a9d8f", "line-width": 2, "line-cap": "round" } },
+            { "id": "river-labels", "type": "symbol", "source-layer": "demo.rivers",
+              "layout": { "text-field": "{name}", "text-size": 13, "text-font": ["Noto Sans Bold"],
+                          "text-transform": "uppercase", "text-letter-spacing": 0.06,
+                          "text-anchor": "top", "text-offset": [0, 1.2], "text-padding": 2,
+                          "symbol-placement": "line", "symbol-spacing": 90 },
+              "paint": { "text-color": "#e9f5f9", "text-halo-color": "#0b1220", "text-halo-width": 2 } },
+            { "id": "cities", "type": "symbol", "source-layer": "demo.cities",
+              "layout": { "text-field": "{name}", "text-size": 14, "text-offset": [0, 2.4],
+                          "icon-image": "marker-circle", "icon-size": 0.8 },
+              "paint": { "text-color": "#ffffff", "text-halo-color": "#0b1220", "text-halo-width": 2 } } ] }
+        """;
+
     [Fact]
-    public async Task Golden_RendersSymbolsAtAFixedExtent()
+    public async Task Golden_RendersSymbolsAtAFixedExtent() =>
+        await AssertGolden("symbols.png", RenderAsync(Style, PointStore()));
+
+    /// <summary>Line placement, a bold face, a text transform and a sprite, all in one fixed render.</summary>
+    [Fact]
+    public async Task Golden_RendersLinePlacedLabelsAtAFixedExtent() =>
+        await AssertGolden("symbols-line.png", RenderAsync(LineStyle, LineStore()));
+
+    private static FakeStore PointStore() => new(
+        TestFeatures.Schema,
+        TestFeatures.Point("Alpha", 0, 0),
+        TestFeatures.Point("Beta", 4, 3),
+        TestFeatures.Point("Gamma", -4, -3));
+
+    private static FakeStore LineStore() => new(
+        TestFeatures.Schema,
+        TestFeatures.Line("Thames", (-9, -2), (2, 3)),
+        TestFeatures.Line("Severn", (-6, 7), (8, 5)),
+        TestFeatures.Point("Bristol", 2, 3),
+        TestFeatures.Point("Cardiff", 8, 5));
+
+    private static async Task<byte[]> RenderAsync(string style, FakeStore store)
     {
-        var content = await RenderAsync();
-        var path = GoldenPath();
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+        var request = new MapRenderRequest(
+            new RasterViewport(new Envelope(-10, -10, 10, 10), 256, 256, "EPSG:4326"),
+            style,
+            [
+                new MapLayerSource("demo.cities", store, new FakeCatalogue(4326)),
+                new MapLayerSource("demo.rivers", store, new FakeCatalogue(4326)),
+            ]);
+
+        var image = await renderer.RenderAsync(request);
+        return image.Content;
+    }
+
+    private static async Task AssertGolden(string name, Task<byte[]> rendered)
+    {
+        var content = await rendered;
+        var path = GoldenPath(name);
 
         if (Environment.GetEnvironmentVariable("SPATIAL_GOLDEN_UPDATE") == "1")
         {
@@ -49,23 +102,6 @@ public sealed class SymbolGoldenTests
         }
 
         AssertWithinTolerance(golden, content);
-    }
-
-    private static async Task<byte[]> RenderAsync()
-    {
-        var store = new FakeStore(
-            TestFeatures.Schema,
-            TestFeatures.Point("Alpha", 0, 0),
-            TestFeatures.Point("Beta", 4, 3),
-            TestFeatures.Point("Gamma", -4, -3));
-        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
-        var request = new MapRenderRequest(
-            new RasterViewport(new Envelope(-10, -10, 10, 10), 256, 256, "EPSG:4326"),
-            Style,
-            [new MapLayerSource("demo.cities", store, new FakeCatalogue(4326))]);
-
-        var image = await renderer.RenderAsync(request);
-        return image.Content;
     }
 
     private static void AssertWithinTolerance(byte[] golden, byte[] actual)
@@ -103,8 +139,8 @@ public sealed class SymbolGoldenTests
         Environment.GetEnvironmentVariable("CI") is not null
         || Environment.GetEnvironmentVariable("SPATIAL_GOLDEN_STRICT") == "1";
 
-    private static string GoldenPath() =>
-        Path.Combine(RepositoryRoot(), "tests", "fixtures", "rendering", "golden", GoldenName);
+    private static string GoldenPath(string name) =>
+        Path.Combine(RepositoryRoot(), "tests", "fixtures", "rendering", "golden", name);
 
     private static string RepositoryRoot()
     {

@@ -137,4 +137,20 @@ internal static class TestFeatures
             AttributeValue.FromInt64(population),
             AttributeValue.FromGeometry(GeometryFactory.CreatePoint(x, y, CoordinateReference.Epsg(srid))),
         ]);
+
+    public static Feature Line(
+        string name,
+        (double X, double Y) from,
+        (double X, double Y) to,
+        long population = 0,
+        int srid = 4326) => new(
+        new FeatureId(name),
+        Schema,
+        [
+            AttributeValue.FromString(name),
+            AttributeValue.FromInt64(population),
+            AttributeValue.FromGeometry(GeometryFactory.CreateLineString(
+                [new Coordinate(from.X, from.Y), new Coordinate(to.X, to.Y)],
+                CoordinateReference.Epsg(srid))),
+        ]);
 }

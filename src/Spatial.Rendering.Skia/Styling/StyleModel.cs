@@ -161,27 +161,107 @@ internal enum SymbolAnchor
     BottomRight,
 }
 
+/// <summary>Where candidates are generated for a symbol feature (MapLibre's <c>symbol-placement</c>).</summary>
+internal enum SymbolPlacement
+{
+    /// <summary>One candidate at the feature's point, envelope centre or an anchor offset from it.</summary>
+    Point,
+
+    /// <summary>Repeated candidates along a line geometry, each aligned to the local line direction.</summary>
+    Line,
+}
+
+/// <summary>The transform applied to a label's shaped text (MapLibre's <c>text-transform</c>).</summary>
+internal enum SymbolTextTransform
+{
+    None,
+    Uppercase,
+    Lowercase,
+}
+
 /// <summary>
 /// A compiled symbol recipe: the text template and font request, the label
-/// colour/halo, the anchor/offset/padding, and the optional sprite icon. The
-/// per-feature text and icon are resolved from attributes by the scene builder;
-/// this record is style-only and free of Skia types.
+/// colour/halo, the anchor/offset/padding, the optional sprite icon, the
+/// placement mode with its candidate spacing and priority, and the text
+/// transforms. The per-feature text and icon are resolved from attributes by
+/// the scene builder; this record is style-only and free of Skia types.
 /// </summary>
-internal sealed record SymbolOptions(
-    string TextField,
-    IReadOnlyList<string> Fonts,
-    double Size,
-    StyleColor Color,
-    StyleColor HaloColor,
-    double HaloWidth,
-    SymbolAnchor Anchor,
-    double OffsetX,
-    double OffsetY,
-    double Padding,
-    bool AllowTextOverlap,
-    string? IconImage,
-    double IconSize,
-    bool AllowIconOverlap);
+internal sealed record SymbolOptions
+{
+    /// <summary>The <c>{token}</c> template, resolved per feature.</summary>
+    public string TextField { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The requested face names, in fallback order. Never validated here: a
+    /// family the bundle does not carry resolves down the documented chain at
+    /// draw time rather than failing the style.
+    /// </summary>
+    public IReadOnlyList<string> Fonts { get; init; } = [];
+
+    public double Size { get; init; } = 16;
+
+    public StyleColor Color { get; init; } = new(0, 0, 0);
+
+    public StyleColor HaloColor { get; init; } = StyleColor.Transparent;
+
+    public double HaloWidth { get; init; }
+
+    public SymbolAnchor Anchor { get; init; } = SymbolAnchor.Center;
+
+    /// <summary>The offset in ems, in the candidate's own frame (so a line label offsets perpendicular).</summary>
+    public double OffsetX { get; init; }
+
+    public double OffsetY { get; init; }
+
+    public double Padding { get; init; } = 2;
+
+    public bool AllowTextOverlap { get; init; }
+
+    public string? IconImage { get; init; }
+
+    public double IconSize { get; init; } = 1;
+
+    public bool AllowIconOverlap { get; init; }
+
+    /// <summary>Where candidates are generated for a feature.</summary>
+    public SymbolPlacement Placement { get; init; } = SymbolPlacement.Point;
+
+    /// <summary>The pixels between line-placement candidates along a line geometry.</summary>
+    public double Spacing { get; init; } = 250;
+
+    /// <summary>
+    /// The style's placement priority: a lower value is placed first and so
+    /// wins a collision. The identity/envelope-centre tie-break stays the
+    /// final key, which keeps the order a total one.
+    /// </summary>
+    public double SortKey { get; init; }
+
+    /// <summary>
+    /// <c>symbol-allow-overlap</c>. Null means "inherit", i.e. the per-component
+    /// <c>text-</c>/<c>icon-allow-overlap</c> flags, which is the MapLibre default.
+    /// </summary>
+    public bool? AllowOverlap { get; init; }
+
+    /// <summary>
+    /// <c>symbol-ignore-placement</c>: place every feature in priority order
+    /// without a collision test, but still in that order.
+    /// </summary>
+    public bool IgnorePlacement { get; init; }
+
+    public SymbolTextTransform TextTransform { get; init; } = SymbolTextTransform.None;
+
+    /// <summary>Extra tracking between glyphs, in ems.</summary>
+    public double LetterSpacing { get; init; }
+
+    /// <summary>The line advance between the lines of a multi-line label, in ems.</summary>
+    public double LineHeight { get; init; } = 1.2;
+
+    /// <summary>A fixed rotation in degrees applied to the text about its anchor.</summary>
+    public double Rotate { get; init; }
+
+    /// <summary>The effective overlap bypass: the explicit flag, or the per-component flags when it is unset.</summary>
+    public bool AllowsOverlap => AllowOverlap ?? (AllowTextOverlap || AllowIconOverlap);
+}
 
 internal sealed record SymbolPaint(SymbolOptions Options, SymbolExpressions? Expressions = null) : PaintRecipe
 {

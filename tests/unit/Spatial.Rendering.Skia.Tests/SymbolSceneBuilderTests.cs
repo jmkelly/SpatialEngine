@@ -106,8 +106,7 @@ public sealed class SymbolSceneBuilderTests
     private static SymbolPaint Symbol(DrawLayer layer) => (SymbolPaint)layer.Paint;
 
     private static SymbolPaint SymbolPaintFor(string template) =>
-        new(new SymbolOptions(
-            template, [], 16, new StyleColor(0, 0, 0), StyleColor.Transparent, 0, SymbolAnchor.Center, 0, 0, 2, false, null, 1, false));
+        new(new SymbolOptions { TextField = template });
 
     private static LayerFeatures Features(params IFeature[] features) => new(4326, "geometry", features, new Envelope(-180, -90, 180, 90));
 

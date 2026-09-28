@@ -93,6 +93,22 @@ internal sealed class StylePropertyBag
         };
     }
 
+    /// <summary>Reads a tri-state boolean: absent is null, so the caller can inherit another flag.</summary>
+    public bool? OptionalBool(string name)
+    {
+        if (!TryGet(name, out var value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => throw SpatialException.BadArguments($"Unsupported value for '{name}': expected a boolean."),
+        };
+    }
+
     public string? String(string name, string? fallback)
     {
         if (!TryGet(name, out var value) || value.ValueKind == JsonValueKind.Null)

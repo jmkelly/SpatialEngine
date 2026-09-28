@@ -50,14 +50,32 @@ public sealed class SymbolRasterizerTests
         Assert.True(Ink(haloed, 20, 30, 80, 70) > Ink(plain, 20, 30, 80, 70));
     }
 
+    /// <summary>
+    /// A taken point does not hide a label: the feature falls back to its next
+    /// candidate, so a second label at the same spot still draws (ADR-0075).
+    /// </summary>
     [Fact]
-    public void Render_CollisionKeepsTheFirstLabelAndSkipsTheSecond()
+    public void Render_APointFallsBackToItsNextCandidateWhenTheFirstIsTaken()
     {
         var options = Options("Label");
         var first = Render(options, Feature("Alpha", 5, 5));
-        var both = Render(options, Feature("Alpha", 5, 5), Feature("Beta", 5.2, 5.2));
+        var both = Render(options, Feature("Alpha", 5, 5), Feature("Beta", 5, 5));
 
-        Assert.Equal(first.Pixels.ToArray(), both.Pixels.ToArray());
+        Assert.NotEqual(first.Pixels.ToArray(), both.Pixels.ToArray());
+        Assert.Equal(first.Pixels.ToArray(), Render(options, Feature("Alpha", 5, 5)).Pixels.ToArray());
+    }
+
+    /// <summary>Once every candidate is taken the feature is dropped, as before.</summary>
+    [Fact]
+    public void Render_SkipsAFeatureWhoseEveryCandidateIsTaken()
+    {
+        var options = Options("Label");
+        var crowded = Enumerable.Range(0, 6).Select(index => Feature($"Label {index}", 5, 5)).ToArray();
+
+        var six = Render(options, [.. crowded]);
+        var seven = Render(options, [.. crowded, Feature("Label 6", 5, 5)]);
+
+        Assert.Equal(six.Pixels.ToArray(), seven.Pixels.ToArray());
     }
 
     [Fact]
@@ -129,21 +147,20 @@ public sealed class SymbolRasterizerTests
         bool allowOverlap = false,
         string? icon = null,
         bool allowIconOverlap = false) =>
-        new(
-            textField,
-            [],
-            size,
-            color ?? new StyleColor(0, 0, 0),
-            haloColor ?? StyleColor.Transparent,
-            haloWidth,
-            anchor,
-            offsetX,
-            0,
-            2,
-            allowOverlap,
-            icon,
-            1,
-            allowIconOverlap);
+        new()
+        {
+            TextField = textField,
+            Size = size,
+            Color = color ?? new StyleColor(0, 0, 0),
+            HaloColor = haloColor ?? StyleColor.Transparent,
+            HaloWidth = haloWidth,
+            Anchor = anchor,
+            OffsetX = offsetX,
+            AllowTextOverlap = allowOverlap,
+            IconImage = icon,
+            IconSize = 1,
+            AllowIconOverlap = allowIconOverlap,
+        };
 
     private static RasterBuffer Render(SymbolOptions options, params SymbolFeature[] features) =>
         SkiaVectorRasterizer.Render(Scene(options, features), Viewport);

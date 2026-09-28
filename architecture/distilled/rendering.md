@@ -1,6 +1,6 @@
 # Raster Rendering
 
-The condensed form of ADR-0044 (and ADR-0049 for labels/symbols,
+The condensed form of ADR-0044 (and ADR-0049/ADR-0075 for labels/symbols,
 ADR-0074 for the expression dialect): turn the
 engine's vector outputs into styled raster output over a NetVips imagery
 pipeline. Read the
@@ -104,18 +104,46 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   remains the value an expression falls back to when it has none for a
   feature. Symbol *layout* keys stay constant — expressions there are a
   separate bead.
-- Symbol layout (ADR-0049): `text-field` (a `{attribute}` template),
-  `text-font` (the bundled Noto Sans aliases only), `text-size`,
-  `text-anchor`, `text-offset` (ems), `text-padding`, `text-allow-overlap`,
-  `icon-image` (a bundled sprite name), `icon-size`, `icon-allow-overlap`.
-  `symbol-placement: line` and unknown keys are rejected.
-- Fonts come only from the embedded Noto Sans Regular 2.003 (OFL-1.1);
-  sprites only from the embedded `Resources/Sprites/*.svg` (the bundled
-  `default-marker`), never a URL. `icon-image` resolves at draw time; an
-  unknown name is a typed error.
-- Label placement is a deterministic greedy first-fit: layers in document
-  order, features sorted by identity then source envelope centre, with
-  `*-allow-overlap` bypassing the collision test.
+- Symbol layout (ADR-0049, ADR-0075): `text-field` (a `{attribute}` template,
+  newlines split a multi-line label), `text-font` (a fallback-ordered list of
+  face names), `text-size`, `text-anchor`, `text-offset` (ems), `text-padding`,
+  `text-allow-overlap`, `icon-image` (a bundled sprite name), `icon-size`,
+  `icon-allow-overlap`, `symbol-placement` (`point` | `line`), `symbol-spacing`,
+  `symbol-sort-key`, `symbol-allow-overlap`, `symbol-ignore-placement`,
+  `text-transform` (`none` | `uppercase` | `lowercase`), `text-letter-spacing`
+  (ems), `text-line-height` (ems) and `text-rotate` (degrees). Unknown keys
+  and unknown values are rejected.
+- Fonts come only from the embedded Noto Sans 2.003 family (OFL-1.1) — Regular,
+  Bold, Italic and Bold Italic, each digest-pinned; sprites only from the
+  embedded `Resources/Sprites/*.svg` (the `default-marker` and the
+  `marker-circle`/`-square`/`-diamond`/`-triangle`/`-ring` set), never a URL.
+  `icon-image` resolves at draw time; an unknown name is a typed error.
+- `text-font` is never validated as a style key. Each name walks a documented
+  chain — bundled family at the requested weight/style, else the nearest
+  bundled weight (heavier first, then lighter) in the requested or upright
+  style, else the next name — and a family the bundle does not carry falls to
+  the default face (Noto Sans Regular). A missing face substitutes; it does not
+  fail the render.
+- Label placement is a deterministic greedy first-fit over **ordered
+  candidates** (ADR-0075): a point offers its position and then the four anchor
+  offsets; `symbol-placement: line` offers a candidate every `symbol-spacing`
+  pixels along the line, aligned to the local direction, then the same
+  candidates in reverse. The first candidate that places anything wins; a
+  feature with no free candidate is dropped.
+- Competition is decided in a **placement pass of its own**, in the order
+  `symbol-sort-key`, then the style's document order, then the within-layer
+  identity/envelope-centre order — a total order, so repeated runs and store
+  page order cannot change it. The pixels still composite in document order.
+  `symbol-allow-overlap` (inheriting `text-`/`icon-allow-overlap` when unset)
+  and `symbol-ignore-placement` bypass the collision test; an ignored label
+  neither blocks nor is blocked.
+- A candidate is a `(x, y, degrees)` frame: the label box, the icon box and
+  both draws happen in it, so a line label runs along its line and a
+  `text-offset` on it reads perpendicular. The text transforms are applied to
+  the shaped string: `text-transform` before shaping, `text-letter-spacing` as
+  extra advance between the runs the HarfBuzz cluster map produced,
+  `text-line-height` as the baseline advance between the lines of a multi-line
+  field, and `text-rotate` as a fixed rotation about the anchor.
 - Filter operators: `==`, `!=`, `has`, `!has`, `in`, `all`, `any`, `none`,
   `!` over `IFeature` attributes (never SQL). A filter that nests an
   expression anywhere is read as an **expression filter** instead, and must
@@ -218,17 +246,28 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   viewport before reprojection, so Web-Mercator tiles and WMS capabilities
   never ask the transform service to project ±90° (`PolarRenderTests`).
 - Labels/symbols: property resolution (including typed rejection of
-  unsupported keys and unknown fonts), text-anchor/offset placement, halo,
-  collision (first wins, `*-allow-overlap` places all), byte-identical
-  repeated runs, feature-order independence, the embedded-font hash, the
-  embedded sprite registry, and a committed golden render under
+  unsupported keys and unknown *values*), text-anchor/offset placement, halo,
+  collision (a taken point falls back to the next candidate, a feature with no
+  free candidate is dropped, `*-allow-overlap` places all), byte-identical
+  repeated runs, feature-order independence, the embedded-font digests, the
+  sprite set, and committed golden renders under
   `tests/fixtures/rendering/golden/` compared exactly on CI and with a
   bounded tolerance elsewhere.
+- Label placement depth (ADR-0075): the candidate generators (point offsets,
+  per-spacing line positions, their angles, multi-line parts, degenerate
+  geometry), the priority order (`symbol-sort-key` beating document order
+  across layers, the identity/envelope-centre tie-break, the overlap and
+  ignore-placement bypasses), line placement with a perpendicular
+  `text-offset`, the four text transforms, the font face registry (every
+  bundled digest, the family/weight/style parse, nearest-weight matching, the
+  fallback to the default face and the per-render shaper session), and a second
+  golden render covering line placement, a bold face, a transform and a sprite.
 
 ## Not implemented
 
 Offline `.vtpk` packaging and `exportTiles` are not part of this phase;
 live MVT, OGC API Tiles and the existing raster tile surface are supported.
-A GPU backend is not planned. Within the symbol subset, line placement,
-sprite sheets and text transforms are not claimed, and the expression dialect
-serves neither symbol layout nor `to-color`/`at-interpolate`.
+A GPU backend is not planned. Within the symbol subset, curved or
+variable-along-a-line placement, sprite sheets, `text-rotation-alignment`,
+`symbol-z-order` and expressions in symbol *layout* are not claimed, and the
+expression dialect serves neither `to-color` nor `at-interpolate`.

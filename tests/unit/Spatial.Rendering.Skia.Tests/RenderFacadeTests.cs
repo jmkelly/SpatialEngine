@@ -274,13 +274,43 @@ public sealed class RenderFacadeTests
         Assert.Equal(first.Content, second.Content);
     }
 
+    /// <summary>
+    /// The identity/envelope-centre tie-break is the last key of the placement
+    /// order, so line labels land the same way whichever order the store pages
+    /// its features in (ADR-0075).
+    /// </summary>
+    [Fact]
+    public async Task RenderAsync_LineLabelsAreDeterministicAcrossFeatureOrder()
+    {
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+        var style = """
+            { "version": 8, "layers": [
+                { "id": "rivers", "type": "symbol", "source-layer": "demo.cities",
+                  "layout": { "text-field": "{name}", "text-size": 12, "symbol-placement": "line", "symbol-spacing": 20 },
+                  "paint": { "text-color": "#000000" } } ] }
+            """;
+        var ordered = new FakeStore(
+            TestFeatures.Schema,
+            TestFeatures.Line("Alpha", (0, 4), (9, 4)),
+            TestFeatures.Line("Beta", (0, 6), (9, 7)));
+        var reversed = new FakeStore(
+            TestFeatures.Schema,
+            TestFeatures.Line("Beta", (0, 6), (9, 7)),
+            TestFeatures.Line("Alpha", (0, 4), (9, 4)));
+
+        var first = await renderer.RenderAsync(Request(ordered) with { Style = style });
+        var second = await renderer.RenderAsync(Request(reversed) with { Style = style });
+
+        Assert.Equal(first.Content, second.Content);
+    }
+
     [Fact]
     public async Task RenderAsync_RejectsAnUnsupportedSymbolProperty()
     {
         var store = new FakeStore(TestFeatures.Schema, TestFeatures.Point("London", 0, 0));
         var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
         var style = SymbolStyle.Replace(
-            "\"text-size\": 16", "\"text-size\": 16, \"text-transform\": \"uppercase\"", StringComparison.Ordinal);
+            "\"text-size\": 16", "\"text-size\": 16, \"text-rotation-alignment\": \"map\"", StringComparison.Ordinal);
 
         var exception = await Assert.ThrowsAsync<SpatialException>(
             () => renderer.RenderAsync(Request(store) with { Style = style }));

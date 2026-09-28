@@ -11,6 +11,33 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Deeper label placement: candidates, priority, line placement, font faces
+  and a marker set** (ADR-0075, SpatialEngine-u2x.20): a label is no longer
+  offered a single position. Each feature generates ordered candidates — a
+  point offers its position and the four anchor offsets around it, and
+  `symbol-placement: line` offers a candidate every `symbol-spacing` pixels
+  along the projected line, aligned to the local direction, then the same
+  candidates again in reverse — and the greedy first-fit takes the first that
+  places anything, so a label that loses its first choice usually still draws.
+  Which label wins is now a style priority (`symbol-sort-key`), decided in a
+  placement pass of its own across all symbol layers — the order is
+  `symbol-sort-key`, then the style's document order, then the existing
+  identity/envelope-centre tie-break, which keeps it a total order — while the
+  pixels still composite in document order. `symbol-allow-overlap` (inheriting
+  `text-`/`icon-allow-overlap`) and `symbol-ignore-placement` bypass the
+  collision test. `text-font` stops being a style error: the bundle grows to
+  the four digest-pinned Noto Sans 2.003 faces, each name in the list resolves
+  through a documented fallback chain (family and weight/style, else the
+  nearest bundled weight, else the next name), and a family the engine has
+  never heard of renders in the default face instead of failing the render.
+  `text-transform`, `text-letter-spacing`, `text-line-height` and
+  `text-rotate` are applied to the shaped string, and the sprite registry
+  gains the circle, square, diamond, triangle and ring markers beside
+  `default-marker`. Covered by the new placement, font and sprite suites and a
+  second committed golden render (`symbols-line.png`); the existing
+  `symbols.png` golden is byte-identical, because a style whose labels do not
+  collide takes the same candidate and draws the same pixels it always did.
+
 - **Ground-distance buffering** (ADR-0074, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
