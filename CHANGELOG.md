@@ -284,6 +284,17 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **Geometry Service `relation` serves the named Touches, Overlaps and
+  Crosses relations** (ADR-0036, SpatialEngine-zpz): `relation=esriSpatialRelTouches
+  |esriSpatialRelOverlaps|esriSpatialRelCrosses` used to be rejected by name,
+  even though the feature query path has answered them exactly since
+  SpatialEngine-u2x.2 — so the same verb had two answers depending on which
+  endpoint served it. They now read the one dimension-aware DE-9IM pattern
+  table the query path reads (`SpatialRelationPredicates`), with the left
+  geometry in the feature's role and the right in the query's; no pattern
+  string is restated, and an unrecognised relation name is still a named
+  `invalid.arguments`.
+
 - **The Esri geometry writer states its `hasZ`/`hasM` flags**
   (ADR-0085, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is
   Z when only `hasZ` is set and M when only `hasM` is set — the codec's own

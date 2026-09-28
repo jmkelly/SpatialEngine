@@ -718,6 +718,14 @@ internal static class GeometryService
             return (left, right, relations, token) => relations.Relate(left, right, "T*F**F***", token);
         }
 
+        // The dimension-aware verbs are read out of the one pattern table the
+        // feature query path tests with, so the same verb has one answer
+        // whichever endpoint serves it (SpatialEngine-zpz).
+        if (TryNamedRelation(relation, out var dimensionAware))
+        {
+            return dimensionAware;
+        }
+
         if (string.Equals(relation, "esriSpatialRelEquals", StringComparison.OrdinalIgnoreCase))
         {
             return (left, right, relations, token) => relations.Relate(left, right, "T*F**FFF*", token);
@@ -725,8 +733,44 @@ internal static class GeometryService
 
         throw GeoServicesErrors.Invalid(
             $"The 'relation' value '{named}' is not supported: the engine tests DE-9IM patterns " +
-            "(esriSpatialRelIntersects/Disjoint/Contains/Within/Equals, or esriSpatialRelRelation with a 'relationParam' pattern).");
+            "(esriSpatialRelIntersects/Disjoint/Contains/Within/Touches/Overlaps/Crosses/Equals, or esriSpatialRelRelation with a 'relationParam' pattern).");
     }
+
+    /// <summary>
+    /// The named predicate for the relations whose DE-9IM pattern is
+    /// dimension-dependent, read from <see cref="SpatialRelationPredicates"/>
+    /// — the one pattern table the feature query path tests with (ADR-0036),
+    /// so there is no second copy of a pattern string to drift. The left
+    /// geometry plays the feature and the right the query, the roles the
+    /// query path gives them (SpatialEngine-2ve owns whether that is the
+    /// direction the protocol wants for every verb).
+    /// </summary>
+    private static bool TryNamedRelation(
+        string relation, out Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> predicate)
+    {
+        Func<GeometryPair, IGeometryRelations, CancellationToken, bool>? matched = null;
+        if (Matches(relation, "esriSpatialRelTouches"))
+        {
+            matched = SpatialRelationPredicates.Touches;
+        }
+        else if (Matches(relation, "esriSpatialRelOverlaps"))
+        {
+            matched = SpatialRelationPredicates.Overlaps;
+        }
+        else if (Matches(relation, "esriSpatialRelCrosses"))
+        {
+            matched = SpatialRelationPredicates.Crosses;
+        }
+
+        predicate = (left, right, relations, token) =>
+            matched is not null
+            && GeometryPair.Of(left, right) is { } pair
+            && matched(pair, relations, token);
+        return matched is not null;
+    }
+
+    private static bool Matches(string relation, string name) =>
+        string.Equals(relation, name, StringComparison.OrdinalIgnoreCase);
 
     private static bool IsRelationPattern(string value) =>
         value.Length == 9 && value.All(character => character is 'T' or 'F' or '*' or '0');

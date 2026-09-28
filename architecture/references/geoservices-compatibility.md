@@ -71,7 +71,7 @@ engine is x-first for every CRS (`contracts.md`).
 | `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
 | `lengths` | — | Missing (same) |
-| `relation` (DE-9IM `relationParam`) | — | Missing |
+| `relation` (DE-9IM `relationParam`) | `IGeometryRelations.Relate` | **Partial** — a `relation` naming `esriSpatialRelIntersects`/`Disjoint`/`Contains`/`Within`/`Equals`, a bare DE-9IM pattern, or `esriSpatialRelRelation` with a `relationParam` pattern (including the `RELATE(G1, G2, 'pattern')` spelling) is served; the dimension-dependent `esriSpatialRelTouches`/`Overlaps`/`Crosses` are served too, out of the same pattern table the query path reads (ADR-0036), with the left geometry in the feature's role and the right in the query's, so the two endpoints answer one way. An unrecognised name is still rejected by name. One flag per `geometries1` geometry, 1 when any `geometries2` geometry relates |
 | `labelPoints` | — | Missing |
 | `distance` | — | Missing |
 | `densify` | — | Missing |
