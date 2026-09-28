@@ -215,7 +215,7 @@ public sealed class SpatialClient
 
     /// <summary>
     /// Runs a seed document against a Development host: download, ingest and
-    /// publish in one call (ADR-0070). Delegates to the map and ingest group
+    /// publish in one call (ADR-0078). Delegates to the map and ingest group
     /// that owns the route (ADR-0040).
     /// </summary>
     public Task<SeedResponse> SeedAsync(

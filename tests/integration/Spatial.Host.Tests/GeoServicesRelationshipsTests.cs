@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// Relationships served end-to-end (ADR-0074): a map declares
+/// Relationships served end-to-end (ADR-0077): a map declares
 /// <c>dataset A column x is related to dataset B column y</c>, the declaring
 /// layer advertises it in the <c>getLayer</c> metadata a client reads,
 /// <c>queryRelatedRecords</c> traverses it with the related layer's own

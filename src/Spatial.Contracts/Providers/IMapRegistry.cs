@@ -80,7 +80,7 @@ public enum MapLayerKind
 /// so one map can mix a vector store and the keyed <c>raster</c> store.</para>
 ///
 /// <para><see cref="Relationships"/> declares how this layer's records
-/// relate to the map's other layers (ADR-0074). The declaration is
+/// relate to the map's other layers (ADR-0077). The declaration is
 /// publication state, so the same datasets can be published with different
 /// relationships; it is validated structurally when the map is stored and
 /// against the live schemas where a declaration happens. Null or empty

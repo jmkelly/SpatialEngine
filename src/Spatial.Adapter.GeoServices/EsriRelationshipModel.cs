@@ -3,7 +3,7 @@ using Spatial.Contracts.Providers;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// Projects the engine's relationship declarations (ADR-0074) onto the Esri
+/// Projects the engine's relationship declarations (ADR-0077) onto the Esri
 /// layer <c>relationships</c> metadata (spec §9.1) that <c>getLayer</c>
 /// consumers read. The engine vocabulary is the contract's
 /// <see cref="LayerRelationshipCardinality"/>; the adapter owns the Esri

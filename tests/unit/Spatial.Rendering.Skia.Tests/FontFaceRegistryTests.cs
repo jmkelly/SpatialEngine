@@ -6,7 +6,7 @@ namespace Spatial.Rendering.Skia.Tests;
 /// <summary>
 /// The embedded font face registry: every bundled face is digest-pinned, and a
 /// <c>text-font</c> request walks the documented fallback chain instead of
-/// being rejected (ADR-0075).
+/// being rejected (ADR-0080).
 /// </summary>
 public sealed class FontFaceRegistryTests
 {

@@ -32,7 +32,7 @@ internal static class MapServices
                     : catalogue.ListAsync(null, cancellationToken);
             }));
         ConfigureRemote(builder);
-        // The development seed endpoint's bounded download client (ADR-0070):
+        // The development seed endpoint's bounded download client (ADR-0078):
         // one shared instance with a fetch timeout; per-source byte caps are
         // enforced while reading, reusing the ingest maximum.
         builder.Services.AddSingleton<ISeedSourceFetcher>(_ =>

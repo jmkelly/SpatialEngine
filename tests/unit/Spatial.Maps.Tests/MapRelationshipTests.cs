@@ -6,7 +6,7 @@ using Spatial.Maps;
 namespace Spatial.Maps.Tests;
 
 /// <summary>
-/// Pins the relationship declaration rules (ADR-0074): the structural half in
+/// Pins the relationship declaration rules (ADR-0077): the structural half in
 /// <see cref="MapValidator"/> (name, target, columns, cardinality/join
 /// pairing) and the live half in <see cref="MapRelationshipSchemas"/> (the
 /// named datasets and columns exist, and both sides carry the same key kind).

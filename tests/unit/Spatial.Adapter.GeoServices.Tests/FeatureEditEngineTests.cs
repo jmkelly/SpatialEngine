@@ -195,6 +195,97 @@ public sealed class FeatureEditEngineTests
     }
 
     [Fact]
+    public async Task Delete_by_object_ids_never_reads_the_whole_dataset()
+    {
+        var table = new FakeTable();
+        var store = new FakeStore(table);
+        var request = new EsriEditRequest([], [], [3, 77], null, false);
+
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
+
+        Assert.Equal(2, body.GetProperty("deleteResults").EnumerateArray().Count());
+        Assert.Equal(0, store.Scans);
+        Assert.Equal(1, store.Lookups);
+    }
+
+    [Fact]
+    public async Task An_edit_succeeds_against_a_store_whose_scan_throws()
+    {
+        var table = new FakeTable();
+        // A store that can only answer by identity: any full read of the
+        // dataset is a defect on the object-id edit path (ADR-0038).
+        var store = new FakeStore(table) { FailScan = true };
+
+        var update = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+            new FeatureEditEngine.EditInvocation(EsriEditOperation.Update, table.Describe(), store, store,
+                new EsriEditRequest([], Updates("""{"attributes":{"OBJECTID":2,"population":9999999}}"""), [], null, false), Crs),
+            CancellationToken.None));
+        var delete = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+            new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store,
+                new EsriEditRequest([], [], [3], null, false), Crs),
+            CancellationToken.None));
+
+        Assert.True(Assert.Single(update.GetProperty("updateResults").EnumerateArray()).GetProperty("success").GetBoolean());
+        Assert.True(Assert.Single(delete.GetProperty("deleteResults").EnumerateArray()).GetProperty("success").GetBoolean());
+        Assert.Equal(9999999, table.ById(2)["population"].Int64Value);
+        Assert.Equal(2, table.Count);
+    }
+
+    [Fact]
+    public async Task Delete_by_where_reads_the_dataset_once()
+    {
+        var table = new FakeTable();
+        var store = new SimpleStore(table);
+        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        var request = new EsriEditRequest([], [], [], where, false);
+
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
+
+        Assert.True(Assert.Single(body.GetProperty("deleteResults").EnumerateArray()).GetProperty("success").GetBoolean());
+        // The match already read the feature it deletes: a second read of the
+        // whole dataset to resolve the same object id is waste.
+        Assert.Equal(1, store.Scans);
+    }
+
+    [Fact]
+    public async Task Delete_by_where_does_not_re_resolve_the_features_it_already_read()
+    {
+        var table = new FakeTable();
+        var store = new FakeStore(table);
+        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        var request = new EsriEditRequest([], [], [], where, false);
+
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                CancellationToken.None));
+
+        Assert.True(Assert.Single(body.GetProperty("deleteResults").EnumerateArray()).GetProperty("success").GetBoolean());
+        Assert.Equal(0, store.Lookups);
+    }
+
+    [Fact]
+    public async Task A_cancelled_token_aborts_a_delete_by_where_before_the_delete()
+    {
+        var table = new FakeTable();
+        using var cancelled = new CancellationTokenSource();
+        var store = new FakeStore(table) { OnScan = () => cancelled.Cancel() };
+        Assert.True(EsriFilterClause.TryParse("name = 'Berlin'", out var where, out var error), error);
+        var request = new EsriEditRequest([], [], [], where, false);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, store, request, Crs),
+                cancelled.Token));
+
+        Assert.Equal(3, table.Count);
+        Assert.Equal(0, store.Deletes);
+    }
+
+    [Fact]
     public async Task Delete_by_an_unmatched_where_returns_no_results()
     {
         var table = new FakeTable();
@@ -493,6 +584,8 @@ public sealed class FeatureEditEngineTests
 
         public int Lookups { get; private set; }
 
+        public int Scans { get; private set; }
+
         public int Begins { get; private set; }
 
         public int Commits { get; private set; }
@@ -501,7 +594,15 @@ public sealed class FeatureEditEngineTests
 
         public int AddCalls { get; private set; }
 
+        public int Deletes { get; private set; }
+
         public bool IgnoreCancellation { get; set; }
+
+        /// <summary>When set, any full read of the dataset throws: only a read-by-identity store may serve an edit.</summary>
+        public bool FailScan { get; set; }
+
+        /// <summary>Runs on every full read, so a test can cancel or fault mid-scan.</summary>
+        public Action? OnScan { get; set; }
 
         public bool FailRollback { get; set; }
 
@@ -511,7 +612,14 @@ public sealed class FeatureEditEngineTests
 
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default)
         {
+            Scans++;
             Check(cancellationToken);
+            if (FailScan)
+            {
+                throw new InvalidOperationException("This store serves edits by identity only.");
+            }
+
+            OnScan?.Invoke();
             IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(FakeTable.Schema, _table.Snapshot())];
             return Task.FromResult(batches);
         }
@@ -578,6 +686,7 @@ public sealed class FeatureEditEngineTests
 
         public Task<IReadOnlyList<FeatureEditOutcome>> DeleteAsync(string dataset, IReadOnlyList<FeatureId> featureIds, string? transaction = null, CancellationToken cancellationToken = default)
         {
+            Deletes++;
             OnEdit?.Invoke();
             Check(cancellationToken);
             if (EditFault is not null)
@@ -648,8 +757,12 @@ public sealed class FeatureEditEngineTests
 
         public string? FailAddFor { get; set; }
 
+        /// <summary>How many times the engine read the whole dataset.</summary>
+        public int Scans { get; private set; }
+
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default)
         {
+            Scans++;
             cancellationToken.ThrowIfCancellationRequested();
             IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(FakeTable.Schema, _table.Snapshot())];
             return Task.FromResult(batches);

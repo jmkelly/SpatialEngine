@@ -3,7 +3,7 @@ using SkiaSharp;
 namespace Spatial.Rendering.Skia.Drawing;
 
 /// <summary>
-/// The embedded font registry (ADR-0075): the Noto Sans faces the assembly
+/// The embedded font registry (ADR-0080): the Noto Sans faces the assembly
 /// carries, each digest-pinned, and the documented chain that resolves a
 /// <c>text-font</c> request onto one of them. Nothing here reads the host font
 /// manager, so a render never depends on what the host has installed.

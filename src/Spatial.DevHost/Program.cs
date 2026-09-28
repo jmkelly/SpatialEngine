@@ -73,7 +73,7 @@ internal static class AppComposition
     // The workbench Parity page's localhost panel renders the seed `Census`
     // map, but the seed targets the `memory` store, so every stack restart
     // wipes it (and the map registry keeps advertising the dataset-less
-    // service, ADR-0070). This boot step re-seeds just that map once the
+    // service, ADR-0078). This boot step re-seeds just that map once the
     // host is healthy: one states file, no token (the DevHost configures
     // none, so the dev-only seed endpoint is open on loopback). The full
     // realistic dataset is still an explicit `eng/seed.sh`. Offline boots

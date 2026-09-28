@@ -4,7 +4,7 @@ date: 2026-09-28
 deciders: maintainer + agent
 ---
 
-# ADR-0075: Label placement is candidate-based, priority-ordered, and draws from a multi-face font registry
+# ADR-0080: Label placement is candidate-based, priority-ordered, and draws from a multi-face font registry
 
 ## Context
 

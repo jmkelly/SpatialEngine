@@ -30,7 +30,7 @@ internal sealed record SymbolCandidateRequest(
 
 /// <summary>
 /// The placement pass: a deterministic greedy first-fit over every symbol in
-/// the scene, in priority order (ADR-0075). Priority is <c>symbol-sort-key</c>,
+/// the scene, in priority order (ADR-0080). Priority is <c>symbol-sort-key</c>,
 /// then the style's document order, then the scene builder's
 /// identity/envelope-centre order within a layer — a total order, so the same
 /// style and the same features always place the same labels, whatever order the

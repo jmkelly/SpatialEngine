@@ -1,7 +1,7 @@
 # Raster Rendering
 
-The condensed form of ADR-0044 (and ADR-0049/ADR-0075 for labels/symbols,
-ADR-0074 for the expression dialect): turn the
+The condensed form of ADR-0044 (and ADR-0049/ADR-0080 for labels/symbols,
+ADR-0076 for the expression dialect): turn the
 engine's vector outputs into styled raster output over a NetVips imagery
 pipeline. Read the
 ADR for the decision and the research at
@@ -104,7 +104,7 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   remains the value an expression falls back to when it has none for a
   feature. Symbol *layout* keys stay constant — expressions there are a
   separate bead.
-- Symbol layout (ADR-0049, ADR-0075): `text-field` (a `{attribute}` template,
+- Symbol layout (ADR-0049, ADR-0080): `text-field` (a `{attribute}` template,
   newlines split a multi-line label), `text-font` (a fallback-ordered list of
   face names), `text-size`, `text-anchor`, `text-offset` (ems), `text-padding`,
   `text-allow-overlap`, `icon-image` (a bundled sprite name), `icon-size`,
@@ -125,7 +125,7 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   the default face (Noto Sans Regular). A missing face substitutes; it does not
   fail the render.
 - Label placement is a deterministic greedy first-fit over **ordered
-  candidates** (ADR-0075): a point offers its position and then the four anchor
+  candidates** (ADR-0080): a point offers its position and then the four anchor
   offsets; `symbol-placement: line` offers a candidate every `symbol-spacing`
   pixels along the line, aligned to the local direction, then the same
   candidates in reverse. The first candidate that places anything wins; a
@@ -253,7 +253,7 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   sprite set, and committed golden renders under
   `tests/fixtures/rendering/golden/` compared exactly on CI and with a
   bounded tolerance elsewhere.
-- Label placement depth (ADR-0075): the candidate generators (point offsets,
+- Label placement depth (ADR-0080): the candidate generators (point offsets,
   per-spacing line positions, their angles, multi-line parts, degenerate
   geometry), the priority order (`symbol-sort-key` beating document order
   across layers, the identity/envelope-centre tie-break, the overlap and

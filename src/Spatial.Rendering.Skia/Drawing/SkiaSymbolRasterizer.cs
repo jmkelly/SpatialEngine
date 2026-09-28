@@ -12,7 +12,7 @@ internal sealed record SymbolDrawContext(
     SpriteRegistry Sprites);
 
 /// <summary>
-/// Draws the placements the placement pass decided (ADR-0075). Drawing is
+/// Draws the placements the placement pass decided (ADR-0080). Drawing is
 /// separate from placing so priority can order placement across layers while
 /// the pixels keep the style's document order. A label is drawn in its
 /// candidate's frame, so a line label runs along its line and <c>text-rotate</c>

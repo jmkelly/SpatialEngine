@@ -54,7 +54,7 @@ internal static class SkiaVectorRasterizer
 
         // Placement is decided for every symbol before anything is painted, so
         // the priority order can span layers while the draw order stays the
-        // style's document order (ADR-0075).
+        // style's document order (ADR-0080).
         var placement = hasSymbols
             ? SymbolPlacementEngine.Place(scene.Layers, projection, fonts!, registry)
             : [];

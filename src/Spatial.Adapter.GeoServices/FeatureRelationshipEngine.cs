@@ -8,7 +8,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Serves <c>queryRelatedRecords</c> (spec §9.1.5) over a declared
-/// relationship (ADR-0074). The traversal is the ordinary query path pointed
+/// relationship (ADR-0077). The traversal is the ordinary query path pointed
 /// at a different layer: the declaration names the two key columns, the
 /// origin record's key becomes an equality term in the closed where-grammar,
 /// and the related layer is matched, ordered and projected exactly as
@@ -123,7 +123,7 @@ internal static class FeatureRelationshipEngine
             .ToList();
         var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(traversal.Target.Related.Description, effective));
         return ordered
-            .Select(row => FeatureProjection.TransformFeature(row, effective, traversal.Query.LayerCrs, traversal.Transforms, cancellationToken))
+            .Select(row => FeatureProjection.TransformFeature(row, effective, traversal.Query.LayerCrs, traversal.Transforms, traversal.Operations, cancellationToken))
             .ToList();
     }
 

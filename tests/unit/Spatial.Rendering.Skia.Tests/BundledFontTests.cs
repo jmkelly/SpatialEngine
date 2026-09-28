@@ -5,7 +5,7 @@ namespace Spatial.Rendering.Skia.Tests;
 
 /// <summary>
 /// Shaping over an embedded face: the pinned bytes, the resolved family, and
-/// advances that grow with the size (ADR-0049, ADR-0075). The per-face digest
+/// advances that grow with the size (ADR-0049, ADR-0080). The per-face digest
 /// pins themselves are proven by <see cref="FontFaceRegistryTests"/>.
 /// </summary>
 public sealed class BundledFontTests

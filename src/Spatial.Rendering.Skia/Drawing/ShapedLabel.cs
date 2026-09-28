@@ -26,7 +26,7 @@ internal sealed record ShapedLine(string Text, IReadOnlyList<ShapedRun> Runs, fl
 
 /// <summary>
 /// A label shaped once and measured for every candidate it might take
-/// (ADR-0075). The text transforms are an evaluation step on the shaped
+/// (ADR-0080). The text transforms are an evaluation step on the shaped
 /// string, not on the style: <c>text-transform</c> before shaping,
 /// <c>text-letter-spacing</c> as extra advance between the shaped runs, and
 /// <c>text-line-height</c> as the advance between the lines of a multi-line

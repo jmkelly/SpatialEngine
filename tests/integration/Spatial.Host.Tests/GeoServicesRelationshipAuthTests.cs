@@ -12,7 +12,7 @@ namespace Spatial.Host.Tests;
 
 /// <summary>
 /// Relate and unrelate on a host with local auth enabled (ADR-0071 +
-/// ADR-0074): they are edits, so they travel the same gate as
+/// ADR-0077): they are edits, so they travel the same gate as
 /// <c>addFeatures</c> — an admin session bearer authorizes the write, a
 /// missing bearer is token-required and a signed-in user without the role is
 /// an invalid token. The read they sit behind stays public, like

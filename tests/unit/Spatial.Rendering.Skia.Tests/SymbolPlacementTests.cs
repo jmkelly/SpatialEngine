@@ -6,7 +6,7 @@ using Spatial.Rendering.Skia.Styling;
 namespace Spatial.Rendering.Skia.Tests;
 
 /// <summary>
-/// Label placement depth (ADR-0075): candidate generation, the priority order
+/// Label placement depth (ADR-0080): candidate generation, the priority order
 /// the greedy first-fit runs in, line placement with a perpendicular offset,
 /// the text transforms, and the font fallback chain. The pixel assertions are
 /// deliberately about ink coverage, not coordinates, so they stay readable; the

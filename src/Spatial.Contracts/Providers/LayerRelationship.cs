@@ -2,7 +2,7 @@ namespace Spatial.Contracts.Providers;
 
 /// <summary>
 /// How many records one side of a declared relationship holds. The values
-/// are the engine's own vocabulary (ADR-0074): a protocol adapter maps them
+/// are the engine's own vocabulary (ADR-0077): a protocol adapter maps them
 /// onto its own relationship-type names, so no Esri concept reaches the
 /// model. A one-to-one or one-to-many relationship is carried by a key
 /// column on the related layer; a many-to-many one is carried by a join
@@ -22,7 +22,7 @@ public enum LayerRelationshipCardinality
 
 /// <summary>
 /// The join dataset a many-to-many relationship travels through
-/// (ADR-0074): <see cref="Dataset"/> holds
+/// (ADR-0077): <see cref="Dataset"/> holds
 /// <see cref="PrimaryKeyColumn"/> (the origin key) and
 /// <see cref="RelatedKeyColumn"/> (the related key), one row per related
 /// pair. The engine holds no join semantics of its own — the declaration
@@ -36,7 +36,7 @@ public sealed record LayerRelationshipJoin(
 
 /// <summary>
 /// One declared relationship from the layer that owns it to a
-/// <see cref="RelatedLayerId"/> of the same map (ADR-0074). The declaration
+/// <see cref="RelatedLayerId"/> of the same map (ADR-0077). The declaration
 /// is publication state, not store state: the stores hold the two datasets
 /// and the join rows, while the map says how they are related, so the same
 /// datasets can be published with different relationships (principle 10 —

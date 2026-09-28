@@ -79,13 +79,13 @@ public sealed class DeclaredLayerOptions
 
     /// <summary>
     /// The relationships this layer declares to the map's other layers
-    /// (ADR-0074); empty means none. Validated structurally when the
+    /// (ADR-0077); empty means none. Validated structurally when the
     /// registry seeds the map.
     /// </summary>
     public IReadOnlyList<DeclaredRelationshipOptions> Relationships { get; set; } = [];
 }
 
-/// <summary>One declared relationship of a declared map layer (ADR-0074).</summary>
+/// <summary>One declared relationship of a declared map layer (ADR-0077).</summary>
 public sealed class DeclaredRelationshipOptions
 {
     public string Name { get; set; } = string.Empty;
@@ -109,7 +109,7 @@ public sealed class DeclaredRelationshipOptions
     public DeclaredRelationshipJoinOptions? Join { get; set; }
 }
 
-/// <summary>The join dataset of a declared many-to-many relationship (ADR-0074).</summary>
+/// <summary>The join dataset of a declared many-to-many relationship (ADR-0077).</summary>
 public sealed class DeclaredRelationshipJoinOptions
 {
     public string Dataset { get; set; } = string.Empty;

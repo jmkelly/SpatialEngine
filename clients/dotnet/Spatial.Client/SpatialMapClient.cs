@@ -87,7 +87,7 @@ public sealed class SpatialMapClient
 
     /// <summary>
     /// Runs a seed document against a Development host: download, ingest and
-    /// publish in one call (ADR-0070). Admin route, so it defaults to the
+    /// publish in one call (ADR-0078). Admin route, so it defaults to the
     /// bearer the client last authenticated with.
     /// </summary>
     public async Task<SeedResponse> SeedAsync(

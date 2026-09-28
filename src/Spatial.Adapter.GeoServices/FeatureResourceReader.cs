@@ -23,6 +23,7 @@ internal static class FeatureResourceReader
         long objectId,
         EsriFeatureQuery query,
         ICoordinateTransforms transforms,
+        IGeometryOperations operations,
         CancellationToken cancellationToken)
     {
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
@@ -43,7 +44,7 @@ internal static class FeatureResourceReader
                 continue;
             }
 
-            var transformed = FeatureProjection.TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, transforms, cancellationToken);
+            var transformed = FeatureProjection.TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, transforms, operations, cancellationToken);
             return FeatureResponseWriter.WriteFeature(transformed, query);
         }
 

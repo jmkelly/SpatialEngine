@@ -10,7 +10,7 @@ public sealed class SpriteRegistryTests
 
     /// <summary>
     /// The bundled marker set: a style may name any of these, and every one of
-    /// them is parsed to a drawable picture (ADR-0075).
+    /// them is parsed to a drawable picture (ADR-0080).
     /// </summary>
     [Fact]
     public void Default_CarriesTheMarkerSet()

@@ -7,7 +7,7 @@ namespace Spatial.Rendering.Skia.Tests;
 /// <summary>
 /// Fixed-extent symbol renders pinned against committed golden images: one for
 /// point placement and one for line placement with a bold face, a sprite and a
-/// text transform (ADR-0049, ADR-0075). On the CI Linux image the PNG bytes
+/// text transform (ADR-0049, ADR-0080). On the CI Linux image the PNG bytes
 /// must match exactly; on other platforms a bounded per-pixel tolerance is
 /// allowed. Set <c>SPATIAL_GOLDEN_UPDATE=1</c> to regenerate a golden.
 /// </summary>

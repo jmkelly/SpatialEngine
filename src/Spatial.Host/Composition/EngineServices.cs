@@ -25,7 +25,7 @@ internal static class EngineServices
         builder.Services.AddSingleton<ProjNetTransforms>();
         builder.Services.AddSingleton<ICrsDirectory>(services => services.GetRequiredService<ProjNetTransforms>());
         builder.Services.AddSingleton<ICoordinateTransforms>(services => services.GetRequiredService<ProjNetTransforms>());
-        // ADR-0074: the ground-distance buffer is the transformation
+        // ADR-0075: the ground-distance buffer is the transformation
         // provider's verb (it owns the working plane) composed with the
         // planar buffer and the dissolve, not a new algorithm of its own.
         builder.Services.AddSingleton<ProjNetGeodesicBuffering>();

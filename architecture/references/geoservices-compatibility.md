@@ -68,7 +68,7 @@ engine is x-first for every CRS (`contracts.md`).
 | --- | --- | --- |
 | `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string |
 | `simplify` (generalization; §7.0.5) | `Simplify` | **Present** — tolerance from `deviation`, or mutually exclusively from `value`; one of the two is required |
-| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0074), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
+| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
 | `lengths` | — | Missing (same) |
 | `relation` (DE-9IM `relationParam`) | — | Missing |
@@ -109,7 +109,7 @@ the projected result exactly, and remains the answer when the extent is too
 large for a local plane. A linear `unit` against a geographic buffer CRS is
 a ground distance: it goes to `IGeodesicBuffering`, which reprojects onto a
 transverse Mercator working plane centred on the work and buffers there
-(ADR-0074). That is within **0.05% relative of the geodesic** for a working
+(ADR-0075). That is within **0.05% relative of the geodesic** for a working
 radius (input envelope half-diagonal plus the distance) up to **300 km**;
 past that the engine refuses with the radius, the limit and the remedy
 instead of answering with a shape it cannot stand behind. An angular `unit`
@@ -128,7 +128,7 @@ dissolves the per-input buffers into one geometry.
 | `generateRenderer` (S4, feature-service layer) | — | **Served** — the single T-039 classifier (`MapGenerateRenderer`, ADR-0055) reused on the FeatureServer surface; byte-identical renderers on both surfaces (ADR-0061) |
 | `validateSQL` (S4, feature-service layer) | — | **Served** — server-side WHERE validation returning the S4 `isValidSQL` shape with 3001/3002/3008 codes; `expression`/`statement` validate as not-supported, never run (ADR-0061) |
 | `queryBins` / `queryTopFeatures` / `queryAnalytic` (S4) | — | Honestly rejected — mounted typed `invalid.arguments` naming the served alternative (`outStatistics`+`groupByFieldsForStatistics`; `orderByFields`+`resultRecordCount`); unadvertised (ADR-0061) |
-| `queryRelatedRecords` (§9.1.5) | — | **Served over declared relationships** (ADR-0074): a map layer declares a relationship to another of its layers over two key columns (one-to-one, one-to-many, or many-to-many through a join dataset); the declaring layer advertises it in its `relationships` metadata (`id`/`name` is the declared name, `relatedLayerId`, `title`, `esriRelationshipType*`). `queryRelatedRecords` traverses the declaration as the related layer's own query — its `where`, `outFields`, `geometry`/`spatialRel`, `time` and `outSR` all apply — and answers `{fields, relationships:[{name, relatedId, fields}]}`, one group per origin record that has related records. `relate`/`unrelate` move the same key behind the edit verbs' admin gate, one result per origin/related pair. Declarations are validated structurally when the map is stored and against the live schemas at the declaration boundary; a layer that declares nothing omits the `relationships` key |
+| `queryRelatedRecords` (§9.1.5) | — | **Served over declared relationships** (ADR-0077): a map layer declares a relationship to another of its layers over two key columns (one-to-one, one-to-many, or many-to-many through a join dataset); the declaring layer advertises it in its `relationships` metadata (`id`/`name` is the declared name, `relatedLayerId`, `title`, `esriRelationshipType*`). `queryRelatedRecords` traverses the declaration as the related layer's own query — its `where`, `outFields`, `geometry`/`spatialRel`, `time` and `outSR` all apply — and answers `{fields, relationships:[{name, relatedId, fields}]}`, one group per origin record that has related records. `relate`/`unrelate` move the same key behind the edit verbs' admin gate, one result per origin/related pair. Declarations are validated structurally when the map is stored and against the live schemas at the declaration boundary; a layer that declares nothing omits the `relationships` key |
 | `addFeatures` (§9.1.6) | `POST /api/features/write` | Partial — append-only through the API; the GeoServices facade now maps `addFeatures` onto `IFeatureEditStore.AddAsync` (ADR-0037) |
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
 | `deleteFeatures` (§9.1.8) | — | Implemented via `IFeatureEditStore.DeleteAsync` (ADR-0037) |
@@ -249,7 +249,7 @@ Ordered by dependency:
 - Recorded Geometry Service non-goals: `offset`, `cut`, `reshape`,
   `trimExtend` and `autoComplete` have no engine verb; the facade rejects
   them with a typed `invalid.arguments` failure and does not advertise them.
-- Serving status update (ADR-0074, supersedes the T-044 note below):
+- Serving status update (ADR-0075, supersedes the T-044 note below):
   `buffer` serves a **linear `unit` against a geographic buffer CRS** through
   `IGeodesicBuffering` — reproject onto a local transverse Mercator, planar
   buffer, project back — so the commonest request (`distances=1000&unit=9001`
@@ -306,9 +306,11 @@ Ordered by dependency:
   "degenerate" and rejected it only as a containment). `Intersects` stays the
   non-empty intersection and `esriSpatialRelEnvelopeIntersects` stays the
   envelope test. `esriSpatialRelIndexIntersects` stays rejected with a named
-  alternative. `quantizationParameters` is honestly rejected,
-  `geometryPrecision` rounds every ordinate, `maxAllowableOffset` is
-  accepted (full precision returned) (T-023).
+  alternative. `quantizationParameters` now snaps every ordinate (x, y, z
+  and m) to the view grid and spends the rest of the budget on the same
+  generalization verb, `geometryPrecision` rounds every ordinate, and
+  `maxAllowableOffset` is honoured as a deviation allowance rather than
+  accepted and ignored (T-023, T8, ADR-0075).
 - Consume status update: the ArcGIS REST provider sends
   `orderByFields=<objectIdField>` on every paged query for a stable paging
   sequence; the ImageServer operation surface is pinned by reconnaissance tests
@@ -364,9 +366,13 @@ is rejected by name (never silently ignored) and named here with its reason:
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.
-- `quantizationParameters` responses (T8): quantized output is not served;
-  honestly rejected, while `geometryPrecision` (rounds every ordinate) and
-  `maxAllowableOffset` (accepted, full precision returned) are honoured.
+- `quantizationParameters`/`maxAllowableOffset` (T8): no longer a non-goal.
+  Both are served through `IGeometryOperations.Generalize`, the verb that
+  states a deviation allowance rather than an algorithm tolerance
+  (ADR-0079): the response stays within the allowance, keeps its geometry
+  kind even when the allowance is wider than the feature, and is
+  byte-identical to full precision at an allowance of zero. An unservable
+  `mode` or `originPosition` is still rejected by name.
 - Full-text `text`, `sqlFormat`, `resultType`, `gdbVersion`,
   `historicMoment`, `datumTransformation`, `returnCentroid`,
   `distance`/`units`, `relationParam`, `returnTrueCurves`,
@@ -385,7 +391,7 @@ is rejected by name (never silently ignored) and named here with its reason:
   Download clipping/re-encoding and raster functions remain absent.
 - GP Service, Geocode Service, `htmlPopup`: no engine model behind them;
   absent, not emulated. `queryRelatedRecords` and attachments have since
-  landed (ADR-0074 and ADR-0065/ADR-0066 respectively) and are served above.
+  landed (ADR-0077 and ADR-0065/ADR-0066 respectively) and are served above.
 - Picture symbols (`esriPMS`/`esriPFS`): the engine's symbol dialect has no
   model for them; the §4.7 image resource is a typed `not.found`.
 - Geometry Service `offset`, `cut`, `reshape`, `trimExtend`, `autoComplete`:

@@ -12,7 +12,7 @@ this file together, then tag the release (`RELEASING.md`).
 ### Added
 
 - **Deeper label placement: candidates, priority, line placement, font faces
-  and a marker set** (ADR-0075, SpatialEngine-u2x.20): a label is no longer
+  and a marker set** (ADR-0080, SpatialEngine-u2x.20): a label is no longer
   offered a single position. Each feature generates ordered candidates — a
   point offers its position and the four anchor offsets around it, and
   `symbol-placement: line` offers a candidate every `symbol-spacing` pixels
@@ -38,7 +38,21 @@ this file together, then tag the release (`RELEASING.md`).
   `symbols.png` golden is byte-identical, because a style whose labels do not
   collide takes the same candidate and draws the same pixels it always did.
 
-- **Ground-distance buffering** (ADR-0074, SpatialEngine-u2x.14): the
+- **A deviation allowance is its own geometry verb** (ADR-0079,
+  SpatialEngine-u2x.3): the Feature Service `query` now honours
+  `maxAllowableOffset` instead of accepting it and returning full precision,
+  and serves `quantizationParameters` instead of rejecting it by name. Both
+  go through the new `IGeometryOperations.Generalize`, which states how far
+  the answer may be from the true geometry rather than how coarsely the
+  algorithm should thin it: every returned vertex is a vertex of the input,
+  every input vertex stays within the allowance, and an allowance too wide to
+  spend without changing a feature's geometry kind returns the input
+  unchanged — so an offset of zero is byte-identical to full precision.
+  `quantizationParameters` snaps x, y, z and m to the view grid anchored on
+  the request's extent, then spends the rest of the budget on the same verb;
+  an unservable `mode` or `originPosition` is still rejected by name.
+
+- **Ground-distance buffering** (ADR-0075, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
   `IGeodesicBuffering` contract verb implemented as
@@ -64,7 +78,7 @@ this file together, then tag the release (`RELEASING.md`).
   built on first use, and the ProjNet Pseudo-Mercator workaround is
   untouched.
 - **Relationships are declared, traversed and written**
-  (ADR-0074, SpatialEngine-u2x.22): a map layer now declares how its records
+  (ADR-0077, SpatialEngine-u2x.22): a map layer now declares how its records
   relate to another of the map's layers over two key columns
   (`LayerRelationship`: one-to-one, one-to-many, or many-to-many through a
   join dataset), validated structurally when the map is stored and against

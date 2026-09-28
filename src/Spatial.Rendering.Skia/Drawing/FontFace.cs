@@ -11,7 +11,7 @@ internal enum FontStyle
 
 /// <summary>
 /// One bundled face: a family, a CSS weight (100-900), a style, and the
-/// embedded resource that carries it with its pinned digest (ADR-0075). The
+/// embedded resource that carries it with its pinned digest (ADR-0080). The
 /// resource is an assembly stream, never the host font manager, so the glyphs
 /// a label is shaped from are the same on every machine.
 /// </summary>

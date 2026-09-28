@@ -52,7 +52,7 @@ public sealed class SymbolRasterizerTests
 
     /// <summary>
     /// A taken point does not hide a label: the feature falls back to its next
-    /// candidate, so a second label at the same spot still draws (ADR-0075).
+    /// candidate, so a second label at the same spot still draws (ADR-0080).
     /// </summary>
     [Fact]
     public void Render_APointFallsBackToItsNextCandidateWhenTheFirstIsTaken()

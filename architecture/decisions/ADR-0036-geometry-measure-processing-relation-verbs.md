@@ -48,7 +48,14 @@ The GeoServices adapter maps:
 | `relation` | `IGeometryRelations` |
 | Feature Service `spatialRel` (`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`) | `IGeometryRelations` (DE-9IM patterns, envelope-prefiltered) |
 | `project` | `ICoordinateTransforms` |
-| `generalize`, `simplify` (`deviation`/`value`), `buffer`, `intersect` | `IGeometryOperations` |
+| `generalize`, `simplify` (`deviation`/`value`), `maxAllowableOffset`, `quantizationParameters`, `buffer`, `intersect` | `IGeometryOperations` |
+
+The Geometry Service's two operations take an algorithm tolerance and go
+through `Simplify`; the Feature Service's two query parameters state a
+deviation budget and go through `Generalize` (ADR-0079). The split is
+deliberate: a tolerance the caller picks for the algorithm and an allowance
+the caller grants the answer are not the same number, and one method cannot
+carry both without the two being swapped at a call site.
 
 ## Consequences
 
