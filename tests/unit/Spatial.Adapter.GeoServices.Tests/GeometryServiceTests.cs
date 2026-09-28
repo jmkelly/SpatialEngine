@@ -156,15 +156,17 @@ public sealed class GeometryServiceTests
     /// <summary>
     /// The named relations the Geometry Service serves out of the one DE-9IM
     /// pattern table the feature query path uses, so the same verb has one
-    /// answer whichever endpoint serves it (SpatialEngine-zpz).
+    /// answer whichever endpoint serves it (SpatialEngine-zpz, and
+    /// SpatialEngine-51k for <c>Intersects</c>).
     ///
     /// The fixture is the same unit square feature and the same twelve query
     /// geometries whose hand-computed DE-9IM matrix
     /// <see cref="FeatureSpatialRelationTests"/> pins the query path against:
     /// the matrix rows are the feature's components and the columns the
     /// query's, in interior/boundary/exterior order. Every expected value
-    /// below is copied from that table's Touches/Overlaps/Crosses columns, so
-    /// a second copy of a pattern string cannot drift from the first.
+    /// below is copied from that table's Touches/Overlaps/Crosses/Intersects
+    /// columns, so a second copy of a pattern string cannot drift from the
+    /// first.
     /// </summary>
     [Theory]
     [InlineData("square-equal", false)]
@@ -213,6 +215,22 @@ public sealed class GeometryServiceTests
     [InlineData("square-outside", false)]
     public async Task Relation_crosses_needs_a_mixed_dimension_meeting(string query, bool expected) =>
         Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelCrosses"));
+
+    [Theory]
+    [InlineData("square-equal", true)]
+    [InlineData("square-inner", true)]
+    [InlineData("square-overlap", true)]
+    [InlineData("square-corner", true)]
+    [InlineData("square-above", true)]
+    [InlineData("line-crossing", true)]
+    [InlineData("line-inside", true)]
+    [InlineData("line-on-boundary", true)]
+    [InlineData("point-inside", true)]
+    [InlineData("point-on-boundary", true)]
+    [InlineData("point-outside", false)]
+    [InlineData("square-outside", false)]
+    public async Task Relation_intersects_is_the_ogc_pattern_union(string query, bool expected) =>
+        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelIntersects"));
 
     [Fact]
     public async Task Relation_rejects_a_relation_name_it_does_not_serve()
