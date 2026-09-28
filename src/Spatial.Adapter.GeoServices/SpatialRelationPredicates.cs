@@ -25,11 +25,19 @@ namespace Spatial.Adapter.GeoServices;
 /// | <c>Touches</c> (a point is involved) | <c>F**T*****</c> | interiors disjoint and the point sits on the other geometry's boundary: a point's own boundary is empty, so the meeting shows up in position 4 instead of position 5. |
 /// | <c>Overlaps</c> | <c>T*T***T**</c> | interiors meet, each boundary reaches the other interior, and the exteriors meet — a genuine partial overlap, never containment. |
 /// | <c>Crosses</c> | <c>T**T*****</c> / <c>T*T******</c> | interiors meet and the lower-dimensional geometry's interior reaches the higher-dimensional one's boundary; the pattern is selected by which side is lower-dimensional (position 4 or position 2). |
+/// | <c>Intersects</c> | <c>T********</c> or <c>*T*******</c> or <c>***T*****</c> or <c>****T****</c> | the OGC intersect union: the geometries meet if the interiors meet, or either interior reaches the other's boundary, or the boundaries meet. A pair shares nothing exactly when all four positions are <c>F</c>.
 ///
 /// <c>Overlaps</c> and <c>Crosses</c> are equal- and mixed-dimension
 /// constrained, so both are gated on the geometry dimensions: the patterns
 /// alone would let a line crossing a polygon read as both <c>Overlaps</c>
 /// and <c>Crosses</c> (OGC splits them by dimension).
+///
+/// <c>Intersects</c> is the one verb whose definition is a disjunction, so it
+/// costs four <see cref="IGeometryRelations.Relate"/> calls rather than one:
+/// a DE-9IM pattern is a single nine-character matrix and the grammar takes
+/// no alternation, so a <c>|</c>-joined pattern is rejected outright. The
+/// disjunction short-circuits, and the envelope test rejects a disjoint pair
+/// before any of them run.
 /// </summary>
 internal static class SpatialRelationPredicates
 {
@@ -40,6 +48,19 @@ internal static class SpatialRelationPredicates
     private const string OverlapsPattern = "T*T***T**";
     private const string CrossesFeatureHigherPattern = "T**T*****";
     private const string CrossesFeatureLowerPattern = "T*T******";
+
+    /// <summary>
+    /// The OGC intersect patterns, in the order they are tried: the interiors
+    /// meet, either interior reaches the other's boundary, or the boundaries
+    /// meet. A pair with nothing in common has all four positions false.
+    /// </summary>
+    private static readonly string[] IntersectsPatterns =
+    [
+        "T********",
+        "*T*******",
+        "***T*****",
+        "****T****",
+    ];
 
     /// <summary>The feature geometry contains the query geometry (boundary-exact).</summary>
     internal static bool Contains(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
@@ -55,6 +76,17 @@ internal static class SpatialRelationPredicates
     internal static bool Touches(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
         TouchPattern(pair) is { } pattern
         && relations.Relate(pair.Feature, pair.Query, pattern, cancellationToken);
+
+    /// <summary>
+    /// The two geometries meet, as the intersection <em>test</em> over the
+    /// OGC intersect patterns rather than as a non-empty intersection
+    /// <em>geometry</em>: this runs per candidate feature, so materialising
+    /// the intersection costs an overlay per row to answer a question the
+    /// pattern table already answers (SpatialEngine-51k).
+    /// </summary>
+    internal static bool Intersects(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
+        pair.EnvelopesIntersect()
+        && IntersectsPatterns.Any(pattern => relations.Relate(pair.Feature, pair.Query, pattern, cancellationToken));
 
     /// <summary>Same-dimension partial overlap: interiors meet, neither geometry contains the other.</summary>
     internal static bool Overlaps(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>

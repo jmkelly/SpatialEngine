@@ -118,7 +118,7 @@ internal static class FeatureRelationshipEngine
         var matches = relatedRows
             .Where(row => FeatureSpatialMatcher.Matches(
                 new FeatureSpatialMatcher.MatchCandidate(
-                    effective, row.Feature, row.ObjectId, queryGeometry, traversal.Operations, traversal.Relations),
+                    effective, row.Feature, row.ObjectId, queryGeometry, traversal.Relations),
                 cancellationToken))
             .ToList();
         var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(traversal.Target.Related.Description, effective));

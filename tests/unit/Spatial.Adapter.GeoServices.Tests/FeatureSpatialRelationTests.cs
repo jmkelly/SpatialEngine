@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
@@ -21,20 +22,20 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// position 9 exterior∩exterior; <c>T</c> below is "non-empty", and
 /// <c>F</c> is "disjoint".
 ///
-/// | Query geometry | DE-9IM | Contains <c>T*****FF*</c> | Within <c>T*F**F***</c> | Touches | Overlaps | Crosses |
-/// | --- | --- | --- | --- | --- | --- | --- |
-/// | the square itself | <c>TFFFTFFFT</c> | T | T | F | F | F |
-/// | square (2,2)-(4,4), inside | <c>TTTFFTFFT</c> | T | F | F | F | F |
-/// | square (5,5)-(15,15), overlapping | <c>TTTTTTTTT</c> | F | F | F | T | F |
-/// | square (0,0)-(4,4), sharing the corner and two edges | <c>TTTFTTFFT</c> | T | F | F | F | F |
-/// | square (0,10)-(10,20), sharing only an edge | <c>FFTFTTTTT</c> | F | F | T | F | F |
-/// | line (0,5)-(20,5), crossing | <c>TFTTTTTTT</c> | F | F | F | F | T |
-/// | line (2,2)-(8,8), inside | <c>TTTFFTFFT</c> | T | F | F | F | F |
-/// | line (0,0)-(0,10), lying on the boundary | <c>FFTTTTFFT</c> | F | F | T | F | F |
-/// | point (5,5), inside | <c>TFTFFTFFT</c> | T | F | F | F | F |
-/// | point (0,5), on the boundary | <c>FFTTFTFFT</c> | F | F | T | F | F |
-/// | point (20,20), outside | <c>FFTFFTTFT</c> | F | F | F | F | F |
-/// | square (20,20)-(30,30), disjoint | <c>FFTFFTTTT</c> | F | F | F | F | F |
+/// | Query geometry | DE-9IM | Contains <c>T*****FF*</c> | Within <c>T*F**F***</c> | Touches | Overlaps | Crosses | Intersects |
+/// | --- | --- | --- | --- | --- | --- | --- | --- |
+/// | the square itself | <c>TFFFTFFFT</c> | T | T | F | F | F | T |
+/// | square (2,2)-(4,4), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
+/// | square (5,5)-(15,15), overlapping | <c>TTTTTTTTT</c> | F | F | F | T | F | T |
+/// | square (0,0)-(4,4), sharing the corner and two edges | <c>TTTFTTFFT</c> | T | F | F | F | F | T |
+/// | square (0,10)-(10,20), sharing only an edge | <c>FFTFTTTTT</c> | F | F | T | F | F | T |
+/// | line (0,5)-(20,5), crossing | <c>TFTTTTTTT</c> | F | F | F | F | T | T |
+/// | line (2,2)-(8,8), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
+/// | line (0,0)-(0,10), lying on the boundary | <c>FFTTTTFFT</c> | F | F | T | F | F | T |
+/// | point (5,5), inside | <c>TFTFFTFFT</c> | T | F | F | F | F | T |
+/// | point (0,5), on the boundary | <c>FFTTFTFFT</c> | F | F | T | F | F | T |
+/// | point (20,20), outside | <c>FFTFFTTFT</c> | F | F | F | F | F | F |
+/// | square (20,20)-(30,30), disjoint | <c>FFTFFTTTT</c> | F | F | F | F | F | F |
 ///
 /// The three reproduction cases the envelope approximation failed are the
 /// ones with a geometry on the boundary: <c>Contains</c> and <c>Within</c>
@@ -42,6 +43,14 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// envelope test passes and the intersection covers the containee), and
 /// <c>Touches</c> rejects a point on the boundary (the intersection
 /// degenerates to a point, which the old code then read as a containment).
+///
+/// <c>Intersects</c> reads true wherever any of the four matrix positions is
+/// <c>T</c> — interior∩interior, either interior against the other's
+/// boundary, or boundary∩boundary — so the only false rows are the two whose
+/// geometries share nothing at all. That is the OGC intersect pattern union
+/// (<c>T******** | *T******* | ***T***** | ****T****</c>), and
+/// <c>Intersects_never_builds_the_intersection_geometry</c> pins it as the
+/// answer the query path gives without building the intersection.
 /// </summary>
 public sealed class FeatureSpatialRelationTests
 {
@@ -161,6 +170,107 @@ public sealed class FeatureSpatialRelationTests
         Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Intersects));
     }
 
+    /// <summary>
+    /// The reproduction for SpatialEngine-51k: <c>Intersects</c> is the
+    /// intersection <em>test</em>, not the intersection <em>geometry</em>.
+    /// The query path runs per feature, so materialising
+    /// <c>Intersection(feature, query)</c> for every candidate the envelope
+    /// pre-filter admits is a cost the predicate never needed — the OGC
+    /// intersect patterns answer the same question over
+    /// <see cref="IGeometryRelations.Relate"/>.
+    ///
+    /// The relation face handed to the match records the patterns it is
+    /// asked, so this test fails if the path stops asking the OGC intersect
+    /// patterns: the match still has to answer, and answer true or false, out
+    /// of the union alone.
+    /// </summary>
+    [Theory]
+    [InlineData("square-equal", true)]
+    [InlineData("square-corner", true)]
+    [InlineData("line-on-boundary", true)]
+    [InlineData("point-on-boundary", true)]
+    [InlineData("point-inside", true)]
+    [InlineData("point-outside", false)]
+    [InlineData("square-outside", false)]
+    public async Task Intersects_never_builds_the_intersection_geometry(string query, bool expected)
+    {
+        var parsed = await QueryAsync(query, EsriFeatureQuery.Intersects);
+        var relations = new RecordsPatterns(Relations);
+        var candidate = new FeatureSpatialMatcher.MatchCandidate(
+            parsed, Feature(Square(0, 0, 10, 10)), 1, parsed.Geometry, relations);
+
+        Assert.Equal(expected, FeatureSpatialMatcher.Matches(candidate, CancellationToken.None));
+        Assert.All(relations.Patterns, pattern => Assert.Contains(pattern, IntersectsPatterns));
+
+        // The envelope pre-filter is the cheap half of the answer: a pair
+        // whose envelopes are disjoint never reaches the pattern table at
+        // all, and a pair that meets always does.
+        if (expected)
+        {
+            Assert.NotEmpty(relations.Patterns);
+        }
+        else
+        {
+            Assert.Empty(relations.Patterns);
+        }
+    }
+
+    /// <summary>
+    /// The reason the query path cannot build an intersection to answer
+    /// <c>Intersects</c>: it is handed no geometry-operations face at all
+    /// (SpatialEngine-51k), so the predicate reads the pattern table or it
+    /// does not answer. The matcher shares this one record with the Feature
+    /// Service, the Image Service catalog query and the relationship
+    /// traversal, so the guarantee holds on every path that matches a
+    /// feature.
+    /// </summary>
+    [Fact]
+    public void The_match_candidate_carries_no_geometry_operations_face()
+    {
+        var faces = typeof(FeatureSpatialMatcher.MatchCandidate)
+            .GetProperties()
+            .Select(property => property.PropertyType)
+            .ToArray();
+
+        Assert.DoesNotContain(typeof(IGeometryOperations), faces);
+        Assert.Contains(typeof(IGeometryRelations), faces);
+    }
+
+    /// <summary>The pattern union and the intersection test agree on the whole matrix.</summary>
+    [Theory]
+    [InlineData("square-equal")]
+    [InlineData("square-inner")]
+    [InlineData("square-overlap")]
+    [InlineData("square-corner")]
+    [InlineData("square-above")]
+    [InlineData("line-crossing")]
+    [InlineData("line-inside")]
+    [InlineData("line-on-boundary")]
+    [InlineData("point-inside")]
+    [InlineData("point-on-boundary")]
+    [InlineData("point-outside")]
+    [InlineData("square-outside")]
+    public async Task Intersects_the_pattern_union_agrees_with_the_intersection_test(string query)
+    {
+        var parsed = await QueryAsync(query, EsriFeatureQuery.Intersects);
+        var built = !Operations.Intersection(Square(0, 0, 10, 10), QueryGeometry(query), CancellationToken.None).IsEmpty;
+
+        Assert.Equal(built, await MatchesAsync(query, EsriFeatureQuery.Intersects));
+    }
+
+    [Fact]
+    public async Task A_cancelled_intersects_match_stops_before_the_exact_predicate()
+    {
+        var parsed = await QueryAsync("square-equal", EsriFeatureQuery.Intersects);
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        Assert.Throws<OperationCanceledException>(() => FeatureSpatialMatcher.Matches(
+            new FeatureSpatialMatcher.MatchCandidate(
+                parsed, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Relations),
+            cancelled.Token));
+    }
+
     [Theory]
     [InlineData("point-outside", false)]
     [InlineData("square-outside", false)]
@@ -187,7 +297,7 @@ public sealed class FeatureSpatialRelationTests
         var query = await QueryAsync("square-equal", EsriFeatureQuery.Contains);
         var feature = new Feature(new FeatureId("empty"), Schema, [AttributeValue.Null]);
         Assert.False(FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, Square(0, 0, 10, 10), Services.Operations, Services.Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, Square(0, 0, 10, 10), Services.Relations),
             CancellationToken.None));
     }
 
@@ -199,7 +309,7 @@ public sealed class FeatureSpatialRelationTests
         await cancelled.CancelAsync();
 
         Assert.Throws<OperationCanceledException>(() => FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Services.Operations, Services.Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Services.Relations),
             cancelled.Token));
     }
 
@@ -210,7 +320,7 @@ public sealed class FeatureSpatialRelationTests
     }
 
     private static FeatureSpatialMatcher.MatchCandidate Candidate(EsriFeatureQuery query) =>
-        new(query, Feature(Square(0, 0, 10, 10)), 1, query.Geometry, Services.Operations, Services.Relations);
+        new(query, Feature(Square(0, 0, 10, 10)), 1, query.Geometry, Services.Relations);
 
     private static async Task<EsriFeatureQuery> QueryAsync(string geometry, string spatialRel)
     {
@@ -223,6 +333,31 @@ public sealed class FeatureSpatialRelationTests
 
     private static Feature Feature(IGeometry geometry) =>
         new(new FeatureId("feature"), Schema, [AttributeValue.FromGeometry(geometry)]);
+
+    /// <summary>
+    /// The OGC intersect patterns the <c>Intersects</c> predicate is defined
+    /// by: the interiors meet, either interior reaches the other's boundary,
+    /// or the boundaries meet. Spelled out here only so a test can assert the
+    /// match path asks for one of these and no other.
+    /// </summary>
+    private static readonly string[] IntersectsPatterns =
+        ["T********", "*T*******", "***T*****", "****T****"];
+
+    /// <summary>
+    /// The relation face that remembers which patterns it was asked, so a
+    /// test can see that the match reached its answer through the pattern
+    /// table.
+    /// </summary>
+    private sealed class RecordsPatterns(IGeometryRelations inner) : IGeometryRelations
+    {
+        internal List<string> Patterns { get; } = [];
+
+        public bool Relate(IGeometry left, IGeometry right, string intersectionPattern, CancellationToken cancellationToken = default)
+        {
+            Patterns.Add(intersectionPattern);
+            return inner.Relate(left, right, intersectionPattern, cancellationToken);
+        }
+    }
 
     /// <summary>The fixture's query geometries, keyed by the name the matrix table uses.</summary>
     private static IGeometry QueryGeometry(string name) => name switch

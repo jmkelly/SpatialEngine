@@ -49,7 +49,7 @@ internal static class FeatureSpatialMatcher
             // facade does not test it again here — and must not, or a store
             // that answered a different row set would look right (ADR-0097).
             var candidate = new MatchCandidate(
-                spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Operations, spec.Services.Relations, uniqueId,
+                spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Relations, uniqueId,
                 WherePushedDown: pushdown is not null);
             if (Matches(candidate, cancellationToken))
             {
@@ -112,7 +112,7 @@ internal static class FeatureSpatialMatcher
 
     private static bool MatchesSpatial(MatchCandidate match, CancellationToken cancellationToken) =>
         match.QueryGeometry is null
-        || SpatialMatch(match.Feature, match.QueryGeometry, match.Query.SpatialRel, match.Operations, match.Relations, cancellationToken);
+        || SpatialMatch(match.Feature, match.QueryGeometry, match.Query.SpatialRel, match.Relations, cancellationToken);
 
     /// <summary>
     /// Applies the <c>time</c> extent to the feature's date attributes: the
@@ -140,7 +140,6 @@ internal static class FeatureSpatialMatcher
         Feature feature,
         IGeometry queryGeometry,
         string spatialRel,
-        IGeometryOperations operations,
         IGeometryRelations relations,
         CancellationToken cancellationToken)
     {
@@ -149,29 +148,12 @@ internal static class FeatureSpatialMatcher
             return false;
         }
 
-        if (TryMatchEnvelopeShortcut(pair, spatialRel, operations, cancellationToken) is { } shortcut)
-        {
-            return shortcut;
-        }
-
-        return MatchTopology(pair, spatialRel, relations, cancellationToken);
-    }
-
-    /// <summary>Null/missing envelopes plus the two relations that need no topological verb.</summary>
-    private static bool? TryMatchEnvelopeShortcut(
-        GeometryPair pair, string spatialRel, IGeometryOperations operations, CancellationToken cancellationToken)
-    {
         if (string.Equals(spatialRel, EsriFeatureQuery.EnvelopeIntersects, StringComparison.Ordinal))
         {
             return pair.FeatureEnvelope.Intersects(pair.QueryEnvelope);
         }
 
-        if (string.Equals(spatialRel, EsriFeatureQuery.Intersects, StringComparison.Ordinal))
-        {
-            return !operations.Intersection(pair.Feature, pair.Query, cancellationToken).IsEmpty;
-        }
-
-        return null;
+        return MatchTopology(pair, spatialRel, relations, cancellationToken);
     }
 
     /// <summary>The relations approximated with envelope-prefiltered topological verbs.</summary>
@@ -189,6 +171,8 @@ internal static class FeatureSpatialMatcher
                 SpatialRelationPredicates.Overlaps(pair, relations, cancellationToken),
             var rel when string.Equals(rel, EsriFeatureQuery.Crosses, StringComparison.Ordinal) =>
                 SpatialRelationPredicates.Crosses(pair, relations, cancellationToken),
+            var rel when string.Equals(rel, EsriFeatureQuery.Intersects, StringComparison.Ordinal) =>
+                SpatialRelationPredicates.Intersects(pair, relations, cancellationToken),
             _ => throw GeoServicesErrors.Invalid($"spatialRel '{spatialRel}' is not supported."),
         };
 
@@ -211,11 +195,11 @@ internal static class FeatureSpatialMatcher
     /// <summary>
     /// One per-feature match candidate: the parsed query, the feature and
     /// its resolved <c>OBJECTID</c>, the pre-transformed query geometry and
-    /// the geometry verbs a spatial predicate needs. Shared by the Feature
+    /// the relation verb the spatial predicates need. Shared by the Feature
     /// Service match loop, the Image Service catalog query and the
     /// relationship traversal, so all three agree on what "matches" means.
-    /// A spatial predicate needs the operation and relation verbs only, so
-    /// the traversal resolves the two it holds rather than the whole
+    /// The verbs are reached from the query's own geometry, so a traversal
+    /// resolves the relation face it holds rather than the whole
     /// <see cref="QueryServices"/> bundle the query path carries.
     /// </summary>
     internal sealed record MatchCandidate(
@@ -223,7 +207,6 @@ internal static class FeatureSpatialMatcher
         Feature Feature,
         long ObjectId,
         IGeometry? QueryGeometry,
-        IGeometryOperations Operations,
         IGeometryRelations Relations,
         string? UniqueId = null,
         bool WherePushedDown = false);
