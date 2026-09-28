@@ -61,7 +61,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | `returnZ`/`returnM` | served | **Have** | ordinate selection + the `hasZ`/`hasM` flags the Esri arrays need (ADR-0085) |
 | `quantizationParameters` | served | **Have** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0079); an unservable `mode`/`originPosition` is rejected by name; the layer advertises `supportsQuantization` so the REST JS gate opens (ADR-0081) |
 | `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.cs:RejectUnsupported`); pinned by §7.1 non-goals |
-| `hasZ`/`hasM` on the layer resource | served | **Have** | `EsriLayerModel.cs` (ADR-0084); derived from `DatasetDescription.GeometryLayout`, which PostGIS fills from the geometry column's declared type modifier — proved true by the Z/M/ZM column tests, and proved *absent* for a 2D and an unconstrained column |
+| `hasZ`/`hasM` on the layer resource | served | **Have** | `EsriLayerModel.cs` (ADR-0084); derived from `DatasetDescription.GeometryLayout`, which PostGIS fills from the geometry column's declared type modifier and the ArcGIS REST store from the remote layer's own `hasZ`/`hasM` (ADR-0091) — proved true by the Z/M/ZM column tests, and proved *absent* for a 2D and an unconstrained column |
 
 ## 2. Response-shape deltas vs ground truth (same-data proof)
 

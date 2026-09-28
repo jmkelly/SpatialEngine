@@ -48,6 +48,17 @@ this file together, then tag the release (`RELEASING.md`).
   two-dimensional or unconstrained column advertises neither key rather than
   `false`. SQL Server (whose spatial types have no Z/M) and the ArcGIS REST
   provider report `xy` until they can prove more.
+- **The ArcGIS REST store carries the remote layer's `hasZ`/`hasM`**
+  (ADR-0091, SpatialEngine-fhf.2): the provider dropped the booleans off the
+  Feature Server layer resource, so a proxied 3D layer was described as 2D and
+  the layer metadata advertised nothing. The remote's own declaration is the
+  same kind of proof ADR-0084 accepts from a declared column type — schema,
+  not a sample — and only a JSON `true` counts, so a layer that declares
+  nothing still lands on the honest `xy` default. The query path sends
+  `returnZ`/`returnM` for exactly the ordinates the description declares,
+  because a Feature Server returns the extra ordinates only when asked, and an
+  advertised flag the read path cannot back is the broken round trip ADR-0084
+  names.
 - **`findTransformations` is a search, and datum transformations are values**
   (ADR-0087, SpatialEngine-u2x.15, landed on ADR-0086): the operation used to
   be a reformulation of the catalogue — same datum `[]`, different datum one

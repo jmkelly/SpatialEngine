@@ -72,8 +72,23 @@ internal static class ArcGisRestMapper
             EngineGeometryType(metadata),
             0,
             [objectIdField],
-            Schema(metadata));
+            Schema(metadata),
+            Layout(metadata));
     }
+
+    /// <summary>
+    /// The ordinates the remote layer declares (ADR-0091). The Feature Server
+    /// layer resource carries <c>hasZ</c>/<c>hasM</c>, and that declaration is
+    /// the upstream service's own statement about its geometry — the same kind
+    /// of proof ADR-0084 accepts from a PostGIS type modifier, so a proxied 3D
+    /// layer is not described as 2D. A flag that is absent, or is not the JSON
+    /// boolean Esri sends, proves nothing and lands on the honest default.
+    /// </summary>
+    private static CoordinateLayout Layout(JsonElement metadata) =>
+        CoordinateLayoutExtensions.FromOrdinates(HasOrdinate(metadata, "hasZ"), HasOrdinate(metadata, "hasM"));
+
+    private static bool HasOrdinate(JsonElement metadata, string property) =>
+        metadata.TryGetProperty(property, out var flag) && flag.ValueKind == JsonValueKind.True;
 
     public static List<Feature> ReadFeatures(JsonElement root, DatasetDescription description)
     {

@@ -413,7 +413,10 @@ is rejected by name (never silently ignored) and named here with its reason:
   `geometry` (which constrains nothing and so proves nothing), advertise
   neither key rather than `false` — ArcGIS clients send Z in query geometry and
   edit payloads once `hasZ` is true, so over-advertising is a broken round
-  trip while under-advertising is only a client that asks for less.
+  trip while under-advertising is only a client that asks for less. The ArcGIS
+  REST store proves the same thing from the remote layer's own `hasZ`/`hasM`
+  declaration (ADR-0091) and asks the remote for exactly the ordinates it
+  advertises.
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.

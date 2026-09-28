@@ -4,6 +4,7 @@ using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Stores.ArcGisRest;
 
@@ -190,6 +191,8 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
             parameters.Add(new("outSR", ArcGisRestMapper.EnvelopeSpatialReference(description.Srid)));
         }
 
+        AddOrdinateSelection(parameters, description.GeometryLayout);
+
         if (where is not null)
         {
             parameters.Add(new("where", where));
@@ -210,6 +213,27 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
     /// </summary>
     private static string OrderByField(DatasetDescription description) =>
         description.IdColumns is { Count: > 0 } ids ? ids[0] : "OBJECTID";
+
+    /// <summary>
+    /// A Feature Server only returns the extra ordinates a query asks for
+    /// (spec §9.1.4 <c>returnZ</c>/<c>returnM</c>), so a layer that declares
+    /// them has to be asked for them: the description advertises
+    /// <c>hasZ</c>/<c>hasM</c> (ADR-0084), and that claim has to be backed by
+    /// the read path (ADR-0091). A two-dimensional layer asks for neither, so
+    /// the remote keeps its own default.
+    /// </summary>
+    private static void AddOrdinateSelection(List<KeyValuePair<string, string>> parameters, CoordinateLayout layout)
+    {
+        if (layout.HasZ())
+        {
+            parameters.Add(new("returnZ", "true"));
+        }
+
+        if (layout.HasM())
+        {
+            parameters.Add(new("returnM", "true"));
+        }
+    }
 
     private static void AddEnvelope(List<KeyValuePair<string, string>> parameters, BoundingBox box, int srid)
     {
