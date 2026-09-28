@@ -1,6 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Rendering.Skia.Tests;
@@ -78,21 +79,20 @@ internal sealed class FakeRasterOperations : IRasterOperations
 /// <summary>An in-memory feature store that records the pushed-down query.</summary>
 internal sealed class FakeStore(FeatureSchema schema, params Feature[] features) : IFeatureStore
 {
-    public BoundingBox? LastBbox { get; private set; }
+    public FeatureQuery? LastPlan { get; private set; }
 
-    public string? LastFilter { get; private set; }
+    public BoundingBox? LastBbox => LastPlan?.BoundingBox;
+
+    public Predicate? LastWhere => LastPlan?.Where;
 
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException();
+        Task.FromResult<IReadOnlyList<FeatureBatch>>([new FeatureBatch(schema, features)]);
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        LastBbox = bbox;
-        LastFilter = filter;
-        IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(schema, features)];
-        return Task.FromResult(batches);
+        LastPlan = query;
+        return Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
     }
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>

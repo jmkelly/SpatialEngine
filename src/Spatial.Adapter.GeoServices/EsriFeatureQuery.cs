@@ -10,7 +10,7 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal sealed record EsriFeatureQuery(
     IReadOnlyList<long>? ObjectIds,
-    EsriFilterClause? Where,
+    EsriWhere? Where,
     IGeometry? Geometry,
     string SpatialRel,
     IReadOnlyList<string>? OutFields,
@@ -25,7 +25,7 @@ internal sealed record EsriFeatureQuery(
     int? ResultRecordCount,
     IReadOnlyList<EsriOutStatistic>? OutStatistics,
     IReadOnlyList<string>? GroupByFields,
-    EsriFilterClause? Having,
+    EsriWhere? Having,
     bool ReturnExceededLimitFeatures,
     int? MaxRecordCountFactor,
     int? GeometryPrecision,
@@ -152,14 +152,14 @@ internal sealed record EsriFeatureQuery(
         return EsriValueParser.ParseInt64s(value, "objectIds");
     }
 
-    private static EsriFilterClause? ParseWhere(string? value)
+    private static EsriWhere? ParseWhere(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        if (!EsriFilterClause.TryParse(value, out var clause, out var error))
+        if (!EsriWhere.TryParse(value, out var clause, out var error))
         {
             throw GeoServicesErrors.Invalid($"The 'where' clause is not supported: {error}.");
         }
@@ -602,14 +602,14 @@ internal sealed record EsriFeatureQuery(
         return fields;
     }
 
-    private static EsriFilterClause? ParseHaving(string? value)
+    private static EsriWhere? ParseHaving(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        if (!EsriFilterClause.TryParse(value, out var clause, out var error))
+        if (!EsriWhere.TryParse(value, out var clause, out var error))
         {
             throw GeoServicesErrors.Invalid($"The 'having' clause is not supported: {error}.");
         }

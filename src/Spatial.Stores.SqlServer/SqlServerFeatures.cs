@@ -4,7 +4,6 @@ using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Stores.SqlServer.Core;
 using Spatial.Stores.SqlServer.Data;
-using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 
 namespace Spatial.Stores.SqlServer;
 
@@ -29,16 +28,48 @@ internal sealed class SqlServerFeatures(SqlServerStorage storage, SqlServerCatal
             SqlServerQueries.Select(name, description.Schema), [], description, cancellationToken);
     }
 
-    /// <summary>The features inside a bounding box and matching a filter expression.</summary>
+    /// <summary>
+    /// The features a query plan selects. Every member of the plan is
+    /// expressed in T-SQL — the identity restriction as an OR-group of
+    /// identity tuples (ADR-0038), the bounding box and the attribute
+    /// predicate as one parameterised fragment (ADR-0074) — so the plan is
+    /// answered by the database in one read.
+    /// </summary>
     public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        SqlServerDatasetName name, CoreBoundingBox? bbox, string? filter, CancellationToken cancellationToken)
+        SqlServerDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(query);
         var description = await catalogue.DescribeAsync(name, cancellationToken);
+        if (query.Ids is { Count: > 0 })
+        {
+            if (description.IdColumns.Count == 0)
+            {
+                return [new FeatureBatch(description.Schema, [])];
+            }
+
+            // The identity values are bound first, so the plan's own
+            // parameters continue their numbering after them.
+            var identity = SqlServerIdentity.Parameters(description, query.Ids);
+            var identityPredicate = SqlServerPredicateSql.Build(description, query.BoundingBox, query.Where, identity);
+            return await ReadBatchesAsync(
+                SqlServerQueries.SelectByIdentity(
+                    name, description.Schema, description.IdColumns, query.Ids.Count, identityPredicate),
+                identity,
+                description,
+                cancellationToken);
+        }
+
         var parameters = new List<object?>();
-        var predicate = SqlServerPredicate.Build(description, bbox, filter, parameters);
+        var predicate = SqlServerPredicateSql.Build(description, query.BoundingBox, query.Where, parameters);
         return await ReadBatchesAsync(
             SqlServerQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
     }
+
+    /// <summary>The dataset's discovered description: its schema, identity
+    /// columns and SRID, which the plan is validated against.</summary>
+    public Task<DatasetDescription> DescribeAsync(
+        SqlServerDatasetName name, CancellationToken cancellationToken) =>
+        catalogue.DescribeAsync(name, cancellationToken);
 
     /// <summary>The features the dataset's identity columns name, or nothing when it has no identity.</summary>
     public async Task<IReadOnlyList<Feature>> ByIdentityAsync(

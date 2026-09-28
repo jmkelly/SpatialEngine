@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Demo;
 
@@ -12,7 +14,7 @@ namespace Spatial.Stores.Demo;
 /// Read-only (writes and dataset creation throw <c>invalid.arguments</c>);
 /// the demo sleep is a cancellable delay reporting progress.
 /// </summary>
-public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
+public sealed class DemoStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IDemoWork
 {
     private const int BatchSize = 64;
 
@@ -73,21 +75,31 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
         return Task.FromResult(scanned);
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (filter is not null)
-        {
-            throw SpatialException.BadArguments("The demo store supports bbox queries only; attribute filters are not supported.");
-        }
+    /// <summary>
+    /// The plan read and the reduction faces: the reference executor over the
+    /// procedural dataset, so the demo provider answers every plan — the
+    /// identity restriction, the attribute predicate, the bounding-box
+    /// pre-filter, the order and the page — and every reduction correctly
+    /// (ADR-0074 §2: a store without a pushdown answers the plan itself; §4,
+    /// §6: the reference is what a pushdown is compared against).
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
 
-        var found = Find(dataset);
-        var features = bbox is null
-            ? found.Features
-            : found.Features.Where(feature => Intersects(feature, found, bbox)).ToArray();
-        IReadOnlyList<FeatureBatch> paged = Page(features, found.SchemaFields);
-        return Task.FromResult(paged);
-    }
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
     {
@@ -140,18 +152,5 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
         }
 
         return batches;
-    }
-
-    private static bool Intersects(Feature feature, DemoDataset dataset, BoundingBox bbox)
-    {
-        var box = dataset.BoxFor(feature.Id);
-        if (box is null)
-        {
-            return false;
-        }
-
-        var value = box.Value;
-        return value.MinX <= bbox.MaxX && value.MaxX >= bbox.MinX
-            && value.MinY <= bbox.MaxY && value.MaxY >= bbox.MinY;
     }
 }

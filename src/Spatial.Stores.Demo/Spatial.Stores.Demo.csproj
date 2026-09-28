@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\Spatial.Contracts\Spatial.Contracts.csproj" />
+    <ProjectReference Include="..\Spatial.Querying\Spatial.Querying.csproj" />
   </ItemGroup>
 
   <!--

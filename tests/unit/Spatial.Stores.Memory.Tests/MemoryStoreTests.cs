@@ -162,17 +162,59 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        var batches = await store.QueryAsync("memory.cities", new BoundingBox(-1, 47, 4, 50));
+        var batches = (await store.QueryAsync("memory.cities", new FeatureQuery(BoundingBox: new BoundingBox(-1, 47, 4, 50)))).Batches;
+
+        Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
+    }
+
+    // ADR-0074: MemoryStore is the reference evaluator for the one predicate
+    // vocabulary every store shares, so the attribute filter the other
+    // providers push down is answered here too (reproduction: the store used
+    // to refuse the filter outright).
+    [Fact]
+    public async Task An_attribute_filter_selects_matching_features()
+    {
+        var store = await IngestedAsync();
+
+        var batches = (await store.QueryAsync(
+            "memory.cities", new FeatureQuery(Where: FeatureFilter.Parse("name = 'Berlin'")))).Batches;
+
+        Assert.Equal(["1"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task A_bbox_and_a_filter_narrow_together()
+    {
+        var store = await IngestedAsync();
+
+        var batches = (await store.QueryAsync("memory.cities", new FeatureQuery(
+            BoundingBox: new BoundingBox(-1, 47, 4, 50),
+            Where: FeatureFilter.Parse("name != 'Nowhere'")))).Batches;
 
         Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
     }
 
     [Fact]
-    public async Task An_attribute_filter_is_rejected()
+    public async Task An_identity_restriction_selects_the_named_features()
     {
         var store = await IngestedAsync();
 
-        await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync("memory.cities", filter: "name = 'Berlin'"));
+        var batches = (await store.QueryAsync(
+            "memory.cities", new FeatureQuery(Ids: [new FeatureId("2")]))).Batches;
+
+        Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task A_filter_on_an_unknown_field_is_invalid_arguments()
+    {
+        var store = await IngestedAsync();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync(
+            "memory.cities", new FeatureQuery(Where: FeatureFilter.Parse("mystery = 1"))));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("'mystery'", failure.Message);
     }
 
     [Fact]

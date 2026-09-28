@@ -4,13 +4,16 @@ using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
+using Spatial.Querying;
 
 namespace Spatial.Stores.ArcGisRest;
 
 /// <summary>
 /// The ArcGIS REST consuming provider (ADR-0035): an in-process
-/// <see cref="IDataCatalogue"/> and <see cref="IFeatureStore"/> over one
+/// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/> and
+/// <see cref="IFeatureAggregateStore"/> over one
 /// configured remote FeatureServer/MapServer. Layers become datasets; Esri
 /// JSON geometries and features are converted to core values by
 /// <see cref="ArcGisRestMapper"/>. Reads are paginated and cancellable; the
@@ -18,7 +21,7 @@ namespace Spatial.Stores.ArcGisRest;
 /// never a caller string. Writes and dataset creation are unsupported (a
 /// typed <c>invalid.arguments</c>).
 /// </summary>
-public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
+public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore
 {
     private readonly HttpClient _http;
     private readonly string _baseUrl;
@@ -80,19 +83,74 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
-        QueryAsync(dataset, bbox: null, filter: null, cancellationToken);
+    public async Task<IReadOnlyList<FeatureBatch>> ScanAsync(
+        string dataset, CancellationToken cancellationToken = default)
+    {
+        var (schema, features) = await FetchAsync(dataset, FeatureQuery.All, cancellationToken).ConfigureAwait(false);
+        return [new FeatureBatch(schema, features)];
+    }
 
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The plan read and the reduction faces over the reference executor: this
+    /// provider pages the remote service for itself, so the identity
+    /// restriction, the attribute predicate, the bounding-box pre-filter, the
+    /// projection, the ordering, the paging, the count, the distinct set and
+    /// the grouped aggregate are all applied to the rows the remote returned,
+    /// in the engine's terms (ADR-0074 §4). The plan's predicate is rendered
+    /// into the remote <c>where</c> so the remote does the restricting, and
+    /// the reference evaluator then finishes the plan over what came back, so
+    /// the answer is the reference's answer and not the remote dialect's. It
+    /// is correct because the reference judges it, not because the remote
+    /// service could express it.
+    /// </summary>
+    public async Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        var (schema, features) = await FetchAsync(dataset, query, cancellationToken).ConfigureAwait(false);
+        return FeaturePlanExecutor.Execute(schema, features, query, cancellationToken);
+    }
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
+
+    /// <summary>
+    /// Every feature of a remote layer, with the plan's pushable restriction
+    /// applied remotely: the attribute predicate is rendered into the service's
+    /// own <c>where</c> from the core-typed tree, and the bounding box becomes
+    /// the service's envelope parameter. Only the members a remote read can
+    /// express cross the wire; the rest is the caller's plan.
+    /// </summary>
+    private async Task<(FeatureSchema Schema, List<Feature> Features)> FetchAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken)
     {
         var layerId = ArcGisRestMapper.ParseLayerId(dataset);
-        using var metadata = await GetJsonAsync(LayerUrl(layerId), [], cancellationToken);
+        using var metadata = await GetJsonAsync(LayerUrl(layerId), [], cancellationToken).ConfigureAwait(false);
         var description = ArcGisRestMapper.Describe(layerId, metadata.RootElement);
-        var where = ArcGisRestMapper.RenderWhere(filter);
-        var features = await FetchAllAsync(description, bbox, where, ArcGisRestMapper.PageSize(metadata.RootElement), cancellationToken);
-        return [new FeatureBatch(description.Schema, features)];
+        if (query.Ids is { Count: > 0 })
+        {
+            // Rejected by name rather than ignored: restricting by identity
+            // here would read the whole layer and drop rows afterwards, and
+            // the remote service has an identity request of its own.
+            throw SpatialException.BadArguments(
+                "The ArcGIS REST store does not support the identity restriction of a feature query plan; query the remote layer's own objectIds instead.");
+        }
+
+        var where = ArcGisRestMapper.RenderWhere(query.Where);
+        var features = await FetchAllAsync(
+            description, query.BoundingBox, where, ArcGisRestMapper.PageSize(metadata.RootElement), cancellationToken)
+            .ConfigureAwait(false);
+        return ((FeatureSchema)description.Schema, features);
     }
 
     private async Task<List<Feature>> FetchAllAsync(

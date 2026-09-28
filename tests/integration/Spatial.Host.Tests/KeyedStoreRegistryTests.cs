@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Host.Tests;
 
@@ -53,8 +54,8 @@ public sealed class KeyedStoreRegistryTests
         public Task<IReadOnlyList<Spatial.Core.Features.FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<Spatial.Core.Features.FeatureBatch>> QueryAsync(
-            string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        public Task<FeatureQueryPage> QueryAsync(
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<int> WriteAsync(string dataset, Spatial.Core.Features.FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>

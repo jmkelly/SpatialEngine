@@ -330,7 +330,71 @@ this file together, then tag the release (`RELEASING.md`).
   temporal extent to compare the window against, which the engine does not
   model; that is a model decision, filed as its own follow-up rather than
   smuggled in here.
-
+- **The store query surface does the shaping, not the adapter**
+  (ADR-0098, SpatialEngine-u2x.9 + SpatialEngine-u2x.9.1): `outFields` becomes
+  the store's projection, `orderByFields` the store's ordering,
+  `resultOffset`/`resultRecordCount` its page start and cap, and
+  `returnCountOnly`, `returnDistinctValues` and `outStatistics` become the
+  store's own count, distinct set and grouped aggregate over a new optional
+  `IFeatureAggregateStore` face. A read answers a `FeatureQueryPage` — the
+  batches, a continuation cursor, and the total when the store computed it
+  cheaply — so a `returnCountOnly` on a large PostGIS table is a `COUNT(*)`
+  rather than a materialised scan, and an `outStatistics` response is a
+  `GROUP BY`. A plan is validated once, against the dataset's schema, at the
+  boundary that received it, so an unknown `outFields` entry or a negative cap
+  is still the same typed `invalid.arguments`.
+- **The Esri `where` clause rides in the store's plan** (ADR-0098, ADR-0097,
+  SpatialEngine-u2x.9.1): a served `where` now compiles to the plan's
+  `Predicate` and is answered by the store rather than by the adapter, but
+  only on a layer whose `OBJECTID` is store-derived — a layer whose `OBJECTID`
+  is the scan ordinal keeps the clause per-feature, so a filtered feature never
+  comes back with an id that depends on the query. The same rule now applies
+  *inside* the PostGIS and SQL Server stores: a dataset with no identity column
+  names its features by the ordinal of the read, so a `WHERE` that reached SQL
+  would renumber them, and such a dataset keeps the restriction in the caller.
+  No served `OBJECTID` value changes.
+- **The reference is one piece of code** (ADR-0098, SpatialEngine-u2x.9.1): the
+  in-memory reference executor and the reference predicate evaluator live
+  together in `Spatial.Querying`, so the in-memory store, the demo store, the
+  ArcGIS REST store and every store that evaluates a plan in memory share one
+  definition of the plan's semantics instead of one per provider. A store that
+  pushes the restriction into its own dialect finishes the plan with the shared
+  executor, and the pushdown-equals-reference suite — now run against PostGIS
+  *and* SQL Server, and extended to plans that carry a predicate beside the
+  order, the cap and the box — holds every provider to it, values and feature
+  identities alike.
+- **One predicate grammar across the engine** (ADR-0074, ADR-0097,
+  SpatialEngine-u2x.8): the store filter is a core-typed `Predicate` tree
+  instead of a string, and there is one grammar instead of three. The
+  PostGIS and SQL Server `*Filter{Lexer,Parser,Sql}` trios — two copies of
+  one SQL-flavoured mini-language, ~800 lines each — are gone, replaced by
+  one parsed-at-the-boundary tree and two thin per-provider compilers that
+  keep the parameterisation guarantee. The Esri `where` grammar now
+  *parses* to that tree and hands it to the store instead of evaluating
+  features (`EsriFilterLogic` is retired), and the in-memory store evaluates
+  the whole vocabulary for the first time rather than refusing filters as
+  "bbox queries only". The `filter` query parameter keeps its published
+  syntax, and the demo catalogue filters for the first time too. A shared
+  conformance fixture (one dataset, one row set, 29 cases) is answered by
+  memory, PostGIS and SQL Server alike, and an unknown column is still a
+  typed `invalid.arguments` on every one of them.
+- **A pushdown is allowed only where it is identity-preserving**
+  (ADR-0097, SpatialEngine-u2x.8): an attribute clause reaches a store only
+  when the layer's `OBJECTID` is store-derived. A layer whose `OBJECTID` is
+  the scan ordinal (ADR-0037) keeps the clause as a residual per-feature
+  match, because a store returning only the matching rows renumbers that
+  key — so the same feature would come back with an id that depends on the
+  query, breaking `objectIds`, `returnIdsOnly`, paging and the edit
+  round-trip.
+- **A filter literal binds as its column's kind** (ADR-0097,
+  SpatialEngine-u2x.8): a guid-formatted string binds as a `Guid`, and a
+  number against a date-time column binds as the instant it already is. A
+  string literal against a `uuid` column used to compile to `uuid = @p0`
+  with a text parameter, which is not an operator Postgres has, so the
+  query failed at execution as `store.unavailable` for a filter that should
+  have matched rows. A pair that means nothing to the reference evaluator
+  (`uuid = 5`, `bit < true`, `LIKE` on a non-text column) now answers the
+  same constant the evaluator does, rather than coercing or failing.
 - **The Esri geometry writer states its `hasZ`/`hasM` flags**
   (ADR-0085, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is
   Z when only `hasZ` is set and M when only `hasM` is set — the codec's own

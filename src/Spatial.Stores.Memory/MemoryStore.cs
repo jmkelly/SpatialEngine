@@ -1,6 +1,8 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Memory;
 
@@ -16,7 +18,8 @@ namespace Spatial.Stores.Memory;
 /// dataset. Diagnostics state that; it is a development-and-CI provider, not
 /// a persistence guarantee.
 /// </summary>
-public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore, IVersionedFeatureStore
+public sealed class MemoryStore
+    : IDataCatalogue, IFeatureStore, IFeatureLookup, IFeatureAggregateStore, ITransactionStore, IVersionedFeatureStore
 {
     private const int BatchSize = 512;
 
@@ -78,22 +81,71 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
         }));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The plan read: the reference executor over the dataset, so the
+    /// in-memory provider defines the plan's semantics — the identity
+    /// restriction, the attribute predicate, the bounding-box pre-filter, the
+    /// order and the page — rather than approximating them (ADR-0074 §4). It is
+    /// also the fallback every pushdown is measured against, which is why the
+    /// executor is shared rather than copied here.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         cancellationToken.ThrowIfCancellationRequested();
-        if (filter is not null)
-        {
-            throw SpatialException.BadArguments("The in-memory store supports bbox queries only; attribute filters are not supported.");
-        }
-
-        return Task.FromResult(_catalog.WithLock<IReadOnlyList<FeatureBatch>>(() =>
+        return Task.FromResult(_catalog.WithLock<FeatureQueryPage>(() =>
         {
             var found = _catalog.Find(dataset);
-            var features = bbox is null
-                ? found.Features
-                : found.Features.Where(feature => Intersects(found, feature, bbox)).ToList();
-            return Page(found, features);
+            return FeaturePlanExecutor.Execute(found.Schema, found.Features, query, cancellationToken);
+        }));
+    }
+
+    /// <summary>
+    /// The count, distinct and aggregate faces, over the reference executor.
+    /// The in-memory provider has nothing to push down, so implementing the
+    /// optional face is not slower than not implementing it: the answer is the
+    /// same and the caller does not have to know which stores reduce.
+    /// </summary>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_catalog.WithLock(() =>
+        {
+            var found = _catalog.Find(dataset);
+            return FeatureReduction.CountFeatures(
+                FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken));
+        }));
+    }
+
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(distinct);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_catalog.WithLock(() =>
+        {
+            var found = _catalog.Find(dataset);
+            return FeatureReduction.Distinct(
+                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), distinct);
+        }));
+    }
+
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(aggregate);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(_catalog.WithLock(() =>
+        {
+            var found = _catalog.Find(dataset);
+            return FeatureReduction.Aggregate(
+                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), aggregate);
         }));
     }
 
@@ -185,15 +237,4 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
         return batches;
     }
 
-    private static bool Intersects(MemoryDataset dataset, Feature feature, BoundingBox bbox)
-    {
-        var index = dataset.Schema.IndexOf(dataset.GeometryColumn);
-        if (index < 0 || feature[index].Kind != AttributeKind.Geometry || feature[index].GeometryValue.Envelope is not { } envelope)
-        {
-            return false;
-        }
-
-        return envelope.MinX <= bbox.MaxX && envelope.MaxX >= bbox.MinX
-            && envelope.MinY <= bbox.MaxY && envelope.MaxY >= bbox.MinY;
-    }
 }

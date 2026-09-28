@@ -1,8 +1,11 @@
 using System.Globalization;
+using Spatial.Adapter.GeoServices;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
+using Spatial.Querying;
 
 namespace Spatial.Host.Tests;
 
@@ -71,16 +74,25 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatur
         }
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The plan read over the reference executor: this double is a store a
+    /// hosted query is answered by, so it answers the whole plan — the
+    /// identity restriction, the attribute clause, the bounding box, the order
+    /// and the page — rather than only the members the test happens to assert
+    /// on. A double that dropped a clause would silently widen every filtered
+    /// query, and one that invented its own semantics would be a third copy of
+    /// the engine's.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        Feature[] selected;
         lock (_gate)
         {
-            var features = bbox is null
-                ? _features
-                : _features.Where(feature => Intersects(feature, bbox)).ToList();
-            IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(Schema, features.ToArray())];
-            return Task.FromResult(batches);
+            selected = [.. _features];
         }
+
+        return Task.FromResult(FeaturePlanExecutor.Execute(Schema, selected, query, cancellationToken));
     }
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
@@ -278,8 +290,8 @@ public sealed class ScanOnlyMemoryStore : IFeatureStore, ITransactionStore
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         _store.ScanAsync(dataset, cancellationToken);
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
-        _store.QueryAsync(dataset, bbox, filter, cancellationToken);
+    public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        _store.QueryAsync(dataset, query, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
         _store.WriteAsync(dataset, batch, transaction, cancellationToken);

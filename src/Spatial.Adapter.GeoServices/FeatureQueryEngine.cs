@@ -27,6 +27,12 @@ internal static class FeatureQueryEngine
         var scheme = EsriObjectIdScheme.For(dataset);
         var queryGeometry = FeatureProjection.MatchGeometry(
             new FeatureProjection.QueryGeometryRequest(query, layerCrs, services), cancellationToken);
+        if (await StoreQueryPath.TryAsync(
+                dataset, store, query, queryGeometry, scheme, layerCrs, services, cancellationToken) is { } pushed)
+        {
+            return pushed;
+        }
+
         var matches = await FeatureSpatialMatcher.MatchAsync(
             new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, services, scheme), cancellationToken);
         return Project(dataset, matches, query, layerCrs, services, cancellationToken);

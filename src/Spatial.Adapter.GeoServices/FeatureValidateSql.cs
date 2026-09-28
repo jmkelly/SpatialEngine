@@ -6,7 +6,7 @@ namespace Spatial.Adapter.GeoServices;
 /// <summary>
 /// The layer-level <c>validateSQL</c> operation (S4
 /// validate-sql-feature-service-layer/): server-side validation of the
-/// <c>sql</c> WHERE clause against the closed <see cref="EsriFilterClause"/>
+/// <c>sql</c> WHERE clause against the closed <see cref="EsriWhere"/>
 /// grammar and the layer's schema. The response follows the S4 shape:
 /// <c>{"isValidSQL": true}</c>, or <c>{"isValidSQL": false,
 /// "validationErrors": [{"errorCode", "description"}]}</c> with the spec's
@@ -54,7 +54,7 @@ internal static class FeatureValidateSql
                 $"The 'sqlType' value '{sqlType}' is not supported; use 'where' (the default), 'expression' or 'statement'.");
         }
 
-        if (!EsriFilterClause.TryParse(sql, out var clause, out var error))
+        if (!EsriWhere.TryParse(sql, out var clause, out var error))
         {
             return Invalid(CodeSyntaxError, $"Sql expression syntax error: {error}.");
         }

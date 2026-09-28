@@ -203,7 +203,7 @@ internal static class FeatureRelationshipWrites
         foreach (var row in rows.SelectMany(batch => batch.Features))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!match.Matches(row))
+            if (!EsriPredicateEvaluator.Matches(match.Predicate, row))
             {
                 continue;
             }

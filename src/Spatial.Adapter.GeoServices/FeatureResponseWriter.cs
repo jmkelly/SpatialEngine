@@ -236,6 +236,41 @@ internal static class FeatureResponseWriter
     /// The <c>returnCountOnly</c> response: either the COUNT DISTINCT shape
     /// or the plain matched-set count.
     /// </summary>
+    /// <summary>
+    /// The count response for a count the store computed (ADR-0098 §7): the
+    /// same JSON the match path writes, without the match set behind it.
+    /// </summary>
+    internal static IResult Count(int count) => EsriJson.Value(new EsriCountResponse(count));
+
+    /// <summary>
+    /// The fields a distinct response deduplicates: the projected attributes,
+    /// or every non-geometry field when none were projected. Named here so the
+    /// store-facing path asks the store for the same fields the writer would
+    /// have deduplicated itself.
+    /// </summary>
+    internal static IReadOnlyList<string> DistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields) =>
+        [.. ResolveDistinctFields(dataset, outFields).Select(field => field.Name)];
+
+    /// <summary>
+    /// The distinct-values response for rows a store deduplicated: the same
+    /// shape, field metadata and paging as the match path, over the rows the
+    /// store returned.
+    /// </summary>
+    internal static IResult DistinctValues(
+        DatasetDescription dataset,
+        IReadOnlyList<AttributeValue[]> rows,
+        List<DistinctField> fields,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs)
+    {
+        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
+        var count = FeaturePaging.EffectivePageSize(query);
+        var page = rows.Skip(offset).Take(count).ToArray();
+        var exceeded = offset + page.Length < rows.Count;
+        return WriteDistinctValues(
+            dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
+    }
+
     internal static IResult CountResponse(
         DatasetDescription dataset,
         IReadOnlyList<MatchedFeature> matches,
@@ -277,7 +312,7 @@ internal static class FeatureResponseWriter
     /// first-seen order. Shared by the distinct-values response and the
     /// COUNT DISTINCT response so both agree on what "distinct" means.
     /// </summary>
-    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<MatchedFeature> matches, IReadOnlyList<DistinctField> fields)
+    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<MatchedFeature> matches, List<DistinctField> fields)
     {
         var rows = new List<AttributeValue[]>();
         var seen = new HashSet<AttributeValue[]>(FeatureOrdering.AttributeRowComparer.Instance);
@@ -298,7 +333,7 @@ internal static class FeatureResponseWriter
         return rows;
     }
 
-    private static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
+    internal static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
     {
         var schema = dataset.Schema;
         var names = outFields is { Count: > 0 }
@@ -320,7 +355,7 @@ internal static class FeatureResponseWriter
         return fields;
     }
 
-    private static IResult WriteDistinctValues(
+    internal static IResult WriteDistinctValues(
         DatasetDescription dataset,
         CoordinateReference? coordinateReference,
         IReadOnlyList<DistinctField> fields,
@@ -464,5 +499,5 @@ internal static class FeatureResponseWriter
     }
 
     /// <summary>One projected field of a distinct-values request.</summary>
-    private readonly record struct DistinctField(string Name, int Index);
+    internal readonly record struct DistinctField(string Name, int Index);
 }

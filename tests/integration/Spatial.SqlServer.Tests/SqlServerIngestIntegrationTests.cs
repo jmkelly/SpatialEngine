@@ -232,7 +232,7 @@ public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerCon
 
         await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
 
-        var filtered = await context.Store.QueryAsync(dataset, null, "LABELRANK = 1.5");
+        var filtered = (await context.Store.QueryAsync(dataset, new FeatureQuery(Where: FeatureFilter.Parse("LABELRANK = 1.5")))).Batches;
         Assert.Single(filtered.SelectMany(batch => batch.Features));
     }
 

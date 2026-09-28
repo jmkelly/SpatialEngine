@@ -1,3 +1,4 @@
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Contracts;
@@ -108,17 +109,18 @@ public sealed record MapTimeExtent(long? StartMs, long? EndMs);
 /// <summary>
 /// One styled layer's resolved read services: the dataset key the style's
 /// <c>source-layer</c> names, a keyed store, its catalogue, an optional
-/// store-level filter in the provider's safe grammar and an optional
-/// temporal extent. The renderer drops features whose date values fall
-/// outside <see cref="Time"/>; features without date values always pass
-/// (ArcGIS Server ignores <c>time</c> on non-time-aware layers). Resolved
-/// by the host at the edge, so the renderer performs no service location.
+/// attribute predicate (already parsed from the request's filter text into the
+/// engine's one vocabulary, ADR-0074) and an optional temporal extent. The
+/// renderer drops features whose date values fall outside <see cref="Time"/>;
+/// features without date values always pass (ArcGIS Server ignores
+/// <c>time</c> on non-time-aware layers). Resolved by the host at the edge, so
+/// the renderer performs no service location.
 /// </summary>
 public sealed record MapLayerSource(
     string Dataset,
     IFeatureStore Features,
     IDataCatalogue Catalogue,
-    string? Filter = null,
+    Predicate? Where = null,
     MapTimeExtent? Time = null);
 
 /// <summary>

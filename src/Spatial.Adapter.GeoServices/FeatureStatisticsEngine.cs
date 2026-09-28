@@ -362,7 +362,7 @@ internal static class FeatureStatisticsEngine
         StatisticRow row,
         IReadOnlyList<GroupField> groupFields,
         IReadOnlyList<EsriOutStatistic> statistics,
-        EsriFilterClause having)
+        EsriWhere having)
     {
         var fields = new List<FieldDefinition>(groupFields.Count + statistics.Count);
         var values = new List<AttributeValue>(fields.Capacity);
@@ -380,7 +380,7 @@ internal static class FeatureStatisticsEngine
 
         var schema = new FeatureSchema(fields);
         var feature = new Feature(new FeatureId("having"), schema, values.ToArray());
-        return having.Matches(feature);
+        return EsriPredicateEvaluator.Matches(having.Predicate, feature);
     }
 
     private static AttributeKind KindForComparison(AttributeKind kind) => kind == AttributeKind.Null ? AttributeKind.Double : kind;

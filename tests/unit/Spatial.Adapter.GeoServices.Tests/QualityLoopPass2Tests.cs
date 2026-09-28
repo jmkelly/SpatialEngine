@@ -204,19 +204,11 @@ public sealed class QualityLoopPass2Tests
         [AttributeValue.FromInt64(pop), AttributeValue.FromString(name)]);
 
     [Fact]
-    public void ParseLayerDef_round_trips_a_where_clause()
-    {
-        var clause = IdentifyFilters.ParseLayerDef(0, "pop > 1");
-        Assert.NotNull(clause);
-        Assert.ThrowsAny<Exception>(() => IdentifyFilters.ParseLayerDef(0, "pop > "));
-    }
-
-    [Fact]
     public void MatchesFilters_applies_definition_and_time()
     {
         var dataset = FilterLayer();
         var scheme = EsriObjectIdScheme.For(dataset);
-        var definition = IdentifyFilters.ParseLayerDef(0, "pop > 100");
+        Assert.True(EsriWhere.TryParse("pop > 100", out var definition, out var error), error);
         Assert.True(IdentifyFilters.MatchesFilters(null, dataset, null, FilterRow("a", 5, "x"), 1, null));
         Assert.True(IdentifyFilters.MatchesFilters(scheme, dataset, definition, FilterRow("a", 500, "x"), 1, null));
         Assert.False(IdentifyFilters.MatchesFilters(scheme, dataset, definition, FilterRow("b", 5, "x"), 2, null));

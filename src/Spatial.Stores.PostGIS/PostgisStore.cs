@@ -2,17 +2,18 @@ using Npgsql;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Stores.PostGIS.Configuration;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
-using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 
 namespace Spatial.Stores.PostGIS;
 
 /// <summary>
 /// The PostGIS store (ADR-0033): a direct, in-process implementation of
 /// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
-/// <see cref="IFeatureLookup"/> and <see cref="ITransactionStore"/> on Npgsql
+/// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/> and
+/// <see cref="ITransactionStore"/> on Npgsql
 /// 10. Npgsql types, SQL and EWKB stay inside this assembly (ADR-0005).
 /// This type is the composition root of the store: it validates arguments,
 /// maps failures and owns the lifecycle, while the catalogue face
@@ -26,7 +27,7 @@ namespace Spatial.Stores.PostGIS;
 /// <c>invalid.arguments</c>; diagnostics are redacted (database name only,
 /// never the secret).
 /// </summary>
-public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
+public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
 {
     private readonly PostgisConnectionConfiguration _configuration;
     private readonly PostgisStorage _storage;
@@ -50,6 +51,8 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
     private PostgisCatalogue Catalogue => _storage.Catalogue;
 
     private PostgisFeatures Features => _storage.Features;
+
+    private PostgisPlanReader Plans => new(_storage, _storage.Catalogue);
 
     public Task<IReadOnlyList<DatasetSummary>> ListAsync(string? pattern = null, CancellationToken cancellationToken = default)
     {
@@ -81,19 +84,61 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         return RunStoreOperationAsync(() => Features.ScanAsync(name, cancellationToken));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-        string dataset,
-        CoreBoundingBox? bbox = null,
-        string? filter = null,
-        CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The plan read: the whole plan is compiled to SQL — the attribute
+    /// predicate and the bounding-box pre-filter as one parameterised
+    /// <c>WHERE</c>, the identity restriction as an OR-group of identity
+    /// tuples, the projection, the order and the row cap — and whatever the
+    /// dialect cannot express is finished here with the shared reference
+    /// executor, over the rows that were read (ADR-0074 §4). The answer is the
+    /// reference's answer either way; only the rows that crossed the wire
+    /// differ.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         var name = ParseDataset(dataset);
         RequireConfigured();
-        ValidateBoundingBox(bbox);
-        return RunStoreOperationAsync(() => Features.QueryAsync(name, bbox, filter, cancellationToken));
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.ReadAsync(name, query, cancellationToken));
     }
 
-    private static void ValidateBoundingBox(CoreBoundingBox? bbox)
+    /// <summary>The count of the rows a plan selects, counted by the database.</summary>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.CountAsync(name, query, cancellationToken));
+    }
+
+    /// <summary>The deduplicated field combinations a plan selects.</summary>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(distinct);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.DistinctAsync(name, query, distinct, cancellationToken));
+    }
+
+    /// <summary>The grouped reduction a plan selects, pushed down where the dialect allows.</summary>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(aggregate);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.AggregateAsync(name, query, aggregate, cancellationToken));
+    }
+
+    private static void ValidateBoundingBox(BoundingBox? bbox)
     {
         if (bbox is { } box && !IsOrdered(box))
         {
@@ -101,7 +146,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         }
     }
 
-    private static bool IsOrdered(CoreBoundingBox box) => box.MinX <= box.MaxX && box.MinY <= box.MaxY;
+    private static bool IsOrdered(BoundingBox box) => box.MinX <= box.MaxX && box.MinY <= box.MaxY;
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Feature>> GetAsync(

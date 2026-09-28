@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 using Spatial.Operations.NetTopologySuite;
@@ -248,9 +249,9 @@ public sealed class FeatureQueryPathUnionTests
             return Task.FromResult(batches);
         }
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
-            string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
-            ScanAsync(dataset, cancellationToken);
+        public Task<FeatureQueryPage> QueryAsync(
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FeatureQueryPage(ScanAsync(dataset, cancellationToken).Result));
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
             Task.FromResult(0);

@@ -290,8 +290,9 @@ public sealed class ArcGisRestStoreTests
 
         await store.QueryAsync(
             "arcgis.l0",
-            new BoundingBox(1, 2, 3, 4),
-            "name = 'Berlin' AND population > 1000");
+            new FeatureQuery(
+                BoundingBox: new BoundingBox(1, 2, 3, 4),
+                Where: FeatureFilter.Parse("name = 'Berlin' AND population > 1000")));
 
         var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
         Assert.Contains("geometry=", query, StringComparison.Ordinal);
@@ -305,21 +306,37 @@ public sealed class ArcGisRestStoreTests
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        await store.QueryAsync("arcgis.l0", new BoundingBox(1, 2, 3, 4), "name = 'Berlin'");
+        await store.QueryAsync(
+            "arcgis.l0",
+            new FeatureQuery(BoundingBox: new BoundingBox(1, 2, 3, 4), Where: FeatureFilter.Parse("name = 'Berlin'")));
 
         var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
         Assert.Contains("orderByFields=OBJECTID", query, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Query_rejects_an_untranslatable_filter()
+    public async Task Query_rejects_a_filter_the_boundary_cannot_parse()
     {
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        var exception = await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync("arcgis.l0", filter: "DROP TABLE"));
+        var exception = await Assert.ThrowsAsync<SpatialException>(() =>
+            store.QueryAsync("arcgis.l0", new FeatureQuery(Where: FeatureFilter.Parse("DROP TABLE"))));
 
         Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+    }
+
+    [Fact]
+    public async Task Query_rejects_an_identity_restriction_by_name()
+    {
+        var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
+        var store = Store(handler);
+
+        var exception = await Assert.ThrowsAsync<SpatialException>(() =>
+            store.QueryAsync("arcgis.l0", new FeatureQuery(Ids: [new FeatureId("1")])));
+
+        Assert.Equal(SpatialException.InvalidArguments, exception.Code);
+        Assert.Contains("identity restriction", exception.Message);
     }
 
     [Fact]
