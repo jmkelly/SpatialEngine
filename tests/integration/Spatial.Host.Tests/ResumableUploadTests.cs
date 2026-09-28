@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// Resumable upload over HTTP (ADR-0089): a large document is staged in
+/// Resumable upload over HTTP (ADR-0090): a large document is staged in
 /// chunks, the staging says how far it got, and only a <em>complete</em>
 /// staged upload is ever ingested. The dataset appears atomically at the
 /// ingest step, so a partial upload cannot be mistaken for a loaded one.

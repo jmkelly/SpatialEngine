@@ -214,7 +214,7 @@ public sealed class SpatialClient
         Maps.IngestAsync(content, upload, adminToken, cancellationToken);
 
     /// <summary>
-    /// Stages a large upload in resumable chunks and ingests it (ADR-0089).
+    /// Stages a large upload in resumable chunks and ingests it (ADR-0090).
     /// The driver asks the host where the staging got to, continues from there
     /// and ingests once every byte has landed.
     /// </summary>

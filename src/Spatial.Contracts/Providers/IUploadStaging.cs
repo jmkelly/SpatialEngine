@@ -5,7 +5,7 @@ namespace Spatial.Contracts.Providers;
 /// when the client knows them — the total size of the whole document and its
 /// SHA-256 digest.
 /// <para>
-/// The offset is the whole resume protocol (ADR-0089): a client that lost its
+/// The offset is the whole resume protocol (ADR-0090): a client that lost its
 /// own state asks the staging how far it got rather than restarting.
 /// </para>
 /// </summary>
@@ -40,7 +40,7 @@ public sealed record UploadState(
 
 /// <summary>
 /// Byte-level staging for an upload too large to send in one request
-/// (ADR-0089). A client appends chunks, asks where the staging got to, and
+/// (ADR-0090). A client appends chunks, asks where the staging got to, and
 /// finally ingests the staged bytes; the feature-level load stays one atomic
 /// transaction, because what is chunked is the transport, not the load.
 /// <para>

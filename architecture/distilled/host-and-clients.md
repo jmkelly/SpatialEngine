@@ -56,7 +56,7 @@ GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service): GetCapab
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=&upload=
                                        # raw/multipart upload, or a staged upload by id -> IngestResult;
                                        # sourceSrid reprojects via ICoordinateTransforms; `upload`
-                                       # loads only a complete staged upload (ADR-0089)
+                                       # loads only a complete staged upload (ADR-0090)
 POST   /api/uploads?id=&total=&sha256=  # open/reopen a staged upload -> UploadState (admin)
 GET    /api/uploads                     # every staged upload -> UploadState[] (admin)
 GET    /api/uploads/{id}                # how far an upload got: the offset to resume from (admin)
@@ -202,7 +202,7 @@ the database-free upload path works out of the box.
 | `Spatial:Ogc:ServiceTitle` | Capabilities title shared by WMS and WFS |
 | `Spatial:Ogc:MaxFeatures` | Largest feature count one WFS `GetFeature` returns |
 | `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` / `BatchSize` / `SkipMalformed` | Ingest caps, the format allowlist and page size; `SkipMalformed` drops a bad record and reports it instead of failing the upload (ADR-0041 §6, ADR-0082). `MaxBytes` also bounds a *staged* upload, which is the same document in pieces |
-| `Spatial:Uploads:Path` / `MaxAgeHours` | Where resumable-upload staging is kept and how long an un-ingested upload survives (default a per-process temp directory, 24 hours) (ADR-0089) |
+| `Spatial:Uploads:Path` / `MaxAgeHours` | Where resumable-upload staging is kept and how long an un-ingested upload survives (default a per-process temp directory, 24 hours) (ADR-0090) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |
 | `Spatial:Logging:Seq:Url` | Seq server URL (ADR-0045); empty/unset leaves the host console-only |
