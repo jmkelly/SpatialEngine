@@ -1,0 +1,29 @@
+# SpatialEngine-u2x.1 query baseline — store=postgis label=postgis/indexed
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=40 warmup=5
+# A=ScanAsync+in-adapter  B=QueryAsync pushdown  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown supported
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown supported
+A-scan   europe  page25        447.929   1348.211   4231.112   1834.155      30.34      19.89      34135         25
+B-push   europe  page25         42.107     60.865     73.164     60.168       0.31       0.34        283         25
+D-emul   europe  page25         11.475     37.170     88.204     43.625       0.03       0.04         25         25
+C-lookup europe  page25         40.726     57.271     91.671     63.260       0.04       0.06          0          0
+A-scan   europe  countOnly     293.964    511.720   1027.824    588.960      30.34      19.88      34135        283
+B-push   europe  countOnly      34.976     42.824     73.182     46.553       0.31       0.34        283        283
+D-emul   europe  countOnly       5.736      8.503     16.706      9.473       0.00       0.02          0        283
+A-scan   europe  statistics    240.720    297.730    465.267    333.458      30.32      19.86      34135          8
+B-push   europe  statistics     33.567     41.118     65.577     43.370       0.29       0.32        283          8
+D-emul   europe  statistics      5.412      8.787     15.356      9.613       0.00       0.02          8          8
+A-scan   global  page25        392.302    917.009   1687.466    995.368      31.14      20.61      34135         25
+B-push   global  page25        106.341    166.617    244.890    170.427       6.35       6.40       6253         25
+D-emul   global  page25         25.890     88.530    167.593     89.630       0.53       0.55         25         25
+C-lookup global  page25         55.471     93.427    146.888     98.216       0.55       0.57          0          0
+A-scan   global  countOnly     452.474   1441.438   4453.185   1950.479      31.14      20.61      34135       6253
+B-push   global  countOnly     150.935    584.146    952.756    616.694       6.35       6.40       6253       6253
+D-emul   global  countOnly       9.428     66.624     94.674     63.233       0.00       0.02          0       6253
+A-scan   global  statistics    480.877   1078.387   2224.712   1280.770      30.81      20.28      34135        171
+B-push   global  statistics     91.959    150.000    272.240    162.816       6.01       6.06       6253        171
+D-emul   global  statistics     16.498     39.669     91.517     46.394       0.01       0.02        171        171
+
+# json written to artifacts/spike-u2x.1/postgis-indexed.json

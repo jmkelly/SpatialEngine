@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Measurement spike for SpatialEngine-u2x.1: times the Feature Service
+    query paths over the 34,135-row world-cities layer (the committed
+    GeoNames snapshot the demo store already serves). It is a spike
+    harness, not a product project: it lives under eng/ and is deliberately
+    NOT in SpatialEngine.slnx, so the build, coverage and metrics gates
+    stay exactly as they were. Run it with eng/spike-u2x-query-baseline.sh.
+
+    It references implementation projects directly (like
+    tests/performance/Spatial.Performance does), because the point of the
+    spike is to time the real store and adapter code, not a copy of it.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>Spatial.Spike.QueryBaseline</AssemblyName>
+    <RootNamespace>Spatial.Spike.QueryBaseline</RootNamespace>
+    <!-- A spike harness has no tests; keep it out of the default gate. -->
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Esri.Codec\Spatial.Esri.Codec.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Stores.Demo\Spatial.Stores.Demo.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Stores.PostGIS\Spatial.Stores.PostGIS.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,45 @@
+# SpatialEngine-u2x.1 query baseline — store=memory label=memory+http
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=20 warmup=5
+# A=ScanAsync+in-adapter  B=QueryAsync pushdown  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown NOT supported by this store (bbox only)
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown NOT supported by this store (bbox only)
+A-scan   europe  page25         18.727     40.998    106.177     55.161       0.58       0.60      34135         25
+B-bbox   europe  page25          9.153     27.906     63.369     39.437       0.13       0.15       2655         25
+D-emul   europe  page25         10.033     33.647    120.375     48.840       0.03       0.04         25         25
+C-lookup europe  page25         21.651     57.444    149.642     68.429       0.03       0.04         25         25
+A-scan   europe  countOnly      15.174     32.007     94.025     39.650       0.58       0.59      34135        283
+B-bbox   europe  countOnly       8.415      9.886     20.933     12.689       0.11       0.12       2655        283
+D-emul   europe  countOnly       6.560      8.251     17.137     10.766       0.00       0.02          0        283
+A-scan   europe  statistics     15.179     27.589     56.007     30.188       0.56       0.58      34135          8
+B-bbox   europe  statistics      7.927     14.357     44.102     18.456       0.11       0.14       2655          8
+D-emul   europe  statistics      7.984     11.300     31.253     15.476       0.00       0.02          8          8
+A-scan   global  page25         35.741     50.638    131.127     60.726       1.38       1.40      34135         25
+B-bbox   global  page25         44.108     94.250    275.577    122.701       1.97       2.16      34135         25
+D-emul   global  page25         25.253     55.696    151.143     71.950       0.53       0.55         25         25
+C-lookup global  page25         35.944     80.853    228.052    112.539       0.53       0.55         25         25
+A-scan   global  countOnly      33.246     53.753    188.757     82.639       1.38       1.40      34135       6253
+B-bbox   global  countOnly      41.003    128.466    238.972    133.407       1.99       2.16      34135       6253
+D-emul   global  countOnly       7.403      8.477     22.831     11.957       0.00       0.02          0       6253
+A-scan   global  statistics     18.466     31.955     74.598     37.986       1.06       1.07      34135        171
+B-bbox   global  statistics     26.473     57.208    117.815     68.220       1.82       1.83      34135        171
+D-emul   global  statistics      9.348     22.961     50.672     28.713       0.01       0.02        171        171
+# end-to-end layer 2 (world_cities) of /arcgis/rest/services/demo/FeatureServer
+
+# end-to-end over HTTP at http://127.0.0.1:5311 (demo FeatureServer, 20 iterations)
+scenario variant     p50_ms     p95_ms     bytes    rows
+europe   page25        696.808   1806.782       4661         25
+europe   countOnly     745.737   1357.133         13        283
+europe   statistics    448.711   1271.898        962          8
+global   page25       1443.203   2483.787       4702         25
+global   countOnly    1183.728   1993.740         14       6253
+global   statistics    797.927   1345.932      12202        171
+
+# mirror fidelity, europe countOnly: MATCH
+# mirror fidelity, global countOnly: MATCH
+
+# paging the whole matched set with resultOffset (the layer's maxRecordCount page)
+scenario     pages      bytes   total_ms  mean_page_ms  last_page
+europe          1      46009   1236.042     1236.042         283
+global          7    1008751   6080.536      868.648         253
