@@ -88,4 +88,5 @@ expression node**, and the compiled style keeps both:
   the placement pass, which is its own bead.
 - `to-color`, `at-interpolate`, `cubic-bezier` interpolation, `palette`,
   `format`, `image` and `heatmap`-density are not served. Each is an
-  `invalid.arguments` naming the operator.
+  `invalid.arguments` naming the operator. (ADR-0088 later served the first
+  three; the rest stand.)

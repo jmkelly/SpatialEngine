@@ -11,6 +11,22 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **`to-color`, `at-interpolate` and `cubic-bezier` in the MapLibre style
+  dialect** (ADR-0088, SpatialEngine-ymh): the three interpolation constructs
+  ADR-0076 named as unserved. `["to-color", value]` is the one coercion the
+  dialect performs and it is asked for by name — a number clamped to [0, 1]
+  and written to all three channels, or a colour name — so the MapLibre idiom
+  of ramping a number into a colour (`… 5, ["to-color", 0], 10,
+  ["to-color", 1]`) now compiles; a bare number on a colour property is still
+  rejected. `at-interpolate` samples an existing ramp at a literal stop, which
+  is what makes a ramp reusable as a `let`-bound scale.
+  `["cubic-bezier", x1, y1, x2, y2]` is the CSS easing, solved as the
+  ordinate of the cubic Bezier at the parameter where the abscissa is the
+  linear progress (Newton with a bisection guard, no per-feature table), with
+  the two abscissas required to lie in [0, 1] and trailing values defaulting
+  to zero. A malformed easing, a non-numeric `at` and an unreadable
+  `to-color` operand are each a typed `invalid.arguments` naming the
+  operator.
 - **Query `distance`/`units` band, `returnCentroid` and `returnZ`/`returnM`**
   (ADR-0085, SpatialEngine-u2x.16): the three §7.1 query rejects that were
   really engine verbs are served. `distance` is a band from the query

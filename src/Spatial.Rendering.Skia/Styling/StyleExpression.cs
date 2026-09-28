@@ -330,18 +330,203 @@ internal sealed record StepExpression(
     }
 }
 
+/// <summary><c>["to-color", value]</c>: the one coercion the dialect serves, asked for by name.</summary>
+internal sealed record ToColorExpression(StyleExpression Operand) : StyleExpression
+{
+    public override ExpressionType Type => ExpressionType.Color;
+
+    public override IEnumerable<StyleExpression> Children => [Operand];
+
+    public override ExpressionValue Evaluate(ExpressionScope scope)
+    {
+        var value = scope.Evaluate(Operand);
+        return value.Type switch
+        {
+            ExpressionType.Number => ExpressionValue.OfColor(Grayscale(value.Number)),
+            ExpressionType.Text when StyleColorParser.TryParse(value.Text, out var named) =>
+                ExpressionValue.OfColor(named),
+            ExpressionType.Missing => ExpressionValue.Missing,
+            _ => throw SpatialException.BadArguments(
+                $"'to-color' reads a number between 0 and 1 or a colour name, but got {value}."),
+        };
+    }
+
+    /// <summary>
+    /// The MapLibre number ramp: the value is clamped to [0, 1] and written to
+    /// all three channels, so 0 is black, 1 white and 0.5 mid grey.
+    /// </summary>
+    private static StyleColor Grayscale(double value)
+    {
+        var channel = (byte)Math.Clamp(Math.Round(Math.Clamp(value, 0, 1) * 255), 0, 255);
+        return new StyleColor(channel, channel, channel);
+    }
+}
+
 /// <summary>How <c>interpolate</c> shapes the input value before it is scaled.</summary>
 internal enum InterpolationKind
 {
     Linear,
     Exponential,
+    CubicBezier,
+}
+
+/// <summary>
+/// The CSS <c>cubic-bezier(x1, y1, x2, y2)</c> easing curve: a parametric cubic
+/// from (0, 0) through the two control points to (1, 1). The eased value is
+/// found by solving for the parameter <c>u</c> at which the curve's
+/// <em>abscissa</em> is the linear progress, which is the CSS definition —
+/// so the ordinates are unconstrained and only x1 and x2 must lie in [0, 1].
+/// </summary>
+internal readonly record struct CubicBezier(double X1, double Y1, double X2, double Y2)
+{
+    /// <summary>The eased progress: the curve's ordinate where its abscissa is <paramref name="progress"/>.</summary>
+    public double Ease(double progress)
+    {
+        if (progress <= 0)
+        {
+            return 0;
+        }
+
+        if (progress >= 1)
+        {
+            return 1;
+        }
+
+        // A curve whose two control points agree is the straight line through
+        // them, so composing the ordinate with the abscissa is the identity
+        // and the ramp is linear: the `["cubic-bezier"]` default is not solved
+        // at all.
+        if (X1 == Y1 && X2 == Y2)
+        {
+            return progress;
+        }
+
+        // Newton's method on the abscissa, guarded by bisection: the abscissa is
+        // monotonically increasing over [0, 1] (x1 and x2 are clamped to it), so
+        // a step that would leave the bracketing interval falls back to the
+        // midpoint rather than diverging.
+        var low = 0d;
+        var high = 1d;
+        var u = progress;
+        for (var step = 0; step < 24; step++)
+        {
+            var x = Abscissa(u);
+            if (Math.Abs(x - progress) < 1e-9)
+            {
+                break;
+            }
+
+            var slope = Slope(u);
+            if (slope > 1e-9)
+            {
+                var next = u - ((x - progress) / slope);
+                if (next > low && next < high)
+                {
+                    u = next;
+                    continue;
+                }
+            }
+
+            if (x < progress)
+            {
+                low = u;
+            }
+            else
+            {
+                high = u;
+            }
+
+            u = (low + high) / 2;
+        }
+
+        return Ordinate(u);
+    }
+
+    private double Abscissa(double u) => Ordinate(u, X1, X2);
+
+    private double Ordinate(double u) => Ordinate(u, Y1, Y2);
+
+    /// <summary>The cubic Bezier ordinate at <paramref name="u"/> for the two control ordinates.</summary>
+    private static double Ordinate(double u, double first, double second) =>
+        (3 * (1 - u) * (1 - u) * u * first) + (3 * (1 - u) * u * u * second) + (u * u * u);
+
+    private double Slope(double u) =>
+        (3 * (1 - u) * (1 - u) * X1) + (6 * (1 - u) * u * (X2 - X1)) + (3 * u * u * (1 - X2));
+}
+
+/// <summary>The easing an interpolation applies to its linear progress.</summary>
+internal readonly record struct Easing(InterpolationKind Kind, double Base, CubicBezier? Curve)
+{
+    public static readonly Easing Linear = new(InterpolationKind.Linear, 1, null);
+
+    public static Easing Exponential(double baseValue) => new(InterpolationKind.Exponential, baseValue, null);
+
+    public static Easing Bezier(CubicBezier curve) => new(InterpolationKind.CubicBezier, 1, curve);
+
+    /// <summary>Shapes a progress already clamped to [0, 1].</summary>
+    public double Apply(double progress) => Kind switch
+    {
+        InterpolationKind.Exponential => Math.Pow(progress, Base),
+        InterpolationKind.CubicBezier => Curve!.Value.Ease(progress),
+        _ => progress,
+    };
+}
+
+/// <summary>The shared sampler behind <c>interpolate</c> and <c>at-interpolate</c>.</summary>
+internal static class Interpolation
+{
+    /// <summary>
+    /// The interpolated value at <paramref name="value"/>, clamped to the
+    /// first and last stop outside the stop range, over the same number and
+    /// colour semantics the <c>interpolate</c> node has always had.
+    /// </summary>
+    public static ExpressionValue Sample(
+        double value,
+        Easing easing,
+        ExpressionType outputType,
+        IReadOnlyList<KeyValuePair<double, StyleExpression>> stops,
+        ExpressionScope scope)
+    {
+        var index = Bracket(value, stops);
+        if (index < 0)
+        {
+            return scope.Evaluate(stops[^1].Value);
+        }
+
+        if (index == 0)
+        {
+            return scope.Evaluate(stops[0].Value);
+        }
+
+        var from = scope.Evaluate(stops[index - 1].Value);
+        var to = scope.Evaluate(stops[index].Value);
+        var span = stops[index].Key - stops[index - 1].Key;
+        var progress = span <= 0 ? 0 : easing.Apply(Math.Clamp((value - stops[index - 1].Key) / span, 0, 1));
+
+        return outputType == ExpressionType.Color
+            ? ExpressionValue.OfColor(ExpressionValues.MixColor(from.Color, to.Color, progress))
+            : ExpressionValue.OfNumber(from.AsNumber() + ((to.AsNumber() - from.AsNumber()) * progress));
+    }
+
+    /// <summary>The index of the first stop strictly above the value, or -1 at the top end.</summary>
+    private static int Bracket(double value, IReadOnlyList<KeyValuePair<double, StyleExpression>> stops)
+    {
+        for (var index = 1; index < stops.Count; index++)
+        {
+            if (value < stops[index].Key)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
 }
 
 /// <summary><c>["interpolate", kind, input, stop, output, …]</c> over numbers or colours.</summary>
 internal sealed record InterpolateExpression(
     StyleExpression Input,
-    InterpolationKind Kind,
-    double Base,
+    Easing Ease,
     IReadOnlyList<KeyValuePair<double, StyleExpression>> Stops) : StyleExpression
 {
     /// <summary>The unified type of the stop outputs, decided once by the reader.</summary>
@@ -355,55 +540,38 @@ internal sealed record InterpolateExpression(
     public override ExpressionValue Evaluate(ExpressionScope scope)
     {
         var input = scope.Evaluate(Input);
-        if (input.IsMissing)
-        {
-            return ExpressionValue.Missing;
-        }
-
-        var index = Bracket(input.AsNumber());
-        if (index < 0)
-        {
-            return scope.Evaluate(Stops[^1].Value);
-        }
-
-        if (index == 0)
-        {
-            return scope.Evaluate(Stops[0].Value);
-        }
-
-        var from = scope.Evaluate(Stops[index - 1].Value);
-        var to = scope.Evaluate(Stops[index].Value);
-        var progress = Progress(input.AsNumber(), Stops[index - 1].Key, Stops[index].Key);
-        return OutputType == ExpressionType.Color
-            ? ExpressionValue.OfColor(ExpressionValues.MixColor(from.Color, to.Color, progress))
-            : ExpressionValue.OfNumber(from.AsNumber() + ((to.AsNumber() - from.AsNumber()) * progress));
+        return input.IsMissing
+            ? ExpressionValue.Missing
+            : Interpolation.Sample(input.AsNumber(), Ease, OutputType, Stops, scope);
     }
+}
 
-    /// <summary>The index of the first stop strictly above the value, or -1 at the top end.</summary>
-    private int Bracket(double value)
-    {
-        for (var index = 1; index < Stops.Count; index++)
-        {
-            if (value < Stops[index].Key)
-            {
-                return index;
-            }
-        }
+/// <summary>
+/// <c>["at-interpolate", kind, input, at, stop, output, …]</c>: the value of
+/// the same interpolation sampled at <c>at</c> instead of at the input. The
+/// input is still evaluated — it is the domain the stops are written in, and a
+/// feature it cannot supply for has no answer here either — but the sampled
+/// point is the literal, which is what makes the ramp reusable as a scale
+/// (<c>let</c> a ramp, then read it at 5, 10, 15).
+/// </summary>
+internal sealed record AtInterpolateExpression(
+    StyleExpression Input,
+    double At,
+    Easing Ease,
+    IReadOnlyList<KeyValuePair<double, StyleExpression>> Stops) : StyleExpression
+{
+    /// <summary>The unified type of the stop outputs, decided once by the reader.</summary>
+    public ExpressionType OutputType => ExpressionTypes.Unify(Stops.Select(stop => stop.Value));
 
-        return -1;
-    }
+    public override ExpressionType Type => OutputType;
 
-    private double Progress(double value, double lower, double upper)
-    {
-        var span = upper - lower;
-        if (span <= 0)
-        {
-            return 0;
-        }
+    public override IEnumerable<StyleExpression> Children =>
+        Stops.Select(stop => stop.Value).Prepend(Input);
 
-        var progress = Math.Clamp((value - lower) / span, 0, 1);
-        return Kind == InterpolationKind.Exponential ? Math.Pow(progress, Base) : progress;
-    }
+    public override ExpressionValue Evaluate(ExpressionScope scope) =>
+        scope.Evaluate(Input).IsMissing
+            ? ExpressionValue.Missing
+            : Interpolation.Sample(At, Ease, OutputType, Stops, scope);
 }
 
 /// <summary>

@@ -64,6 +64,33 @@ public sealed class MapLibreExpressionTests
         { """["interpolate", ["exponential", 2], ["get", "population"], 0, 0, 80, 80]""", "20" },
         { """["interpolate", ["linear"], ["get", "population"], 0, 0, 80, 80]""", "40" },
         { """["interpolate", ["linear"], ["get", "population"], 0, "#000000", 100, "#ffffff"]""", "#666666" },
+        // to-color (SpatialEngine-ymh): a number ramped into a colour is
+        // expressible only when the coercion is asked for by name.
+        { """["to-color", 0]""", "#000000" },
+        { """["to-color", 0.5]""", "#808080" },
+        { """["to-color", 1]""", "#FFFFFF" },
+        { """["to-color", 2]""", "#FFFFFF" },
+        { """["to-color", -1]""", "#000000" },
+        { """["to-color", "red"]""", "#FF0000" },
+        { """["to-color", ["/", ["get", "population"], 100]]""", "#666666" },
+        { """["interpolate", ["linear"], ["zoom"], 5, ["to-color", 0], 10, ["to-color", 1]]""", "#666666" },
+        // cubic-bezier easing. The hand-computed matrix: with x1 + x2 = 1 the
+        // curve passes X(0.5) = 0.5, and Y(0.5) = 0.375 * (y1 + y2) + 0.125.
+        // So (0,1,1,1) yields 0.875 and (0,0,1,0) yields 0.125 where linear
+        // would yield 0.5; the stops are 0..80 so the feature's 40 is the
+        // midpoint of the ramp.
+        { """["interpolate", ["cubic-bezier"], ["get", "population"], 0, 0, 80, 8]""", "4" },
+        { """["interpolate", ["cubic-bezier", 0, 1, 1, 1], ["get", "population"], 0, 0, 80, 8]""", "7" },
+        { """["interpolate", ["cubic-bezier", 0, 0, 1, 0], ["get", "population"], 0, 0, 80, 8]""", "1" },
+        { """["interpolate", ["cubic-bezier", 0, 1, 1, 1], ["get", "population"], 0, "#000000", 80, "#ffffff"]""", "#DFDFDF" },
+        // at-interpolate: the same ramp sampled at a stop instead of at the
+        // input, clamped outside the stop range exactly as interpolate is.
+        { """["at-interpolate", ["linear"], ["zoom"], 5, 0, 0, 10, 1]""", "0.5" },
+        { """["at-interpolate", ["linear"], ["zoom"], -5, 0, 0, 10, 1]""", "0" },
+        { """["at-interpolate", ["linear"], ["zoom"], 20, 0, 0, 10, 1]""", "1" },
+        { """["at-interpolate", ["exponential", 2], ["get", "population"], 50, 0, 0, 100, 10]""", "2.5" },
+        { """["at-interpolate", ["linear"], ["zoom"], 50, 0, "#000000", 100, "#ffffff"]""", "#808080" },
+        { """["at-interpolate", ["cubic-bezier", 0, 1, 1, 1], ["zoom"], 5, 0, 0, 10, 8]""", "7" },
         // let / var
         { """["let", "n", ["get", "population"], ["*", ["var", "n"], 2]]""", "80" },
     };
@@ -117,12 +144,60 @@ public sealed class MapLibreExpressionTests
     [InlineData("""["*"]""")]
     [InlineData("""["bogus", 1]""")]
     [InlineData("""{"op": "=="}""")]
-    [InlineData("""["interpolate", ["cubic-bezier", 0, 0, 1, 1], ["zoom"], 0, 0, 1, 1]""")]
     [InlineData("""["interpolate", ["linear"], ["get", "population"], 10, 1, 0, 2]""")]
+    [InlineData("""["cubic-bezier", 0, 0, 1, 1]""")]
     public void Read_RejectsUnsupportedExpressionsNamingThePath(string expression)
     {
         var error = Assert.Throws<SpatialException>(() => ExpressionReader.Read(Json(expression)));
         Assert.Equal(SpatialException.InvalidArguments, error.Code);
+    }
+
+    [Theory]
+    [InlineData("""["interpolate", ["cubic-bezier", 0, 0, 1, 1, 1], ["zoom"], 0, 0, 1, 1]""")]
+    [InlineData("""["interpolate", ["cubic-bezier", 1.5, 0, 1, 1], ["zoom"], 0, 0, 1, 1]""")]
+    [InlineData("""["at-interpolate", ["linear"], ["zoom"], 5]""")]
+    [InlineData("""["at-interpolate", ["linear"], ["zoom"], "x", 0, 0, 10, 1]""")]
+    [InlineData("""["at-interpolate", ["linear"], ["zoom"], 5, 0, 10, 0]""")]
+    [InlineData("""["at-interpolate", ["linear"], ["zoom"]]""")]
+    [InlineData("""["to-color"]""")]
+    [InlineData("""["to-color", 0, 1]""")]
+    [InlineData("""["to-color", "#ff0000"]""")]
+    public void Read_RejectsAMalformedInterpolationOrToColorNamingThePath(string expression)
+    {
+        var error = Assert.Throws<SpatialException>(() => ExpressionReader.Read(Json(expression)));
+        Assert.Equal(SpatialException.InvalidArguments, error.Code);
+        Assert.Contains(
+            expression.Contains("to-color", StringComparison.Ordinal) ? "to-color" : "interpolate",
+            error.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Evaluate_RejectsATextOperandToColorCannotRead()
+    {
+        // The number form and the colour-name form are both served; a string
+        // that is neither is a typed failure naming the operator, not a
+        // silently flattened value.
+        var error = Assert.Throws<SpatialException>(() =>
+            Evaluate("""["to-color", ["get", "name"]]""", Feature, 7));
+
+        Assert.Equal(SpatialException.InvalidArguments, error.Code);
+        Assert.Contains("to-color", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compile_AcceptsANumberRampOnAColourPropertyWhenToColorAsksForIt()
+    {
+        var style = new StyleCompiler().Compile(
+            """
+            { "version": 8, "layers": [
+                { "id": "land", "type": "fill", "source-layer": "demo.land",
+                  "paint": { "fill-color": ["interpolate", ["linear"], ["zoom"], 5, ["to-color", 0], 10, ["to-color", 1]],
+                             "fill-opacity": ["at-interpolate", ["cubic-bezier", 0, 1, 1, 1], ["zoom"], 5, 0, 0.1, 10, 1] } } ] }
+            """);
+
+        var fill = Assert.IsType<FillPaint>(Assert.Single(style.Layers).Paint);
+        Assert.True(fill.IsDataDriven());
     }
 
     [Fact]
@@ -206,6 +281,73 @@ public sealed class MapLibreExpressionTests
 
         Assert.Equal(SpatialException.InvalidArguments, error.Code);
         Assert.Contains("circle-radius", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Evaluate_CubicBezierIsNotTheLinearRamp()
+    {
+        // The same input and stops: linear lands on the midpoint, the
+        // ease-out curve is already most of the way there, the ease-in curve
+        // has barely left the start.
+        Assert.Equal(5d, Number("""["interpolate", ["linear"], ["zoom"], 0, 0, 10, 10]"""));
+        Assert.True(Number("""["interpolate", ["cubic-bezier", 0, 1, 1, 1], ["zoom"], 0, 0, 10, 10]""") > 8);
+        Assert.True(Number("""["interpolate", ["cubic-bezier", 0, 0, 1, 0], ["zoom"], 0, 0, 10, 10]""") < 2);
+    }
+
+    [Theory]
+    [InlineData("""["interpolate", ["linear"], ["zoom"], 0, 0, 10, 10]""", 5d)]
+    [InlineData("""["interpolate", ["cubic-bezier", 0, 1, 1, 1], ["zoom"], 0, 0, 10, 10]""", 8.75d)]
+    [InlineData("""["interpolate", ["cubic-bezier", 0, 0, 1, 0], ["zoom"], 0, 0, 10, 10]""", 1.25d)]
+    [InlineData("""["at-interpolate", ["cubic-bezier", 0, 1, 1, 1], ["zoom"], 5, 0, 0, 10, 10]""", 8.75d)]
+    public void Evaluate_SolvesTheBezierWithinATolerance(string expression, double expected) =>
+        Assert.Equal(expected, Number(expression), 9);
+
+    private static double Number(string expression) =>
+        double.Parse(Evaluate(expression, Feature, 5), CultureInfo.InvariantCulture);
+
+    [Fact]
+    public async Task Render_RejectsATextOperandToColorCannotRead()
+    {
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+        var request = new MapRenderRequest(
+            new RasterViewport(new Envelope(-10, -10, 10, 10), 64, 64, "EPSG:4326"),
+            """
+            { "version": 8, "layers": [
+                { "id": "cities", "type": "circle", "source-layer": "demo.cities",
+                  "paint": { "circle-color": ["to-color", ["get", "name"]] } } ] }
+            """,
+            [new MapLayerSource("demo.cities", new FakeStore(TestFeatures.Schema, Feature), new FakeCatalogue(4326))]);
+
+        var error = await Assert.ThrowsAsync<SpatialException>(() => renderer.RenderAsync(request));
+
+        Assert.Equal(SpatialException.InvalidArguments, error.Code);
+        Assert.Contains("to-color", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Render_DrawsAToColorRampPerFeature()
+    {
+        var store = new FakeStore(
+            TestFeatures.Schema,
+            TestFeatures.Point("Alpha", -4, 0, 0),
+            TestFeatures.Point("Beta", 4, 0, 100));
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+        var request = new MapRenderRequest(
+            new RasterViewport(new Envelope(-10, -10, 10, 10), 64, 64, "EPSG:4326"),
+            """
+            { "version": 8, "layers": [
+                { "id": "bg", "type": "background", "paint": { "background-color": "#000000" } },
+                { "id": "cities", "type": "circle", "source-layer": "demo.cities",
+                  "paint": { "circle-color": ["interpolate", ["linear"], ["get", "population"], 0, ["to-color", 0], 100, ["to-color", 1]],
+                             "circle-radius": 3 } } ] }
+            """,
+            [new MapLayerSource("demo.cities", store, new FakeCatalogue(4326))]);
+
+        var bitmap = SkiaSharp.SKBitmap.Decode((await renderer.RenderAsync(request)).Content);
+
+        // The ramp is per feature: black at 0, white at 100.
+        Assert.Equal(0, Red(bitmap, 19, 32));
+        Assert.Equal(255, Red(bitmap, 45, 32));
     }
 
     [Fact]
