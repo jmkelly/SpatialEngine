@@ -10,8 +10,11 @@ that already carries the numbers main took (SpatialEngine-u2x.29).
 """
 import importlib.util
 import json
+import os
 import subprocess
+import sys
 import tempfile
+import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -19,6 +22,27 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("adr-next-number.py")
 DECISIONS = "architecture/decisions"
+
+# A branch reading the shared store while this tick reserves. --check asks
+# holder() about every number in the tree, --list sweeps the whole store, and a
+# concurrent --reserve walks the candidates, so a store under a six-branch
+# coordinator tick is read constantly while it is written. The probe below is
+# those reads with the git calls left out, in its own process, so the race it
+# takes part in is between processes as it is in the swarm.
+PROBE = """
+import importlib.util, pathlib, sys, time
+
+spec = importlib.util.spec_from_file_location("adr", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+store, repo = pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])
+first, count, seconds = int(sys.argv[4]), int(sys.argv[5]), float(sys.argv[6])
+module.use_reservation_dir(store)
+end = time.time() + seconds
+while time.time() < end:
+    for number in range(first, first + count):
+        module.holder(repo, number, 14)
+"""
 
 
 def load_script():
@@ -64,6 +88,24 @@ class SeededRepo:
     def __exit__(self, *exc):
         self._tmp.cleanup()
         return False
+
+
+def branch_repo(tmp) -> Path:
+    """A repository with a `feature` branch, for the allocator's own calls."""
+    repo = Path(tmp, "repo")
+    repo.mkdir()
+    git("init", "-q", "-b", "main", cwd=repo)
+    (repo / "f.txt").write_text("x")
+    commit(repo, "init")
+    git("checkout", "-q", "-b", "feature", cwd=repo)
+    return repo
+
+
+def script_numbers(repo):
+    """The numbers a record in the tree claims, for the tests to seed from."""
+    return load_script().numbers_in(
+        [f"{DECISIONS}/{path.name}"
+         for path in Path(repo, DECISIONS).iterdir() if path.is_file()])
 
 
 class NumberParsingTests(unittest.TestCase):
@@ -256,14 +298,102 @@ class ReservationTests(unittest.TestCase):
     """A reservation is the step the numbering rule was missing.
 
     Four branches read one base and all took ADR-0075, because reading a base
-    is not the same as holding a number. The reservation is the hold: the file
-    is created with O_EXCL, so exactly one branch can win it.
+    is not the same as holding a number. The reservation is the hold: the name
+    is taken exclusively, so exactly one branch can win it.
     """
+
+    # A coordinator tick is not six branches reserving once: it is several
+    # ticks racing, on a box already running the gates that read the store.
+    # One round of six used to pass in isolation and fail inside eng/verify.sh,
+    # which is how two branches were handed ADR-0010 by unrelated beads.
+    WORKTREES = 8
+    ROUNDS = 3
+    # Numbers a probe asks about while the racers work: the one every racer is
+    # about to try. A worker re-runs --check immediately before it writes its
+    # record, and --check asks about the number it is about to take, so a
+    # frontier number is the most-read path in the store — which is exactly
+    # why it is also the most dangerous one to publish half-written.
+    PROBES = 3
 
     def reserve(self, repo, *extra):
         return subprocess.run(
             ["python3", str(SCRIPT), "--reserve", *extra], cwd=repo,
             capture_output=True, text=True)
+
+    def worktrees(self, seeded, count):
+        links = []
+        for index in range(count):
+            path = Path(seeded.repo.parent, f"wt{index}")
+            git("worktree", "add", "-q", "-b", f"b{index}", str(path),
+                cwd=seeded.repo)
+            links.append(path)
+        return links
+
+    def store_for(self, seeded, name):
+        store = Path(seeded.repo.parent, f"store-{name}")
+        store.mkdir()
+        return store
+
+    def probe(self, store, repo, frontier, seconds=30):
+        """Processes reading the frontier of the store, the way a gate does."""
+        return [subprocess.Popen(
+            [sys.executable, "-c", PROBE, str(SCRIPT), str(store), str(repo),
+             str(frontier), "1", str(seconds)], cwd=repo,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for _ in range(self.PROBES)]
+
+    @staticmethod
+    def stop(probes):
+        for probe in probes:
+            probe.terminate()
+            probe.wait()
+
+    def burn_cpu(self, count):
+        """Background processes competing for the machine, the way a swarm does."""
+        burners = []
+        for _ in range(count):
+            process = subprocess.Popen(
+                [sys.executable, "-c",
+                 "import sys, time\n"
+                 "end = time.time() + 30\n"
+                 "while time.time() < end:\n"
+                 "    sum(i * i for i in range(2000))\n"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            burners.append(process)
+        return burners
+
+    def tick(self, seeded, links, store, frontier):
+        """One tick: every link reserves at once while the store is read."""
+        probes = self.probe(store, seeded.repo, frontier)
+        try:
+            with ThreadPoolExecutor(max_workers=len(links)) as pool:
+                results = list(pool.map(
+                    lambda link: self.reserve(link, "--reservation-dir", str(store)),
+                    links))
+        finally:
+            self.stop(probes)
+        self.assertEqual([r.returncode for r in results], [0] * len(links),
+                         [r.stderr for r in results])
+        return [r.stdout.strip() for r in results]
+
+    def ticks(self, seeded):
+        """Rounds of reservations against one shared store, and every number.
+
+        The store is shared on purpose: it is the swarm's store, so a number
+        handed out in one round is still spoken for in the next, and the whole
+        run can be held to one rule — no number, ever, twice.
+        """
+        links = self.worktrees(seeded, self.WORKTREES * self.ROUNDS)
+        store = self.store_for(seeded, "swarm")
+        # The first number the seeded repository does not already hold, which
+        # is where the first racers collide and where every later tick starts.
+        first = max(script_numbers(seeded.repo), default=0) + 1
+        numbers = []
+        for round_index in range(self.ROUNDS):
+            group = links[round_index * self.WORKTREES:
+                          (round_index + 1) * self.WORKTREES]
+            numbers += self.tick(seeded, group, store, first + len(numbers))
+        return numbers
 
     def test_reserve_hands_out_the_next_free_number(self):
         with SeededRepo() as seeded:
@@ -304,18 +434,28 @@ class ReservationTests(unittest.TestCase):
 
     def test_parallel_branches_get_distinct_numbers(self):
         with SeededRepo() as seeded:
-            links = []
-            for index in range(6):
-                path = Path(seeded.repo.parent, f"wt{index}")
-                git("worktree", "add", "-q", "-b", f"b{index}", str(path),
-                    cwd=seeded.repo)
-                links.append(path)
-            # All six race for the same number, as a swarm tick does.
-            with ThreadPoolExecutor(max_workers=len(links)) as pool:
-                results = list(pool.map(self.reserve, links))
-            numbers = [r.stdout.strip() for r in results if r.returncode == 0]
-            self.assertEqual(len(numbers), len(links),
-                             [r.stderr for r in results if r.returncode])
+            numbers = self.ticks(seeded)
+            self.assertEqual(len(numbers), self.WORKTREES * self.ROUNDS)
+            self.assertEqual(len(set(numbers)), len(numbers), numbers)
+
+    def test_parallel_branches_get_distinct_numbers_under_load(self):
+        # The reproduction is load-sensitive: the window it needs is between a
+        # claim's create and its write, so it only opens on a machine that is
+        # already busy. eng/verify.sh is that machine, which is why the failure
+        # landed on unrelated beads instead of on the allocator. Saturating the
+        # cores here is what makes the test able to see it at all.
+        with SeededRepo() as seeded:
+            # Enough burners to keep every core busy, not so many that the
+            # store is never read: this variant is about what load does to the
+            # window between a claim's create and its write, not about
+            # replacing the readers.
+            burners = self.burn_cpu(os.cpu_count() or 4)
+            try:
+                numbers = self.ticks(seeded)
+            finally:
+                for burner in burners:
+                    burner.terminate()
+                    burner.wait()
             self.assertEqual(len(set(numbers)), len(numbers), numbers)
 
     def test_reserve_names_the_holder_so_a_collision_is_traceable(self):
@@ -326,6 +466,144 @@ class ReservationTests(unittest.TestCase):
                 capture_output=True, text=True).stdout
             self.assertIn("0010", listed)
             self.assertIn("SpatialEngine-u2x.29", listed)
+
+
+class ReservationAtomicityTests(unittest.TestCase):
+    """A claim has to appear whole, or a reader takes it away (SpatialEngine-u2x.34).
+
+    The reservation is a file in a directory every worktree shares, so it is
+    the one piece of the store that changes while something else is reading
+    it. It went wrong the way a shared mutable file goes wrong: `claim()` took
+    the number with an exclusive create and wrote the body afterwards, and
+    `holder()` — which every --check, --list and --reserve calls — read the
+    gap as an unreadable record, called it stale and unlinked it. The branch
+    that had just won the number was left holding a file that no longer
+    existed, and the next branch took the same number. Two branches were told
+    ADR-0010, which is the collision the store exists to prevent (ADR-0090).
+
+    Both halves are checked here: a claim is never observable half-written,
+    and a record that cannot be read is treated as held by somebody unknown
+    rather than as free.
+    """
+
+    def setUp(self):
+        self.script = load_script()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.repo = branch_repo(self._tmp.name)
+        self.store = Path(self._tmp.name, "store")
+        self.store.mkdir()
+        self.script.use_reservation_dir(self.store)
+
+    def path_for(self, number):
+        return self.store / f"{number:04d}.json"
+
+    def test_a_reservation_is_never_observable_half_written(self):
+        """A reader sees a claim, or nothing — never an empty or partial file."""
+        observations = []
+        finished = threading.Event()
+
+        def reader():
+            while not finished.is_set():
+                for path in self.store.glob("*.json"):
+                    observations.append(path.read_text())
+
+        reader_thread = threading.Thread(target=reader, daemon=True)
+        reader_thread.start()
+        try:
+            for number in range(1, 400):
+                self.script.claim(self.repo, number, "feature", "b", "main")
+        finally:
+            finished.set()
+            reader_thread.join()
+
+        self.assertGreater(len(observations), 50, observations)
+        for body in observations:
+            try:
+                record = json.loads(body)
+            except ValueError:
+                self.fail(f"a reader saw a reservation that is not JSON yet: {body!r}")
+            self.assertEqual(record.get("branch"), "feature", body)
+            self.assertIn("reserved_at", record, body)
+
+    def test_a_reader_does_not_unlink_a_claim_that_is_being_written(self):
+        """The claim a branch just won survives every reader that walks past."""
+        number = 10
+        path = self.path_for(number)
+        lost = []
+        for _ in range(200):
+            path.unlink(missing_ok=True)
+            claimed = threading.Event()
+
+            def claim():
+                self.script.claim(self.repo, number, "feature", "b", "main")
+                claimed.set()
+
+            claimer = threading.Thread(target=claim)
+            claimer.start()
+            while not claimed.is_set():
+                self.script.holder(self.repo, number, 14)
+            claimer.join()
+            if not path.is_file():
+                lost.append(number)
+            path.unlink(missing_ok=True)
+
+        self.assertEqual(lost, [], "a reader unlinked a live claim")
+
+    def test_an_unreadable_reservation_is_held_by_somebody(self):
+        """A record this process cannot read is an unknown holder, not a free number."""
+        for body in ("", "{", '{"number": 10, "branch"', "not json at all"):
+            with self.subTest(body=body):
+                path = self.path_for(10)
+                path.write_text(body)
+                held = self.script.holder(self.repo, 10, 14)
+                self.assertIsNotNone(held,
+                                     "an unreadable record is still a hold")
+                self.assertTrue(path.is_file(),
+                                f"holder() unlinked a record it could not "
+                                f"read: {body!r}")
+                path.unlink()
+
+    def test_another_branch_does_not_take_a_reservation_that_cannot_be_read(self):
+        """The end-to-end version: the number stays spoken for."""
+        with SeededRepo() as seeded:
+            store = Path(seeded.repo.parent, "store")
+            store.mkdir()
+            (store / "0010.json").write_text('{"number": 10, "bran')
+            linked = Path(seeded.repo.parent, "linked")
+            git("worktree", "add", "-q", "-b", "other", str(linked),
+                cwd=seeded.repo)
+            got = subprocess.run(
+                ["python3", str(SCRIPT), "--reserve",
+                 "--reservation-dir", str(store)],
+                cwd=linked, capture_output=True, text=True)
+            self.assertEqual(got.returncode, 0, got.stderr)
+            self.assertEqual(got.stdout.strip(), "0011")
+            # ...and the unreadable record is left where it was, because the
+            # branch that wrote it may still be running.
+            self.assertTrue((store / "0010.json").is_file())
+
+    def test_a_stale_reservation_is_still_swept(self):
+        """The fix is not a wedge: a record read as dead is still removed."""
+        self.script.claim(self.repo, 10, "deleted-branch", None, "main")
+        self.assertIsNone(self.script.holder(self.repo, 10, 14))
+        self.assertFalse(self.path_for(10).exists())
+
+    def test_a_readable_record_with_no_holder_is_still_swept(self):
+        """A record that parses but names nobody has been read, so it can go."""
+        self.path_for(10).write_text("{}")
+        self.assertIsNone(self.script.holder(self.repo, 10, 14))
+        self.assertFalse(self.path_for(10).exists())
+
+    def test_list_reports_a_reservation_it_cannot_read(self):
+        """--list has to survive the store it cannot read every file in."""
+        self.path_for(10).write_text("{ truncated")
+        listed = subprocess.run(
+            ["python3", str(SCRIPT), "--list", "--reservation-dir",
+             str(self.store)],
+            cwd=self.repo, capture_output=True, text=True)
+        self.assertEqual(listed.returncode, 0, listed.stderr)
+        self.assertIn("0010", listed.stdout)
 
 
 class CheckAgainstReservationsTests(unittest.TestCase):
@@ -410,6 +688,7 @@ class StaleReservationTests(unittest.TestCase):
 
     def write_reservation(self, repo, number, branch, age_days=0,
                           corrupt=False):
+        """A reservation file written by hand; corrupt=True writes a bare `{}`."""
         script = load_script()
         store = script.reservation_dir(repo)
         store.mkdir(parents=True, exist_ok=True)
@@ -437,7 +716,12 @@ class StaleReservationTests(unittest.TestCase):
             got = self.run_tool(seeded.repo, "--reserve", "--max-age-days", "14")
             self.assertEqual(got.stdout.strip(), "0010")
 
-    def test_a_corrupt_reservation_file_does_not_wedge_allocation(self):
+    def test_a_reservation_naming_no_holder_does_not_wedge_allocation(self):
+        # Readable, and it names nobody: a record whose branch is gone and
+        # whose timestamp is missing has been read, so it can be judged dead
+        # and swept. A record that cannot be *read* is a different case, and
+        # the only one that must never be swept (SpatialEngine-u2x.34,
+        # ReservationAtomicityTests).
         with SeededRepo() as seeded:
             self.write_reservation(seeded.repo, 10, "feature", corrupt=True)
             got = self.run_tool(seeded.repo, "--reserve")

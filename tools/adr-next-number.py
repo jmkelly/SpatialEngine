@@ -19,19 +19,25 @@ claimed — and hands back one past the highest claim.
 
 Reading a base is not the same as holding a number: six branches reading one
 base get the same answer, and the loser only finds out at merge time. So
-`--reserve` also *takes* the number, by creating `<git-common-dir>/
-adr-reservations/NNNN.json` with O_EXCL. The common dir is shared by every
-worktree of the repository, which is where the swarm's branches live, and the
-exclusive create is what makes the reservation mutual: exactly one branch can
-win a given number, and the losers move on to the next one.
+`--reserve` also *takes* the number, by linking `<git-common-dir>/
+adr-reservations/NNNN.json` into place from a temporary file written beside
+it. The common dir is shared by every worktree of the repository, which is
+where the swarm's branches live, and the link — which fails against a name
+that already exists — is what makes the reservation mutual: exactly one branch
+can win a given number, and the losers move on to the next one. The name only
+ever appears with its record already in it, because every branch reading the
+store has to be able to trust what it reads (SpatialEngine-u2x.34).
 
 Re-run `--check` immediately before writing the record: a base that has moved
 since the bead started will have taken the number this branch reserved, and
 `--check` turns that into a non-zero exit rather than a merge-time conflict.
 A reservation ends when the record lands (`--release`, once the branch is
 rebased onto a main that carries the record) or when it goes stale — a branch
-that no longer exists, a file that cannot be read, or one older than
-`--max-age-days`. A worker that dies mid-bead must not hold a number for ever.
+that no longer exists, or one reserved more than `--max-age-days` ago. A
+worker that dies mid-bead must not hold a number for ever. Stale means the
+record was read and the holder judged dead: a record this process cannot read
+is somebody's hold whose holder it cannot name, and unlinking it is how two
+branches end up holding the same number (SpatialEngine-u2x.34).
 
 Because the store is shared, it is also the one input here that changes while
 something is reading it: a live reservation makes `--check` refuse a number
@@ -69,6 +75,13 @@ DEFAULT_MAX_AGE_DAYS = 14
 # coordination state, and the functions that need it already take the
 # repository.
 _RESERVATION_DIR: Path | None = None
+
+# A claim is written here first and linked into place, so the name a reader
+# sees is only ever a whole record. It must not end in .json: `holders()` globs
+# the store for records, and a half-written one is exactly what it must not
+# read. A process killed between the write and the link leaves one of these
+# behind; it is inert, because nothing globs for it.
+CLAIM_SUFFIX = ".claim-tmp"
 
 
 def use_reservation_dir(path: Path | None) -> None:
@@ -177,24 +190,41 @@ def reservation_path(str_repo: Path, number: int) -> Path:
     return reservation_dir(str_repo) / f"{number:04d}.json"
 
 
-def read_reservation(path: Path) -> dict | None:
-    """The holder recorded in a reservation file, or None if it is unreadable.
+def read_reservation(path: Path) -> tuple[dict | None, bool]:
+    """The holder recorded in a reservation file, and whether it was readable.
 
-    An unreadable file is not a number nobody holds: it is a reservation whose
-    holder cannot be identified, which is exactly the case that must not wedge
-    every later allocation, so the caller treats it as stale.
+    A file that is absent, unreadable, or not a JSON object is not a number
+    nobody holds. It is a reservation this process cannot account for, and the
+    caller leaves it alone: the branch that wrote it may well be running.
     """
     try:
-        held = json.loads(path.read_text())
-    except (OSError, ValueError):
-        return None
-    return held if isinstance(held, dict) else None
+        body = path.read_text()
+    except FileNotFoundError:
+        return None, True
+    except OSError:
+        return None, False
+    try:
+        held = json.loads(body)
+    except ValueError:
+        return None, False
+    return (held, True) if isinstance(held, dict) else (None, False)
 
 
-def is_stale(held: dict | None, str_repo: Path, now: datetime,
+def unaccounted_for(number: int) -> dict:
+    """The hold a reservation file is when it cannot say who took it.
+
+    It keeps the shape every caller reads — `branch` and `bead` — so a branch
+    cannot mistake somebody else's unreadable hold for its own, and says so
+    explicitly in `--list` and in the sentence `--check` prints.
+    """
+    return {"number": number, "branch": None, "bead": None, "base": None,
+            "reserved_at": None, "unreadable": True}
+
+
+def is_stale(held: dict, str_repo: Path, now: datetime,
              max_age_days: int) -> bool:
-    if held is None:
-        return True
+    if held.get("unreadable"):
+        return False
     if not branch_exists(str_repo, str(held.get("branch") or "")):
         return True
     reserved_at = held.get("reserved_at")
@@ -210,15 +240,35 @@ def is_stale(held: dict | None, str_repo: Path, now: datetime,
 
 
 def holder(str_repo: Path, number: int, max_age_days: int) -> dict | None:
-    """The live reservation for a number, if any; stale ones are removed."""
+    """The live reservation for a number, if any; stale ones are removed.
+
+    The sweep removes a record it read and judged dead — a branch that is gone,
+    or a hold older than the age limit. It never removes one it could not
+    parse: that is an unknown holder rather than an expired one, and taking
+    the number from it hands the same number to two live branches
+    (SpatialEngine-u2x.34).
+    """
     path = reservation_path(str_repo, number)
-    if not path.exists():
+    held, readable = read_reservation(path)
+    if held is None:
+        # Absent, or present and unreadable: only the first is a free number.
+        # The re-check keeps a record that another reader removed in between
+        # from being reported as somebody's hold — there is nothing left to
+        # hold, so the next racer may take it.
+        if not readable and path.exists():
+            return unaccounted_for(number)
         return None
-    held = read_reservation(path)
     if is_stale(held, str_repo, datetime.now(timezone.utc), max_age_days):
         path.unlink(missing_ok=True)
         return None
     return held
+
+
+def describe_holder(held: dict) -> str:
+    """Who holds a reservation, for the sentences that report a taken number."""
+    if held.get("unreadable"):
+        return "a reservation this tool cannot read"
+    return f"branch {held.get('branch')!r}"
 
 
 def holders(str_repo: Path, max_age_days: int) -> dict[int, dict]:
@@ -237,23 +287,43 @@ def claim(str_repo: Path, number: int, branch: str, bead: str | None,
           base_ref: str) -> dict | None:
     """Take a number for `branch`, or None if another holder got there first.
 
-    O_EXCL is the whole mechanism: the kernel serialises the create, so two
-    branches racing for the same number produce one winner and one None, with
-    no lock file to keep alive and no window between the check and the write.
+    The name `NNNN.json` is the hold, and every other branch decides whether
+    the number is free by looking at it, so it has to appear with its body
+    already in it. The body is therefore written to a temporary file in the
+    same directory and linked into place: the link is what takes the number,
+    and it fails with EEXIST against a name that exists, so exactly one branch
+    wins it — the same mutual exclusion O_EXCL gave, with no window between
+    winning the name and filling it (SpatialEngine-u2x.34).
+
+    A rename would not do. `os.replace` overwrites a name that exists, so it
+    would clobber a live claim and both branches would hold the number.
     """
     store = reservation_dir(str_repo)
     store.mkdir(parents=True, exist_ok=True)
     record = {"number": number, "branch": branch, "bead": bead,
               "base": base_ref,
               "reserved_at": datetime.now(timezone.utc).isoformat()}
+    final = reservation_path(str_repo, number)
+    scratch = store / f"{number:04d}.{os.getpid()}{CLAIM_SUFFIX}"
+    scratch.unlink(missing_ok=True)
     try:
-        descriptor = os.open(str(reservation_path(str_repo, number)),
-                             os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-    except FileExistsError:
-        return None
-    with os.fdopen(descriptor, "w") as handle:
-        json.dump(record, handle, indent=2)
-        handle.write("\n")
+        with open(scratch, "w") as handle:
+            json.dump(record, handle, indent=2)
+            handle.write("\n")
+        try:
+            os.link(scratch, final)
+        except FileExistsError:
+            return None
+        except OSError as error:
+            # A store that cannot be linked into is a store this allocator
+            # cannot publish into safely, and the only honest answer is to say
+            # so: falling back to a plain create is the bug this replaced.
+            raise SystemExit(
+                f"cannot reserve ADR-{number:04d} in {store}: {error.strerror}"
+                f" ({error.errno}); the store has to be on a filesystem that "
+                f"supports hard links")
+    finally:
+        scratch.unlink(missing_ok=True)
     return record
 
 
@@ -292,8 +362,8 @@ def release_number(str_repo: Path, numbers: list[int] | None, branch: str,
             print(f"ADR-{number:04d} is not reserved.", file=sys.stderr)
             return 1
         if held.get("branch") != branch:
-            print(f"ADR-{number:04d} is reserved by {held.get('branch')!r}, "
-                  f"not {branch!r}.", file=sys.stderr)
+            print(f"ADR-{number:04d} is reserved by "
+                  f"{describe_holder(held)}, not {branch!r}.", file=sys.stderr)
             return 1
         reservation_path(str_repo, number).unlink(missing_ok=True)
         print(f"{number:04d}")
@@ -340,7 +410,8 @@ def main(argv=None) -> int:
     if args.list:
         branch = current_branch(str_repo)
         for number, held in sorted(holders(str_repo, args.max_age_days).items()):
-            print(f"{number:04d}\t{held.get('branch')}\t"
+            branch_name = held.get("branch") or "unreadable"
+            print(f"{number:04d}\t{branch_name}\t"
                   f"{held.get('bead') or '-'}\t{held.get('base') or '-'}\t"
                   f"{held.get('reserved_at')}"
                   f"{'  (this branch)' if held.get('branch') == branch else ''}")
@@ -379,11 +450,12 @@ def main(argv=None) -> int:
             continue
         held = holder(str_repo, number, args.max_age_days)
         if held is not None and held.get("branch") != current_branch(str_repo):
-            taken = held.get("branch")
-            for_held = f" for {held['bead']}" if held.get("bead") else ""
+            for_held = (f" for {held['bead']}"
+                        if held.get("bead") else "")
             spare = reserve_number(str_repo, claimed, base_ref, args.bead,
                                    args.max_age_days)
-            print(f"ADR-{requested} is reserved by branch {taken!r}{for_held}; "
+            print(f"ADR-{requested} is reserved by "
+                  f"{describe_holder(held)}{for_held}; "
                   f"take {spare:04d} instead.")
             free = 1
             continue
