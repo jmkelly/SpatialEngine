@@ -13,8 +13,7 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class FeatureQueryHandlers
 {
-    internal static async Task<IResult> FeatureServiceQuery(
-        QueryRequest request, IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms)
+    internal static async Task<IResult> FeatureServiceQuery(QueryRequest request, QueryServices services)
     {
         try
         {
@@ -22,7 +21,7 @@ internal static class FeatureQueryHandlers
             var plan = await ServiceQueryPlan.BuildAsync(request, parameters, request.CancellationToken);
             var store = request.Stores.Features(plan.Store);
             return await FeatureResponseWriter.ServiceQueryAsync(
-                plan.Targets, store, plan.Shared, operations, relations, transforms, request.CancellationToken);
+                plan.Targets, store, plan.Shared, services, request.CancellationToken);
         }
         catch (Exception exception)
         {

@@ -63,11 +63,9 @@ internal static class FeatureService
         DatasetDescription dataset,
         IFeatureStore store,
         EsriFeatureQuery query,
-        IGeometryOperations operations,
-        IGeometryRelations relations,
-        ICoordinateTransforms transforms,
+        QueryServices services,
         CancellationToken cancellationToken) =>
-        FeatureQueryEngine.QueryAsync(dataset, store, query, operations, relations, transforms, cancellationToken);
+        FeatureQueryEngine.QueryAsync(dataset, store, query, services, cancellationToken);
 
     /// <summary>
     /// Reads one feature by its Esri <c>OBJECTID</c> (the Feature resource,
@@ -80,10 +78,9 @@ internal static class FeatureService
         IFeatureStore store,
         long objectId,
         EsriFeatureQuery query,
-        ICoordinateTransforms transforms,
-        IGeometryOperations operations,
+        QueryServices services,
         CancellationToken cancellationToken) =>
-        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, transforms, operations, cancellationToken);
+        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, services, cancellationToken);
 
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
     public static Task<IResult> EditsAsync(FeatureEditEngine.EditInvocation invocation, CancellationToken cancellationToken) =>

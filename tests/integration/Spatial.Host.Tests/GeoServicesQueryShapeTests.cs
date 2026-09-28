@@ -15,6 +15,9 @@ public sealed class GeoServicesQueryShapeTests : IClassFixture<PostgisHostFactor
     private const string Cities = "/arcgis/rest/services/demo/FeatureServer/0";
     private const string Points = "/arcgis/rest/services/demo/FeatureServer/1";
 
+    /// <summary>Madrid's coordinates, the simple comma geometry syntax of spec §9.1.4.</summary>
+    private const string Madrid = "-3.7038,40.4168";
+
     private readonly HttpClient _client;
 
     public GeoServicesQueryShapeTests(PostgisHostFactory factory) => _client = factory.CreateClient();
@@ -190,8 +193,6 @@ public sealed class GeoServicesQueryShapeTests : IClassFixture<PostgisHostFactor
     [InlineData("gdbVersion=abc", "gdbVersion")]
     [InlineData("historicMoment=123", "historicMoment")]
     [InlineData("datumTransformation=1", "datumTransformation")]
-    [InlineData("returnCentroid=true", "returnCentroid")]
-    [InlineData("distance=100&units=esriSRUnit_Meter", "distance")]
     [InlineData("text=broken+pipe", "text")]
     public async Task Unhonoured_parameters_are_rejected_by_name(string parameters, string name)
     {
@@ -199,5 +200,59 @@ public sealed class GeoServicesQueryShapeTests : IClassFixture<PostgisHostFactor
 
         Assert.Equal(400, error.GetProperty("code").GetInt32());
         Assert.Contains($"'{name}'", error.GetProperty("message").GetString());
+    }
+
+    /// <summary>
+    /// SpatialEngine-u2x.16: the distance band is served, in the layer CRS's
+    /// own units (degrees here) or in a named angular unit. A tight band
+    /// narrows the eight demo cities; a wide one keeps them all.
+    /// </summary>
+    [Fact]
+    public async Task A_distance_band_narrows_and_widens_the_matched_set()
+    {
+        // Null Island: no demo city is within 5 degrees of it.
+        var none = await GetJsonAsync($"{Cities}/query?geometry=0,0&distance=5&f=json");
+        var madrid = await GetJsonAsync($"{Cities}/query?geometry={Madrid}&distance=1&f=json");
+        var all = await GetJsonAsync($"{Cities}/query?geometry={Madrid}&distance=180&f=json");
+
+        Assert.Equal(0, none.GetProperty("features").GetArrayLength());
+        Assert.True(madrid.GetProperty("features").GetArrayLength() < 8);
+        Assert.Equal(8, all.GetProperty("features").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task An_angular_units_code_converts_the_band()
+    {
+        var degrees = await GetJsonAsync($"{Cities}/query?geometry={Madrid}&distance=1&units=9102&f=json");
+        var radians = await GetJsonAsync($"{Cities}/query?geometry={Madrid}&distance=0.0174533&units=9101&f=json");
+
+        Assert.Equal(
+            degrees.GetProperty("features").GetArrayLength(),
+            radians.GetProperty("features").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task A_distance_without_a_geometry_is_rejected()
+    {
+        var error = await GetErrorAsync($"{Cities}/query?distance=100&f=json");
+
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains("'distance'", error.GetProperty("message").GetString());
+    }
+
+    /// <summary>
+    /// SpatialEngine-u2x.16: the centroid rides beside the geometry, so each
+    /// served feature carries the engine's centroid verb result.
+    /// </summary>
+    [Fact]
+    public async Task Return_centroid_writes_a_centroid_beside_every_geometry()
+    {
+        var result = await GetJsonAsync($"{Cities}/query?where=" + Uri.EscapeDataString("name = 'Madrid'") + "&returnCentroid=true&f=json");
+        var feature = result.GetProperty("features")[0];
+
+        Assert.Equal(
+            feature.GetProperty("geometry").GetProperty("x").GetDouble(),
+            feature.GetProperty("centroid").GetProperty("x").GetDouble(), 6);
+        Assert.Equal(4326, feature.GetProperty("centroid").GetProperty("spatialReference").GetProperty("wkid").GetInt32());
     }
 }

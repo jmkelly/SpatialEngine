@@ -25,9 +25,11 @@ internal static class FeatureWriteModelEndpoints
     {
         group.MapMethods("/{service}/FeatureServer/query", ["GET", "POST"], (
             string service, HttpContext context, IStoreRegistry stores,
-            IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            IGeometryOperations operations, IGeometryRelations relations, IGeometryMeasures measures,
+            ICrsDirectory catalogue, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
             FeatureQueryHandlers.FeatureServiceQuery(
-                new(catalog, registry, service, context, stores, cancellationToken), operations, relations, transforms));
+                new(catalog, registry, service, context, stores, cancellationToken),
+                new QueryServices(operations, relations, measures, catalogue, transforms)));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/generateRenderer", ["GET", "POST"], (
             string service, int layerId, HttpContext context, IStoreRegistry stores, CancellationToken cancellationToken) =>

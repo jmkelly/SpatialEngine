@@ -41,6 +41,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `IGeometryMeasures` | `Area`, `Length` | planar; 0 for shapes of the wrong dimension |
 | `IGeometryMeasures` | `Distance` | planar minimum distance |
 | `IGeometryMeasures` | `LabelPoint` | an interior point |
+| `IGeometryMeasures` | `Centroid` | centre of mass (area for polygons, length for lines); **not** the envelope middle; empty point for empty input (ADR-0085) |
 | `IGeometryProcessing` | `Union`, `Difference` | set operations |
 | `IGeometryProcessing` | `ConvexHull` | hull of all inputs |
 | `IGeometryProcessing` | `Repair` | topological MakeValid (NTS `GeometryFixer`); **not** Douglas-Peucker |

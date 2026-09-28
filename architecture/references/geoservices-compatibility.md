@@ -289,6 +289,19 @@ Ordered by dependency:
   (T-019). pygeoapi's connect gate still fails its
   `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
   facade serves Esri JSON only.
+- Serving status update (SpatialEngine-u2x.16, ADR-0085): the three
+  "no engine verb" query rejects are served. `distance`/`units` is a band
+  measured from the query geometry and applied as a buffer **in the layer
+  CRS** — the Geometry Service's transform-then-buffer rule, with the unit
+  code resolved from the same curated table by the same projected/geographic
+  rule — so it composes with every exact `spatialRel`; a `distance` without a
+  `geometry`, or a `units` without a `distance`, is a named failure.
+  `returnCentroid` is a new `IGeometryMeasures.Centroid` verb (area centroid
+  for polygons, not the envelope middle) written beside each feature's
+  geometry, and rejected where there is no feature to attach it to.
+  `returnZ`/`returnM` select the output ordinates and the writer now states
+  the `hasZ`/`hasM` flags the Esri coordinate arrays need. Layer metadata
+  still does not advertise `hasZ`/`hasM` (its own bead).
 - Serving status update: the layer resource advertises
   `supportsQuantization` (top level, where the ArcGIS REST JS gate reads it,
   and inside `advancedQueryCapabilities`) and
@@ -368,10 +381,14 @@ is rejected by name (never silently ignored) and named here with its reason:
   name with a typed `invalid.arguments` failure and does not advertise them.
   Half-parsing notations is explicitly out; a real codec needs its own
   package decision (new ADR) plus an engine verb.
-- `returnZ`/`returnM`: the engine geometry model carries Z/M but the Esri
-  codec serves 2D; a true value (requesting Z/M output) is explicitly
-  rejected rather than silently dropped, while false — the default every
-  client such as QGIS sends — is accepted.
+- `returnZ`/`returnM` (SpatialEngine-u2x.16, ADR-0085): **served**. Checked
+  rather than assumed: `Spatial.Core`'s canonical binary codec round-trips
+  `Xyzm` exactly, and the Esri codec reads and writes Z/M ordinates. The loss
+  was codec depth, not the engine — the writer emitted a three-ordinate Esri
+  coordinate array without the `hasZ`/`hasM` flag that says whether the third
+  number is a Z or an M (the codec's own reader uses it to decide), and a
+  true flag was rejected outright. Both are fixed: the writer states the
+  flags for whatever it writes, and the flags select the output ordinates.
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.
@@ -382,14 +399,23 @@ is rejected by name (never silently ignored) and named here with its reason:
   kind even when the allowance is wider than the feature, and is
   byte-identical to full precision at an allowance of zero. An unservable
   `mode` or `originPosition` is still rejected by name.
-- Full-text `text`, `sqlFormat`, `resultType`, `gdbVersion`,
-  `historicMoment`, `datumTransformation`, `returnCentroid`,
-  `distance`/`units`, `relationParam`, `returnTrueCurves`,
-  `multipatchOption` (T9/T-024): each is rejected by name — dropping any of
-  them would silently change the result set (`distance`/`units`, `text`,
-  `resultType`) or promise data the engine does not version
-  (`gdbVersion`, `historicMoment`). Raw SQL is never accepted: the facade
-  evaluates only its closed where-grammar.
+- `sqlFormat`, `resultType`, `datumTransformation`, `relationParam`,
+  `returnTrueCurves`, `multipatchOption` (T9/T-024): each is rejected by
+  name. Raw SQL is never accepted: the facade evaluates only its closed
+  where-grammar, so `sqlFormat` names the one thing the facade will never do;
+  `relationParam` would mean composing DE-9IM patterns out of client text.
+- `text` (T9): a **wider feature, not depth** — a full-text search needs an
+  inverted index and a tokenizer per field, which is a store and catalogue
+  decision (a new verb surface plus a per-store implementation), not a
+  projection one. Rejected by name; `where` with LIKE is the served
+  alternative.
+- `gdbVersion`, `historicMoment` (T9): **wider features, not depth** — time
+  travel needs versioned rows in every store, a versioned dataset contract
+  and a resolution rule for a deleted feature. Rejected by name rather than
+  approximated with a hidden timestamp column, which would answer a
+  different question.
+- `distance`/`units` and `returnCentroid`: were here as "the engine has no
+  verb" and are **served** (SpatialEngine-u2x.16, ADR-0085) — see §7.
 - Token 498/499 → `store.unavailable` (T12): by design — the engine taxonomy
   has no auth-error code and the provider takes a static token; the
   characterisation test pins the mapping.

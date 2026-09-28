@@ -32,7 +32,7 @@ internal static class FeatureSpatialMatcher
             }
 
             var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
-            if (Matches(new MatchCandidate(spec.Query, feature, objectId, spec.QueryGeometry, spec.Operations, spec.Relations, uniqueId), cancellationToken))
+            if (Matches(new MatchCandidate(spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Operations, spec.Services.Relations, uniqueId), cancellationToken))
             {
                 matches.Add(new MatchedFeature(objectId, feature));
             }
@@ -131,7 +131,7 @@ internal static class FeatureSpatialMatcher
             return shortcut;
         }
 
-        return MatchTopology(pair, spatialRel, operations, relations, cancellationToken);
+        return MatchTopology(pair, spatialRel, relations, cancellationToken);
     }
 
     /// <summary>Null/missing envelopes plus the two relations that need no topological verb.</summary>
@@ -153,9 +153,8 @@ internal static class FeatureSpatialMatcher
 
     /// <summary>The relations approximated with envelope-prefiltered topological verbs.</summary>
     private static bool MatchTopology(
-        GeometryPair pair, string spatialRel, IGeometryOperations operations, IGeometryRelations relations, CancellationToken cancellationToken)
-    {
-        return spatialRel switch
+        GeometryPair pair, string spatialRel, IGeometryRelations relations, CancellationToken cancellationToken) =>
+        spatialRel switch
         {
             var rel when string.Equals(rel, EsriFeatureQuery.Contains, StringComparison.Ordinal) =>
                 SpatialRelationPredicates.Contains(pair, relations, cancellationToken),
@@ -169,8 +168,6 @@ internal static class FeatureSpatialMatcher
                 SpatialRelationPredicates.Crosses(pair, relations, cancellationToken),
             _ => throw GeoServicesErrors.Invalid($"spatialRel '{spatialRel}' is not supported."),
         };
-    }
-
 
     /// <summary>
     /// One feature-match invocation: which layer, store and parsed query to
@@ -185,16 +182,18 @@ internal static class FeatureSpatialMatcher
         IFeatureStore Store,
         EsriFeatureQuery Query,
         IGeometry? QueryGeometry,
-        IGeometryOperations Operations,
-        IGeometryRelations Relations,
+        QueryServices Services,
         EsriObjectIdScheme Scheme);
 
     /// <summary>
     /// One per-feature match candidate: the parsed query, the feature and
     /// its resolved <c>OBJECTID</c>, the pre-transformed query geometry and
     /// the geometry verbs a spatial predicate needs. Shared by the Feature
-    /// Service match loop and the Image Service catalog query, so both agree
-    /// on what "matches" means.
+    /// Service match loop, the Image Service catalog query and the
+    /// relationship traversal, so all three agree on what "matches" means.
+    /// A spatial predicate needs the operation and relation verbs only, so
+    /// the traversal resolves the two it holds rather than the whole
+    /// <see cref="QueryServices"/> bundle the query path carries.
     /// </summary>
     internal sealed record MatchCandidate(
         EsriFeatureQuery Query,

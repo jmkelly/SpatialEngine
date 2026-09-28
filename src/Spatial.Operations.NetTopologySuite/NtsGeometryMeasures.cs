@@ -55,6 +55,20 @@ public sealed class NtsGeometryMeasures : IGeometryMeasures
         }
     }
 
+    public IGeometry Centroid(IGeometry geometry, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            return GeometryAdapter.ToCore(GeometryAdapter.ToNts(geometry).Centroid, geometry.CoordinateReference);
+        }
+        catch (Exception exception)
+        {
+            throw NtsOperationErrors.Map(exception, "centroid");
+        }
+    }
+
     private static double Run(IGeometry geometry, string operation, Func<NtsGeometry, double> compute)
     {
         try

@@ -8,14 +8,21 @@ namespace Spatial.Esri.Codec;
 /// How to render one feature as an Esri JSON object (query options).
 /// <c>ReturnEnvelope</c> (spec §9.1.4, 11.4+) writes each geometry as its
 /// <c>{xmin..ymax}</c> envelope instead of the full shape; it only applies
-/// when <c>ReturnGeometry</c> is true.
+/// when <c>ReturnGeometry</c> is true. <c>ReturnZ</c>/<c>ReturnM</c> select
+/// which ordinates the geometry write carries, and <c>Centroid</c> is the
+/// caller's centroid verb (<c>returnCentroid</c>, spec §9.1.4): the adapter
+/// passes a delegate rather than a measurement result so no implementation
+/// type crosses the codec.
 /// </summary>
 public sealed record EsriFeatureWriteOptions(
     string ObjectIdField,
     long ObjectId,
     IReadOnlyList<string>? OutFields = null,
     bool ReturnGeometry = true,
-    bool ReturnEnvelope = false);
+    bool ReturnEnvelope = false,
+    bool ReturnZ = true,
+    bool ReturnM = true,
+    Func<IGeometry, IGeometry?>? Centroid = null);
 
 /// <summary>
 /// The Esri feature JSON codec (spec §9.1.4): a feature is
@@ -43,8 +50,13 @@ public static class EsriFeatureCodec
             }
             else
             {
-                WriteGeometry(writer, feature);
+                WriteGeometry(writer, feature, options);
             }
+        }
+
+        if (options.Centroid is { } centroid)
+        {
+            WriteCentroid(writer, feature, centroid);
         }
 
         writer.WriteEndObject();
@@ -127,7 +139,7 @@ public static class EsriFeatureCodec
         writer.WriteEndObject();
     }
 
-    private static void WriteGeometry(Utf8JsonWriter writer, IFeature feature)
+    private static void WriteGeometry(Utf8JsonWriter writer, IFeature feature, EsriFeatureWriteOptions options)
     {
         var geometry = FindGeometry(feature);
         if (geometry is null)
@@ -137,7 +149,27 @@ public static class EsriFeatureCodec
         }
 
         writer.WritePropertyName("geometry");
-        EsriGeometryCodec.Write(writer, geometry);
+        EsriGeometryCodec.Write(writer, geometry, new EsriOrdinateOutput(options.ReturnZ, options.ReturnM));
+    }
+
+    /// <summary>
+    /// Writes the feature's <c>centroid</c> beside its geometry (spec §9.1.4
+    /// <c>returnCentroid</c>). A feature with no geometry — or one the
+    /// caller's centroid verb cannot reduce — writes
+    /// <c>"centroid": null</c> rather than omitting the key, so a client
+    /// reading the property always finds it.
+    /// </summary>
+    private static void WriteCentroid(Utf8JsonWriter writer, IFeature feature, Func<IGeometry, IGeometry?> centroid)
+    {
+        var geometry = FindGeometry(feature);
+        if (geometry is null || centroid(geometry) is not { } point)
+        {
+            writer.WriteNull("centroid");
+            return;
+        }
+
+        writer.WritePropertyName("centroid");
+        EsriGeometryCodec.Write(writer, point);
     }
 
     /// <summary>

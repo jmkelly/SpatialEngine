@@ -50,9 +50,11 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | Percentile statistic type + `supportsCountDistinct/supportsPercentileStatistics/supportsExceedsLimitStatistics/supportsDefaultSR/supportsFullTextSearch` flags | served | **Have** | `percentile_cont`/`percentile_disc` + COUNT DISTINCT served; flags advertised with proved values, `supportsFullTextSearch` false with an empty searchable list (ADR-0057) |
 | 64-bit objectIds / high-precision dates / time-only/date-only/timestamp-offset/big-integer field types (11.2–11.3) | — | **Partial** | S2 examples 16–17; our `AttributeKind` has no time-only/date-only/bigint faces |
 | `datumTransformation`, `defaultSR`-style WKT2 spatial references | honestly rejected | **Partial** | rejected by name; WKT2 SR input not accepted (`EsriValueParser.ParseSpatialReference`) |
-| `distance`+`units` (query-with-distance), `returnCentroid`, `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.Parse`); pinned by §7.1 non-goals |
+| `distance`+`units` (query-with-distance) | served | **Have** | buffered band in the layer CRS, shared curated unit table (ADR-0085) |
+| `returnCentroid` | served | **Have** | `IGeometryMeasures.Centroid` written beside the geometry (ADR-0085) |
+| `returnZ`/`returnM` | served | **Have** | ordinate selection + the `hasZ`/`hasM` flags the Esri arrays need (ADR-0085) |
 | `quantizationParameters` | served | **Have** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0079); an unservable `mode`/`originPosition` is rejected by name; the layer advertises `supportsQuantization` so the REST JS gate opens (ADR-0081) |
-| `returnZ`/`returnM` | honestly rejected | **Non-goal** | codec serves 2D explicitly |
+| `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.cs:RejectUnsupported`); pinned by §7.1 non-goals |
 
 ## 2. Response-shape deltas vs ground truth (same-data proof)
 

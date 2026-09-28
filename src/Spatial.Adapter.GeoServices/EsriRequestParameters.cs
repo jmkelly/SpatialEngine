@@ -67,7 +67,7 @@ internal sealed class EsriRequestParameters
     public bool GetBool(string name, bool fallback)
     {
         var value = Get(name);
-        return string.IsNullOrWhiteSpace(value) ? fallback : ParseBool(value);
+        return string.IsNullOrWhiteSpace(value) ? fallback : ParseBool(name, value);
     }
 
     /// <summary>A required non-empty parameter, or a typed invalid-argument failure.</summary>
@@ -76,11 +76,13 @@ internal sealed class EsriRequestParameters
             ? throw GeoServicesErrors.Invalid($"The '{name}' parameter is required.")
             : Get(name)!;
 
-    private static bool ParseBool(string value) => value.Trim().ToLowerInvariant() switch
+    // The parameter is named in the failure: a rejected boolean must say
+    // which flag was wrong, not just that something was.
+    private static bool ParseBool(string name, string value) => value.Trim().ToLowerInvariant() switch
     {
         "true" or "1" => true,
         "false" or "0" => false,
-        _ => throw GeoServicesErrors.Invalid($"Expected a boolean value, got '{value}'."),
+        _ => throw GeoServicesErrors.Invalid($"The '{name}' parameter must be a boolean ('true'/'false'), got '{value}'."),
     };
 
     private static async Task ReadBodyAsync(HttpContext context, Dictionary<string, string> values, CancellationToken cancellationToken)
