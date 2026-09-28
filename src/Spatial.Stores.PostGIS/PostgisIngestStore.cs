@@ -155,7 +155,7 @@ public sealed class PostgisIngestStore : IDatasetIngest, IDatasetIngestStream
     }
 
     /// <summary>
-    /// Creates the dataset's indexes (ADR-0081) inside the load's own
+    /// Creates the dataset's indexes (ADR-0092) inside the load's own
     /// transaction, unless index creation is switched off. An index that cannot
     /// be created rolls the whole ingest back: the dataset does not exist
     /// rather than exists unindexed.

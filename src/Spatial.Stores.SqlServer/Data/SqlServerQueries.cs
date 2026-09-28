@@ -162,7 +162,7 @@ internal static class SqlServerQueries
     }
 
     /// <summary>
-    /// The spatial index of a dataset's primary geometry column (ADR-0081):
+    /// The spatial index of a dataset's primary geometry column (ADR-0092):
     /// SQL Server grids a <c>geometry</c> column with
     /// <c>GEOMETRY_AUTO_GRID</c>, which is what the bounding-box
     /// <c>STIntersects</c> pushdown predicate can seek. The
@@ -178,7 +178,7 @@ internal static class SqlServerQueries
         + "WITH (BOUNDING_BOX = (-180, -90, 180, 90), CELLS_PER_OBJECT = 16)";
 
     /// <summary>
-    /// The btree index of one attribute column (ADR-0081), which is what the
+    /// The btree index of one attribute column (ADR-0092), which is what the
     /// equality and range comparisons of a pushed-down attribute filter can
     /// seek. The dataset identifier and the column are validated identifiers.
     /// </summary>

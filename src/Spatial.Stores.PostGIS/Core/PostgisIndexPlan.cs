@@ -4,7 +4,7 @@ using Spatial.Stores.PostGIS.Data;
 namespace Spatial.Stores.PostGIS.Core;
 
 /// <summary>
-/// The indexes a created dataset carries (ADR-0081): a GiST index on the
+/// The indexes a created dataset carries (ADR-0092): a GiST index on the
 /// dataset's primary geometry column — the one the bounding-box pushdown
 /// filters (<see cref="PostgisFilterSql.AppendBoundingBox"/>) — and a btree
 /// index on every attribute column, because a pushed-down attribute filter may

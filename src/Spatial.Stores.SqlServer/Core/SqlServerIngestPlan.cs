@@ -32,13 +32,13 @@ internal sealed record SqlServerIngestPlan(
     /// The columns the create statement already carries a primary key on —
     /// none for <see cref="IngestIdentity.None"/>, the identity column for
     /// <see cref="IngestIdentity.Auto"/> and <see cref="IngestIdentity.Source"/>.
-    /// A column that already has one is not indexed a second time (ADR-0081).
+    /// A column that already has one is not indexed a second time (ADR-0092).
     /// </summary>
     public IReadOnlyList<string> KeyColumns =>
         Identity is IngestIdentity.None ? [] : [IdentityColumn!];
 
     /// <summary>
-    /// The index statements this dataset is created with (ADR-0081): the spatial
+    /// The index statements this dataset is created with (ADR-0092): the spatial
     /// index on its primary geometry column and a btree on every attribute
     /// column a pushed-down filter may name. The indexes exist from the first
     /// row, so the loaded dataset is queryable the moment the load commits.

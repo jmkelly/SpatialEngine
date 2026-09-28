@@ -25,7 +25,7 @@ internal sealed class SqlServerStorage : IAsyncDisposable
         _createIndexes = createIndexes;
     }
 
-    /// <summary>Whether a dataset created through this storage gets its indexes (ADR-0081).</summary>
+    /// <summary>Whether a dataset created through this storage gets its indexes (ADR-0092).</summary>
     public bool CreateIndexes => _createIndexes;
 
     public SqlServerCatalogue Catalogue => new(this);

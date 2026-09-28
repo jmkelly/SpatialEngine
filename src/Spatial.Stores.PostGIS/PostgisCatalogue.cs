@@ -41,7 +41,7 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
 
     /// <summary>
     /// Creates the dataset table for a sample batch — with the spatial and
-    /// attribute indexes a pushed-down query needs (ADR-0081) — and returns
+    /// attribute indexes a pushed-down query needs (ADR-0092) — and returns
     /// its qualified name. The sample is rejected here when its schema names an
     /// unsupported field or leaves the dataset with no geometry. The table and
     /// its indexes are one transaction: a dataset whose indexes cannot be
@@ -63,7 +63,7 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
         return name.Qualified;
     }
 
-    /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0081).</summary>
+    /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0092).</summary>
     private async Task CreateIndexesAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,

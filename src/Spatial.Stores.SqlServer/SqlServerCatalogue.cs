@@ -51,7 +51,7 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
 
     /// <summary>
     /// Creates the dataset table for a sample batch — with the spatial and
-    /// attribute indexes a pushed-down query needs (ADR-0081) — records its
+    /// attribute indexes a pushed-down query needs (ADR-0092) — records its
     /// SRID, and returns its qualified name. The sample is rejected here when
     /// its schema names an unsupported field or carries a geometry SQL Server
     /// cannot store. The table, its indexes and its CRS are one transaction: a
@@ -74,7 +74,7 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
         return name.Qualified;
     }
 
-    /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0081).</summary>
+    /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0092).</summary>
     private async Task CreateIndexesAsync(
         SqlConnection connection,
         SqlTransaction transaction,

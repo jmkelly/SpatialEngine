@@ -4,8 +4,7 @@ using Spatial.Stores.SqlServer.Data;
 namespace Spatial.Stores.SqlServer.Core;
 
 /// <summary>
-/// The indexes a created dataset carries (ADR-0081 as the SQL Server provider
-/// follows it): a spatial index on the dataset's primary geometry column — the
+/// The indexes a created dataset carries (ADR-0092): a spatial index on the dataset's primary geometry column — the
 /// one the bounding-box pushdown filters
 /// (<see cref="SqlServerFilterSql.SqlBuilder.AppendBoundingBox"/>) — and a
 /// btree index on every attribute column a pushed-down filter may name,
@@ -14,7 +13,7 @@ namespace Spatial.Stores.SqlServer.Core;
 /// without benefit.
 /// <para>
 /// Two SQL Server facts shape what the plan can ask for, both verified against
-/// the container the tests run (ADR-0081):
+/// the container the tests run (ADR-0092):
 /// </para>
 /// <list type="bullet">
 /// <item>a spatial index requires the table to have a **clustered primary

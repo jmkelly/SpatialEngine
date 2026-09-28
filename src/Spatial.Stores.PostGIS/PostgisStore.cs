@@ -230,7 +230,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
     internal Task<NpgsqlConnection> OpenIngestConnectionAsync(CancellationToken cancellationToken) =>
         _storage.OpenConnectionAsync(cancellationToken);
 
-    /// <summary>Whether a dataset this store creates carries its indexes (ADR-0081).</summary>
+    /// <summary>Whether a dataset this store creates carries its indexes (ADR-0092).</summary>
     internal bool CreateIndexes => _storage.CreateIndexes;
 
     /// <summary>Opens the connection a store-side edit runs on: the transaction handle's connection, or a fresh autocommit one (ADR-0037).</summary>

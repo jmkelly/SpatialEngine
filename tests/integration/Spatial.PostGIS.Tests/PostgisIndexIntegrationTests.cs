@@ -11,7 +11,7 @@ using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 namespace Spatial.PostGIS.Tests;
 
 /// <summary>
-/// The indexes a created dataset carries (ADR-0081): the spatial index on the
+/// The indexes a created dataset carries (ADR-0092): the spatial index on the
 /// geometry column the bounding-box pushdown filters, and the btree indexes
 /// on the attribute columns a pushed-down filter may name. Without them the
 /// pushdown query is a sequential scan, which is what the measurement in
@@ -53,7 +53,7 @@ public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisContaine
     }
 
     [SkippableFact]
-    public async Task The_pushed_down_query_is_an_index_scan_and_not_a_sequential_scan()
+    public async Task The_bounding_box_pushdown_seeks_the_spatial_index_and_does_not_sequentially_scan()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
@@ -63,13 +63,37 @@ public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisContaine
             ("population", AttributeKind.Int64),
             ("geom", AttributeKind.Geometry));
         await context.Store.CreateAsync(dataset, new FeatureBatch(schema, []), 4326);
-        await SeedAsync(context, dataset, 5000);
+        await SeedAsync(context, dataset, 20000);
 
-        var plan = await ExplainPushdownAsync(context, dataset, new CoreBoundingBox(0, 0, 1, 1), "population > 20000");
+        var plan = await ExplainPushdownAsync(
+            context, dataset, new CoreBoundingBox(0, 0, 1, 1), "population > 20000");
 
+        Assert.Contains($"ix_{Parse(dataset).Table}_geom", plan, StringComparison.Ordinal);
         Assert.DoesNotContain("Seq Scan", plan, StringComparison.Ordinal);
-        Assert.Contains("Index", plan, StringComparison.Ordinal);
-        Assert.Contains("ix_", plan, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The other half of the plan: a filter that is selective on its own has to
+    /// reach the attribute index too, not just the spatial one.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_selective_attribute_filter_seeks_the_attribute_index()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("indexed_attrplan");
+        var schema = Schema(
+            ("name", AttributeKind.String),
+            ("population", AttributeKind.Int64),
+            ("geom", AttributeKind.Geometry));
+        await context.Store.CreateAsync(dataset, new FeatureBatch(schema, []), 4326);
+        await SeedAsync(context, dataset, 20000);
+
+        var plan = await ExplainPushdownAsync(
+            context, dataset, new CoreBoundingBox(-180, -90, 180, 90), "population > 190000");
+
+        Assert.Contains($"ix_{Parse(dataset).Table}_population", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Seq Scan", plan, StringComparison.Ordinal);
     }
 
     [SkippableFact]
@@ -108,9 +132,11 @@ public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisContaine
         await context.Ingest.IngestAsync(
             new IngestRequest(dataset, 4326, IngestIdentity.Source, "code"), [page]);
 
-        Assert.DoesNotContain(
-            await IndexDefinitionsAsync(context, dataset),
-            index => index.Contains("(\"code\")", StringComparison.Ordinal));
+        // The primary key already indexes the column: what must not exist is a
+        // *second* index on it, under the name this provider would give one.
+        var definitions = await IndexDefinitionsAsync(context, dataset);
+        Assert.Contains(definitions, index => index.Contains($" {Parse(dataset).Table}_pkey ", StringComparison.Ordinal));
+        Assert.DoesNotContain(definitions, index => index.Contains($"ix_{Parse(dataset).Table}_code ", StringComparison.Ordinal));
     }
 
     [SkippableFact]

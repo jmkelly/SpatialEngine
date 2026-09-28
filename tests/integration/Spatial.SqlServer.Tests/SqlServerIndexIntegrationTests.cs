@@ -11,8 +11,7 @@ using CoreBoundingBox = Spatial.Contracts.BoundingBox;
 namespace Spatial.SqlServer.Tests;
 
 /// <summary>
-/// The indexes a created dataset carries (ADR-0081 as the SQL Server provider
-/// follows it): the spatial index on the geometry column the bounding-box
+/// The indexes a created dataset carries (ADR-0092): the spatial index on the geometry column the bounding-box
 /// pushdown filters, and the btree indexes on the attribute columns a
 /// pushed-down filter may name. Without them the pushdown query scans the
 /// table. The plan assertion here runs the statement the store itself builds
@@ -45,7 +44,7 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
 
         var names = await IndexNamesAsync(context, dataset);
         Assert.True(await HasIndexAsync(context, dataset, "population", spatial: false), string.Join(", ", names));
-        // The two limits SQL Server puts on this plan (ADR-0081), both verified
+        // The two limits SQL Server puts on this plan (ADR-0092), both verified
         // against the container: a text column is created as nvarchar(max) and
         // cannot be an index key, and a table with no clustered primary key
         // cannot be gridded at all.
@@ -87,7 +86,7 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
     }
 
     [SkippableFact]
-    public async Task The_pushed_down_query_seeks_the_indexes_and_does_not_scan_the_table()
+    public async Task The_bounding_box_pushdown_seeks_the_spatial_index_and_does_not_scan_the_table()
     {
         Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
@@ -97,13 +96,37 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
         await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), [page]);
         await SeedAsync(context, dataset, 20000);
 
-        var plan = await ExplainPushdownAsync(context, dataset, new CoreBoundingBox(0, 0, 1, 1), "population > 100000");
-        Assert.NotEqual(string.Empty, plan);
+        var plan = Plan(await ExplainPushdownAsync(context, dataset, new CoreBoundingBox(0, 0, 1, 1), "population > 100000"));
 
-        Assert.Contains("ix_", plan, StringComparison.Ordinal);
+        Assert.Contains($"ix_{Parse(dataset).Table}_geom", plan, StringComparison.Ordinal);
+        Assert.Contains("Seek", plan, StringComparison.Ordinal);
         Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);
         Assert.DoesNotContain("Clustered Index Scan", plan, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The other half of the plan: a filter that is selective on its own has to
+    /// reach the attribute index too, not just the spatial one.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_selective_attribute_filter_seeks_the_attribute_index()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("indexed_attrplan");
+        var schema = Schema(("population", AttributeKind.Int64), ("geom", AttributeKind.Geometry));
+        var page = new FeatureBatch(schema, [new Feature(new FeatureId("1"), schema, [AttributeValue.FromInt64(7), Point(1, 2)])]);
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), [page]);
+        await SeedAsync(context, dataset, 20000);
+
+        // One row in twenty thousand: a seek and a key lookup beat reading the
+        // clustered index, so the plan has to name the attribute index.
+        var plan = Plan(await ExplainPushdownAsync(context, dataset, null, "population > 199990"));
+
+        Assert.Contains($"ix_{Parse(dataset).Table}_population", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Clustered Index Scan", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);    }
 
     /// <summary>
     /// An index the server refuses must fail the whole create rather than
@@ -256,11 +279,19 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
     /// <summary>
     /// The plan of the statement the store's own pushdown builds for a bounding
     /// box and a filter, with the store's bound values, as
-    /// <c>SET SHOWPLAN_ALL ON</c> reports it without executing the query. The
-    /// plan arrives as its own result set, so every set is read.
+    /// <c>SET STATISTICS XML ON</c> reports it alongside the statement's own
+    /// result set. Every set is read, because the plan arrives as its own.
+    /// <para>
+    /// The plan is read this way rather than through <c>SHOWPLAN</c>, which
+    /// returns nothing for a parameterised statement: the store's query is sent
+    /// as <c>sp_executesql</c>, and the server compiles an RPC without a plan
+    /// to show. The plan cache is not a fallback either — its DMVs hide the
+    /// <c>text</c> column from a login without <c>VIEW SERVER STATE</c>, which
+    /// is the container the suite runs as.
+    /// </para>
     /// </summary>
     private static async Task<string> ExplainPushdownAsync(
-        SqlServerTestContext context, string dataset, CoreBoundingBox bbox, string filter)
+        SqlServerTestContext context, string dataset, CoreBoundingBox? bbox, string filter)
     {
         var description = await context.Store.DescribeAsync(dataset);
         var parameters = new List<object?>();
@@ -270,10 +301,10 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
         await using var connection = await OpenAsync(context);
         try
         {
-            await using (var showplan = connection.CreateCommand())
+            await using (var statistics = connection.CreateCommand())
             {
-                showplan.CommandText = "SET SHOWPLAN_ALL ON";
-                await showplan.ExecuteNonQueryAsync();
+                statistics.CommandText = "SET STATISTICS XML ON";
+                await statistics.ExecuteNonQueryAsync();
             }
 
             await using (var command = Build(connection, statement, [.. parameters]))
@@ -283,7 +314,21 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
                 {
                     while (await reader.ReadAsync())
                     {
-                        lines.Add(reader.GetString(0).TrimEnd());
+                        for (var i = 0; i < reader.FieldCount; i++)
+                        {
+                            // The statement's own rows are features; the plan
+                            // arrives as a row of its own, in its own set.
+                            if (await reader.IsDBNullAsync(i))
+                            {
+                                continue;
+                            }
+
+                            var value = reader.GetValue(i).ToString() ?? string.Empty;
+                            if (value.StartsWith("<ShowPlanXML", StringComparison.Ordinal))
+                            {
+                                lines.Add(value);
+                            }
+                        }
                     }
                 }
                 while (await reader.NextResultAsync());
@@ -292,12 +337,25 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
         finally
         {
             await using var reset = connection.CreateCommand();
-            reset.CommandText = "SET SHOWPLAN_ALL OFF";
+            reset.CommandText = "SET STATISTICS XML OFF";
             await reset.ExecuteNonQueryAsync();
         }
 
         return string.Join(Environment.NewLine, lines);
     }
+
+    /// <summary>
+    /// A showplan reduced to the tokens an assertion reads: the physical
+    /// operators it ran and the indexes it named. A failure then reports the
+    /// plan the server actually chose instead of a wall of XML.
+    /// </summary>
+    private static string Plan(string showPlan) =>
+        string.Join(
+            ", ",
+            System.Text.RegularExpressions.Regex
+                .Matches(showPlan, "PhysicalOp=\"[^\"]*\"|Index=\"[^\"]*\"")
+                .Select(match => match.Value)
+                .Select(value => value.StartsWith("Index", StringComparison.Ordinal) ? $"index {value[7..^2]}" : value));
 
     /// <summary>Fills a created dataset with a spread of points and refreshes the planner statistics.</summary>
     private static async Task SeedAsync(SqlServerTestContext context, string dataset, int rows)

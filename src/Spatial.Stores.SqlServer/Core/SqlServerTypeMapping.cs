@@ -59,7 +59,7 @@ internal static class SqlServerTypeMapping
     /// <summary>
     /// The spatial-index grid a column of the given T-SQL type takes: a
     /// <c>geometry</c> column is gridded with <c>GEOMETRY_AUTO_GRID</c> and a
-    /// <c>geography</c> column with <c>GEOGRAPHY_AUTO_GRID</c> (ADR-0081).
+    /// <c>geography</c> column with <c>GEOGRAPHY_AUTO_GRID</c> (ADR-0092).
     /// The <c>AUTO_GRID</c> forms let the server derive the grid's bounding box
     /// from the data, so the store never has to know a dataset's extent to
     /// create its spatial index — including when the table is still empty.
@@ -71,7 +71,7 @@ internal static class SqlServerTypeMapping
 
     /// <summary>
     /// Whether a column of this kind can be a key column in a SQL Server index
-    /// (ADR-0081). Every string column is created as <c>nvarchar(max)</c>,
+    /// (ADR-0092). Every string column is created as <c>nvarchar(max)</c>,
     /// which SQL Server refuses as an index key ("a type that is invalid for
     /// use as a key column in an index"), so a pushed-down filter on a text
     /// column cannot be served from an index on this provider. The store

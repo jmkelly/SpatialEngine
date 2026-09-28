@@ -15,7 +15,7 @@ public sealed class SqlServerOptions
 
     /// <summary>
     /// Whether a created dataset gets its spatial and attribute indexes
-    /// (ADR-0081). On by default, because a dataset with no indexes makes every
+    /// (ADR-0092). On by default, because a dataset with no indexes makes every
     /// pushed-down query a scan; turn it off only for a bulk load that would
     /// rather build the indexes afterwards, and accept that the dataset is
     /// unindexed until it does.

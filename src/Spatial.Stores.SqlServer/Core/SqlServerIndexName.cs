@@ -4,7 +4,7 @@ using System.Text;
 namespace Spatial.Stores.SqlServer.Core;
 
 /// <summary>
-/// The name of an index this provider creates (ADR-0081). It is derived from
+/// The name of an index this provider creates (ADR-0092). It is derived from
 /// the dataset table and the column — never from client text — so a created
 /// dataset's indexes are predictable, and it is shortened deterministically
 /// when the pair would exceed SQL Server's 128-character identifier limit: the

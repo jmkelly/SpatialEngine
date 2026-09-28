@@ -210,7 +210,7 @@ internal static class PostgisQueries
     }
 
     /// <summary>
-    /// The spatial index of a dataset's primary geometry column (ADR-0081):
+    /// The spatial index of a dataset's primary geometry column (ADR-0092):
     /// PostGIS indexes geometry with GiST, which is what the bounding-box
     /// <c>&amp;&amp;</c> pushdown predicate can seek. The dataset identifier and
     /// the column are validated identifiers, never client text.
@@ -219,7 +219,7 @@ internal static class PostgisQueries
         $"CREATE INDEX \"{PostgisIndexName.For(dataset.Table, column)}\" ON {dataset.QuoteQualified()} USING GIST (\"{column}\")";
 
     /// <summary>
-    /// The btree index of one attribute column (ADR-0081), which is what the
+    /// The btree index of one attribute column (ADR-0092), which is what the
     /// equality and range comparisons of a pushed-down attribute filter can
     /// seek. The dataset identifier and the column are validated identifiers.
     /// </summary>
