@@ -31,7 +31,7 @@ internal static class StoreServices
     }
 
     /// <summary>
-    /// The byte staging resumable uploads land in (ADR-0089). It is bounded by
+    /// The byte staging resumable uploads land in (ADR-0090). It is bounded by
     /// the ingest byte cap, because a staged upload is the same document as a
     /// single-request upload, arriving in pieces.
     /// </summary>

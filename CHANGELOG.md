@@ -101,7 +101,7 @@ this file together, then tag the release (`RELEASING.md`).
   interception lives in the reader, and the graph builds no coordinate systems
   at all. The ADR also settles ADR numbering: the next free number on `main`,
   with `AdrNumberingTests` as the enforcement.
-- **A large upload can be staged, resumed and then loaded** (ADR-0089,
+- **A large upload can be staged, resumed and then loaded** (ADR-0090,
   SpatialEngine-u2x.27): an upload that failed at 90% no longer starts over.
   `POST /api/uploads` opens (or re-opens) a staged upload, `PUT
   /api/uploads/{id}?offset=` appends a chunk whose first byte belongs at that
@@ -131,7 +131,7 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
-- **A resumed upload is no longer refused for "the chunk does not fit"** (ADR-0089
+- **A resumed upload is no longer refused for "the chunk does not fit"** (ADR-0090
   §3, SpatialEngine-u2x.27): the staging bounded an incoming chunk against the
   bytes already staged rather than against the offset the chunk was addressed
   at. A client resuming from the offset the host itself had reported — after a

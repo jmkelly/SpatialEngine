@@ -16,7 +16,7 @@ namespace Spatial.Host.Api;
 /// store's <see cref="IDatasetIngest"/>. A <c>publish</c> query parameter
 /// registers the uploaded dataset as a one-layer Feature map in the same call
 /// and reports the partial state safely retryably. An <c>upload</c> query
-/// parameter names a staged upload to load instead (ADR-0089), which is how a
+/// parameter names a staged upload to load instead (ADR-0090), which is how a
 /// document too large for one request is ingested without ever being re-sent.
 ///
 /// <para>The pre-ADR-0053 <c>/api/publications</c> aliases were removed in
@@ -217,7 +217,7 @@ internal static class AdminEndpoints
     }
 
     /// <summary>
-    /// Ingests a staged upload (ADR-0089). Only a <em>complete</em> staged
+    /// Ingests a staged upload (ADR-0090). Only a <em>complete</em> staged
     /// upload is loaded: a partial one is refused by name and by offset, so a
     /// client that believes it has finished cannot load half a document. The
     /// staged bytes are decoded and loaded exactly as a body would be, in one

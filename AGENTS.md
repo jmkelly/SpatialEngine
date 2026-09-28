@@ -49,7 +49,7 @@ Records: a bead that will write a decision record **reserves** its number with
 branch, and re-runs `--check NNNN` immediately before writing — the number is
 read from `origin/main` and the reservation is held in the repository's shared
 git dir, so a parallel branch that takes the same number is turned away at
-allocation instead of at merge (ADR-0089). `--list` shows who holds what,
+allocation instead of at merge (ADR-0090). `--list` shows who holds what,
 `--release NNNN` gives a number back after a renumber.
 
 Areas are labels and route through `architecture/distilled/README.md`. The

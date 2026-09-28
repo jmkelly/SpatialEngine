@@ -8,7 +8,7 @@ namespace Spatial.Host.Api;
 
 /// <summary>
 /// The file-backed <see cref="IUploadStaging"/> the host serves resumable
-/// uploads from (ADR-0089). One directory, one <c>.part</c> file of staged
+/// uploads from (ADR-0090). One directory, one <c>.part</c> file of staged
 /// bytes and one <c>.json</c> of state per upload.
 /// <para>
 /// The length of the <c>.part</c> file is the truth for how far an upload

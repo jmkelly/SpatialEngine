@@ -1,7 +1,7 @@
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// Where staged uploads live and how long they are kept (ADR-0089). The path
+/// Where staged uploads live and how long they are kept (ADR-0090). The path
 /// defaults to a directory under the system temp path, because a staged
 /// upload is transient state: it is a pending document, not a dataset, and
 /// nothing serves it.

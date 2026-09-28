@@ -6,7 +6,7 @@ using Spatial.Contracts.Providers;
 namespace Spatial.Client.Tests;
 
 /// <summary>
-/// The resumable upload driver (ADR-0089): a caller that uploads a large
+/// The resumable upload driver (ADR-0090): a caller that uploads a large
 /// document in chunks, asks the host where it got to, continues from there and
 /// only ingests once the staged upload is complete. The chunk boundaries fall
 /// where the client puts them, never where a feature does.
