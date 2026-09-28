@@ -15,6 +15,140 @@ namespace Spatial.Stores.SqlServer.Tests;
 /// </summary>
 public sealed class SqlServerPredicateSqlTests
 {
+    private static readonly FeatureSchema GuidSchema = new(
+    [
+        new FieldDefinition("reference", AttributeKind.Guid, true),
+        new FieldDefinition("city", AttributeKind.String, false),
+    ]);
+
+    [Fact]
+    public void A_guid_literal_binds_as_a_guid_not_as_text()
+    {
+        // The column's kind is what the driver binds, not the literal's own, so
+        // a uuid comparison never becomes a string-to-uniqueidentifier guess.
+        var parameters = new List<object?>();
+        var reference = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+        var sql = Build($"reference = '{reference:D}'", GuidSchema, parameters);
+
+        Assert.Equal("[reference] = @p0", sql);
+        Assert.Equal(new object?[] { reference }, parameters);
+    }
+
+    [Fact]
+    public void A_guid_literal_that_is_not_a_guid_matches_nothing()
+    {
+        // The reference evaluator answers "no match" for a guid it cannot
+        // parse, and a store that refused the plan would disagree with
+        // MemoryStore on one plan (ADR-0074 §4).
+        var parameters = new List<object?>();
+
+        Assert.Equal("(1 = 0)", Build("reference = 'not-a-guid'", GuidSchema, parameters));
+        Assert.Empty(parameters);
+    }
+
+    [Fact]
+    public void A_guid_column_compared_with_a_number_matches_nothing()
+    {
+        var parameters = new List<object?>();
+
+        Assert.Equal("(1 = 0)", Build("reference > 5", GuidSchema, parameters));
+        Assert.Empty(parameters);
+    }
+
+    [Fact]
+    public void A_guid_column_does_not_take_a_like_pattern()
+    {
+        var parameters = new List<object?>();
+
+        Assert.Equal("(1 = 0)", Build("reference LIKE 'a%'", GuidSchema, parameters));
+        Assert.Empty(parameters);
+    }
+
+    [Fact]
+    public void A_membership_test_drops_the_values_that_could_never_match()
+    {
+        // An unmatchable value is not an error and does not poison the list; it
+        // simply is not a match, so the rest still answer.
+        var known = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var mixed = new List<object?>();
+
+        Assert.Equal("[reference] IN (@p0)", Build($"reference IN ('{known:D}', 'not-a-guid')", GuidSchema, mixed));
+        Assert.Equal(new object?[] { known }, mixed);
+
+        var none = new List<object?>();
+        Assert.Equal("(1 = 0)", Build("reference IN ('not-a-guid')", GuidSchema, none));
+        Assert.Empty(none);
+    }
+
+    [Fact]
+    public void A_negated_membership_test_keeps_the_values_that_could_match()
+    {
+        // Removing a never-matching value from a NOT IN does not change the
+        // answer — unless it empties the list, which inverts it.
+        var known = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var mixed = new List<object?>();
+
+        Assert.Equal("[reference] NOT IN (@p0)", Build($"reference NOT IN ('not-a-guid', '{known:D}')", GuidSchema, mixed));
+        Assert.Equal(new object?[] { known }, mixed);
+
+        var none = new List<object?>();
+        Assert.Equal("(1 = 1)", Build("reference NOT IN ('not-a-guid')", GuidSchema, none));
+        Assert.Empty(none);
+    }
+
+    [Fact]
+    public void A_text_column_compared_with_a_number_matches_nothing()
+    {
+        // SQL Server has no `text > int` comparison either, so a number against
+        // a text column is unanswerable and matches nothing.
+        var parameters = new List<object?>();
+
+        Assert.Equal("(1 = 0)", Build("city > 5", parameters));
+        Assert.Equal("(1 = 0)", Build("city = 5", parameters));
+        Assert.Empty(parameters);
+    }
+
+    private static readonly FeatureSchema TimeSchema = new(
+    [
+        new FieldDefinition("seen", AttributeKind.DateTimeOffset, true),
+        new FieldDefinition("city", AttributeKind.String, false),
+    ]);
+
+    [Fact]
+    public void A_number_against_a_date_time_column_binds_as_an_instant()
+    {
+        // A date-time is an instant, so a number is the same point on the same
+        // axis and the comparison is answerable — but only if it is bound as a
+        // datetimeoffset. `datetimeoffset = bigint` is an operand type clash,
+        // and a store that answered "no rows" instead would disagree with
+        // MemoryStore, which reads the same literal as the same instant.
+        var moment = DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000);
+        var parameters = new List<object?>();
+
+        Assert.Equal("[seen] = @p0", Build("seen = 1700000000000", TimeSchema, parameters));
+        Assert.Equal(new object?[] { moment }, parameters);
+
+        parameters.Clear();
+        Build("seen > 1699999999999.5", TimeSchema, parameters);
+        Assert.Equal(new object?[] { moment.AddMilliseconds(-0.5) }, parameters);
+
+        parameters.Clear();
+        Build("seen = TIMESTAMP '2023-11-14 22:13:20'", TimeSchema, parameters);
+        Assert.Equal(new object?[] { moment }, parameters);
+    }
+
+    [Fact]
+    public void A_text_literal_against_a_date_time_column_still_matches_nothing()
+    {
+        // The instant re-encoding is lossless, so it is not a licence to guess:
+        // a string is not an instant and the comparison remains unanswerable.
+        var parameters = new List<object?>();
+
+        Assert.Equal("(1 = 0)", Build("seen = 'yesterday'", TimeSchema, parameters));
+        Assert.Empty(parameters);
+    }
+
     private static readonly FeatureSchema Schema = new(
     [
         new FieldDefinition("population", AttributeKind.Int64, true),
@@ -225,6 +359,9 @@ public sealed class SqlServerPredicateSqlTests
 
     private static string Build(string filter, List<object?> parameters) =>
         SqlServerPredicateSql.Where(Where(filter), Schema, parameters);
+
+    private static string Build(string filter, FeatureSchema schema, List<object?> parameters) =>
+        SqlServerPredicateSql.Where(Where(filter), schema, parameters);
 
     /// <summary>
     /// The whole boundary path a client filter takes: the text is parsed once

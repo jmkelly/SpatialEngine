@@ -217,6 +217,157 @@ public sealed class PostgisPredicateSqlTests
     }
 
     [Fact]
+    public void A_guid_literal_binds_as_a_guid_not_as_text()
+    {
+        // Postgres has no `uuid = text` operator, so a string literal bound
+        // against a uuid column is a server error at execution, not a filter
+        // that matches nothing. The column's kind is what the driver must bind.
+        var reference = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+        Assert.Equal(reference, Build($"reference = '{reference:D}'", GuidSchema).Parameters[0]);
+    }
+
+    [Fact]
+    public void A_guid_membership_test_binds_every_value_as_a_guid()
+    {
+        var first = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var second = Guid.Parse("66666666-7777-8888-9999-aaaaaaaaaaaa");
+
+        var sql = Build($"reference IN ('{first:D}', '{second:D}')", GuidSchema);
+
+        Assert.Equal(new object?[] { first, second }, sql.Parameters);
+    }
+
+    [Fact]
+    public void A_guid_literal_that_is_not_a_guid_matches_nothing()
+    {
+        // The reference evaluator answers "no match" for a guid it cannot parse,
+        // so the pushdown must answer the same rather than bind a zero uuid:
+        // a store that refused the plan would disagree with MemoryStore on one
+        // plan, and a store that coerced it would answer something else again
+        // (ADR-0074 §4: pushdown preserves contract semantics, it does not
+        // restate them).
+        var sql = Build("reference = 'not-a-guid'", GuidSchema);
+
+        Assert.Equal("FALSE", sql.Sql);
+        Assert.Empty(sql.Parameters);
+    }
+
+    [Fact]
+    public void A_guid_column_compared_with_a_number_matches_nothing()
+    {
+        // Nothing coerces: `uuid > 5` is not SQL Postgres can answer at all, and
+        // the reference answer is "no match" because a number is not a guid.
+        var sql = Build("reference > 5", GuidSchema);
+
+        Assert.Equal("FALSE", sql.Sql);
+        Assert.Empty(sql.Parameters);
+    }
+
+    [Fact]
+    public void A_guid_column_does_not_take_a_like_pattern()
+    {
+        // LIKE is a whole-value text test, so against a uuid column it is
+        // unanswerable — and the reference answer is "no match".
+        var sql = Build("reference LIKE 'a%'", GuidSchema);
+
+        Assert.Equal("FALSE", sql.Sql);
+        Assert.Empty(sql.Parameters);
+    }
+
+    [Fact]
+    public void A_membership_test_drops_the_values_that_could_never_match()
+    {
+        // The unparseable value is not an error and does not poison the list: it
+        // is simply a value the column can never equal, so the rest still
+        // answer. With none left the test matches nothing.
+        var known = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+        var mixed = Build($"reference IN ('{known:D}', 'not-a-guid')", GuidSchema);
+        Assert.Equal("\"reference\" IN (@p0)", mixed.Sql);
+        Assert.Equal(new object?[] { known }, mixed.Parameters);
+
+        var none = Build("reference IN ('not-a-guid')", GuidSchema);
+        Assert.Equal("FALSE", none.Sql);
+        Assert.Empty(none.Parameters);
+    }
+
+    [Fact]
+    public void A_negated_membership_test_keeps_the_values_that_could_match()
+    {
+        // Removing a never-matching value from a NOT IN does not change the
+        // answer — unless it empties the list, which inverts it.
+        var known = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+        var mixed = Build($"reference NOT IN ('not-a-guid', '{known:D}')", GuidSchema);
+        Assert.Equal("\"reference\" NOT IN (@p0)", mixed.Sql);
+        Assert.Equal(new object?[] { known }, mixed.Parameters);
+
+        var none = Build("reference NOT IN ('not-a-guid')", GuidSchema);
+        Assert.Equal("TRUE", none.Sql);
+        Assert.Empty(none.Parameters);
+    }
+
+    [Fact]
+    public void A_text_column_compared_with_a_number_matches_nothing()
+    {
+        // The same rule for the other direction a text column cannot answer:
+        // Postgres has no `text > double precision` operator either.
+        Assert.Equal("FALSE", Build("city > 5").Sql);
+        Assert.Equal("FALSE", Build("city = 5").Sql);
+    }
+
+    private static readonly FeatureSchema GuidSchema = FeatureTests.Schema(
+        ("reference", AttributeKind.Guid, true),
+        ("city", AttributeKind.String, false));
+
+    private static readonly FeatureSchema TimeSchema = FeatureTests.Schema(
+        ("seen", AttributeKind.DateTimeOffset, true),
+        ("city", AttributeKind.String, false));
+
+    [Fact]
+    public void A_number_against_a_date_time_column_binds_as_an_instant()
+    {
+        // A date-time is an instant, so a number is the same point on the same
+        // axis and the comparison is answerable — but only if it is bound as a
+        // timestamp. `timestamptz = bigint` is not an operator Postgres has, so
+        // binding the number as a number is an execution failure, and a store
+        // that answered "no rows" instead would disagree with MemoryStore, which
+        // reads the same literal as the same instant.
+        var moment = DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000);
+
+        var whole = Build("seen = 1700000000000", TimeSchema);
+        Assert.Equal("\"seen\" = @p0", whole.Sql);
+        Assert.Equal(moment, whole.Parameters[0]);
+
+        var fraction = Build("seen > 1699999999999.5", TimeSchema);
+        Assert.Equal(moment.AddMilliseconds(-0.5), fraction.Parameters[0]);
+
+        var stamp = Build("seen = TIMESTAMP '2023-11-14 22:13:20'", TimeSchema);
+        Assert.Equal(moment, stamp.Parameters[0]);
+    }
+
+    [Fact]
+    public void A_date_time_literal_on_a_date_time_column_stays_an_instant()
+    {
+        var bound = Assert.IsType<DateTimeOffset>(
+            Build("seen > TIMESTAMP '2024-01-01 00:00:00'", TimeSchema).Parameters[0]);
+
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_704_067_200_000), bound);
+    }
+
+    [Fact]
+    public void A_text_literal_against_a_date_time_column_still_matches_nothing()
+    {
+        // The instant re-encoding is lossless, so it is not a licence to guess:
+        // a string is not an instant and the comparison remains unanswerable.
+        var sql = Build("seen = 'yesterday'", TimeSchema);
+
+        Assert.Equal("FALSE", sql.Sql);
+        Assert.Empty(sql.Parameters);
+    }
+
+    [Fact]
     public void Bounding_box_builds_a_parameterised_envelope_predicate()
     {
         var parameters = new List<object?>();
@@ -266,10 +417,12 @@ public sealed class PostgisPredicateSqlTests
         return predicate!;
     }
 
-    private static BuiltSql Build(string filter)
+    private static BuiltSql Build(string filter) => Build(filter, Schema);
+
+    private static BuiltSql Build(string filter, FeatureSchema schema)
     {
         var parameters = new List<object?>();
-        return new BuiltSql(PostgisPredicateSql.Where(Where(filter), Schema, parameters), parameters);
+        return new BuiltSql(PostgisPredicateSql.Where(Where(filter), schema, parameters), parameters);
     }
 
     private static DatasetDescription Description() =>

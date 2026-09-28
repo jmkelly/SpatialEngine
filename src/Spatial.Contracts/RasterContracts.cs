@@ -1,6 +1,5 @@
-using Spatial.Core.Geometry;
-
 using Spatial.Core.Features.Query;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Contracts;
 

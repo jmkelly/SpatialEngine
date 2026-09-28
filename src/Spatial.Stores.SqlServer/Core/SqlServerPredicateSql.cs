@@ -192,10 +192,20 @@ internal static class SqlServerPredicateSql
                 return;
             }
 
+            // A LIKE is a whole-value text test, and a literal of a kind the
+            // column cannot be compared with is a comparison that matches
+            // nothing. Both are the reference evaluator's answer, and neither
+            // is a comparison this server could answer at all.
+            if (!TryBind(compare.Operator, compare.Value, kind, out var comparable))
+            {
+                _sql.Append("(1 = 0)");
+                return;
+            }
+
             _sql.Append(SqlServerIdentifier.Quote(_schema![index].Name)).Append(' ')
                 .Append(SqlOperator(compare.Operator))
                 .Append(' ')
-                .Append(Parameter(Bind(compare.Value)));
+                .Append(Parameter(comparable));
         }
 
         private void VisitIsNull(Predicate.IsNull isNull)
@@ -232,16 +242,31 @@ internal static class SqlServerPredicateSql
                 return;
             }
 
+            // A value the column can never equal is not an error and does not
+            // poison the list — it simply is not a match, so it drops out. If
+            // nothing is left the test answers the negated or plain truth value.
+            // A comparable literal never binds to null, so null is the marker
+            // for "this value is not a match and drops out".
+            var bindable = isIn.Values
+                .Select(value => TryBind(ComparisonOperator.Equals, value, kind, out var bound) ? bound : null)
+                .Where(bound => bound is not null)
+                .ToArray();
+            if (bindable.Length == 0)
+            {
+                _sql.Append(isIn.Negated ? "(1 = 1)" : "(1 = 0)");
+                return;
+            }
+
             _sql.Append(SqlServerIdentifier.Quote(_schema![index].Name))
                 .Append(isIn.Negated ? " NOT IN (" : " IN (");
-            for (var i = 0; i < isIn.Values.Count; i++)
+            for (var i = 0; i < bindable.Length; i++)
             {
                 if (i > 0)
                 {
                     _sql.Append(", ");
                 }
 
-                _sql.Append(Parameter(Bind(isIn.Values[i])));
+                _sql.Append(Parameter(bindable[i]));
             }
 
             _sql.Append(')');
@@ -251,10 +276,76 @@ internal static class SqlServerPredicateSql
             $"the filter column '{field.Name}' is a geometry field; filter spatially with the bounding box (minx/miny/maxx/maxy) instead.";
 
         /// <summary>
-        /// The bound value of a literal: a string, a whole number carried
-        /// verbatim, a double, a bool, a UTC instant for a date-time, or
-        /// <see cref="DBNull"/> for an explicit NULL. The parameter's CLR type
-        /// is what the driver binds, so nothing is re-parsed on the server.
+        /// The value a literal binds as when it is compared with a column of
+        /// kind <paramref name="kind"/>, or false when the two cannot be
+        /// compared at all — in which case the comparison matches nothing, the
+        /// answer the reference evaluator gives.
+        /// <para>
+        /// The column's kind is what the driver must bind, not the literal's
+        /// own: the server has no operator for a pair the reference evaluator
+        /// would not coerce (ADR-0075 §2), so binding the literal's own kind
+        /// asks it about types it cannot answer, which fails at execution
+        /// rather than matching no rows. Which pairs are answerable at all is
+        /// <see cref="PredicateCompatibility"/>'s one table; only the binding
+        /// is this dialect's.
+        /// </para>
+        /// </summary>
+        private static bool TryBind(ComparisonOperator comparison, Literal literal, AttributeKind kind, out object? value)
+        {
+            value = null;
+            if (!PredicateCompatibility.CanMatch(comparison, literal, kind))
+            {
+                return false;
+            }
+
+            value = kind switch
+            {
+                // A guid and an instant both have a column type of their own, and
+                // a number is the same point on the same epoch axis as a
+                // date-time literal, so both are re-encoded losslessly into it
+                // rather than bound as the number the client wrote. The server
+                // has no `uuid = text` and no `timestamptz = bigint` to compare
+                // otherwise, and an answer of "no rows" instead would be a
+                // different answer from the reference evaluator's.
+                AttributeKind.Guid => Guid.Parse(literal.Text ?? string.Empty),
+                AttributeKind.DateTimeOffset => Instant(literal),
+                _ => Bind(literal),
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// The instant a literal denotes, in epoch milliseconds: a date-time
+        /// literal carries it, and a number is already the same axis. The
+        /// fraction is kept, so a sub-millisecond bound compares the way the
+        /// reference evaluator compares it.
+        /// </summary>
+        private static DateTimeOffset Instant(Literal literal)
+        {
+            if (literal.Kind == LiteralKind.DateTime)
+            {
+                return DateTimeOffset.FromUnixTimeMilliseconds((long)literal.Number);
+            }
+
+            var milliseconds = literal.Kind == LiteralKind.Integer
+                && long.TryParse(literal.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var whole)
+                ? whole
+                : (long)literal.Number;
+
+            // The fraction of a fractional literal is kept, because the
+            // reference evaluator compares the right-hand side as the double the
+            // client wrote: truncating it here would move the bound and answer a
+            // question the plan did not ask.
+            var fraction = literal.Number - Math.Truncate(literal.Number);
+            return DateTimeOffset.FromUnixTimeMilliseconds(milliseconds)
+                .AddTicks((long)(fraction * TimeSpan.TicksPerMillisecond));
+        }
+
+        /// <summary>
+        /// The bound value of a comparable literal: a string, a whole number
+        /// carried verbatim, a double, a bool, a UTC instant for a date-time,
+        /// or <see cref="DBNull"/> for an explicit NULL. The parameter's CLR
+        /// type is what the driver binds, so nothing is re-parsed on the server.
         /// </summary>
         private static object Bind(Literal value) => value.Kind switch
         {

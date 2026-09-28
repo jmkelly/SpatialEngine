@@ -22,6 +22,5 @@ public sealed class MemoryPredicateConformanceTests
         var failures = await PredicateConformanceSuite.AssertAsync(store, PredicateConformanceSuite.Dataset);
 
         Assert.Empty(failures);
-        // DEBUG
     }
 }

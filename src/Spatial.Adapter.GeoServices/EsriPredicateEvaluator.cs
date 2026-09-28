@@ -8,19 +8,29 @@ namespace Spatial.Adapter.GeoServices;
 /// <summary>
 /// Resolves a parsed Esri <c>where</c> clause against a served layer
 /// (ADR-0074 §7). The clause is core-typed, so the only Esri-specific part
-/// left is the synthetic <c>OBJECTID</c>: it becomes a field reference to the
-/// layer's identity column, which is a column the store can read, and the
-/// clause is then pushed down. A layer whose <c>OBJECTID</c> is the scan
-/// ordinal has no such column, so such a clause stays with the facade and is
-/// evaluated per feature by <see cref="EsriPredicateEvaluator"/> — the one
-/// case where an attribute filter cannot be a store pushdown.
+/// left is the synthetic <c>OBJECTID</c>: on a layer with an integer identity
+/// column it becomes a field reference to that column, which is a column the
+/// store can read, and the clause is pushed down.
+///
+/// A layer with no integer identity column is different in a way that is not
+/// about the clause at all. Its <c>OBJECTID</c> <em>is</em> the feature's
+/// ordinal in the whole-dataset scan (ADR-0037), so the number a store would
+/// have to return with each row is a number only the full scan can produce: a
+/// clause pushed down would have the store return the matching rows alone and
+/// the facade would then number those rows 1, 2, 3 — handing the same feature
+/// a different <c>OBJECTID</c> depending on the query, which breaks the stable
+/// key <c>objectIds</c>, <c>returnIdsOnly</c>, paging and the edit round-trip
+/// all assume. So on such a layer the clause stays with the facade and is
+/// evaluated per feature by <see cref="EsriPredicateEvaluator"/>; that is the
+/// one case where an attribute filter cannot be a store pushdown.
 /// </summary>
 internal static class EsriWhereResolver
 {
     /// <summary>
     /// The predicate a store can answer for the clause, or null when the
-    /// facade has to evaluate it per feature because it names the synthetic
-    /// <c>OBJECTID</c> of a layer with no integer identity column.
+    /// facade has to evaluate it per feature — which is every clause on a
+    /// layer whose <c>OBJECTID</c> is the scan ordinal, whether or not the
+    /// clause itself names the <c>OBJECTID</c>.
     /// </summary>
     public static Predicate? Pushdown(EsriWhere? where, EsriObjectIdScheme scheme, DatasetDescription dataset)
     {
@@ -29,14 +39,21 @@ internal static class EsriWhereResolver
             return null;
         }
 
-        if (!NamesObjectId(predicate))
+        // The store can only answer the clause if the object id is itself
+        // store-derived; otherwise filtering changes the numbering the facade
+        // derives the object id from, and the pushdown would not preserve
+        // contract semantics (ADR-0074 §4).
+        if (!scheme.IsIdentity)
         {
-            return predicate;
+            return null;
         }
 
-        return scheme.IsIdentity && dataset.IdColumns is [var identityColumn]
-            ? Rename(predicate, identityColumn)
-            : null;
+        if (dataset.IdColumns is not [var identityColumn])
+        {
+            return null;
+        }
+
+        return NamesObjectId(predicate) ? Rename(predicate, identityColumn) : predicate;
     }
 
     /// <summary>Whether the clause reads the facade's synthetic object id.</summary>

@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using Spatial.Contracts;
-using Spatial.Esri.Codec;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Geometry;
+using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices;
 

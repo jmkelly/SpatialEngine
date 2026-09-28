@@ -72,7 +72,10 @@ public static class PredicateConformanceSuite
     /// <summary>
     /// The cases. Between them they cover every operator, every literal kind,
     /// null semantics, the logical operators, membership, <c>LIKE</c>, and a
-    /// bounding box combined with a filter.
+    /// bounding box combined with a filter. Every expectation is the answer over
+    /// <see cref="Rows"/> itself: a case that selects nothing is as load-bearing
+    /// as one that selects a row, because "no row has exactly this score" is
+    /// what proves a whole-number literal is compared and not coerced.
     /// </summary>
     public static IReadOnlyList<PredicateCase> Cases { get; } =
     [
@@ -84,8 +87,8 @@ public static class PredicateConformanceSuite
         new("ordering on a number", "population > 2000000", ["alpha", "epsilon"]),
         new("ordering on a number, fractional", "score >= 1.5 AND score < 3.5", ["alpha", "beta"]),
         new("a whole number past double precision", "population = 9007199254740993", ["epsilon"]),
-        new("a whole number against a fractional column", "score = 2", ["beta"]),
-        new("a negative bound on a fractional column", "score > -1", ["alpha", "beta", "epsilon"]),
+        new("a whole number is never rounded against a fractional column", "score = 2", []),
+        new("a negative bound on a fractional column", "score > -1", ["alpha", "beta", "epsilon", "gamma"]),
         new("equality on a boolean", "active = TRUE", ["alpha", "gamma", "epsilon"]),
         new("equality on a guid", $"reference = '{Reference}'", ["alpha", "beta", "delta", "epsilon"]),
         new("a null value satisfies no comparison", "population > 0", ["alpha", "beta", "gamma", "epsilon"]),
@@ -94,6 +97,10 @@ public static class PredicateConformanceSuite
         new("negated null test", "population IS NOT NULL", ["alpha", "beta", "gamma", "epsilon"]),
         new("a date-time literal", "seen >= TIMESTAMP '2023-01-01 00:00:00'", ["alpha", "epsilon"]),
         new("a date-time range", "seen > TIMESTAMP '2022-01-01 00:00:00' AND seen < TIMESTAMP '2023-01-01 00:00:00'", ["beta"]),
+        // A date-time is an instant, so a number is the same axis: this is the
+        // case that stops a back end deciding for itself that a numeric literal
+        // cannot touch a timestamp column and answering "no rows".
+        new("a number against a date-time column", "seen = 1700000000000", ["alpha", "epsilon"]),
         new("like with a wildcard suffix", "code LIKE 'a%'", ["alpha"]),
         new("like with a single-character wildcard", "code LIKE '_elta'", ["delta"]),
         new("like is a whole-value test", "code LIKE 'lph'", []),

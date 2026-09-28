@@ -1,9 +1,8 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.Core.Geometry;
-
 using Spatial.Core.Features.Query;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Rendering.Skia.Tests;
 
