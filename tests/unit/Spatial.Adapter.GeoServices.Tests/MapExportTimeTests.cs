@@ -5,9 +5,10 @@ namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
 /// T-040: the export temporal parameters (S2 export-map/, research
-/// §2). <c>time</c> reuses the query grammar, <c>timeRelation</c> accepts
-/// the documented relations (equivalent for the engine's instant date
-/// values), and <c>layerTimeOptions</c> carries per-layer opt-out,
+/// §2). <c>time</c> reuses the query grammar, <c>timeRelation</c> accepts the
+/// one relation the engine applies (<c>esriTimeRelationOverlaps</c>; the
+/// relations it does not apply are rejected by name — ADR-0100), and
+/// <c>layerTimeOptions</c> carries per-layer opt-out,
 /// cumulative display and (rejected) offsets.
 /// </summary>
 public sealed class MapExportTimeTests
@@ -20,22 +21,34 @@ public sealed class MapExportTimeTests
 
     [Theory]
     [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
     [InlineData("esriTimeRelationOverlaps", "esriTimeRelationOverlaps")]
-    [InlineData("esriTimeRelationContains", "esriTimeRelationContains")]
-    [InlineData("esriTimeRelationWithin", "esriTimeRelationWithin")]
-    public void ParseTimeRelation_accepts_blank_and_the_documented_relations(string? value, string? expected)
+    [InlineData("  esriTimeRelationOverlaps  ", "esriTimeRelationOverlaps")]
+    public void ParseTimeRelation_accepts_blank_and_the_applied_relation(string? value, string? expected)
     {
         Assert.Equal(expected, MapExportTime.ParseTimeRelation(value));
     }
 
     [Theory]
-    [InlineData("overlaps")]
+    [InlineData("esriTimeRelationContains")]
+    [InlineData("esriTimeRelationWithin")]
     [InlineData("esriTimeRelationDisjoint")]
+    [InlineData("overlaps")]
     [InlineData("yesterday")]
-    public void ParseTimeRelation_rejects_unknown_relations(string value)
+    public void ParseTimeRelation_rejects_a_relation_the_engine_does_not_apply(string value)
     {
         var failure = Assert.Throws<EsriInteropException>(() => MapExportTime.ParseTimeRelation(value));
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+    }
+
+    [Fact]
+    public void ParseTimeRelation_names_the_relation_the_engine_does_apply()
+    {
+        var failure = Assert.Throws<EsriInteropException>(
+            () => MapExportTime.ParseTimeRelation("esriTimeRelationContains"));
+
+        Assert.Contains(MapExportTime.Overlaps, failure.Message, StringComparison.Ordinal);
     }
 
     [Theory]

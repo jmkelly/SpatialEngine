@@ -318,6 +318,18 @@ this file together, then tag the release (`RELEASING.md`).
   geometry in the feature's role and the right in the query's; no pattern
   string is restated, and an unrecognised relation name is still a named
   `invalid.arguments`.
+- **The map root advertises the time relation it actually applies**
+  (ADR-0100, SpatialEngine-oas): `supportsTimeRelation` is `false`, and
+  `esriTimeRelationContains`/`esriTimeRelationWithin` are typed
+  `invalid.arguments` on MapServer `export` and `identify` instead of being
+  accepted and served as overlaps. The flag said the service distinguishes
+  the relations and it did not — a client that branched on it got a
+  confidently wrong temporal window. `esriTimeRelationOverlaps` (the default)
+  is still accepted, because that is the relation the engine's rule — "any
+  date value inside the window" — is. Serving the other two needs a feature
+  temporal extent to compare the window against, which the engine does not
+  model; that is a model decision, filed as its own follow-up rather than
+  smuggled in here.
 
 - **The Esri geometry writer states its `hasZ`/`hasM` flags**
   (ADR-0085, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is

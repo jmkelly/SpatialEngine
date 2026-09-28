@@ -35,7 +35,7 @@ internal sealed record MapExportLayers(
             service);
         var selected = MapLayerSelection.Select(effective, parameters.Get("layers"), parameters.Get("layerOption"));
         var time = EsriFeatureQuery.ParseTime(parameters.Get("time"));
-        _ = MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
+        MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
         return new MapExportLayers(
             resolved,
             selected,

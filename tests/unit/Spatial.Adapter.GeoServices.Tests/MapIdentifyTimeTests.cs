@@ -13,9 +13,10 @@ namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
 /// T-059: MapServer identify honours the temporal surface (spec §4.0.5,
-/// ADR-0058 root flag). <c>time</c> reuses the query grammar, the documented
-/// <c>timeRelation</c> values are accepted (equivalent for the engine's
-/// instant date values), and <c>layerTimeOptions</c> carries per-layer
+/// ADR-0058). <c>time</c> reuses the query grammar, the one
+/// <c>timeRelation</c> the engine applies (<c>esriTimeRelationOverlaps</c>) is
+/// accepted and the relations it does not apply are rejected by name
+/// (ADR-0100), and <c>layerTimeOptions</c> carries per-layer
 /// opt-out and cumulative display. Red-first: the engine scans without a
 /// temporal predicate today, so every filtering test here fails while the
 /// parameters are ignored.
@@ -189,9 +190,8 @@ public sealed class MapIdentifyTimeTests
 
     [Theory]
     [InlineData("esriTimeRelationOverlaps")]
-    [InlineData("esriTimeRelationContains")]
-    [InlineData("esriTimeRelationWithin")]
-    public async Task Documented_time_relations_filter_like_the_default(string relation)
+    [InlineData("  esriTimeRelationOverlaps  ")]
+    public async Task The_applied_time_relation_filters_the_identify(string relation)
     {
         var store = new MemoryStore(new Dictionary<string, Feature[]> { ["demo.cities"] = [Dated("a", Instant), Dated("b", Earlier)] });
 
@@ -199,6 +199,34 @@ public sealed class MapIdentifyTimeTests
             store, Infos(Cities(Schema)), PointParams(("time", "1700000000000"), ("timeRelation", relation)));
 
         Assert.Equal(["a"], Names(body));
+    }
+
+    [Theory]
+    [InlineData("esriTimeRelationContains")]
+    [InlineData("esriTimeRelationWithin")]
+    public async Task A_time_relation_the_engine_does_not_apply_is_a_typed_error(string relation)
+    {
+        var store = new MemoryStore(new Dictionary<string, Feature[]> { ["demo.cities"] = [Dated("a", Instant)] });
+        var parameters = await ParamsAsync(PointParams(("time", "1700000000000"), ("timeRelation", relation)));
+
+        var failure = await Assert.ThrowsAsync<EsriInteropException>(() =>
+            MapIdentifyEngine.IdentifyAsync(
+                Identify(store, Infos(Cities(Schema))), parameters, CancellationToken.None));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+        Assert.Contains(MapExportTime.Overlaps, failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_cancelled_identify_stays_cancelled()
+    {
+        var store = new MemoryStore(new Dictionary<string, Feature[]> { ["demo.cities"] = [Dated("a", Instant)] });
+        var parameters = await ParamsAsync(PointParams(("time", "1700000000000")));
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => MapIdentifyEngine.IdentifyAsync(
+            Identify(store, Infos(Cities(Schema))), parameters, cancellation.Token));
     }
 
     [Fact]

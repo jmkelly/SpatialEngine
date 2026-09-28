@@ -12,7 +12,9 @@ namespace Spatial.Host.Tests;
 /// <c>time</c>/<c>timeRelation</c>/<c>layerTimeOptions</c> temporal filtering,
 /// <c>dynamicLayers</c> per-request redefinition, <c>layerOption</c>, and
 /// cached-root honesty (<c>singleFusedMapCache</c>/<c>tileInfo</c>/
-/// <c>exportTilesAllowed</c> per served scheme). Red-first: export ignores
+/// <c>exportTilesAllowed</c> per served scheme, with
+/// <c>supportsTimeRelation:false</c> because the engine applies the overlaps
+/// relation only — ADR-0100). Red-first: export ignores
 /// every one of these parameters today, and the root omits the advertisement
 /// fields.
 /// </summary>
@@ -100,6 +102,31 @@ public sealed class GeoServicesMapExportTests : IDisposable
         var response = await client.GetAsync(ExportPrefix + "&time=1199145600000&timeRelation=esriTimeRelationFoo");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_overlaps_time_relation_is_served()
+    {
+        var client = await MapServiceAsync();
+
+        var image = await ImageAsync(await client.GetAsync(
+            ExportPrefix + "&time=1199145600000&timeRelation=esriTimeRelationOverlaps"));
+
+        Assert.NotEmpty(image);
+    }
+
+    [Theory]
+    [InlineData("esriTimeRelationContains")]
+    [InlineData("esriTimeRelationWithin")]
+    public async Task A_time_relation_the_engine_does_not_apply_is_a_typed_error(string relation)
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(ExportPrefix + $"&time=1199145600000&timeRelation={relation}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, JsonDocument.Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("error").GetProperty("code").GetInt32());
     }
 
     [Fact]
@@ -191,7 +218,7 @@ public sealed class GeoServicesMapExportTests : IDisposable
         var response = await client.GetAsync($"{Root}/world/MapServer?f=json");
         var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
 
-        Assert.True(root.GetProperty("supportsTimeRelation").GetBoolean());
+        Assert.False(root.GetProperty("supportsTimeRelation").GetBoolean());
         Assert.True(root.GetProperty("supportsDynamicLayers").GetBoolean());
         Assert.True(root.GetProperty("singleFusedMapCache").GetBoolean());
         Assert.False(root.GetProperty("exportTilesAllowed").GetBoolean());

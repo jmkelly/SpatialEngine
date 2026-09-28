@@ -49,10 +49,11 @@ internal static class MapServerResources
 
     /// <summary>
     /// Builds the MapServer root (spec §4.0, T-040): the service advertises
-    /// exactly what export honours — dynamic layers and time relations — and
-    /// the fused-cache fields follow the served scheme (tiles are
-    /// live-rendered per scheme, so <c>exportTilesAllowed</c> stays false;
-    /// offline packaging is T-041's scope).
+    /// exactly what export honours — dynamic layers, and the time window
+    /// under the overlaps relation only (<c>supportsTimeRelation:false</c>,
+    /// ADR-0100) — and the fused-cache fields follow the served scheme
+    /// (tiles are live-rendered per scheme, so <c>exportTilesAllowed</c>
+    /// stays false; offline packaging is T-041's scope).
     /// </summary>
     /// <remarks>
     /// A fused-cache root is a tile-matrix document: the spatial reference,
@@ -88,7 +89,7 @@ internal static class MapServerResources
             [.. layers.Select(Reference)],
             [],
             SupportsDynamicLayers: true,
-            SupportsTimeRelation: true,
+            SupportsTimeRelation: false,
             ExportTilesAllowed: false);
     }
 

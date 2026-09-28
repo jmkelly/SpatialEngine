@@ -8,10 +8,13 @@ namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
 /// T-040 cached-root honesty: the MapServer root advertises the served
-/// surface per scheme — time relations and dynamic layers (now honoured by
-/// export), the fused-cache flag with its <c>tileInfo</c> exactly when a
+/// surface per scheme — dynamic layers (now honoured by export), the
+/// fused-cache flag with its <c>tileInfo</c> exactly when a
 /// scheme is served, and <c>exportTilesAllowed:false</c> (offline packaging
-/// is T-041's scope, never silently promised).
+/// is T-041's scope, never silently promised). <c>supportsTimeRelation</c> is
+/// <c>false</c>: the engine applies the overlaps relation only and rejects the
+/// others by name, so the flag states that rather than promising a distinction
+/// the temporal model does not make (ADR-0100).
 /// </summary>
 public sealed class MapServerRootTests
 {
@@ -55,7 +58,7 @@ public sealed class MapServerRootTests
         var root = MapServerResources.Root("world", [Layer()], new FakeScheme(), null, null, new ProjNetTransforms(), CancellationToken.None);
 
         Assert.True(root.SupportsDynamicLayers);
-        Assert.True(root.SupportsTimeRelation);
+        Assert.False(root.SupportsTimeRelation);
         Assert.True(root.SingleFusedMapCache);
         Assert.False(root.ExportTilesAllowed);
         Assert.NotNull(root.TileInfo);
