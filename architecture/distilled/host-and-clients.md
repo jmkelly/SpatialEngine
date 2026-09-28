@@ -290,6 +290,13 @@ host independently executable; browser tests run against the host directly.
 - **Secrets flow host config → options only**
   (`PostgisOptions.ConnectionString`). Request bodies never carry
   connection material.
+- **Index provisioning is the store's create/ingest face, not a publish step or
+  an operator's DDL** (ADR-0092): a dataset created or ingested by the PostGIS
+  or SQL Server store gets its geometry-column spatial index and its attribute
+  btrees in the same transaction as the table, so it is queryable the moment it
+  exists. `PostgisOptions.CreateIndexes` / `SqlServerOptions.CreateIndexes`
+  (default `true`) turn it off for a bulk load that will build them itself; the
+  default is on because a silently unindexed table is the expensive failure.
 - **Redaction is a store diagnostic contract**: no secret in logs or
   `SpatialException` messages; unconfigured store fails with actionable
   `store.unavailable` naming the setting; failures describe config in

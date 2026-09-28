@@ -130,6 +130,7 @@ shape is noted in brackets.
 | 0087 | Datum transformations are contract values with area of use, accuracy and parameters; `findTransformations` is a ranked, area-filtered search and `project` accepts the operation it applies. |
 | 0089 | An ADR number is reserved before the record is written: the allocator reads the base plus the working tree and takes the number in the repository's shared git dir, so a parallel branch is turned away at allocation rather than renumbered at merge. |
 | 0090 | An upload is staged and then loaded, so a large ingest is resumable: the staged part survives a dropped connection and the chunk cap is measured from the chunk's own offset. |
+| 0092 | A dataset created or ingested by a SQL store carries its spatial and attribute indexes from the commit that creates it, so a created dataset is queryable with no out-of-band DDL; an index that cannot be created rolls the create back, and `PostgisOptions.CreateIndexes` / `SqlServerOptions.CreateIndexes` are the operator's opt-out. |
 | 0100 | The map root advertises `supportsTimeRelation:false` because the engine applies the overlaps relation only; the contains/within relations are typed `invalid.arguments` on export and identify rather than served as overlaps (amends 0058). |
 
 ## How to change the architecture

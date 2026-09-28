@@ -2,6 +2,7 @@ using Microsoft.Data.SqlClient;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Stores.SqlServer;
 using Spatial.Stores.SqlServer.Core;
@@ -15,7 +16,7 @@ namespace Spatial.SqlServer.Tests;
 /// pushdown filters, and the btree indexes on the attribute columns a
 /// pushed-down filter may name. Without them the pushdown query scans the
 /// table. The plan assertion here runs the statement the store itself builds
-/// (<see cref="SqlServerPredicate"/> + <see cref="SqlServerQueries"/>) against a
+/// (<see cref="SqlServerPredicateSql"/> + <see cref="SqlServerQueries"/>) against a
 /// real SQL Server container. Skips with an explicit reason without Docker.
 /// </summary>
 public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerContainerFixture>
@@ -126,7 +127,8 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
         Assert.Contains($"ix_{Parse(dataset).Table}_population", plan, StringComparison.Ordinal);
         Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);
         Assert.DoesNotContain("Clustered Index Scan", plan, StringComparison.Ordinal);
-        Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);    }
+        Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// An index the server refuses must fail the whole create rather than
@@ -294,8 +296,10 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
         SqlServerTestContext context, string dataset, CoreBoundingBox? bbox, string filter)
     {
         var description = await context.Store.DescribeAsync(dataset);
+        Assert.True(
+            FeatureFilterText.TryParse(filter, out var parsed, out var error), error);
         var parameters = new List<object?>();
-        var predicate = SqlServerPredicate.Build(description, bbox, filter, parameters);
+        var predicate = SqlServerPredicateSql.Build(description, bbox, parsed, parameters);
         var statement = SqlServerQueries.Query(Parse(dataset), description.Schema, predicate);
         var lines = new List<string>();
         await using var connection = await OpenAsync(context);

@@ -1,8 +1,9 @@
 using Npgsql;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
-using Spatial.Core.Geometry;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Core.Geometry;
 using Spatial.Stores.PostGIS;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
@@ -17,7 +18,7 @@ namespace Spatial.PostGIS.Tests;
 /// pushdown query is a sequential scan, which is what the measurement in
 /// <c>eng/spike-u2x-query-baseline/RESULTS.md</c> (finding 7) measured. The
 /// plan assertions here run the statement the store itself builds
-/// (<see cref="PostgisPredicate"/> + <see cref="PostgisQueries"/>) through
+/// (<see cref="PostgisPredicateSql"/> + <see cref="PostgisQueries"/>) through
 /// <c>EXPLAIN</c> against a real PostGIS container. Skips with an explicit
 /// reason without Docker.
 /// </summary>
@@ -235,8 +236,10 @@ public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisContaine
         PostgisTestContext context, string dataset, CoreBoundingBox bbox, string filter)
     {
         var description = await context.Store.DescribeAsync(dataset);
+        Assert.True(
+            FeatureFilterText.TryParse(filter, out var parsed, out var error), error);
         var parameters = new List<object?>();
-        var predicate = PostgisPredicate.Build(description, bbox, filter, parameters);
+        var predicate = PostgisPredicateSql.Build(description, bbox, parsed, parameters);
         var statement = PostgisQueries.Query(Parse(dataset), description.Schema, predicate);
         await using var dataSource = NpgsqlDataSource.Create(context.ConnectionString);
         await using var connection = await dataSource.OpenConnectionAsync();

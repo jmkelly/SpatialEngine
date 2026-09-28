@@ -172,7 +172,7 @@ public sealed class ArcGisRestStoreTests
         var handler = Handler(Route(ServiceRoot, ZLayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        await store.QueryAsync("arcgis.l0", new BoundingBox(1, 2, 3, 4));
+        await store.QueryAsync("arcgis.l0", new FeatureQuery(BoundingBox: new BoundingBox(1, 2, 3, 4)));
 
         var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
         Assert.Contains("returnZ=true", query, StringComparison.Ordinal);
@@ -185,7 +185,7 @@ public sealed class ArcGisRestStoreTests
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        await store.QueryAsync("arcgis.l0");
+        await store.QueryAsync("arcgis.l0", FeatureQuery.All);
 
         var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
         Assert.DoesNotContain("returnZ", query, StringComparison.Ordinal);
