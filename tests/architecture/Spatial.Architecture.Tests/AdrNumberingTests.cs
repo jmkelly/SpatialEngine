@@ -21,6 +21,9 @@ public sealed class AdrNumberingTests
     /// <summary>Matches a bare ADR number, in both prose and slug forms.</summary>
     private static readonly Regex AdrReference = new(@"ADR-(?<number>\d{4})(?!\d)", RegexOptions.Compiled);
 
+    /// <summary>Matches a register row's leading bare <c>NNNN</c> number.</summary>
+    private static readonly Regex RegisterRow = new(@"^\|\s*(?<number>\d{4})\s*\|", RegexOptions.Compiled | RegexOptions.Multiline);
+
     /// <summary>Matches the leading <c>ADR-NNNN</c> of a decision-record file name.</summary>
     private static readonly Regex AdrFileName = new(@"^ADR-(?<number>\d{4})-", RegexOptions.Compiled);
 
@@ -111,6 +114,44 @@ public sealed class AdrNumberingTests
             .ToList();
 
         Assert.Empty(violations);
+    }
+
+    /// <summary>
+    /// The distilled ADR register lists one row per decision, so a number that
+    /// appears in two rows makes the register contradict itself and the number
+    /// unciteable — even when the decision records behind it are numbered
+    /// correctly. The citation test above cannot see this: the register cites
+    /// bare <c>0074</c>, not <c>ADR-0074</c>. SpatialEngine-u2x.31.
+    /// </summary>
+    [Fact]
+    public void Distilled_adr_register_lists_each_number_once()
+    {
+        var duplicates = RegisterRows()
+            .GroupBy(number => number, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => $"the ADR register lists {group.Key} {group.Count()} times")
+            .ToList();
+
+        Assert.Empty(duplicates);
+    }
+
+    /// <summary>Every bare ADR number in the register table, with repeats.</summary>
+    private static IEnumerable<string> RegisterRows()
+    {
+        var readme = File.ReadAllText(Path.Combine(Root.Value, "architecture", "distilled", "README.md"));
+
+        // The register is the "## ADR register" section only: the "Route by task"
+        // table above it repeats numbers by design (one row per task).
+        var heading = readme.IndexOf("## ADR register", StringComparison.Ordinal);
+        if (heading < 0)
+        {
+            return [];
+        }
+
+        var end = readme.IndexOf("\n## ", heading + 1, StringComparison.Ordinal);
+        var register = end < 0 ? readme[heading..] : readme[heading..end];
+
+        return RegisterRow.Matches(register).Select(match => match.Groups["number"].Value);
     }
 
     /// <summary>Every bare ADR number cited by the text, with repeats.</summary>
