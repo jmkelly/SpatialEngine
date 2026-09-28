@@ -149,7 +149,7 @@ internal static class StoreEndpoints
             BoundingBox? bbox = request.Bbox is null
                 ? null
                 : new BoundingBox(request.Bbox.MinX, request.Bbox.MinY, request.Bbox.MaxX, request.Bbox.MaxY);
-            var batches = await features.QueryAsync(request.Dataset, bbox, request.Filter, token);
+            var batches = await features.QueryFilterAsync(request.Dataset, bbox, request.Filter, token);
             return Results.Ok(new FeatureBatchesResponse(batches.Select(CodecWire.EncodeBatch).ToArray()));
         }
         catch (Exception exception)

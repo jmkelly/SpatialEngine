@@ -2,6 +2,7 @@ using System.Globalization;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Host.Tests;
@@ -71,7 +72,11 @@ public sealed class WritableMemoryStore : IDataCatalogue, IFeatureStore, IFeatur
         }
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    public Task<FeatureQueryPage> QueryAsync(
+    string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+    Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
     {
         lock (_gate)
         {
@@ -278,8 +283,12 @@ public sealed class ScanOnlyMemoryStore : IFeatureStore, ITransactionStore
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         _store.ScanAsync(dataset, cancellationToken);
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
-        _store.QueryAsync(dataset, bbox, filter, cancellationToken);
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        _store.QueryAsync(dataset, query, cancellationToken);
+
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        _store.QueryFilterAsync(dataset, bbox, filter, cancellationToken);
 
     public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
         _store.WriteAsync(dataset, batch, transaction, cancellationToken);

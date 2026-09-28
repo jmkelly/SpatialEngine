@@ -28,7 +28,7 @@ internal sealed class FeaturePipeline
         var sourceBounds = GeometryPipeline.TransformEnvelope(
             _transforms, viewport.Bounds, viewport.Crs, FormattableString.Invariant($"EPSG:{description.Srid}"), cancellationToken);
         var bbox = new BoundingBox(sourceBounds.MinX, sourceBounds.MinY, sourceBounds.MaxX, sourceBounds.MaxY);
-        var batches = await source.Features.QueryAsync(source.Dataset, bbox, source.Filter, cancellationToken);
+        var batches = await source.Features.QueryFilterAsync(source.Dataset, bbox, source.Filter, cancellationToken);
         var features = new List<IFeature>();
         foreach (var batch in batches)
         {

@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Demo;
 
@@ -12,7 +14,7 @@ namespace Spatial.Stores.Demo;
 /// Read-only (writes and dataset creation throw <c>invalid.arguments</c>);
 /// the demo sleep is a cancellable delay reporting progress.
 /// </summary>
-public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
+public sealed class DemoStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IDemoWork
 {
     private const int BatchSize = 64;
 
@@ -73,7 +75,33 @@ public sealed class DemoStore : IDataCatalogue, IFeatureStore, IDemoWork
         return Task.FromResult(scanned);
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The plan read and the reduction faces: the reference executor over the
+    /// procedural dataset, so the demo provider answers every plan and every
+    /// reduction correctly and is the reference a pushdown is compared against
+    /// (ADR-0074 §4, §6).
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
+        string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (filter is not null)

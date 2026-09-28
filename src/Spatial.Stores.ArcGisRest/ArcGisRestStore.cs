@@ -4,12 +4,15 @@ using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.ArcGisRest;
 
 /// <summary>
 /// The ArcGIS REST consuming provider (ADR-0035): an in-process
-/// <see cref="IDataCatalogue"/> and <see cref="IFeatureStore"/> over one
+/// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/> and
+/// <see cref="IFeatureAggregateStore"/> over one
 /// configured remote FeatureServer/MapServer. Layers become datasets; Esri
 /// JSON geometries and features are converted to core values by
 /// <see cref="ArcGisRestMapper"/>. Reads are paginated and cancellable; the
@@ -17,7 +20,7 @@ namespace Spatial.Stores.ArcGisRest;
 /// never a caller string. Writes and dataset creation are unsupported (a
 /// typed <c>invalid.arguments</c>).
 /// </summary>
-public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
+public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore
 {
     private readonly HttpClient _http;
     private readonly string _baseUrl;
@@ -80,10 +83,36 @@ public sealed class ArcGisRestStore : IDataCatalogue, IFeatureStore
 
     /// <inheritdoc />
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
-        QueryAsync(dataset, bbox: null, filter: null, cancellationToken);
+        QueryFilterAsync(dataset, bbox: null, filter: null, cancellationToken);
+
+    /// <summary>
+    /// The plan read and the reduction faces over the reference executor: this
+    /// provider pages the remote service for itself, so the projection, the
+    /// ordering, the paging, the count, the distinct set and the grouped
+    /// aggregate are all applied to the rows the remote returned, in the
+    /// engine's terms (ADR-0074 §4). It is correct because it is the reference,
+    /// not because the remote service could express it.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    public async Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
         string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
     {
         var layerId = ArcGisRestMapper.ParseLayerId(dataset);

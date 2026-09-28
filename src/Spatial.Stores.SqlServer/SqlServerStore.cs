@@ -2,6 +2,8 @@ using Microsoft.Data.SqlClient;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 using Spatial.Stores.SqlServer.Configuration;
 using Spatial.Stores.SqlServer.Core;
 using Spatial.Stores.SqlServer.Data;
@@ -12,7 +14,8 @@ namespace Spatial.Stores.SqlServer;
 /// <summary>
 /// The SQL Server store (ADR-0033, ADR-0073): a direct, in-process
 /// implementation of <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
-/// <see cref="IFeatureLookup"/> and <see cref="ITransactionStore"/> on
+/// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/> and
+/// <see cref="ITransactionStore"/> on
 /// Microsoft.Data.SqlClient. SqlClient types, T-SQL and WKB stay inside this
 /// assembly (ADR-0005). This type is the composition root of the store: it
 /// validates arguments, maps failures and owns the lifecycle, while the
@@ -26,7 +29,7 @@ namespace Spatial.Stores.SqlServer;
 /// identifiers/field names/filters throw <c>invalid.arguments</c>;
 /// diagnostics are redacted (database name only, never the secret).
 /// </summary>
-public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
+public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
 {
     private readonly SqlServerConnectionConfiguration _configuration;
     private readonly SqlServerStorage _storage;
@@ -85,7 +88,54 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureLook
         return RunStoreOperationAsync(() => Features.ScanAsync(name, cancellationToken));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    /// <summary>
+    /// The plan read and the reduction faces, evaluated by the shared reference
+    /// executor over the rows this store reads (ADR-0074 §4, §6): the answers
+    /// are the contract's answers, not T-SQL's, and the provider's own pushdown
+    /// of projection, order, cap and aggregation is a follow-up that has to
+    /// reproduce them exactly.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+    }
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
+    }
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(distinct);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
+    }
+
+    /// <inheritdoc cref="QueryAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(aggregate);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
         string dataset,
         CoreBoundingBox? bbox = null,
         string? filter = null,

@@ -2,6 +2,7 @@ using Npgsql;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Stores.PostGIS.Configuration;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
@@ -12,7 +13,8 @@ namespace Spatial.Stores.PostGIS;
 /// <summary>
 /// The PostGIS store (ADR-0033): a direct, in-process implementation of
 /// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
-/// <see cref="IFeatureLookup"/> and <see cref="ITransactionStore"/> on Npgsql
+/// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/> and
+/// <see cref="ITransactionStore"/> on Npgsql
 /// 10. Npgsql types, SQL and EWKB stay inside this assembly (ADR-0005).
 /// This type is the composition root of the store: it validates arguments,
 /// maps failures and owns the lifecycle, while the catalogue face
@@ -26,7 +28,7 @@ namespace Spatial.Stores.PostGIS;
 /// <c>invalid.arguments</c>; diagnostics are redacted (database name only,
 /// never the secret).
 /// </summary>
-public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
+public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
 {
     private readonly PostgisConnectionConfiguration _configuration;
     private readonly PostgisStorage _storage;
@@ -50,6 +52,8 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
     private PostgisCatalogue Catalogue => _storage.Catalogue;
 
     private PostgisFeatures Features => _storage.Features;
+
+    private PostgisPlanReader Plans => new(_storage, _storage.Catalogue);
 
     public Task<IReadOnlyList<DatasetSummary>> ListAsync(string? pattern = null, CancellationToken cancellationToken = default)
     {
@@ -81,7 +85,56 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureLookup
         return RunStoreOperationAsync(() => Features.ScanAsync(name, cancellationToken));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    /// <summary>
+    /// The plan read: the plan compiled to SQL — projection, order, row cap —
+    /// and finished here with the shared reference executor where the dialect
+    /// cannot express part of it (ADR-0074 §4).
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.ReadAsync(name, query, cancellationToken));
+    }
+
+    /// <summary>The count of the rows a plan selects, counted by the database.</summary>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.CountAsync(name, query, cancellationToken));
+    }
+
+    /// <summary>The deduplicated field combinations a plan selects.</summary>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(distinct);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.DistinctAsync(name, query, distinct, cancellationToken));
+    }
+
+    /// <summary>The grouped reduction a plan selects, pushed down where the dialect allows.</summary>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(aggregate);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return RunStoreOperationAsync(() => Plans.AggregateAsync(name, query, aggregate, cancellationToken));
+    }
+
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
         string dataset,
         CoreBoundingBox? bbox = null,
         string? filter = null,

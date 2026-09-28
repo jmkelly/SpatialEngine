@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.Rendering.Skia;
@@ -110,7 +111,10 @@ public class TileRenderBenchmarks
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+        public Task<FeatureQueryPage> QueryAsync(
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+            Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+        public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
             string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
         {
             IReadOnlyList<FeatureBatch> batches = [new FeatureBatch(BenchSchema.Value, features)];

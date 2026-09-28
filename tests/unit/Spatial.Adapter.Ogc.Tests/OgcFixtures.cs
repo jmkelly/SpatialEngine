@@ -1,6 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Adapter.Ogc.Tests;
@@ -77,7 +78,11 @@ internal static class OgcFixtures
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Page());
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+        public Task<FeatureQueryPage> QueryAsync(
+            string id, FeatureQuery query, CancellationToken cancellationToken = default) =>
+            Spatial.Querying.FeaturePlanFallback.ReadAsync(this, id, query, cancellationToken);
+
+        public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
             string id, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
         {
             var matched = bbox is null

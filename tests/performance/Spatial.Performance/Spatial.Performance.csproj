@@ -23,6 +23,7 @@
          packages). NTS/ProjNet/Skia types stay inside the bench methods;
          nothing crosses a contract. -->
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Querying\Spatial.Querying.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Esri.Codec\Spatial.Esri.Codec.csproj" />

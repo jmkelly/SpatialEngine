@@ -1,6 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Rendering.Skia.Tests;
@@ -80,10 +81,19 @@ internal sealed class FakeStore(FeatureSchema schema, params Feature[] features)
 
     public string? LastFilter { get; private set; }
 
+    public FeatureQuery? LastPlan { get; private set; }
+
     public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+    {
+        LastPlan = query;
+        return Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
         string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -142,7 +142,7 @@ internal static class WfsService
         OgcRequestServices services, OgcLayer layer, WfsBbox? bbox, CancellationToken cancellationToken)
     {
         var projected = Project(services, layer, bbox, cancellationToken);
-        var batches = await services.Features(layer.Store).QueryAsync(layer.Layer.Dataset, projected, null, cancellationToken);
+        var batches = await services.Features(layer.Store).QueryFilterAsync(layer.Layer.Dataset, projected, null, cancellationToken);
         return batches
             .SelectMany(batch => batch.Features)
             .ToArray();

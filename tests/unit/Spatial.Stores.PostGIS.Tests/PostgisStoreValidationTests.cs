@@ -18,7 +18,7 @@ public sealed class PostgisStoreValidationTests
     {
         var store = new PostgisStore(new PostgisOptions());
 
-        var query = await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync(dataset));
+        var query = await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync(dataset, FeatureQuery.All));
         Assert.Equal(SpatialException.InvalidArguments, query.Code);
 
         var describe = await Assert.ThrowsAsync<SpatialException>(() => store.DescribeAsync(dataset));
@@ -57,7 +57,7 @@ public sealed class PostgisStoreValidationTests
         });
 
         var exception = await Assert.ThrowsAsync<SpatialException>(() =>
-            store.QueryAsync("public.places", new BoundingBox(2, 0, 1, 0)));
+            store.QueryAsync("public.places", new FeatureQuery(BoundingBox: new BoundingBox(2, 0, 1, 0))));
 
         Assert.Equal(SpatialException.InvalidArguments, exception.Code);
     }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 
@@ -624,7 +625,11 @@ public sealed class FeatureEditEngineTests
             return Task.FromResult(batches);
         }
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        public Task<FeatureQueryPage> QueryAsync(
+    string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+    Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+
+        public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
             ScanAsync(dataset, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
@@ -768,7 +773,11 @@ public sealed class FeatureEditEngineTests
             return Task.FromResult(batches);
         }
 
-        public Task<IReadOnlyList<FeatureBatch>> QueryAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
+        public Task<FeatureQueryPage> QueryAsync(
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+            Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+
+        public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default) =>
             ScanAsync(dataset, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)

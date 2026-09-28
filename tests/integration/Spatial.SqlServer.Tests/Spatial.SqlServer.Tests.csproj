@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Querying\Spatial.Querying.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Stores.SqlServer\Spatial.Stores.SqlServer.csproj" />
   </ItemGroup>

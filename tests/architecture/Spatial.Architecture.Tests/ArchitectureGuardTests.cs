@@ -99,12 +99,15 @@ public sealed class ArchitectureGuardTests
     /// spatial packages stay inside the owning implementation. ADR-0035 adds
     /// the shared Esri codec as a permitted reference for the two boundary
     /// projects (they share only <c>Spatial.Esri.Codec</c>, never each
-    /// other).
+    /// other). ADR-0075 adds <c>Spatial.Querying</c>, the shared reference
+    /// semantics of a query plan: a store's pushdown is measured against that
+    /// one executor, so it is linked by the stores and by the adapter rather
+    /// than copied into each of them.
     /// </summary>
     [Fact]
     public void Implementation_projects_reference_only_core_and_sdk()
     {
-        var allowed = new[] { "Spatial.Core", "Spatial.Contracts", "Spatial.Esri.Codec" };
+        var allowed = new[] { "Spatial.Core", "Spatial.Contracts", "Spatial.Esri.Codec", "Spatial.Querying" };
         var violations = ImplementationProjects()
             .SelectMany(project => project.ProjectReferences
                 .Where(r => !allowed.Contains(r) && !AllowedBoundaryReferences(project.Name).Contains(r))

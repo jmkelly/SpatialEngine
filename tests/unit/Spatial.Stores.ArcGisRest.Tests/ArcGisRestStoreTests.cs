@@ -175,7 +175,7 @@ public sealed class ArcGisRestStoreTests
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        await store.QueryAsync(
+        await store.QueryFilterAsync(
             "arcgis.l0",
             new BoundingBox(1, 2, 3, 4),
             "name = 'Berlin' AND population > 1000");
@@ -192,7 +192,7 @@ public sealed class ArcGisRestStoreTests
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        await store.QueryAsync("arcgis.l0", new BoundingBox(1, 2, 3, 4), "name = 'Berlin'");
+        await store.QueryFilterAsync("arcgis.l0", new BoundingBox(1, 2, 3, 4), "name = 'Berlin'");
 
         var query = Assert.Single(handler.Requests, request => request.Contains("/query", StringComparison.Ordinal));
         Assert.Contains("orderByFields=OBJECTID", query, StringComparison.Ordinal);
@@ -204,7 +204,7 @@ public sealed class ArcGisRestStoreTests
         var handler = Handler(Route(ServiceRoot, LayerMetadata, QueryPage()));
         var store = Store(handler);
 
-        var exception = await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync("arcgis.l0", filter: "DROP TABLE"));
+        var exception = await Assert.ThrowsAsync<SpatialException>(() => store.QueryFilterAsync("arcgis.l0", filter: "DROP TABLE"));
 
         Assert.Equal(SpatialException.InvalidArguments, exception.Code);
     }

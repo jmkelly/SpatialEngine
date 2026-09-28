@@ -113,7 +113,7 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var batches = await context.Store.QueryAsync(
+        var batches = await context.Store.QueryFilterAsync(
             "public.places", new BoundingBox(13.0, 52.0, 13.5, 53.0));
 
         var names = batches.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray();
@@ -126,26 +126,26 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        var byName = await context.Store.QueryAsync("public.places", null, "name = 'Berlin'");
+        var byName = await context.Store.QueryFilterAsync("public.places", null, "name = 'Berlin'");
         Assert.Equal(["Berlin"], byName.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var like = await context.Store.QueryAsync("public.places", null, "name LIKE 'P%'");
+        var like = await context.Store.QueryFilterAsync("public.places", null, "name LIKE 'P%'");
         Assert.Equal(["Paris"], like.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var prefix = await context.Store.QueryAsync("public.places", null, "id < 3 AND name != 'London'");
+        var prefix = await context.Store.QueryFilterAsync("public.places", null, "id < 3 AND name != 'London'");
         Assert.Equal(["Berlin"], prefix.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
-        var filteredBox = await context.Store.QueryAsync(
+        var filteredBox = await context.Store.QueryFilterAsync(
             "public.places", new BoundingBox(-1.0, 48.0, 15.0, 54.0), "id = 3");
         Assert.Equal(["Paris"], filteredBox.SelectMany(batch => batch.Features).Select(feature => feature["name"].StringValue).ToArray());
 
         var unknownColumn = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Store.QueryAsync("public.places", null, "mystery = 1"));
+            context.Store.QueryFilterAsync("public.places", null, "mystery = 1"));
         Assert.Equal(SpatialException.InvalidArguments, unknownColumn.Code);
         Assert.Contains("'mystery'", unknownColumn.Message);
 
         var geometryColumn = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Store.QueryAsync("public.places", null, "geom = 1"));
+            context.Store.QueryFilterAsync("public.places", null, "geom = 1"));
         Assert.Equal(SpatialException.InvalidArguments, geometryColumn.Code);
         Assert.Contains("bounding box", geometryColumn.Message);
     }

@@ -1,6 +1,8 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.Memory;
 
@@ -14,7 +16,7 @@ namespace Spatial.Stores.Memory;
 /// dataset. Diagnostics state that; it is a development-and-CI provider, not
 /// a persistence guarantee.
 /// </summary>
-public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, ITransactionStore
+public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, IFeatureAggregateStore, ITransactionStore
 {
     private const int BatchSize = 512;
 
@@ -76,7 +78,38 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
         }));
     }
 
-    public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
+    /// <summary>
+    /// The plan read: the reference executor over the dataset, so the
+    /// in-memory provider defines the plan's semantics rather than
+    /// approximating them (ADR-0074 §4). It is also the fallback every
+    /// pushdown is measured against, which is why the executor is shared
+    /// rather than copied here.
+    /// </summary>
+    public Task<FeatureQueryPage> QueryAsync(
+        string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
+
+    /// <summary>
+    /// The count, distinct and aggregate faces, over the reference executor.
+    /// The in-memory provider has nothing to push down, so implementing the
+    /// optional face is not slower than not implementing it: the answer is the
+    /// same and the caller does not have to know which stores reduce.
+    /// </summary>
+    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.CountAsync(this, dataset, query, cancellationToken);
+
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.DistinctAsync(this, dataset, query, distinct, cancellationToken);
+
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<AggregatePage> AggregateAsync(
+        string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
+        FeaturePlanFallback.AggregateAsync(this, dataset, query, aggregate, cancellationToken);
+
+    /// <inheritdoc cref="CountAsync"/>
+    public Task<IReadOnlyList<FeatureBatch>> QueryFilterAsync(
         string dataset, BoundingBox? bbox = null, string? filter = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

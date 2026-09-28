@@ -121,7 +121,7 @@ public sealed class DemoStoreTests
     [Fact]
     public async Task The_world_cities_query_filters_by_bounding_box()
     {
-        var batches = await _store.QueryAsync("demo.world_cities", new BoundingBox(-74.1, 40.7, -74.0, 40.8));
+        var batches = await _store.QueryFilterAsync("demo.world_cities", new BoundingBox(-74.1, 40.7, -74.0, 40.8));
 
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         Assert.Contains(features, feature => feature.Id.Value == "wd-5128581");
@@ -155,7 +155,7 @@ public sealed class DemoStoreTests
     [Fact]
     public async Task The_query_filters_by_bounding_box()
     {
-        var batches = await _store.QueryAsync("demo.points", new BoundingBox(-5, -4, -5, -4));
+        var batches = await _store.QueryFilterAsync("demo.points", new BoundingBox(-5, -4, -5, -4));
 
         var features = batches.SelectMany(batch => batch.Features).ToArray();
         Assert.Single(features);
@@ -166,7 +166,7 @@ public sealed class DemoStoreTests
     public async Task Attribute_filters_are_rejected()
     {
         var exception = await Assert.ThrowsAsync<SpatialException>(() =>
-            _store.QueryAsync("demo.points", null, "value > 1"));
+            _store.QueryFilterAsync("demo.points", null, "value > 1"));
 
         Assert.Equal(SpatialException.InvalidArguments, exception.Code);
     }

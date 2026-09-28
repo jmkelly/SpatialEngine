@@ -9,6 +9,7 @@
     <Project Path="src/Spatial.Ingest.Codec/Spatial.Ingest.Codec.csproj" />
     <Project Path="src/Spatial.Operations.NetTopologySuite/Spatial.Operations.NetTopologySuite.csproj" />
     <Project Path="src/Spatial.Contracts/Spatial.Contracts.csproj" />
+    <Project Path="src/Spatial.Querying/Spatial.Querying.csproj" />
     <Project Path="src/Spatial.Stores.Demo/Spatial.Stores.Demo.csproj" />
     <Project Path="src/Spatial.Stores.Memory/Spatial.Stores.Memory.csproj" />
     <Project Path="src/Spatial.Stores.PostGIS/Spatial.Stores.PostGIS.csproj" />
@@ -22,6 +23,9 @@
     <Project Path="src/Spatial.Transformations.ProjNet/Spatial.Transformations.ProjNet.csproj" />
   </Folder>
   <Folder Name="/tests/" />
+  <Folder Name="/tests/conformance/">
+    <Project Path="tests/conformance/Spatial.QueryConformance/Spatial.QueryConformance.csproj" />
+  </Folder>
   <Folder Name="/tests/unit/">
     <Project Path="tests/unit/Spatial.Adapter.GeoServices.Tests/Spatial.Adapter.GeoServices.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Adapter.Ogc.Tests/Spatial.Adapter.Ogc.Tests.csproj" />

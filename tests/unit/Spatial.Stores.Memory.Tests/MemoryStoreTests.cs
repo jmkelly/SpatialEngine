@@ -162,7 +162,7 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        var batches = await store.QueryAsync("memory.cities", new BoundingBox(-1, 47, 4, 50));
+        var batches = await store.QueryFilterAsync("memory.cities", new BoundingBox(-1, 47, 4, 50));
 
         Assert.Equal(["2"], batches.SelectMany(batch => batch.Features).Select(f => f.Id.Value).ToArray());
     }
@@ -172,7 +172,7 @@ public sealed class MemoryStoreTests
     {
         var store = await IngestedAsync();
 
-        await Assert.ThrowsAsync<SpatialException>(() => store.QueryAsync("memory.cities", filter: "name = 'Berlin'"));
+        await Assert.ThrowsAsync<SpatialException>(() => store.QueryFilterAsync("memory.cities", filter: "name = 'Berlin'"));
     }
 
     [Fact]
