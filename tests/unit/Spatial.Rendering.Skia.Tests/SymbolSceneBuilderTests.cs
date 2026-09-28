@@ -64,7 +64,7 @@ public sealed class SymbolSceneBuilderTests
         var layer = Layer("{label}");
         var features = Features(SymbolFeature("Beta", 5, 5), SymbolFeature("Alpha", 4, 4));
 
-        var scene = builder.Build(layer, features, Viewport, Symbol(layer), CancellationToken.None);
+        var scene = builder.Build(layer, Draw(features));
 
         Assert.Equal(["Alpha", "Beta"], scene.Symbols.Select(symbol => symbol.Text));
     }
@@ -82,7 +82,7 @@ public sealed class SymbolSceneBuilderTests
                 Schema,
                 Base(AttributeValue.Null, GeometryFactory.CreatePoint(5, 5))));
 
-        var scene = builder.Build(layer, features, Viewport, Symbol(layer), CancellationToken.None);
+        var scene = builder.Build(layer, Draw(features));
 
         var symbol = Assert.Single(scene.Symbols);
         Assert.Equal("Inside", symbol.Text);
@@ -95,7 +95,7 @@ public sealed class SymbolSceneBuilderTests
         var layer = Layer("{label}") with { Filter = new EqualsFilter("label", AttributeValue.FromString("Beta")) };
         var features = Features(SymbolFeature("Alpha", 5, 5), SymbolFeature("Beta", 4, 4));
 
-        var scene = builder.Build(layer, features, Viewport, Symbol(layer), CancellationToken.None);
+        var scene = builder.Build(layer, Draw(features));
 
         Assert.Equal(["Beta"], scene.Symbols.Select(symbol => symbol.Text));
     }
@@ -106,10 +106,12 @@ public sealed class SymbolSceneBuilderTests
     private static SymbolPaint Symbol(DrawLayer layer) => (SymbolPaint)layer.Paint;
 
     private static SymbolPaint SymbolPaintFor(string template) =>
-        new(new SymbolOptions(
-            template, [], 16, new StyleColor(0, 0, 0), StyleColor.Transparent, 0, SymbolAnchor.Center, 0, 0, 2, false, null, 1, false));
+        new(new SymbolOptions { TextField = template });
 
     private static LayerFeatures Features(params IFeature[] features) => new(4326, "geometry", features, new Envelope(-180, -90, 180, 90));
+
+    private static LayerDraw Draw(LayerFeatures features) =>
+        new(features, Viewport, new FeatureScopeCache(0), CancellationToken.None);
 
     private static Feature SymbolFeature(string label, double x, double y) =>
         new(new FeatureId(label), Schema, Base(AttributeValue.FromString(label), GeometryFactory.CreatePoint(x, y)));

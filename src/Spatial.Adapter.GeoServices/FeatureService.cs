@@ -49,8 +49,14 @@ internal static class FeatureService
     }
 
     /// <summary>Builds one layer's metadata (spec §9.1), advertising attachments exactly when the store serves them.</summary>
-    public static EsriLayer Layer(int layerId, DatasetDescription dataset, bool editable, bool isTable = false, bool hasAttachments = false) =>
-        EsriLayerModel.Describe(layerId, dataset, editable, hasAttachments, isTable);
+    public static EsriLayer Layer(
+        int layerId,
+        DatasetDescription dataset,
+        bool editable,
+        bool isTable = false,
+        bool hasAttachments = false,
+        IReadOnlyList<EsriRelationship>? relationships = null) =>
+        EsriLayerModel.Describe(layerId, dataset, editable, hasAttachments, isTable, relationships);
 
     /// <summary>Executes a query and writes the spec §9.1.4.3 response.</summary>
     public static Task<IResult> QueryAsync(
@@ -75,8 +81,9 @@ internal static class FeatureService
         long objectId,
         EsriFeatureQuery query,
         ICoordinateTransforms transforms,
+        IGeometryOperations operations,
         CancellationToken cancellationToken) =>
-        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, transforms, cancellationToken);
+        FeatureResourceReader.FeatureAsync(dataset, store, objectId, query, transforms, operations, cancellationToken);
 
     /// <summary>Executes the requested editing operation and writes its per-feature results.</summary>
     public static Task<IResult> EditsAsync(FeatureEditEngine.EditInvocation invocation, CancellationToken cancellationToken) =>

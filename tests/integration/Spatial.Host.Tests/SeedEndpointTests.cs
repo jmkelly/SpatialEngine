@@ -14,7 +14,7 @@ using Spatial.Host.Api;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The development seed endpoint (ADR-0070): a manifest POST that downloads,
+/// The development seed endpoint (ADR-0078): a manifest POST that downloads,
 /// ingests and publishes without restarting the host. Mounted only in
 /// Development; token-gated when a token is configured, open otherwise.
 /// </summary>
@@ -143,7 +143,7 @@ public sealed class SeedEndpointTests : IDisposable
             "/api/seed", Json(JsonSerializer.Serialize(SeedDocument(force: true)))));
         // Forcing re-attempts the ingest, which the store rejects per item
         // because it still holds the dataset — the same semantics as
-        // `seed.mjs --force` (ADR-0070).
+        // `seed.mjs --force` (ADR-0078).
         Assert.Equal(0, forced.GetProperty("ingested").GetInt32());
         var forceFailures = forced.GetProperty("failures").EnumerateArray().ToArray();
         Assert.Equal(2, forceFailures.Length);
@@ -223,7 +223,7 @@ public sealed class SeedEndpointTests : IDisposable
 
         var response = await client.PostAsync("/api/seed", Json(document));
 
-        // Per-item failures never fail the run (ADR-0070): 200 with a failure
+        // Per-item failures never fail the run (ADR-0078): 200 with a failure
         // entry, mirroring the seed tool's summary.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await BodyAsync(response);

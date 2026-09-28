@@ -76,4 +76,47 @@ public sealed class DeclaredLayerOptions
 
     /// <summary>Optional per-layer store override; empty uses the map store.</summary>
     public string? Store { get; set; }
+
+    /// <summary>
+    /// The relationships this layer declares to the map's other layers
+    /// (ADR-0077); empty means none. Validated structurally when the
+    /// registry seeds the map.
+    /// </summary>
+    public IReadOnlyList<DeclaredRelationshipOptions> Relationships { get; set; } = [];
+}
+
+/// <summary>One declared relationship of a declared map layer (ADR-0077).</summary>
+public sealed class DeclaredRelationshipOptions
+{
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The layer id of the related layer, which the map must publish.</summary>
+    public int RelatedLayerId { get; set; }
+
+    /// <summary>The key column on this layer.</summary>
+    public string PrimaryKeyColumn { get; set; } = string.Empty;
+
+    /// <summary>The key column on the related layer.</summary>
+    public string RelatedKeyColumn { get; set; } = string.Empty;
+
+    /// <summary><c>OneToOne</c>, <c>OneToMany</c> (default) or <c>ManyToMany</c>.</summary>
+    public string Cardinality { get; set; } = nameof(LayerRelationshipCardinality.OneToMany);
+
+    /// <summary>Optional display title clients show for the related records.</summary>
+    public string? TitleField { get; set; }
+
+    /// <summary>The join dataset of a many-to-many relationship; required there and rejected elsewhere.</summary>
+    public DeclaredRelationshipJoinOptions? Join { get; set; }
+}
+
+/// <summary>The join dataset of a declared many-to-many relationship (ADR-0077).</summary>
+public sealed class DeclaredRelationshipJoinOptions
+{
+    public string Dataset { get; set; } = string.Empty;
+
+    /// <summary>The join column carrying the origin layer's key.</summary>
+    public string PrimaryKeyColumn { get; set; } = string.Empty;
+
+    /// <summary>The join column carrying the related layer's key.</summary>
+    public string RelatedKeyColumn { get; set; } = string.Empty;
 }

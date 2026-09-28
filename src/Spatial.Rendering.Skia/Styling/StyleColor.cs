@@ -1,5 +1,4 @@
 using System.Globalization;
-using Spatial.Contracts;
 
 namespace Spatial.Rendering.Skia.Styling;
 
@@ -11,6 +10,12 @@ namespace Spatial.Rendering.Skia.Styling;
 internal readonly record struct StyleColor(byte Red, byte Green, byte Blue, byte Alpha = 255)
 {
     public static readonly StyleColor Transparent = new(0, 0, 0, 0);
+
+    /// <summary>The CSS hex form: <c>#rgb</c> is never produced, and the alpha byte is omitted when opaque.</summary>
+    public string ToHex() =>
+        Alpha == 255
+            ? FormattableString.Invariant($"#{Red:X2}{Green:X2}{Blue:X2}")
+            : FormattableString.Invariant($"#{Red:X2}{Green:X2}{Blue:X2}{Alpha:X2}");
 
     /// <summary>Multiplies the alpha channel by <paramref name="opacity"/> (clamped to [0, 1]).</summary>
     public StyleColor ScaleAlpha(double opacity)

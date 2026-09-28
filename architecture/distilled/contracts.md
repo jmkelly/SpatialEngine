@@ -21,9 +21,10 @@ and bounds as raster entries (ADR-0046/0070).
 | `Buffer` | geometry, distance, optional quadrantSegments (default 8) | geometry | OGC buffer; negative erodes |
 | `Intersection` | left, right | geometry | disjoint inputs succeed with empty result |
 | `Validate` | geometry | bool | invalid geometry = successful `false`, never a failure |
-| `Simplify` | geometry, tolerance | geometry | Douglas-Peucker; zero returns unchanged |
+| `Simplify` | geometry, tolerance | geometry | Douglas-Peucker; the tolerance is an algorithm parameter, so it may empty a small ring |
+| `Generalize` | geometry, maxDisplacement | geometry | Douglas-Peucker at a deviation *allowance* (ADR-0079): returns input vertices only, keeps every input vertex within the allowance, and returns the input unchanged when the allowance cannot be spent without changing the geometry's kind (or is zero) |
 
-All four: **pure, cancellable** (`CancellationToken`, honoured before the
+All five: **pure, cancellable** (`CancellationToken`, honoured before the
 algorithm runs). Geometry crosses as Base64 SGEOM — never JSON geometry.
 NTS adapter notes: open rings closed before processing (core does not
 require closure); algorithms are planar (computed results are XY; simplify
@@ -48,7 +49,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 
 ## Ground-distance buffering (`IGeodesicBuffering`, ProjNet)
 
-Added by ADR-0074 so a linear distance against a geographic CRS means
+Added by ADR-0075 so a linear distance against a geographic CRS means
 metres on the ground rather than degrees on a plane. Pure and cancellable.
 
 | Method | Input | Output | Behaviour |
@@ -78,8 +79,14 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   reports declared axes; the service performs no swaps — axis-order tests pin
   this. Z/M pass through untouched; empty geometries keep type and layout.
 - Omitted `source` defaults to the geometry's own CRS (then required).
-- Curated EPSG catalogue (15 CRSs). Accuracy: modern datums zero-shift
-  (sub-mm vs PROJ); OSGB36 classic Helmert (±0.1 m, no grid).
+- Built-in EPSG catalogue: the common geographic and projected CRSs written
+  out, plus projected *families* generated from one parameter template — the
+  UTM grid (zones 1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760)
+  and the ETRS89 and NAD83 UTM bands over their own datums. A code outside
+  the catalogue and the families is `invalid.arguments`; there is no WKT
+  input. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36 classic
+  Helmert (±0.1 m, no grid). The catalogue is built once, and each CRS in it
+  on first use.
 
 ## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 
@@ -126,7 +133,7 @@ and never enters `Spatial.Core`.
 | `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering. **ADR-0074 decides** that this becomes one core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`, with reductions (count/distinct/aggregate) on an additive `IFeatureAggregateStore` face; not yet implemented — see the ADR-0074 note below |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
-| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face, implemented by PostGIS only (ADR-0038) |
+| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038) |
 | `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). The host ingest route also accepts `sourceSrid` and reprojects the decoded pages through `ICoordinateTransforms` before load |
 | `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (FeatureServer/MapServer/Tiles/Wms/Wfs/ImageServer); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
@@ -208,7 +215,14 @@ persisted verbatim (ADR-0047); the dataset is not repeated inside it — the
 host injects `source-layer` when it assembles a render document. The OGC
 WMS/WFS projection lives in `Spatial.Adapter.Ogc`, reads the same map and
 keyed stores, and adds no contract: it renders through `IMapRenderer` and
-queries through `IFeatureStore`. An enabled
+queries through `IFeatureStore`. A layer may also declare `Relationships`
+(`LayerRelationship`, ADR-0077): two key columns plus a cardinality, with a
+join dataset for many-to-many. The declaration is publication state, so it
+lives on the layer and never in a store; `MapValidator` checks its shape and
+`MapRelationshipSchemas` checks it against the live schemas where a
+declaration happens (`PUT /api/maps/{name}`). The GeoServices projection
+serves it as the layer's `relationships` metadata and as
+`queryRelatedRecords`, with `relate`/`unrelate` behind the edit gate. An enabled
 service must be fed by a layer of the matching `Kind`. `Auto`-identity
 ingest adds a
 `GENERATED BY DEFAULT AS IDENTITY` primary key; `Source` uses a named integer

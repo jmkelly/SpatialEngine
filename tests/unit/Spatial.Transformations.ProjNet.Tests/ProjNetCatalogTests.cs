@@ -6,10 +6,13 @@ using static Spatial.Transformations.ProjNet.Tests.TransformInvoker;
 namespace Spatial.Transformations.ProjNet.Tests;
 
 /// <summary>
-/// The curated EPSG catalogue of the ProjNet transformation provider
-/// (ADR-0027): the served code set, the family/axis/unit descriptions and the
-/// unknown-code rejection. Pins the catalogue surface the provider promises
-/// through the CRS description service (ADR-0027/ADR-0033).
+/// The EPSG catalogue of the ProjNet transformation provider
+/// (ADR-0027): the enumerated codes the provider has always served, the
+/// family/axis/unit descriptions and the unknown-code rejection. Pins the
+/// catalogue surface the provider promises through the CRS description
+/// service (ADR-0027/ADR-0033). The generated families are pinned by
+/// <see cref="ProjNetGeneratedCatalogTests"/>; this file pins the rows that
+/// are still written out.
 /// </summary>
 public sealed class ProjNetCatalogTests
 {
@@ -17,18 +20,25 @@ public sealed class ProjNetCatalogTests
     public async Task The_catalogue_serves_the_documented_EPSG_subset()
     {
         var described = new List<string>();
-        foreach (var code in ProjEpsgCatalog.Codes.Order())
+        foreach (var code in Documented)
         {
             var description = await DescribeAsync("crs", $"EPSG:{code}");
             described.Add(description.Code);
         }
 
-        Assert.Equal(
-            [
-                "2154", "3857", "4171", "4258", "4269", "4277", "4326",
-                "25832", "25833", "26910", "27700", "32610", "32612", "32632", "32633",
-            ],
-            described);
+        Assert.Equal(Documented.Select(code => code.ToString(System.Globalization.CultureInfo.InvariantCulture)), described);
+    }
+
+    [Fact]
+    public async Task Every_code_the_catalogue_serves_describes()
+    {
+        foreach (var code in ProjEpsgCatalog.Codes)
+        {
+            var description = await DescribeAsync("crs", $"EPSG:{code}");
+
+            Assert.Equal(code.ToString(System.Globalization.CultureInfo.InvariantCulture), description.Code);
+            Assert.NotEmpty(description.Name);
+        }
     }
 
     [Fact]
@@ -95,4 +105,15 @@ public sealed class ProjNetCatalogTests
 
     private static Task<CrsDescription> Describe(int code) =>
         DescribeAsync("crs", $"EPSG:{code}");
+
+    /// <summary>
+    /// The fifteen codes the catalogue enumerated before the families were
+    /// generated, so the served set is a superset of what it was and no
+    /// served code disappeared when generation replaced the typed rows.
+    /// </summary>
+    private static readonly int[] Documented =
+    [
+        2154, 3857, 4171, 4258, 4269, 4277, 4326,
+        25832, 25833, 26910, 27700, 32610, 32612, 32632, 32633,
+    ];
 }

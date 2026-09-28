@@ -1,3 +1,4 @@
+using Spatial.Contracts.Providers;
 using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices;
@@ -25,4 +26,13 @@ internal static class GeoServicesErrors
     internal static EsriInteropException TokenRequired(string message) => new(EsriErrorCodes.TokenRequired, message);
 
     internal static EsriInteropException InvalidToken(string message) => new(EsriErrorCodes.InvalidToken, message);
+
+    /// <summary>
+    /// A <c>relationshipId</c> that names no declaration on a layer which
+    /// declares several, naming the declarations on offer so the client can
+    /// address one without a second metadata call.
+    /// </summary>
+    internal static EsriInteropException RequireRelationshipId(int layerId, IReadOnlyList<LayerRelationship> declared) =>
+        Invalid(
+            $"The 'relationshipId' parameter is required: layer {layerId} declares {declared.Count} relationships ({string.Join(", ", declared.Select(relationship => relationship.Name))}).");
 }

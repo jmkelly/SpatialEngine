@@ -1,6 +1,5 @@
 using SkiaSharp;
 using SkiaSharp.HarfBuzz;
-using Spatial.Core.Geometry;
 using Spatial.Rendering.Skia.Styling;
 
 namespace Spatial.Rendering.Skia.Drawing;
@@ -9,155 +8,135 @@ namespace Spatial.Rendering.Skia.Drawing;
 internal sealed record SymbolDrawContext(
     SKCanvas Canvas,
     SymbolOptions Options,
-    ViewportProjection Projection,
-    List<SKRect> Collision,
-    BundledFont Font,
+    FontSession Fonts,
     SpriteRegistry Sprites);
 
 /// <summary>
-/// Shapes, places and draws one symbol layer's labels and icons. Placement is
-/// a deterministic greedy first-fit: candidates arrive in scene order and are
-/// tested against the shared collision list, so repeated runs at the same
-/// viewport produce the same boxes and the same skipped labels (ADR-0049).
+/// Draws the placements the placement pass decided (ADR-0080). Drawing is
+/// separate from placing so priority can order placement across layers while
+/// the pixels keep the style's document order. A label is drawn in its
+/// candidate's frame, so a line label runs along its line and <c>text-rotate</c>
+/// turns the rest; a frame with no rotation draws at the same coordinates as
+/// before, which is what keeps the committed goldens byte-identical.
 /// </summary>
 internal static class SkiaSymbolRasterizer
 {
-    private const float IconPadding = 2f;
-
-    public static void Draw(SymbolDrawContext context, IReadOnlyList<SymbolFeature> features)
+    /// <summary>Draws one layer's placed features, in the layer's own feature order.</summary>
+    public static void Draw(
+        SymbolDrawContext context, IReadOnlyList<SymbolFeature> features, IReadOnlyList<PlacedSymbol?> placed)
     {
-        using var skFont = BundledFont.CreateFont(context.Options.Size);
-        var metrics = skFont.Metrics;
-        var hasText = !string.IsNullOrEmpty(context.Options.TextField);
-        var halo = context.Options.HaloWidth > 0 && context.Options.HaloColor.Alpha > 0;
-
-        foreach (var feature in features)
+        for (var index = 0; index < features.Count; index++)
         {
-            if (AnchorPoint(feature.Geometry, context.Projection) is not { } anchor)
+            // A data-driven symbol paint resolves per feature; the font and the
+            // size stay layer-level because they are layout, not paint.
+            var options = features[index].Options ?? context.Options;
+            if (index >= placed.Count || placed[index] is not { } placement || !placement.DrawsAnything)
             {
                 continue;
             }
 
-            PlaceIcon(context, feature.Icon, anchor);
-            if (hasText && !string.IsNullOrEmpty(feature.Text))
-            {
-                PlaceText(context, feature.Text, skFont, metrics, anchor, halo);
-            }
+            Draw(context, features[index], options, placement);
         }
     }
 
-    private static void PlaceText(
-        SymbolDrawContext context,
-        string text,
-        SKFont skFont,
-        SKFontMetrics metrics,
-        (float X, float Y) anchor,
-        bool halo)
+    private static void Draw(
+        SymbolDrawContext context, SymbolFeature feature, SymbolOptions options, PlacedSymbol placement)
     {
-        var shaped = context.Font.Shaper.Shape(text, skFont);
-        var width = shaped.Width;
-        var height = metrics.Descent - metrics.Ascent;
-        var options = context.Options;
-        var (left, top) = Align(
-            anchor.X + (float)(options.OffsetX * options.Size),
-            anchor.Y + (float)(options.OffsetY * options.Size),
-            width,
-            height,
-            options.Anchor);
-
-        if (!Place(context.Collision, new SKRect(left, top, left + width, top + height), options.Padding, options.AllowTextOverlap))
-        {
-            return;
-        }
-
-        var baseline = top - metrics.Ascent;
-        if (halo)
-        {
-            using var haloPaint = SkiaPaintFactory.TextStroke(options.HaloColor, options.HaloWidth);
-            context.Canvas.DrawShapedText(context.Font.Shaper, text, left, baseline, SKTextAlign.Left, skFont, haloPaint);
-        }
-
-        using var fill = SkiaPaintFactory.TextFill(options.Color);
-        context.Canvas.DrawShapedText(context.Font.Shaper, text, left, baseline, SKTextAlign.Left, skFont, fill);
-    }
-
-    private static void PlaceIcon(SymbolDrawContext context, string? icon, (float X, float Y) anchor)
-    {
-        if (string.IsNullOrEmpty(icon))
-        {
-            return;
-        }
-
-        var picture = context.Sprites.Get(icon);
-        var cull = picture.CullRect;
-        var scale = (float)context.Options.IconSize;
-        var width = cull.Width * scale;
-        var height = cull.Height * scale;
-        var left = anchor.X - width / 2;
-        var top = anchor.Y - height / 2;
-
-        if (!Place(context.Collision, new SKRect(left, top, left + width, top + height), IconPadding, context.Options.AllowIconOverlap))
-        {
-            return;
-        }
+        var candidate = placement.Candidate;
+        var degrees = (float)(candidate.Degrees + options.Rotate);
+        var rotated = degrees != 0;
+        var bundled = context.Fonts.Resolve(options.Fonts);
+        using var font = BundledFont.CreateFont(bundled.Face, options.Size);
+        var label = placement.Text is null
+            ? null
+            : ShapedLabel.Shape(feature.Text!, font, font.Metrics, bundled.Shaper, options);
 
         context.Canvas.Save();
-        context.Canvas.Translate(left - cull.Left * scale, top - cull.Top * scale);
+        try
+        {
+            if (rotated)
+            {
+                context.Canvas.Translate(candidate.X, candidate.Y);
+                context.Canvas.RotateDegrees(degrees);
+            }
+
+            // An unrotated frame draws in canvas pixels, so the anchor is added
+            // back to the local box; a rotated one is already in its own frame.
+            var (offsetX, offsetY) = rotated ? (0f, 0f) : (candidate.X, candidate.Y);
+            if (placement.Icon is { } icon)
+            {
+                DrawIcon(context, feature.Icon!, options, icon, offsetX, offsetY);
+            }
+
+            if (label is not null && placement.Text is { } text)
+            {
+                DrawText(context, options, label, text, offsetX, offsetY, bundled);
+            }
+        }
+        finally
+        {
+            context.Canvas.Restore();
+        }
+    }
+
+    private static void DrawText(
+        SymbolDrawContext context,
+        SymbolOptions options,
+        ShapedLabel label,
+        SymbolBox box,
+        float offsetX,
+        float offsetY,
+        BundledFont bundled)
+    {
+        using var font = BundledFont.CreateFont(bundled.Face, options.Size);
+        var halo = options.HaloWidth > 0 && options.HaloColor.Alpha > 0;
+        using var haloPaint = halo ? SkiaPaintFactory.TextStroke(options.HaloColor, options.HaloWidth) : null;
+        using var fill = SkiaPaintFactory.TextFill(options.Color);
+
+        for (var index = 0; index < label.Lines.Count; index++)
+        {
+            var line = label.Lines[index];
+            if (line.IsEmpty)
+            {
+                continue;
+            }
+
+            var baseline = offsetY + box.Top - font.Metrics.Ascent + (float)(index * label.LineAdvance);
+            if (haloPaint is not null)
+            {
+                DrawLine(context, bundled, line, offsetX + box.Left, baseline, font, haloPaint);
+            }
+
+            DrawLine(context, bundled, line, offsetX + box.Left, baseline, font, fill);
+        }
+    }
+
+    /// <summary>
+    /// Draws one shaped line. An untracked line is a single shaped run, which
+    /// is the path the committed goldens were blessed on; a tracked line draws
+    /// its runs at their tracked origins, so the extra advance lands between
+    /// them and the shaping is still HarfBuzz's.
+    /// </summary>
+    private static void DrawLine(
+        SymbolDrawContext context, BundledFont bundled, ShapedLine line, float left, float baseline, SKFont font, SKPaint paint)
+    {
+        foreach (var run in line.Runs)
+        {
+            context.Canvas.DrawShapedText(
+                bundled.Shaper, run.Slice(line.Text), left + run.X, baseline, SKTextAlign.Left, font, paint);
+        }
+    }
+
+    private static void DrawIcon(
+        SymbolDrawContext context, string icon, SymbolOptions options, SymbolBox box, float offsetX, float offsetY)
+    {
+        var picture = context.Sprites.Get(icon);
+        var cull = picture.CullRect;
+        var scale = (float)options.IconSize;
+        context.Canvas.Save();
+        context.Canvas.Translate(offsetX + box.Left - (cull.Left * scale), offsetY + box.Top - (cull.Top * scale));
         context.Canvas.Scale(scale);
         context.Canvas.DrawPicture(picture);
         context.Canvas.Restore();
     }
-
-    /// <summary>Adds the padded box to the collision list when it is free, and reports whether it was placed.</summary>
-    private static bool Place(List<SKRect> collision, SKRect box, double padding, bool allowOverlap)
-    {
-        var padded = box;
-        padded.Inflate((float)padding, (float)padding);
-        if (!allowOverlap && collision.Any(existing => existing.IntersectsWith(padded)))
-        {
-            return false;
-        }
-
-        collision.Add(padded);
-        return true;
-    }
-
-    private static (float Left, float Top) Align(float anchorX, float anchorY, float width, float height, SymbolAnchor anchor)
-    {
-        var left = anchor switch
-        {
-            SymbolAnchor.Left or SymbolAnchor.TopLeft or SymbolAnchor.BottomLeft => anchorX,
-            SymbolAnchor.Right or SymbolAnchor.TopRight or SymbolAnchor.BottomRight => anchorX - width,
-            _ => anchorX - width / 2,
-        };
-        var top = anchor switch
-        {
-            SymbolAnchor.Top or SymbolAnchor.TopLeft or SymbolAnchor.TopRight => anchorY,
-            SymbolAnchor.Bottom or SymbolAnchor.BottomLeft or SymbolAnchor.BottomRight => anchorY - height,
-            _ => anchorY - height / 2,
-        };
-        return (left, top);
-    }
-
-    /// <summary>
-    /// The feature's anchor in pixels: its point for point geometries, and the
-    /// envelope centre for line/polygon geometry (documented in ADR-0049).
-    /// </summary>
-    private static (float X, float Y)? AnchorPoint(IGeometry geometry, ViewportProjection projection)
-    {
-        var coordinate = FirstPoint(geometry) ?? Centre(geometry);
-        return coordinate is { } value ? projection.ToPixel(value.X, value.Y) : null;
-    }
-
-    private static Coordinate? Centre(IGeometry geometry) =>
-        geometry.Envelope is { } envelope
-            ? new Coordinate((envelope.MinX + envelope.MaxX) / 2, (envelope.MinY + envelope.MaxY) / 2)
-            : null;
-
-    private static Coordinate? FirstPoint(IGeometry geometry) => geometry switch
-    {
-        IPoint point => point.Coordinate,
-        IMultiPoint multi => multi.Points.Select(child => child.Coordinate).FirstOrDefault(coordinate => coordinate is not null),
-        _ => null,
-    };
 }

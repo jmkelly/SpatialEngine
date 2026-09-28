@@ -55,7 +55,7 @@ public sealed record AuthIdentityResponse(string Issuer, string Subject, string 
 
 public sealed record ErrorResponse(string Code, string Message);
 
-// ---- seed (ADR-0070) ----
+// ---- seed (ADR-0078) ----
 
 // Mirrors tools/seed/manifest.mjs so the seed tool can POST its manifest
 // verbatim: one downloadable source per dataset, one map per service.

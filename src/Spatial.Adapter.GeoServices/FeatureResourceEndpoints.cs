@@ -21,8 +21,8 @@ internal static class FeatureResourceEndpoints
         // getFeature reads `<layerId>/<objectId>` directly.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/{objectId:long}", ["GET", "POST"], (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores,
-            ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
-            FeatureResource(new FeatureResourceContext(catalog, registry, service, layerId, objectId, context, stores, transforms), cancellationToken));
+            ICoordinateTransforms transforms, IGeometryOperations operations, CancellationToken cancellationToken) =>
+            FeatureResource(new FeatureResourceContext(catalog, registry, service, layerId, objectId, context, stores, transforms, operations), cancellationToken));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/query", ["GET", "POST"], (
             HttpContext context,
@@ -48,7 +48,7 @@ internal static class FeatureResourceEndpoints
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
-            return await FeatureService.FeatureAsync(description, store, request.ObjectId, query, request.Transforms, cancellationToken);
+            return await FeatureService.FeatureAsync(description, store, request.ObjectId, query, request.Transforms, request.Operations, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -84,7 +84,8 @@ internal sealed record FeatureResourceContext(
     long ObjectId,
     HttpContext Context,
     IStoreRegistry Stores,
-    ICoordinateTransforms Transforms);
+    ICoordinateTransforms Transforms,
+    IGeometryOperations Operations);
 
 /// <summary>The resolved services of one Feature Service query request.</summary>
 internal sealed record FeatureQueryContext(

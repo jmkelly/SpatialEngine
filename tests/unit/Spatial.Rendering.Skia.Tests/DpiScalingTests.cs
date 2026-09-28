@@ -31,9 +31,21 @@ public sealed class DpiScalingTests
             Layer("fill", new FillPaint(new StyleColor(1, 2, 3), new StyleColor(4, 5, 6), 2)),
             Layer("line", new LinePaint(new StyleColor(7, 8, 9), 3, [4, 5], LineCapStyle.Round, LineJoinStyle.Bevel)),
             Layer("circle", new CirclePaint(new StyleColor(1, 1, 1), 5, new StyleColor(2, 2, 2), 1.5)),
-            Layer("symbol", new SymbolPaint(new SymbolOptions(
-                "name", ["Arial"], 12, new StyleColor(1, 2, 3), new StyleColor(4, 5, 6), 2,
-                SymbolAnchor.Center, 3, 4, 5, false, "icon", 6, false))),
+            Layer("symbol", new SymbolPaint(new SymbolOptions
+            {
+                TextField = "name",
+                Fonts = ["Arial"],
+                Size = 12,
+                Color = new StyleColor(1, 2, 3),
+                HaloColor = new StyleColor(4, 5, 6),
+                HaloWidth = 2,
+                OffsetX = 3,
+                OffsetY = 4,
+                Padding = 5,
+                IconImage = "icon",
+                IconSize = 6,
+                Spacing = 100,
+            })),
         ]);
 
         var scaled = DpiScaling.Apply(style, 192);
@@ -58,6 +70,7 @@ public sealed class DpiScalingTests
         Assert.Equal(8, symbol.Options.OffsetY);
         Assert.Equal(10, symbol.Options.Padding);
         Assert.Equal(12, symbol.Options.IconSize);
+        Assert.Equal(200, symbol.Options.Spacing);
         Assert.Equal("name", symbol.Options.TextField);
     }
 

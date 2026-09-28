@@ -1,5 +1,4 @@
 using Spatial.Contracts;
-using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Rendering.Skia.Drawing;
 using Spatial.Rendering.Skia.Styling;
@@ -9,33 +8,35 @@ namespace Spatial.Rendering.Skia.Pipeline;
 /// <summary>
 /// Builds the ordered <see cref="RenderScene"/> from a compiled style: resolve
 /// each dataset's keyed services, push the viewport bbox down once per dataset,
-/// place and shape the geometry with the injected engine services, and keep
-/// the style's bottom-to-top layer order. Symbol layers are delegated to
-/// <see cref="SymbolSceneBuilder"/>. It adds no spatial algorithm.
+/// place and shape the geometry with the injected engine services, resolve the
+/// data-driven paint of each feature, and keep the style's bottom-to-top layer
+/// order. Symbol layers are delegated to <see cref="SymbolSceneBuilder"/>. It
+/// adds no spatial algorithm.
 /// </summary>
 internal sealed class SceneBuilder
 {
-    private readonly ICoordinateTransforms _transforms;
-    private readonly IGeometryOperations _operations;
     private readonly FeaturePipeline _features;
+    private readonly GeometryLayerBuilder _geometry;
     private readonly SymbolSceneBuilder _symbols;
 
     public SceneBuilder(ICoordinateTransforms transforms, IGeometryOperations operations)
     {
-        _transforms = transforms;
-        _operations = operations;
         _features = new FeaturePipeline(transforms);
+        _geometry = new GeometryLayerBuilder(transforms, operations);
         _symbols = new SymbolSceneBuilder(transforms, operations);
     }
 
+    /// <summary>Builds the scene, reporting expression-evaluation counters when asked.</summary>
     public async Task<RenderScene> BuildAsync(
         CompiledStyle style,
         IReadOnlyList<MapLayerSource> layers,
         RasterViewport viewport,
+        RenderStatistics? statistics,
         CancellationToken cancellationToken)
     {
         var sources = IndexLayers(layers);
         var zoom = ZoomEstimator.ZoomLevel(viewport);
+        var scopes = new FeatureScopeCache(zoom, statistics);
         var cache = new Dictionary<string, LayerFeatures>(StringComparer.Ordinal);
         var sceneLayers = new List<SceneLayer>();
         StyleColor? background = null;
@@ -50,7 +51,7 @@ internal sealed class SceneBuilder
 
             if (layer.Kind == DrawKind.Background)
             {
-                background = ((BackgroundPaint)layer.Paint).Color;
+                background = ((BackgroundPaint)layer.Paint.Resolve(new ExpressionScope(null, null, zoom))).Color;
                 continue;
             }
 
@@ -61,39 +62,14 @@ internal sealed class SceneBuilder
                 cache[layer.Dataset!] = features;
             }
 
-            sceneLayers.Add(BuildSceneLayer(layer, features, viewport, cancellationToken));
+            var draw = new LayerDraw(features, viewport, scopes, cancellationToken);
+            sceneLayers.Add(layer.Paint is SymbolPaint
+                ? _symbols.Build(layer, draw)
+                : _geometry.Build(layer, draw));
         }
 
+        scopes.Report();
         return new RenderScene(sceneLayers, background);
-    }
-
-    private SceneLayer BuildSceneLayer(
-        DrawLayer layer, LayerFeatures features, RasterViewport viewport, CancellationToken cancellationToken) =>
-        layer.Paint is SymbolPaint symbol
-            ? _symbols.Build(layer, features, viewport, symbol, cancellationToken)
-            : BuildGeometryLayer(layer, features, viewport, cancellationToken);
-
-    private SceneLayer BuildGeometryLayer(
-        DrawLayer layer, LayerFeatures features, RasterViewport viewport, CancellationToken cancellationToken)
-    {
-        var tolerance = viewport.UnitsPerPixel / 2;
-        var geometries = new List<IGeometry>();
-        foreach (var feature in features.Features)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!layer.Filter.Matches(feature) || FeatureGeometry(feature, features.GeometryColumn) is not { } geometry)
-            {
-                continue;
-            }
-
-            var placed = GeometryPipeline.Place(geometry, features, viewport, _transforms, _operations, cancellationToken);
-            if (GeometryPipeline.SimplifyAndCull(placed, tolerance, viewport.Bounds, _operations, cancellationToken) is { } shaped)
-            {
-                geometries.Add(shaped);
-            }
-        }
-
-        return new SceneLayer(layer, geometries);
     }
 
     private static Dictionary<string, MapLayerSource> IndexLayers(IReadOnlyList<MapLayerSource> layers)
@@ -116,16 +92,5 @@ internal sealed class SceneBuilder
             ? source
             : throw SpatialException.BadArguments(
                 $"Style layer '{layer.Id}' references dataset '{layer.Dataset}' which is not in the request.");
-
-    private static IGeometry? FeatureGeometry(IFeature feature, string column)
-    {
-        var index = feature.Schema.IndexOf(column);
-        if (index < 0)
-        {
-            return null;
-        }
-
-        var value = feature[index];
-        return value.Kind == AttributeKind.Geometry ? value.GeometryValue : null;
-    }
 }
+

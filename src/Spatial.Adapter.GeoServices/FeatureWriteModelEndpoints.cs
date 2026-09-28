@@ -39,6 +39,16 @@ internal static class FeatureWriteModelEndpoints
             FeatureLayerQueryHandlers.FeatureValidateSql(
                 new(catalog, registry, service, context, stores, cancellationToken), layerId));
 
+        // The relationship traversal (spec §9.1.5, ADR-0077): a read over a
+        // declared relationship, gated on nothing beyond feature-query auth
+        // because it reads the same records query does. The relate/unrelate
+        // writes are mounted with the edit verbs' admin gate instead.
+        group.MapMethods("/{service}/FeatureServer/{layerId:int}/queryRelatedRecords", ["GET", "POST"], (
+            string service, int layerId, HttpContext context, IStoreRegistry stores,
+            IGeometryOperations operations, IGeometryRelations relations, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            FeatureRelationshipEndpoints.QueryRelatedRecords(
+                new(catalog, registry, service, context, stores, cancellationToken), layerId, operations, relations, transforms));
+
         // Aggregation extensions without an engine model (ADR-0058 §4):
         // mounted so clients get a typed invalid-arguments failure naming
         // the served alternative instead of a bare 404.

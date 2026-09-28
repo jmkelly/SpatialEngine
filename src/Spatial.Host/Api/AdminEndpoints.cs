@@ -2,6 +2,7 @@ using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Ingest.Codec;
+using Spatial.Maps;
 
 namespace Spatial.Host.Api;
 
@@ -109,6 +110,9 @@ internal static class AdminEndpoints
     /// missing raster provider never becomes a published service that fails on
     /// every request: a feature layer must exist in its store's catalogue and an
     /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
+    /// Declared relationships (ADR-0077) are checked against the same live
+    /// schemas here, at declaration time, so a relationship over a column that
+    /// does not exist never reaches a served service.
     /// </summary>
     internal static async Task EnsureLayersAreServableAsync(IStoreRegistry stores, Map map, CancellationToken token)
     {
@@ -127,6 +131,11 @@ internal static class AdminEndpoints
             var catalogue = stores.Catalogue(store);
             await catalogue.DescribeAsync(layer.Dataset, token);
         }
+
+        await MapRelationshipSchemas.ValidateAsync(
+            map,
+            (store, dataset, cancellationToken) => stores.Catalogue(store).DescribeAsync(dataset, cancellationToken),
+            token);
     }
 
     private static async Task<IResult> DeleteMap(

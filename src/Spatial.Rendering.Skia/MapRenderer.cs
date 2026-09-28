@@ -41,9 +41,19 @@ public sealed class MapRenderer : IMapRenderer
         {
             style = DpiScaling.Apply(style, request.Dpi);
         }
+
+        var statistics = new RenderStatistics();
+        LastStatistics = statistics;
         var scene = CanvasBackground.Apply(
-            await _sceneBuilder.BuildAsync(style, request.Layers, viewport, cancellationToken), request);
+            await _sceneBuilder.BuildAsync(style, request.Layers, viewport, statistics, cancellationToken), request);
         var buffer = SkiaVectorRasterizer.Render(scene, viewport);
         return await _composer.ComposeAsync(buffer, request with { Viewport = viewport }, cancellationToken);
     }
+
+    /// <summary>
+    /// What the last render cost in expression evaluation (T-u2x.19). Internal
+    /// and off the contract: the per-feature cache is measured from here by a
+    /// test and a benchmark rather than asserted in a comment.
+    /// </summary>
+    internal RenderStatistics? LastStatistics { get; private set; }
 }

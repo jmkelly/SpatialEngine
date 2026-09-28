@@ -59,7 +59,7 @@ internal static class FeatureResponseWriter
             foreach (var (layer, matches) in matched)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                WriteServiceLayer(writer, layer, matches, transforms, cancellationToken);
+                WriteServiceLayer(writer, layer, matches, transforms, operations, cancellationToken);
             }
 
             writer.WriteEndArray();
@@ -78,6 +78,7 @@ internal static class FeatureResponseWriter
         ServiceLayerQuery layer,
         List<MatchedFeature> matches,
         ICoordinateTransforms transforms,
+        IGeometryOperations operations,
         CancellationToken cancellationToken)
     {
         var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(layer.Description, layer.Query));
@@ -121,7 +122,7 @@ internal static class FeatureResponseWriter
         writer.WriteStartArray();
         foreach (var match in page.Items)
         {
-            var transformed = FeatureProjection.TransformFeature(match, layer.Query, layerCrs, transforms, cancellationToken);
+            var transformed = FeatureProjection.TransformFeature(match, layer.Query, layerCrs, transforms, operations, cancellationToken);
             EsriFeatureCodec.Write(writer, transformed.Feature, options with { ObjectId = transformed.ObjectId });
         }
 
@@ -404,7 +405,7 @@ internal static class FeatureResponseWriter
         && int.TryParse(crs.Code, NumberStyles.None, CultureInfo.InvariantCulture, out var epsg)
         && WkidMap.TryFromEpsg(epsg, out _);
 
-    private static void WriteFields(Utf8JsonWriter writer, DatasetDescription dataset)
+    internal static void WriteFields(Utf8JsonWriter writer, DatasetDescription dataset)
     {
         writer.WritePropertyName("fields");
         writer.WriteStartArray();

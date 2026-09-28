@@ -60,7 +60,8 @@ internal static class FeatureServerEndpoints
                 description,
                 editable,
                 EsriLayerModel.IsTable(description),
-                GeoServicesResolution.HasAttachments(request.Stores, resolved.Store)));
+                GeoServicesResolution.HasAttachments(request.Stores, resolved.Store),
+                await RelationshipsAsync(request.Stores, resolved, request.LayerId, cancellationToken)));
         }
         catch (Exception exception)
         {
@@ -68,6 +69,36 @@ internal static class FeatureServerEndpoints
         }
     }
 
+    /// <summary>
+    /// The layer's advertised relationships (ADR-0077): its declared
+    /// relationships projected onto the Esri shape, with the related layer's
+    /// published name as the display title. A layer that declares none (and
+    /// every layer of a configuration-declared whole-store service) advertises
+    /// none, so the key is omitted rather than served empty.
+    /// </summary>
+    private static async Task<IReadOnlyList<EsriRelationship>?> RelationshipsAsync(
+        IStoreRegistry stores, ResolvedService resolved, int layerId, CancellationToken cancellationToken)
+    {
+        var declared = GeoServicesResolution.Relationships(resolved, layerId);
+        if (declared.Count == 0)
+        {
+            return null;
+        }
+
+        var names = new Dictionary<int, string>();
+        foreach (var relationship in declared)
+        {
+            if (names.ContainsKey(relationship.RelatedLayerId))
+            {
+                continue;
+            }
+
+            var related = await GeoServicesResolution.RelatedLayerAsync(stores, resolved, relationship, cancellationToken);
+            names[relationship.RelatedLayerId] = related.Layer.Name;
+        }
+
+        return EsriRelationshipModel.Describe(declared, names);
+    }
 }
 
 /// <summary>The resolved services of one Feature Service layer-metadata request.</summary>

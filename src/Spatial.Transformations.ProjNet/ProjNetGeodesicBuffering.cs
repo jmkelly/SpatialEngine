@@ -8,7 +8,7 @@ using ProjTf = ProjNet.CoordinateSystems.Transformations;
 namespace Spatial.Transformations.ProjNet;
 
 /// <summary>
-/// The geodesic (ground-distance) buffer (ADR-0074): a local transverse
+/// The geodesic (ground-distance) buffer (ADR-0075): a local transverse
 /// Mercator working plane, sized by the work's own extent plus the buffer
 /// distance, wrapping <see cref="IGeometryOperations.Buffer"/> on it and
 /// transforming back. ProjNet types stay inside this assembly (ADR-0005).

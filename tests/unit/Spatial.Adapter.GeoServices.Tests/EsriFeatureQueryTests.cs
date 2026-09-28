@@ -300,12 +300,39 @@ public sealed class EsriFeatureQueryTests
     }
 
     [Fact]
-    public async Task Quantization_is_rejected_while_precision_and_offset_parse()
+    public async Task Quantization_parses_into_a_grid_while_precision_and_offset_parse()
     {
-        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("quantizationParameters", "{\"mode\":\"view\"}")));
-        var query = await ParseAsync(("geometryPrecision", "2"), ("maxAllowableOffset", "10"));
+        var query = await ParseAsync(
+            ("geometryPrecision", "2"),
+            ("maxAllowableOffset", "10"),
+            ("quantizationParameters", """{"mode":"view","tolerance":1.09,"extent":{"xmin":0,"ymin":0,"xmax":10,"ymax":10}}"""));
+
         Assert.Equal(2, query.GeometryPrecision);
         Assert.Equal(10.0, query.MaxAllowableOffset);
+        Assert.Equal(1.09, query.Quantization!.Tolerance, 9);
+        Assert.Equal((0d, 10d), (query.Quantization.OriginX, query.Quantization.OriginY));
+    }
+
+    [Fact]
+    public async Task Quantization_defaults_to_the_upper_left_origin_and_omits_a_blank_request()
+    {
+        var query = await ParseAsync(("quantizationParameters", """{"tolerance":1.09,"extent":{"xmin":0,"ymin":1,"xmax":10,"ymax":20}}"""));
+        var blank = await ParseAsync(("quantizationParameters", "  "));
+
+        Assert.Equal(20.0, query.Quantization!.OriginY);
+        Assert.Null(blank.Quantization);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("[]")]
+    [InlineData("""{"mode":"view","tolerance":1,"extent":{"xmin":0,"ymin":0,"xmax":10,"ymax":10},"originPosition":"middle"}""")]
+    [InlineData("""{"mode":"view","tolerance":-1,"extent":{"xmin":0,"ymin":0,"xmax":10,"ymax":10}}""")]
+    [InlineData("""{"mode":"view","tolerance":1}""")]
+    [InlineData("""{"mode":"view","tolerance":1,"extent":{"xmin":10,"ymin":0,"xmax":0,"ymax":10}}""")]
+    public async Task An_unservable_quantization_request_is_rejected(string value)
+    {
+        await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync(("quantizationParameters", value)));
     }
 
     [Fact]

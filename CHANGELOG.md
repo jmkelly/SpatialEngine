@@ -11,7 +11,48 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
-- **Ground-distance buffering** (ADR-0074, SpatialEngine-u2x.14): the
+- **Deeper label placement: candidates, priority, line placement, font faces
+  and a marker set** (ADR-0080, SpatialEngine-u2x.20): a label is no longer
+  offered a single position. Each feature generates ordered candidates — a
+  point offers its position and the four anchor offsets around it, and
+  `symbol-placement: line` offers a candidate every `symbol-spacing` pixels
+  along the projected line, aligned to the local direction, then the same
+  candidates again in reverse — and the greedy first-fit takes the first that
+  places anything, so a label that loses its first choice usually still draws.
+  Which label wins is now a style priority (`symbol-sort-key`), decided in a
+  placement pass of its own across all symbol layers — the order is
+  `symbol-sort-key`, then the style's document order, then the existing
+  identity/envelope-centre tie-break, which keeps it a total order — while the
+  pixels still composite in document order. `symbol-allow-overlap` (inheriting
+  `text-`/`icon-allow-overlap`) and `symbol-ignore-placement` bypass the
+  collision test. `text-font` stops being a style error: the bundle grows to
+  the four digest-pinned Noto Sans 2.003 faces, each name in the list resolves
+  through a documented fallback chain (family and weight/style, else the
+  nearest bundled weight, else the next name), and a family the engine has
+  never heard of renders in the default face instead of failing the render.
+  `text-transform`, `text-letter-spacing`, `text-line-height` and
+  `text-rotate` are applied to the shaped string, and the sprite registry
+  gains the circle, square, diamond, triangle and ring markers beside
+  `default-marker`. Covered by the new placement, font and sprite suites and a
+  second committed golden render (`symbols-line.png`); the existing
+  `symbols.png` golden is byte-identical, because a style whose labels do not
+  collide takes the same candidate and draws the same pixels it always did.
+
+- **A deviation allowance is its own geometry verb** (ADR-0079,
+  SpatialEngine-u2x.3): the Feature Service `query` now honours
+  `maxAllowableOffset` instead of accepting it and returning full precision,
+  and serves `quantizationParameters` instead of rejecting it by name. Both
+  go through the new `IGeometryOperations.Generalize`, which states how far
+  the answer may be from the true geometry rather than how coarsely the
+  algorithm should thin it: every returned vertex is a vertex of the input,
+  every input vertex stays within the allowance, and an allowance too wide to
+  spend without changing a feature's geometry kind returns the input
+  unchanged — so an offset of zero is byte-identical to full precision.
+  `quantizationParameters` snaps x, y, z and m to the view grid anchored on
+  the request's extent, then spends the rest of the budget on the same verb;
+  an unservable `mode` or `originPosition` is still rejected by name.
+
+- **Ground-distance buffering** (ADR-0075, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
   `IGeodesicBuffering` contract verb implemented as
@@ -24,6 +65,32 @@ this file together, then tag the release (`RELEASING.md`).
   projected `bufferSR`; `unionResults=true` dissolves the per-input buffers
   into one geometry. The projected-`bufferSR` planar path is unchanged and
   remains the exact answer inside a valid zone.
+- **UTM zone families in the built-in CRS catalogue** (ADR-0027,
+  SpatialEngine-u2x.6): the catalogue now *generates* the projected families
+  it used to enumerate by hand — the UTM grid over all sixty zones in both
+  hemispheres (EPSG 32601-32660 and 32701-32760) plus the ETRS89 and NAD83
+  UTM bands over their own datums — from one Transverse Mercator parameter
+  template. `Describe` and `Transform` therefore succeed for any UTM zone
+  instead of failing with `invalid.arguments` outside the seven zones that
+  were typed out. A generated zone is byte-identical to the hand-written row
+  it replaces (the served coordinates of all fifteen pre-existing codes are
+  pinned to the last bit), the catalogue is still built once with each CRS
+  built on first use, and the ProjNet Pseudo-Mercator workaround is
+  untouched.
+- **Relationships are declared, traversed and written**
+  (ADR-0077, SpatialEngine-u2x.22): a map layer now declares how its records
+  relate to another of the map's layers over two key columns
+  (`LayerRelationship`: one-to-one, one-to-many, or many-to-many through a
+  join dataset), validated structurally when the map is stored and against
+  the live schemas where the declaration happens. The declaring layer
+  advertises the relationship in its `relationships` metadata, the Feature
+  Service serves `queryRelatedRecords` over it (the related layer's own
+  `where`, `outFields`, `geometry`/`spatialRel`, `time` and `outSR` all
+  apply), and `relate`/`unrelate` move the same key behind the existing
+  admin-token edit gate, one result per origin/related pair. The
+  `geoservices-compatibility.md` §7.1 non-goal that listed
+  `queryRelatedRecords` (and, wrongly, attachments) as absent is now
+  corrected.
 
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and

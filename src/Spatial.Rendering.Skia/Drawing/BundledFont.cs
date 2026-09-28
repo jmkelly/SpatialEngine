@@ -1,40 +1,41 @@
-using System.Security.Cryptography;
 using SkiaSharp;
 using SkiaSharp.HarfBuzz;
 
 namespace Spatial.Rendering.Skia.Drawing;
 
 /// <summary>
-/// The single bundled text face (ADR-0049): created from an embedded
-/// assembly resource, never from the host font manager, so shaping produces
-/// identical glyphs on every machine. The resource bytes are hashed against
-/// the pinned digest so a silent asset swap fails loudly.
+/// A HarfBuzz shaper over one bundled face (ADR-0049): the typeface comes from
+/// <see cref="FontFaceRegistry"/>, never from the host font manager, so shaping
+/// produces identical glyphs on every machine. HarfBuzz shaping is not
+/// concurrent, so a shaper is owned by one render and not shared.
 /// </summary>
 internal sealed class BundledFont : IDisposable
 {
-    /// <summary>The bundled family name (Noto Sans Regular 2.003, OFL-1.1).</summary>
-    public const string FamilyName = "Noto Sans";
-
-    /// <summary>The pinned SHA-256 of <c>Resources/Fonts/NotoSans-Regular.ttf</c>.</summary>
-    public const string ExpectedSha256 = "DAC8E68FE43FCA59D522FA5F763322CFB4A919C28957656C58E7836D915307D0";
-
-    private const string ResourceSuffix = "Fonts.NotoSans-Regular.ttf";
-
-    private static readonly Lazy<FaceData> Face = new(CreateFace, LazyThreadSafetyMode.ExecutionAndPublication);
-
-    private readonly SKShaper _shaper = new(Face.Value.Typeface);
+    private readonly SKShaper _shaper;
     private bool _disposed;
+
+    /// <summary>Creates a shaper over a bundled face.</summary>
+    public BundledFont(FontFace face, FontFaceRegistry? registry = null)
+    {
+        ArgumentNullException.ThrowIfNull(face);
+        Face = face;
+        _shaper = new SKShaper((registry ?? FontFaceRegistry.Default).Typeface(face));
+    }
+
+    /// <summary>The bundled face this shaper shapes with.</summary>
+    public FontFace Face { get; }
 
     /// <summary>A shaper over the bundled face; one per render (HarfBuzz shaping is not concurrent).</summary>
     public SKShaper Shaper => _shaper;
 
-    /// <summary>Creates a shaped font at <paramref name="size"/> pixels over the bundled face.</summary>
-    public static SKFont CreateFont(double size) => new(Face.Value.Typeface, (float)size)
-    {
-        Subpixel = false,
-        Hinting = SKFontHinting.Normal,
-        Edging = SKFontEdging.Antialias,
-    };
+    /// <summary>Creates a shaped font at <paramref name="size"/> pixels over a bundled face.</summary>
+    public static SKFont CreateFont(FontFace face, double size, FontFaceRegistry? registry = null) =>
+        new((registry ?? FontFaceRegistry.Default).Typeface(face), (float)size)
+        {
+            Subpixel = false,
+            Hinting = SKFontHinting.Normal,
+            Edging = SKFontEdging.Antialias,
+        };
 
     public void Dispose()
     {
@@ -44,22 +45,45 @@ internal sealed class BundledFont : IDisposable
             _disposed = true;
         }
     }
+}
 
-    private static FaceData CreateFace()
+/// <summary>
+/// The shapers one render uses, created lazily per resolved face and disposed
+/// with the render. A layer resolves its <c>text-font</c> request through the
+/// registry's fallback chain, so two layers asking for the same face share one
+/// shaper and two layers asking for different faces get their own.
+/// </summary>
+internal sealed class FontSession : IDisposable
+{
+    private readonly Dictionary<FontFace, BundledFont> _fonts = [];
+    private bool _disposed;
+
+    /// <summary>Resolves a <c>text-font</c> list to a shaper for the face it reaches.</summary>
+    public BundledFont Resolve(IReadOnlyList<string> requested)
     {
-        var bytes = ManifestResources.Read(ResourceSuffix);
-        var actual = Convert.ToHexString(SHA256.HashData(bytes));
-        if (!string.Equals(actual, ExpectedSha256, StringComparison.Ordinal))
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var face = FontFaceRegistry.Default.Resolve(requested);
+        if (!_fonts.TryGetValue(face, out var font))
         {
-            throw new InvalidOperationException(
-                $"The bundled font '{ResourceSuffix}' has hash {actual}, not the pinned {ExpectedSha256}.");
+            _fonts[face] = font = new BundledFont(face);
         }
 
-        // Keep the SKData alive beside the typeface: Skia reads the font table
-        // lazily for the lifetime of the face.
-        var data = SKData.CreateCopy(bytes);
-        return new FaceData(SKTypeface.FromData(data), data);
+        return font;
     }
 
-    private sealed record FaceData(SKTypeface Typeface, SKData Data);
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        foreach (var font in _fonts.Values)
+        {
+            font.Dispose();
+        }
+
+        _fonts.Clear();
+        _disposed = true;
+    }
 }

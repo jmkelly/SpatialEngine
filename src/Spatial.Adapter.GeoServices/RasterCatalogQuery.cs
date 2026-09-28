@@ -31,7 +31,7 @@ internal static class RasterCatalogQuery
         var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
         var matches = Match(
             new CatalogMatch(description, dataset, items, query, queryGeometry), operations, relations, cancellationToken);
-        return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, transforms, cancellationToken);
+        return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, transforms, operations, cancellationToken);
     }
 
     /// <summary>

@@ -6,11 +6,13 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// Per-feature projection for query responses: <c>outSR</c> reprojection
-/// and <c>geometryPrecision</c> rounding. Split out of
-/// <see cref="FeatureQueryEngine"/> so the query facade keeps only
+/// Per-feature projection for query responses: <c>outSR</c> reprojection,
+/// <c>geometryPrecision</c> rounding, then the
+/// <c>maxAllowableOffset</c>/<c>quantizationParameters</c> generalization.
+/// Split out of <see cref="FeatureQueryEngine"/> so the query facade keeps only
 /// orchestration and the shaping fan-out lives with the code that uses
-/// it (ADR-0040). The rounding itself lives in <see cref="GeometryRounding"/>.
+/// it (ADR-0040). The rounding itself lives in <see cref="GeometryRounding"/>
+/// and the generalization in <see cref="GeometryGeneralization"/>.
 /// </summary>
 internal static class FeatureProjection
 {
@@ -19,6 +21,7 @@ internal static class FeatureProjection
         EsriFeatureQuery query,
         CoordinateReference? layerCrs,
         ICoordinateTransforms transforms,
+        IGeometryOperations operations,
         CancellationToken cancellationToken)
     {
         var feature = match.Feature;
@@ -38,7 +41,9 @@ internal static class FeatureProjection
         {
             geometry = GeometryRounding.Round(geometry, precision);
         }
-        else if (ReferenceEquals(geometry, feature[geometryIndex].GeometryValue))
+
+        geometry = GeometryGeneralization.Generalize(geometry, query, operations, cancellationToken);
+        if (ReferenceEquals(geometry, feature[geometryIndex].GeometryValue))
         {
             return match;
         }

@@ -11,7 +11,7 @@ namespace Spatial.Operations.NetTopologySuite;
 /// <summary>
 /// The NetTopologySuite geometry operations (ADR-0033): a direct,
 /// in-process implementation of <see cref="IGeometryOperations"/>.
-/// NTS types stay inside this assembly (ADR-0005). All four operations are
+/// NTS types stay inside this assembly (ADR-0005). All five operations are
 /// synchronous planar computations; cancellation is honoured before the
 /// algorithm runs. Invalid inputs throw <see cref="SpatialException"/> with
 /// code <c>invalid.arguments</c>; an invalid geometry is a successful
@@ -85,16 +85,7 @@ public sealed class NtsGeometryOperations : IGeometryOperations
     public IGeometry Simplify(IGeometry geometry, double tolerance, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(geometry);
-        if (!double.IsFinite(tolerance))
-        {
-            throw SpatialException.BadArguments($"'tolerance' must be a finite number, got {tolerance}.");
-        }
-
-        if (tolerance < 0)
-        {
-            throw SpatialException.BadArguments($"'tolerance' must be non-negative, got {tolerance}.");
-        }
-
+        RequireDisplacement(tolerance, "tolerance");
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
@@ -104,6 +95,54 @@ public sealed class NtsGeometryOperations : IGeometryOperations
         catch (Exception exception)
         {
             throw NtsOperationErrors.Map(exception, "simplify");
+        }
+    }
+
+    /// <summary>
+    /// Douglas-Peucker at the caller's deviation allowance, guarded so a
+    /// feature never changes geometry kind. The guard is what separates this
+    /// verb from <see cref="Simplify"/> (ADR-0079): at an allowance wider than
+    /// the geometry, DP empties a small ring, and a query response may not
+    /// answer a polygon request with nothing at all — so the input is
+    /// returned unchanged instead.
+    /// </summary>
+    public IGeometry Generalize(IGeometry geometry, double maxDisplacement, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(geometry);
+        RequireDisplacement(maxDisplacement, "maxDisplacement");
+        cancellationToken.ThrowIfCancellationRequested();
+        if (maxDisplacement == 0)
+        {
+            // A zero allowance cannot spend any deviation, and Douglas-Peucker
+            // still rewrites the ring closure (it re-appends the first
+            // coordinate), so the only compliant answer is the input itself.
+            return geometry;
+        }
+
+        try
+        {
+            var source = GeometryAdapter.ToNts(geometry);
+            var generalized = DouglasPeuckerSimplifier.Simplify(source, maxDisplacement);
+            return generalized.IsEmpty || generalized.GeometryType != source.GeometryType
+                ? geometry
+                : GeometryAdapter.ToCore(generalized, geometry.CoordinateReference);
+        }
+        catch (Exception exception)
+        {
+            throw NtsOperationErrors.Map(exception, "generalize");
+        }
+    }
+
+    private static void RequireDisplacement(double value, string name)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw SpatialException.BadArguments($"'{name}' must be a finite number, got {value}.");
+        }
+
+        if (value < 0)
+        {
+            throw SpatialException.BadArguments($"'{name}' must be non-negative, got {value}.");
         }
     }
 

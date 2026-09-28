@@ -48,7 +48,7 @@ const selectedSources = sources.filter((source) => matches(only, source.id));
 const selectedServices = services.filter((service) => matches(only, service.name));
 
 if (!dryRun) {
-  // Prefer the host's seed endpoint (ADR-0070): one manifest POST that the
+  // Prefer the host's seed endpoint (ADR-0078): one manifest POST that the
   // host runs server-side, so token-less development hosts seed without a
   // restart. Hosts without the endpoint answer 404/405 and get the legacy
   // download → ingest → publish drive below.
@@ -83,7 +83,7 @@ if (!dryRun) {
 summarise();
 process.exit(failures.length === 0 ? 0 : 1);
 
-// ---- endpoint (ADR-0070) -------------------------------------------------------
+// ---- endpoint (ADR-0078) -------------------------------------------------------
 
 /**
  * POSTs the manifest to the host's development seed endpoint. Returns true

@@ -34,7 +34,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | Feature (object) resource `.../<layerId>/<objectId>` | served | **Have** | `GeoServicesEndpoints.cs` (REST-JS `getFeature` proof) |
 | Service-level `/query` (query across all layers) | — | **Missing** | S1 lists `query-feature-service/`; we only serve layer-level `.../<id>/query` |
 | `generateRenderer` (classBreaks/uniqueValue server-side classification) | — | **Missing** | S4 `generate-renderer/`; no route; our renderers are client-persisted style projections (ADR-0050) |
-| `queryRelatedRecords` (relationship traversal) | — | **Missing** | S4; no relationship model in engine (recorded non-goal in `geoservices-compatibility.md` §7.1) |
+| `queryRelatedRecords` (relationship traversal) | served | **Have** | `FeatureRelationshipEngine.cs` over map-declared relationships (ADR-0077); `relationships` metadata on the layer, related layer's own `where`/`outFields`, `relate`/`unrelate` behind the edit gate |
 | Attachments (`attachmentInfos`, `addAttachment`, `deleteAttachments`, `updateAttachment`) | — | **Missing** | S4 `add-attachment/` etc.; no attachment store or route |
 | `htmlPopup`, layer `image` resource | — | **Missing** | non-goal §7.1 (no engine model) |
 | `queryBins` / `queryTopFeatures` / `queryAnalytic` (aggregation/binning extensions) | — | **Missing** | S4; engine serves `outStatistics` but not bin/top-features/analytic shapes |
@@ -49,7 +49,8 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | Percentile statistic type + `supportsCountDistinct/supportsPercentileStatistics/supportsExceedsLimitStatistics` flags | — | **Partial** | S3; we serve count/sum/min/max/avg/stddev/var (`EsriFeatureQuery.cs`) but not `percentile_*`; live layer lists the flags, we don't emit them |
 | 64-bit objectIds / high-precision dates / time-only/date-only/timestamp-offset/big-integer field types (11.2–11.3) | — | **Partial** | S2 examples 16–17; our `AttributeKind` has no time-only/date-only/bigint faces |
 | `datumTransformation`, `defaultSR`-style WKT2 spatial references | honestly rejected | **Partial** | rejected by name; WKT2 SR input not accepted (`EsriValueParser.ParseSpatialReference`) |
-| `distance`+`units` (query-with-distance), `returnCentroid`, `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `quantizationParameters`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.cs:465-498`); pinned by §7.1 non-goals |
+| `distance`+`units` (query-with-distance), `returnCentroid`, `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.Parse`); pinned by §7.1 non-goals |
+| `quantizationParameters` | served | **Done** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0079); an unservable `mode`/`originPosition` is rejected by name |
 | `returnZ`/`returnM` | honestly rejected | **Non-goal** | codec serves 2D explicitly |
 
 ## 2. Response-shape deltas vs ground truth (same-data proof)

@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ADR-0049: the pinned font and SVG sprites are the only image/font source. -->
-    <EmbeddedResource Include="Resources\Fonts\NotoSans-Regular.ttf" />
+    <!-- ADR-0049/0075: the pinned font family and SVG sprites are the only image/font source. -->
+    <EmbeddedResource Include="Resources\Fonts\NotoSans-*.ttf" />
     <EmbeddedResource Include="Resources\Fonts\OFL.txt" />
     <EmbeddedResource Include="Resources\Sprites\*.svg" />
     <None Include="Resources\README.md" />

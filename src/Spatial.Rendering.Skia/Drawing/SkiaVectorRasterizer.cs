@@ -11,10 +11,24 @@ internal sealed record SceneLayer(DrawLayer Layer, IReadOnlyList<IGeometry> Geom
 {
     /// <summary>The resolved symbol candidates (empty for non-symbol layers).</summary>
     public IReadOnlyList<SymbolFeature> Symbols { get; init; } = [];
+
+    /// <summary>
+    /// One entry per drawn feature with the paint resolved for it. Empty when
+    /// the layer's paint is constant, in which case the whole geometry list
+    /// draws with the layer's own recipe.
+    /// </summary>
+    public IReadOnlyList<PaintRun> Runs { get; init; } = [];
 }
 
+/// <summary>One feature's placed geometry with the constant paint resolved for it.</summary>
+internal sealed record PaintRun(IGeometry Geometry, PaintRecipe Paint);
+
 /// <summary>One symbol candidate: the placed geometry plus the text/icon resolved from its attributes.</summary>
-internal sealed record SymbolFeature(IGeometry Geometry, string? Text, string? Icon);
+internal sealed record SymbolFeature(IGeometry Geometry, string? Text, string? Icon)
+{
+    /// <summary>The symbol paint resolved for this feature (null when the layer's paint is constant).</summary>
+    public SymbolOptions? Options { get; init; }
+}
 
 /// <summary>The ordered draw list and canvas background for one rasterization.</summary>
 internal sealed record RenderScene(IReadOnlyList<SceneLayer> Layers, StyleColor? Background);
@@ -35,11 +49,19 @@ internal static class SkiaVectorRasterizer
         surface.Canvas.Clear(scene.Background is { } background ? SkiaPaintFactory.ToSkia(background) : SKColors.Transparent);
 
         var hasSymbols = scene.Layers.Any(layer => layer.Layer.Paint is SymbolPaint);
-        using var font = hasSymbols ? new BundledFont() : null;
-        var collision = new List<SKRect>();
-        foreach (var layer in scene.Layers)
+        using var fonts = hasSymbols ? new FontSession() : null;
+        var registry = sprites ?? SpriteRegistry.Default;
+
+        // Placement is decided for every symbol before anything is painted, so
+        // the priority order can span layers while the draw order stays the
+        // style's document order (ADR-0080).
+        var placement = hasSymbols
+            ? SymbolPlacementEngine.Place(scene.Layers, projection, fonts!, registry)
+            : [];
+
+        for (var index = 0; index < scene.Layers.Count; index++)
         {
-            Draw(surface.Canvas, layer, projection, collision, font, sprites ?? SpriteRegistry.Default);
+            Draw(surface.Canvas, scene.Layers[index], projection, placement, fonts, registry, index);
         }
 
         using var image = surface.Snapshot();
@@ -47,8 +69,20 @@ internal static class SkiaVectorRasterizer
     }
 
     private static void Draw(
-        SKCanvas canvas, SceneLayer layer, ViewportProjection projection, List<SKRect> collision, BundledFont? font, SpriteRegistry sprites)
+        SKCanvas canvas,
+        SceneLayer layer,
+        ViewportProjection projection,
+        IReadOnlyList<PlacedSymbol?[]?> placement,
+        FontSession? fonts,
+        SpriteRegistry sprites,
+        int index)
     {
+        if (layer.Runs.Count > 0)
+        {
+            DrawResolved(canvas, layer, projection);
+            return;
+        }
+
         switch (layer.Layer.Paint)
         {
             case BackgroundPaint:
@@ -64,8 +98,36 @@ internal static class SkiaVectorRasterizer
                 break;
             case SymbolPaint symbol:
                 SkiaSymbolRasterizer.Draw(
-                    new SymbolDrawContext(canvas, symbol.Options, projection, collision, font!, sprites), layer.Symbols);
+                    new SymbolDrawContext(canvas, symbol.Options, fonts!, sprites),
+                    layer.Symbols,
+                    index < placement.Count ? placement[index] ?? [] : []);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// Draws a data-driven layer, batching the features that resolved to the
+    /// same paint into one path so a step or match ramp keeps the fill/stroke
+    /// batching the constant path has. Run order is first appearance, so the
+    /// draw order is the feature order and stays deterministic.
+    /// </summary>
+    private static void DrawResolved(SKCanvas canvas, SceneLayer layer, ViewportProjection projection)
+    {
+        foreach (var run in layer.Runs.GroupBy(run => run.Paint))
+        {
+            var geometries = run.Select(item => item.Geometry).ToArray();
+            switch (run.Key)
+            {
+                case FillPaint fill:
+                    DrawFill(canvas, geometries, fill, projection);
+                    break;
+                case LinePaint line:
+                    DrawLine(canvas, geometries, line, projection);
+                    break;
+                case CirclePaint circle:
+                    DrawCircles(canvas, geometries, circle, projection);
+                    break;
+            }
         }
     }
 
