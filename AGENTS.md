@@ -42,7 +42,20 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 - Hand off: label the bead `needs-merge` with the commit and PR in `--notes`.
 - Complete: `bd close <id> --reason="…"` — only after `eng/verify.sh` is green
   on `main`, never on the branch.
-- Recovery: `bd reclaim` after a crashed agent's lease expires.
+- Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
+  expires — never bare `bd reclaim`. `bd reclaim` keys on lease age alone and a
+  long-running worker does not heartbeat, so an expired lease only means "this
+  agent has not run `bd heartbeat` lately": one coordinator tick released eight
+  leases whose agents were all still running, dropping live work back into
+  `bd ready` for a double-claim. The wrapper cross-checks the stale set against
+  `paseo ls` — the bead's `bd/<id>` worktree, or the `agent <id>` its notes
+  recorded at claim time — and reclaims only the beads no live agent holds,
+  reporting each one it leaves in place. `--dry-run` reports the verdicts and
+  reaps nothing; a worker can renew its own lease mid-bead with
+  `python3 tools/bd-safe-reclaim.py --heartbeat <id>` (a plain `bd heartbeat
+  <id>` does the same). Reclaim stays reversible: record the agent id and
+  branch in the notes when you claim, and treat "reclaimed N" as a prompt to
+  check `paseo ls` before those beads re-enter `bd ready`.
 
 Records: a bead that will write a decision record **reserves** its number with
 `python3 tools/adr-next-number.py --reserve --bead <id>` at the start of the
