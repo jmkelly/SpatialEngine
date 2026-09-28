@@ -287,6 +287,84 @@ public sealed class FeatureEditEngineTests
     }
 
     [Fact]
+    public async Task Delete_by_where_is_served_by_the_store_without_reading_the_dataset()
+    {
+        var table = new FakeTable();
+        // A store that answers a query plan and refuses a full scan: the clause
+        // is the store's to apply, so a delete by where never reads the whole
+        // dataset (ADR-0074 §7, ADR-0097 §1).
+        var store = new PlanStore(table);
+        Assert.True(EsriWhere.TryParse("name = 'Berlin'", out var where, out var error), error);
+        var edits = new SimpleStore(table);
+
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, edits, new EsriEditRequest([], [], [], where, false), Crs),
+                CancellationToken.None));
+
+        var deleted = Assert.Single(body.GetProperty("deleteResults").EnumerateArray());
+        Assert.True(deleted.GetProperty("success").GetBoolean());
+        Assert.Equal(1, deleted.GetProperty("objectId").GetInt64());
+        Assert.Equal(1, store.Queries);
+        Assert.Equal(2, table.Count);
+    }
+
+    [Fact]
+    public async Task Delete_by_where_on_the_synthetic_object_id_keeps_its_meaning()
+    {
+        var table = new FakeTable();
+        // The layer's identity column is 'id'; OBJECTID is the facade's name
+        // for it, and the pushdown renames the reference onto the real column.
+        var store = new PlanStore(table);
+        var edits = new SimpleStore(table);
+        Assert.True(EsriWhere.TryParse("OBJECTID = 3", out var where, out var error), error);
+
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, edits, new EsriEditRequest([], [], [], where, false), Crs),
+                CancellationToken.None));
+
+        var deleted = Assert.Single(body.GetProperty("deleteResults").EnumerateArray());
+        Assert.True(deleted.GetProperty("success").GetBoolean());
+        Assert.Equal(3, deleted.GetProperty("objectId").GetInt64());
+        Assert.Equal(2, table.Count);
+    }
+
+    [Fact]
+    public async Task Delete_by_where_reports_every_matched_position()
+    {
+        var table = new FakeTable();
+        var store = new PlanStore(table);
+        var edits = new SimpleStore(table);
+        Assert.True(EsriWhere.TryParse("population > 2000000", out var where, out var error), error);
+
+        var body = await ExecuteAsync(FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, edits, new EsriEditRequest([], [], [], where, false), Crs),
+                CancellationToken.None));
+
+        var results = body.GetProperty("deleteResults").EnumerateArray().ToArray();
+        Assert.Equal(3, results.Length);
+        Assert.All(results, result => Assert.True(result.GetProperty("success").GetBoolean()));
+        Assert.Equal([1L, 2L, 3L], results.Select(result => result.GetProperty("objectId").GetInt64()).ToArray());
+        Assert.Equal(0, table.Count);
+    }
+
+    [Fact]
+    public async Task A_cancelled_token_aborts_a_delete_by_where_served_by_the_store()
+    {
+        var table = new FakeTable();
+        using var cancelled = new CancellationTokenSource();
+        var store = new PlanStore(table) { OnQuery = () => cancelled.Cancel() };
+        var edits = new SimpleStore(table);
+        Assert.True(EsriWhere.TryParse("name = 'Berlin'", out var where, out var error), error);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            FeatureEditEngine.EditsAsync(
+                new FeatureEditEngine.EditInvocation(EsriEditOperation.Delete, table.Describe(), store, edits, new EsriEditRequest([], [], [], where, false), Crs),
+                cancelled.Token));
+
+        Assert.Equal(3, table.Count);
+    }
+
+    [Fact]
     public async Task Delete_by_an_unmatched_where_returns_no_results()
     {
         var table = new FakeTable();
@@ -747,6 +825,45 @@ public sealed class FeatureEditEngineTests
     }
 
     /// <summary>
+    /// A read store that answers a query plan and refuses a full scan, so a
+    /// test proves the engine asked the store for the rows it wanted rather
+    /// than reading the dataset itself. The plan is evaluated by the shared
+    /// reference executor, which is what a store without a dialect of its own
+    /// does (ADR-0074 §4).
+    /// </summary>
+    private sealed class PlanStore : IFeatureStore
+    {
+        private readonly FakeTable _table;
+
+        public PlanStore(FakeTable table) => _table = table;
+
+        /// <summary>How many times the engine asked the store for a plan read.</summary>
+        public int Queries { get; private set; }
+
+        /// <summary>Runs on every plan read, so a test can cancel or fault mid-read.</summary>
+        public Action? OnQuery { get; set; }
+
+        public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("This store answers reads from a query plan; it refuses a full scan.");
+
+        public Task<FeatureQueryPage> QueryAsync(
+            string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
+        {
+            Queries++;
+            cancellationToken.ThrowIfCancellationRequested();
+            OnQuery?.Invoke();
+            return Task.FromResult(Spatial.Querying.FeaturePlanExecutor.Execute(
+                FakeTable.Schema, _table.Snapshot(), query, cancellationToken));
+        }
+
+        public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(0);
+        }
+    }
+
+    /// <summary>
     /// A minimal fake without read-by-identity or transactions, so the engine
     /// must resolve targets by scan and report per-feature outcomes with
     /// nothing to roll back.
@@ -771,7 +888,7 @@ public sealed class FeatureEditEngineTests
         }
 
         public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new FeatureQueryPage(ScanAsync(dataset, cancellationToken).Result));
+            Spatial.Querying.FeaturePlanFallback.ReadAsync(this, dataset, query, cancellationToken);
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default)
         {

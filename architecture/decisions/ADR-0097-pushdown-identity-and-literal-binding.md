@@ -136,6 +136,14 @@ negated or plain truth value, because removing a never-matching value from a
   restriction and select over the whole read for such a dataset (ADR-0098,
   SpatialEngine-u2x.9.1), and the query conformance suite compares feature
   identities, not just values, so the renumbering is a red test.
+- The rule is decided once, in `EsriWhereResolver`, and every facade path that
+  filters goes through it: the feature-match fan-out, the served query plan
+  (ADR-0098) and the `deleteFeatures` `where` delete. The delete path is the
+  one that cannot fall back — a layer whose `OBJECTID` is the scan ordinal is
+  not editable at all (ADR-0037) — so on every editable layer the delete is a
+  plan read, never a full scan, and it deletes the features that read
+  returned without a lookup round trip over identities the read resolved
+  (ADR-0038).
 - Both rules are invisible to a client: no parameter, response shape or
   capability flag changed. The `where` text, the `filter` query parameter and
   the served `OBJECTID` values are the same ones they were.
