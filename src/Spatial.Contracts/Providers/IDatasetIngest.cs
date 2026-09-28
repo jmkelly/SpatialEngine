@@ -1,4 +1,5 @@
 using Spatial.Core.Features;
+using Spatial.Core.Features.Ingest;
 
 namespace Spatial.Contracts.Providers;
 
@@ -48,7 +49,8 @@ public sealed record IngestOutcome(
     long Features,
     int Srid,
     string? IdentityField = null,
-    Map? Map = null)
+    Map? Map = null,
+    DecodeReport? Report = null)
 {
     public override string ToString() =>
         Map is null
@@ -75,4 +77,38 @@ public interface IDatasetIngest
     /// </summary>
     Task<IngestOutcome> IngestAsync(
         IngestRequest request, IReadOnlyList<FeatureBatch> pages, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// The streaming sibling of <see cref="IDatasetIngest"/> (ADR-0041 §4): the
+/// same atomic create-and-load, but pages arrive as an
+/// <see cref="IAsyncEnumerable{T}"/> and the schema is declared up front so the
+/// table can be created before the first page is read.
+/// <para>
+/// It is a separate face, not an overload, for the ADR-0033 reason every other
+/// optional capability is: a store implements the one it can. The buffered
+/// face is still the right one for an upload already in memory, and a provider
+/// that cannot stream pages simply does not implement this.
+/// </para>
+/// <para>
+/// The schema must match every page's, exactly as for the buffered face, and
+/// the pages must be non-empty. A store that begins a transaction, reads pages
+/// and fails part-way leaves no dataset behind, so an exception out of
+/// <paramref name="pages"/> is a rollback rather than a half-populated table.
+/// </para>
+/// </summary>
+public interface IDatasetIngestStream
+{
+    /// <summary>
+    /// Creates <see cref="IngestRequest.Dataset"/> from
+    /// <paramref name="schema"/> and loads every page in one transaction. A
+    /// failure — including a cancellation while the pages are still arriving —
+    /// leaves no dataset behind. Cancellation is honoured before the
+    /// transaction commits.
+    /// </summary>
+    Task<IngestOutcome> IngestStreamAsync(
+        IngestRequest request,
+        FeatureSchema schema,
+        IAsyncEnumerable<FeatureBatch> pages,
+        CancellationToken cancellationToken = default);
 }

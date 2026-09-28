@@ -57,8 +57,11 @@ In order of preference for new implementations:
   packages, only a Core reference.
 - `Spatial.Esri.Codec` — the shared Esri wire codec: Core only, no NTS,
   ASP.NET or HttpClient (ADR-0035).
-- `Spatial.Ingest.Codec` — upload format decoders to canonical batches:
-  Core only, no ASP.NET or HttpClient (ADR-0041).
+- `Spatial.Ingest.Codec` — upload format decoders to canonical batches, the
+  streaming decode and the decode report: Core only, no ASP.NET or
+  HttpClient, and no reference to `Spatial.Contracts` — it reaches a
+  coordinate transform through its own `IIngestReprojection` seam, which the
+  host adapts (ADR-0041, ADR-0082).
 - Implementations (`Spatial.Operations.*`, `Spatial.Transformations.*`,
   `Spatial.Stores.*`, `Spatial.Maps`, `Spatial.Rendering.*`, `Spatial.Imagery.*`,
   `Spatial.Tiling.*`) — reference Core + SDK only; third-party packages

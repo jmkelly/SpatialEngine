@@ -37,8 +37,8 @@ public static class EsriAdminEndpoints
             Handle(options, context, auth, () => EsriAdminServices.CreateAsync(registry, service, context, token)));
         group.MapPost("/services/{service}/deleteService", (string service, HttpContext context, CancellationToken token) =>
             Handle(options, context, auth, () => EsriAdminServices.DeleteAsync(registry, service, token)));
-        group.MapPost("/uploads", (HttpContext context, IStoreRegistry stores, CancellationToken token) =>
-            Handle(options, context, auth, () => EsriAdminUploads.UploadAsync(options, staging, context, stores, token)));
+        group.MapPost("/uploads", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, CancellationToken token) =>
+            Handle(options, context, auth, () => EsriAdminUploads.UploadAsync(options, staging, context, stores, transforms, token)));
         group.MapPost("/uploads/{id}/publish", (string id, HttpContext context, CancellationToken token) =>
             Handle(options, context, auth, () => EsriAdminPublish.PublishAsync(registry, staging, id, context, token)));
     }

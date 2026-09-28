@@ -18,8 +18,10 @@ namespace Spatial.Stores.PostGIS;
 /// <see cref="PostgisQueries"/> from validated identifiers and bound
 /// parameters only. Additive like the other granular faces: a store that
 /// cannot bulk-load simply does not implement this interface.
+/// <see cref="IDatasetIngestStream"/> is the same load with the pages arriving
+/// as they are decoded, so the upload is never held in memory.
 /// </summary>
-public sealed class PostgisIngestStore : IDatasetIngest
+public sealed class PostgisIngestStore : IDatasetIngest, IDatasetIngestStream
 {
     /// <summary>PostgreSQL <c>duplicate_table</c> (the dataset already exists).</summary>
     private const string DuplicateTable = "42P07";
@@ -61,6 +63,80 @@ public sealed class PostgisIngestStore : IDatasetIngest
 
     private static SpatialException AlreadyExists(PostgisDatasetName dataset) =>
         SpatialException.BadArguments($"Dataset '{dataset}' already exists.");
+
+    /// <inheritdoc />
+    public async Task<IngestOutcome> IngestStreamAsync(
+        IngestRequest request,
+        FeatureSchema schema,
+        IAsyncEnumerable<FeatureBatch> pages,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(schema);
+        ArgumentNullException.ThrowIfNull(pages);
+
+        var plan = PostgisIngestPlan.Create(request, schema);
+        _store.RequireConfigured();
+        return await _store.RunStoreOperationAsync(async () =>
+        {
+            try
+            {
+                var loaded = await LoadStreamAsync(plan, pages, cancellationToken).ConfigureAwait(false);
+                return new IngestOutcome(plan.Dataset.Qualified, loaded, plan.Srid, plan.IdentityColumn);
+            }
+            catch (PostgresException exception) when (IsAlreadyCreated(exception))
+            {
+                throw AlreadyExists(plan.Dataset);
+            }
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates the table from the first page's geometry types and inserts each
+    /// page as it arrives, so a 500 MB upload costs one page of memory rather
+    /// than 500 MB. Everything stays on one connection and one transaction: a
+    /// failure, a cancellation or a malformed page part-way through rolls the
+    /// table back rather than leaving a half-populated dataset.
+    /// </summary>
+    private async Task<long> LoadStreamAsync(
+        PostgisIngestPlan plan, IAsyncEnumerable<FeatureBatch> pages, CancellationToken cancellationToken)
+    {
+        await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        long loaded = 0;
+        var position = 0;
+        PostgisIngestPlan? bound = null;
+        var insert = string.Empty;
+        await foreach (var page in pages.WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (bound is null)
+            {
+                bound = plan.Bind(page);
+                await PostgisDataStore
+                    .ExecuteNonQueryAsync(connection, transaction, bound.CreateTableSql(), [], cancellationToken)
+                    .ConfigureAwait(false);
+                insert = PostgisQueries.Insert(bound.Dataset, bound.Schema, bound.Srid);
+            }
+            else
+            {
+                bound.CheckPage(page, position);
+            }
+
+            await LoadPageAsync(connection, transaction, insert, bound, page, cancellationToken).ConfigureAwait(false);
+            loaded += page.Count;
+            position++;
+        }
+
+        if (bound is null)
+        {
+            throw SpatialException.BadArguments("An ingest requires at least one feature.");
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return loaded;
+    }
 
     /// <summary>Runs the whole create + load on one connection and one transaction.</summary>
     private async Task LoadAsync(PostgisIngestPlan plan, CancellationToken cancellationToken)

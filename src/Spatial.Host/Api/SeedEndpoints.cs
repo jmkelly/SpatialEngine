@@ -256,12 +256,20 @@ internal sealed class SeedRunner(
         var bytes = await fetcher.FetchAsync(source.Url, ingest.MaxBytes, cancellationToken);
         var format = IngestPipeline.ParseFormat(ingest, source.Format ?? string.Empty);
         using var body = new MemoryStream(bytes, writable: false);
-        var pages = IngestPipeline.DecodePages(body, format, sourceSrid ?? source.Srid, ingest, EmptyToNull(source.IdentityField));
-        pages = IngestPipeline.ConvertIfNeeded(pages, sourceSrid, source.Srid, transforms, cancellationToken);
         var identity = IngestPipeline.ParseIdentity(source.Identity ?? string.Empty);
-        await target.IngestAsync(
-            new IngestRequest(source.Id, source.Srid, identity, EmptyToNull(source.IdentityField)),
-            pages,
+        var identityField = EmptyToNull(source.IdentityField);
+        await IngestPipeline.LoadAsync(
+            body,
+            format,
+            source.Id,
+            source.Srid,
+            sourceSrid,
+            target,
+            target as IDatasetIngestStream,
+            ingest,
+            identity,
+            identityField,
+            transforms,
             cancellationToken);
         return true;
     }

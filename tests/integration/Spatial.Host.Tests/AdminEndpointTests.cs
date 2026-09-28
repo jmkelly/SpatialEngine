@@ -481,6 +481,120 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task Ingest_honours_a_crs_the_document_declares_itself()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        // The same Berlin point as the reprojection test, but declaring its
+        // source CRS the way a producer with projected data actually would. No
+        // sourceSrid parameter: the document is the authority.
+        const string declared = """
+            {"type":"FeatureCollection","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:EPSG::3857"}},"features":[
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[1494000,6894000]},"properties":{"name":"Berlin"}}
+            ]}
+            """;
+        var ingest = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.declared&srid=4326&format=geojson&publish=declared",
+            new StringContent(declared, Encoding.UTF8, "application/json")));
+
+        Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
+        var result = await BodyAsync(ingest);
+        Assert.Equal("urn:ogc:def:crs:EPSG::3857", result.GetProperty("report").GetProperty("crs").GetProperty("declared").GetString());
+        Assert.Equal(3857, result.GetProperty("report").GetProperty("crs").GetProperty("sourceSrid").GetInt32());
+        Assert.True(result.GetProperty("report").GetProperty("crs").GetProperty("reprojected").GetBoolean());
+
+        var query = await BodyAsync(await client.GetAsync(
+            "/arcgis/rest/services/declared/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=json"));
+        var geometry = query.GetProperty("features")[0].GetProperty("geometry");
+        Assert.InRange(geometry.GetProperty("x").GetDouble(), 13.3, 13.5);
+        Assert.InRange(geometry.GetProperty("y").GetDouble(), 52.4, 52.6);
+    }
+
+    [Fact]
+    public async Task Ingest_rejects_a_declared_crs_that_contradicts_the_asserted_source()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        const string declared = """
+            {"type":"FeatureCollection","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:EPSG::3857"}},"features":[
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[1494000,6894000]},"properties":{"name":"Berlin"}}
+            ]}
+            """;
+        var ingest = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.conflict&srid=4326&sourceSrid=27700&format=geojson",
+            new StringContent(declared, Encoding.UTF8, "application/json")));
+
+        Assert.Equal(HttpStatusCode.BadRequest, ingest.StatusCode);
+        Assert.Equal("invalid.arguments", (await BodyAsync(ingest)).GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Ingest_reports_what_it_read_and_which_types_it_inferred()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        const string upload = """
+            {"type":"FeatureCollection","features":[
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[13.4,52.5]},"properties":{"name":"Berlin","population":3664000,"note":null}},
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[2.35,48.85]},"properties":{"name":"Paris","population":2150000,"note":null}}
+            ]}
+            """;
+        var ingest = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.reported&srid=4326&format=geojson",
+            new StringContent(upload, Encoding.UTF8, "application/json")));
+
+        Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
+        var report = (await BodyAsync(ingest)).GetProperty("report");
+        Assert.Equal(2, report.GetProperty("recordsRead").GetInt64());
+        Assert.Equal(2, report.GetProperty("featuresEmitted").GetInt64());
+        Assert.Equal(0, report.GetProperty("skippedCount").GetInt64());
+
+        var inferred = report.GetProperty("inferred");
+        var population = inferred.EnumerateArray().Single(field => field.GetProperty("name").GetString() == "population");
+        Assert.Equal("int64", population.GetProperty("kind").GetString());
+        Assert.False(population.GetProperty("nullable").GetBoolean());
+        var note = inferred.EnumerateArray().Single(field => field.GetProperty("name").GetString() == "note");
+        Assert.True(note.GetProperty("nullable").GetBoolean());
+        Assert.Equal(2, note.GetProperty("nulls").GetInt64());
+    }
+
+    [Fact]
+    public async Task Ingest_drops_and_reports_malformed_rows_when_configured_to()
+    {
+        using var factory = new AdminFactory(Path.Combine(Path.GetTempPath(), "maps-reported.json"), 1_048_576, skipMalformed: true);
+        var client = factory.CreateClient();
+
+        const string upload = """
+            {"type":"FeatureCollection","features":[
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[13.4,52.5]},"properties":{"name":"Berlin"}},
+              {"type":"Feature","geometry":{"type":"Point","coordinates":"nope"},"properties":{"name":"Broken"}},
+              {"type":"Feature","geometry":{"type":"Point","coordinates":[2.35,48.85]},"properties":{"name":"Paris"}}
+            ]}
+            """;
+        var ingest = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.gappy&srid=4326&format=geojson",
+            new StringContent(upload, Encoding.UTF8, "application/json")));
+
+        Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
+        var result = await BodyAsync(ingest);
+        Assert.Equal(2, result.GetProperty("features").GetInt64());
+
+        var report = result.GetProperty("report");
+        Assert.Equal(3, report.GetProperty("recordsRead").GetInt64());
+        Assert.Equal(1, report.GetProperty("skippedCount").GetInt64());
+        var skip = report.GetProperty("skipped")[0];
+        Assert.Equal(2, skip.GetProperty("record").GetInt32());
+        Assert.Equal("geometryInvalid", skip.GetProperty("reason").GetString());
+    }
+
+    [Fact]
     public async Task The_esri_admin_upload_enforces_the_feature_cap()
     {
         using var factory = Factory(maxFeatures: 1);
@@ -587,7 +701,8 @@ public sealed class AdminEndpointTests : IDisposable
     }
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class AdminFactory(string mapsPath, long maxBytes, int maxFeatures = 1_000_000) : WebApplicationFactory<Program>
+    private sealed class AdminFactory(
+        string mapsPath, long maxBytes, int maxFeatures = 1_000_000, bool skipMalformed = false) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -595,6 +710,7 @@ public sealed class AdminEndpointTests : IDisposable
             builder.UseSetting("Spatial:Maps:Path", mapsPath);
             builder.UseSetting("Spatial:Ingest:MaxBytes", maxBytes.ToString(System.Globalization.CultureInfo.InvariantCulture));
             builder.UseSetting("Spatial:Ingest:MaxFeatures", maxFeatures.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            builder.UseSetting("Spatial:Ingest:SkipMalformed", skipMalformed ? "true" : "false");
         }
     }
 }

@@ -278,4 +278,96 @@ public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerCon
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages, cancellation.Token));
     }
+
+    /// <summary>
+    /// The streaming face (ADR-0041 §4): the same atomic load with the pages
+    /// arriving as they are decoded. A stream that dies or is cancelled
+    /// part-way through must leave no table.
+    /// </summary>
+    [SkippableFact]
+    public async Task Streamed_pages_load_atomically()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_stream");
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var pages = new[]
+        {
+            new FeatureBatch(schema, [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, CoordinateReference.Epsg(4326)))]),
+            new FeatureBatch(schema, [Feature(schema, "2", "Paris", GeometryFactory.CreatePoint(2.35, 48.85, CoordinateReference.Epsg(4326)))]),
+        };
+
+        var outcome = await context.Ingest.IngestStreamAsync(
+            new IngestRequest(dataset, 4326), schema, ToStream(pages));
+
+        Assert.Equal(2, outcome.Features);
+        Assert.Equal(2, (await context.Store.ScanAsync(dataset)).SelectMany(batch => batch.Features).Count());
+    }
+
+    [SkippableFact]
+    public async Task A_stream_that_dies_part_way_through_leaves_no_table()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_stream_fail");
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var good = new FeatureBatch(
+            schema, [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, CoordinateReference.Epsg(4326)))]);
+
+        // The store wraps anything its operation throws as `store.unavailable`,
+        // decoder failure included; what matters here is what it left behind.
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => context.Ingest.IngestStreamAsync(
+            new IngestRequest(dataset, 4326), schema, Failing(good)));
+
+        Assert.Contains("the decoder died", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(0, await context.CountAsync(
+            $"SELECT count(*) FROM sys.tables WHERE name = '{dataset[(dataset.IndexOf('.') + 1)..]}'"));
+    }
+
+    [SkippableFact]
+    public async Task A_cancelled_stream_leaves_no_table()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_stream_cancel");
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var good = new FeatureBatch(
+            schema, [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, CoordinateReference.Epsg(4326)))]);
+        using var cancellation = new CancellationTokenSource();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => context.Ingest.IngestStreamAsync(
+            new IngestRequest(dataset, 4326), schema, Cancelling(good, cancellation), cancellation.Token));
+
+        Assert.Equal(0, await context.CountAsync(
+            $"SELECT count(*) FROM sys.tables WHERE name = '{dataset[(dataset.IndexOf('.') + 1)..]}'"));
+    }
+
+    private static async IAsyncEnumerable<FeatureBatch> ToStream(FeatureBatch[] pages)
+    {
+        foreach (var page in pages)
+        {
+            await Task.Yield();
+            yield return page;
+        }
+    }
+
+    /// <summary>One good page, then a failure the transaction cannot survive.</summary>
+    private static async IAsyncEnumerable<FeatureBatch> Failing(FeatureBatch good)
+    {
+        yield return good;
+        await Task.Yield();
+        throw new InvalidOperationException("the decoder died");
+    }
+
+    /// <summary>One good page, then a cancellation before the next.</summary>
+    private static async IAsyncEnumerable<FeatureBatch> Cancelling(FeatureBatch good, CancellationTokenSource cancellation)
+    {
+        yield return good;
+        await cancellation.CancelAsync();
+        await Task.Yield();
+        cancellation.Token.ThrowIfCancellationRequested();
+#pragma warning disable CS0162 // the compiler cannot see that the throw is reachable
+        yield return good;
+#pragma warning restore CS0162
+    }
 }
