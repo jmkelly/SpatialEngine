@@ -32,6 +32,59 @@ this file together, then tag the release (`RELEASING.md`).
   two-dimensional or unconstrained column advertises neither key rather than
   `false`. SQL Server (whose spatial types have no Z/M) and the ArcGIS REST
   provider report `xy` until they can prove more.
+- **`findTransformations` is a search, and datum transformations are values**
+  (ADR-0087, SpatialEngine-u2x.15, landed on ADR-0086): the operation used to
+  be a reformulation of the catalogue — same datum `[]`, different datum one
+  forward composite, `extentOfInterest` rejected *by name* because "the
+  catalogue has no area-of-use model" — with the parameters welded to the
+  adapter, so there was one possible answer and nothing outside the adapter
+  could check it. A new `Spatial.Contracts.TransformationSearch` namespace
+  carries `CrsTransformation`, `CrsTransformationStep`, `HelmertParameters`,
+  `CrsAreaOfUse` and `CrsTransformationQuery` (records of strings, doubles
+  and booleans, no packages), and `ICrsDirectory` gains `FindTransformations`.
+  The graph is composed from the catalogue's own datum definitions, so it is a
+  hub and spokes rather than a table of hand-written pairs: between two datums
+  it offers the **direct** composed Helmert (the path the engine applies), the
+  **concatenated** path through the WGS 84 pivot, and the same shift **reduced
+  to three translations**, each carrying its steps, the seven EPSG-9606
+  parameters it applies, its area of use and a stated accuracy. Accuracies
+  combine in quadrature and the reduced form adds the first-order bound on what
+  its dropped rotations cost (14.5 m measured against 41.9 m stated). Area of
+  use follows the EPSG rule for the shape of the operation, so an empty
+  intersection drops the direct candidate outright and `extentOfInterest`
+  *filters* what is left instead of refusing — it is read in the source CRS's
+  own coordinates and reprojected onto the geographic boxes the catalogue
+  records. The search is symmetric: a reversed request returns the same
+  operations with `transformForward: false`, and the default is every ranked
+  candidate rather than one (`numOfResults` and the ArcGIS REST JS
+  `numTransformations` both slice it). `project` now accepts a
+  `datumTransformation` that names the operation it applies and refuses any
+  other by naming that one; `vertical=false` is accepted and `vertical=true`
+  stays refused. The published parameters are the engine's: a control point
+  applies the returned Helmert to the London point by hand and lands within a
+  millimetre of the PROJ 9 (OSTN15) reference. **Caller-visible changes:** a
+  `findTransformations` response is a ranked array of candidates with
+  `name`/`geoTransforms`/`accuracy`/`approximate`/`areaOfUse` (and `helmert` per
+  step) instead of a one-element array, an unknown CRS is `invalid.arguments`
+  rather than `[]`, and `project` no longer refuses `datumTransformation`
+  outright.
+
+- **The CRS catalogue's model is decided: WKT definitions, and datum quality
+  data that is not part of a definition** (ADR-0086, SpatialEngine-u2x.28):
+  the WKT path and the transformation graph were mutually incompatible because
+  the graph read a datum's *accuracy* and *area of use* off the hand-written
+  catalogue rows, which the WKT path deletes — and a WKT2 `GEOGCRS` genuinely
+  carries neither, because both are attributes of the registered coordinate
+  operation, not of the CRS. A definition therefore owns the datum's
+  `TOWGS84` shift (a construction input ProjNet needs), and a new curated
+  `EpsgDatumOperations` table beside the vendored WKT owns the accuracy in
+  metres and the registered extent, joined to a definition by the datum's EPSG
+  name. A datum with no published operation contributes no graph node rather
+  than an invented accuracy, and a test fails if a geodetic definition is
+  added to the WKT without a row. EPSG:3857 is unaffected: the pseudo-Mercator
+  interception lives in the reader, and the graph builds no coordinate systems
+  at all. The ADR also settles ADR numbering: the next free number on `main`,
+  with `AdrNumberingTests` as the enforcement.
 
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries
@@ -91,6 +144,35 @@ this file together, then tag the release (`RELEASING.md`).
   `quantizationParameters` snaps x, y, z and m to the view grid anchored on
   the request's extent, then spends the rest of the budget on the same verb;
   an unservable `mode` or `originPosition` is still rejected by name.
+
+- **A WKT definition path for the built-in CRS catalogue** (ADR-0027,
+  SpatialEngine-u2x.17): every CRS the ProjNet provider serves is now
+  defined as EPSG WKT and read by a reader of the engine's own, so the
+  catalogue is no longer a hand-written parameter list. `ProjWkt` reads both
+  the OGC WKT1 and the WKT2 dialect and hands what it reads to the one
+  programmatic builder the catalogue already used — the UTM families are one
+  WKT template with two substituted numbers, and the hand-written rows, the
+  generated zones and the definitions that exist only as WKT are
+  indistinguishable to callers. The Pseudo-Mercator workaround survives as
+  code rather than as a refusal: the reader intercepts the identifiable
+  spellings (the projection names, the CRS names, the EPSG
+  3857/3785/900913/102100/102113 authorities) before construction and routes
+  them to the known-good programmatic path, which matters because EPSG:3857
+  is very widely published with the projection named `Mercator_1SP`, and
+  ProjNet's own WKT reader reads that spelling as a plain Mercator —
+  **33,931 m** too far south at Berlin's latitude, measured by test rather
+  than asserted in a comment. Two definitions that are new to the served set
+  come in with the path, both read as WKT and both verified against something
+  other than the library that reads them: **EPSG:3395** (WGS 84 / World
+  Mercator) against EPSG Guidance Note 7-2's method 9804, and **EPSG:2193**
+  (NZGD2000 / New Zealand Transverse Mercator) against the projection's own
+  analytics — its central meridian, scale factor, false easting, false
+  northing and latitude of origin, and the meridian-arc series. **EPSG:3857
+  and the other fourteen codes the catalogue already served are
+  byte-identical**, pinned to the last bit, the catalogue is still built once
+  and lazily, and the reader resolves only the projection methods it has
+  been checked for, so a definition is never served with coordinates that are
+  quietly wrong.
 
 - **Ground-distance buffering** (ADR-0075, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a

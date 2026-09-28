@@ -253,7 +253,7 @@ export const GeometrySamples: Record<GeometryOperation, string> = {
     `geometries1=[{"rings":[[[-118,33],[-116,33],[-116,35],[-118,35],[-118,33]]]}]` +
     `&geometries2=[{"x":-117,"y":34}]` +
     `&sr1=4326&sr2=4326&relation=esriSpatialRelContains&f=json`,
-  findTransformations: `inSR=4326&outSR=3857&f=json`,
+  findTransformations: `inSR=4326&outSR=27700&f=json`,
 };
 
 /**

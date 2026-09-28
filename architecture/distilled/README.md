@@ -16,7 +16,7 @@ reflects the state at decision time.
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
 | Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
-| Which services exist + their contracts | `contracts.md` | 0033, 0074 |
+| Which services exist + their contracts | `contracts.md` | 0033, 0074, 0083, 0084 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048 |
 | Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0075, 0037, 0038 |
@@ -126,6 +126,8 @@ shape is noted in brackets.
 | 0074 | The feature-query contract is a core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`; pushdown is per-conjunct and best-effort with residual in-memory evaluation; reductions are an additive `IFeatureAggregateStore` face; the published `filter` text is parsed once at the boundary and the per-provider filter languages are retired. |
 | 0083 | A store may report a per-dataset content version (`IVersionedFeatureStore`); every tile cache key (raster and MVT) folds it in, so a write invalidates the tiles derived from that data with no manual flush. |
 | 0085 | Query `distance`/`units` band, `returnCentroid` (`IGeometryMeasures.Centroid`) and `returnZ`/`returnM` output selection are served; the Z/M loss was Esri-JSON codec depth, not the engine. |
+| 0086 | The CRS catalogue is vendored EPSG WKT read by a reader of our own (ProjNet's cannot read WKT2, and reads the widely published `Mercator_1SP` spelling of 3857 as a plain Mercator); a definition carries the datum's shift, while the accuracy and area of use of that shift live in a separate registered-operation table, because WKT states neither. |
+| 0087 | Datum transformations are contract values with area of use, accuracy and parameters; `findTransformations` is a ranked, area-filtered search and `project` accepts the operation it applies. |
 
 ## How to change the architecture
 

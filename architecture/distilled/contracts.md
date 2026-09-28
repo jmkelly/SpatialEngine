@@ -74,20 +74,34 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
 | Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
 | `Describe` | crs identity string (`EPSG:4326`) | structured `CrsDescription` | name, family, axes (name/orientation/unit), datum, ellipsoid |
+| `FindTransformations` | `CrsTransformationQuery` (source, target, optional area of interest) | ranked `CrsTransformation` list | candidates with steps, Helmert parameters, area of use and derived accuracy; same datum → empty; the first candidate is the path `Transform` applies (ADR-0087) |
 | `Transform` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
 
 - **Axis order: x-first for every CRS** (x = longitude/easting). Describe
   reports declared axes; the service performs no swaps — axis-order tests pin
   this. Z/M pass through untouched; empty geometries keep type and layout.
 - Omitted `source` defaults to the geometry's own CRS (then required).
-- Built-in EPSG catalogue: the common geographic and projected CRSs written
-  out, plus projected *families* generated from one parameter template — the
-  UTM grid (zones 1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760)
-  and the ETRS89 and NAD83 UTM bands over their own datums. A code outside
-  the catalogue and the families is `invalid.arguments`; there is no WKT
-  input. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36 classic
-  Helmert (±0.1 m, no grid). The catalogue is built once, and each CRS in it
-  on first use.
+- Built-in EPSG catalogue, **defined in EPSG WKT** and read by the provider's
+  own reader (`ProjWkt`), so a definition is data and construction stays on
+  one programmatic builder: the common geographic and projected CRSs, plus
+  projected *families* generated from one WKT template — the UTM grid (zones
+  1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760) and the ETRS89
+  and NAD83 UTM bands over their own datums. WKT1 and WKT2 both read; the
+  Pseudo-Mercator spellings are intercepted and routed to the known-good
+  construction (reading EPSG:3857 as `Mercator_1SP` is 33 km out). A code
+  outside the catalogue and the families is `invalid.arguments`; there is no
+  WKT *input*. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36
+  classic Helmert (±0.1 m, no grid). The catalogue is built once, and each
+  definition read and each CRS built on first use.
+- **A definition is WKT text; a datum's accuracy and area of use are not part
+  of it** (ADR-0086). The definition carries the datum's `TOWGS84` shift —
+  the construction input ProjNet needs. How accurate that shift is, and over
+  what ground it means anything, are attributes of the *operation* EPSG
+  registers against the datum, and WKT states neither. They live in a curated
+  `EpsgDatumOperations` table beside the WKT, keyed on the datum name the
+  `DATUM` node carries, and joined to a definition to form the graph's datum
+  node. A datum with no published operation contributes no node rather than an
+  invented accuracy. Both halves have exactly one home, so they cannot drift.
 
 ## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IVersionedFeatureStore`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 
