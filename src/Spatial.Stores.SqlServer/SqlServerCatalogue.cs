@@ -50,10 +50,14 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
     }
 
     /// <summary>
-    /// Creates the dataset table for a sample batch, records its SRID, and
-    /// returns its qualified name. The sample is rejected here when its schema
-    /// names an unsupported field or carries a geometry SQL Server cannot
-    /// store.
+    /// Creates the dataset table for a sample batch — with the spatial and
+    /// attribute indexes a pushed-down query needs (ADR-0092) — records its
+    /// SRID, and returns its qualified name. The sample is rejected here when
+    /// its schema names an unsupported field or carries a geometry SQL Server
+    /// cannot store. The table, its indexes and its CRS are one transaction: a
+    /// dataset whose indexes cannot be created does not exist, and a server
+    /// that cannot create them reports <c>store.unavailable</c> rather than
+    /// leaving a table the planner scans.
     /// </summary>
     public async Task<string> CreateAsync(
         SqlServerDatasetName name, FeatureBatch sample, int srid, CancellationToken cancellationToken)
@@ -64,9 +68,26 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
         await SqlServerDataStore.ExecuteNonQueryAsync(
             connection, transaction, SqlServerQueries.CreateTable(name, sample.Schema), [], cancellationToken);
+        await CreateIndexesAsync(connection, transaction, name, sample.Schema, cancellationToken);
         await RecordSridAsync(connection, transaction, name, srid, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return name.Qualified;
+    }
+
+    /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0092).</summary>
+    private async Task CreateIndexesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        SqlServerDatasetName name,
+        IFeatureSchema schema,
+        CancellationToken cancellationToken)
+    {
+        foreach (var statement in storage.CreateIndexes
+            ? SqlServerIndexPlan.CreateIndexes(name, schema)
+            : [])
+        {
+            await SqlServerDataStore.ExecuteNonQueryAsync(connection, transaction, statement, [], cancellationToken);
+        }
     }
 
     /// <summary>

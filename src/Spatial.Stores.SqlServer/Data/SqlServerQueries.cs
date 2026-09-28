@@ -162,6 +162,31 @@ internal static class SqlServerQueries
     }
 
     /// <summary>
+    /// The spatial index of a dataset's primary geometry column (ADR-0092):
+    /// SQL Server grids a <c>geometry</c> column with
+    /// <c>GEOMETRY_AUTO_GRID</c>, which is what the bounding-box
+    /// <c>STIntersects</c> pushdown predicate can seek. The
+    /// <c>BOUNDING_BOX</c> is a required clause rather than a limit: with
+    /// <c>AUTO_GRID</c> the server recomputes the grid from the data, so a
+    /// geometry stored outside the declared box is still found (verified
+    /// against the container the tests run). The dataset identifier and the
+    /// column are validated identifiers, never client text.
+    /// </summary>
+    public static string CreateSpatialIndex(SqlServerDatasetName dataset, string column, string gridType) =>
+        $"CREATE SPATIAL INDEX {SqlServerIdentifier.Quote(SqlServerIndexName.For(dataset.Table, column))} "
+        + $"ON {dataset.QuoteQualified()} ({SqlServerIdentifier.Quote(column)}) USING {gridType} "
+        + "WITH (BOUNDING_BOX = (-180, -90, 180, 90), CELLS_PER_OBJECT = 16)";
+
+    /// <summary>
+    /// The btree index of one attribute column (ADR-0092), which is what the
+    /// equality and range comparisons of a pushed-down attribute filter can
+    /// seek. The dataset identifier and the column are validated identifiers.
+    /// </summary>
+    public static string CreateBtreeIndex(SqlServerDatasetName dataset, string column) =>
+        $"CREATE INDEX {SqlServerIdentifier.Quote(SqlServerIndexName.For(dataset.Table, column))} "
+        + $"ON {dataset.QuoteQualified()} ({SqlServerIdentifier.Quote(column)})";
+
+    /// <summary>
     /// The provider-owned dataset metadata sidecar (ADR-0028 §3): the SRID a
     /// table was created or ingested with, keyed by its qualified name. SQL
     /// Server has no per-column SRID to discover, so an empty table's CRS is

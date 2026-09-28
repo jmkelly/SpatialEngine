@@ -13,6 +13,15 @@ public sealed class SqlServerOptions
 
     public string ConnectionString { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether a created dataset gets its spatial and attribute indexes
+    /// (ADR-0092). On by default, because a dataset with no indexes makes every
+    /// pushed-down query a scan; turn it off only for a bulk load that would
+    /// rather build the indexes afterwards, and accept that the dataset is
+    /// unindexed until it does.
+    /// </summary>
+    public bool CreateIndexes { get; set; } = true;
+
     public static SqlServerOptions FromEnvironment() =>
         new() { ConnectionString = Environment.GetEnvironmentVariable(EnvironmentVariable) ?? string.Empty };
 }

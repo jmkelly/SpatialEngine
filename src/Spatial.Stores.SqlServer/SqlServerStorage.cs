@@ -16,12 +16,17 @@ internal sealed class SqlServerStorage : IAsyncDisposable
 {
     private readonly Lazy<SqlServerDataStore> _data;
     private readonly SqlServerTransactions _transactions;
+    private readonly bool _createIndexes;
 
-    public SqlServerStorage(SqlServerConnectionConfiguration configuration)
+    public SqlServerStorage(SqlServerConnectionConfiguration configuration, bool createIndexes = true)
     {
         _data = new Lazy<SqlServerDataStore>(() => SqlServerDataStore.Open(configuration));
         _transactions = new SqlServerTransactions(this);
+        _createIndexes = createIndexes;
     }
+
+    /// <summary>Whether a dataset created through this storage gets its indexes (ADR-0092).</summary>
+    public bool CreateIndexes => _createIndexes;
 
     public SqlServerCatalogue Catalogue => new(this);
 

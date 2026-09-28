@@ -40,7 +40,7 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
         _configuration = string.IsNullOrWhiteSpace(options.ConnectionString)
             ? SqlServerConnectionConfiguration.FromEnvironment()
             : SqlServerConnectionConfiguration.FromConnectionString(options.ConnectionString);
-        _storage = new SqlServerStorage(_configuration);
+        _storage = new SqlServerStorage(_configuration, options.CreateIndexes);
     }
 
     public async ValueTask DisposeAsync()
@@ -260,6 +260,9 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
     /// <summary>Opens a pooled connection for the ingest and attachment faces (ADR-0041); the caller owns the lifecycle.</summary>
     internal Task<SqlConnection> OpenIngestConnectionAsync(CancellationToken cancellationToken) =>
         _storage.OpenConnectionAsync(cancellationToken);
+
+    /// <summary>Whether a dataset this store creates carries its indexes (ADR-0092).</summary>
+    internal bool CreateIndexes => _storage.CreateIndexes;
 
     /// <summary>Opens the connection a store-side edit runs on: the transaction handle's connection, or a fresh autocommit one (ADR-0037).</summary>
     internal Task<SqlServerEditSession> OpenEditSessionAsync(string? transaction, CancellationToken cancellationToken) =>

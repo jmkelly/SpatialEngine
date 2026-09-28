@@ -39,7 +39,7 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
         _configuration = string.IsNullOrWhiteSpace(options.ConnectionString)
             ? PostgisConnectionConfiguration.FromEnvironment()
             : PostgisConnectionConfiguration.FromConnectionString(options.ConnectionString);
-        _storage = new PostgisStorage(_configuration);
+        _storage = new PostgisStorage(_configuration, options.CreateIndexes);
     }
 
     internal PostgisStore(PostgisConnectionConfiguration configuration)
@@ -229,6 +229,9 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
     /// <summary>Opens a pooled connection for the ingest face (ADR-0041); the caller owns the transaction and lifecycle.</summary>
     internal Task<NpgsqlConnection> OpenIngestConnectionAsync(CancellationToken cancellationToken) =>
         _storage.OpenConnectionAsync(cancellationToken);
+
+    /// <summary>Whether a dataset this store creates carries its indexes (ADR-0092).</summary>
+    internal bool CreateIndexes => _storage.CreateIndexes;
 
     /// <summary>Opens the connection a store-side edit runs on: the transaction handle's connection, or a fresh autocommit one (ADR-0037).</summary>
     internal Task<PostgisEditSession> OpenEditSessionAsync(string? transaction, CancellationToken cancellationToken) =>

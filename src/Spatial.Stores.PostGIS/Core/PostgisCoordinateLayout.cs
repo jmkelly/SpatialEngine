@@ -15,7 +15,7 @@ namespace Spatial.Stores.PostGIS.Core;
 /// That is a deliberate under-report: a column may still hold Z values the
 /// engine will faithfully serve, but the schema is not evidence, and the
 /// GeoServices layer metadata must not claim what the schema cannot back
-/// (ADR-0081). Anything unrecognised is Xy for the same reason — the parse
+/// (ADR-0092). Anything unrecognised is Xy for the same reason — the parse
 /// is a proof, never a guess.
 /// </summary>
 internal static class PostgisCoordinateLayout

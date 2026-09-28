@@ -40,9 +40,14 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
     }
 
     /// <summary>
-    /// Creates the dataset table for a sample batch, and returns its qualified
-    /// name. The sample is rejected here when its schema names an unsupported
-    /// field or leaves the dataset with no geometry.
+    /// Creates the dataset table for a sample batch — with the spatial and
+    /// attribute indexes a pushed-down query needs (ADR-0092) — and returns
+    /// its qualified name. The sample is rejected here when its schema names an
+    /// unsupported field or leaves the dataset with no geometry. The table and
+    /// its indexes are one transaction: a dataset whose indexes cannot be
+    /// created does not exist, and a store that cannot create them reports
+    /// <c>store.unavailable</c> rather than leaving a table the planner
+    /// sequential-scans.
     /// </summary>
     public async Task<string> CreateAsync(
         PostgisDatasetName name, FeatureBatch sample, int srid, CancellationToken cancellationToken)
@@ -50,9 +55,28 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
         PostgisFieldName.RequireValid(name, sample.Schema);
         var geometryTypes = CreatableGeometryTypes(name, sample);
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await PostgisDataStore.ExecuteNonQueryAsync(
-            connection, PostgisQueries.CreateTable(name, sample.Schema, srid, geometryTypes), [], cancellationToken);
+            connection, transaction, PostgisQueries.CreateTable(name, sample.Schema, srid, geometryTypes), [], cancellationToken);
+        await CreateIndexesAsync(connection, transaction, name, sample.Schema, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return name.Qualified;
+    }
+
+    /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0092).</summary>
+    private async Task CreateIndexesAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        PostgisDatasetName name,
+        IFeatureSchema schema,
+        CancellationToken cancellationToken)
+    {
+        foreach (var statement in storage.CreateIndexes
+            ? PostgisIndexPlan.CreateIndexes(name, schema)
+            : [])
+        {
+            await PostgisDataStore.ExecuteNonQueryAsync(connection, transaction, statement, [], cancellationToken);
+        }
     }
 
     /// <summary>Rejects a sample whose schema the dataset cannot be created from, and returns its resolved geometry types.</summary>

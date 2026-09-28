@@ -11,6 +11,24 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **A created dataset carries its own indexes** (ADR-0092, SpatialEngine-0zp):
+  `CreateAsync` and ingest on PostGIS and SQL Server now create the GiST (resp.
+  spatial) index on the dataset's primary geometry column and a btree on every
+  attribute column a pushed-down filter may name, inside the same transaction
+  as the table. A dataset that has been created is queryable with no
+  out-of-band DDL and no change to `eng/seed.sh` — the measurement behind this
+  (eng/spike-u2x-query-baseline/RESULTS.md, finding 7) had the bbox+where
+  pushdown as a Seq Scan on a 34,135-row table, and an index scan is 73 → 44 ms
+  (europe box) and 170 → 109 ms (global box). The DDL is a pure function of the
+  schema, unit-tested without a database and asserted through the planner's own
+  plan against the real containers. An index that cannot be created rolls the
+  create back rather than leaving an unindexed table. `PostgisOptions.CreateIndexes`
+  and `SqlServerOptions.CreateIndexes` (default on) are the operator's opt-out
+  for a bulk load. SQL Server's two limits are detected in advance rather than
+  discovered as a failed statement: a table with no clustered primary key is
+  not gridded (followed up as SpatialEngine-9vg) and an `nvarchar(max)` text
+  column cannot be a key.
+
 - **`to-color`, `at-interpolate` and `cubic-bezier` in the MapLibre style
   dialect** (ADR-0088, SpatialEngine-ymh): the three interpolation constructs
   ADR-0076 named as unserved. `["to-color", value]` is the one coercion the
