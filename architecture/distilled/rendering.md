@@ -123,9 +123,11 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   across — under `round` or `square`; and a LineString with fewer than two
   points is not a segment, so it strokes nothing under any cap. A `line`
   geometry on a `fill` layer fills nothing, and a `fill` geometry on a
-  `line` layer strokes nothing. `LineOrientationRenderTests` pins all of it;
-  the committed golden render uses point features only, so nothing before it
-  pinned a line's orientation.
+  `line` layer strokes nothing. `LineOrientationRenderTests` pins all of it.
+  Nothing before it pinned a line's orientation: the `symbols.png` golden
+  renders point features only, and the two lines in the `symbols-line.png`
+  golden are both oblique, so a vertical-only regression reached the raster
+  unnoticed.
 - Symbol layout (ADR-0049, ADR-0080): `text-field` (a `{attribute}` template,
   newlines split a multi-line label), `text-font` (a fallback-ordered list of
   face names), `text-size`, `text-anchor`, `text-offset` (ems), `text-padding`,

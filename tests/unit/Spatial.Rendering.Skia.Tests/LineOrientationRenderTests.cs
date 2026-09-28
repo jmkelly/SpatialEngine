@@ -195,6 +195,27 @@ public sealed class LineOrientationRenderTests
     }
 
     /// <summary>
+    /// The other half of the dimensional rule: a polygon is two-dimensional, so
+    /// a line layer must not stroke its ring even though the ring is a closed
+    /// path with plenty of extent in both axes.
+    /// </summary>
+    [Fact]
+    public void Rasterizer_KeepsFillGeometryOffTheLinePath()
+    {
+        var polygon = GeometryFactory.CreatePolygon(
+        [
+            new Coordinate(5, -9), new Coordinate(9, -9), new Coordinate(9, 9),
+            new Coordinate(5, 9), new Coordinate(5, -9)
+        ]);
+        var layer = new DrawLayer(
+            "rivers", "demo", DrawKind.Line, 0, 24, true, StyleFilter.Always,
+            new LinePaint(new StyleColor(0, 255, 0), 6, [], LineCapStyle.Round, LineJoinStyle.Miter));
+        var scene = new RenderScene([new SceneLayer(layer, [polygon])], null);
+
+        Assert.Equal(0, CountAlpha(SkiaVectorRasterizer.Render(scene, Viewport)));
+    }
+
+    /// <summary>
     /// Vertical geometry must survive the real stack, not just the fakes: the
     /// ProjNet transform and the NTS simplifier are the production engines
     /// behind placement and shaping, and a zero-width envelope is what a store
