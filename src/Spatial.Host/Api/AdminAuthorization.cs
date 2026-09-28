@@ -11,7 +11,7 @@ namespace Spatial.Host.Api;
 /// <para>
 /// One implementation, because a second copy of an authorization check is a
 /// second thing to keep correct: the map routes and the staged-upload routes
-/// (ADR-0083) are reachable by the same callers and must answer the same way.
+/// (ADR-0088) are reachable by the same callers and must answer the same way.
 /// </para>
 /// </summary>
 internal static class AdminAuthorization

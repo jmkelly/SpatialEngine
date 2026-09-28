@@ -5,7 +5,7 @@ deciders: maintainer + agent
 amends: ADR-0041
 ---
 
-# ADR-0083: An upload is staged, then loaded — resumable ingest
+# ADR-0088: An upload is staged, then loaded — resumable ingest
 
 ## Context
 

@@ -54,7 +54,7 @@ export interface IngestResult {
 }
 
 /**
- * How much of a staged upload has landed (ADR-0083). `complete` is true only
+ * How much of a staged upload has landed (ADR-0088). `complete` is true only
  * when every declared byte has arrived, so a partial upload is never presented
  * as a loadable one.
  */
@@ -424,7 +424,7 @@ export class SpatialClient {
     });
   }
 
-  // ---- staged uploads (ADR-0083) ----
+  // ---- staged uploads (ADR-0088) ----
 
   /**
    * Opens a staged upload (requires the admin token). Passing the same
@@ -515,7 +515,7 @@ export class SpatialClient {
   }
 
   /**
-   * Uploads a blob in resumable chunks and ingests it (ADR-0083): the driver
+   * Uploads a blob in resumable chunks and ingests it (ADR-0088): the driver
    * asks the host where the staging got to, continues from there, and ingests
    * once every byte has landed. The load itself is not chunked — it is one
    * transaction over the whole document, as any other ingest is.

@@ -8,7 +8,7 @@ using Spatial.Host.Api;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The file-backed upload staging behind <c>/api/uploads</c> (ADR-0083): the
+/// The file-backed upload staging behind <c>/api/uploads</c> (ADR-0088): the
 /// append-only, resumable staging a large upload lands in before it is
 /// ingested. The contract under test is deliberately narrow — an offset, a
 /// declared total, a digest — because a resumable upload that cannot say how
@@ -249,7 +249,7 @@ public sealed class UploadStagingTests : IDisposable
     {
         // A pre-cancelled token proves nothing about durability: the request dies
         // before a byte is read. This one delivers half a chunk and is cancelled
-        // while the rest is still in flight, which is the case ADR-0083 §3
+        // while the rest is still in flight, which is the case ADR-0088 §3
         // claims is safe — the staged length is the file's length, so half a
         // chunk never becomes half an upload.
         var staging = Staging();
@@ -272,7 +272,7 @@ public sealed class UploadStagingTests : IDisposable
     [Fact]
     public async Task Bytes_left_staged_by_an_interrupted_append_are_reported_rather_than_replayed_over()
     {
-        // The other half of the ADR-0083 §3 claim. If an append is cut after
+        // The other half of the ADR-0088 §3 claim. If an append is cut after
         // its bytes reached the staged file but before the state was written,
         // the next append must not be told its offset is ahead of the staging —
         // that is the difference between a resume and a restart.

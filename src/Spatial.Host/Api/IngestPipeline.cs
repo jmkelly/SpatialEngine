@@ -94,7 +94,7 @@ internal static class IngestPipeline
     /// Fails the decode once it has read more features than the cap allows.
     /// The buffered path checks the count after the fact; a streamed one has to
     /// check while reading, or the cap is not a cap. The Esri projection
-    /// enforces the same cap through the same helper (ADR-0083).
+    /// enforces the same cap through the same helper (ADR-0088).
     /// </summary>
     private static IAsyncEnumerable<FeatureBatch> UnderCap(
         IAsyncEnumerable<FeatureBatch> pages,

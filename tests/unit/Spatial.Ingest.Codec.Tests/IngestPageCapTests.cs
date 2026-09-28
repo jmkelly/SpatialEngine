@@ -4,7 +4,7 @@ using Spatial.Core.Geometry;
 namespace Spatial.Ingest.Codec.Tests;
 
 /// <summary>
-/// The one feature cap both upload paths share (ADR-0082 §4, ADR-0083): a
+/// The one feature cap both upload paths share (ADR-0082 §4, ADR-0088): a
 /// streamed decode has to check while reading or the cap is not a cap, and two
 /// copies of that check is how they drift.
 /// </summary>
