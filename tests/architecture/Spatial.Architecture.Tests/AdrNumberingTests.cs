@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Spatial.Architecture.Tests;
@@ -22,6 +23,14 @@ namespace Spatial.Architecture.Tests;
 public sealed class AdrNumberingTests
 {
     private static readonly Lazy<string> Root = new(RepositoryScanner.FindRepositoryRoot);
+
+    /// <summary>
+    /// The ref the allocator allocates against, resolved the way it resolves
+    /// one. A claim is a record on this ref <em>or</em> in the tree, so the
+    /// gate has to read it too: a base that has moved on is not a flake, it is
+    /// a number this branch must not hand out.
+    /// </summary>
+    private static readonly Lazy<string> BaseRef = new(ResolveBaseRef);
 
     /// <summary>Matches a bare ADR number, in both prose and slug forms.</summary>
     private static readonly Regex AdrReference = new(@"ADR-(?<number>\d{4})(?!\d)", RegexOptions.Compiled);
@@ -169,8 +178,9 @@ public sealed class AdrNumberingTests
         // so this suite holds the allocator to the tree: the number it hands
         // out has to be free in architecture/decisions, or the first branch to
         // use it is a merge-time collision.
-        var claimed = DecisionRecords().Select(record => record.Number).ToList();
-        var handed = Allocator().Output;
+        var claimed = ClaimedNumbers();
+        using var store = new ScratchStore();
+        var handed = Gate(store, []).Output;
 
         Assert.Matches(@"^\d{4}$", handed);
         Assert.DoesNotContain(handed, claimed);
@@ -191,18 +201,17 @@ public sealed class AdrNumberingTests
     [Fact]
     public void The_allocator_check_gate_agrees_with_the_records()
     {
-        var claimed = DecisionRecords().Select(record => record.Number).ToList();
-        var next = (int.Parse(Highest(claimed), CultureInfo.InvariantCulture) + 1)
-            .ToString("D4", CultureInfo.InvariantCulture);
+        var claimed = ClaimedNumbers();
+        var next = OnePast(claimed);
 
         // The tool prints the number and nothing else when it is free, and a
-        // sentence naming the holder when it is not.
-        var verdicts = Allocator(["--check", .. claimed, next]);
-        var cleared = verdicts.Output
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim())
-            .Where(line => !line.Contains("ADR-", StringComparison.Ordinal))
-            .ToList();
+        // sentence naming the holder when it is not. The store is the one input
+        // the gate does not own: the repository's own is swarm-wide
+        // coordination state (ADR-0090) that changes while the gate runs, so
+        // the gate reads a store it created (SpatialEngine-u2x.33).
+        using var store = new ScratchStore();
+        var verdicts = Gate(store, ["--check", .. claimed, next]);
+        var cleared = Cleared(verdicts.Output);
 
         var violations = claimed
             .Where(number => cleared.Contains(number))
@@ -221,30 +230,225 @@ public sealed class AdrNumberingTests
         Assert.Empty(violations);
     }
 
+    /// <summary>
+    /// The reproduction for SpatialEngine-u2x.33: a live reservation for the
+    /// number the gate probes is exactly what turned the gate red. The
+    /// reservation store is shared by every worktree on purpose (ADR-0090), so
+    /// while parallel branches held 0089-0098, <c>--check</c> correctly refused
+    /// the number this tree would otherwise hand out, and the gate above
+    /// reported a violation for a record that does not exist — on every branch
+    /// in the repo, from a file none of them had touched. The reservation here
+    /// is written into a store the test creates, so the reproduction never
+    /// touches the real one.
+    /// </summary>
+    [Fact]
+    public void The_check_gate_refuses_a_number_a_live_reservation_holds()
+    {
+        var next = OnePast(ClaimedNumbers());
+        var holder = OtherBranch();
+
+        using var store = new ScratchStore();
+        store.Hold(next, holder);
+
+        var verdicts = Gate(store, ["--check", next]);
+
+        Assert.Equal(1, verdicts.ExitCode);
+        Assert.Contains(holder, verdicts.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(next, Cleared(verdicts.Output));
+    }
+
+    /// <summary>
+    /// ...which is only a defect if the gate is reading the store the swarm is
+    /// writing to. This holds the same live reservation — the one that reddened
+    /// every branch — in a <em>different</em> store and asserts the gate still
+    /// clears the number, and that the store the gate reads is not the one the
+    /// reservation landed in. A reservation taken after this test finished
+    /// cannot change the verdict either, because the store it lands in is not
+    /// one the gate looks at.
+    /// </summary>
+    [Fact]
+    public void The_check_gate_cannot_be_flipped_by_reservations_in_another_store()
+    {
+        var claimed = ClaimedNumbers();
+        var next = OnePast(claimed);
+
+        // The swarm's store, and the store the gate reads: two different ones.
+        using var shared = new ScratchStore();
+        using var owned = new ScratchStore();
+        shared.Hold(next, OtherBranch());
+
+        Assert.NotEqual(
+            Path.GetFullPath(shared.Store), Path.GetFullPath(owned.Store));
+
+        var verdicts = Gate(owned, ["--check", .. claimed, next]);
+        var cleared = Cleared(verdicts.Output);
+
+        // Only the number no record claims comes back free, which is the whole
+        // verdict: it is the number this test was reddened over.
+        Assert.Equal([next], cleared);
+    }
+
+    /// <summary>
+    /// The numbers the allocator refuses: a record on the base ref or in the
+    /// tree. Reading the tree alone is not its rule, and a branch that has not
+    /// yet taken main's newest record still has to see that number as claimed —
+    /// otherwise the gate and the allocator disagree about a number neither of
+    /// them is wrong about.
+    /// </summary>
+    private static List<string> ClaimedNumbers() =>
+        DecisionRecords().Select(record => record.Number)
+            .Concat(BaseRecords())
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>The decision records on the base ref, listed the way the allocator lists them.</summary>
+    private static IEnumerable<string> BaseRecords() =>
+        Git("ls-tree", "-r", "--name-only", BaseRef.Value, "--", "architecture", "decisions")
+            .Output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => AdrFileName.Match(Path.GetFileName(line.Trim())).Groups["number"].Value)
+            .Where(number => number.Length > 0);
+
+    /// <summary>The ref the allocator allocates against, resolved the way it resolves one.</summary>
+    private static string ResolveBaseRef()
+    {
+        foreach (var candidate in (string[])["origin/main", "main"])
+        {
+            if (Git("rev-parse", "--verify", "--quiet", $"{candidate}^{{commit}}").ExitCode == 0)
+            {
+                return candidate;
+            }
+        }
+
+        return "HEAD";
+    }
+
+    /// <summary>One past the highest claim, as the four digits it is filed under.</summary>
+    private static string OnePast(IEnumerable<string> claimed) =>
+        (int.Parse(Highest(claimed), CultureInfo.InvariantCulture) + 1)
+            .ToString("D4", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// A branch that exists and is not the one running the test, so the
+    /// allocator reads the reservation as another worktree's hold rather than
+    /// as this branch re-reserving a number it already holds.
+    /// </summary>
+    private static string OtherBranch()
+    {
+        var here = Git("rev-parse", "--abbrev-ref", "HEAD").Output;
+        var refs = Git("for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes")
+            .Output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(name => name != here)
+            .ToList();
+
+        return refs.FirstOrDefault()
+            ?? throw new InvalidOperationException(
+                "the repository has no ref besides the branch under test, so no "
+                + "reservation can be held by another worktree at all.");
+    }
+
+    /// <summary>
+    /// The numbers <c>--check</c> cleared: the bare four digits it prints for a
+    /// free number, with the sentences it prints for a taken one left out.
+    /// </summary>
+    private static List<string> Cleared(string output) =>
+        output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => !line.Contains("ADR-", StringComparison.Ordinal))
+            .ToList();
+
+    /// <summary>
+    /// Runs the allocator the way a worker does — on the real repository, so
+    /// the claim set is the real one — but pinned to the base ref this gate
+    /// resolved and to a reservation store the test owns.
+    /// </summary>
+    private static (int ExitCode, string Output, string Error) Gate(
+        ScratchStore store, params string[] arguments) =>
+        Allocator(["--base", BaseRef.Value, "--reservation-dir", store.Store, .. arguments]);
+
+    /// <summary>
+    /// A private reservation store: a directory the test creates, hands to the
+    /// allocator and deletes. No agent reserves against it, and it reads none
+    /// of the shared store.
+    /// </summary>
+    private sealed class ScratchStore : IDisposable
+    {
+        public string Store { get; }
+
+        public ScratchStore()
+        {
+            Store = Path.Combine(Path.GetTempPath(), $"adr-reservations-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(Store);
+        }
+
+        /// <summary>
+        /// A reservation a live branch holds: it exists, it is minutes old, and
+        /// nothing about it reads as stale — the state the shared store was in
+        /// when it reddened the gate on every branch.
+        /// </summary>
+        public void Hold(string number, string branch) =>
+            File.WriteAllText(
+                Path.Combine(Store, $"{number}.json"),
+                JsonSerializer.Serialize(new
+                {
+                    number,
+                    branch,
+                    bead = "SpatialEngine-u2x.33",
+                    baseRef = BaseRef.Value,
+                    reserved_at = $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss}+00:00",
+                }));
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Store))
+            {
+                Directory.Delete(Store, recursive: true);
+            }
+        }
+    }
+
     /// <summary>The highest number in the tree, as the four digits it is filed under.</summary>
     private static string Highest(IEnumerable<string> numbers) =>
         numbers.OrderBy(number => number, StringComparer.Ordinal).Last();
 
     /// <summary>Runs the allocator from the repository root.</summary>
     private static (int ExitCode, string Output, string Error) Allocator(
-        params string[] arguments)
+        params string[] arguments) =>
+        Run("python3", "tools/adr-next-number.py", arguments);
+
+    /// <summary>Runs git from the repository root, for the base the allocator reads.</summary>
+    private static (int ExitCode, string Output, string Error) Git(
+        params string[] arguments) => Run("git", null, arguments);
+
+    private static (int ExitCode, string Output, string Error) Run(
+        string fileName, string? firstArgument, params string[] arguments)
     {
         var start = new ProcessStartInfo
         {
-            FileName = "python3",
+            FileName = fileName,
             WorkingDirectory = Root.Value,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        start.ArgumentList.Add("tools/adr-next-number.py");
+
+        if (firstArgument is not null)
+        {
+            start.ArgumentList.Add(firstArgument);
+        }
+
         foreach (var argument in arguments)
         {
             start.ArgumentList.Add(argument);
         }
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException(
-            "python3 could not be started; the ADR allocator is run with it, " +
-            "and without it a branch has no way to reserve a number.");
+            $"{fileName} could not be started; the ADR allocator is run with "
+            + "python3 and reads the tree with git, and without them a branch "
+            + "has no way to reserve a number.");
 
         var output = process.StandardOutput.ReadToEnd();
         var error = process.StandardError.ReadToEnd();
