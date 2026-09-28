@@ -5,7 +5,7 @@ namespace Spatial.Core.Features.Query;
 /// <summary>
 /// Which comparisons the one predicate vocabulary (ADR-0074 §2) can answer at
 /// all, as a property of the value types rather than of any back end
-/// (ADR-0075 §2).
+/// (ADR-0081 §2).
 /// <para>
 /// A <see cref="Literal"/> carries its own <see cref="LiteralKind"/> and a
 /// column carries an <see cref="AttributeKind"/>, and not every pair is a

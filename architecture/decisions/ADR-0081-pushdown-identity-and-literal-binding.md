@@ -4,7 +4,8 @@ date: 2026-09-28
 deciders: maintainer + agent
 ---
 
-# ADR-0075: A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind
+# ADR-0081: A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind
+
 ## Context
 
 ADR-0074 replaced the filter string with a core-typed `Predicate` tree, one

@@ -124,13 +124,26 @@ stays the `BoundingBox` pre-filter: the DE-9IM `spatialRel` verbs remain an
 adapter-side verb (ADR-0036). Predicate *evaluation* is implementation code
 and never enters `Spatial.Core`.
 
+Two rules keep the back ends answering the same rows for the same plan
+(ADR-0081). An attribute clause is pushed down to a store only when the
+layer's `OBJECTID` is store-derived (an integer identity column); on a layer
+whose `OBJECTID` is the scan ordinal (ADR-0037) the clause stays a residual
+per-feature match, because a store that returns only the matching rows would
+renumber the key. And a literal binds as its **column's** kind, never its
+own: a guid-formatted string binds as a `Guid`, a number against a date-time
+column binds as the instant it already is, and a pair that means nothing to
+the reference evaluator (`uuid = 5`, `bit < true`, `LIKE` on a non-text
+column) compiles to the constant the evaluator already answers rather than
+coercing or failing. Which pairs are answerable at all is one table,
+`PredicateCompatibility`, which is structural and lives in Core.
+
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |
 | `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns) |
 | `CreateAsync` | dataset id, **sample batch**, SRID | table from batch schema; geometry column at SRID |
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
-| `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering. **ADR-0074 decides** that this becomes one core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`, with reductions (count/distinct/aggregate) on an additive `IFeatureAggregateStore` face; not yet implemented — see the ADR-0074 note below |
+| `QueryAsync` | dataset id, `FeatureQuery` plan (optional `Ids`, `Where` predicate, `BoundingBox`) | the plan's rows as `FeatureBatch` pages. **Landed (this bead):** identity restriction, predicate tree and bbox. **ADR-0074 §5 still open:** projection, ordering, `Limit`/`Offset`, cursor and the `FeatureQueryPage` read face with `NextCursor`/`TotalCount` |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038) |
@@ -195,15 +208,16 @@ the table has a primary key. Read-by-identity (ADR-0038) adds a targeted
 dataset; a table without a primary key returns an empty result.
 
 **Demo specifics:** read-only procedural datasets (110-point grid + 8
-cities, EPSG:4326); bbox queries only (attribute filters rejected);
-writes/creation/editing rejected.
+cities, EPSG:4326); bbox and attribute filtering via the in-process reference
+evaluator (no SQL pushdown); writes/creation/editing rejected.
 
 **Memory specifics (ADR-0042):** the ephemeral writable in-memory store
 (keyed `memory`, always available) implements the writable faces including
 `IDatasetIngest`, `IFeatureEditStore` and `IFeatureLookup`. State is
 process-local and non-durable; an `Auto`/`Source` dataset is editable and
-lookup-able, a `None` dataset is query-only; bbox queries only (attribute
-filters rejected).
+lookup-able, a `None` dataset is query-only. It is the **reference
+evaluator** of the predicate vocabulary (ADR-0074 §4), so the SQL back ends
+and the adapters are held to its answers by the shared conformance fixture.
 
 **Map registry specifics (ADR-0053):** `Spatial.Maps`
 composes immutable declared entries (config-seeded, whole-store entries

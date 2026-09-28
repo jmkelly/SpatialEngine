@@ -285,7 +285,7 @@ internal static class PostgisPredicateSql
         /// <para>
         /// The column's kind is what the driver must bind, not the literal's
         /// own: the server has no operator for a pair the reference evaluator
-        /// would not coerce (ADR-0075 §2), so binding the literal's own kind
+        /// would not coerce (ADR-0081 §2), so binding the literal's own kind
         /// asks it about types it cannot answer, which fails at execution
         /// rather than matching no rows. Which pairs are answerable at all is
         /// <see cref="PredicateCompatibility"/>'s one table; only the binding
