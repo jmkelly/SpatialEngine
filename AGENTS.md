@@ -44,6 +44,12 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   on `main`, never on the branch.
 - Recovery: `bd reclaim` after a crashed agent's lease expires.
 
+Records: a bead that will write a decision record takes its number from
+`python3 tools/adr-next-number.py` at the start of the branch, and re-runs
+`--check NNNN` immediately before writing — the number is read from
+`origin/main`, so a base that moved while the branch worked no longer hands out
+a number it already holds (ADR-0083).
+
 Areas are labels and route through `architecture/distilled/README.md`. The
 database lives in the **git common dir** (`.beads/` beside the shared `.git`),
 so every worktree sees one queue — `bd where` prints the resolved path. It is
