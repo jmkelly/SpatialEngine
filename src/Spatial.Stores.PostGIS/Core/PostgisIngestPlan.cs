@@ -26,8 +26,25 @@ internal sealed record PostgisIngestPlan(
     /// <summary>The column name an <see cref="IngestIdentity.Auto"/> table assigns.</summary>
     public const string AutoIdentityColumn = "id";
 
-    /// <summary>Total features across every page.</summary>
+    /// <summary>The total features across every page.</summary>
     public long FeatureCount => Pages.Sum(page => (long)page.Count);
+
+    /// <summary>
+    /// The columns the create statement already carries a primary key on —
+    /// none for <see cref="IngestIdentity.None"/>, the identity column for
+    /// <see cref="IngestIdentity.Auto"/> and <see cref="IngestIdentity.Source"/>.
+    /// A column that already has one is not indexed a second time (ADR-0081).
+    /// </summary>
+    public IReadOnlyList<string> KeyColumns =>
+        Identity is IngestIdentity.None ? [] : [IdentityColumn!];
+
+    /// <summary>
+    /// The index statements this dataset is created with (ADR-0081): the GiST
+    /// index on its primary geometry column and a btree on every attribute
+    /// column a pushed-down filter may name. The indexes exist from the first
+    /// row, so the loaded dataset is queryable the moment the load commits.
+    /// </summary>
+    public IReadOnlyList<string> CreateIndexSql() => PostgisIndexPlan.CreateIndexes(Dataset, Schema, KeyColumns);
 
     /// <summary>Validates a request and its pages, or throws <c>invalid.arguments</c>.</summary>
     public static PostgisIngestPlan Create(IngestRequest request, IReadOnlyList<FeatureBatch> pages)

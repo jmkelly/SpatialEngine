@@ -144,6 +144,7 @@ public sealed class PostgisIngestStore : IDatasetIngest, IDatasetIngestStream
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
         await PostgisDataStore.ExecuteNonQueryAsync(connection, transaction, plan.CreateTableSql(), [], cancellationToken);
+        await CreateIndexesAsync(connection, transaction, plan, cancellationToken);
         var insert = PostgisQueries.Insert(plan.Dataset, plan.Schema, plan.Srid);
         foreach (var page in plan.Pages)
         {
@@ -151,6 +152,21 @@ public sealed class PostgisIngestStore : IDatasetIngest, IDatasetIngestStream
         }
 
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates the dataset's indexes (ADR-0081) inside the load's own
+    /// transaction, unless index creation is switched off. An index that cannot
+    /// be created rolls the whole ingest back: the dataset does not exist
+    /// rather than exists unindexed.
+    /// </summary>
+    private async Task CreateIndexesAsync(
+        NpgsqlConnection connection, NpgsqlTransaction transaction, PostgisIngestPlan plan, CancellationToken cancellationToken)
+    {
+        foreach (var statement in _store.CreateIndexes ? plan.CreateIndexSql() : [])
+        {
+            await PostgisDataStore.ExecuteNonQueryAsync(connection, transaction, statement, [], cancellationToken);
+        }
     }
 
     private static async Task LoadPageAsync(

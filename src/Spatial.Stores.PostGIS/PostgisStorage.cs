@@ -16,12 +16,17 @@ internal sealed class PostgisStorage : IAsyncDisposable
 {
     private readonly Lazy<PostgisDataStore> _data;
     private readonly PostgisTransactions _transactions;
+    private readonly bool _createIndexes;
 
-    public PostgisStorage(PostgisConnectionConfiguration configuration)
+    public PostgisStorage(PostgisConnectionConfiguration configuration, bool createIndexes = true)
     {
         _data = new Lazy<PostgisDataStore>(() => PostgisDataStore.Open(configuration));
         _transactions = new PostgisTransactions(this);
+        _createIndexes = createIndexes;
     }
+
+    /// <summary>Whether a dataset created through this storage gets its indexes (ADR-0081).</summary>
+    public bool CreateIndexes => _createIndexes;
 
     public PostgisCatalogue Catalogue => new(this);
 

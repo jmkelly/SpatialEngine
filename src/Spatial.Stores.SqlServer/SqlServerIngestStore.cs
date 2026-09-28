@@ -138,6 +138,7 @@ public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
         await SqlServerDataStore.ExecuteNonQueryAsync(connection, transaction, plan.CreateTableSql(), [], cancellationToken);
+        await CreateIndexesAsync(connection, transaction, plan, cancellationToken);
         await SqlServerCatalogue.RecordSridAsync(connection, transaction, plan.Dataset, plan.Srid, cancellationToken);
         var insert = SqlServerQueries.Insert(plan.Dataset, plan.Schema, plan.Srid);
         foreach (var page in plan.Pages)
@@ -146,6 +147,21 @@ public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
         }
 
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates the dataset's indexes (ADR-0081) inside the load's own
+    /// transaction, unless index creation is switched off. An index that cannot
+    /// be created rolls the whole ingest back: the dataset does not exist
+    /// rather than exists unindexed.
+    /// </summary>
+    private async Task CreateIndexesAsync(
+        SqlConnection connection, SqlTransaction transaction, SqlServerIngestPlan plan, CancellationToken cancellationToken)
+    {
+        foreach (var statement in _store.CreateIndexes ? plan.CreateIndexSql() : [])
+        {
+            await SqlServerDataStore.ExecuteNonQueryAsync(connection, transaction, statement, [], cancellationToken);
+        }
     }
 
     private static async Task LoadPageAsync(

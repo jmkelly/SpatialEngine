@@ -25,8 +25,31 @@ internal sealed record SqlServerIngestPlan(
     /// <summary>The column name an <see cref="IngestIdentity.Auto"/> table assigns.</summary>
     public const string AutoIdentityColumn = "id";
 
-    /// <summary>Total features across every page.</summary>
+    /// <summary>The total features across every page.</summary>
     public long FeatureCount => Pages.Sum(page => (long)page.Count);
+
+    /// <summary>
+    /// The columns the create statement already carries a primary key on —
+    /// none for <see cref="IngestIdentity.None"/>, the identity column for
+    /// <see cref="IngestIdentity.Auto"/> and <see cref="IngestIdentity.Source"/>.
+    /// A column that already has one is not indexed a second time (ADR-0081).
+    /// </summary>
+    public IReadOnlyList<string> KeyColumns =>
+        Identity is IngestIdentity.None ? [] : [IdentityColumn!];
+
+    /// <summary>
+    /// The index statements this dataset is created with (ADR-0081): the spatial
+    /// index on its primary geometry column and a btree on every attribute
+    /// column a pushed-down filter may name. The indexes exist from the first
+    /// row, so the loaded dataset is queryable the moment the load commits.
+    /// </summary>
+    /// <remarks>
+    /// The plan's <c>clusteredPrimaryKey</c> is <see cref="KeyColumns"/> being
+    /// non-empty: a <c>PRIMARY KEY</c> is clustered unless it says otherwise,
+    /// and SQL Server will not grid a table that has none.
+    /// </remarks>
+    public IReadOnlyList<string> CreateIndexSql() =>
+        SqlServerIndexPlan.CreateIndexes(Dataset, Schema, KeyColumns, clusteredPrimaryKey: KeyColumns.Count > 0);
 
     /// <summary>Validates a request and its pages, or throws <c>invalid.arguments</c>.</summary>
     public static SqlServerIngestPlan Create(IngestRequest request, IReadOnlyList<FeatureBatch> pages)

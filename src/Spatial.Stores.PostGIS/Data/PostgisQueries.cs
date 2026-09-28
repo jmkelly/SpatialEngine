@@ -209,6 +209,23 @@ internal static class PostgisQueries
         return builder.Append(')').ToString();
     }
 
+    /// <summary>
+    /// The spatial index of a dataset's primary geometry column (ADR-0081):
+    /// PostGIS indexes geometry with GiST, which is what the bounding-box
+    /// <c>&amp;&amp;</c> pushdown predicate can seek. The dataset identifier and
+    /// the column are validated identifiers, never client text.
+    /// </summary>
+    public static string CreateSpatialIndex(PostgisDatasetName dataset, string column) =>
+        $"CREATE INDEX \"{PostgisIndexName.For(dataset.Table, column)}\" ON {dataset.QuoteQualified()} USING GIST (\"{column}\")";
+
+    /// <summary>
+    /// The btree index of one attribute column (ADR-0081), which is what the
+    /// equality and range comparisons of a pushed-down attribute filter can
+    /// seek. The dataset identifier and the column are validated identifiers.
+    /// </summary>
+    public static string CreateBtreeIndex(PostgisDatasetName dataset, string column) =>
+        $"CREATE INDEX \"{PostgisIndexName.For(dataset.Table, column)}\" ON {dataset.QuoteQualified()} (\"{column}\")";
+
     /// <summary>Lists every spatial table (schema, table, geometry column, srid, type, row estimate).</summary>
     public static string Catalogue(string? pattern)
     {
