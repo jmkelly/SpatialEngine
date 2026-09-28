@@ -372,6 +372,17 @@ is rejected by name (never silently ignored) and named here with its reason:
   codec serves 2D; a true value (requesting Z/M output) is explicitly
   rejected rather than silently dropped, while false — the default every
   client such as QGIS sends — is accepted.
+- `hasZ`/`hasM` on the layer resource: **served**, as a description of the
+  data rather than a capability (ADR-0084). The engine now knows what a
+  dataset's geometry column carries: `DatasetDescription.GeometryLayout`
+  carries the layout the store *declares*, PostGIS reads it from the column's
+  typed modifier (`geometry(PointZ,4326)` → `xyz`, `geometry(PointZM,4326)` →
+  `xyzm`), and the layer advertises `hasZ`/`hasM` only for the ordinates it can
+  prove. A two-dimensional layer, and a geometry column declared plain
+  `geometry` (which constrains nothing and so proves nothing), advertise
+  neither key rather than `false` — ArcGIS clients send Z in query geometry and
+  edit payloads once `hasZ` is true, so over-advertising is a broken round
+  trip while under-advertising is only a client that asks for less.
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.

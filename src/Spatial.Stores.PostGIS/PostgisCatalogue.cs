@@ -72,11 +72,15 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
         var parameters = new List<object?> { name.Schema, name.Table };
         var columns = await PostgisDataStore.ReadRowsAsync(connection, PostgisQueries.ColumnsMetadata(), parameters, cancellationToken);
         var geometries = await PostgisDataStore.ReadRowsAsync(connection, PostgisQueries.GeometryColumnsMetadata(), parameters, cancellationToken);
+        var modifiers = await PostgisDataStore.ReadRowsAsync(connection, PostgisQueries.ColumnTypeModifiers(), parameters, cancellationToken);
         var keys = await PostgisDataStore.ReadRowsAsync(connection, PostgisQueries.PrimaryKeyColumns(), parameters, cancellationToken);
         var estimateRows = await PostgisDataStore.ReadRowsAsync(connection, PostgisQueries.RowEstimate(), parameters, cancellationToken);
         return new PostgisSchemaDiscovery.SchemaFacts(
             columns.Select(ColumnRow).ToArray(),
             geometries.Select(row => new PostgisSchemaDiscovery.GeometryRow((string)row[0]!, (int)row[1]!, (string)row[2]!)).ToArray(),
+            modifiers.Select(row => new PostgisSchemaDiscovery.TypeModifierRow(
+                (string)row[0]!,
+                row[1] is DBNull ? null : (string?)row[1])).ToArray(),
             keys.Select(row => (string)row[0]!).ToArray(),
             RowEstimate(estimateRows));
     }

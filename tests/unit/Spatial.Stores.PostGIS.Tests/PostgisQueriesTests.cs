@@ -100,9 +100,24 @@ public sealed class PostgisQueriesTests
         Assert.Contains("@p0", PostgisQueries.ColumnsMetadata());
         Assert.Contains("@p1", PostgisQueries.ColumnsMetadata());
         Assert.Contains("@p0", PostgisQueries.GeometryColumnsMetadata());
+        Assert.Contains("@p0", PostgisQueries.ColumnTypeModifiers());
+        Assert.Contains("@p1", PostgisQueries.ColumnTypeModifiers());
         Assert.Contains("@p0", PostgisQueries.PrimaryKeyColumns());
         Assert.Contains("@p0", PostgisQueries.RowEstimate());
         Assert.Contains("@p0", PostgisQueries.TableExists());
+    }
+
+    [Fact]
+    public void The_declared_type_modifier_comes_from_the_catalog_not_from_the_data()
+    {
+        // A typmod is the store's proof of a column's Z/M (ADR-0084), so it
+        // must be a catalogue read: anything that scans rows would make the
+        // advertised layout depend on which rows happened to be there.
+        var sql = PostgisQueries.ColumnTypeModifiers();
+
+        Assert.Contains("pg_catalog.format_type(a.atttypid, a.atttypmod)", sql);
+        Assert.Contains("pg_catalog.pg_attribute", sql);
+        Assert.DoesNotContain("ST_", sql);
     }
 
     [Fact]

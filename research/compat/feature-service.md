@@ -53,6 +53,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | `distance`+`units` (query-with-distance), `returnCentroid`, `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.Parse`); pinned by §7.1 non-goals |
 | `quantizationParameters` | served | **Have** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0079); an unservable `mode`/`originPosition` is rejected by name; the layer advertises `supportsQuantization` so the REST JS gate opens (ADR-0081) |
 | `returnZ`/`returnM` | honestly rejected | **Non-goal** | codec serves 2D explicitly |
+| `hasZ`/`hasM` on the layer resource | served | **Have** | `EsriLayerModel.cs` (ADR-0084); derived from `DatasetDescription.GeometryLayout`, which PostGIS fills from the geometry column's declared type modifier — proved true by the Z/M/ZM column tests, and proved *absent* for a 2D and an unconstrained column |
 
 ## 2. Response-shape deltas vs ground truth (same-data proof)
 
@@ -63,12 +64,15 @@ carries ~80 keys (full list §G1 file). Deltas that change client branching:
 `supportsQuantizationEditMode` (we quantize on the query path only),
 `supportsValidateSQL`, `supportsCalculate`,
 `supportsRollbackOnFailureParameter`, `attachmentProperties`/`attachmentFields`
-(no attachments), `types[]` (subtypes) minimal — all absent, because the
+(no attachments), `types[]` (subtypes) minimal, and `hasZ`/`hasM` on a
+two-dimensional layer (we describe the ordinates the store proves and omit the
+rest, ADR-0084) — all absent, because the
 facade does not serve the behaviour they name. Everything a read/query client
 branches on (`advancedQueryCapabilities`, `supportsStatistics`,
 `supportsQuantization`, `supportsDefaultSR`, `supportsExceedsLimitStatistics`,
 `supportsCountDistinct`, `supportsPercentileStatistics`, `supportedQueryFormats`,
-`maxRecordCount`, `objectIdField`, `fields`, `geometryType`, `extent`) is
+`maxRecordCount`, `objectIdField`, `fields`, `geometryType`, `extent`,
+`hasZ`/`hasM` on a dataset that carries them) is
 present and replay-tested. A flag the facade does not earn is omitted rather
 than emitted as `false` (ADR-0081).
 

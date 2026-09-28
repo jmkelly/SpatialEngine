@@ -5772,6 +5772,15 @@
           }
         }
       },
+      "CoordinateLayout": {
+        "enum": [
+          "xy",
+          "xyz",
+          "xym",
+          "xyzm"
+        ],
+        "default": "xy"
+      },
       "CreateDatasetRequest": {
         "required": [
           "dataset",
@@ -5979,6 +5988,9 @@
           },
           "schema": {
             "$ref": "#/components/schemas/FeatureSchema"
+          },
+          "geometryLayout": {
+            "$ref": "#/components/schemas/CoordinateLayout"
           }
         }
       },

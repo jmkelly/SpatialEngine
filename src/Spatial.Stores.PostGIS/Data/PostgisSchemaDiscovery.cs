@@ -1,17 +1,20 @@
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Stores.PostGIS.Core;
 
 namespace Spatial.Stores.PostGIS.Data;
 
 /// <summary>
 /// Pure schema discovery (ADR-0028, architecture/distilled/contracts.md): turns the
-/// raw catalogue rows (column metadata, geometry columns, primary keys, row
-/// estimate) into a <see cref="DatasetDescription"/>. Every column must map
+/// raw catalogue rows (column metadata, geometry columns, declared type
+/// modifiers, primary keys, row estimate) into a <see cref="DatasetDescription"/>.
+/// Every column must map
 /// to a supported attribute kind (PostgisTypeMapping); a table without a
 /// geometry column is not a spatial dataset. The scan schema is the full
 /// column set in column order — geometry columns included — and the primary
-/// key columns (if any) are the feature-identity columns.
+/// key columns (if any) are the feature-identity columns. The geometry
+/// column's declared Z/M comes from its type modifier (ADR-0084).
 /// </summary>
 internal static class PostgisSchemaDiscovery
 {
@@ -21,10 +24,18 @@ internal static class PostgisSchemaDiscovery
     /// <summary>One <c>geometry_columns</c> row.</summary>
     internal readonly record struct GeometryRow(string Column, int Srid, string Type);
 
+    /// <summary>
+    /// One column's declared type modifier — the formatted PostGIS type
+    /// PostgreSQL renders for it (<c>geometry(PointZ,4326)</c>). It is the
+    /// only proof the store has of a geometry column's Z/M (ADR-0084).
+    /// </summary>
+    internal readonly record struct TypeModifierRow(string Column, string? TypeModifier);
+
     /// <summary>The raw catalogue facts one discovery run builds a description from.</summary>
     internal readonly record struct SchemaFacts(
         IReadOnlyList<ColumnRow> Columns,
         IReadOnlyList<GeometryRow> GeometryColumns,
+        IReadOnlyList<TypeModifierRow> TypeModifiers,
         IReadOnlyList<string> PrimaryKeyColumns,
         long RowEstimate);
 
@@ -82,8 +93,23 @@ internal static class PostgisSchemaDiscovery
             geometryPrimary.Type,
             facts.RowEstimate,
             facts.PrimaryKeyColumns,
-            new FeatureSchema(fields));
+            new FeatureSchema(fields),
+            DeclaredLayout(facts, geometryPrimary.Column));
         return true;
+    }
+
+    /// <summary>
+    /// The ordinates the primary geometry column <em>declares</em> (ADR-0084):
+    /// its formatted type modifier parsed for the Z/M type-name suffix. A
+    /// column with no modifier, or one whose modifier does not parse, is
+    /// reported two-dimensional — the engine then serves whatever Z/M the
+    /// values happen to carry without claiming the dataset does.
+    /// </summary>
+    private static CoordinateLayout DeclaredLayout(SchemaFacts facts, string column)
+    {
+        var modifier = facts.TypeModifiers.FirstOrDefault(
+            candidate => string.Equals(candidate.Column, column, StringComparison.Ordinal)).TypeModifier;
+        return PostgisCoordinateLayout.FromTypeModifier(modifier);
     }
 
     /// <summary>Builds a catalogue entry from one materialised catalogue row (pure).</summary>

@@ -1,4 +1,5 @@
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Contracts.Providers;
 
@@ -12,6 +13,14 @@ namespace Spatial.Contracts.Providers;
 /// only core field vocabulary (<see cref="FieldDefinition"/>), so clients
 /// never see provider-specific types.
 /// </summary>
+/// <param name="GeometryLayout">
+/// The ordinates the store <em>declares</em> for the geometry column
+/// (ADR-0084). A store that can prove the column carries Z or M reports it;
+/// a store that cannot prove it reports <see cref="CoordinateLayout.Xy"/>.
+/// The default is therefore the honest answer, not an omission: a caller can
+/// trust a true here, and the GeoServices layer metadata advertises
+/// <c>hasZ</c>/<c>hasM</c> exactly to the extent it is told (ADR-0081).
+/// </param>
 public sealed record DatasetDescription(
     string Id,
     string SchemaName,
@@ -21,7 +30,8 @@ public sealed record DatasetDescription(
     string GeometryType,
     long EstimatedRowCount,
     IReadOnlyList<string> IdColumns,
-    FeatureSchema Schema)
+    FeatureSchema Schema,
+    CoordinateLayout GeometryLayout = CoordinateLayout.Xy)
 {
     public override string ToString() => $"{Id}: {Schema}";
 }
