@@ -28,7 +28,7 @@ internal sealed record MapIdentifyPlan(IReadOnlyList<MapLayerInfo> Layers, Ident
             [.. selected.Select(layer => layer.Layer)],
             EsriFeatureQuery.ParseTime(parameters.Get("time")),
             MapExportTime.ParseLayerTimeOptions(parameters.Get("layerTimeOptions")));
-        _ = MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
+        MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
         return new MapIdentifyPlan(
             selected,
             new IdentifyQuery(

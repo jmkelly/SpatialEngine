@@ -301,6 +301,41 @@ public sealed class GeoServicesMapTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("esriTimeRelationContains")]
+    [InlineData("esriTimeRelationWithin")]
+    public async Task Identify_with_a_time_relation_the_engine_does_not_apply_is_a_typed_error(string relation)
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&layers=all" +
+            $"&time=1199145600000&timeRelation={relation}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, JsonDocument.Parse(await response.Content.ReadAsStringAsync())
+            .RootElement.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
+    public async Task Identify_accepts_the_overlaps_time_relation()
+    {
+        var client = await MapServiceAsync();
+
+        var identify = await BodyAsync(await client.GetAsync(
+            $"{Root}/world/MapServer/identify?f=json" +
+            "&geometry=" + Uri.EscapeDataString("""{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}""") +
+            "&geometryType=esriGeometryPoint&sr=4326&tolerance=5&layers=all" +
+            "&mapExtent=" + Uri.EscapeDataString("-20,20,40,70") + "&imageDisplay=" + Uri.EscapeDataString("400,300,96") +
+            "&time=1199145600000&timeRelation=esriTimeRelationOverlaps"));
+
+        var results = identify.GetProperty("results").EnumerateArray().ToArray();
+        Assert.NotEmpty(results);
+        Assert.Equal("Berlin", results[0].GetProperty("value").GetString());
+    }
+
     [Fact]
     public async Task Identify_accepts_layer_time_options_opting_out()
     {

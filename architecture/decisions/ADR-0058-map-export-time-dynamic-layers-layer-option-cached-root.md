@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+amended by: ADR-0100
 ---
 
 # ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty
@@ -47,6 +48,10 @@ honours.**
    documented relations (`esriTimeRelationOverlaps` default, `Contains`,
    `Within`) — the engine's date values are instants, so all three reduce
    to containment, and anything else is a typed `invalid.arguments`.
+   (**Amended by ADR-0100:** `Contains`/`Within` are now typed
+   `invalid.arguments` and the root advertises `supportsTimeRelation:false`;
+   the reduction to one relation was real, the flag that claimed otherwise
+   was not.)
    `layerTimeOptions` carries per-layer `useTime` (default true) and
    `timeDataCumulative` (cumulative layers show everything up to the window
    end via an open start); a zero `timeOffset` is a no-op while a non-zero
@@ -60,7 +65,7 @@ honours.**
    reject or ignore store-level filters, so it would not hold everywhere;
    in-renderer filtering is correct on every provider, and a store
    pushdown is a future optimisation, not a requirement. The root
-   advertises `supportsTimeRelation: true`.
+   advertises `supportsTimeRelation: false` (ADR-0100).
 3. **Dynamic layers** rebind by `source.mapLayer`/`mapLayerId` (same id
    overrides, new id appends; unknown ids are typed `not.found`) and may
    override the renderer. The override supports the projected subset —

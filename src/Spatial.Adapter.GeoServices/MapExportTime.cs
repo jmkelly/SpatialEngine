@@ -11,26 +11,30 @@ namespace Spatial.Adapter.GeoServices;
 /// per-layer <see cref="MapTimeExtent"/> values ride the render contract so
 /// every store filters the same way (the demo and memory stores reject or
 /// ignore store-level filters, so a where-clause translation would not
-/// hold there).
+/// hold there). The <c>timeRelation</c> the engine applies is the overlaps
+/// relation and the root says so (ADR-0100).
 /// </summary>
 internal static class MapExportTime
 {
     /// <summary>The default temporal relation: the queried extent overlaps the feature's instant.</summary>
     public const string Overlaps = "esriTimeRelationOverlaps";
 
-    /// <summary>The documented temporal relations (S2). The engine's date values are instants, so all three reduce to containment.</summary>
-    private static readonly string[] Relations =
-    [
-        Overlaps,
-        "esriTimeRelationContains",
-        "esriTimeRelationWithin",
-    ];
+    /// <summary>
+    /// The temporal relations the engine applies (S2, ADR-0100). The
+    /// engine's date values are instants and its temporal rule is "any date
+    /// value inside the window", which *is* the overlaps relation; there is
+    /// no feature temporal extent to compare a contains/within window against,
+    /// so the other documented relations are rejected by name rather than
+    /// served as overlaps.
+    /// </summary>
+    private static readonly string[] Relations = [Overlaps];
 
     /// <summary>
     /// Parses the export <c>timeRelation</c>: blank means the default
-    /// (<c>esriTimeRelationOverlaps</c>); anything outside the documented set
-    /// is a typed <c>invalid.arguments</c> rather than a silently widened
-    /// temporal query.
+    /// (<c>esriTimeRelationOverlaps</c>); anything the engine does not apply
+    /// is a typed <c>invalid.arguments</c> naming the relation it does apply,
+    /// rather than a silently widened temporal query (ADR-0100 — the same
+    /// rule as a non-zero <c>timeOffset</c> below).
     /// </summary>
     public static string? ParseTimeRelation(string? value)
     {
@@ -43,7 +47,7 @@ internal static class MapExportTime
             string.Equals(candidate, value.Trim(), StringComparison.OrdinalIgnoreCase));
         return relation
             ?? throw GeoServicesErrors.Invalid(
-                $"The 'timeRelation' value '{value}' is not supported (esriTimeRelationOverlaps, esriTimeRelationContains, esriTimeRelationWithin).");
+                $"The 'timeRelation' value '{value}' is not supported: the engine's temporal rule is the overlaps relation, so only '{Overlaps}' is applied and the root advertises supportsTimeRelation:false.");
     }
 
     /// <summary>
