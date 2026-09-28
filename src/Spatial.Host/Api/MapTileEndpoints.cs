@@ -57,13 +57,14 @@ internal static class MapTileEndpoints
             var request = Request(map, parameters);
             RenderEndpoints.ValidateFormat(request.Format, options);
             var scheme = tiles.Resolve(request.Scheme);
+            var version = TileEndpoints.Fingerprint(request, await TileEndpoints.DataVersionAsync(request, stores, context.RequestAborted));
             var result = await tiles.RenderAsync(
                 TileEndpoints.ToSpec(request, stores),
-                TileEndpoints.Fingerprint(request),
+                version,
                 new TileCoordinate(parameters.Z, parameters.X, parameters.Y),
                 scheme,
                 context.RequestAborted);
-            TileEndpoints.WriteHeaders(context, result);
+            TileEndpoints.WriteHeaders(context, result, version);
             return Results.Bytes(result.Image.Content, result.Image.MediaType);
         }
         catch (Exception exception)
@@ -90,19 +91,37 @@ internal static class MapTileEndpoints
                 stores.Features(layer.Store ?? map.Store),
                 stores.Catalogue(layer.Store ?? map.Store),
                 null)).ToArray();
+            var version = await VersionAsync(map, layers, stores, context.RequestAborted);
             var result = await vectorTiles.RenderAsync(
                 resolved,
                 new TileCoordinate(parameters.Z, parameters.X, parameters.Y),
                 vectorTiles.Resolve(parameters.Scheme),
-                VectorTileService.Version(map.Name, layers),
+                version,
                 context.RequestAborted);
             context.Response.Headers["X-Tile-Cached"] = result.Cached ? "true" : "false";
+            context.Response.Headers["X-Tile-Version"] = version;
             return Results.Bytes(result.Tile.Content, result.Tile.MediaType);
         }
         catch (Exception exception)
         {
             return ErrorMapper.Map(exception);
         }
+    }
+
+    /// <summary>
+    /// The MVT cache version (ADR-0083): the map, its layers and styles as
+    /// before, plus the content version of every dataset the tile reads, so a
+    /// write to one of them re-renders the vector tile instead of serving
+    /// cached bytes over stale data.
+    /// </summary>
+    private static async Task<string> VersionAsync(
+        Map map, IReadOnlyList<MapLayer> layers, IStoreRegistry stores, CancellationToken cancellationToken)
+    {
+        var dataVersion = await ContentVersions.FoldAsync(
+            stores,
+            [.. layers.Select(layer => new ContentVersionRef(layer.Store ?? map.Store, layer.Dataset))],
+            cancellationToken);
+        return VectorTileService.Version(map.Name, layers, dataVersion);
     }
 
     private static TileRenderRequest Request(Map map, MapTileParameters parameters)

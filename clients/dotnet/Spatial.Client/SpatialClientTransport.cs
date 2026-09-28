@@ -49,7 +49,16 @@ internal sealed class SpatialClientTransport
     }
 
     /// <summary>POSTs a JSON body and reads an image response, including the host's raster metadata headers.</summary>
-    public async Task<RasterImage> PostForImageAsync(string url, object body, CancellationToken cancellationToken)
+    public async Task<RasterImage> PostForImageAsync(string url, object body, CancellationToken cancellationToken) =>
+        (await PostForTrackedImageAsync(url, body, cancellationToken)).Image;
+
+    /// <summary>
+    /// Posts a render body that answers with an image, keeping the tile
+    /// response headers (ADR-0083): the cache disposition and the content
+    /// version the tile was rendered at. A host that reports no version yields
+    /// an empty one.
+    /// </summary>
+    public async Task<RenderedTile> PostForTrackedImageAsync(string url, object body, CancellationToken cancellationToken)
     {
         using var response = await _http.PostAsJsonAsync(url, body, HostApiJson.Options, cancellationToken);
         if (!response.IsSuccessStatusCode)
@@ -59,13 +68,20 @@ internal sealed class SpatialClientTransport
 
         var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var mediaType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
-        return new RasterImage(
+        var image = new RasterImage(
             content,
             mediaType,
             HeaderInt(response, "X-Raster-Width"),
             HeaderInt(response, "X-Raster-Height"),
             FormatOf(mediaType));
+        return new RenderedTile(image, HeaderText(response, "X-Tile-Version"), HeaderFlag(response, "X-Tile-Cached"));
     }
+
+    private static string HeaderText(HttpResponseMessage response, string name) =>
+        response.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() ?? string.Empty : string.Empty;
+
+    private static bool HeaderFlag(HttpResponseMessage response, string name) =>
+        string.Equals(HeaderText(response, name), "true", StringComparison.OrdinalIgnoreCase);
 
     private static int HeaderInt(HttpResponseMessage response, string name) =>
         response.Headers.TryGetValues(name, out var values)

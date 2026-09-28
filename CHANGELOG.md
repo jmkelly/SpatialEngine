@@ -150,6 +150,18 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A write now invalidates the tiles derived from it** (ADR-0083,
+  SpatialEngine-u2x.21): the tile cache key fingerprinted the *request*, so
+  nothing in it moved when a feature was written, edited or ingested, and
+  every cached tile of an edited map stayed stale until someone called
+  `DELETE /api/render/cache` by hand. A store may now report a per-dataset
+  content version (`IVersionedFeatureStore`), the in-memory store bumps it on
+  every write, edit and ingest, and every tile key — the neutral raster single
+  and batch routes, the map raster and MVT routes, and the Esri
+  `MapServer/tile` and `MapServer/vectorTile` routes — folds it in. Tiles
+  report the version they were rendered at in `X-Tile-Version`, which
+  `SpatialClient.Tiles.RenderWithVersionAsync` returns. A store that reports no
+  version (PostGIS, SQL Server, demo, ArcGIS REST) behaves exactly as before.
 - **Fused-cache MapServer root advertises the tile scheme reference**
   (ADR-0048): a tiled MapServer root now serves its spatial reference,
   `initialExtent`/`fullExtent` and units in the tiling SR (layer extents

@@ -48,6 +48,7 @@ internal static class MapVectorTileEndpoints
 
         var tile = await LoadAsync(request, resolved, layers, scheme, coordinate, cancellationToken);
         request.Context.Response.Headers["X-Tile-Cached"] = tile.Cached ? "true" : "false";
+        request.Context.Response.Headers["X-Tile-Version"] = tile.Version;
         return Results.Bytes(tile.Tile!.Content, tile.Tile.MediaType);
     }
 
@@ -65,12 +66,13 @@ internal static class MapVectorTileEndpoints
         ITileScheme scheme, TileCoordinate coordinate, CancellationToken cancellationToken)
     {
         var sources = MapRenderEngine.Sources(request.Stores, resolved.Store, layers, null);
-        var version = MapRenderEngine.Version(request.Service, MapRenderEngine.Style(request.Service, layers));
+        var dataVersion = await MapRenderEngine.DataVersionAsync(request.Stores, resolved.Store, layers, cancellationToken);
+        var version = MapRenderEngine.Version(request.Service, MapRenderEngine.Style(request.Service, layers), dataVersion);
         var key = new VectorTileCacheKey(scheme.Id, coordinate.Z, coordinate.X, coordinate.Y, version);
         var cached = await request.Cache.TryGetVectorAsync(key, cancellationToken);
         if (cached is not null)
         {
-            return new CachedTile(cached, true);
+            return new CachedTile(cached, true, version);
         }
 
         var vectorLayers = layers.Select((layer, index) => new VectorTileLayer(
@@ -78,7 +80,7 @@ internal static class MapVectorTileEndpoints
         var tile = await request.Encoder.RenderAsync(
             new VectorTileRequest(scheme.Bounds(coordinate), scheme.Crs, vectorLayers), cancellationToken);
         await request.Cache.SetVectorAsync(key, tile, cancellationToken);
-        return new CachedTile(tile, false);
+        return new CachedTile(tile, false, version);
     }
 
     /// <summary>One resolved tile call: the route's bound services and the address it addresses.</summary>
@@ -93,7 +95,8 @@ internal static class MapVectorTileEndpoints
         ITileCache Cache,
         IReadOnlyList<ITileScheme> Schemes);
 
-    private sealed record CachedTile(VectorTile Tile, bool Cached);
+    /// <summary>One served tile, its cache disposition and the key it was stored under (ADR-0083).</summary>
+    private sealed record CachedTile(VectorTile Tile, bool Cached, string Version);
 
     private sealed class VectorTileAddress
     {

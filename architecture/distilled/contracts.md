@@ -88,13 +88,22 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   Helmert (±0.1 m, no grid). The catalogue is built once, and each CRS in it
   on first use.
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IVersionedFeatureStore`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 
 `IStoreRegistry` is the one runtime-keyed seam (ADR-0033): a store name
 resolves to its catalogue, feature store and additive faces, so a
 protocol adapter reads a mixed map's layers from their own stores without
 holding the DI container. Required reads are `invalid.arguments` for an
 unknown store; additive faces return `null`.
+
+**Content versions (ADR-0083).** A store may implement
+`IVersionedFeatureStore.GetContentVersionAsync(dataset)` and report an opaque
+token that moves whenever that dataset's feature content changes;
+`ContentVersions.OfAsync` returns it, or `ContentVersions.Unversioned` for a
+store that does not, and `ContentVersions.FoldAsync(stores, datasets)` folds a
+render's datasets into the one token the tile cache key carries. The version
+is not an existence check (an unknown dataset reports the unversioned token
+and still fails at read time) and callers never parse it.
 
 **Spelling and ladder.** `Catalogue` = datasets in one store
 (`IDataCatalogue`, `IRasterCatalogue`, `GET /api/catalogue`); `Registry` =

@@ -59,13 +59,15 @@ internal static class TileEndpoints
             var effective = request with { Format = ParseFormat(address.Format) };
             RenderEndpoints.ValidateFormat(effective.Format, options);
             var scheme = tiles.Resolve(effective.Scheme);
+            var dataVersion = await DataVersionAsync(effective, stores, context.RequestAborted);
+            var version = Fingerprint(effective, dataVersion);
             var result = await tiles.RenderAsync(
                 ToSpec(effective, stores),
-                Fingerprint(effective),
+                version,
                 new TileCoordinate(address.Z, address.X, address.Y),
                 scheme,
                 context.RequestAborted);
-            WriteHeaders(context, result);
+            WriteHeaders(context, result, version);
             return Results.Bytes(result.Image.Content, result.Image.MediaType);
         }
         catch (Exception exception)
@@ -86,8 +88,9 @@ internal static class TileEndpoints
             RenderEndpoints.ValidateFormat(batch.Request.Format, options);
             var scheme = tiles.Resolve(batch.Request.Scheme);
             var coordinates = batch.Tiles.Select(tile => new TileCoordinate(tile.Z, tile.X, tile.Y)).ToList();
+            var dataVersion = await DataVersionAsync(batch.Request, stores, cancellationToken);
             var results = await tiles.RenderBatchAsync(
-                ToSpec(batch.Request, stores), Fingerprint(batch.Request), scheme, coordinates, cancellationToken);
+                ToSpec(batch.Request, stores), Fingerprint(batch.Request, dataVersion), scheme, coordinates, cancellationToken);
             return Results.Ok(new TileBatchResponse(
                 [.. results.Select((result, index) => ToDto(result, coordinates[index]))]));
         }
@@ -120,7 +123,20 @@ internal static class TileEndpoints
             request.Transparent,
             request.Scale);
 
-    internal static string Fingerprint(TileRenderRequest request)
+    /// <summary>
+    /// The content version folded into the cache key (ADR-0083): one entry per
+    /// dataset the request reads, so a write to any of them moves the key and
+    /// the tile re-renders. A store that reports no version folds in the
+    /// unversioned token and keeps its previous behaviour.
+    /// </summary>
+    internal static Task<string> DataVersionAsync(
+        TileRenderRequest request, IStoreRegistry stores, CancellationToken cancellationToken) =>
+        ContentVersions.FoldAsync(
+            stores,
+            [.. request.Layers.Select(layer => new ContentVersionRef(layer.Store ?? StoreEndpoints.Demo, layer.Dataset))],
+            cancellationToken);
+
+    internal static string Fingerprint(TileRenderRequest request, string dataVersion)
     {
         var parts = new List<string>
         {
@@ -140,6 +156,7 @@ internal static class TileEndpoints
         parts.Add(request.Background ?? string.Empty);
         parts.Add(request.Transparent ? "1" : "0");
         parts.Add(request.Scale.ToString("R", CultureInfo.InvariantCulture));
+        parts.Add(dataVersion);
         return TileFingerprint.Compute(parts);
     }
 
@@ -159,10 +176,14 @@ internal static class TileEndpoints
         }
     }
 
-    internal static void WriteHeaders(HttpContext context, TileResult result)
+    internal static void WriteHeaders(HttpContext context, TileResult result, string? version = null)
     {
         RenderEndpoints.WriteMetadataHeaders(context, result.Image);
         context.Response.Headers["X-Tile-Cached"] = result.Cached ? "true" : "false";
+        if (version is not null)
+        {
+            context.Response.Headers["X-Tile-Version"] = version;
+        }
     }
 
     private static TileResultDto ToDto(TileResult result, TileCoordinate tile)

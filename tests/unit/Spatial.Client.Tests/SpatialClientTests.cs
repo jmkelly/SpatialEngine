@@ -234,6 +234,37 @@ public sealed class SpatialClientTests
     }
 
     [Fact]
+    public async Task RenderTileWithVersion_reads_the_cache_disposition_and_content_version()
+    {
+        var response = Image([9, 9], "image/png", 256, 256);
+        response.Headers.Add("X-Tile-Cached", "true");
+        response.Headers.Add("X-Tile-Version", new string('a', 64));
+        using var stub = new StubClient(new StubHttpHandler(_ => response));
+        using var style = JsonDocument.Parse("""{"version":8,"layers":[]}""");
+        var request = new TileRenderRequest(style.RootElement.Clone(), [new RenderLayerDto("demo.cities", "demo")]);
+
+        var tile = await stub.Client.Tiles.RenderWithVersionAsync(3, 1, 2, request);
+
+        Assert.True(tile.Cached);
+        Assert.Equal(new string('a', 64), tile.Version);
+        Assert.Equal(256, tile.Image.Width);
+        Assert.Equal("/api/render/tiles/3/1/2.png", Assert.Single(stub.Handler.Exchanges).Request.RequestUri?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task RenderTileWithVersion_tolerates_a_host_that_reports_no_version()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => Image([9, 9], "image/png", 256, 256)));
+        using var style = JsonDocument.Parse("""{"version":8,"layers":[]}""");
+        var request = new TileRenderRequest(style.RootElement.Clone(), []);
+
+        var tile = await stub.Client.Tiles.RenderWithVersionAsync(0, 0, 0, request);
+
+        Assert.Equal(string.Empty, tile.Version);
+        Assert.False(tile.Cached);
+    }
+
+    [Fact]
     public async Task RenderTiles_reads_the_ordered_batch()
     {
         using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
