@@ -27,7 +27,7 @@ sit in the root `Spatial.Contracts` namespace; the wire DTOs in
 | `RasterFormat`, `RasterPixelFormat`, `RasterBlend` | png/jpeg/webp/tiff, rgba8888/rgb888, blend modes |
 | `ITileScheme` + `TileCoordinate`/`TileLevel` | pluggable tiling: address → projected extent + LODs (ADR-0046) |
 | `ITileCache` + `TileCacheKey` | content-addressed tile cache for raster and MVT bytes; ownership is the implementation's (ADR-0046/0070) |
-| `IVersionedFeatureStore` + `ContentVersions` | a store's per-dataset content version, and the fold that puts it in the tile key (ADR-0075) |
+| `IVersionedFeatureStore` + `ContentVersions` | a store's per-dataset content version, and the fold that puts it in the tile key (ADR-0083) |
 | `IVectorTileService` + `VectorTileRequest`/`VectorTileLayer`/`VectorTile` | core-typed MVT feature-layer request and encoded result; no protobuf types cross the contract (ADR-0070) |
 
 The renderer receives **resolved** services in the request (no DI/service
@@ -85,7 +85,7 @@ file time) persists tiles under a shared directory so they survive a
 restart and are shared between hosts. MVT bytes use the same `ITileCache`
 key and cache implementations. The version in `TileCacheKey` is a SHA-256 of
 the service/layer/encoding request **plus the content versions of the
-datasets it reads** (ADR-0075), so a write, edit or ingest invalidates the
+datasets it reads** (ADR-0083), so a write, edit or ingest invalidates the
 tiles derived from that data without a manual `DELETE /api/render/cache`. A
 store opts in with `IVersionedFeatureStore`; one that does not folds in the
 unversioned token. Responses report the resolved version in `X-Tile-Version`,

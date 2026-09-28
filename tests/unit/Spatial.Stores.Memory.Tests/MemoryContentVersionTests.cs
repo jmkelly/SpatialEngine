@@ -8,7 +8,7 @@ using Spatial.Stores.Memory;
 namespace Spatial.Stores.Memory.Tests;
 
 /// <summary>
-/// The in-memory content version (ADR-0075): a per-dataset counter the store
+/// The in-memory content version (ADR-0083): a per-dataset counter the store
 /// bumps on every mutation, so a derived cache keyed by it (the tile cache)
 /// invalidates exactly the datasets that changed. The version is an opaque
 /// token, not an existence check, and a rolled-back transaction restores the

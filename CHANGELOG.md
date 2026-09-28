@@ -150,7 +150,7 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
-- **A write now invalidates the tiles derived from it** (ADR-0075,
+- **A write now invalidates the tiles derived from it** (ADR-0083,
   SpatialEngine-u2x.21): the tile cache key fingerprinted the *request*, so
   nothing in it moved when a feature was written, edited or ingested, and
   every cached tile of an edited map stayed stale until someone called

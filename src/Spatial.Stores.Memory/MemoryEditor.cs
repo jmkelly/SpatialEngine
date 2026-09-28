@@ -11,7 +11,7 @@ namespace Spatial.Stores.Memory;
 /// <see cref="FeatureId.Unassigned"/> gets the dataset's next generated
 /// identity (ADR-0043); a data-only dataset rejects every edit per feature,
 /// mirroring the PostGIS contract. Every edit that changes the dataset moves
-/// its content version (ADR-0075), which is what invalidates the tiles derived
+/// its content version (ADR-0083), which is what invalidates the tiles derived
 /// from it.
 /// </summary>
 public sealed class MemoryEditor : IFeatureEditStore
@@ -156,7 +156,7 @@ public sealed class MemoryEditor : IFeatureEditStore
 
     /// <summary>
     /// Moves the dataset's content version when at least one feature in the
-    /// batch actually changed (ADR-0075), so a derived cache keyed by the
+    /// batch actually changed (ADR-0083), so a derived cache keyed by the
     /// version invalidates the dataset for a partially successful edit and
     /// stays valid when every feature failed.
     /// </summary>

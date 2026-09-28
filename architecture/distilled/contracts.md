@@ -96,7 +96,7 @@ protocol adapter reads a mixed map's layers from their own stores without
 holding the DI container. Required reads are `invalid.arguments` for an
 unknown store; additive faces return `null`.
 
-**Content versions (ADR-0075).** A store may implement
+**Content versions (ADR-0083).** A store may implement
 `IVersionedFeatureStore.GetContentVersionAsync(dataset)` and report an opaque
 token that moves whenever that dataset's feature content changes;
 `ContentVersions.OfAsync` returns it, or `ContentVersions.Unversioned` for a

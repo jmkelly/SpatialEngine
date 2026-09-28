@@ -7,7 +7,7 @@ namespace Spatial.Adapter.Ogc.Tests;
 /// <summary>The OGC adapter's shared vector-tile orchestration keeps failure and
 /// cancellation semantics while leaving MVT encoding to the implementation,
 /// and keys its cache on the map plus the content versions of the datasets it
-/// reads, so a write re-renders the tile (ADR-0075).</summary>
+/// reads, so a write re-renders the tile (ADR-0083).</summary>
 public sealed class OgcVectorTileServiceTests
 {
     [Fact]
@@ -167,7 +167,7 @@ public sealed class OgcVectorTileServiceTests
         }
     }
 
-    /// <summary>A cache that records the last key it was asked for, so a test can see the key move (ADR-0075).</summary>
+    /// <summary>A cache that records the last key it was asked for, so a test can see the key move (ADR-0083).</summary>
     private sealed class RecordingCache : ITileCache
     {
         public VectorTileCacheKey? LastKey { get; private set; }

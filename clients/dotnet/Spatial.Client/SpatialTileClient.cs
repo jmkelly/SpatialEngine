@@ -28,7 +28,7 @@ public sealed class SpatialTileClient
 
     /// <summary>
     /// Renders one tile and reports the content version it was rendered at
-    /// (ADR-0075), so a client that caches tiles of its own can tell whether
+    /// (ADR-0083), so a client that caches tiles of its own can tell whether
     /// the data or style underneath them changed without parsing the version.
     /// </summary>
     public async Task<RenderedTile> RenderWithVersionAsync(

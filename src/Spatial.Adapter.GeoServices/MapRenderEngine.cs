@@ -46,7 +46,7 @@ internal static class MapRenderEngine
     /// <summary>
     /// A content version for the tile cache: the service, its composed style
     /// and the folded content version of every dataset the render reads
-    /// (ADR-0075), so a write to one of them invalidates the tiles derived
+    /// (ADR-0083), so a write to one of them invalidates the tiles derived
     /// from it.
     /// </summary>
     public static string Version(string service, string style, string dataVersion) =>
@@ -54,7 +54,7 @@ internal static class MapRenderEngine
 
     /// <summary>
     /// The folded content version of every dataset a publication's layers read
-    /// (ADR-0075), so the Esri tile key moves when their data does. Every layer
+    /// (ADR-0083), so the Esri tile key moves when their data does. Every layer
     /// is read from the service's one store, as
     /// <see cref="Sources(IStoreRegistry, string, IReadOnlyList{PublishedLayer}, IReadOnlyDictionary{int, string}?, IReadOnlyDictionary{int, MapTimeExtent}?)"/>
     /// resolves them. A store that reports no version folds in the unversioned

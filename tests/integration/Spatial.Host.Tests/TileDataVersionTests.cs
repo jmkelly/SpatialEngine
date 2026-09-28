@@ -14,7 +14,7 @@ using Spatial.Core.Geometry;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The data version in the tile cache key (ADR-0075): a rendered tile is
+/// The data version in the tile cache key (ADR-0083): a rendered tile is
 /// derived from feature data, so its key must fold in the datasets' content
 /// versions, not only the request that produced it. A write moves a version, so
 /// the next request for the affected tiles misses the cache and re-renders —

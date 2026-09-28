@@ -4,7 +4,7 @@ date: 2026-09-27
 deciders: maintainer + agent
 ---
 
-# ADR-0075: The tile cache key carries the data version
+# ADR-0083: The tile cache key carries the data version
 
 ## Context
 

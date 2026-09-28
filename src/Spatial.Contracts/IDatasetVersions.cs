@@ -3,7 +3,7 @@ namespace Spatial.Contracts;
 using Spatial.Contracts.Providers;
 
 /// <summary>
-/// A feature store that reports a content version for a dataset (ADR-0075).
+/// A feature store that reports a content version for a dataset (ADR-0083).
 /// The version is an opaque token that changes whenever the dataset's feature
 /// content changes, so a derived cache keyed by it — the tile cache
 /// (ADR-0046/0070) — invalidates exactly the datasets an edit touched,
@@ -19,7 +19,7 @@ public interface IVersionedFeatureStore
 }
 
 /// <summary>
-/// The content-version vocabulary (ADR-0075): the token reported for a
+/// The content-version vocabulary (ADR-0083): the token reported for a
 /// dataset whose store exposes no content version, the one resolution path
 /// that asks a store for its version without the caller testing for the
 /// optional face, and the fold that turns a request's datasets into the single
@@ -47,7 +47,7 @@ public static class ContentVersions
     /// <summary>
     /// Folds the content versions of every dataset a render reads into one
     /// opaque token, so a cache keyed by it misses exactly when one of those
-    /// datasets changed (ADR-0075). Order matters (the same request must fold
+    /// datasets changed (ADR-0083). Order matters (the same request must fold
     /// the same way); the token is a hash, so callers can neither read nor
     /// forge it.
     /// </summary>
@@ -72,7 +72,7 @@ public static class ContentVersions
     private const char Separator = '\u001f';
 }
 
-/// <summary>One dataset a render reads, and the store that serves it (ADR-0075).</summary>
+/// <summary>One dataset a render reads, and the store that serves it (ADR-0083).</summary>
 /// <param name="Store">The keyed store the dataset is read from.</param>
 /// <param name="Dataset">The dataset identity within that store.</param>
 public readonly record struct ContentVersionRef(string Store, string Dataset);

@@ -109,7 +109,7 @@ internal static class MapTileEndpoints
     }
 
     /// <summary>
-    /// The MVT cache version (ADR-0075): the map, its layers and styles as
+    /// The MVT cache version (ADR-0083): the map, its layers and styles as
     /// before, plus the content version of every dataset the tile reads, so a
     /// write to one of them re-renders the vector tile instead of serving
     /// cached bytes over stale data.

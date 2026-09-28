@@ -54,7 +54,7 @@ internal sealed class SpatialClientTransport
 
     /// <summary>
     /// Posts a render body that answers with an image, keeping the tile
-    /// response headers (ADR-0075): the cache disposition and the content
+    /// response headers (ADR-0083): the cache disposition and the content
     /// version the tile was rendered at. A host that reports no version yields
     /// an empty one.
     /// </summary>

@@ -60,13 +60,13 @@ internal sealed class MemoryCatalogue
         Bump(dataset.Id);
     }
 
-    /// <summary>The dataset's content version (ADR-0075), as an opaque token.</summary>
+    /// <summary>The dataset's content version (ADR-0083), as an opaque token.</summary>
     public string Version(string dataset) =>
         _versions.TryGetValue(Normalise(dataset), out var version)
             ? version.ToString(System.Globalization.CultureInfo.InvariantCulture)
             : ContentVersions.Unversioned;
 
-    /// <summary>Moves the dataset's content version (ADR-0075) after a mutation.</summary>
+    /// <summary>Moves the dataset's content version (ADR-0083) after a mutation.</summary>
     public void Bump(string dataset)
     {
         var id = Normalise(dataset);

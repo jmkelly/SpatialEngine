@@ -11,7 +11,7 @@ namespace Spatial.Stores.Memory;
 /// <see cref="MemoryEditor"/> and <see cref="MemoryIngest"/> so each type
 /// keeps one cohesive responsibility (the same factoring as PostGIS,
 /// ADR-0040). It also reports the per-dataset content version
-/// (<see cref="IVersionedFeatureStore"/>, ADR-0075) that a derived cache such
+/// (<see cref="IVersionedFeatureStore"/>, ADR-0083) that a derived cache such
 /// as the tile cache keys on. State is <em>non-durable</em>: a process restart loses every
 /// dataset. Diagnostics state that; it is a development-and-CI provider, not
 /// a persistence guarantee.
@@ -124,7 +124,7 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
     }
 
     /// <summary>
-    /// The dataset's content version (ADR-0075): a counter the write, edit and
+    /// The dataset's content version (ADR-0083): a counter the write, edit and
     /// ingest paths bump, so a derived cache keyed by it (the tile cache) misses
     /// for a dataset that changed and hits for one that did not. Unknown
     /// datasets report <see cref="ContentVersions.Unversioned"/> — the version is

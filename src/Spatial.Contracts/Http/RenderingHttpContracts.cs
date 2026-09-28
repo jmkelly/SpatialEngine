@@ -101,7 +101,7 @@ public sealed record TileBatchResponse(IReadOnlyList<TileResultDto> Tiles);
 
 /// <summary>
 /// A single rendered tile with the content version it was rendered at
-/// (ADR-0075): the key the cache stored it under, which folds in the request
+/// (ADR-0083): the key the cache stored it under, which folds in the request
 /// and the content versions of the datasets it read. A client that keeps its
 /// own tiles can compare the version it last saw with the one it just fetched
 /// and know whether anything underneath it changed; the version is opaque and

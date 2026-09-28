@@ -23,7 +23,7 @@ reflects the state at decision time.
 | Map composer (layers, styling, drag/drop, upload) | `host-and-clients.md` | 0014, 0041, 0047 |
 | MapServer / ImageServer | `host-and-clients.md`, `../image-service-plan.md` | 0035, 0048, 0050, 0051 |
 | Command-line workspace (datasets, maps, project file) | `cli.md` | 0041, 0047, 0052 |
-| Raster rendering / imagery / tiles / labels | `rendering.md`, `../../research/rendering/README.md` | 0044, 0046, 0049, 0075 |
+| Raster rendering / imagery / tiles / labels | `rendering.md`, `../../research/rendering/README.md` | 0044, 0046, 0049, 0075, 0083 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -124,7 +124,7 @@ shape is noted in brackets.
 | 0074 | The MapLibre style dialect compiles colour/opacity/size properties as an expression tree evaluated once per feature over a shared scope; a number is not a colour, and unsupported input is a typed `invalid.arguments`. |
 | 0075 | Label placement generates ordered candidates (point offsets, or repeated positions along a line) and selects them by `symbol-sort-key` in a pass of its own; the text face is a digest-pinned registry with a documented fallback chain, so an unknown `text-font` is never an error. |
 | 0074 | The feature-query contract is a core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`; pushdown is per-conjunct and best-effort with residual in-memory evaluation; reductions are an additive `IFeatureAggregateStore` face; the published `filter` text is parsed once at the boundary and the per-provider filter languages are retired. |
-| 0075 | A store may report a per-dataset content version (`IVersionedFeatureStore`); every tile cache key (raster and MVT) folds it in, so a write invalidates the tiles derived from that data with no manual flush. |
+| 0083 | A store may report a per-dataset content version (`IVersionedFeatureStore`); every tile cache key (raster and MVT) folds it in, so a write invalidates the tiles derived from that data with no manual flush. |
 
 ## How to change the architecture
 

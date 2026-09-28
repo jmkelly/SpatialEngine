@@ -124,7 +124,7 @@ internal static class TileEndpoints
             request.Scale);
 
     /// <summary>
-    /// The content version folded into the cache key (ADR-0075): one entry per
+    /// The content version folded into the cache key (ADR-0083): one entry per
     /// dataset the request reads, so a write to any of them moves the key and
     /// the tile re-renders. A store that reports no version folds in the
     /// unversioned token and keeps its previous behaviour.

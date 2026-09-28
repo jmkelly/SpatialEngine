@@ -95,7 +95,7 @@ internal static class MapVectorTileEndpoints
         ITileCache Cache,
         IReadOnlyList<ITileScheme> Schemes);
 
-    /// <summary>One served tile, its cache disposition and the key it was stored under (ADR-0075).</summary>
+    /// <summary>One served tile, its cache disposition and the key it was stored under (ADR-0083).</summary>
     private sealed record CachedTile(VectorTile Tile, bool Cached, string Version);
 
     private sealed class VectorTileAddress

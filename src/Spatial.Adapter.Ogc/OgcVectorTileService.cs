@@ -89,7 +89,7 @@ public sealed class OgcVectorTileService
             .Select(layer => $"{layer.LayerId}:{layer.Dataset}:{layer.Store}:{layer.Name}")))));
 
     /// <summary>
-    /// The cache version for a map's OGC vector tile (ADR-0075): the map and
+    /// The cache version for a map's OGC vector tile (ADR-0083): the map and
     /// its layers, plus the folded content version of every dataset the tile
     /// reads, so a write to one of them re-renders the tile instead of serving
     /// cached bytes over stale data. A store that reports no version folds in

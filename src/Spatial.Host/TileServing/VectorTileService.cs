@@ -68,7 +68,7 @@ internal sealed class VectorTileService
     }
 
     /// <summary>
-    /// The cache version for a map's vector tile (ADR-0075): the map, its
+    /// The cache version for a map's vector tile (ADR-0083): the map, its
     /// layers and their styles, plus the folded content version of every
     /// dataset the tile reads, so a write invalidates exactly the tiles derived
     /// from that data.

@@ -6,13 +6,13 @@ using Spatial.Host.Api;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The content version behind a tile cache key (ADR-0046, ADR-0075): the style,
+/// The content version behind a tile cache key (ADR-0046, ADR-0083): the style,
 /// layer descriptors, imagery stack, encoding options and the folded content
 /// version of the request's datasets all fold into the hash.
 /// </summary>
 public sealed class TileFingerprintTests
 {
-    /// <summary>The folded content version of the request's datasets (ADR-0075).</summary>
+    /// <summary>The folded content version of the request's datasets (ADR-0083).</summary>
     private const string DataVersion = "content";
 
     [Fact]
