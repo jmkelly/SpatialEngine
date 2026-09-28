@@ -1,0 +1,27 @@
+# SpatialEngine-u2x.1 query baseline — store=memory label=default
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=30 warmup=5
+# A=ScanAsync+in-adapter  B=QueryAsync pushdown  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown NOT supported by this store (bbox only)
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown NOT supported by this store (bbox only)
+A-scan   europe  page25         42.937     86.111    402.688    110.310       0.58       0.60      34135         25
+B-bbox   europe  page25         22.794     53.010    145.634     63.208       0.14       0.15       2655         25
+D-emul   europe  page25          9.492     55.197    207.292     73.495       0.03       0.04         25         25
+C-lookup europe  page25         42.199     80.281    146.913     85.689       0.03       0.04         25         25
+A-scan   europe  countOnly      19.705     92.702    250.219    115.436       0.58       0.59      34135        283
+B-bbox   europe  countOnly       8.750     13.674     28.832     16.424       0.11       0.12       2655        283
+D-emul   europe  countOnly       7.282     27.816     77.853     33.756       0.00       0.02          0        283
+A-scan   europe  statistics     18.238    115.219    224.984    118.357       0.57       0.58      34135          8
+B-bbox   europe  statistics     10.568     70.492    132.628     70.968       0.12       0.13       2655          8
+D-emul   europe  statistics      8.343     51.326    302.395     94.255       0.00       0.02          8          8
+A-scan   global  page25        132.314    790.391   1854.506    772.049       1.38       1.40      34135         25
+B-bbox   global  page25         61.058    449.759    745.151    434.322       2.15       2.16      34135         25
+D-emul   global  page25         28.038    157.906    338.625    164.032       0.53       0.55         25         25
+C-lookup global  page25         38.739    168.359    439.653    211.117       0.54       0.55         25         25
+A-scan   global  countOnly      38.578     99.296    307.739    126.036       1.38       1.40      34135       6253
+B-bbox   global  countOnly      44.984     64.347    402.241    108.620       2.14       2.16      34135       6253
+D-emul   global  countOnly       7.988      9.822     47.952     16.632       0.00       0.02          0       6253
+A-scan   global  statistics     19.048     28.160     53.898     33.283       1.06       1.07      34135        171
+B-bbox   global  statistics     32.062     63.131    200.186     87.960       1.60       1.83      34135        171
+D-emul   global  statistics      9.440     20.663     48.285     24.769       0.01       0.02        171        171

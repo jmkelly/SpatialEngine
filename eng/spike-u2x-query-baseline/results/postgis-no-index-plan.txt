@@ -1,0 +1,5 @@
+           QUERY PLAN           
+--------------------------------
+ Seq Scan on spike_world_cities
+(1 row)
+
