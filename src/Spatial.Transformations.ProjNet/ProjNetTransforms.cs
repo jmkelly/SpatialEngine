@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using Spatial.Contracts;
 using Spatial.Contracts.Transformations;
+using Spatial.Contracts.TransformationSearch;
 using Spatial.Core.Geometry;
 using ProjCs = ProjNet.CoordinateSystems;
 using ProjTf = ProjNet.CoordinateSystems.Transformations;
@@ -47,6 +48,38 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         var system = Lookup(identity);
         var code = int.Parse(identity.Code, NumberStyles.None, CultureInfo.InvariantCulture);
         return ProjNetCrsMapper.Describe(code, system);
+    }
+
+    /// <summary>
+    /// The datum-transformation search (ADR-0074). The graph is keyed on
+    /// datums, so a projected CRS and its geographic parent return the same
+    /// candidates; an unknown CRS identity fails exactly as
+    /// <see cref="Describe"/> does, and cancellation is honoured before any
+    /// work.
+    /// </summary>
+    public IReadOnlyList<CrsTransformation> FindTransformations(
+        CrsTransformationQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+        var from = DatumOf(query.Source);
+        var to = DatumOf(query.Target);
+        cancellationToken.ThrowIfCancellationRequested();
+        return DatumTransformationGraph.Search(from, to, query.AreaOfInterest);
+    }
+
+    private static DatumNode DatumOf(string crs)
+    {
+        if (!CrsIdentity.TryParse(crs, out var identity))
+        {
+            throw SpatialException.BadArguments($"'{crs}' must be a CRS identity (authority:code), got '{crs ?? "nothing"}'.");
+        }
+
+        var code = int.Parse(identity.Code, NumberStyles.None, CultureInfo.InvariantCulture);
+        return ProjEpsgCatalog.TryGetDatum(code, out var datum) && string.Equals(identity.Authority, "EPSG", StringComparison.OrdinalIgnoreCase)
+            ? datum
+            : throw SpatialException.BadArguments($"Authority/code '{crs}' is not in the catalogue.");
     }
 
     public IGeometry Transform(IGeometry geometry, string? source, string target, CancellationToken cancellationToken = default)

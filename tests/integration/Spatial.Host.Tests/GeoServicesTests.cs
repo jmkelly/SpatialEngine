@@ -153,14 +153,17 @@ public sealed class GeoServicesTests : IClassFixture<PostgisHostFactory>
     }
 
     [Fact]
-    public async Task Find_transformations_lists_the_catalogue_path()
+    public async Task Find_transformations_lists_ranked_candidates()
     {
         var same = await GetJsonAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=3857&f=json");
         Assert.Equal(0, same.GetArrayLength());
 
         var stepped = await GetJsonAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=27700&f=json");
-        Assert.Equal(1, stepped.GetArrayLength());
-        Assert.True(stepped[0].GetProperty("geoTransforms")[0].GetProperty("transformForward").GetBoolean());
+        Assert.True(stepped.GetArrayLength() >= 2, "a datum step must offer more than one candidate.");
+        var applied = stepped[0];
+        Assert.Equal("WGS84_To_OSGB36_Helmert", applied.GetProperty("name").GetString());
+        Assert.True(applied.GetProperty("geoTransforms")[0].GetProperty("transformForward").GetBoolean());
+        Assert.Equal(3.0, applied.GetProperty("accuracy").GetDouble(), 3);
     }
 
     [Theory]

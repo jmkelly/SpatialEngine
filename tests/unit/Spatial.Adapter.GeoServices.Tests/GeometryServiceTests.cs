@@ -158,18 +158,42 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
-    public async Task Project_rejects_datum_transformation()
+    public async Task Project_accepts_the_transformation_it_applies_and_names_the_others()
     {
-        // The engine has no datum tables: a client-supplied transformation
-        // must fail honestly rather than project silently without it.
+        // findTransformations publishes the ranked candidates; project applies
+        // the first of them, so naming it is honoured rather than refused.
+        var candidates = await DispatchAsync("findTransformations", ("inSR", "4326"), ("outSR", "27700"));
+        var applied = candidates[0].GetProperty("name").GetString();
+
+        var projected = await DispatchAsync("project",
+            ("geometries", """[{"x":-0.1276,"y":51.5072,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("datumTransformation", applied!));
+
+        // PROJ's value at the London control point; the catalogue applies the
+        // Helmert path rather than the OSTN15 grid, so the 0.1 m the existing
+        // control-point tests document is the tolerance (ADR-0027 accuracy).
+        var point = projected.GetProperty("geometries")[0];
+        Assert.Equal(530043.194981, point.GetProperty("x").GetDouble(), 0.1);
+        Assert.Equal(180358.208620, point.GetProperty("y").GetDouble(), 0.1);
+    }
+
+    [Fact]
+    public async Task Project_rejects_a_transformation_it_does_not_apply()
+    {
+        var candidates = await DispatchAsync("findTransformations", ("inSR", "4326"), ("outSR", "27700"));
+        var notApplied = candidates[candidates.GetArrayLength() - 1].GetProperty("name").GetString();
+
         var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("project",
             ("geometries", """[{"x":13.405,"y":52.52,"spatialReference":{"wkid":4326}}]"""),
             ("inSR", "4326"),
-            ("outSR", "32632"),
-            ("datumTransformation", "1")));
+            ("outSR", "27700"),
+            ("datumTransformation", notApplied!)));
 
         Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
         Assert.Contains("'datumTransformation'", exception.Message);
+        Assert.Contains("WGS84_To_OSGB36_Helmert", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -399,20 +423,102 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
-    public async Task Find_transformations_lists_the_curated_catalogue_path()
+    public async Task Find_transformations_lists_ranked_candidates_with_their_parameters()
     {
-        // 4326 (WGS 84) to 27700 (OSGB36): the engine applies the embedded
-        // Helmert shift, so the listing must name the classic Helmert path.
+        // 4326 (WGS 84) to 27700 (OSGB36): the engine applies the composed
+        // geocentric shift, so the listing leads with it, carries the
+        // catalogue's Helmert parameters and states the accuracy.
         var result = await DispatchAsync("findTransformations",
             ("inSR", "4326"),
             ("outSR", "27700"));
 
-        Assert.Equal(1, result.GetArrayLength());
-        var steps = result[0].GetProperty("geoTransforms");
-        Assert.Equal(1, steps.GetArrayLength());
-        Assert.True(steps[0].GetProperty("transformForward").GetBoolean());
-        Assert.Contains("Helmert", steps[0].GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Helmert", steps[0].GetProperty("method").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.GetArrayLength() >= 2, "a datum step must offer more than one operation.");
+        var applied = result[0];
+        Assert.Equal("WGS84_To_OSGB36_Helmert", applied.GetProperty("name").GetString());
+        var step = applied.GetProperty("geoTransforms")[0];
+        Assert.True(step.GetProperty("transformForward").GetBoolean());
+        Assert.Contains("Helmert", step.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Helmert", step.GetProperty("method").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(3.0, applied.GetProperty("accuracy").GetDouble(), 3);
+        Assert.False(applied.GetProperty("approximate").GetBoolean());
+        var helmert = step.GetProperty("helmert");
+        Assert.Equal(20.489, helmert.GetProperty("scale").GetDouble(), 3);
+        Assert.Equal(-542.072, helmert.GetProperty("tz").GetDouble(), 3);
+        var areaOfUse = applied.GetProperty("areaOfUse");
+        Assert.Equal(49.79, areaOfUse.GetProperty("ymin").GetDouble(), 3);
+        Assert.Contains("Great Britain", areaOfUse.GetProperty("name").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Find_transformations_is_symmetric()
+    {
+        var forward = await DispatchAsync("findTransformations", ("inSR", "4326"), ("outSR", "27700"));
+        var reverse = await DispatchAsync("findTransformations", ("inSR", "27700"), ("outSR", "4326"));
+
+        Assert.Equal(forward.GetArrayLength(), reverse.GetArrayLength());
+        for (var index = 0; index < forward.GetArrayLength(); index++)
+        {
+            Assert.Equal(
+                forward[index].GetProperty("name").GetString(),
+                reverse[index].GetProperty("name").GetString());
+            var steps = reverse[index].GetProperty("geoTransforms");
+            Assert.All(steps.EnumerateArray(), step => Assert.False(step.GetProperty("transformForward").GetBoolean()));
+        }
+    }
+
+    [Fact]
+    public async Task Find_transformations_filters_by_extent_of_interest()
+    {
+        // Great Britain: every candidate applies. France: only the path
+        // through the world datum's own domain does.
+        var inBritain = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("extentOfInterest", "-2,51.5,0,53"));
+        var inFrance = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("extentOfInterest", """{"xmin":2,"ymin":45,"xmax":6,"ymax":48}"""));
+
+        Assert.True(inBritain.GetArrayLength() > 1, "an area of interest must not empty a search over Great Britain.");
+        Assert.Equal(1, inFrance.GetArrayLength());
+        Assert.Contains("via_WGS84", inFrance[0].GetProperty("name").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Find_transformations_interprets_the_extent_in_the_source_crs()
+    {
+        // A projected inSR means the extent arrives in metres; the search
+        // still filters on the geographic box the catalogue records.
+        var result = await DispatchAsync("findTransformations",
+            ("inSR", "27700"),
+            ("outSR", "4326"),
+            ("extentOfInterest", "500000,170000,540000,190000"));
+
+        Assert.True(result.GetArrayLength() > 1, "a British extent over the projected source CRS must keep the local candidates.");
+    }
+
+    [Fact]
+    public async Task Find_transformations_honours_the_horizontal_default()
+    {
+        var horizontal = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("vertical", "false"));
+        var plain = await DispatchAsync("findTransformations", ("inSR", "4326"), ("outSR", "27700"));
+
+        Assert.Equal(plain.GetArrayLength(), horizontal.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Find_transformations_still_refuses_a_vertical_search()
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("vertical", "true")));
+
+        Assert.Contains("'vertical'", exception.Message);
     }
 
     [Fact]
@@ -430,9 +536,10 @@ public sealed class GeometryServiceTests
     }
 
     [Theory]
-    [InlineData("vertical", "true")]
-    [InlineData("extentOfInterest", "{\"xmin\":0,\"ymin\":0,\"xmax\":1,\"ymax\":1}")]
-    public async Task Find_transformations_rejects_unsupported_ranking(string name, string value)
+    [InlineData("extentOfInterest", "not-an-extent")]
+    [InlineData("extentOfInterest", "1,2,3")]
+    [InlineData("numOfResults", "many")]
+    public async Task Find_transformations_rejects_a_malformed_modifier(string name, string value)
     {
         await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("findTransformations",
             ("inSR", "4326"),
@@ -441,7 +548,7 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
-    public async Task Find_transformations_honours_num_of_results()
+    public async Task Find_transformations_honours_the_result_count()
     {
         var none = await DispatchAsync("findTransformations",
             ("inSR", "4326"),
@@ -453,7 +560,16 @@ public sealed class GeometryServiceTests
             ("inSR", "4326"),
             ("outSR", "27700"),
             ("numOfResults", "-1"));
-        Assert.Equal(1, all.GetArrayLength());
+        var every = await DispatchAsync("findTransformations", ("inSR", "4326"), ("outSR", "27700"));
+        Assert.Equal(every.GetArrayLength(), all.GetArrayLength());
+
+        // 'numTransformations' is the same argument under the name the
+        // ArcGIS REST JS client uses.
+        var aliased = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("numTransformations", "1"));
+        Assert.Equal(1, aliased.GetArrayLength());
     }
 
     [Fact]

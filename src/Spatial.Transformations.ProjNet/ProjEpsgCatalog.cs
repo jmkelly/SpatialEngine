@@ -1,4 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using Spatial.Contracts.Transformations;
+using Spatial.Contracts.TransformationSearch;
 using ProjCs = ProjNet.CoordinateSystems;
 
 namespace Spatial.Transformations.ProjNet;
@@ -36,6 +38,55 @@ internal static class ProjEpsgCatalog
     /// <summary>The EPSG codes served by this catalogue.</summary>
     public static IEnumerable<int> Codes => Entries.Keys;
 
+    /// <summary>
+    /// The datum a CRS is on, for the datum-transformation graph
+    /// (ADR-0074). A projected CRS resolves through its geographic parent,
+    /// so a search is keyed on datums rather than on CRSs.
+    /// </summary>
+    public static bool TryGetDatum(int code, [NotNullWhen(true)] out DatumNode? datum)
+    {
+        foreach (var entry in Geographic)
+        {
+            if (entry.Code == code)
+            {
+                datum = NodeOf(entry);
+                return true;
+            }
+        }
+
+        foreach (var entry in Projected)
+        {
+            if (entry.Code == code)
+            {
+                var geographic = Geographic.First(candidate => candidate.Code == entry.GeodeticCode);
+                datum = NodeOf(geographic);
+                return true;
+            }
+        }
+
+        datum = null;
+        return false;
+    }
+
+    private static DatumNode NodeOf(GeographicEntry entry) => new(
+        entry.Code switch
+        {
+            4326 => "WGS84",
+            4258 => "ETRS89",
+            4269 => "NAD83",
+            4277 => "OSGB36",
+            _ => "RGF93",
+        },
+        entry.DatumName,
+        new HelmertParameters(entry.ToWgs84[0], entry.ToWgs84[1], entry.ToWgs84[2], entry.ToWgs84[3], entry.ToWgs84[4], entry.ToWgs84[5], entry.ToWgs84[6]),
+        entry.AccuracyToWgs84Metres,
+        new CrsAreaOfUse(
+            entry.AreaOfUseName,
+            entry.AreaOfUseBounds[0],
+            entry.AreaOfUseBounds[1],
+            entry.AreaOfUseBounds[2],
+            entry.AreaOfUseBounds[3]));
+
     private sealed record GeographicEntry(
         int Code,
         string Name,
@@ -43,7 +94,10 @@ internal static class ProjEpsgCatalog
         string EllipsoidName,
         double SemiMajor,
         double InverseFlattening,
-        double[] ToWgs84);
+        double[] ToWgs84,
+        double AccuracyToWgs84Metres,
+        string AreaOfUseName,
+        double[] AreaOfUseBounds);
 
     private sealed record ProjectedEntry(
         int Code,
@@ -52,13 +106,21 @@ internal static class ProjEpsgCatalog
         string ProjectionClass,
         (string Name, double Value)[] Parameters);
 
+    /// <summary>
+    /// The geographic definitions, each with the datum's shift to WGS 84, the
+    /// accuracy of that shift in metres and the datum's area of use in
+    /// degrees (ADR-0074). The accuracies and extents are the EPSG values for
+    /// the catalogue's Helmert path — notably OSGB36's, which is metres rather
+    /// than centimetres because the WKT1 library has no OSTN grid (ADR-0027
+    /// §accuracy).
+    /// </summary>
     private static readonly GeographicEntry[] Geographic =
     [
-        new(4326, "WGS 84", "World Geodetic System 1984", "WGS 84", 6378137.0, 298.257223563, [0, 0, 0, 0, 0, 0, 0]),
-        new(4258, "ETRS89", "European Terrestrial Reference System 1989", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0]),
-        new(4269, "NAD83", "North American Datum 1983", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0]),
-        new(4277, "OSGB36", "Ordnance Survey of Great Britain 1936", "Airy 1830", 6377563.396, 299.3249646, [446.448, -125.157, 542.060, 0.15, 0.247, 0.842, -20.489]),
-        new(4171, "RGF93 v1", "Reseau Geodesique Francais 1993", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0]),
+        new(4326, "WGS 84", "World Geodetic System 1984", "WGS 84", 6378137.0, 298.257223563, [0, 0, 0, 0, 0, 0, 0], 0.0, "World", [-180.0, -90.0, 180.0, 90.0]),
+        new(4258, "ETRS89", "European Terrestrial Reference System 1989", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0], 1.0, "Europe", [-16.1, 32.88, 40.18, 84.73]),
+        new(4269, "NAD83", "North American Datum 1983", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0], 2.0, "North America", [-172.54, 23.81, -47.74, 86.46]),
+        new(4277, "OSGB36", "Ordnance Survey of Great Britain 1936", "Airy 1830", 6377563.396, 299.3249646, [446.448, -125.157, 542.060, 0.15, 0.247, 0.842, -20.489], 3.0, "Great Britain", [-8.82, 49.79, 1.92, 60.94]),
+        new(4171, "RGF93 v1", "Reseau Geodesique Francais 1993", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0], 1.0, "France", [-9.86, 41.15, 10.38, 51.56]),
     ];
 
     private static readonly ProjectedEntry[] Projected =

@@ -11,6 +11,20 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Datum transformations are values, and `findTransformations` is a search**
+  (ADR-0074, SpatialEngine-u2x.15): `ICrsDirectory.FindTransformations` adds a
+  ranked, area-filtered search over a transformation graph the catalogue owns.
+  Each candidate carries its steps, the seven Helmert parameters it applies, an
+  area of use and a derived accuracy (quadrature for the datum pair, the
+  dropped-rotation bound for the three-parameter reduction). A cross-datum
+  `findTransformations` returns the direct composed Helmert, the concatenated
+  path through the WGS 84 pivot and the three-parameter translation instead of
+  one composite; `extentOfInterest` filters candidates instead of being
+  rejected; `vertical=false` is accepted and `vertical=true` stays refused;
+  `numOfResults`/`numTransformations` slice the ranked list. `project` accepts
+  a `datumTransformation` naming the operation it applies and refuses any
+  other by naming it. The published parameters are reconciled against the
+  London control point against PROJ 9, to under a millimetre.
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and
   attachment faces on Microsoft.Data.SqlClient, wired into the host under the

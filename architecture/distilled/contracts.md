@@ -51,6 +51,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
 | `Describe` | crs identity string (`EPSG:4326`) | structured `CrsDescription` | name, family, axes (name/orientation/unit), datum, ellipsoid |
+| `FindTransformations` | `CrsTransformationQuery` (source, target, optional area of interest) | ranked `CrsTransformation` list | candidates with steps, Helmert parameters, area of use and derived accuracy; same datum → empty; the first candidate is the path `Transform` applies (ADR-0074) |
 | `Transform` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
 
 - **Axis order: x-first for every CRS** (x = longitude/easting). Describe

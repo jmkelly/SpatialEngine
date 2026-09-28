@@ -233,8 +233,18 @@ Ordered by dependency:
   `bufferSR`/`outSR`/`inSR` chaining per spec §7.0.6 via
   transform-then-buffer; `geodesic=false` is accepted as planar while
   `geodesic=true`/`unionResults` stay rejected. `findTransformations`
-  honestly lists the curated catalogue path (same datum → `[]`, datum step →
-  one forward composite with the OSGB36 classic-Helmert note).
+  is a ranked search over the provider's transformation graph (ADR-0074):
+  same datum → `[]`, a datum step → the direct composed Helmert (the path the
+  engine applies), the concatenated path through the WGS 84 pivot and the
+  three-parameter reduction, each carrying its steps, the seven Helmert
+  parameters it applies, its area of use and a derived accuracy. It is
+  symmetric (a reversed request returns the same operations with
+  `transformForward: false`), `extentOfInterest` filters rather than refusing
+  (in the source CRS's own coordinates, reprojected to the geographic boxes
+  the catalogue records), `vertical=false` is accepted while `vertical=true`
+  stays refused, and `numOfResults`/`numTransformations` slice the ranked
+  list — every candidate by default. `project` accepts a `datumTransformation`
+  that names the operation it applies and refuses any other by naming it.
   `fromGeoCoordinateString`/`toGeoCoordinateString` are recorded non-goals
   (§7.1): rejected by name, unadvertised.
 - Serving status update: `f=pjson` is accepted as a JSON alias everywhere
