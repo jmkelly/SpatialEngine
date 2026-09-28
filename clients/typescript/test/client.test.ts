@@ -349,6 +349,51 @@ test("maps and ingest hit the admin routes", async (t) => {
   ]);
 });
 
+test("a resumable upload is staged in chunks and ingested once", async (t) => {
+  // The staging protocol the host serves: an offset to append at, and how many
+  // bytes it now holds. The first chunk is refused in transit, so the driver
+  // has to re-read the host's offset rather than trust its own count.
+  const document = "the quick brown fox jumps over the lazy dog, twice over";
+  const total = document.length;
+  let received = 0;
+  let puts = 0;
+  const appended: number[] = [];
+  const state = () =>
+    JSON.stringify({ uploadId: "doc", received, totalBytes: total, complete: received >= total, sha256: "digest" });
+
+  const host = await fakeHost({
+    "/api/uploads": () => ({ status: 201, body: state(), contentType: "application/json" }),
+    "/api/uploads/doc": (req) => {
+      if (req.method === "GET") return { status: 200, body: state(), contentType: "application/json" };
+      puts++;
+      if (puts === 1) return { status: 503, body: "", contentType: "text/plain" };
+      appended.push(received);
+      received += Number(req.headers["content-length"] ?? 0);
+      return { status: 200, body: state(), contentType: "application/json" };
+    },
+    "/api/ingest": () => ({
+      status: 200,
+      body: JSON.stringify({ dataset: "public.big", features: 2, srid: 4326 }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  const outcome = await client.ingestResumable(
+    new Blob([document]),
+    { dataset: "public.big", srid: 4326, chunkSize: 20, uploadId: "doc", maxAttempts: 3 },
+    "secret",
+  );
+
+  assert.equal(outcome.dataset, "public.big");
+  // Four requests for three chunks: the first was refused in transit and
+  // retried from offset zero, so no byte was staged twice and none was lost.
+  assert.equal(puts, 4);
+  assert.deepEqual(appended, [0, 20, 40]);
+  assert.equal(received, total);
+});
+
 test("seed posts the manifest document", async (t) => {
   const host = await fakeHost({
     "/api/seed": () => ({

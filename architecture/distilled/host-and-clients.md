@@ -53,9 +53,15 @@ GET    /ogc/{name}/tiles/collections/{id}/tiles/{matrixSet}/{z}/{x}/{y}.pbf # ne
 GET    /arcgis/rest/services/{name}/ImageServer  # raster layers (Image service)
 GET|POST /ogc/{name}/wms                 # OGC WMS 1.3.0 + 1.1.1 caps dialect (Wms service): GetCapabilities negotiates the dialect (absent/1.3.x -> 1.3.0, 1.1.x -> 1.1.1 with SRS + LatLonBoundingBox, else InvalidParameterValue); GetMap PNG/JPEG (EXCEPTIONS=XML/INIMAGE/BLANK + se_xml/se_inimage/se_blank; DPI triple scales symbology at 96-dpi reference, frame unchanged; JPEG+TRANSPARENT stays lenient; absent BGCOLOR paints opaque white; SLD=/SLD_BODY= is OperationNotSupported), GetLegendGraphic per-layer style PNG (+LegendURL per style), GetFeatureInfo text/plain+text/html+text/xml+JSON+GML with FEATURE_COUNT cap; EPSG:4326 is lat-first for 1.3.x but x-first for 1.1.1, and GetMap requires VERSION; every layer advertises one default Style (STYLES= or STYLES=default renders it, any other name is StyleNotDefined). Deliberate non-goals (T-014, confirmed T-045 diagnostics): GetStyles + DescribeLayer (no recorded trace sends them), TIME/WMS-T (no temporal caps advertised), vendor params (1.1.1 GetMap/GetFeatureInfo KVP already works).
 GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service): GetCapabilities (served outputFormats advertised, GML absent), DescribeFeatureType XSD, GetFeature GeoJSON with startIndex/count paging over a stable order (sortBy else feature-id order; numberMatched/numberReturned/next envelope), srsName response reprojection, bbox subset; FES filter/CQL/resourceId and GetPropertyValue/stored-query ops reject by name; WFS-T stays a non-goal (gated Esri edits + neutral ingest are the write path)
-POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=
-                                       # raw/multipart upload -> IngestResult;
-                                       # sourceSrid reprojects via ICoordinateTransforms
+POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=&upload=
+                                       # raw/multipart upload, or a staged upload by id -> IngestResult;
+                                       # sourceSrid reprojects via ICoordinateTransforms; `upload`
+                                       # loads only a complete staged upload (ADR-0083)
+POST   /api/uploads?id=&total=&sha256=  # open/reopen a staged upload -> UploadState (admin)
+GET    /api/uploads                     # every staged upload -> UploadState[] (admin)
+GET    /api/uploads/{id}                # how far an upload got: the offset to resume from (admin)
+PUT    /api/uploads/{id}?offset=&total=&sha256=   # append a chunk whose first byte is at `offset` (admin)
+DELETE /api/uploads/{id}                # discard a staged upload -> {deleted} (admin)
 GET    /openapi/v1.json
 GET|POST /arcgis/rest/services                                # GeoServices catalog (ADR-0035)
 GET|POST /arcgis/rest/services/Geometry/GeometryServer         # Geometry Service
@@ -117,8 +123,8 @@ Maps are the neutral authoring and exposure model (ADR-0053): a named,
 ordered set of styled layers from one keyed store plus the set of services it
 exposes (FeatureServer, MapServer, Tiles, Wms, Wfs, ImageServer), with persisted stable layer
 ids. `GET /api/maps` and
-`GET /api/maps/{name}` are always available; `PUT`/`DELETE` and
-`POST /api/ingest` are mounted only when `Spatial:Admin:Token`
+`GET /api/maps/{name}` are always available; `PUT`/`DELETE`,
+`POST /api/ingest` and the `/api/uploads` staging routes are mounted only when `Spatial:Admin:Token`
 (`SPATIAL_ADMIN_TOKEN`) is configured, and then require it
 (`Authorization: Bearer …` or `?token=`). The Esri admin projection at
 `Spatial:GeoServices:AdminRoot` (default `/arcgis/admin`) is the same
@@ -195,7 +201,8 @@ the database-free upload path works out of the box.
 | `Spatial:Ogc:Root` | OGC WMS/WFS URL prefix (default `/ogc`) |
 | `Spatial:Ogc:ServiceTitle` | Capabilities title shared by WMS and WFS |
 | `Spatial:Ogc:MaxFeatures` | Largest feature count one WFS `GetFeature` returns |
-| `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` / `BatchSize` / `SkipMalformed` | Ingest caps, the format allowlist and page size; `SkipMalformed` drops a bad record and reports it instead of failing the upload (ADR-0041 §6, ADR-0082) |
+| `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` / `BatchSize` / `SkipMalformed` | Ingest caps, the format allowlist and page size; `SkipMalformed` drops a bad record and reports it instead of failing the upload (ADR-0041 §6, ADR-0082). `MaxBytes` also bounds a *staged* upload, which is the same document in pieces |
+| `Spatial:Uploads:Path` / `MaxAgeHours` | Where resumable-upload staging is kept and how long an un-ingested upload survives (default a per-process temp directory, 24 hours) (ADR-0083) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |
 | `Spatial:Logging:Seq:Url` | Seq server URL (ADR-0045); empty/unset leaves the host console-only |

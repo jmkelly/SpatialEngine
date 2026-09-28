@@ -101,6 +101,33 @@ this file together, then tag the release (`RELEASING.md`).
   interception lives in the reader, and the graph builds no coordinate systems
   at all. The ADR also settles ADR numbering: the next free number on `main`,
   with `AdrNumberingTests` as the enforcement.
+- **A large upload can be staged, resumed and then loaded** (ADR-0083,
+  SpatialEngine-u2x.27): an upload that failed at 90% no longer starts over.
+  `POST /api/uploads` opens (or re-opens) a staged upload, `PUT
+  /api/uploads/{id}?offset=` appends a chunk whose first byte belongs at that
+  offset, and `GET /api/uploads/{id}` answers with how many bytes have landed —
+  the offset to resume from. `POST /api/ingest?upload=<id>` then loads the
+  staged bytes. The chunks are **bytes**, not features, so the load is exactly
+  the transaction it always was: a malformed row at the end of a resumed upload
+  still fails the whole load and leaves no dataset, but the staged bytes survive
+  the failure for a retry. A partial upload can never be mistaken for a
+  complete one — `complete` is true only when a declared total is reached, and
+  the ingest refuses anything else by name and offset; the staging is discarded
+  only after the load commits, and an un-ingested upload is pruned after
+  `Spatial:Uploads:MaxAgeHours` (24). An append addressed past the staged
+  length is rejected *naming the offset to resume from*, an append behind it is
+  accepted only when the re-sent bytes are identical (the lost-acknowledgement
+  case), a refused append changes nothing, and a declared SHA-256 that does not
+  match faults the upload rather than loading bytes nobody declared. The staged
+  document is bounded by the same `Spatial:Ingest:MaxBytes` as a single-request
+  upload. The .NET and TypeScript SDKs gain the staging verbs and a driver
+  (`ResumableIngest.UploadAsync`, `ingestResumable`) that resumes from the
+  host's offset, retries a chunk that failed in transit, and ingests only once
+  every byte has landed. The Esri `/arcgis/admin/uploads` projection is
+  unchanged: the neutral staging is the domain model, and a chunked Esri
+  projection onto it is later work. The feature-cap stream wrapper duplicated
+  between the two upload paths is now the one `IngestPageCap` helper, so both
+  count the same way and answer with the same message.
 
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries

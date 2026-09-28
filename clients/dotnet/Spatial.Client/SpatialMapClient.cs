@@ -64,6 +64,115 @@ public sealed class SpatialMapClient
     {
         ArgumentNullException.ThrowIfNull(content);
         ArgumentNullException.ThrowIfNull(upload);
+        var queryString = IngestQuery(upload);
+
+        using var multipart = new MultipartFormDataContent();
+        multipart.Add(new StreamContent(content), "file", upload.FileName);
+        return await _transport.SendAsync<IngestOutcome>(
+            HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken ?? _session.Token, cancellationToken);
+    }
+
+    /// <summary>
+    /// Opens a staged upload (ADR-0083). Passing the same
+    /// <paramref name="uploadId"/> again returns the existing upload rather
+    /// than truncating it, so a client whose create response was lost recovers
+    /// instead of restarting.
+    /// </summary>
+    public Task<UploadState> StartUploadAsync(
+        string? uploadId,
+        long? totalBytes = null,
+        string? sha256 = null,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<UploadState>(
+            HttpMethod.Post,
+            $"/api/uploads?{Query(("id", uploadId), ("total", Invariant(totalBytes)), ("sha256", sha256))}",
+            null,
+            adminToken ?? _session.Token,
+            cancellationToken);
+
+    /// <summary>Lists every staged upload.</summary>
+    public Task<IReadOnlyList<UploadState>> ListUploadsAsync(
+        string? adminToken = null, CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<IReadOnlyList<UploadState>>(
+            HttpMethod.Get, "/api/uploads", null, adminToken ?? _session.Token, cancellationToken);
+
+    /// <summary>How much of a staged upload has landed — the offset to resume from.</summary>
+    public Task<UploadState> GetUploadAsync(
+        string uploadId, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<UploadState>(
+            HttpMethod.Get,
+            $"/api/uploads/{Uri.EscapeDataString(uploadId)}",
+            null,
+            adminToken ?? _session.Token,
+            cancellationToken);
+
+    /// <summary>
+    /// Appends a chunk whose first byte belongs at <paramref name="offset"/>.
+    /// The last chunk declares the total size and the digest, which is what
+    /// makes the staged upload complete.
+    /// </summary>
+    public Task<UploadState> AppendUploadAsync(
+        string uploadId,
+        Stream content,
+        long offset,
+        long? totalBytes = null,
+        string? sha256 = null,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var body = new StreamContent(content);
+        body.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        return _transport.SendAsync<UploadState>(
+            HttpMethod.Put,
+            $"/api/uploads/{Uri.EscapeDataString(uploadId)}?{Query(("offset", Invariant(offset)), ("total", Invariant(totalBytes)), ("sha256", sha256))}",
+            body,
+            adminToken ?? _session.Token,
+            cancellationToken);
+    }
+
+    /// <summary>Discards a staged upload and its bytes.</summary>
+    public Task<bool> DeleteUploadAsync(
+        string uploadId, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        _transport.SendAsync<bool>(
+            HttpMethod.Delete,
+            $"/api/uploads/{Uri.EscapeDataString(uploadId)}",
+            null,
+            adminToken ?? _session.Token,
+            cancellationToken);
+
+    /// <summary>
+    /// Ingests a staged upload instead of a body (ADR-0083). The host loads it
+    /// only when every declared byte is staged, and discards the staging once
+    /// the load has committed.
+    /// </summary>
+    public Task<IngestOutcome> IngestUploadAsync(
+        string uploadId,
+        IngestUpload upload,
+        string? adminToken = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(uploadId);
+        ArgumentNullException.ThrowIfNull(upload);
+        return _transport.SendAsync<IngestOutcome>(
+            HttpMethod.Post,
+            $"/api/ingest?{IngestQuery(upload, stagedUpload: uploadId)}",
+            null,
+            adminToken ?? _session.Token,
+            cancellationToken);
+    }
+
+    private static string Query(params (string Key, string? Value)[] parameters) =>
+        string.Join('&', parameters
+            .Where(parameter => !string.IsNullOrEmpty(parameter.Value))
+            .Select(parameter => $"{parameter.Key}={Uri.EscapeDataString(parameter.Value!)}"));
+
+    private static string? Invariant(long? value) =>
+        value?.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string IngestQuery(IngestUpload upload, string? stagedUpload = null)
+    {
         var query = new Dictionary<string, string?>
         {
             ["store"] = upload.Store,
@@ -73,16 +182,12 @@ public sealed class SpatialMapClient
             ["identity"] = upload.Identity,
             ["identityField"] = upload.IdentityField,
             ["publish"] = upload.Publish,
-            ["sourceSrid"] = upload.SourceSrid?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["sourceSrid"] = Invariant(upload.SourceSrid),
+            ["upload"] = stagedUpload,
         };
-        var queryString = string.Join('&', query
+        return string.Join('&', query
             .Where(pair => !string.IsNullOrEmpty(pair.Value))
             .Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value!)}"));
-
-        using var multipart = new MultipartFormDataContent();
-        multipart.Add(new StreamContent(content), "file", upload.FileName);
-        return await _transport.SendAsync<IngestOutcome>(
-            HttpMethod.Post, $"/api/ingest?{queryString}", multipart, adminToken ?? _session.Token, cancellationToken);
     }
 
     /// <summary>

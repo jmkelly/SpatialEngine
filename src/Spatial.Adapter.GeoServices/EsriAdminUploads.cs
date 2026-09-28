@@ -44,7 +44,11 @@ internal static class EsriAdminUploads
             await using var session = await DatasetDecoder.DecodeStreamingAsync(
                 body, format, Options(options, srid, identityField, transforms), token);
             var streamed = await streaming
-                .IngestStreamAsync(request, session.Schema, Capped(session.Pages, options, token), token)
+                .IngestStreamAsync(
+                    request,
+                    session.Schema,
+                    IngestPageCap.Apply(session.Pages, options.MaxFeatures, GeoServicesErrors.Invalid, token),
+                    token)
                 .ConfigureAwait(false);
             return EsriAdminResponses.Upload(
                 staging.Stage(streamed with { Report = await session.Report.ConfigureAwait(false) }, store));
@@ -54,8 +58,7 @@ internal static class EsriAdminUploads
         var features = decoded.Pages.Sum(page => (long)page.Count);
         if (features > options.MaxFeatures)
         {
-            throw GeoServicesErrors.Invalid(
-                $"The upload has {features} features, above the configured maximum of {options.MaxFeatures}.");
+            throw GeoServicesErrors.Invalid(IngestPageCap.Exceeded(options.MaxFeatures));
         }
 
         var outcome = await target.IngestAsync(request, decoded.Pages, token);
@@ -63,28 +66,8 @@ internal static class EsriAdminUploads
     }
 
     /// <summary>
-    /// Fails the upload once more features have been read than the cap allows.
-    /// A streamed decode has to check while reading or the cap is not a cap.
+    /// The decode options the Esri projection shares with the neutral path.
     /// </summary>
-    private static async IAsyncEnumerable<FeatureBatch> Capped(
-        IAsyncEnumerable<FeatureBatch> pages,
-        EsriAdminOptions options,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        long seen = 0;
-        await foreach (var page in pages.WithCancellation(cancellationToken).ConfigureAwait(false))
-        {
-            seen += page.Count;
-            if (seen > options.MaxFeatures)
-            {
-                throw GeoServicesErrors.Invalid(
-                    $"The upload is above the configured maximum of {options.MaxFeatures} features.");
-            }
-
-            yield return page;
-        }
-    }
-
     private static DecodeOptions Options(
         EsriAdminOptions options, int srid, string? identityField, ICoordinateTransforms transforms) => new()
         {

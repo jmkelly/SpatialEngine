@@ -36,6 +36,24 @@ await client.logout();
 `setToken()` is available for applications that manage the token themselves.
 The browser workbench only persists the token when the user opts in.
 
+## Resumable uploads (ADR-0083)
+
+A document too large for one request is staged, resumed and then loaded:
+
+```ts
+await client.ingestResumable(
+  new Blob([bytes]),
+  { dataset: "public.parks", srid: 4326, chunkSize: 8 * 1024 * 1024 },
+  adminToken,
+);
+```
+
+`ingestResumable` asks the host how many bytes it holds, appends from there,
+retries a chunk that failed in transit from the offset the host reports, and
+ingests only once every byte has landed. The staging verbs
+(`startUpload`/`getUpload`/`appendUpload`/`deleteUpload`/`ingestUpload`) are
+there when a caller wants to drive the protocol itself.
+
 ## Commands (node >= 22.6)
 
 ```bash

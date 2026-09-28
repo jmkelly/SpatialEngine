@@ -53,6 +53,21 @@ export interface IngestResult {
   map?: null | Map;
 }
 
+/**
+ * How much of a staged upload has landed (ADR-0083). `complete` is true only
+ * when every declared byte has arrived, so a partial upload is never presented
+ * as a loadable one.
+ */
+export interface UploadState {
+  uploadId: string;
+  received: number;
+  totalBytes?: null | number;
+  complete: boolean;
+  sha256?: null | string;
+  /** Why the last append was refused, when it was. */
+  fault?: null | string;
+}
+
 /** One downloadable source of a development seed document (ADR-0078). */
 export interface SeedSource {
   id: string;
@@ -409,6 +424,147 @@ export class SpatialClient {
     });
   }
 
+  // ---- staged uploads (ADR-0083) ----
+
+  /**
+   * Opens a staged upload (requires the admin token). Passing the same
+   * `uploadId` again returns the existing upload rather than truncating it,
+   * so a client whose create response was lost recovers instead of restarting.
+   */
+  async startUpload(
+    options: { uploadId?: string; totalBytes?: number; sha256?: string },
+    adminToken?: string,
+    signal?: AbortSignal,
+  ): Promise<UploadState> {
+    const query = new URLSearchParams();
+    if (options.uploadId) query.set("id", options.uploadId);
+    if (options.totalBytes !== undefined) query.set("total", String(options.totalBytes));
+    if (options.sha256) query.set("sha256", options.sha256);
+    const suffix = query.toString();
+    return this.send<UploadState>("POST", `/api/uploads${suffix ? `?${suffix}` : ""}`, {
+      headers: authorization(adminToken ?? this.token),
+      signal,
+    });
+  }
+
+  /** How much of a staged upload has landed — the offset to resume from. */
+  async getUpload(uploadId: string, adminToken?: string, signal?: AbortSignal): Promise<UploadState> {
+    return this.get<UploadState>(`/api/uploads/${encodeURIComponent(uploadId)}`, signal);
+  }
+
+  /** Lists every staged upload. */
+  async listUploads(adminToken?: string, signal?: AbortSignal): Promise<UploadState[]> {
+    return this.get<UploadState[]>("/api/uploads", signal);
+  }
+
+  /**
+   * Appends a chunk whose first byte belongs at `offset`; the chunk declaring
+   * the total size and digest is what completes the upload.
+   */
+  async appendUpload(
+    uploadId: string,
+    chunk: Blob,
+    options: { offset: number; totalBytes?: number; sha256?: string },
+    adminToken?: string,
+    signal?: AbortSignal,
+  ): Promise<UploadState> {
+    const query = new URLSearchParams({ offset: String(options.offset) });
+    if (options.totalBytes !== undefined) query.set("total", String(options.totalBytes));
+    if (options.sha256) query.set("sha256", options.sha256);
+    return this.send<UploadState>("PUT", `/api/uploads/${encodeURIComponent(uploadId)}?${query.toString()}`, {
+      body: chunk,
+      headers: { "content-type": "application/octet-stream", ...authorization(adminToken ?? this.token) },
+      signal,
+    });
+  }
+
+  /** Discards a staged upload and its bytes. */
+  async deleteUpload(uploadId: string, adminToken?: string, signal?: AbortSignal): Promise<boolean> {
+    return this.send<boolean>("DELETE", `/api/uploads/${encodeURIComponent(uploadId)}`, {
+      headers: authorization(adminToken ?? this.token),
+      signal,
+    });
+  }
+
+  /**
+   * Ingests a staged upload instead of a body (requires the admin token). The
+   * host loads it only when every declared byte is staged, and discards the
+   * staging once the load has committed.
+   */
+  async ingestUpload(
+    uploadId: string,
+    options: { dataset: string; srid: number; format?: string; store?: string; identity?: string; identityField?: string; publish?: string; sourceSrid?: number },
+    adminToken?: string,
+    signal?: AbortSignal,
+  ): Promise<IngestResult> {
+    const query = new URLSearchParams({
+      dataset: options.dataset,
+      srid: String(options.srid),
+      format: options.format ?? "geojson",
+      store: options.store ?? "memory",
+      upload: uploadId,
+    });
+    if (options.identity) query.set("identity", options.identity);
+    if (options.identityField) query.set("identityField", options.identityField);
+    if (options.publish) query.set("publish", options.publish);
+    if (options.sourceSrid !== undefined) query.set("sourceSrid", String(options.sourceSrid));
+    return this.send<IngestResult>("POST", `/api/ingest?${query.toString()}`, {
+      headers: authorization(adminToken ?? this.token),
+      signal,
+    });
+  }
+
+  /**
+   * Uploads a blob in resumable chunks and ingests it (ADR-0083): the driver
+   * asks the host where the staging got to, continues from there, and ingests
+   * once every byte has landed. The load itself is not chunked — it is one
+   * transaction over the whole document, as any other ingest is.
+   */
+  async ingestResumable(
+    content: Blob,
+    options: { dataset: string; srid: number; format?: string; store?: string; identity?: string; identityField?: string; publish?: string; sourceSrid?: number; chunkSize?: number; uploadId?: string; maxAttempts?: number },
+    adminToken?: string,
+    signal?: AbortSignal,
+  ): Promise<IngestResult> {
+    const chunkSize = options.chunkSize ?? 8 * 1024 * 1024;
+    const maxAttempts = options.maxAttempts ?? 3;
+    const digest = await sha256Hex(content);
+    const started = await this.startUpload({ uploadId: options.uploadId, totalBytes: content.size, sha256: digest }, adminToken, signal);
+    let offset = (await this.getUpload(started.uploadId, adminToken, signal)).received;
+    while (offset < content.size) {
+      offset = (await this.appendChunk(started.uploadId, content, offset, content.size, digest, chunkSize, maxAttempts, adminToken, signal)).received;
+    }
+
+    return this.ingestUpload(started.uploadId, options, adminToken, signal);
+  }
+
+  /**
+   * Appends the chunk starting at `offset`, retrying a chunk that failed in
+   * transit from whatever offset the host reports afterwards — a chunk that was
+   * refused may still have landed, so the client's own count is not trusted.
+   */
+  private async appendChunk(
+    uploadId: string,
+    content: Blob,
+    offset: number,
+    total: number,
+    digest: string,
+    chunkSize: number,
+    attempts: number,
+    adminToken?: string,
+    signal?: AbortSignal,
+  ): Promise<UploadState> {
+    for (let attempt = 1; ; attempt++) {
+      const chunk = content.slice(offset, offset + chunkSize);
+      try {
+        return await this.appendUpload(uploadId, chunk, { offset, totalBytes: total, sha256: digest }, adminToken, signal);
+      } catch (error) {
+        if (attempt >= attempts || !isRetriable(error)) throw error;
+        offset = (await this.getUpload(uploadId, adminToken, signal)).received;
+      }
+    }
+  }
+
   /**
    * Runs a seed document against a Development host: download, ingest and
    * publish in one call (ADR-0078; requires the admin token when one is
@@ -522,6 +678,22 @@ function toBase64(bytes: Uint8Array): string {
 
 function authorization(token?: string): Record<string, string> {
   return token ? { authorization: `Bearer ${token}` } : {};
+}
+
+/** The SHA-256 of a blob, lower-case hex, as the staging protocol names it. */
+async function sha256Hex(content: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await content.arrayBuffer());
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Whether a failed chunk is worth sending again: a transport failure or a
+ * server-side answer might have landed the bytes, so the retry re-reads the
+ * host's offset. A structured client error would fail identically.
+ */
+function isRetriable(error: unknown): boolean {
+  if (error instanceof SpatialApiError) return error.status >= 500;
+  return error instanceof TypeError;
 }
 
 function fromBase64(base64: string): Uint8Array {
