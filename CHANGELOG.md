@@ -131,6 +131,19 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A vector tile whose bounds collapse on one axis is rejected instead of
+  encoding saturated infinities** (ADR-0101, SpatialEngine-a74.1): the MVT
+  encoder places a vertex by dividing by the tile's extents, and a tile with no
+  width or no height — a well-formed `Envelope(5, -9, 5, 9)`, which is not
+  empty — divided by zero, saturated to `long.MaxValue` and went out as
+  `09 0080400A00FF3F`: a `200`, a correct media type and a line of astronomical
+  length on the client. Only `Bounds.IsEmpty` was checked. A tile now needs
+  extent on both axes and is rejected as `invalid.arguments` before a layer is
+  read, which also covers inverted and non-finite bounds. The frame is not
+  narrowed to a centre line instead, because that would encode geometry at a
+  position the caller never asked for. Ordinary tiles are byte-identical: a
+  vertical line over `Envelope(0, -10, 10, 10)` still encodes as
+  `098020E63C0A00CB39`.
 - **A resumed upload is no longer refused for "the chunk does not fit"** (ADR-0090
   §3, SpatialEngine-u2x.27): the staging bounded an incoming chunk against the
   bytes already staged rather than against the offset the chunk was addressed

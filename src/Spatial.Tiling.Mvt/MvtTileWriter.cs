@@ -168,6 +168,12 @@ internal static class MvtTileWriter
         }
     }
 
+    /// <summary>
+    /// Places a coordinate in the tile's integer frame. The bounds must have
+    /// extent on both axes: the tile is validated by <see cref="MvtTileService"/>
+    /// before any layer is read, so a zero divisor here is a broken invariant
+    /// rather than a caller's tile.
+    /// </summary>
     private static (long X, long Y) Project(Coordinate coordinate, Envelope bounds, int extent)
     {
         var x = (coordinate.X - bounds.MinX) * extent / bounds.Width;
