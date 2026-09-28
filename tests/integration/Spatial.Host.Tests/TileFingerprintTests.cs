@@ -6,16 +6,20 @@ using Spatial.Host.Api;
 namespace Spatial.Host.Tests;
 
 /// <summary>
-/// The content version behind a tile cache key (ADR-0046): the style, layer
-/// descriptors, imagery stack and encoding options all fold into the hash.
+/// The content version behind a tile cache key (ADR-0046, ADR-0075): the style,
+/// layer descriptors, imagery stack, encoding options and the folded content
+/// version of the request's datasets all fold into the hash.
 /// </summary>
 public sealed class TileFingerprintTests
 {
+    /// <summary>The folded content version of the request's datasets (ADR-0075).</summary>
+    private const string DataVersion = "content";
+
     [Fact]
     public void The_same_request_hashes_to_the_same_version()
     {
-        var first = TileEndpoints.Fingerprint(Request());
-        var second = TileEndpoints.Fingerprint(Request());
+        var first = TileEndpoints.Fingerprint(Request(), DataVersion);
+        var second = TileEndpoints.Fingerprint(Request(), DataVersion);
 
         Assert.Equal(first, second);
         Assert.Equal(64, first.Length);
@@ -24,50 +28,58 @@ public sealed class TileFingerprintTests
     [Fact]
     public void A_style_change_changes_the_version()
     {
-        var baseline = TileEndpoints.Fingerprint(Request());
+        var baseline = TileEndpoints.Fingerprint(Request(), DataVersion);
 
-        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Style = Style(9) }));
+        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Style = Style(9) }, DataVersion));
     }
 
     [Fact]
     public void A_layer_or_store_change_changes_the_version()
     {
-        var baseline = TileEndpoints.Fingerprint(Request());
+        var baseline = TileEndpoints.Fingerprint(Request(), DataVersion);
 
         Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with
         {
             Layers = [new RenderLayerDto("demo.other", "demo")],
-        }));
+        }, DataVersion));
         Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with
         {
             Layers = [new RenderLayerDto("demo.cities", "warehouse")],
-        }));
+        }, DataVersion));
         Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with
         {
             Layers = [new RenderLayerDto("demo.cities", "demo", "name='London'")],
-        }));
+        }, DataVersion));
     }
 
     [Fact]
     public void A_format_or_scale_change_changes_the_version()
     {
-        var baseline = TileEndpoints.Fingerprint(Request());
+        var baseline = TileEndpoints.Fingerprint(Request(), DataVersion);
 
-        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Format = RasterFormat.Jpeg }));
-        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Scale = 2 }));
-        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Quality = 50 }));
+        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Format = RasterFormat.Jpeg }, DataVersion));
+        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Scale = 2 }, DataVersion));
+        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Quality = 50 }, DataVersion));
     }
 
     [Fact]
     public void An_imagery_change_changes_the_version()
     {
-        var baseline = TileEndpoints.Fingerprint(Request());
+        var baseline = TileEndpoints.Fingerprint(Request(), DataVersion);
 
-        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Imagery = [new RenderImageryDto("basemap")] }));
+        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with { Imagery = [new RenderImageryDto("basemap")] }, DataVersion));
         Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request() with
         {
             Imagery = [new RenderImageryDto("basemap", RasterBlend.Multiply, 0.5)],
-        }));
+        }, DataVersion));
+    }
+
+    [Fact]
+    public void A_data_version_change_changes_the_version()
+    {
+        var baseline = TileEndpoints.Fingerprint(Request(), DataVersion);
+
+        Assert.NotEqual(baseline, TileEndpoints.Fingerprint(Request(), "moved"));
     }
 
     private static TileRenderRequest Request() => new(

@@ -67,7 +67,15 @@ internal sealed class VectorTileService
         return new VectorTileResult(tileValue, false);
     }
 
-    public static string Version(string map, IEnumerable<MapLayer> layers) =>
+    /// <summary>
+    /// The cache version for a map's vector tile (ADR-0075): the map, its
+    /// layers and their styles, plus the folded content version of every
+    /// dataset the tile reads, so a write invalidates exactly the tiles derived
+    /// from that data.
+    /// </summary>
+    public static string Version(string map, IEnumerable<MapLayer> layers, string dataVersion) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
-            map + "\n" + string.Join("\n", layers.Select(layer => $"{layer.LayerId}:{layer.Dataset}:{layer.Store}:{layer.Style}")))));
+            map + "\n"
+            + string.Join("\n", layers.Select(layer => $"{layer.LayerId}:{layer.Dataset}:{layer.Store}:{layer.Style}"))
+            + "\n" + dataVersion)));
 }

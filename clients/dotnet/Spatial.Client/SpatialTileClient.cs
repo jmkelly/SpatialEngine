@@ -26,6 +26,20 @@ public sealed class SpatialTileClient
             $"/api/render/tiles/{z}/{x}/{y}.{format}", request, cancellationToken);
     }
 
+    /// <summary>
+    /// Renders one tile and reports the content version it was rendered at
+    /// (ADR-0075), so a client that caches tiles of its own can tell whether
+    /// the data or style underneath them changed without parsing the version.
+    /// </summary>
+    public async Task<RenderedTile> RenderWithVersionAsync(
+        int z, int x, int y, TileRenderRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var format = request.Format.ToString().ToLowerInvariant();
+        return await _transport.PostForTrackedImageAsync(
+            $"/api/render/tiles/{z}/{x}/{y}.{format}", request, cancellationToken);
+    }
+
     /// <summary>Gets one live MVT tile for a map.</summary>
     public Task<VectorTile> VectorTileAsync(
         string map, int z, int x, int y, string? scheme = null, CancellationToken cancellationToken = default)

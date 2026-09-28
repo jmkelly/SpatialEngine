@@ -99,6 +99,16 @@ public sealed record TileResultDto(
 /// <summary>The ordered result list of a tile batch, in request order.</summary>
 public sealed record TileBatchResponse(IReadOnlyList<TileResultDto> Tiles);
 
+/// <summary>
+/// A single rendered tile with the content version it was rendered at
+/// (ADR-0075): the key the cache stored it under, which folds in the request
+/// and the content versions of the datasets it read. A client that keeps its
+/// own tiles can compare the version it last saw with the one it just fetched
+/// and know whether anything underneath it changed; the version is opaque and
+/// carries no meaning beyond equality.
+/// </summary>
+public sealed record RenderedTile(RasterImage Image, string Version, bool Cached);
+
 /// <summary>One level of detail as served by <c>GET /api/render/tiles/capabilities</c>.</summary>
 public sealed record TileLevelDto(int Zoom, double Resolution, double ScaleDenominator);
 
