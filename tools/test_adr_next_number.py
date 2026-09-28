@@ -460,5 +460,70 @@ class StaleReservationTests(unittest.TestCase):
             self.assertIn("feature", listed)
 
 
+class ReservationStoreLocationTests(unittest.TestCase):
+    """A test cannot read the swarm's store and stay deterministic.
+
+    The store is shared by every worktree on purpose, so it changes while a
+    test runs: a live reservation for the number the numbering gate probes
+    makes --check correctly refuse it, and the gate reports a violation for a
+    record that does not exist (SpatialEngine-u2x.33). The store therefore has
+    to be pointable somewhere private, without changing the default.
+    """
+
+    def test_the_default_is_still_the_shared_git_dir(self):
+        script = load_script()
+        with SeededRepo() as seeded:
+            self.assertEqual(script.reservation_dir(seeded.repo).name,
+                             "adr-reservations")
+            self.assertEqual(script.reservation_dir(seeded.repo).parent.resolve(),
+                             (seeded.repo / ".git").resolve())
+
+    def test_a_named_store_is_used_instead_of_the_shared_one(self):
+        with SeededRepo() as seeded:
+            elsewhere = Path(tempfile.mkdtemp()) / "store"
+            subprocess.run(
+                ["python3", str(SCRIPT), "--reserve", "--reservation-dir", str(elsewhere)],
+                cwd=seeded.repo, capture_output=True, text=True, check=True)
+            self.assertTrue((elsewhere / "0010.json").is_file())
+            # The shared store is untouched, so no worker can see the hold.
+            self.assertEqual(subprocess.run(
+                ["python3", str(SCRIPT), "--list"], cwd=seeded.repo,
+                capture_output=True, text=True).stdout, "")
+
+    def test_check_ignores_a_reservation_in_another_store(self):
+        with SeededRepo() as seeded:
+            shared = Path(tempfile.mkdtemp()) / "swarm"
+            shared.mkdir()
+            (shared / "0011.json").write_text(json.dumps({
+                "number": 11, "branch": "other", "bead": "x", "base": "main",
+                "reserved_at": datetime.now(timezone.utc).isoformat()}))
+            mine = Path(tempfile.mkdtemp()) / "mine"
+            mine.mkdir()
+            got = subprocess.run(
+                ["python3", str(SCRIPT), "--reservation-dir", str(mine),
+                 "--check", "0011"],
+                cwd=seeded.repo, capture_output=True, text=True)
+            self.assertEqual(got.returncode, 0, got.stdout)
+            self.assertEqual(got.stdout.strip(), "0011")
+
+    def test_a_reservation_in_the_named_store_is_still_honoured(self):
+        # Pointing the allocator elsewhere must not turn the store off, or the
+        # override would be a way to skip the hold the swarm depends on.
+        with SeededRepo() as seeded:
+            store = Path(tempfile.mkdtemp()) / "store"
+            subprocess.run(
+                ["python3", str(SCRIPT), "--reserve", "--reservation-dir", str(store)],
+                cwd=seeded.repo, capture_output=True, text=True, check=True)
+            git("worktree", "add", "-q", "-b", "other",
+                str(Path(seeded.repo.parent, "linked")), cwd=seeded.repo)
+            got = subprocess.run(
+                ["python3", str(SCRIPT), "--reservation-dir", str(store),
+                 "--check", "0010"],
+                cwd=Path(seeded.repo.parent, "linked"),
+                capture_output=True, text=True)
+            self.assertEqual(got.returncode, 1, got.stdout)
+            self.assertIn("reserved", got.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

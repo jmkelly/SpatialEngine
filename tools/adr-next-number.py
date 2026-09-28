@@ -6,6 +6,7 @@
     python3 tools/adr-next-number.py --check 0088         # exit 1 if taken
     python3 tools/adr-next-number.py --list               # who holds what
     python3 tools/adr-next-number.py --release 0088       # give it back
+    python3 tools/adr-next-number.py --reservation-dir /tmp/scratch  # elsewhere
 
 A number is a reference: it only means something while it identifies exactly
 one record, and AdrNumberingTests proves that (SpatialEngine-u2x.24). A branch
@@ -31,6 +32,14 @@ A reservation ends when the record lands (`--release`, once the branch is
 rebased onto a main that carries the record) or when it goes stale — a branch
 that no longer exists, a file that cannot be read, or one older than
 `--max-age-days`. A worker that dies mid-bead must not hold a number for ever.
+
+Because the store is shared, it is also the one input here that changes while
+something is reading it: a live reservation makes `--check` refuse a number
+whose record does not exist yet, which is correct and made the numbering gate
+red on every branch at once (SpatialEngine-u2x.33). `--reservation-dir` points
+the store somewhere else so a test can exercise the allocator without reading,
+or writing, the swarm's coordination state. It is a location, not a switch: a
+reservation in the named store is honoured exactly as one in the shared one.
 """
 from __future__ import annotations
 
@@ -54,6 +63,18 @@ BASE_CANDIDATES = ("origin/main", "main")
 # repository's own git metadata, shared by every worktree, and never committed.
 RESERVATION_DIRNAME = "adr-reservations"
 DEFAULT_MAX_AGE_DAYS = 14
+
+# Set by --reservation-dir. Threaded through the module rather than through
+# every reservation function as a parameter: the store is one piece of
+# coordination state, and the functions that need it already take the
+# repository.
+_RESERVATION_DIR: Path | None = None
+
+
+def use_reservation_dir(path: Path | None) -> None:
+    """Read and write reservations somewhere other than the git common dir."""
+    global _RESERVATION_DIR
+    _RESERVATION_DIR = path
 
 
 def numbers_in(paths) -> set[int]:
@@ -134,6 +155,9 @@ def common_dir(str_repo: Path) -> Path:
 
 
 def reservation_dir(str_repo: Path) -> Path:
+    """The shared store, unless the caller named one."""
+    if _RESERVATION_DIR is not None:
+        return _RESERVATION_DIR
     return common_dir(str_repo) / RESERVATION_DIRNAME
 
 
@@ -298,6 +322,10 @@ def main(argv=None) -> int:
                         help="a reservation older than this, or one whose "
                              f"branch is gone, is stale (default "
                              f"{DEFAULT_MAX_AGE_DAYS})")
+    parser.add_argument("--reservation-dir", metavar="DIR",
+                        help="read and write reservations in DIR instead of "
+                             "the shared git dir; for tests, which must not "
+                             "read live swarm state")
     args = parser.parse_args(argv)
 
     if sum(bool(flag) for flag in (args.check, args.reserve,
@@ -306,6 +334,8 @@ def main(argv=None) -> int:
 
     str_repo = repository_root()
     base_ref = args.base or resolve_base_ref(str_repo)
+    use_reservation_dir(Path(args.reservation_dir) if args.reservation_dir
+                        else None)
 
     if args.list:
         branch = current_branch(str_repo)
