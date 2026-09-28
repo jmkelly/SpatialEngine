@@ -79,14 +79,18 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   reports declared axes; the service performs no swaps — axis-order tests pin
   this. Z/M pass through untouched; empty geometries keep type and layout.
 - Omitted `source` defaults to the geometry's own CRS (then required).
-- Built-in EPSG catalogue: the common geographic and projected CRSs written
-  out, plus projected *families* generated from one parameter template — the
-  UTM grid (zones 1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760)
-  and the ETRS89 and NAD83 UTM bands over their own datums. A code outside
-  the catalogue and the families is `invalid.arguments`; there is no WKT
-  input. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36 classic
-  Helmert (±0.1 m, no grid). The catalogue is built once, and each CRS in it
-  on first use.
+- Built-in EPSG catalogue, **defined in EPSG WKT** and read by the provider's
+  own reader (`ProjWkt`), so a definition is data and construction stays on
+  one programmatic builder: the common geographic and projected CRSs, plus
+  projected *families* generated from one WKT template — the UTM grid (zones
+  1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760) and the ETRS89
+  and NAD83 UTM bands over their own datums. WKT1 and WKT2 both read; the
+  Pseudo-Mercator spellings are intercepted and routed to the known-good
+  construction (reading EPSG:3857 as `Mercator_1SP` is 33 km out). A code
+  outside the catalogue and the families is `invalid.arguments`; there is no
+  WKT *input*. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36
+  classic Helmert (±0.1 m, no grid). The catalogue is built once, and each
+  definition read and each CRS built on first use.
 
 ## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IVersionedFeatureStore`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 

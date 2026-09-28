@@ -56,10 +56,24 @@ about its accuracy limits (below).
    UTM bands over their own datums. Generating the families is what makes
    "the code the client actually has" servable: enumerating instances left
    every zone but the listed ones an `invalid.arguments` failure. The
-   catalogue is **built programmatically** through ProjNet's factory, not
-   parsed from EPSG WKT: ProjNet 2.1's WKT reader maps the "Popular
-   Visualisation Pseudo-Mercator" projection class to a plain Mercator_1SP,
-   which distorts Web Mercator northings by ~33 km.
+   catalogue's **definitions are EPSG WKT** and are read by a reader of our
+   own (`ProjWkt`), which produces a geodetic or projected definition that
+   the catalogue's one programmatic builder constructs through ProjNet's
+   factory. We do not use ProjNet 2.1's WKT reader: it cannot read WKT2 at all
+   ("'PROJCRS' is not recognized"), and where it can read WKT1 it takes the
+   projection class from the document, so the widely published
+   `Mercator_1SP` spelling of EPSG:3857 (the Google/OSRM/GeoServer dialect,
+   and EPSG:900913) becomes a plain Mercator and puts Web Mercator **33 km**
+   too far south at Berlin's latitude. Our reader intercepts the
+   Pseudo-Mercator case before construction — by projection name, CRS name or
+   EPSG 3857/3785/900913/102100/102113 authority — and routes it to the same
+   programmatic construction the catalogue has always used, which is pinned
+   byte-for-byte by test. Everything else is read as data: the WKT text is
+   the definition, and construction stays on the path that is already
+   trusted. The reader resolves only the projection methods the vendored
+   definitions use, because resolving a method name to a ProjNet projection
+   is a claim that the two compute the same thing; anything else is a named
+   `invalid.arguments`-shaped failure rather than a silent approximation.
 3. **Axis order**: the engine convention is x-first for every CRS — x is
    longitude for geographic, easting for projected, y the second axis.
    Describe reports the CRS's declared axes; the adapter needs no swaps.
@@ -91,7 +105,16 @@ about its accuracy limits (below).
   referrer (the transform runner), holding the fan-in at Ca 7 — the planned
   budget for a geometry-processing plugin.
 - ProjNet 2.1's quirks are pinned by tests: its projected CRSs expose the
-  horizontal datum through their geographic coordinate system, its WKT
-  reader mis-classifies Pseudo-Mercator, and its math is (x, y)-ordered.
+  horizontal datum through their geographic coordinate system, its own WKT
+  reader is not usable (no WKT2, and a `Mercator_1SP` reading of Web
+  Mercator that is 33 km out), and its math is (x, y)-ordered. The 33 km is
+  measured in `ProjNetWktCatalogTests`, not asserted in a comment, and the
+  coordinates of all fifteen codes the catalogue served before the WKT path
+  are pinned to the last bit.
+- Adding a CRS is adding its WKT. The reader is deliberately narrow — four
+  projection methods, both WKT dialects — because a wider method map means
+  claiming equivalence with PROJ for projections nobody here has checked
+  (ProjNet's `Albers_Conic_Equal_Area` is one such open question, tracked in
+  the queue); widening it is a separate, measured piece of work.
 - The `$geometry` interchange carries transformed results unchanged; only the
   contract ids and the `$crs` description value are new on the wire.

@@ -70,6 +70,35 @@ this file together, then tag the release (`RELEASING.md`).
   the request's extent, then spends the rest of the budget on the same verb;
   an unservable `mode` or `originPosition` is still rejected by name.
 
+- **A WKT definition path for the built-in CRS catalogue** (ADR-0027,
+  SpatialEngine-u2x.17): every CRS the ProjNet provider serves is now
+  defined as EPSG WKT and read by a reader of the engine's own, so the
+  catalogue is no longer a hand-written parameter list. `ProjWkt` reads both
+  the OGC WKT1 and the WKT2 dialect and hands what it reads to the one
+  programmatic builder the catalogue already used — the UTM families are one
+  WKT template with two substituted numbers, and the hand-written rows, the
+  generated zones and the definitions that exist only as WKT are
+  indistinguishable to callers. The Pseudo-Mercator workaround survives as
+  code rather than as a refusal: the reader intercepts the identifiable
+  spellings (the projection names, the CRS names, the EPSG
+  3857/3785/900913/102100/102113 authorities) before construction and routes
+  them to the known-good programmatic path, which matters because EPSG:3857
+  is very widely published with the projection named `Mercator_1SP`, and
+  ProjNet's own WKT reader reads that spelling as a plain Mercator —
+  **33,931 m** too far south at Berlin's latitude, measured by test rather
+  than asserted in a comment. Two definitions that are new to the served set
+  come in with the path, both read as WKT and both verified against something
+  other than the library that reads them: **EPSG:3395** (WGS 84 / World
+  Mercator) against EPSG Guidance Note 7-2's method 9804, and **EPSG:2193**
+  (NZGD2000 / New Zealand Transverse Mercator) against the projection's own
+  analytics — its central meridian, scale factor, false easting, false
+  northing and latitude of origin, and the meridian-arc series. **EPSG:3857
+  and the other fourteen codes the catalogue already served are
+  byte-identical**, pinned to the last bit, the catalogue is still built once
+  and lazily, and the reader resolves only the projection methods it has
+  been checked for, so a definition is never served with coordinates that are
+  quietly wrong.
+
 - **Ground-distance buffering** (ADR-0075, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
