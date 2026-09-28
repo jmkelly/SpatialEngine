@@ -123,7 +123,7 @@ internal static class FeatureRelationshipEngine
             .ToList();
         var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(traversal.Target.Related.Description, effective));
         return ordered
-            .Select(row => FeatureProjection.TransformFeature(row, effective, traversal.Query.LayerCrs, traversal.Transforms, cancellationToken))
+            .Select(row => FeatureProjection.TransformFeature(row, effective, traversal.Query.LayerCrs, traversal.Transforms, traversal.Operations, cancellationToken))
             .ToList();
     }
 
