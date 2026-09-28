@@ -5,7 +5,7 @@ namespace Spatial.Client;
 
 /// <summary>
 /// How <see cref="ResumableIngest"/> chunks a document and how hard it retries
-/// (ADR-0088).
+/// (ADR-0089).
 /// </summary>
 /// <param name="ChunkSize">Bytes per request; the default is 8 MiB.</param>
 /// <param name="UploadId">
@@ -19,7 +19,7 @@ public sealed record ResumableUpload(
     int MaxAttempts = 3);
 
 /// <summary>
-/// Uploads a large document in resumable chunks (ADR-0088): stage, ask where
+/// Uploads a large document in resumable chunks (ADR-0089): stage, ask where
 /// the staging got to, append from there, and ingest once every byte is in.
 /// <para>
 /// The driver is the honest part of the protocol. A chunk that fails in transit

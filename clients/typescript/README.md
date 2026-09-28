@@ -36,7 +36,7 @@ await client.logout();
 `setToken()` is available for applications that manage the token themselves.
 The browser workbench only persists the token when the user opts in.
 
-## Resumable uploads (ADR-0088)
+## Resumable uploads (ADR-0089)
 
 A document too large for one request is staged, resumed and then loaded:
 

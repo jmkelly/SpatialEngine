@@ -4,7 +4,7 @@ using Spatial.Contracts.Providers;
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The staged-upload surface (ADR-0088): a client that cannot send a large
+/// The staged-upload surface (ADR-0089): a client that cannot send a large
 /// document in one request appends it here, asks how far it got, and finally
 /// asks the ingest route to load the staged bytes.
 /// <para>

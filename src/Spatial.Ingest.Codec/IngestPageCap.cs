@@ -4,7 +4,7 @@ using Spatial.Core.Features;
 namespace Spatial.Ingest.Codec;
 
 /// <summary>
-/// The feature cap on a streamed decode (ADR-0082 §4, ADR-0088). One helper,
+/// The feature cap on a streamed decode (ADR-0082 §4, ADR-0089). One helper,
 /// because the neutral and Esri upload paths both enforce it and two copies of
 /// a cap are two caps that drift.
 /// <para>

@@ -73,7 +73,7 @@ public sealed class SpatialMapClient
     }
 
     /// <summary>
-    /// Opens a staged upload (ADR-0088). Passing the same
+    /// Opens a staged upload (ADR-0089). Passing the same
     /// <paramref name="uploadId"/> again returns the existing upload rather
     /// than truncating it, so a client whose create response was lost recovers
     /// instead of restarting.
@@ -143,7 +143,7 @@ public sealed class SpatialMapClient
             cancellationToken);
 
     /// <summary>
-    /// Ingests a staged upload instead of a body (ADR-0088). The host loads it
+    /// Ingests a staged upload instead of a body (ADR-0089). The host loads it
     /// only when every declared byte is staged, and discards the staging once
     /// the load has committed.
     /// </summary>
