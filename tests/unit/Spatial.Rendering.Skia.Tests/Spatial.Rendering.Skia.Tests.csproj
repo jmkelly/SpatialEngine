@@ -3,7 +3,8 @@
   <!--
     Unit tests for the Skia vector rasterizer (ADR-0044): style compilation,
     the compiled filter model, geometry placement/shaping, path building and
-    the render facade against in-memory fakes — no store or database.
+    the render facade against in-memory fakes and the in-memory store — no
+    database.
   -->
 
   <PropertyGroup>
@@ -25,6 +26,9 @@
     <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Rendering.Skia\Spatial.Rendering.Skia.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Operations.NetTopologySuite\Spatial.Operations.NetTopologySuite.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Transformations.ProjNet\Spatial.Transformations.ProjNet.csproj" />
   </ItemGroup>
 
 </Project>
