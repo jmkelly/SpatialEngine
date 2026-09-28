@@ -65,9 +65,13 @@ You are the swarm coordinator for the SpatialEngine repo, running the epic
 
 Each tick, do exactly this, in order, and stop early if you hit a stop condition:
 
-1. RECOVER. `bd reclaim` to release leases from dead workers. Any bead left
-   `in_progress` for more than 90 minutes with no running paseo agent working its
-   branch is stale: reclaim it, note why, and let it re-enter `bd ready`.
+1. RECOVER. `python3 tools/bd-safe-reclaim.py --dry-run` first, read the
+   KEEP/RECLAIM verdicts against `paseo ls`, then run it without `--dry-run`.
+   It reclaims only leases no live agent holds; bare `bd reclaim` does not, and
+   on 2026-09-28 it released 8 leases that were all still being worked
+   (SpatialEngine-u2x.30). Any bead left `in_progress` for more than 90 minutes
+   with no running paseo agent working its branch is stale: reclaim it, note
+   why, and let it re-enter `bd ready`.
 
 2. MERGE. For every bead labelled `needs-merge`: rebase its branch onto
    `origin/main`, run `eng/verify.sh` on it, and if green, merge to `main` and
