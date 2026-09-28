@@ -57,7 +57,9 @@ public sealed class DatumTransformationGraphTests
         Assert.Equal(-542.072, parameters.Tz, 3);
         Assert.Equal(20.489, parameters.ScalePpm, 3);
         Assert.Equal(-0.150, parameters.Rx, 3);
-        Assert.Equal(3.0, applied.AccuracyMetres, 3);
+        // EPSG:1314 "OSGB36 to WGS 84 (6)" states 2.0 m, and the search's
+        // accuracy is that datum's alone, the WGS 84 pivot contributing none.
+        Assert.Equal(2.0, applied.AccuracyMetres, 3);
         Assert.False(applied.Approximate);
 
         // Ranked best-accuracy first.

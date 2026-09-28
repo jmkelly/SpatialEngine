@@ -33,15 +33,65 @@ internal static class EpsgDatumOperations
     /// chosen here — notably OSGB36's, which is metres rather than
     /// centimetres because the WKT1 library has no OSTN grid (ADR-0027
     /// §accuracy).
+    /// <para>
+    /// Every row is a transcription of one record of the <em>EPSG Geodetic
+    /// Parameter Dataset v13.102</em>, and each row says which: the
+    /// <paramref name="OperationCode"/> is the
+    /// <c>helmert_transformation</c> the accuracy was read from, the
+    /// <paramref name="ExtentCode"/> is the <c>extent</c> the bounds were read
+    /// from, and the vendored definition for every one of these datums is the
+    /// operation's own scope CRS — so a row is checked by opening one EPSG
+    /// record, and a row that has drifted names the record it drifted from.
+    /// <c>EpsgDatumOperationsTests</c> pins all of it.
+    /// </para>
+    /// <para>
+    /// <paramref name="AreaOfUseName"/> is the one value that is not the
+    /// registry's verbatim: EPSG's extent names run to sentences
+    /// ("North America - Canada and USA (CONUS, Alaska mainland)"), and the
+    /// name is composed into client-facing strings, so each row carries a
+    /// short label for the extent it cites. The bounds are the extent's own.
+    /// </para>
     /// </summary>
     private static readonly DatumOperation[] Operations =
     [
-        new(6326, "WGS84", "World Geodetic System 1984", 0.0, "World", [-180.0, -90.0, 180.0, 90.0]),
-        new(6258, "ETRS89", "European Terrestrial Reference System 1989", 1.0, "Europe", [-16.1, 32.88, 40.18, 84.73]),
-        new(6269, "NAD83", "North American Datum 1983", 2.0, "North America", [-172.54, 23.81, -47.74, 86.46]),
-        new(6277, "OSGB36", "Ordnance Survey of Great Britain 1936", 3.0, "Great Britain", [-8.82, 49.79, 1.92, 60.94]),
-        new(6171, "RGF93", "Reseau Geodesique Francais 1993", 1.0, "France", [-9.86, 41.15, 10.38, 51.56]),
-        new(6167, "NZGD2000", "New Zealand Geodetic Datum 2000", 1.0, "New Zealand", [166.36, -46.64, 178.52, -34.1]),
+        // EPSG:6326 is the WGS 84 datum ensemble, and the graph's pivot rather
+        // than a published operation - a datum already at the pivot has no
+        // shift to state an accuracy for, so the 0.0 is the absence of an
+        // operation, not a measured figure. Extent 1262 "World".
+        new(6326, "WGS84", "World Geodetic System 1984", 0.0, "World", [-180.0, -90.0, 180.0, 90.0], 0, 1262),
+        // EPSG:1149 "ETRS89 to WGS 84 (1)", scope CRS EPSG:4258 - the vendored
+        // ETRS89 definition. Extent 4755 "Europe - ETRF by country":
+        // 16.1W-38.0E, 33.26N-84.73N.
+        new(6258, "ETRS89", "European Terrestrial Reference System 1989", 1.0, "Europe", [-16.1, 33.26, 38.0, 84.73], 1149, 4755),
+        // EPSG:1188 "NAD83 to WGS 84 (1)", scope CRS EPSG:4269 - the vendored
+        // NAD83 definition. The published accuracy is 4.0 m; the "Accuracy 2m
+        // in each axis" in the record's own remarks is a note on how the
+        // parameters were derived, not the accuracy of the operation, and is
+        // not what a row about a published operation may carry. Extent 1325
+        // "North America - Canada and USA (CONUS, Alaska mainland)".
+        new(6269, "NAD83", "North American Datum 1983", 4.0, "North America", [-172.54, 23.81, -47.74, 86.46], 1188, 1325),
+        // EPSG:1314 "OSGB36 to WGS 84 (6)", scope CRS EPSG:4277 - the vendored
+        // OSGB36 definition, and the operation whose seven parameters are
+        // exactly the definition's TOWGS84 node, so it is the one this row
+        // describes. Metre-level because the engine applies this Helmert rather
+        // than the OSTN grid shift. Extent 1264 "UK - Great Britain onshore and
+        // nearshore; Isle of Man".
+        new(6277, "OSGB36", "Ordnance Survey of Great Britain 1936", 2.0, "Great Britain", [-8.82, 49.79, 1.92, 60.94], 1314, 1264),
+        // EPSG:1671 "ETRS89-FRA [RGF93 v1] to WGS 84 (1)", scope CRS
+        // EPSG:4171 - the vendored RGF93 v1 definition. Extent 1096 "France".
+        new(6171, "RGF93", "Reseau Geodesique Francais 1993", 1.0, "France", [-9.86, 41.15, 10.38, 51.56], 1671, 1096),
+        // EPSG:1565 "NZGD2000 to WGS 84 (1)", scope CRS EPSG:4167 - the
+        // geographic base of the vendored EPSG:2193. Extent 1175 "New Zealand"
+        // registers 55.95S-25.88S and 160.6E-171.2W, so the longitude span
+        // crosses the antimeridian; the latitudes and the western bound are the
+        // registered ones, and the eastern bound is the registered extent
+        // clipped at the edge of the world, because an area of use here is a
+        // box and a wrapped extent read as one reads as empty and would drop
+        // New Zealand out of the graph. The cost is that ground west of the
+        // antimeridian inside the registered extent - the Chathams - is
+        // outside the clipped box; that gap is a wrapped area of use, which no
+        // ADR has authorised.
+        new(6167, "NZGD2000", "New Zealand Geodetic Datum 2000", 1.0, "New Zealand", [160.6, -55.95, 180.0, -25.88], 1565, 1175),
     ];
 
     /// <summary>
@@ -102,7 +152,12 @@ internal static class EpsgDatumOperations
     /// <paramref name="GraphName"/> is the short token the graph's operation
     /// names are built from, so a client reading
     /// <c>WGS84_To_OSGB36_Helmert</c> back is reading a name and not a
-    /// code it has to look up.
+    /// code it has to look up;
+    /// <paramref name="OperationCode"/> and <paramref name="ExtentCode"/> are
+    /// the EPSG records the accuracy and the bounds were read from, so a
+    /// reader can check the row against the registry and a row that drifts
+    /// names where it drifted from. Both are 0 only for the WGS 84 pivot,
+    /// which is not a published operation.
     /// </summary>
     public sealed record DatumOperation(
         int DatumCode,
@@ -110,7 +165,9 @@ internal static class EpsgDatumOperations
         string DatumName,
         double AccuracyMetres,
         string AreaOfUseName,
-        double[] AreaOfUseBounds)
+        double[] AreaOfUseBounds,
+        int OperationCode,
+        int ExtentCode)
     {
         /// <summary>The registered extent, in the degrees EPSG records extents in.</summary>
         public CrsAreaOfUse AreaOfUse =>
