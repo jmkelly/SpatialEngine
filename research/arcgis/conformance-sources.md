@@ -293,7 +293,33 @@ with pointer). Follow-up tasks must land the red test before the fix.
   flag would be a lie a client branches on. A table omits the per-layer flag
   — it has no coordinates to quantize.
 
+### T8a. `hasZ`/`hasM` on the layer resource (serve, data description)
+- Request: `…/0?f=json` over a dataset whose geometry column is declared
+  `geometry(PointZ,4326)`, and over a two-dimensional one.
+- Expected: the layer resource carries `hasZ`/`hasM` for the ordinates the data
+  has, so a client can preflight before it sends Z (§1.2 lists them among the
+  10.x keys a real client reads; §7 of the compatibility reference names them
+  next to `returnCountOnly`).
+- Real-client dependency: the REST JS and the JS API read `layer.hasZ` and
+  only then send Z in query geometry and edit payloads, so a wrong `true`
+  breaks the round trip, not just the display.
+- Current behaviour: absent entirely — and the engine had nowhere to learn it
+  from, since `DatasetDescription` carried no coordinate layout.
+- Effort: **M** to make a store know and **S** to emit the flag.
+- Resolved (SpatialEngine-fhf, ADR-0084): `DatasetDescription.GeometryLayout`
+  carries the layout the store *declares* (PostGIS reads the geometry column's
+  formatted type modifier, which is a type-system proof, not a sample);
+  `EsriLayerModel` emits `hasZ`/`hasM` only for the ordinates it can prove, and
+  omits both keys for a 2D layer, an unconstrained `geometry` column and a
+  table. Under-advertising costs a client a feature; over-advertising costs it
+  a round trip.
+
 ### T9. Silent-ignore audit: `sqlFormat`, `resultType`, `gdbVersion`, `historicMoment`, `datumTransformation`, `returnCentroid`, `distance`/`units`, `relationParam`, `text` (serve)
+
+> Closed for `returnCentroid` and `distance`/`units` (SpatialEngine-u2x.16,
+> ADR-0085): both are served. `text` is recorded as a wider feature (an
+> inverted index, not projection depth) and `gdbVersion`/`historicMoment`
+> likewise (versioned rows); the rest stay rejected by name.
 - Request: each of `…/0/query?sqlFormat=standard`, `?resultType=tile`,
   `?distance=100&units=esriSRUnit_Meter`, `?text=broken+pipe`, etc.
 - Expected: each parameter is either honoured or explicitly rejected with a

@@ -6,7 +6,7 @@ namespace Spatial.Stores.Memory.Tests;
 
 /// <summary>
 /// The in-memory provider's conformance with the shared pushdown-equals-reference
-/// suite (ADR-0084). The memory store has no dialect to drift from, so this is
+/// suite (ADR-0098). The memory store has no dialect to drift from, so this is
 /// the suite's own regression net: if the reference executor's semantics change,
 /// this fails before a provider's pushdown is written against the old ones.
 /// </summary>

@@ -93,52 +93,73 @@ public static class EsriGeometryCodec
     }
 
     /// <summary>Encodes a core geometry as an Esri JSON string.</summary>
-    public static string Encode(IGeometry geometry)
+    public static string Encode(IGeometry geometry, EsriOrdinateOutput? output = null)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
         {
-            Write(writer, geometry);
+            Write(writer, geometry, output);
         }
 
         return System.Text.Encoding.UTF8.GetString(stream.ToArray());
     }
 
     /// <summary>Writes a core geometry as an Esri JSON object.</summary>
-    public static void Write(Utf8JsonWriter writer, IGeometry geometry)
+    public static void Write(Utf8JsonWriter writer, IGeometry geometry, EsriOrdinateOutput? output = null)
     {
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(geometry);
 
+        var ordinateOutput = output ?? EsriOrdinateOutput.All;
         writer.WriteStartObject();
         switch (geometry)
         {
             case Point point:
-                WritePoint(writer, point);
+                WritePoint(writer, point, ordinateOutput);
                 break;
             case MultiPoint multiPoint:
-                WriteCoordinates(writer, "points", multiPoint.Points.Select(item => item.Coordinate), multiPoint.Layout);
+                WriteCoordinates(writer, "points", multiPoint.Points.Select(item => item.Coordinate), multiPoint.Layout, ordinateOutput);
                 break;
             case LineString line:
-                WritePaths(writer, [line.Sequence]);
+                WritePaths(writer, [line.Sequence], ordinateOutput);
                 break;
             case MultiLineString multiLine:
-                WritePaths(writer, multiLine.LineStrings.Select(item => item.Sequence));
+                WritePaths(writer, multiLine.LineStrings.Select(item => item.Sequence), ordinateOutput);
                 break;
             case Polygon polygon:
-                WriteRings(writer, [polygon]);
+                WriteRings(writer, [polygon], ordinateOutput);
                 break;
             case MultiPolygon multiPolygon:
-                WriteRings(writer, multiPolygon.Polygons);
+                WriteRings(writer, multiPolygon.Polygons, ordinateOutput);
                 break;
             default:
                 throw EsriInteropException.Invalid(
                     $"Core geometry type '{geometry.Type}' has no Esri JSON representation.");
         }
 
+        WriteOrdinateFlags(writer, ordinateOutput.AppliedTo(geometry.Layout));
         EsriSpatialReference.Write(writer, geometry.CoordinateReference);
         writer.WriteEndObject();
+    }
+
+    /// <summary>
+    /// Writes the <c>hasZ</c>/<c>hasM</c> flags the written ordinates
+    /// imply: the reader treats a three-ordinate array as Z when only
+    /// <c>hasZ</c> is set and as M when only <c>hasM</c> is set, so an
+    /// unflagged extra ordinate is ambiguous.
+    /// </summary>
+    private static void WriteOrdinateFlags(Utf8JsonWriter writer, CoordinateLayout written)
+    {
+        if (written.HasZ())
+        {
+            writer.WriteBoolean("hasZ", true);
+        }
+
+        if (written.HasM())
+        {
+            writer.WriteBoolean("hasM", true);
+        }
     }
 
     private static bool IsPoint(JsonElement element) =>
@@ -214,91 +235,99 @@ public static class EsriGeometryCodec
             crs);
     }
 
-    private static void WritePoint(Utf8JsonWriter writer, Point point)
+    private static void WritePoint(Utf8JsonWriter writer, Point point, EsriOrdinateOutput output)
     {
         if (point.Coordinate is not { } coordinate)
         {
             return;
         }
 
+        var written = output.AppliedTo(point.Layout);
         writer.WriteNumber("x", coordinate.X);
         writer.WriteNumber("y", coordinate.Y);
-        if (coordinate.Z is { } z)
+        if (written.HasZ())
         {
-            writer.WriteNumber("z", z);
+            writer.WriteNumber("z", coordinate.Z ?? double.NaN);
         }
 
-        if (coordinate.M is { } m)
+        if (written.HasM())
         {
-            writer.WriteNumber("m", m);
+            writer.WriteNumber("m", coordinate.M ?? double.NaN);
         }
     }
 
-    private static void WriteCoordinates(Utf8JsonWriter writer, string property, IEnumerable<Coordinate?> coordinates, CoordinateLayout layout)
+    private static void WriteCoordinates(
+        Utf8JsonWriter writer,
+        string property,
+        IEnumerable<Coordinate?> coordinates,
+        CoordinateLayout layout,
+        EsriOrdinateOutput output)
     {
+        var written = output.AppliedTo(layout);
         writer.WritePropertyName(property);
         writer.WriteStartArray();
         foreach (var coordinate in coordinates)
         {
             if (coordinate is { } value)
             {
-                WriteCoordinate(writer, value, layout);
+                WriteCoordinate(writer, value, written);
             }
         }
 
         writer.WriteEndArray();
     }
 
-    private static void WritePaths(Utf8JsonWriter writer, IEnumerable<ICoordinateSequence> parts)
+    private static void WritePaths(Utf8JsonWriter writer, IEnumerable<ICoordinateSequence> parts, EsriOrdinateOutput output)
     {
         writer.WritePropertyName("paths");
         writer.WriteStartArray();
         foreach (var part in parts)
         {
-            WriteSequence(writer, part, part.Layout);
+            WriteSequence(writer, part, output);
         }
 
         writer.WriteEndArray();
     }
 
-    private static void WriteRings(Utf8JsonWriter writer, IEnumerable<Polygon> polygons)
+    private static void WriteRings(Utf8JsonWriter writer, IEnumerable<Polygon> polygons, EsriOrdinateOutput output)
     {
         writer.WritePropertyName("rings");
         writer.WriteStartArray();
         foreach (var polygon in polygons)
         {
-            WriteSequence(writer, polygon.ExteriorRing.Sequence, polygon.ExteriorRing.Layout);
+            WriteSequence(writer, polygon.ExteriorRing.Sequence, output);
             foreach (var hole in polygon.InteriorRings)
             {
-                WriteSequence(writer, hole.Sequence, hole.Layout);
+                WriteSequence(writer, hole.Sequence, output);
             }
         }
 
         writer.WriteEndArray();
     }
 
-    private static void WriteSequence(Utf8JsonWriter writer, ICoordinateSequence sequence, CoordinateLayout layout)
+    private static void WriteSequence(Utf8JsonWriter writer, ICoordinateSequence sequence, EsriOrdinateOutput output)
     {
+        var written = output.AppliedTo(sequence.Layout);
         writer.WriteStartArray();
         for (var i = 0; i < sequence.Count; i++)
         {
-            WriteCoordinate(writer, sequence.GetCoordinate(i), layout);
+            WriteCoordinate(writer, sequence.GetCoordinate(i), written);
         }
 
         writer.WriteEndArray();
     }
 
-    private static void WriteCoordinate(Utf8JsonWriter writer, Coordinate coordinate, CoordinateLayout layout)
+    private static void WriteCoordinate(Utf8JsonWriter writer, Coordinate coordinate, CoordinateLayout written)
     {
         writer.WriteStartArray();
         writer.WriteNumberValue(coordinate.X);
         writer.WriteNumberValue(coordinate.Y);
-        if (layout.HasZ())
+        if (written.HasZ())
         {
             writer.WriteNumberValue(coordinate.Z ?? double.NaN);
         }
 
-        if (layout.HasM())
+        if (written.HasM())
         {
             writer.WriteNumberValue(coordinate.M ?? double.NaN);
         }

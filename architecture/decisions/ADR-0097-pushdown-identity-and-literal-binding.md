@@ -4,7 +4,7 @@ date: 2026-09-28
 deciders: maintainer + agent
 ---
 
-# ADR-0083: A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind
+# ADR-0097: A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind
 
 ## Context
 
@@ -133,7 +133,7 @@ negated or plain truth value, because removing a never-matching value from a
   read found the same rule needed a second copy: a PostGIS or SQL Server dataset
   with no identity column names its features by the ordinal of the read, so a
   `WHERE` that reached SQL would renumber them. Both stores therefore keep the
-  restriction and select over the whole read for such a dataset (ADR-0084,
+  restriction and select over the whole read for such a dataset (ADR-0098,
   SpatialEngine-u2x.9.1), and the query conformance suite compares feature
   identities, not just values, so the renumbering is a red test.
 - Both rules are invisible to a client: no parameter, response shape or

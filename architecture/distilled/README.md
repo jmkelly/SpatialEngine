@@ -16,14 +16,14 @@ reflects the state at decision time.
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
 | Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
-| Which services exist + their contracts | `contracts.md` | 0033, 0074 |
+| Which services exist + their contracts | `contracts.md` | 0033, 0074, 0083, 0084 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048 |
-| Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0075, 0037, 0038 |
+| Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0082, 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `host-and-clients.md` | 0014, 0041, 0047 |
 | MapServer / ImageServer | `host-and-clients.md`, `../image-service-plan.md` | 0035, 0048, 0050, 0051 |
 | Command-line workspace (datasets, maps, project file) | `cli.md` | 0041, 0047, 0052 |
-| Raster rendering / imagery / tiles / labels | `rendering.md`, `../../research/rendering/README.md` | 0044, 0046, 0049, 0075 |
+| Raster rendering / imagery / tiles / labels | `rendering.md`, `../../research/rendering/README.md` | 0044, 0046, 0049, 0080, 0083 |
 | Any architectural change | this file + `../principles.md` | — |
 
 ## The twenty principles (see ../principles.md)
@@ -97,13 +97,12 @@ shape is noted in brackets.
 | 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
 | 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
 | 0041 | Ingest and publications are protocol-neutral SDK faces; Esri admin is a gated projection. |
-| 0075 | Ingest honours a declared source CRS, reports what the decode did, and streams pages into one transaction. |
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |
 | 0047 | Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect). |
 | 0048 | A MapServer is a projection of a map over the SDK render and tile contracts. |
-| 0049 | Labels/symbols shape with HarfBuzz over an embedded pinned font and draw embedded SVG sprites; deterministic collision; new Skia.HarfBuzz/Svg.Skia packages are allowlisted. Extended by 0075 (candidates, priority, line placement, the face registry and the marker set). |
+| 0049 | Labels/symbols shape with HarfBuzz over an embedded pinned font and draw embedded SVG sprites; deterministic collision; new Skia.HarfBuzz/Svg.Skia packages are allowlisted. Extended by 0080 (candidates, priority, line placement, the face registry and the marker set). |
 | 0050 | Rich MapServer renderers, labels and domains are an adapter projection of the persisted MapLibre style; §4.7 images are a typed `not.found`. |
 | 0051 | Rasters are provider-owned; contracts carry only encoded images and core-typed metadata/geometry, never raster values or third-party types. NetVips is the engine; GDAL needs measured demand. |
 | 0052 | The Spatial CLI is a dependency-free public-API client; a versioned declarative project file captures datasets + maps and lowers to maps. |
@@ -121,9 +120,16 @@ shape is noted in brackets.
 | 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
 | 0072 | The host integration suite starts its own PostGIS container and configures the store from it, so no `SPATIAL_POSTGIS_CONNECTION` is needed to run the tests. |
 | 0073 | SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests. |
-| 0074 | The MapLibre style dialect compiles colour/opacity/size properties as an expression tree evaluated once per feature over a shared scope; a number is not a colour, and unsupported input is a typed `invalid.arguments`. |
-| 0075 | Label placement generates ordered candidates (point offsets, or repeated positions along a line) and selects them by `symbol-sort-key` in a pass of its own; the text face is a digest-pinned registry with a documented fallback chain, so an unknown `text-font` is never an error. |
 | 0074 | The feature-query contract is a core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`; pushdown is per-conjunct and best-effort with residual in-memory evaluation; reductions are an additive `IFeatureAggregateStore` face; the published `filter` text is parsed once at the boundary and the per-provider filter languages are retired. |
+| 0076 | The MapLibre style dialect compiles colour/opacity/size properties as an expression tree evaluated once per feature over a shared scope; a number is not a colour, and unsupported input is a typed `invalid.arguments`. |
+| 0080 | Label placement generates ordered candidates (point offsets, or repeated positions along a line) and selects them by `symbol-sort-key` in a pass of its own; the text face is a digest-pinned registry with a documented fallback chain, so an unknown `text-font` is never an error. |
+| 0082 | Ingest honours a declared source CRS, reports what the decode did, and streams pages into one transaction. |
+| 0083 | A store may report a per-dataset content version (`IVersionedFeatureStore`); every tile cache key (raster and MVT) folds it in, so a write invalidates the tiles derived from that data with no manual flush. |
+| 0085 | Query `distance`/`units` band, `returnCentroid` (`IGeometryMeasures.Centroid`) and `returnZ`/`returnM` output selection are served; the Z/M loss was Esri-JSON codec depth, not the engine. |
+| 0086 | The CRS catalogue is vendored EPSG WKT read by a reader of our own (ProjNet's cannot read WKT2, and reads the widely published `Mercator_1SP` spelling of 3857 as a plain Mercator); a definition carries the datum's shift, while the accuracy and area of use of that shift live in a separate registered-operation table, because WKT states neither. |
+| 0087 | Datum transformations are contract values with area of use, accuracy and parameters; `findTransformations` is a ranked, area-filtered search and `project` accepts the operation it applies. |
+| 0089 | An ADR number is reserved before the record is written: the allocator reads the base plus the working tree and takes the number in the repository's shared git dir, so a parallel branch is turned away at allocation rather than renumbered at merge. |
+| 0090 | An upload is staged and then loaded, so a large ingest is resumable: the staged part survives a dropped connection and the chunk cap is measured from the chunk's own offset. |
 
 ## How to change the architecture
 

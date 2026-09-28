@@ -66,7 +66,7 @@ engine is x-first for every CRS (`contracts.md`).
 
 | GeoServices op | Engine | Status |
 | --- | --- | --- |
-| `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string |
+| `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string; `datumTransformation` is accepted only when it names the ranked operation project applies (ADR-0087) |
 | `simplify` (generalization; §7.0.5) | `Simplify` | **Present** — tolerance from `deviation`, or mutually exclusively from `value`; one of the two is required |
 | `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
@@ -133,7 +133,7 @@ dissolves the per-input buffers into one geometry.
 | `updateFeatures` (§9.1.7) | — | Implemented via `IFeatureEditStore.UpdateAsync` (ADR-0037), identity-backed layers only |
 | `deleteFeatures` (§9.1.8) | — | Implemented via `IFeatureEditStore.DeleteAsync` (ADR-0037) |
 | `applyEdits` (§9.1.9) | transactions (`begin`/`commit`/`rollback`) + write | Implemented at layer level; `rollbackOnFailure` maps to `ITransactionStore`; service-level `applyEdits` out of scope |
-| attachments (§9.2–9.6) | — | **Served on the `IFeatureAttachmentStore` capability** (ADR-0065/ADR-0066): layers whose store exposes the capability advertise `hasAttachments` with `attachmentProperties` (id, name, size, contentType, keywords); `queryAttachments` returns per-feature `attachmentGroups`, the per-feature `attachments` resource its `attachmentInfos`, and a per-attachment resource serves the bytes; `addAttachment`/`updateAttachment` (multipart `attachment` part) and `deleteAttachments` (per-id results) mutate behind the single admin token. Stores without the capability (demo, PostGIS until its sidecar lands) keep the honest surface: `hasAttachments: false`, empty reads, typed `invalid.arguments` writes | 
+| attachments (§9.2–9.6) | — | **Served on the `IFeatureAttachmentStore` capability** (ADR-0065/ADR-0066): layers whose store exposes the capability advertise `hasAttachments` with `attachmentProperties` (id, name, size, contentType, keywords); `queryAttachments` returns per-feature `attachmentGroups`, the per-feature `attachments` resource its `attachmentInfos`, and a per-attachment resource serves the bytes; `addAttachment`/`updateAttachment` (multipart `attachment` part) and `deleteAttachments` (per-id results) mutate behind the single admin token. Stores without the capability (demo, ArcGIS REST) keep the honest surface: `hasAttachments: false`, empty reads, typed `invalid.arguments` writes; the memory, SQL Server and PostGIS providers all expose it (ADR-0065 §2, ADR-0073) |
 | `htmlPopup`, `image` (§9.2–9.6) | — | Non-goals (§7.1) |
 
 Result-shape additions: `returnExtentOnly` returns the envelope of the full
@@ -182,9 +182,11 @@ composition (ADR-0033) allows a new route group / module without touching
    subset or reject it.
 3. **CRS identity (ADR-0009):** Esri WKIDs are not EPSG codes
    (spec example uses **102113**, Web Mercator; modern Esri uses 102100;
-   EPSG is 3857). The catalogue is a set of enumerated EPSG CRSs plus the
-   generated UTM families, and there is no WKT input. A facade needs a
-   WKID↔EPSG map (and a WKT decision).
+   EPSG is 3857). The catalogue is a set of vendored EPSG definitions — WKT
+   text the provider reads, not WKT a client can send — plus the generated
+   UTM families, and there is no WKT input. A facade needs a WKID↔EPSG map
+   (and a WKT decision); the catalogue's own WKT is the vocabulary such a
+   map would be written in.
 
 The plan already positions ArcGIS REST as a **provider** (§5 architecture
 diagram), i.e. the consume direction is the one the architecture
@@ -266,8 +268,19 @@ Ordered by dependency:
   `bufferSR`/`outSR`/`inSR` chaining per spec §7.0.6 via
   transform-then-buffer; `geodesic=false` is accepted as planar while
   `geodesic=true`/`unionResults` stay rejected. `findTransformations`
-  honestly lists the curated catalogue path (same datum → `[]`, datum step →
-  one forward composite with the OSGB36 classic-Helmert note).
+  is a ranked search over the provider's transformation graph (ADR-0087):
+  same datum → `[]`, a datum step → the direct composed Helmert (the path the
+  engine applies), the concatenated path through the WGS 84 pivot and the
+  three-parameter reduction, each carrying its steps, the seven Helmert
+  parameters it applies, its area of use and a derived accuracy (ADR-0086
+  says where the datum accuracy and extent come from). It is symmetric (a
+  reversed request returns the same operations with
+  `transformForward: false`), `extentOfInterest` filters rather than refusing
+  (in the source CRS's own coordinates, reprojected to the geographic boxes
+  the catalogue records), `vertical=false` is accepted while `vertical=true`
+  stays refused, and `numOfResults`/`numTransformations` slice the ranked
+  list — every candidate by default. `project` accepts a `datumTransformation`
+  that names the operation it applies and refuses any other by naming it.
   `fromGeoCoordinateString`/`toGeoCoordinateString` are recorded non-goals
   (§7.1): rejected by name, unadvertised.
 - Serving status update: `f=pjson` is accepted as a JSON alias everywhere
@@ -289,6 +302,20 @@ Ordered by dependency:
   (T-019). pygeoapi's connect gate still fails its
   `'geoJSON' in supportedQueryFormats` assertion — honestly, because the
   facade serves Esri JSON only.
+- Serving status update (SpatialEngine-u2x.16, ADR-0085): the three
+  "no engine verb" query rejects are served. `distance`/`units` is a band
+  measured from the query geometry and applied as a buffer **in the layer
+  CRS** — the Geometry Service's transform-then-buffer rule, with the unit
+  code resolved from the same curated table by the same projected/geographic
+  rule — so it composes with every exact `spatialRel`; a `distance` without a
+  `geometry`, or a `units` without a `distance`, is a named failure.
+  `returnCentroid` is a new `IGeometryMeasures.Centroid` verb (area centroid
+  for polygons, not the envelope middle) written beside each feature's
+  geometry, and rejected where there is no feature to attach it to.
+  `returnZ`/`returnM` select the output ordinates and the writer now states
+  the `hasZ`/`hasM` flags the Esri coordinate arrays need. The layer resource
+  advertises `hasZ`/`hasM` too, and only for the ordinates the store declares
+  (ADR-0084, recorded in §7.1).
 - Serving status update: the layer resource advertises
   `supportsQuantization` (top level, where the ArcGIS REST JS gate reads it,
   and inside `advancedQueryCapabilities`) and
@@ -368,10 +395,25 @@ is rejected by name (never silently ignored) and named here with its reason:
   name with a typed `invalid.arguments` failure and does not advertise them.
   Half-parsing notations is explicitly out; a real codec needs its own
   package decision (new ADR) plus an engine verb.
-- `returnZ`/`returnM`: the engine geometry model carries Z/M but the Esri
-  codec serves 2D; a true value (requesting Z/M output) is explicitly
-  rejected rather than silently dropped, while false — the default every
-  client such as QGIS sends — is accepted.
+- `returnZ`/`returnM` (SpatialEngine-u2x.16, ADR-0085): **served**. Checked
+  rather than assumed: `Spatial.Core`'s canonical binary codec round-trips
+  `Xyzm` exactly, and the Esri codec reads and writes Z/M ordinates. The loss
+  was codec depth, not the engine — the writer emitted a three-ordinate Esri
+  coordinate array without the `hasZ`/`hasM` flag that says whether the third
+  number is a Z or an M (the codec's own reader uses it to decide), and a
+  true flag was rejected outright. Both are fixed: the writer states the
+  flags for whatever it writes, and the flags select the output ordinates.
+- `hasZ`/`hasM` on the layer resource: **served**, as a description of the
+  data rather than a capability (ADR-0084). The engine now knows what a
+  dataset's geometry column carries: `DatasetDescription.GeometryLayout`
+  carries the layout the store *declares*, PostGIS reads it from the column's
+  typed modifier (`geometry(PointZ,4326)` → `xyz`, `geometry(PointZM,4326)` →
+  `xyzm`), and the layer advertises `hasZ`/`hasM` only for the ordinates it can
+  prove. A two-dimensional layer, and a geometry column declared plain
+  `geometry` (which constrains nothing and so proves nothing), advertise
+  neither key rather than `false` — ArcGIS clients send Z in query geometry and
+  edit payloads once `hasZ` is true, so over-advertising is a broken round
+  trip while under-advertising is only a client that asks for less.
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.
@@ -382,14 +424,23 @@ is rejected by name (never silently ignored) and named here with its reason:
   kind even when the allowance is wider than the feature, and is
   byte-identical to full precision at an allowance of zero. An unservable
   `mode` or `originPosition` is still rejected by name.
-- Full-text `text`, `sqlFormat`, `resultType`, `gdbVersion`,
-  `historicMoment`, `datumTransformation`, `returnCentroid`,
-  `distance`/`units`, `relationParam`, `returnTrueCurves`,
-  `multipatchOption` (T9/T-024): each is rejected by name — dropping any of
-  them would silently change the result set (`distance`/`units`, `text`,
-  `resultType`) or promise data the engine does not version
-  (`gdbVersion`, `historicMoment`). Raw SQL is never accepted: the facade
-  evaluates only its closed where-grammar.
+- `sqlFormat`, `resultType`, `datumTransformation`, `relationParam`,
+  `returnTrueCurves`, `multipatchOption` (T9/T-024): each is rejected by
+  name. Raw SQL is never accepted: the facade evaluates only its closed
+  where-grammar, so `sqlFormat` names the one thing the facade will never do;
+  `relationParam` would mean composing DE-9IM patterns out of client text.
+- `text` (T9): a **wider feature, not depth** — a full-text search needs an
+  inverted index and a tokenizer per field, which is a store and catalogue
+  decision (a new verb surface plus a per-store implementation), not a
+  projection one. Rejected by name; `where` with LIKE is the served
+  alternative.
+- `gdbVersion`, `historicMoment` (T9): **wider features, not depth** — time
+  travel needs versioned rows in every store, a versioned dataset contract
+  and a resolution rule for a deleted feature. Rejected by name rather than
+  approximated with a hidden timestamp column, which would answer a
+  different question.
+- `distance`/`units` and `returnCentroid`: were here as "the engine has no
+  verb" and are **served** (SpatialEngine-u2x.16, ADR-0085) — see §7.
 - Token 498/499 → `store.unavailable` (T12): by design — the engine taxonomy
   has no auth-error code and the provider takes a static token; the
   characterisation test pins the mapping.

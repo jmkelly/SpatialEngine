@@ -134,6 +134,8 @@ internal static class Operators
             "coalesce" => new CoalesceExpression(Operands(element, operands, "coalesce")),
             "step" => Step(element, operands),
             "interpolate" => Interpolate(element, operands),
+            "at-interpolate" => AtInterpolate(element, operands),
+            "to-color" => ToColor(element, operands),
             _ => throw SpatialException.BadArguments(
                 $"Unsupported expression operator '{name}' in {element.GetRawText()}."),
         };
@@ -272,12 +274,49 @@ internal static class Operators
             throw WrongOperands(element, "interpolate", "an even count of at least 6");
         }
 
-        var (kind, exponentialBase) = Interpolation(element, operands[0]);
         return new InterpolateExpression(
-            ExpressionReader.Compile(operands[1]), kind, exponentialBase, Stops(element, operands, 2));
+            ExpressionReader.Compile(operands[1]), EasingOf(element, operands[0]), Stops(element, operands, 2));
     }
 
-    private static (InterpolationKind Kind, double Base) Interpolation(JsonElement element, JsonElement argument)
+    private static AtInterpolateExpression AtInterpolate(JsonElement element, JsonElement[] operands)
+    {
+        // The sampled point sits between the input and the stop list, so the
+        // operand count past it is even: an input, a stop and at least two
+        // stops, as interpolate itself requires.
+        if (operands.Length < 7 || operands.Length % 2 == 0)
+        {
+            throw WrongOperands(element, "at-interpolate", "an odd count of at least 7");
+        }
+
+        if (operands[2].ValueKind != JsonValueKind.Number)
+        {
+            throw SpatialException.BadArguments(
+                $"The 'at-interpolate' stop in {element.GetRawText()} must be a number, got {operands[2].GetRawText()}.");
+        }
+
+        return new AtInterpolateExpression(
+            ExpressionReader.Compile(operands[1]),
+            operands[2].GetDouble(),
+            EasingOf(element, operands[0]),
+            Stops(element, operands, 3));
+    }
+
+    private static ToColorExpression ToColor(JsonElement element, JsonElement[] operands)
+    {
+        RequireExactly(element, "to-color", operands, 1);
+        var operand = ExpressionReader.Compile(operands[0]);
+        if (operand.Type == ExpressionType.Color)
+        {
+            // A colour is not a number and a number is not a colour: the one
+            // coercion the dialect serves is not a laundering of both ways.
+            throw SpatialException.BadArguments(
+                $"'to-color' in {element.GetRawText()} reads a number or a colour name, but its operand is already a colour.");
+        }
+
+        return new ToColorExpression(operand);
+    }
+
+    private static Easing EasingOf(JsonElement element, JsonElement argument)
     {
         if (argument.ValueKind != JsonValueKind.Array || argument.GetArrayLength() == 0)
         {
@@ -288,11 +327,48 @@ internal static class Operators
         var name = argument[0].ValueKind == JsonValueKind.String ? argument[0].GetString() : null;
         return name switch
         {
-            "linear" => (InterpolationKind.Linear, 1),
-            "exponential" => (InterpolationKind.Exponential, ExponentialBase(element, argument)),
+            "linear" => Easing.Linear,
+            "exponential" => Easing.Exponential(ExponentialBase(element, argument)),
+            "cubic-bezier" => Easing.Bezier(CubicBezier(element, argument)),
             _ => throw SpatialException.BadArguments(
-                $"Unsupported interpolation in {argument.GetRawText()}; only 'linear' and 'exponential' are served."),
+                $"Unsupported interpolation in {argument.GetRawText()}; only 'linear', 'exponential' and 'cubic-bezier' are served."),
         };
+    }
+
+    /// <summary>
+    /// The CSS easing curve <c>["cubic-bezier", x1, y1, x2, y2]</c>. Trailing
+    /// values may be omitted and default to zero, so <c>["cubic-bezier"]</c> is
+    /// the identity curve and a half-written curve is still a curve — but the
+    /// two abscissas must lie in [0, 1] or the curve is not monotonic in the
+    /// input and the ramp would not be a function of it.
+    /// </summary>
+    private static CubicBezier CubicBezier(JsonElement element, JsonElement argument)
+    {
+        if (argument.GetArrayLength() > 5)
+        {
+            throw SpatialException.BadArguments(
+                $"The 'cubic-bezier' in {element.GetRawText()} takes at most four numbers, got {argument.GetRawText()}.");
+        }
+
+        var values = new double[4];
+        for (var index = 1; index < argument.GetArrayLength(); index++)
+        {
+            if (argument[index].ValueKind != JsonValueKind.Number)
+            {
+                throw SpatialException.BadArguments(
+                    $"A 'cubic-bezier' control point in {element.GetRawText()} must be a number, got {argument[index].GetRawText()}.");
+            }
+
+            values[index - 1] = argument[index].GetDouble();
+        }
+
+        if (values[0] is < 0 or > 1 || values[2] is < 0 or > 1)
+        {
+            throw SpatialException.BadArguments(
+                $"The 'cubic-bezier' abscissas x1 and x2 in {element.GetRawText()} must lie in [0, 1], got {Number(values[0])} and {Number(values[2])}.");
+        }
+
+        return new CubicBezier(values[0], values[1], values[2], values[3]);
     }
 
     private static double ExponentialBase(JsonElement element, JsonElement argument)

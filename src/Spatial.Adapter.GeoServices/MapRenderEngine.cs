@@ -44,9 +44,32 @@ internal static class MapRenderEngine
     public static string Style(string name, IReadOnlyList<PublishedLayer> layers) =>
         MapStyle.Compose(name, ToMapLayers(layers));
 
-    /// <summary>A content version for the tile cache: the service and its composed style.</summary>
-    public static string Version(string service, string style) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(service + "\n" + style)));
+    /// <summary>
+    /// A content version for the tile cache: the service, its composed style
+    /// and the folded content version of every dataset the render reads
+    /// (ADR-0083), so a write to one of them invalidates the tiles derived
+    /// from it.
+    /// </summary>
+    public static string Version(string service, string style, string dataVersion) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(service + "\n" + style + "\n" + dataVersion)));
+
+    /// <summary>
+    /// The folded content version of every dataset a publication's layers read
+    /// (ADR-0083), so the Esri tile key moves when their data does. Every layer
+    /// is read from the service's one store, as
+    /// <see cref="Sources(IStoreRegistry, string, IReadOnlyList{PublishedLayer}, IReadOnlyDictionary{int, string}?, IReadOnlyDictionary{int, MapTimeExtent}?)"/>
+    /// resolves them. A store that reports no version folds in the unversioned
+    /// token.
+    /// </summary>
+    public static Task<string> DataVersionAsync(
+        IStoreRegistry stores,
+        string store,
+        IReadOnlyList<PublishedLayer> layers,
+        CancellationToken cancellationToken) =>
+        ContentVersions.FoldAsync(
+            stores,
+            [.. layers.Select(layer => new ContentVersionRef(store, layer.Dataset))],
+            cancellationToken);
 
     /// <summary>
     /// Reprojects an envelope between CRSs by transforming its bounding

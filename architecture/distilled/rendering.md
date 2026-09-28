@@ -27,6 +27,7 @@ sit in the root `Spatial.Contracts` namespace; the wire DTOs in
 | `RasterFormat`, `RasterPixelFormat`, `RasterBlend` | png/jpeg/webp/tiff, rgba8888/rgb888, blend modes |
 | `ITileScheme` + `TileCoordinate`/`TileLevel` | pluggable tiling: address → projected extent + LODs (ADR-0046) |
 | `ITileCache` + `TileCacheKey` | content-addressed tile cache for raster and MVT bytes; ownership is the implementation's (ADR-0046/0070) |
+| `IVersionedFeatureStore` + `ContentVersions` | a store's per-dataset content version, and the fold that puts it in the tile key (ADR-0083) |
 | `IVectorTileService` + `VectorTileRequest`/`VectorTileLayer`/`VectorTile` | core-typed MVT feature-layer request and encoded result; no protobuf types cross the contract (ADR-0070) |
 
 The renderer receives **resolved** services in the request (no DI/service
@@ -83,7 +84,12 @@ bounded parallelism. The memory cache is the host's `InMemoryTileCache`
 file time) persists tiles under a shared directory so they survive a
 restart and are shared between hosts. MVT bytes use the same `ITileCache`
 key and cache implementations. The version in `TileCacheKey` is a SHA-256 of
-the service/layer/encoding request.
+the service/layer/encoding request **plus the content versions of the
+datasets it reads** (ADR-0083), so a write, edit or ingest invalidates the
+tiles derived from that data without a manual `DELETE /api/render/cache`. A
+store opts in with `IVersionedFeatureStore`; one that does not folds in the
+unversioned token. Responses report the resolved version in `X-Tile-Version`,
+and the SDK's `Tiles.RenderWithVersionAsync` returns it.
 
 ## Style document (documented MapLibre subset)
 
@@ -104,6 +110,24 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   remains the value an expression falls back to when it has none for a
   feature. Symbol *layout* keys stay constant — expressions there are a
   separate bead.
+- **Degenerate line geometry** (SpatialEngine-a74): a two-point segment has
+  zero area, and a vertical one also has zero extent in x, but neither is a
+  reason to drop it. A `line` layer strokes every orientation — horizontal,
+  vertical, diagonal and reversed alike — with the `line-width` the style
+  carries, on both the constant and the data-driven paint path, because the
+  stroke is what gives a segment its pixels, not the geometry's area. The
+  viewport cull keeps a zero-width envelope that touches the viewport edge.
+  Two members of the class are edge behaviours rather than strokes, matching
+  MapLibre: both endpoints coincident (a zero-length segment) draws nothing
+  under `line-cap: butt`, and draws the cap itself — a dot one line width
+  across — under `round` or `square`; and a LineString with fewer than two
+  points is not a segment, so it strokes nothing under any cap. A `line`
+  geometry on a `fill` layer fills nothing, and a `fill` geometry on a
+  `line` layer strokes nothing. `LineOrientationRenderTests` pins all of it.
+  Nothing before it pinned a line's orientation: the `symbols.png` golden
+  renders point features only, and the two lines in the `symbols-line.png`
+  golden are both oblique, so a vertical-only regression reached the raster
+  unnoticed.
 - Symbol layout (ADR-0049, ADR-0080): `text-field` (a `{attribute}` template,
   newlines split a multi-line label), `text-font` (a fallback-ordered list of
   face names), `text-size`, `text-anchor`, `text-offset` (ems), `text-padding`,
@@ -162,14 +186,20 @@ immutable node tree and evaluated per feature:
   `["geometry-type"]`, `["var", name]`, `["let", …]`.
 - **Operators**: `==` `!=` `<` `<=` `>` `>=`; `all` `any` `!`; `in`; `+` `-`
   `*` `/` `%` and unary `-`; `concat`; `case`; `match` (with a label list);
-  `coalesce`; `step`; `interpolate` over `["linear"]` or
-  `["exponential", base]`, interpolating numbers and colours per channel.
+  `coalesce`; `step`; `interpolate` over `["linear"]`,
+  `["exponential", base]` or `["cubic-bezier", x1, y1, x2, y2]`, and
+  `at-interpolate` (the same ramp sampled at a literal stop); `to-color`.
+  Numbers and colours interpolate per channel.
+- **The one coercion is asked for by name**: `["to-color", value]` clamps a
+  number to [0, 1] and writes it to all three channels, or parses a colour
+  name. Its type is `Color`, so the MapLibre idiom
+  `["interpolate", …, 5, ["to-color", 0], 10, ["to-color", 1]]` ramps a number
+  into a colour. A bare number on a colour property is still rejected.
 - **Typed, not coerced**: the compiler rejects an expression whose static type
   does not fit the property (`'circle-color' expects a colour, but … yields a
   number`) and a value discovered per feature is rejected the same way at
   render time. A number is *not* a colour, so the MapLibre idiom of ramping a
-  number into a colour needs colour stops; `to-color` and `at-interpolate`
-  are not served.
+  number into a colour needs `to-color` at every stop.
 - **An expression with no value for a feature** (a missing attribute) falls
   back to the property's documented constant rather than failing the render.
 - **Once per feature, not per property**: the scene builder keeps one
@@ -219,7 +249,11 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   traps (sRGB interpretation before `composite2`, equal band counts,
   premultiplied input, stride padding).
 - Expressions: a MapLibre conformance table (every served operator, with and
-  without an interpolation exponent, plus zoom/geometry-type/id/let-var),
+  without an interpolation exponent, over `linear`, `exponential` and
+  `cubic-bezier`, plus `to-color`, `at-interpolate` and
+  zoom/geometry-type/id/let-var; the cubic-bezier rows are pinned on the
+  closed form, X(0.5) = 0.5 for x1 + x2 = 1 and Y(0.5) = 0.375·(y1 + y2) +
+  0.125),
   the typed rejections (a number for a colour property, an attribute of the
   wrong type, a negative size, a filter that is not boolean, an unbound `var`,
   a non-ascending stop), a per-feature render proving data-driven paint and
@@ -269,5 +303,4 @@ Offline `.vtpk` packaging and `exportTiles` are not part of this phase;
 live MVT, OGC API Tiles and the existing raster tile surface are supported.
 A GPU backend is not planned. Within the symbol subset, curved or
 variable-along-a-line placement, sprite sheets, `text-rotation-alignment`,
-`symbol-z-order` and expressions in symbol *layout* are not claimed, and the
-expression dialect serves neither `to-color` nor `at-interpolate`.
+`symbol-z-order` and expressions in symbol *layout* are not claimed.

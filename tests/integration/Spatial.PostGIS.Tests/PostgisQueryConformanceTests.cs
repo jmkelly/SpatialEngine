@@ -8,7 +8,7 @@ namespace Spatial.PostGIS.Tests;
 
 /// <summary>
 /// The PostGIS provider against the shared pushdown-equals-reference suite
-/// (ADR-0084): the plan read, the count, the distinct set and the grouped
+/// (ADR-0098): the plan read, the count, the distinct set and the grouped
 /// aggregate are pushed into SQL, and every one of them must answer exactly
 /// what the shared reference executor answers over the same fixture — including
 /// the rows a dialect is tempted to get wrong (ties, nulls, single-row groups

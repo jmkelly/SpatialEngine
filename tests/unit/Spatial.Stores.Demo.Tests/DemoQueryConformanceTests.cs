@@ -5,7 +5,7 @@ namespace Spatial.Stores.Demo.Tests;
 
 /// <summary>
 /// The demo provider against the shared pushdown-equals-reference suite
-/// (ADR-0084). Its datasets are read-only and procedurally generated, so the
+/// (ADR-0098). Its datasets are read-only and procedurally generated, so the
 /// suite runs over whatever rows the provider itself returns: the comparison
 /// that matters is the provider's answer against the shared reference's, and
 /// the empty-box case is empty here for the same reason it is empty anywhere.

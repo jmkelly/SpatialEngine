@@ -31,9 +31,7 @@ internal static class FeatureResponseWriter
         IReadOnlyList<ServiceLayerQuery> layers,
         IFeatureStore store,
         EsriFeatureQuery shared,
-        IGeometryOperations operations,
-        IGeometryRelations relations,
-        ICoordinateTransforms transforms,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(layers);
@@ -47,8 +45,10 @@ internal static class FeatureResponseWriter
             cancellationToken.ThrowIfCancellationRequested();
             var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
             var scheme = EsriObjectIdScheme.For(layer.Description);
-            var queryGeometry = FeatureProjection.TransformQueryGeometry(layer.Query.Geometry, layerCrs, transforms, cancellationToken);
-            matched.Add((layer, await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, operations, relations, scheme), cancellationToken)));
+            var queryGeometry = FeatureProjection.MatchGeometry(
+                new FeatureProjection.QueryGeometryRequest(layer.Query, layerCrs, services), cancellationToken);
+            matched.Add((layer, await FeatureSpatialMatcher.MatchAsync(
+                new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, services, scheme), cancellationToken)));
         }
 
         return EsriJson.Write(writer =>
@@ -59,7 +59,7 @@ internal static class FeatureResponseWriter
             foreach (var (layer, matches) in matched)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                WriteServiceLayer(writer, layer, matches, transforms, operations, cancellationToken);
+                WriteServiceLayer(writer, layer, matches, services, cancellationToken);
             }
 
             writer.WriteEndArray();
@@ -77,8 +77,7 @@ internal static class FeatureResponseWriter
         Utf8JsonWriter writer,
         ServiceLayerQuery layer,
         List<MatchedFeature> matches,
-        ICoordinateTransforms transforms,
-        IGeometryOperations operations,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(layer.Description, layer.Query));
@@ -108,7 +107,7 @@ internal static class FeatureResponseWriter
 
         var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
         var page = FeaturePaging.Page(ordered, layer.Query);
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, layer.Query.OutFields, layer.Query.ReturnGeometry, layer.Query.ReturnEnvelope);
+        var options = WriteOptions(layer.Query, objectId: 0, services);
         writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
         writer.WriteString("globalIdFieldName", string.Empty);
         if (!layer.IsTable)
@@ -122,7 +121,7 @@ internal static class FeatureResponseWriter
         writer.WriteStartArray();
         foreach (var match in page.Items)
         {
-            var transformed = FeatureProjection.TransformFeature(match, layer.Query, layerCrs, transforms, operations, cancellationToken);
+            var transformed = FeatureProjection.TransformFeature(match, layer.Query, layerCrs, services.Transforms, services.Operations, cancellationToken);
             EsriFeatureCodec.Write(writer, transformed.Feature, options with { ObjectId = transformed.ObjectId });
         }
 
@@ -159,9 +158,9 @@ internal static class FeatureResponseWriter
         });
     }
 
-    internal static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query)
+    internal static IResult WriteFeature(MatchedFeature feature, EsriFeatureQuery query, QueryServices services)
     {
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, feature.ObjectId, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
+        var options = WriteOptions(query, feature.ObjectId, services);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -238,7 +237,7 @@ internal static class FeatureResponseWriter
     /// or the plain matched-set count.
     /// </summary>
     /// <summary>
-    /// The count response for a count the store computed (ADR-0084 §7): the
+    /// The count response for a count the store computed (ADR-0098 §7): the
     /// same JSON the match path writes, without the match set behind it.
     /// </summary>
     internal static IResult Count(int count) => EsriJson.Value(new EsriCountResponse(count));
@@ -399,10 +398,11 @@ internal static class FeatureResponseWriter
         CoordinateReference? layerCrs,
         EsriFeatureQuery query,
         IReadOnlyList<MatchedFeature> features,
+        QueryServices services,
         bool exceeded,
         string? nextToken)
     {
-        var options = new EsriFeatureWriteOptions(EsriLayerModel.ObjectIdField, 0, query.OutFields, query.ReturnGeometry, query.ReturnEnvelope);
+        var options = WriteOptions(query, objectId: 0, services);
         return EsriJson.Write(writer =>
         {
             writer.WriteStartObject();
@@ -423,6 +423,24 @@ internal static class FeatureResponseWriter
             writer.WriteEndObject();
         });
     }
+
+    /// <summary>
+    /// The per-feature write options for a query: the attribute projection,
+    /// whether the geometry is served at all (and as an envelope), which
+    /// ordinates it carries (<c>returnZ</c>/<c>returnM</c>) and, when asked
+    /// for, the engine's centroid verb. Naming the mapping once keeps the
+    /// query, service and feature-resource shapes in step.
+    /// </summary>
+    private static EsriFeatureWriteOptions WriteOptions(EsriFeatureQuery query, long objectId, QueryServices services) =>
+        new(
+            EsriLayerModel.ObjectIdField,
+            objectId,
+            query.OutFields,
+            query.ReturnGeometry,
+            query.ReturnEnvelope,
+            query.ReturnZ,
+            query.ReturnM,
+            query.ReturnCentroid ? geometry => services.Measures.Centroid(geometry) : null);
 
     private static void WriteSpatialReference(Utf8JsonWriter writer, CoordinateReference? coordinateReference)
     {

@@ -1,5 +1,6 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Host.Api;
 using Spatial.Stores.Demo;
 using Spatial.Stores.Memory;
 using Spatial.Stores.PostGIS;
@@ -22,10 +23,24 @@ internal static class StoreServices
         // the host API resolve store faces through it, never through
         // the container.
         builder.Services.AddSingleton<IStoreRegistry, KeyedStoreRegistry>();
+        ConfigureUploads(builder);
         ConfigureDemo(builder);
         ConfigureMemory(builder);
         ConfigurePostgis(builder);
         ConfigureSqlServer(builder);
+    }
+
+    /// <summary>
+    /// The byte staging resumable uploads land in (ADR-0090). It is bounded by
+    /// the ingest byte cap, because a staged upload is the same document as a
+    /// single-request upload, arriving in pieces.
+    /// </summary>
+    private static void ConfigureUploads(WebApplicationBuilder builder)
+    {
+        var options = UploadOptions.FromConfiguration(builder.Configuration);
+        var maxBytes = IngestOptions.FromConfiguration(builder.Configuration).MaxBytes;
+        builder.Services.AddSingleton(options);
+        builder.Services.AddSingleton<IUploadStaging>(_ => new FileUploadStaging(options, maxBytes));
     }
 
     private static void ConfigureDemo(WebApplicationBuilder builder)

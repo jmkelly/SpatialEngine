@@ -145,7 +145,7 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
     /// ordinal of the read, so a <c>WHERE</c> that returned only some of the
     /// rows would renumber them — the same feature would come back with an id
     /// that depends on the query, breaking <c>objectIds</c>,
-    /// <c>returnIdsOnly</c>, paging and the edit round-trip (ADR-0083). Either
+    /// <c>returnIdsOnly</c>, paging and the edit round-trip (ADR-0097). Either
     /// way this is the reference's selected set, not T-SQL's.
     /// </remarks>
     private async Task<(FeatureSchema Schema, List<Feature> Features)> SelectAsync(

@@ -5,7 +5,7 @@ namespace Spatial.Core.Tests;
 
 /// <summary>
 /// The one table of comparable literal/column pairs the whole engine shares
-/// (ADR-0083 §2). The in-memory store's evaluator and both SQL compilers each
+/// (ADR-0097 §2). The in-memory store's evaluator and both SQL compilers each
 /// answer "can this ever match?" in their own back end, and this is the
 /// classification they all have to agree with — so it is pinned here, on its
 /// own, rather than only through a provider that happens to use it.

@@ -36,7 +36,11 @@ internal sealed record EsriFeatureQuery(
     CoordinateReference? DefaultSr,
     string? ResultPaginationToken,
     IReadOnlyList<string>? UniqueIds,
-    bool ReturnUniqueIdsOnly)
+    bool ReturnUniqueIdsOnly,
+    EsriQueryDistance? Distance,
+    bool ReturnCentroid,
+    bool ReturnZ,
+    bool ReturnM)
 {
     /// <summary>The default spatial relation: the spec's coarse envelope test.</summary>
     public const string EnvelopeIntersects = "esriSpatialRelEnvelopeIntersects";
@@ -88,7 +92,12 @@ internal sealed record EsriFeatureQuery(
         }
 
         var returnUniqueIdsOnly = parameters.GetBool("returnUniqueIdsOnly", false);
+        var returnGeometry = parameters.GetBool("returnGeometry", true);
+        var returnCentroid = parameters.GetBool("returnCentroid", false);
+        var returnZ = parameters.GetBool("returnZ", true);
+        var returnM = parameters.GetBool("returnM", true);
         ValidateResultShape(returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, outStatistics is not null, returnUniqueIdsOnly);
+        ValidateCentroid(returnCentroid, returnGeometry, returnIdsOnly, returnCountOnly, returnExtentOnly, returnDistinctValues, returnUniqueIdsOnly);
         var paginationToken = ParsePaginationToken(parameters.Get("resultPaginationToken"));
         ValidatePagination(paginationToken, parameters.Get("resultOffset"), returnIdsOnly, returnCountOnly, returnExtentOnly, returnUniqueIdsOnly);
         var defaultSr = EsriValueParser.ParseSpatialReference(parameters.Get("defaultSR"));
@@ -97,14 +106,15 @@ internal sealed record EsriFeatureQuery(
         var geometryPrecision = ParseGeometryPrecision(parameters.Get("geometryPrecision"));
         var maxAllowableOffset = ParseMaxAllowableOffset(parameters.Get("maxAllowableOffset"));
         var quantization = EsriQuantization.Parse(parameters.Get("quantizationParameters"));
+        var geometry = ParseGeometry(parameters.Get("geometry"), inSr ?? defaultSr ?? fallback);
         return new EsriFeatureQuery(
             ParseObjectIds(parameters.Get("objectIds")),
             ParseWhere(parameters.Get("where")),
-            ParseGeometry(parameters.Get("geometry"), inSr ?? defaultSr ?? fallback),
+            geometry,
             ParseSpatialRel(parameters.Get("spatialRel")),
             ParseOutFields(parameters.Get("outFields")),
             ParseOrderByFields(parameters.Get("orderByFields")),
-            parameters.GetBool("returnGeometry", true),
+            returnGeometry,
             EsriValueParser.ParseSpatialReference(parameters.Get("outSR")) ?? defaultSr,
             returnIdsOnly,
             returnCountOnly,
@@ -125,7 +135,11 @@ internal sealed record EsriFeatureQuery(
             defaultSr,
             paginationToken,
             ParseUniqueIds(parameters.Get("uniqueIds")),
-            returnUniqueIdsOnly);
+            returnUniqueIdsOnly,
+            ParseDistance(parameters, geometry),
+            returnCentroid,
+            returnZ,
+            returnM);
     }
 
     private static IReadOnlyList<long>? ParseObjectIds(string? value)
@@ -650,24 +664,17 @@ internal sealed record EsriFeatureQuery(
 
     private static void RejectUnsupported(EsriRequestParameters parameters)
     {
-        // QGIS sends returnM=false&returnZ=false on every per-feature fetch,
-        // so only a true value (M/Z output the engine cannot produce) is
-        // rejected; false is the default and is accepted.
-        RejectTrue(parameters, "returnZ", "Z output is not supported.");
-        RejectTrue(parameters, "returnM", "M output is not supported.");
         // T-024 silent-ignore audit: every served-allowlist parameter the
         // engine cannot honour is rejected by name, so a client never gets a
         // silently narrowed query. Dropping any of these would change the
-        // result set (distance/units, text, resultType) or promise data the
-        // engine does not version (gdbVersion, historicMoment).
+        // result set (text, resultType) or promise data the engine does not
+        // version (gdbVersion, historicMoment). The distance band, the
+        // centroid and the Z/M ordinates are served (SpatialEngine-u2x.16).
         Reject(parameters, "sqlFormat", "raw SQL is never accepted; the facade evaluates its closed where-grammar.");
         Reject(parameters, "resultType", "only current data is served; tile-version result types are not supported.");
         Reject(parameters, "gdbVersion", "versioned geodatabase queries are not supported.");
         Reject(parameters, "historicMoment", "historical queries are not supported.");
         Reject(parameters, "datumTransformation", "datum transformations are not supported; outSR reprojection uses the registered transforms.");
-        Reject(parameters, "returnCentroid", "centroid output is not supported.");
-        Reject(parameters, "distance", "distance queries are not supported; buffer the geometry client-side instead.");
-        Reject(parameters, "units", "'units' is only meaningful with 'distance', which is not supported.");
         Reject(parameters, "relationParam", "custom DE-9IM relations are not supported.");
         Reject(parameters, "text", "full-text search is not supported; use 'where' with LIKE.");
         Reject(parameters, "returnTrueCurves", "true-curve output is not supported.");
@@ -689,32 +696,87 @@ internal sealed record EsriFeatureQuery(
     }
 
     /// <summary>
-    /// Rejects a boolean output flag only when it requests output the engine
-    /// cannot produce: an absent or false value is the default (no M/Z) and
-    /// is accepted, a true value is rejected as unsupported, and a
-    /// non-boolean value is rejected as invalid.
+    /// Parses the <c>distance</c>/<c>units</c> band (spec §9.1.4): a
+    /// non-negative distance in <paramref name="units"/> (default: the layer
+    /// CRS's own units) measured from the query <c>geometry</c>. The band is
+    /// only meaningful with a geometry to measure from, and a unit code only
+    /// with a distance, so both dangling forms are named failures rather
+    /// than a silently ignored parameter.
     /// </summary>
-    private static void RejectTrue(EsriRequestParameters parameters, string name, string message)
+    private static EsriQueryDistance? ParseDistance(EsriRequestParameters parameters, IGeometry? geometry)
     {
-        var value = parameters.Get(name);
-        if (string.IsNullOrWhiteSpace(value))
+        var raw = parameters.Get("distance");
+        var units = parameters.Get("units");
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            if (!string.IsNullOrWhiteSpace(units))
+            {
+                throw GeoServicesErrors.Invalid("The 'units' parameter is only meaningful with 'distance'.");
+            }
+
+            return null;
+        }
+
+        if (geometry is null)
+        {
+            throw GeoServicesErrors.Invalid(
+                "The 'distance' parameter requires a 'geometry': the band is measured from the query geometry.");
+        }
+
+        if (!double.TryParse(raw.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var distance)
+            || !double.IsFinite(distance) || distance < 0)
+        {
+            throw GeoServicesErrors.Invalid($"The 'distance' parameter must be a non-negative number, got '{raw}'.");
+        }
+
+        return new EsriQueryDistance(distance, string.IsNullOrWhiteSpace(units) ? null : EsriUnitCode.Parse(units, "units"));
+    }
+
+    /// <summary>
+    /// Rejects a <c>returnCentroid</c> request with no feature to attach it
+    /// to: the centroid rides beside a feature's geometry, so a result shape
+    /// without features, or a request that suppresses the geometry itself,
+    /// would silently drop it.
+    /// </summary>
+    private static void ValidateCentroid(
+        bool returnCentroid,
+        bool returnGeometry,
+        bool idsOnly,
+        bool countOnly,
+        bool extentOnly,
+        bool distinctValues,
+        bool uniqueIdsOnly)
+    {
+        if (!returnCentroid)
         {
             return;
         }
 
-        switch (value.Trim().ToLowerInvariant())
+        if (!returnGeometry)
         {
-            case "false":
-            case "0":
-                return;
-            case "true":
-            case "1":
-                throw GeoServicesErrors.Invalid($"The '{name}' parameter is not supported: {message}");
-            default:
-                throw GeoServicesErrors.Invalid($"The '{name}' parameter must be a boolean ('true'/'false'), got '{value}'.");
+            throw GeoServicesErrors.Invalid(
+                "The 'returnCentroid' parameter requires 'returnGeometry=true': the centroid is written beside the feature's geometry.");
+        }
+
+        if (idsOnly || countOnly || extentOnly || distinctValues || uniqueIdsOnly)
+        {
+            throw GeoServicesErrors.Invalid(
+                "The 'returnCentroid' parameter is not supported with a result shape that carries no features; drop 'returnIdsOnly'/'returnCountOnly'/'returnExtentOnly'/'returnDistinctValues'.");
         }
     }
 }
+
+/// <summary>
+/// The parsed <c>distance</c>/<c>units</c> query band (spec §9.1.4): a
+/// non-negative distance in the named Esri unit code, or in the layer
+/// CRS's own units when no code is given. The band becomes the query
+/// geometry buffered by that distance, so a feature matches when it comes
+/// within the band of the query geometry.
+/// </summary>
+/// <param name="Value">The distance in <paramref name="UnitsCode"/>.</param>
+/// <param name="UnitsCode">The curated <c>esriSRUnitType</c> code, or
+/// <c>null</c> for the layer CRS's own units.</param>
+internal sealed record EsriQueryDistance(double Value, int? UnitsCode);
 
 /// <summary>
 /// One <c>outStatistics</c> entry: the aggregation, its input field and

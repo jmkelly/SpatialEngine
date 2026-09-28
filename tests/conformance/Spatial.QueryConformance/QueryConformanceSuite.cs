@@ -6,7 +6,7 @@ using Spatial.Querying;
 namespace Spatial.QueryConformance;
 
 /// <summary>
-/// The pushdown-equals-reference suite (ADR-0084 §3). A store's own answer
+/// The pushdown-equals-reference suite (ADR-0098 §3). A store's own answer
 /// for a plan and for each reduction is compared, value for value and sequence
 /// for sequence, with the answer the shared reference executor produces over
 /// the same fixture. Run it against every store: the stores that push down earn

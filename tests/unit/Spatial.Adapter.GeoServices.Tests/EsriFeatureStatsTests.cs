@@ -30,6 +30,9 @@ public sealed class EsriFeatureStatsTests
 
     private static readonly ProjNetTransforms Transforms = new();
 
+    /// <summary>The engine services one query path resolves (ProjNetTransforms is both the CRS directory and the transform service).</summary>
+    private static QueryServices Services => new(Operations, Relations, new NtsGeometryMeasures(), Transforms, Transforms);
+
     private static readonly FeatureSchema Schema = new(
     [
         new FieldDefinition("id", AttributeKind.Int64),
@@ -63,7 +66,7 @@ public sealed class EsriFeatureStatsTests
 
     private static async Task<JsonElement> QueryBodyAsync(DatasetDescription dataset, IFeatureStore store, EsriFeatureQuery query)
     {
-        var result = await FeatureService.QueryAsync(dataset, store, query, Operations, Relations, Transforms, CancellationToken.None);
+        var result = await FeatureService.QueryAsync(dataset, store, query, Services, CancellationToken.None);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();
@@ -335,6 +338,6 @@ public sealed class EsriFeatureStatsTests
         await cancelled.CancelAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(async () => await FeatureService.QueryAsync(
-            dataset, store, query, Operations, Relations, Transforms, cancelled.Token));
+            dataset, store, query, Services, cancelled.Token));
     }
 }

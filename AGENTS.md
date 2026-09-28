@@ -44,6 +44,14 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   on `main`, never on the branch.
 - Recovery: `bd reclaim` after a crashed agent's lease expires.
 
+Records: a bead that will write a decision record **reserves** its number with
+`python3 tools/adr-next-number.py --reserve --bead <id>` at the start of the
+branch, and re-runs `--check NNNN` immediately before writing — the number is
+read from `origin/main` and the reservation is held in the repository's shared
+git dir, so a parallel branch that takes the same number is turned away at
+allocation instead of at merge (ADR-0090). `--list` shows who holds what,
+`--release NNNN` gives a number back after a renumber.
+
 Areas are labels and route through `architecture/distilled/README.md`. The
 database lives in the **git common dir** (`.beads/` beside the shared `.git`),
 so every worktree sees one queue — `bd where` prints the resolved path. It is

@@ -38,6 +38,8 @@ export interface CatalogueResponse {
   datasets: DatasetSummary[];
 }
 
+export type CoordinateLayout = "xy" | "xyz" | "xym" | "xyzm";
+
 export interface CreateDatasetRequest {
   dataset: string;
   batch: string;
@@ -84,6 +86,7 @@ export interface DatasetDescription {
   estimatedRowCount: number | string;
   idColumns: string[];
   schema: FeatureSchema;
+  geometryLayout?: CoordinateLayout;
 }
 
 export interface DatasetSummary {

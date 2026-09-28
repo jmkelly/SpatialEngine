@@ -6,7 +6,7 @@ using Spatial.Querying;
 namespace Spatial.Stores.Memory.Tests;
 
 /// <summary>
-/// The reference semantics of a plan, pinned on their own (ADR-0084 §3). The
+/// The reference semantics of a plan, pinned on their own (ADR-0098 §3). The
 /// conformance suite compares a store's answer with the reference's, so a bug
 /// in the reference would be invisible to it; these tests fix the reference's
 /// own rules — null ordering, the identity tie-break, the paging walk, the

@@ -14,3 +14,8 @@ dotnet build SpatialEngine.slnx
 
 echo "== tests =="
 dotnet test SpatialEngine.slnx --no-build
+
+echo "== tooling tests =="
+# The repo also carries Python tooling (tools/), and eng/verify.sh is the gate
+# before done, so its unit tests run here too.
+python3 -m unittest discover --start-directory tools --pattern 'test_*.py'

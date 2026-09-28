@@ -15,6 +15,7 @@ public sealed class OgcVectorTileService
 {
     private readonly IVectorTileService _encoder;
     private readonly ITileCache _cache;
+    private readonly IStoreRegistry _stores;
     private readonly IReadOnlyDictionary<string, ITileScheme> _schemes;
     private readonly OgcOptions _options;
 
@@ -22,11 +23,13 @@ public sealed class OgcVectorTileService
         IVectorTileService encoder,
         IEnumerable<ITileScheme> schemes,
         ITileCache cache,
+        IStoreRegistry stores,
         OgcOptions options)
     {
         ArgumentNullException.ThrowIfNull(schemes);
         _encoder = encoder ?? throw new ArgumentNullException(nameof(encoder));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _stores = stores ?? throw new ArgumentNullException(nameof(stores));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _schemes = schemes.ToDictionary(scheme => scheme.Id, StringComparer.OrdinalIgnoreCase);
         if (_schemes.Count == 0 || !_schemes.ContainsKey(_options.DefaultTileScheme))
@@ -66,7 +69,7 @@ public sealed class OgcVectorTileService
                 FormattableString.Invariant($"Tile {tile.Z}/{tile.X}/{tile.Y} is outside the {MatrixSetId(scheme)} tile matrix set."));
         }
 
-        var version = Version(map);
+        var version = await VersionAsync(map, cancellationToken).ConfigureAwait(false);
         var key = new VectorTileCacheKey(scheme.Id, tile.Z, tile.X, tile.Y, version);
         if (await _cache.TryGetVectorAsync(key, cancellationToken).ConfigureAwait(false) is { } cached)
         {
@@ -84,4 +87,22 @@ public sealed class OgcVectorTileService
         map.Name + "\n" + string.Join("\n", map.Layers
             .Where(layer => layer.Kind == MapLayerKind.Feature)
             .Select(layer => $"{layer.LayerId}:{layer.Dataset}:{layer.Store}:{layer.Name}")))));
+
+    /// <summary>
+    /// The cache version for a map's OGC vector tile (ADR-0083): the map and
+    /// its layers, plus the folded content version of every dataset the tile
+    /// reads, so a write to one of them re-renders the tile instead of serving
+    /// cached bytes over stale data. A store that reports no version folds in
+    /// the unversioned token.
+    /// </summary>
+    private async Task<string> VersionAsync(Map map, CancellationToken cancellationToken)
+    {
+        var dataVersion = await ContentVersions.FoldAsync(
+            _stores,
+            [.. map.Layers
+                .Where(layer => layer.Kind == MapLayerKind.Feature)
+                .Select(layer => new ContentVersionRef(layer.Store ?? map.Store, layer.Dataset))],
+            cancellationToken).ConfigureAwait(false);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Version(map) + "\n" + dataVersion)));
+    }
 }

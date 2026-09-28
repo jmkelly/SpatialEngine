@@ -15,7 +15,9 @@ namespace Spatial.Host.Api;
 /// <see cref="DatasetDecoder"/> and loads it atomically through the target
 /// store's <see cref="IDatasetIngest"/>. A <c>publish</c> query parameter
 /// registers the uploaded dataset as a one-layer Feature map in the same call
-/// and reports the partial state safely retryably.
+/// and reports the partial state safely retryably. An <c>upload</c> query
+/// parameter names a staged upload to load instead (ADR-0090), which is how a
+/// document too large for one request is ingested without ever being re-sent.
 ///
 /// <para>The pre-ADR-0053 <c>/api/publications</c> aliases were removed in
 /// 0.2.0; <c>/api/maps</c> is canonical (unknown routes answer 404).</para>
@@ -44,9 +46,10 @@ internal static class AdminEndpoints
             PutMap(new AdminRoute(context, admin, auth, name, stores, registry, token), map));
         app.MapDelete("/api/maps/{name}", (string name, HttpContext context, IMapRegistry registry, CancellationToken token) =>
             DeleteMap(context, admin, auth, name, registry, token));
-        app.MapPost("/api/ingest", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, CancellationToken token) =>
+        app.MapPost("/api/ingest", (HttpContext context, IStoreRegistry stores, ICoordinateTransforms transforms, IMapRegistry registry, IUploadStaging uploads, CancellationToken token) =>
             Ingest(
-                new AdminRoute(context, admin, auth, string.Empty, stores, registry, token), ingest, transforms));
+                new AdminRoute(context, admin, auth, string.Empty, stores, registry, token), ingest, transforms, uploads));
+        UploadEndpoints.Map(app, admin, authOptions, auth);
     }
 
     private static async Task<IResult> ListMaps(IMapRegistry registry, CancellationToken token)
@@ -153,7 +156,7 @@ internal static class AdminEndpoints
     }
 
     private static async Task<IResult> Ingest(
-        AdminRoute route, IngestOptions ingest, ICoordinateTransforms transforms)
+        AdminRoute route, IngestOptions ingest, ICoordinateTransforms transforms, IUploadStaging uploads)
     {
         var (context, admin, auth, _, stores, registry, token) = route;
         try
@@ -176,7 +179,7 @@ internal static class AdminEndpoints
                 ?? throw SpatialException.BadArguments($"Store '{store}' does not support ingest.");
 
             var outcome = await LoadAsync(
-                context, ingest, format, dataset, srid, sourceSrid, target, identity, identityField, transforms, token);
+                context, ingest, format, dataset, srid, sourceSrid, target, identity, identityField, transforms, EmptyToNull(query["upload"].ToString()), uploads, token);
 
             return Results.Ok(await WithMapAsync(registry, query["publish"].ToString(), store, outcome, token));
         }
@@ -198,13 +201,67 @@ internal static class AdminEndpoints
         IngestIdentity identity,
         string? identityField,
         ICoordinateTransforms transforms,
+        string? uploadId,
+        IUploadStaging uploads,
         CancellationToken token)
     {
+        if (uploadId is not null)
+        {
+            return await LoadStagedAsync(context, ingest, format, dataset, srid, sourceSrid, target, identity, identityField, transforms, uploads, uploadId, token);
+        }
+
         await using var body = await ReadUploadAsync(context.Request, ingest.MaxBytes);
         return await IngestPipeline.LoadAsync(
             body, format, dataset, srid, sourceSrid, target, target as IDatasetIngestStream,
             ingest, identity, identityField, transforms, token);
     }
+
+    /// <summary>
+    /// Ingests a staged upload (ADR-0090). Only a <em>complete</em> staged
+    /// upload is loaded: a partial one is refused by name and by offset, so a
+    /// client that believes it has finished cannot load half a document. The
+    /// staged bytes are decoded and loaded exactly as a body would be, in one
+    /// transaction, and the staging is discarded only once the load has
+    /// committed — a failed load leaves the bytes staged for a retry.
+    /// </summary>
+    private static async Task<IngestOutcome> LoadStagedAsync(
+        HttpContext context,
+        IngestOptions ingest,
+        IngestFormat format,
+        string dataset,
+        int srid,
+        int? sourceSrid,
+        IDatasetIngest target,
+        IngestIdentity identity,
+        string? identityField,
+        ICoordinateTransforms transforms,
+        IUploadStaging uploads,
+        string uploadId,
+        CancellationToken token)
+    {
+        if (context.Request.ContentLength is > 0)
+        {
+            throw SpatialException.BadArguments(
+                "An ingest naming an 'upload' reads the staged bytes; send the document through PUT /api/uploads instead of a request body.");
+        }
+
+        var state = await uploads.DescribeAsync(uploadId, token);
+        if (!state.Complete)
+        {
+            throw SpatialException.BadArguments(
+                $"Staged upload '{uploadId}' is not complete: {state.Received} of {DescribeTotal(state)} byte(s) are staged. A partial upload is never ingested.");
+        }
+
+        await using var body = await uploads.OpenAsync(uploadId, token);
+        var outcome = await IngestPipeline.LoadAsync(
+            body, format, dataset, srid, sourceSrid, target, target as IDatasetIngestStream,
+            ingest, identity, identityField, transforms, token);
+        await uploads.DiscardAsync(uploadId, token);
+        return outcome;
+    }
+
+    private static string DescribeTotal(UploadState state) =>
+        state.TotalBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "an undeclared number of";
 
     private static async Task<IngestOutcome> WithMapAsync(
         IMapRegistry registry, string publish, string store, IngestOutcome outcome, CancellationToken token)
@@ -333,26 +390,6 @@ internal static class AdminEndpoints
         HttpContext context,
         AdminOptions admin,
         IAuthService auth,
-        CancellationToken token)
-    {
-        await AuthGuard.RequireRoleAsync(
-            auth,
-            PresentedToken(context),
-            admin.Token,
-            AuthGuard.AdminRole,
-            token);
-    }
-
-    private static string? PresentedToken(HttpContext context)
-    {
-        var header = context.Request.Headers.Authorization.ToString();
-        if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            return header["Bearer ".Length..].Trim();
-        }
-
-        var query = context.Request.Query["token"].ToString();
-        return string.IsNullOrEmpty(query) ? null : query;
-    }
-
+        CancellationToken token) =>
+        await AdminAuthorization.RequireAsync(context, admin, auth, token).ConfigureAwait(false);
 }

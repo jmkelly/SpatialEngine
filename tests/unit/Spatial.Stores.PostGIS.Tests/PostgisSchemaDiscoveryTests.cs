@@ -1,5 +1,6 @@
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
 
@@ -45,7 +46,7 @@ public sealed class PostgisSchemaDiscoveryTests
     [Fact]
     public void Unsupported_column_types_fail_with_the_column_named()
     {
-        var ok = TryBuild([Column("data", "jsonb"), Column("geom", "geometry")], ["geom"], out _, out var error);
+        var ok = TryBuild([Column("data", "jsonb"), Column("geom", "geometry")], ["geom"], [], out _, out var error);
 
         Assert.False(ok);
         Assert.Contains("'data'", error);
@@ -55,7 +56,7 @@ public sealed class PostgisSchemaDiscoveryTests
     [Fact]
     public void A_table_without_columns_is_rejected()
     {
-        var ok = TryBuild([], ["geom"], out _, out var error);
+        var ok = TryBuild([], ["geom"], [], out _, out var error);
 
         Assert.False(ok);
         Assert.Contains("no columns", error);
@@ -64,7 +65,7 @@ public sealed class PostgisSchemaDiscoveryTests
     [Fact]
     public void A_table_without_a_geometry_column_is_not_a_spatial_dataset()
     {
-        var ok = TryBuild([Column("id", "int8")], [], out _, out var error);
+        var ok = TryBuild([Column("id", "int8")], [], [], out _, out var error);
 
         Assert.False(ok);
         Assert.Contains("not a spatial dataset", error);
@@ -91,6 +92,45 @@ public sealed class PostgisSchemaDiscoveryTests
         Assert.Equal(AttributeKind.Geometry, description.Schema.Fields.Single(field => field.Name == "geom").Kind);
     }
 
+    [Theory]
+    [InlineData("geometry(PointZ,4326)", CoordinateLayout.Xyz)]
+    [InlineData("geometry(PointM,4326)", CoordinateLayout.Xym)]
+    [InlineData("geometry(PointZM,4326)", CoordinateLayout.Xyzm)]
+    [InlineData("geometry(POINTZ,4326)", CoordinateLayout.Xyz)]
+    [InlineData("geometry(PointZ)", CoordinateLayout.Xyz)]
+    [InlineData("geometry(Point,4326)", CoordinateLayout.Xy)]
+    [InlineData("geometry", CoordinateLayout.Xy)]
+    [InlineData("", CoordinateLayout.Xy)]
+    [InlineData("not a type modifier at all", CoordinateLayout.Xy)]
+    public void The_declared_column_type_modifier_decides_the_geometry_layout(string modifier, CoordinateLayout expected)
+    {
+        var description = Build([Column("geom", "geometry")], ["geom"], [Modifier("geom", modifier)]);
+
+        Assert.Equal(expected, description.GeometryLayout);
+    }
+
+    [Fact]
+    public void The_geometry_layout_comes_from_the_primary_geometry_column()
+    {
+        var description = Build(
+            [Column("geom", "geometry", ordinal: 2), Column("route", "geometry", ordinal: 5)],
+            ["geom", "route"],
+            [Modifier("route", "geometry(PointZM,4326)"), Modifier("geom", "geometry(PointZ,4326)")]);
+
+        Assert.Equal(CoordinateLayout.Xyz, description.GeometryLayout);
+    }
+
+    [Fact]
+    public void A_geometry_column_with_no_type_modifier_is_reported_as_two_dimensional()
+    {
+        // The declared type is the only proof the store has. An unconstrained
+        // `geometry` column may hold anything, so the honest report is Xy —
+        // under-advertised, never a claim the column cannot back.
+        var description = Build([Column("geom", "geometry")], ["geom"]);
+
+        Assert.Equal(CoordinateLayout.Xy, description.GeometryLayout);
+    }
+
     [Fact]
     public void Summary_from_a_catalogue_row()
     {
@@ -103,16 +143,21 @@ public sealed class PostgisSchemaDiscoveryTests
         Assert.Equal(12, summary.EstimatedRowCount);
     }
 
+    private static PostgisSchemaDiscovery.TypeModifierRow Modifier(string column, string modifier) =>
+        new(column, modifier);
+
     private static DatasetDescription Build(
         IReadOnlyList<PostgisSchemaDiscovery.ColumnRow> columns,
-        IReadOnlyList<string> geometryColumns) =>
-        TryBuild(columns, geometryColumns, out var description, out _)
+        IReadOnlyList<string> geometryColumns,
+        IReadOnlyList<PostgisSchemaDiscovery.TypeModifierRow>? typeModifiers = null) =>
+        TryBuild(columns, geometryColumns, typeModifiers ?? [], out var description, out _)
             ? description
             : throw new InvalidOperationException("expected the discovery to succeed");
 
     private static bool TryBuild(
         IReadOnlyList<PostgisSchemaDiscovery.ColumnRow> columns,
         IReadOnlyList<string> geometryColumns,
+        IReadOnlyList<PostgisSchemaDiscovery.TypeModifierRow> typeModifiers,
         out DatasetDescription description,
         out string error)
     {
@@ -122,7 +167,7 @@ public sealed class PostgisSchemaDiscoveryTests
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
         return PostgisSchemaDiscovery.TryBuild(
             dataset,
-            new PostgisSchemaDiscovery.SchemaFacts(columns, geometries, ["id"], 10),
+            new PostgisSchemaDiscovery.SchemaFacts(columns, geometries, typeModifiers, ["id"], 10),
             out description,
             out error);
     }

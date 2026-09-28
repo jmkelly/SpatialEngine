@@ -24,6 +24,8 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// </summary>
 public sealed class StoreQueryPathTests
 {
+    private static QueryServices Services => new(Operations!, Relations!, new NtsGeometryMeasures(), Transforms!, Transforms!);
+
     private static readonly CoordinateReference Crs4326 = CoordinateReference.Epsg(4326);
     private static readonly NtsGeometryOperations Operations = new();
     private static readonly NtsGeometryRelations Relations = new();
@@ -67,7 +69,7 @@ public sealed class StoreQueryPathTests
 
     private static async Task<JsonElement> BodyAsync(DatasetDescription dataset, IFeatureStore store, EsriFeatureQuery query)
     {
-        var result = await FeatureService.QueryAsync(dataset, store, query, Operations, Relations, Transforms, CancellationToken.None);
+        var result = await FeatureService.QueryAsync(dataset, store, query, Services, CancellationToken.None);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();
@@ -137,7 +139,7 @@ public sealed class StoreQueryPathTests
     }
 
     /// <summary>
-    /// The where clause is the plan's predicate (ADR-0074 §7, ADR-0083): on a
+    /// The where clause is the plan's predicate (ADR-0074 §7, ADR-0097): on a
     /// layer whose <c>OBJECTID</c> is store-derived the store counts the
     /// matching rows itself, and the scan-and-match path is not taken.
     /// </summary>
@@ -158,7 +160,7 @@ public sealed class StoreQueryPathTests
     /// The same clause on a layer whose <c>OBJECTID</c> is the scan ordinal is
     /// <em>not</em> a pushdown: a store returning only the matching rows would
     /// renumber that key, so the same feature would come back with an object id
-    /// that depends on the query (ADR-0083). The facade keeps the clause and
+    /// that depends on the query (ADR-0097). The facade keeps the clause and
     /// counts the matches itself.
     /// </summary>
     [Fact]
@@ -223,7 +225,7 @@ public sealed class StoreQueryPathTests
 
         var query = await ParseAsync(("returnCountOnly", "true"), ("f", "json"));
         var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => FeatureService.QueryAsync(Layer(), store, query, Operations, Relations, Transforms, cancellation.Token));
+            () => FeatureService.QueryAsync(Layer(), store, query, Services, cancellation.Token));
 
         Assert.Equal(cancellation.Token, failure.CancellationToken);
     }

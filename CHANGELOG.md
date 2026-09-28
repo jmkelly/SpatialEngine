@@ -11,6 +11,138 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **`to-color`, `at-interpolate` and `cubic-bezier` in the MapLibre style
+  dialect** (ADR-0088, SpatialEngine-ymh): the three interpolation constructs
+  ADR-0076 named as unserved. `["to-color", value]` is the one coercion the
+  dialect performs and it is asked for by name — a number clamped to [0, 1]
+  and written to all three channels, or a colour name — so the MapLibre idiom
+  of ramping a number into a colour (`… 5, ["to-color", 0], 10,
+  ["to-color", 1]`) now compiles; a bare number on a colour property is still
+  rejected. `at-interpolate` samples an existing ramp at a literal stop, which
+  is what makes a ramp reusable as a `let`-bound scale.
+  `["cubic-bezier", x1, y1, x2, y2]` is the CSS easing, solved as the
+  ordinate of the cubic Bezier at the parameter where the abscissa is the
+  linear progress (Newton with a bisection guard, no per-feature table), with
+  the two abscissas required to lie in [0, 1] and trailing values defaulting
+  to zero. A malformed easing, a non-numeric `at` and an unreadable
+  `to-color` operand are each a typed `invalid.arguments` naming the
+  operator.
+- **Query `distance`/`units` band, `returnCentroid` and `returnZ`/`returnM`**
+  (ADR-0085, SpatialEngine-u2x.16): the three §7.1 query rejects that were
+  really engine verbs are served. `distance` is a band from the query
+  geometry applied as a buffer in the layer CRS, with the unit code resolved
+  from the same curated table and projected/geographic rule the Geometry
+  Service uses, so it composes with every exact `spatialRel`.
+  `returnCentroid` is a new `IGeometryMeasures.Centroid` verb (the area
+  centroid, not the envelope middle) written beside each feature's geometry.
+  `returnZ`/`returnM` select the output ordinates.
+- **The Feature Server layer advertises the Z/M its data actually carries**
+  (ADR-0084, SpatialEngine-fhf): `hasZ`/`hasM` are on the layer resource, so a
+  client can preflight whether a dataset carries elevations or measures before
+  it asks for them. They are a description of the data, not a capability, and
+  ArcGIS clients branch on them — a client told a 2D layer has Z will send Z
+  in query geometry and edit payloads — so they are emitted only where the store
+  proves the ordinate. `DatasetDescription` now carries the layout its store
+  declares (`geometryLayout`, default `xy`), PostGIS reads it from the
+  geometry column's declared type (`geometry(PointZ,4326)` → `xyz`), and a
+  two-dimensional or unconstrained column advertises neither key rather than
+  `false`. SQL Server (whose spatial types have no Z/M) and the ArcGIS REST
+  provider report `xy` until they can prove more.
+- **`findTransformations` is a search, and datum transformations are values**
+  (ADR-0087, SpatialEngine-u2x.15, landed on ADR-0086): the operation used to
+  be a reformulation of the catalogue — same datum `[]`, different datum one
+  forward composite, `extentOfInterest` rejected *by name* because "the
+  catalogue has no area-of-use model" — with the parameters welded to the
+  adapter, so there was one possible answer and nothing outside the adapter
+  could check it. A new `Spatial.Contracts.TransformationSearch` namespace
+  carries `CrsTransformation`, `CrsTransformationStep`, `HelmertParameters`,
+  `CrsAreaOfUse` and `CrsTransformationQuery` (records of strings, doubles
+  and booleans, no packages), and `ICrsDirectory` gains `FindTransformations`.
+  The graph is composed from the catalogue's own datum definitions, so it is a
+  hub and spokes rather than a table of hand-written pairs: between two datums
+  it offers the **direct** composed Helmert (the path the engine applies), the
+  **concatenated** path through the WGS 84 pivot, and the same shift **reduced
+  to three translations**, each carrying its steps, the seven EPSG-9606
+  parameters it applies, its area of use and a stated accuracy. Accuracies
+  combine in quadrature and the reduced form adds the first-order bound on what
+  its dropped rotations cost (14.5 m measured against 41.9 m stated). Area of
+  use follows the EPSG rule for the shape of the operation, so an empty
+  intersection drops the direct candidate outright and `extentOfInterest`
+  *filters* what is left instead of refusing — it is read in the source CRS's
+  own coordinates and reprojected onto the geographic boxes the catalogue
+  records. The search is symmetric: a reversed request returns the same
+  operations with `transformForward: false`, and the default is every ranked
+  candidate rather than one (`numOfResults` and the ArcGIS REST JS
+  `numTransformations` both slice it). `project` now accepts a
+  `datumTransformation` that names the operation it applies and refuses any
+  other by naming that one; `vertical=false` is accepted and `vertical=true`
+  stays refused. The published parameters are the engine's: a control point
+  applies the returned Helmert to the London point by hand and lands within a
+  millimetre of the PROJ 9 (OSTN15) reference. **Caller-visible changes:** a
+  `findTransformations` response is a ranked array of candidates with
+  `name`/`geoTransforms`/`accuracy`/`approximate`/`areaOfUse` (and `helmert` per
+  step) instead of a one-element array, an unknown CRS is `invalid.arguments`
+  rather than `[]`, and `project` no longer refuses `datumTransformation`
+  outright.
+
+- **The CRS catalogue's model is decided: WKT definitions, and datum quality
+  data that is not part of a definition** (ADR-0086, SpatialEngine-u2x.28):
+  the WKT path and the transformation graph were mutually incompatible because
+  the graph read a datum's *accuracy* and *area of use* off the hand-written
+  catalogue rows, which the WKT path deletes — and a WKT2 `GEOGCRS` genuinely
+  carries neither, because both are attributes of the registered coordinate
+  operation, not of the CRS. A definition therefore owns the datum's
+  `TOWGS84` shift (a construction input ProjNet needs), and a new curated
+  `EpsgDatumOperations` table beside the vendored WKT owns the accuracy in
+  metres and the registered extent, joined to a definition by the datum's EPSG
+  name. A datum with no published operation contributes no graph node rather
+  than an invented accuracy, and a test fails if a geodetic definition is
+  added to the WKT without a row. EPSG:3857 is unaffected: the pseudo-Mercator
+  interception lives in the reader, and the graph builds no coordinate systems
+  at all. The ADR also settles ADR numbering: the next free number on `main`,
+  with `AdrNumberingTests` as the enforcement.
+- **A large upload can be staged, resumed and then loaded** (ADR-0090,
+  SpatialEngine-u2x.27): an upload that failed at 90% no longer starts over.
+  `POST /api/uploads` opens (or re-opens) a staged upload, `PUT
+  /api/uploads/{id}?offset=` appends a chunk whose first byte belongs at that
+  offset, and `GET /api/uploads/{id}` answers with how many bytes have landed —
+  the offset to resume from. `POST /api/ingest?upload=<id>` then loads the
+  staged bytes. The chunks are **bytes**, not features, so the load is exactly
+  the transaction it always was: a malformed row at the end of a resumed upload
+  still fails the whole load and leaves no dataset, but the staged bytes survive
+  the failure for a retry. A partial upload can never be mistaken for a
+  complete one — `complete` is true only when a declared total is reached, and
+  the ingest refuses anything else by name and offset; the staging is discarded
+  only after the load commits, and an un-ingested upload is pruned after
+  `Spatial:Uploads:MaxAgeHours` (24). An append addressed past the staged
+  length is rejected *naming the offset to resume from*, an append behind it is
+  accepted only when the re-sent bytes are identical (the lost-acknowledgement
+  case), a refused append changes nothing, and a declared SHA-256 that does not
+  match faults the upload rather than loading bytes nobody declared. The staged
+  document is bounded by the same `Spatial:Ingest:MaxBytes` as a single-request
+  upload. The .NET and TypeScript SDKs gain the staging verbs and a driver
+  (`ResumableIngest.UploadAsync`, `ingestResumable`) that resumes from the
+  host's offset, retries a chunk that failed in transit, and ingests only once
+  every byte has landed. The Esri `/arcgis/admin/uploads` projection is
+  unchanged: the neutral staging is the domain model, and a chunked Esri
+  projection onto it is later work. The feature-cap stream wrapper duplicated
+  between the two upload paths is now the one `IngestPageCap` helper, so both
+  count the same way and answer with the same message.
+
+### Fixed
+
+- **A resumed upload is no longer refused for "the chunk does not fit"** (ADR-0090
+  §3, SpatialEngine-u2x.27): the staging bounded an incoming chunk against the
+  bytes already staged rather than against the offset the chunk was addressed
+  at. A client resuming from the offset the host itself had reported — after a
+  lost acknowledgement, or after an append interrupted once its bytes had
+  reached the staged file — was answering a question the resume protocol exists
+  to make answerable, and was turned away by a cap check that the overlapping
+  bytes were never going to breach. The bound is now measured from the chunk's
+  own offset, so the re-sent overlap counts for what it is and the bytes an
+  append actually adds are still held to the declared total and to
+  `Spatial:Ingest:MaxBytes`.
+
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries
   `supportsQuantization` — at the top level, where the ArcGIS REST JS gate
@@ -70,6 +202,35 @@ this file together, then tag the release (`RELEASING.md`).
   the request's extent, then spends the rest of the budget on the same verb;
   an unservable `mode` or `originPosition` is still rejected by name.
 
+- **A WKT definition path for the built-in CRS catalogue** (ADR-0027,
+  SpatialEngine-u2x.17): every CRS the ProjNet provider serves is now
+  defined as EPSG WKT and read by a reader of the engine's own, so the
+  catalogue is no longer a hand-written parameter list. `ProjWkt` reads both
+  the OGC WKT1 and the WKT2 dialect and hands what it reads to the one
+  programmatic builder the catalogue already used — the UTM families are one
+  WKT template with two substituted numbers, and the hand-written rows, the
+  generated zones and the definitions that exist only as WKT are
+  indistinguishable to callers. The Pseudo-Mercator workaround survives as
+  code rather than as a refusal: the reader intercepts the identifiable
+  spellings (the projection names, the CRS names, the EPSG
+  3857/3785/900913/102100/102113 authorities) before construction and routes
+  them to the known-good programmatic path, which matters because EPSG:3857
+  is very widely published with the projection named `Mercator_1SP`, and
+  ProjNet's own WKT reader reads that spelling as a plain Mercator —
+  **33,931 m** too far south at Berlin's latitude, measured by test rather
+  than asserted in a comment. Two definitions that are new to the served set
+  come in with the path, both read as WKT and both verified against something
+  other than the library that reads them: **EPSG:3395** (WGS 84 / World
+  Mercator) against EPSG Guidance Note 7-2's method 9804, and **EPSG:2193**
+  (NZGD2000 / New Zealand Transverse Mercator) against the projection's own
+  analytics — its central meridian, scale factor, false easting, false
+  northing and latitude of origin, and the meridian-arc series. **EPSG:3857
+  and the other fourteen codes the catalogue already served are
+  byte-identical**, pinned to the last bit, the catalogue is still built once
+  and lazily, and the reader resolves only the projection methods it has
+  been checked for, so a definition is never served with coordinates that are
+  quietly wrong.
+
 - **Ground-distance buffering** (ADR-0075, SpatialEngine-u2x.14): the
   GeoServices `buffer` operation now serves a linear `unit` against a
   geographic buffer CRS — the commonest request there is — through a new
@@ -110,6 +271,7 @@ this file together, then tag the release (`RELEASING.md`).
   `queryRelatedRecords` (and, wrongly, attachments) as absent is now
   corrected.
 
+
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and
   attachment faces on Microsoft.Data.SqlClient, wired into the host under the
@@ -123,7 +285,7 @@ this file together, then tag the release (`RELEASING.md`).
 ### Changed
 
 - **The store query surface does the shaping, not the adapter**
-  (ADR-0084, SpatialEngine-u2x.9 + SpatialEngine-u2x.9.1): `outFields` becomes
+  (ADR-0098, SpatialEngine-u2x.9 + SpatialEngine-u2x.9.1): `outFields` becomes
   the store's projection, `orderByFields` the store's ordering,
   `resultOffset`/`resultRecordCount` its page start and cap, and
   `returnCountOnly`, `returnDistinctValues` and `outStatistics` become the
@@ -135,7 +297,7 @@ this file together, then tag the release (`RELEASING.md`).
   `GROUP BY`. A plan is validated once, against the dataset's schema, at the
   boundary that received it, so an unknown `outFields` entry or a negative cap
   is still the same typed `invalid.arguments`.
-- **The Esri `where` clause rides in the store's plan** (ADR-0084, ADR-0083,
+- **The Esri `where` clause rides in the store's plan** (ADR-0098, ADR-0097,
   SpatialEngine-u2x.9.1): a served `where` now compiles to the plan's
   `Predicate` and is answered by the store rather than by the adapter, but
   only on a layer whose `OBJECTID` is store-derived — a layer whose `OBJECTID`
@@ -145,7 +307,7 @@ this file together, then tag the release (`RELEASING.md`).
   names its features by the ordinal of the read, so a `WHERE` that reached SQL
   would renumber them, and such a dataset keeps the restriction in the caller.
   No served `OBJECTID` value changes.
-- **The reference is one piece of code** (ADR-0084, SpatialEngine-u2x.9.1): the
+- **The reference is one piece of code** (ADR-0098, SpatialEngine-u2x.9.1): the
   in-memory reference executor and the reference predicate evaluator live
   together in `Spatial.Querying`, so the in-memory store, the demo store, the
   ArcGIS REST store and every store that evaluates a plan in memory share one
@@ -155,7 +317,7 @@ this file together, then tag the release (`RELEASING.md`).
   *and* SQL Server, and extended to plans that carry a predicate beside the
   order, the cap and the box — holds every provider to it, values and feature
   identities alike.
-- **One predicate grammar across the engine** (ADR-0074, ADR-0083,
+- **One predicate grammar across the engine** (ADR-0074, ADR-0097,
   SpatialEngine-u2x.8): the store filter is a core-typed `Predicate` tree
   instead of a string, and there is one grammar instead of three. The
   PostGIS and SQL Server `*Filter{Lexer,Parser,Sql}` trios — two copies of
@@ -171,14 +333,14 @@ this file together, then tag the release (`RELEASING.md`).
   memory, PostGIS and SQL Server alike, and an unknown column is still a
   typed `invalid.arguments` on every one of them.
 - **A pushdown is allowed only where it is identity-preserving**
-  (ADR-0083, SpatialEngine-u2x.8): an attribute clause reaches a store only
+  (ADR-0097, SpatialEngine-u2x.8): an attribute clause reaches a store only
   when the layer's `OBJECTID` is store-derived. A layer whose `OBJECTID` is
   the scan ordinal (ADR-0037) keeps the clause as a residual per-feature
   match, because a store returning only the matching rows renumbers that
   key — so the same feature would come back with an id that depends on the
   query, breaking `objectIds`, `returnIdsOnly`, paging and the edit
   round-trip.
-- **A filter literal binds as its column's kind** (ADR-0083,
+- **A filter literal binds as its column's kind** (ADR-0097,
   SpatialEngine-u2x.8): a guid-formatted string binds as a `Guid`, and a
   number against a date-time column binds as the instant it already is. A
   string literal against a `uuid` column used to compile to `uuid = @p0`
@@ -187,6 +349,14 @@ this file together, then tag the release (`RELEASING.md`).
   have matched rows. A pair that means nothing to the reference evaluator
   (`uuid = 5`, `bit < true`, `LIKE` on a non-text column) now answers the
   same constant the evaluator does, rather than coercing or failing.
+- **The Esri geometry writer states its `hasZ`/`hasM` flags**
+  (ADR-0085, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is
+  Z when only `hasZ` is set and M when only `hasM` is set — the codec's own
+  read rule — so a 3D geometry was being written in a form the same codec
+  would read back with the wrong ordinate. Checked as the bead asked: the
+  canonical binary codec round-trips `Xyzm` exactly, so the loss was Esri
+  codec depth, not the engine model.
+
 - **Geometry Service `simplify` is generalization again** (ADR-0036, §7.0.5):
   it now calls `IGeometryOperations.Simplify` (Douglas-Peucker) with the
   tolerance the request carries — `deviation`, or mutually exclusively
@@ -198,6 +368,7 @@ this file together, then tag the release (`RELEASING.md`).
   negative one is now a named `invalid.arguments` failure. Topological
   repair keeps its engine verb and its home: no Esri operation names it, so
   nothing in the facade maps to it.
+
 - **Feature Service `spatialRel` is exact DE-9IM, not envelope arithmetic**
   (ADR-0036, SpatialEngine-u2x.2): `Contains`, `Within`, `Touches`,
   `Overlaps` and `Crosses` on the Feature/Map query and Image Service
@@ -215,6 +386,18 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A write now invalidates the tiles derived from it** (ADR-0083,
+  SpatialEngine-u2x.21): the tile cache key fingerprinted the *request*, so
+  nothing in it moved when a feature was written, edited or ingested, and
+  every cached tile of an edited map stayed stale until someone called
+  `DELETE /api/render/cache` by hand. A store may now report a per-dataset
+  content version (`IVersionedFeatureStore`), the in-memory store bumps it on
+  every write, edit and ingest, and every tile key — the neutral raster single
+  and batch routes, the map raster and MVT routes, and the Esri
+  `MapServer/tile` and `MapServer/vectorTile` routes — folds it in. Tiles
+  report the version they were rendered at in `X-Tile-Version`, which
+  `SpatialClient.Tiles.RenderWithVersionAsync` returns. A store that reports no
+  version (PostGIS, SQL Server, demo, ArcGIS REST) behaves exactly as before.
 - **Fused-cache MapServer root advertises the tile scheme reference**
   (ADR-0048): a tiled MapServer root now serves its spatial reference,
   `initialExtent`/`fullExtent` and units in the tiling SR (layer extents

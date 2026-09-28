@@ -203,7 +203,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
 
         // A restriction the dialect could not express is applied here, over the
         // whole read, so a feature keeps the identity the full scan gave it
-        // (ADR-0083). A plan with no restriction at all selects everything,
+        // (ADR-0097). A plan with no restriction at all selects everything,
         // which is the same rows.
         return pushed
             ? rows

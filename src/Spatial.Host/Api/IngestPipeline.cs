@@ -68,7 +68,11 @@ internal static class IngestPipeline
         if (streaming is null)
         {
             var decoded = DatasetDecoder.Decode(body, format, options, cancellationToken);
-            UnderCap(decoded.Report.RecordsRead, ingest);
+            var features = decoded.Pages.Sum(page => (long)page.Count);
+            if (features > ingest.MaxFeatures)
+            {
+                throw SpatialException.BadArguments(IngestPageCap.Exceeded(ingest.MaxFeatures));
+            }
             var loaded = await target.IngestAsync(request, decoded.Pages, cancellationToken).ConfigureAwait(false);
             return loaded with { Report = decoded.Report };
         }
@@ -80,7 +84,7 @@ internal static class IngestPipeline
             .IngestStreamAsync(
                 request,
                 session.Schema,
-                Capped(session.Pages, ingest, cancellationToken),
+                UnderCap(session.Pages, ingest, cancellationToken),
                 cancellationToken)
             .ConfigureAwait(false);
         return streamed with { Report = await session.Report.ConfigureAwait(false) };
@@ -89,30 +93,14 @@ internal static class IngestPipeline
     /// <summary>
     /// Fails the decode once it has read more features than the cap allows.
     /// The buffered path checks the count after the fact; a streamed one has to
-    /// check while reading, or the cap is not a cap.
+    /// check while reading, or the cap is not a cap. The Esri projection
+    /// enforces the same cap through the same helper (ADR-0090).
     /// </summary>
-    private static async IAsyncEnumerable<FeatureBatch> Capped(
+    private static IAsyncEnumerable<FeatureBatch> UnderCap(
         IAsyncEnumerable<FeatureBatch> pages,
         IngestOptions ingest,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        long seen = 0;
-        await foreach (var page in pages.WithCancellation(cancellationToken).ConfigureAwait(false))
-        {
-            seen += page.Count;
-            UnderCap(seen, ingest);
-            yield return page;
-        }
-    }
-
-    private static void UnderCap(long features, IngestOptions ingest)
-    {
-        if (features > ingest.MaxFeatures)
-        {
-            throw SpatialException.BadArguments(
-                $"The upload is above the configured maximum of {ingest.MaxFeatures} features.");
-        }
-    }
+        CancellationToken cancellationToken) =>
+        IngestPageCap.Apply(pages, ingest.MaxFeatures, SpatialException.BadArguments, cancellationToken);
 
     public static IngestFormat ParseFormat(IngestOptions ingest, string name)
     {

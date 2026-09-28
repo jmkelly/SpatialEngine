@@ -46,6 +46,61 @@ public sealed class NtsGeometryCapabilitiesTests
     }
 
     [Fact]
+    public void Centroid_of_an_L_shaped_polygon_is_the_area_centroid_not_the_envelope_middle()
+    {
+        // The L covers 12 square units in [0,4]x[0,4]; its area centroid is
+        // (5/3, 5/3) while the envelope middle — the wrong answer an envelope
+        // "centroid" would give — is (2, 2).
+        var centroid = Assert.IsAssignableFrom<Point>(_measures.Centroid(GeometryFactory.CreatePolygon(
+        [
+            new Coordinate(0, 0),
+            new Coordinate(4, 0),
+            new Coordinate(4, 2),
+            new Coordinate(2, 2),
+            new Coordinate(2, 4),
+            new Coordinate(0, 4),
+            new Coordinate(0, 0),
+        ])));
+
+        Assert.Equal(5.0 / 3.0, centroid.X!.Value, 9);
+        Assert.Equal(5.0 / 3.0, centroid.Y!.Value, 9);
+    }
+
+    [Fact]
+    public void Centroid_of_a_point_is_the_point_and_keeps_its_crs()
+    {
+        var crs = CoordinateReference.Epsg(4326);
+        var centroid = _measures.Centroid(GeometryFactory.CreatePoint(4.9, 52.4, crs));
+
+        Assert.Equal(4.9, Assert.IsAssignableFrom<Point>(centroid).X!.Value, 3);
+        Assert.Equal(crs, centroid.CoordinateReference);
+    }
+
+    [Fact]
+    public void Centroid_of_a_line_is_the_length_midpoint()
+    {
+        var centroid = Assert.IsAssignableFrom<Point>(_measures.Centroid(
+            GeometryFactory.CreateLineString([new Coordinate(0, 0), new Coordinate(4, 0)])));
+
+        Assert.Equal(2.0, centroid.X!.Value, 9);
+    }
+
+    [Fact]
+    public void Centroid_of_an_empty_geometry_is_an_empty_point()
+    {
+        Assert.True(_measures.Centroid(GeometryFactory.CreatePolygon(GeometryFactory.CreateEmptyLineString())).IsEmpty);
+    }
+
+    [Fact]
+    public void Centroid_stops_on_a_cancelled_token()
+    {
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() => _measures.Centroid(Square(0, 0, 2, 2), cancelled.Token));
+    }
+
+    [Fact]
     public void Union_merges_overlapping_polygons()
     {
         var union = _processing.Union([Square(0, 0, 2, 2), Square(1, 1, 3, 3)]);

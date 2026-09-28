@@ -10,7 +10,7 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// The served feature query compiled onto the store's query surface
-/// (ADR-0084 §7): <c>outFields</c> becomes the projection,
+/// (ADR-0098 §7): <c>outFields</c> becomes the projection,
 /// <c>orderByFields</c> the store's ordering, <c>resultOffset</c> /
 /// <c>resultRecordCount</c> the page start and cap, <c>returnCountOnly</c> a
 /// count, <c>returnDistinctValues</c> a distinct set, and each reduction is
@@ -52,8 +52,7 @@ internal static class StoreQueryPath
         IGeometry? queryGeometry,
         EsriObjectIdScheme scheme,
         CoordinateReference? layerCrs,
-        ICoordinateTransforms transforms,
-        IGeometryOperations operations,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         // The clause a store can answer, or null when the facade has to evaluate
@@ -90,7 +89,7 @@ internal static class StoreQueryPath
         }
 
         return scheme.IsIdentity
-            ? await FeaturesAsync(dataset, store, plan, query, scheme, layerCrs, transforms, operations, cancellationToken).ConfigureAwait(false)
+            ? await FeaturesAsync(dataset, store, plan, query, scheme, layerCrs, services, cancellationToken).ConfigureAwait(false)
             : null;
     }
 
@@ -190,7 +189,7 @@ internal static class StoreQueryPath
     /// The order the plan carries, in the <em>dataset's</em> column names. A
     /// sort on the facade's synthetic <c>OBJECTID</c> is a sort on the layer's
     /// own identity column — a plan names real columns, never the facade's
-    /// field name (ADR-0037, ADR-0083) — and a request that sorts on it on a
+    /// field name (ADR-0037, ADR-0097) — and a request that sorts on it on a
     /// layer with no single identity column is not pushable at all, because
     /// there is no column for the plan to name.
     /// </summary>
@@ -286,8 +285,7 @@ internal static class StoreQueryPath
         EsriFeatureQuery query,
         EsriObjectIdScheme scheme,
         CoordinateReference? layerCrs,
-        ICoordinateTransforms transforms,
-        IGeometryOperations operations,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var page = await store.QueryAsync(dataset.Id, plan, cancellationToken).ConfigureAwait(false);
@@ -296,7 +294,7 @@ internal static class StoreQueryPath
         {
             // The object id comes from the feature's own identity, not from a
             // schema index: a projected page does not carry the identity column
-            // where the layer's description says it is (ADR-0037, ADR-0084).
+            // where the layer's description says it is (ADR-0037, ADR-0098).
             matches.Add(new MatchedFeature(scheme.ResolveAssigned(feature.Id), feature));
         }
 
@@ -311,11 +309,11 @@ internal static class StoreQueryPath
         }
 
         var features = matches
-            .Select(match => FeatureProjection.TransformFeature(match, query, layerCrs, transforms, operations, cancellationToken))
+            .Select(match => FeatureProjection.TransformFeature(match, query, layerCrs, services.Transforms, services.Operations, cancellationToken))
             .ToArray();
         var offset = Math.Min(FeaturePaging.ResolveOffset(query), int.MaxValue);
         var next = offset + features.Length;
         return FeatureResponseWriter.WriteFeatures(
-            dataset, layerCrs, query, features, page.NextCursor is not null, page.NextCursor is not null ? ResultPagination.Encode(next) : null);
+            dataset, layerCrs, query, features, services, page.NextCursor is not null, page.NextCursor is not null ? ResultPagination.Encode(next) : null);
     }
 }

@@ -21,8 +21,12 @@ internal static class FeatureResourceEndpoints
         // getFeature reads `<layerId>/<objectId>` directly.
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/{objectId:long}", ["GET", "POST"], (
             string service, int layerId, long objectId, HttpContext context, IStoreRegistry stores,
-            ICoordinateTransforms transforms, IGeometryOperations operations, CancellationToken cancellationToken) =>
-            FeatureResource(new FeatureResourceContext(catalog, registry, service, layerId, objectId, context, stores, transforms, operations), cancellationToken));
+            IGeometryOperations operations, IGeometryRelations relations, IGeometryMeasures measures,
+            ICrsDirectory catalogue, ICoordinateTransforms transforms, CancellationToken cancellationToken) =>
+            FeatureResource(
+                new FeatureResourceContext(catalog, registry, service, layerId, objectId, context, stores),
+                new QueryServices(operations, relations, measures, catalogue, transforms),
+                cancellationToken));
 
         group.MapMethods("/{service}/FeatureServer/{layerId:int}/query", ["GET", "POST"], (
             HttpContext context,
@@ -31,14 +35,17 @@ internal static class FeatureResourceEndpoints
             IStoreRegistry stores,
             IGeometryOperations operations,
             IGeometryRelations relations,
+            IGeometryMeasures measures,
+            ICrsDirectory catalogue,
             ICoordinateTransforms transforms,
             CancellationToken cancellationToken) =>
             FeatureQuery(
-                new FeatureQueryContext(catalog, registry, context, service, layerId, stores, operations, relations, transforms),
+                new FeatureQueryContext(catalog, registry, context, service, layerId, stores),
+                new QueryServices(operations, relations, measures, catalogue, transforms),
                 cancellationToken));
     }
 
-    private static async Task<IResult> FeatureResource(FeatureResourceContext request, CancellationToken cancellationToken)
+    private static async Task<IResult> FeatureResource(FeatureResourceContext request, QueryServices services, CancellationToken cancellationToken)
     {
         try
         {
@@ -48,7 +55,7 @@ internal static class FeatureResourceEndpoints
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
-            return await FeatureService.FeatureAsync(description, store, request.ObjectId, query, request.Transforms, request.Operations, cancellationToken);
+            return await FeatureService.FeatureAsync(description, store, request.ObjectId, query, services, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -56,7 +63,7 @@ internal static class FeatureResourceEndpoints
         }
     }
 
-    private static async Task<IResult> FeatureQuery(FeatureQueryContext request, CancellationToken cancellationToken)
+    private static async Task<IResult> FeatureQuery(FeatureQueryContext request, QueryServices services, CancellationToken cancellationToken)
     {
         try
         {
@@ -66,7 +73,7 @@ internal static class FeatureResourceEndpoints
             var description = await GeoServicesResolution.DescribeAsync(request.Stores, resolved, request.LayerId, cancellationToken);
             var query = EsriFeatureQuery.Parse(parameters, EsriLayerModel.LayerCoordinateReference(description.Srid));
             var store = request.Stores.Features(resolved.Store);
-            return await FeatureService.QueryAsync(description, store, query, request.Operations, request.Relations, request.Transforms, cancellationToken);
+            return await FeatureService.QueryAsync(description, store, query, services, cancellationToken);
         }
         catch (Exception exception)
         {
@@ -83,9 +90,7 @@ internal sealed record FeatureResourceContext(
     int LayerId,
     long ObjectId,
     HttpContext Context,
-    IStoreRegistry Stores,
-    ICoordinateTransforms Transforms,
-    IGeometryOperations Operations);
+    IStoreRegistry Stores);
 
 /// <summary>The resolved services of one Feature Service query request.</summary>
 internal sealed record FeatureQueryContext(
@@ -94,7 +99,4 @@ internal sealed record FeatureQueryContext(
     HttpContext Context,
     string Service,
     int LayerId,
-    IStoreRegistry Stores,
-    IGeometryOperations Operations,
-    IGeometryRelations Relations,
-    ICoordinateTransforms Transforms);
+    IStoreRegistry Stores);

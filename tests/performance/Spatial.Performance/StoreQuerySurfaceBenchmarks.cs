@@ -10,7 +10,7 @@ namespace Spatial.Performance;
 
 /// <summary>
 /// The served reductions over a 34k-row layer, the layer size
-/// SpatialEngine-u2x.1 spiked (ADR-0084). Each bench is one of the shapes the
+/// SpatialEngine-u2x.1 spiked (ADR-0098). Each bench is one of the shapes the
 /// GeoServices adapter used to compute over a materialised match set — the
 /// count, the grouped statistics, the paged ordered read — against the same
 /// layer read whole.

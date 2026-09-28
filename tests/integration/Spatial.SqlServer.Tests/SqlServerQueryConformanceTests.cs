@@ -8,7 +8,7 @@ namespace Spatial.SqlServer.Tests;
 
 /// <summary>
 /// The SQL Server provider against the shared pushdown-equals-reference suite
-/// (ADR-0084): the restriction is pushed into T-SQL and the plan read, the
+/// (ADR-0098): the restriction is pushed into T-SQL and the plan read, the
 /// count, the distinct set and the grouped aggregate are finished by the
 /// shared reference executor, so every one of them must answer exactly what
 /// that reference answers over the same fixture — including the rows a
@@ -46,7 +46,7 @@ public sealed class SqlServerQueryConformanceTests : IClassFixture<SqlServerCont
         // The dataset has no identity column, so a feature's id is its ordinal
         // in the read. A restriction that reached SQL would renumber the rows
         // that survived it, and the same feature would come back with an id
-        // that depends on the query (ADR-0083) — so the store keeps the
+        // that depends on the query (ADR-0097) — so the store keeps the
         // restriction and the ids are the full read's.
         var all = await context.Store.ScanAsync(dataset);
         var restricted = await context.Store.QueryAsync(dataset, new FeatureQuery(Where: FeatureFilter.Parse("score >= 0")));

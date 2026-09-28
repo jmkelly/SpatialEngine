@@ -166,14 +166,39 @@ public sealed class GeoServicesTests : IClassFixture<PostgisHostFactory>
     }
 
     [Fact]
-    public async Task Find_transformations_lists_the_catalogue_path()
+    public async Task Find_transformations_ranks_the_candidates_the_engine_applies()
     {
+        // One datum: there is nothing to apply, and the empty list is a
+        // result rather than a refusal.
         var same = await GetJsonAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=3857&f=json");
         Assert.Equal(0, same.GetArrayLength());
 
+        // A datum step: the composed Helmert the engine applies leads, and
+        // every candidate carries the parameters and the area it is good for.
         var stepped = await GetJsonAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=27700&f=json");
-        Assert.Equal(1, stepped.GetArrayLength());
-        Assert.True(stepped[0].GetProperty("geoTransforms")[0].GetProperty("transformForward").GetBoolean());
+        Assert.True(stepped.GetArrayLength() >= 2, "a datum step must offer more than one operation.");
+        var applied = stepped[0];
+        Assert.Equal("WGS84_To_OSGB36_Helmert", applied.GetProperty("name").GetString());
+        Assert.True(applied.GetProperty("geoTransforms")[0].GetProperty("transformForward").GetBoolean());
+        Assert.Equal(3.0, applied.GetProperty("accuracy").GetDouble(), 3);
+        Assert.Equal(20.489, applied.GetProperty("geoTransforms")[0].GetProperty("helmert").GetProperty("scale").GetDouble(), 3);
+
+        // And the name project accepts is the name the search published.
+        var projected = await GetJsonAsync(
+            $"{Root}/Geometry/GeometryServer/project?geometries=" +
+            Uri.EscapeDataString("""[{"x":-0.1276,"y":51.5072,"spatialReference":{"wkid":4326}}]""") +
+            "&inSR=4326&outSR=27700&datumTransformation=WGS84_To_OSGB36_Helmert&f=json");
+        Assert.Equal(530043.194981, projected.GetProperty("geometries")[0].GetProperty("x").GetDouble(), 0.1);
+    }
+
+    [Fact]
+    public async Task Find_transformations_rejects_a_crs_the_catalogue_does_not_serve()
+    {
+        // "No transformation needed" and "no such CRS" are different answers.
+        var response = await _client.GetAsync($"{Root}/Geometry/GeometryServer/findTransformations?inSR=4326&outSR=4267&f=json");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(400, (await ErrorAsync(response)).GetProperty("code").GetInt32());
     }
 
     [Theory]

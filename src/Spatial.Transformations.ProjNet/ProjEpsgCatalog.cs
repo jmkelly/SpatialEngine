@@ -1,30 +1,37 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using ProjCs = ProjNet.CoordinateSystems;
 
 namespace Spatial.Transformations.ProjNet;
 
 /// <summary>
-/// The EPSG catalogue of the transformation provider (ADR-0027): common
-/// geographic and projected CRSs plus the projected families generated from
-/// a parameter template, all built programmatically through ProjNet's
-/// factory. The catalogue is deliberately programmatic rather than
-/// WKT-parsed: ProjNet 2.1's WKT reader maps the
-/// "Popular Visualisation Pseudo-Mercator" projection class to a plain
-/// Mercator_1SP (a ~33 km northing distortion on Web Mercator), so parsing
-/// EPSG WKT at runtime is not a reliable construction path. Each
-/// definition carries its datum-to-WGS84 shift ("TOWGS84"): zero for modern
-/// datums, the classic Helmert approximation for OSGB36 (the WKT1 library
-/// has no grid support — ADR-0027 §accuracy).
+/// The EPSG catalogue of the transformation provider (ADR-0027): the common
+/// geographic and projected CRSs, the projected families generated from one
+/// template, and the definitions that exist only as WKT — all read from EPSG
+/// WKT and all built through ProjNet's factory by the one programmatic
+/// builder below.
+/// <para>
+/// The catalogue is WKT-defined but not WKT-*parsed* by ProjNet: ProjNet 2.1's
+/// own WKT reader cannot read WKT2 at all, and where it can read WKT1 it takes
+/// the projection class from the document, so the widely published
+/// <c>Mercator_1SP</c> spelling of EPSG:3857 becomes a plain Mercator — 33 km
+/// of northing on Web Mercator at Berlin's latitude.
+/// <see cref="ProjWkt"/> therefore reads the definitions itself and intercepts
+/// the Pseudo-Mercator case (by projection name, CRS name or EPSG authority)
+/// before construction, so the WKT text is data and the construction path is
+/// the one that is already trusted. Each definition also carries its
+/// datum-to-WGS84 shift ("TOWGS84"): zero for modern datums, the classic
+/// Helmert approximation for OSGB36 (the WKT1 library has no grid support —
+/// ADR-0027 §accuracy).
+/// </para>
 /// <para>
 /// Instances that differ only by one zone number are generated, not typed
 /// out: the UTM families (zones 1-60 north and south, and the ETRS89 and
 /// NAD83 bands that use the same Transverse Mercator parameter set with a
 /// different geodetic datum) come from one template each, so every zone a
 /// client asks for is served and no served code depends on a hand-written
-/// row. The dictionary is built once and every coordinate system in it is
-/// built on first use, so generating a family costs one dictionary entry per
-/// zone rather than a coordinate system.
+/// row. The dictionary is built once and every definition is read and every
+/// coordinate system built on first use, so generating a family costs one
+/// dictionary entry per zone rather than a coordinate system.
 /// </para>
 ///
 /// EPSG Geodetic Parameter Dataset © IOGP/EPSG (subset reproduced here under
@@ -37,7 +44,7 @@ internal static class ProjEpsgCatalog
     {
         if (Entries.TryGetValue(code, out var entry))
         {
-            coordinateSystem = entry.Value;
+            coordinateSystem = entry.System.Value;
             return true;
         }
 
@@ -50,151 +57,161 @@ internal static class ProjEpsgCatalog
 
     /// <summary>Test pin: whether a code's coordinate system has been built yet (the catalogue builds each one once, on first use).</summary>
     public static bool IsBuilt(int code) =>
-        Entries.TryGetValue(code, out var entry) && entry.IsValueCreated;
-
-    private sealed record GeographicEntry(
-        int Code,
-        string Name,
-        string DatumName,
-        string EllipsoidName,
-        double SemiMajor,
-        double InverseFlattening,
-        double[] ToWgs84);
-
-    private sealed record ProjectedEntry(
-        int Code,
-        string Name,
-        int GeodeticCode,
-        string ProjectionClass,
-        (string Name, double Value)[] Parameters);
+        Entries.TryGetValue(code, out var entry) && entry.System.IsValueCreated;
 
     /// <summary>
-    /// A family of projected CRSs that differ only by zone number: one
-    /// geodetic datum, one projection, and the six-degree band parameters
-    /// every UTM zone shares (a central meridian of <c>6 * zone - 183</c>
-    /// degrees, scale 0.9996, a 500,000 m false easting, and a false
-    /// northing of 0 north of the equator / 10,000,000 m south of it).
-    /// <paramref name="NameFormat"/> is the CRS-name format, taking the zone
-    /// number and the hemisphere letter. <paramref name="FirstCode"/> is the EPSG
-    /// code of <paramref name="FirstZone"/>,
-    /// and the codes run consecutively with the zones (EPSG numbers UTM
-    /// zones 326xx north and 327xx south, ETRS89 zones 258xx, NAD83 zones
-    /// 269xx).
+    /// The definition a code was read from, for callers that need the EPSG
+    /// data rather than the coordinate system it builds.
     /// </summary>
-    private sealed record ProjectedFamily(
-        string NameFormat,
-        int GeodeticCode,
-        int FirstZone,
-        int LastZone,
-        int FirstCode,
-        bool Northern);
-
-    private static readonly GeographicEntry[] Geographic =
-    [
-        new(4326, "WGS 84", "World Geodetic System 1984", "WGS 84", 6378137.0, 298.257223563, [0, 0, 0, 0, 0, 0, 0]),
-        new(4258, "ETRS89", "European Terrestrial Reference System 1989", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0]),
-        new(4269, "NAD83", "North American Datum 1983", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0]),
-        new(4277, "OSGB36", "Ordnance Survey of Great Britain 1936", "Airy 1830", 6377563.396, 299.3249646, [446.448, -125.157, 542.060, 0.15, 0.247, 0.842, -20.489]),
-        new(4171, "RGF93 v1", "Reseau Geodesique Francais 1993", "GRS 1980", 6378137.0, 298.257222101, [0, 0, 0, 0, 0, 0, 0]),
-    ];
-
-    private static readonly ProjectedEntry[] Projected =
-    [
-        new(3857, "WGS 84 / Pseudo-Mercator", 4326, "Popular Visualisation Pseudo-Mercator", [("latitude_of_origin", 0.0), ("central_meridian", 0.0), ("false_easting", 0.0), ("false_northing", 0.0)]),
-        new(27700, "OSGB36 / British National Grid", 4277, "Transverse_Mercator", [("latitude_of_origin", 49.0), ("central_meridian", -2.0), ("scale_factor", 0.9996012717), ("false_easting", 400000.0), ("false_northing", -100000.0)]),
-        new(2154, "RGF93 v1 / Lambert-93", 4171, "Lambert_Conformal_Conic_2SP", [("latitude_of_origin", 46.5), ("central_meridian", 3.0), ("standard_parallel_1", 49.0), ("standard_parallel_2", 44.0), ("false_easting", 700000.0), ("false_northing", 6600000.0)]),
-    ];
+    public static CrsDefinition DefinitionOf(int code) => Entries[code].Definition.Value;
 
     /// <summary>
-    /// The UTM families: the world grid over all sixty zones in both
-    /// hemispheres, and the ETRS89 and NAD83 bands, which use the same
-    /// parameter set over their own datums. Every zone these produce was
-    /// previously either hand-written (7 of them) or unserved.
+    /// The datum a CRS is on, for the datum-transformation graph (ADR-0087).
+    /// A projected CRS resolves through its geographic base, so a search is
+    /// keyed on datums rather than on CRSs.
+    /// <para>
+    /// The shift comes out of the definition the WKT was read into — the one
+    /// place a datum's parameters live — and the accuracy and area of use come
+    /// from the registered datum-to-WGS 84 operation
+    /// (<see cref="EpsgDatumOperations"/>), because WKT states neither
+    /// (ADR-0086). A datum the operation table does not name is reported as
+    /// absent rather than given an accuracy nobody published.
+    /// </para>
     /// </summary>
-    private static readonly ProjectedFamily[] Families =
-    [
-        new("WGS 84 / UTM zone {0}{1}", 4326, 1, 60, 32601, true),
-        new("WGS 84 / UTM zone {0}{1}", 4326, 1, 60, 32701, false),
-        new("ETRS89 / UTM zone {0}{1}", 4258, 28, 38, 25828, true),
-        new("NAD83 / UTM zone {0}{1}", 4269, 1, 23, 26901, true),
-    ];
-
-    private static Dictionary<int, Lazy<ProjCs.CoordinateSystem>> BuildEntries()
+    public static bool TryGetDatum(int code, [NotNullWhen(true)] out DatumNode? datum)
     {
-        var entries = new Dictionary<int, Lazy<ProjCs.CoordinateSystem>>();
-        foreach (var entry in Geographic)
+        if (Entries.TryGetValue(code, out var entry) && GeodeticOf(entry.Definition.Value) is { } geodetic)
         {
-            entries[entry.Code] = new Lazy<ProjCs.CoordinateSystem>(() => BuildGeographic(entry));
+            return EpsgDatumOperations.TryGetNode(geodetic, out datum);
         }
 
-        foreach (var entry in Projected)
+        datum = null;
+        return false;
+    }
+
+    /// <summary>
+    /// The catalogue's WGS 84 datum: the pivot every other datum's shift is
+    /// published against. It is read from the WKT definition like any other
+    /// node, so the graph and the transform path cannot drift apart.
+    /// </summary>
+    public static DatumNode WorldDatum() =>
+        TryGetDatum(WorldGeodeticCode, out var world)
+            ? world
+            : throw new InvalidOperationException($"The catalogue serves no WGS 84 datum (EPSG:{WorldGeodeticCode}), so it has no transformation pivot.");
+
+    /// <summary>The EPSG code of the geodetic datum every other shift is published against.</summary>
+    private const int WorldGeodeticCode = 4326;
+
+    /// <summary>
+    /// A definition's geodetic base, whether the definition is itself geodetic
+    /// or the one a projected CRS names.
+    /// </summary>
+    private static GeodeticDefinition? GeodeticOf(CrsDefinition definition) => definition switch
+    {
+        GeodeticDefinition geodetic => geodetic,
+        ProjectedDefinition projected => projected.Base,
+        _ => null,
+    };
+
+    /// <summary>
+    /// Test pin: reads a definition exactly as a vendored row is read, so the
+    /// guard that stops a broken vendored definition reaching a caller is
+    /// exercised rather than assumed.
+    /// </summary>
+    public static CrsDefinition ReadForTest(string template, IReadOnlyDictionary<string, string> tokens, int code) =>
+        Read(template, new Dictionary<string, string>(tokens), code).Value;
+
+    /// <summary>
+    /// Builds a projected definition's coordinate system. Every CRS in the
+    /// catalogue goes through here — a hand-written row, a generated family
+    /// member and a definition that exists only as WKT alike — so a
+    /// definition read from WKT is constructed exactly as a typed-out one
+    /// would be.
+    /// </summary>
+    public static ProjCs.ProjectedCoordinateSystem Build(ProjectedDefinition definition)
+    {
+        var parameters = definition.Parameters
+            .Select(parameter => new ProjCs.ProjectionParameter(parameter.Name, parameter.Value))
+            .ToList();
+        var projection = Factory.CreateProjection(definition.ProjectionClass, definition.ProjectionClass, parameters);
+        return Factory.CreateProjectedCoordinateSystem(
+            definition.Name, Build(definition.Base), projection, ProjCs.LinearUnit.Metre, EastingAxis, NorthingAxis);
+    }
+
+    private static ProjCs.GeographicCoordinateSystem Build(GeodeticDefinition definition)
+    {
+        var ellipsoid = Factory.CreateFlattenedSphere(definition.EllipsoidName, definition.SemiMajor, definition.InverseFlattening, ProjCs.LinearUnit.Metre);
+        var datum = Factory.CreateHorizontalDatum(
+            definition.DatumName,
+            ProjCs.DatumType.HD_Geocentric,
+            ellipsoid,
+            new ProjCs.Wgs84ConversionInfo(
+                definition.ToWgs84[0], definition.ToWgs84[1], definition.ToWgs84[2],
+                definition.ToWgs84[3], definition.ToWgs84[4], definition.ToWgs84[5], definition.ToWgs84[6]));
+        return Factory.CreateGeographicCoordinateSystem(
+            definition.Name, ProjCs.AngularUnit.Degrees, datum, Greenwich, LonAxis, LatAxis);
+    }
+
+    /// <summary>A catalogue row: the definition read from WKT, and the coordinate system it builds, each on first use.</summary>
+    private sealed record Entry(Lazy<CrsDefinition> Definition, Lazy<ProjCs.CoordinateSystem> System);
+
+    private static Dictionary<int, Entry> BuildEntries()
+    {
+        var entries = new Dictionary<int, Entry>();
+        foreach (var (code, wkt) in EpsgWktDefinitions.Geographic)
         {
-            entries[entry.Code] = new Lazy<ProjCs.CoordinateSystem>(() => BuildProjected(entry));
+            Add(entries, code, wkt, EpsgWktDefinitions.Tokens(wkt));
         }
 
-        foreach (var family in Families)
+        foreach (var (code, template, baseWkt) in EpsgWktDefinitions.Projected)
         {
-            AddFamily(entries, family);
+            Add(entries, code, template, EpsgWktDefinitions.Tokens(baseWkt));
+        }
+
+        foreach (var family in EpsgWktDefinitions.Families)
+        {
+            for (var zone = family.FirstZone; zone <= family.LastZone; zone++)
+            {
+                var code = family.FirstCode + (zone - family.FirstZone);
+                Add(entries, code, EpsgWktDefinitions.UtmZone, EpsgWktDefinitions.ZoneTokens(family, zone, code));
+            }
         }
 
         return entries;
     }
 
     /// <summary>
-    /// Adds one zone of a family. The zone's code, name and parameters are
-    /// captured per iteration, so each entry is built from its own zone and
-    /// stays a lazy single build like a hand-written row.
+    /// Adds one row. The code, the rendered WKT and the definition are
+    /// captured per call, so each entry is read and built from its own
+    /// template and stays a lazy single build like a hand-written row.
     /// </summary>
-    private static void AddFamily(Dictionary<int, Lazy<ProjCs.CoordinateSystem>> entries, ProjectedFamily family)
+    private static void Add(Dictionary<int, Entry> entries, int code, string template, Dictionary<string, string> tokens)
     {
-        for (var zone = family.FirstZone; zone <= family.LastZone; zone++)
+        var definition = Read(template, tokens, code);
+        var system = new Lazy<ProjCs.CoordinateSystem>(() => definition.Value switch
         {
-            var entry = UtmZone(family, zone);
-            entries[entry.Code] = new Lazy<ProjCs.CoordinateSystem>(() => BuildProjected(entry));
+            GeodeticDefinition geodetic => Build(geodetic),
+            ProjectedDefinition projected => Build(projected),
+            _ => throw new InvalidOperationException($"The EPSG definition for {code} is neither geodetic nor projected."),
+        });
+        entries[code] = new Entry(definition, system);
+    }
+
+    /// <summary>Renders and reads a definition, failing the process rather than serving a half-built catalogue.</summary>
+    private static Lazy<CrsDefinition> Read(string template, IReadOnlyDictionary<string, string> tokens, int code) => new(() =>
+    {
+        if (!ProjWkt.TryRender(template, tokens, out var wkt, out var renderError))
+        {
+            throw new InvalidOperationException($"The vendored EPSG definition for {code} does not render: {renderError}");
         }
-    }
 
-    /// <summary>One zone of a UTM family, with the band's standard Transverse Mercator parameters.</summary>
-    private static ProjectedEntry UtmZone(ProjectedFamily family, int zone)
-    {
-        var code = family.FirstCode + (zone - family.FirstZone);
-        var hemisphere = family.Northern ? "N" : "S";
-        return new ProjectedEntry(
-            code,
-            string.Format(CultureInfo.InvariantCulture, family.NameFormat, zone, hemisphere),
-            family.GeodeticCode,
-            "Transverse_Mercator",
-            [
-                ("latitude_of_origin", 0.0),
-                ("central_meridian", 6.0 * zone - 183.0),
-                ("scale_factor", 0.9996),
-                ("false_easting", 500000.0),
-                ("false_northing", family.Northern ? 0.0 : 10_000_000.0),
-            ]);
-    }
+        if (!ProjWkt.TryParse(wkt, out var definition, out var parseError))
+        {
+            throw new InvalidOperationException($"The vendored EPSG definition for {code} does not read: {parseError}");
+        }
 
-    private static ProjCs.GeographicCoordinateSystem BuildGeographic(GeographicEntry entry)
-    {
-        var ellipsoid = Factory.CreateFlattenedSphere(entry.EllipsoidName, entry.SemiMajor, entry.InverseFlattening, ProjCs.LinearUnit.Metre);
-        var datum = Factory.CreateHorizontalDatum(
-            entry.DatumName,
-            ProjCs.DatumType.HD_Geocentric,
-            ellipsoid,
-            new ProjCs.Wgs84ConversionInfo(entry.ToWgs84[0], entry.ToWgs84[1], entry.ToWgs84[2], entry.ToWgs84[3], entry.ToWgs84[4], entry.ToWgs84[5], entry.ToWgs84[6]));
-        return Factory.CreateGeographicCoordinateSystem(
-            entry.Name, ProjCs.AngularUnit.Degrees, datum, Greenwich, LonAxis, LatAxis);
-    }
-
-    private static ProjCs.ProjectedCoordinateSystem BuildProjected(ProjectedEntry entry)
-    {
-        var geodetic = (ProjCs.GeographicCoordinateSystem)Entries[entry.GeodeticCode].Value;
-        var parameters = entry.Parameters
-            .Select(parameter => new ProjCs.ProjectionParameter(parameter.Name, parameter.Value))
-            .ToList();
-        var projection = Factory.CreateProjection(entry.ProjectionClass, entry.ProjectionClass, parameters);
-        return Factory.CreateProjectedCoordinateSystem(
-            entry.Name, geodetic, projection, ProjCs.LinearUnit.Metre, EastingAxis, NorthingAxis);
-    }
+        return definition!;
+    });
 
     private static readonly ProjCs.CoordinateSystemFactory Factory = new();
 
@@ -206,5 +223,5 @@ internal static class ProjEpsgCatalog
     private static readonly ProjCs.AxisInfo EastingAxis = new("Easting", ProjCs.AxisOrientationEnum.East);
     private static readonly ProjCs.AxisInfo NorthingAxis = new("Northing", ProjCs.AxisOrientationEnum.North);
 
-    private static readonly Dictionary<int, Lazy<ProjCs.CoordinateSystem>> Entries = BuildEntries();
+    private static readonly Dictionary<int, Entry> Entries = BuildEntries();
 }

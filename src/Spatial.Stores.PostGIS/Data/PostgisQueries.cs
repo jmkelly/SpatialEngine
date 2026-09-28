@@ -237,6 +237,21 @@ internal static class PostgisQueries
         + "FROM geometry_columns "
         + "WHERE f_table_schema = @p0 AND f_table_name = @p1";
 
+    /// <summary>
+    /// Each column's declared type modifier (ADR-0083): the formatted
+    /// PostgreSQL type, which for a PostGIS geometry column carries the
+    /// dimension — <c>geometry(PointZ,4326)</c> declares a Z, a plain
+    /// <c>geometry</c> declares nothing. Read from the catalogue, never from
+    /// the data, so it costs no scan and cannot disagree with the schema.
+    /// </summary>
+    public static string ColumnTypeModifiers() =>
+        "SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod) "
+        + "FROM pg_catalog.pg_attribute a "
+        + "JOIN pg_catalog.pg_class c ON c.oid = a.attrelid "
+        + "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+        + "WHERE n.nspname = @p0 AND c.relname = @p1 AND a.attnum > 0 AND NOT a.attisdropped "
+        + "ORDER BY a.attnum";
+
     /// <summary>Primary-key column names for one table, in key order.</summary>
     public static string PrimaryKeyColumns() =>
         "SELECT kcu.column_name "

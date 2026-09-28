@@ -31,6 +31,8 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// </summary>
 public sealed class EsriObjectIdStabilityTests
 {
+    private static QueryServices Services => new(Operations!, Relations!, new NtsGeometryMeasures(), Transforms!, Transforms!);
+
     private static readonly CoordinateReference Crs4326 = CoordinateReference.Epsg(4326);
 
     private static readonly NtsGeometryOperations Operations = new();
@@ -111,7 +113,7 @@ public sealed class EsriObjectIdStabilityTests
     /// <summary>The facade's own work: the read is cancellable, and nothing is written before it is checked.</summary>
     private static async Task<IResult> MatchAsync(
         DatasetDescription dataset, IFeatureStore store, EsriFeatureQuery query, CancellationToken cancellationToken) =>
-        await FeatureService.QueryAsync(dataset, store, query, Operations, Relations, Transforms, cancellationToken);
+        await FeatureService.QueryAsync(dataset, store, query, Services, cancellationToken);
 
     /// <summary>Renders a result to its JSON body; the query has already run, so no token is in scope.</summary>
     private static async Task<(string Name, long ObjectId)[]> ReadAsync(IResult result)

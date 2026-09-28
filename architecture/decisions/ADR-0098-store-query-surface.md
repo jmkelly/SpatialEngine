@@ -4,7 +4,7 @@ date: 2026-09-28
 deciders: maintainer + agent
 ---
 
-# ADR-0084: The store query surface — projection, order, paging, count, distinct and aggregate
+# ADR-0098: The store query surface — projection, order, paging, count, distinct and aggregate
 
 ## Context
 
@@ -113,7 +113,7 @@ the store's own reduction face when it has one. It pushes the plan only when
 the *whole* match is expressible, which means: no `time` and no topological
 `spatialRel` (ADR-0074 §8 — `time` compiling to a disjunction of range tests is
 SpatialEngine-u2x.11). The Esri `where` grammar *is* in the plan now: it
-compiles to the plan's `Predicate? Where` (ADR-0074 §7, ADR-0083) and is
+compiles to the plan's `Predicate? Where` (ADR-0074 §7, ADR-0097) and is
 pushed whenever `EsriWhereResolver` says the clause is a pushdown, which is
 exactly when the layer's `OBJECTID` is store-derived. A request with a residual
 — a clause the facade has to number rows against, a `time`, a topological
@@ -146,7 +146,7 @@ record left open:
   the read, exactly as a layer whose `OBJECTID` is the scan ordinal does at the
   facade. A `WHERE` that reached SQL would renumber them, so both stores keep
   the restriction and select over the whole read for such a dataset
-  (ADR-0083). The suite compares feature identities, not only values, so a
+  (ADR-0097). The suite compares feature identities, not only values, so a
   renumbering is a red test rather than a surprise in production.
 
 ## Consequences

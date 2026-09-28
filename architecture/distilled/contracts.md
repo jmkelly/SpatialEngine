@@ -41,6 +41,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `IGeometryMeasures` | `Area`, `Length` | planar; 0 for shapes of the wrong dimension |
 | `IGeometryMeasures` | `Distance` | planar minimum distance |
 | `IGeometryMeasures` | `LabelPoint` | an interior point |
+| `IGeometryMeasures` | `Centroid` | centre of mass (area for polygons, length for lines); **not** the envelope middle; empty point for empty input (ADR-0085) |
 | `IGeometryProcessing` | `Union`, `Difference` | set operations |
 | `IGeometryProcessing` | `ConvexHull` | hull of all inputs |
 | `IGeometryProcessing` | `Repair` | topological MakeValid (NTS `GeometryFixer`); **not** Douglas-Peucker |
@@ -73,22 +74,36 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
 | Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
 | `Describe` | crs identity string (`EPSG:4326`) | structured `CrsDescription` | name, family, axes (name/orientation/unit), datum, ellipsoid |
+| `FindTransformations` | `CrsTransformationQuery` (source, target, optional area of interest) | ranked `CrsTransformation` list | candidates with steps, Helmert parameters, area of use and derived accuracy; same datum → empty; the first candidate is the path `Transform` applies (ADR-0087) |
 | `Transform` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
 
 - **Axis order: x-first for every CRS** (x = longitude/easting). Describe
   reports declared axes; the service performs no swaps — axis-order tests pin
   this. Z/M pass through untouched; empty geometries keep type and layout.
 - Omitted `source` defaults to the geometry's own CRS (then required).
-- Built-in EPSG catalogue: the common geographic and projected CRSs written
-  out, plus projected *families* generated from one parameter template — the
-  UTM grid (zones 1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760)
-  and the ETRS89 and NAD83 UTM bands over their own datums. A code outside
-  the catalogue and the families is `invalid.arguments`; there is no WKT
-  input. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36 classic
-  Helmert (±0.1 m, no grid). The catalogue is built once, and each CRS in it
-  on first use.
+- Built-in EPSG catalogue, **defined in EPSG WKT** and read by the provider's
+  own reader (`ProjWkt`), so a definition is data and construction stays on
+  one programmatic builder: the common geographic and projected CRSs, plus
+  projected *families* generated from one WKT template — the UTM grid (zones
+  1-60 north, EPSG 32601-32660, and 1-60 south, 32701-32760) and the ETRS89
+  and NAD83 UTM bands over their own datums. WKT1 and WKT2 both read; the
+  Pseudo-Mercator spellings are intercepted and routed to the known-good
+  construction (reading EPSG:3857 as `Mercator_1SP` is 33 km out). A code
+  outside the catalogue and the families is `invalid.arguments`; there is no
+  WKT *input*. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36
+  classic Helmert (±0.1 m, no grid). The catalogue is built once, and each
+  definition read and each CRS built on first use.
+- **A definition is WKT text; a datum's accuracy and area of use are not part
+  of it** (ADR-0086). The definition carries the datum's `TOWGS84` shift —
+  the construction input ProjNet needs. How accurate that shift is, and over
+  what ground it means anything, are attributes of the *operation* EPSG
+  registers against the datum, and WKT states neither. They live in a curated
+  `EpsgDatumOperations` table beside the WKT, keyed on the datum name the
+  `DATUM` node carries, and joined to a definition to form the graph's datum
+  node. A datum with no published operation contributes no node rather than an
+  invented accuracy. Both halves have exactly one home, so they cannot drift.
 
-## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
+## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IVersionedFeatureStore`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 
 `IStoreRegistry` is the one runtime-keyed seam (ADR-0033): a store name
 resolves to its catalogue, feature store and additive faces, so a
@@ -96,13 +111,22 @@ protocol adapter reads a mixed map's layers from their own stores without
 holding the DI container. Required reads are `invalid.arguments` for an
 unknown store; additive faces return `null`.
 
+**Content versions (ADR-0083).** A store may implement
+`IVersionedFeatureStore.GetContentVersionAsync(dataset)` and report an opaque
+token that moves whenever that dataset's feature content changes;
+`ContentVersions.OfAsync` returns it, or `ContentVersions.Unversioned` for a
+store that does not, and `ContentVersions.FoldAsync(stores, datasets)` folds a
+render's datasets into the one token the tile cache key carries. The version
+is not an existence check (an unknown dataset reports the unversioned token
+and still fails at read time) and callers never parse it.
+
 **Spelling and ladder.** `Catalogue` = datasets in one store
 (`IDataCatalogue`, `IRasterCatalogue`, `GET /api/catalogue`); `Registry` =
 stores and maps across the engine (`IStoreRegistry`, `IMapRegistry`).
 Esri-protocol catalog concepts keep Esri's `Catalog` spelling
 (`GeoServicesCatalog`, raster catalog items) — both spellings are deliberate.
 
-**The feature query plan (ADR-0074, ADR-0084, implemented).** The
+**The feature query plan (ADR-0074, ADR-0098, implemented).** The
 feature read is a plan value, `Spatial.Contracts.FeatureQuery`:
 identity restriction, a `Predicate` tree over `FieldRef`/`Literal`, an
 optional `BoundingBox`, a projection field list, an `Order` (with the store
@@ -132,7 +156,7 @@ adapter-side verb (ADR-0036). Predicate *evaluation* is implementation code
 and never enters `Spatial.Core`.
 
 Two rules keep the back ends answering the same rows for the same plan
-(ADR-0083). An attribute clause is pushed down to a store only when the
+(ADR-0097). An attribute clause is pushed down to a store only when the
 layer's `OBJECTID` is store-derived (an integer identity column); on a layer
 whose `OBJECTID` is the scan ordinal (ADR-0037) the clause stays a residual
 per-feature match, because a store that returns only the matching rows would
@@ -151,15 +175,16 @@ coercing or failing. Which pairs are answerable at all is one table,
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |
-| `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns) |
+| `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns, and the coordinate layout the store declares for the geometry column — ADR-0084) |
 | `CreateAsync` | dataset id, **sample batch**, SRID | table from batch schema; geometry column at SRID |
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
-| `QueryAsync` | dataset id, `FeatureQuery` plan (optional `Ids`, `Where` predicate, `BoundingBox`, `Projection`, `Order`, `Limit`, `Offset`, `Cursor`) | the plan's page: a `FeatureQueryPage(Batches, NextCursor, TotalCount?)`. `TotalCount` is nullable and `null` means *not computed*, never zero. `Offset` and `Cursor` are alternatives, never composed; a store appends the feature identity as a final ascending sort key, so the total order is deterministic (ADR-0084) |
+| `QueryAsync` | dataset id, `FeatureQuery` plan (optional `Ids`, `Where` predicate, `BoundingBox`, `Projection`, `Order`, `Limit`, `Offset`, `Cursor`) | the plan's page: a `FeatureQueryPage(Batches, NextCursor, TotalCount?)`. `TotalCount` is nullable and `null` means *not computed*, never zero. `Offset` and `Cursor` are alternatives, never composed; a store appends the feature identity as a final ascending sort key, so the total order is deterministic (ADR-0098) |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038) |
 | `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). `sourceSrid` asserts the source CRS; a CRS the document declares itself wins over the caller's stamp, the decoded pages are reprojected through `ICoordinateTransforms` before load, and a contradiction between the two is `invalid.arguments` |
 | `IngestStreamAsync` (`IDatasetIngestStream`) | `IngestRequest`, `FeatureSchema`, `IAsyncEnumerable<FeatureBatch>` | the same atomic load with pages arriving as they are decoded, so a large upload is never materialised; the schema is declared up front because the table is created before the first page (ADR-0041 §4) |
+| `StartAsync` / `AppendAsync` / `DescribeAsync` / `ListAsync` / `OpenAsync` / `DiscardAsync` (`IUploadStaging`) | upload id, optional declared total + SHA-256, a chunk `Stream`, a byte offset | byte-level staging for a resumable upload (ADR-0090): a client appends chunks, reads back how many bytes landed, and names the staged upload in `POST /api/ingest?upload=`. Chunks are **bytes**, so the load stays the same one transaction; `Complete` is true only when a declared total is reached, and the staging is discarded only after the load commits. Additive optional face, implemented by the host |
 | `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (FeatureServer/MapServer/Tiles/Wms/Wfs/ImageServer); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |

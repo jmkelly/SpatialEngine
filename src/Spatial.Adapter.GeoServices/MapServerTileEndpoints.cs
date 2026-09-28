@@ -53,7 +53,9 @@ internal static partial class MapServerTileEndpoints
             }
 
             var style = MapRenderEngine.Style(service, layers);
-            var key = new TileCacheKey(scheme.Id, address.Z, address.X, address.Y, RasterFormat.Png, MapRenderEngine.Version(service, style));
+            var version = MapRenderEngine.Version(
+                service, style, await MapRenderEngine.DataVersionAsync(stores, resolved.Store, layers, cancellationToken));
+            var key = new TileCacheKey(scheme.Id, address.Z, address.X, address.Y, RasterFormat.Png, version);
             var image = await render.Cache.TryGetAsync(key, cancellationToken);
             if (image is null)
             {
@@ -78,6 +80,7 @@ internal static partial class MapServerTileEndpoints
             }
 
             GeoServicesResponses.WriteImageHeaders(context, image);
+            context.Response.Headers["X-Tile-Version"] = version;
             return Results.Bytes(image.Content, image.MediaType);
         }
         catch (Exception exception)

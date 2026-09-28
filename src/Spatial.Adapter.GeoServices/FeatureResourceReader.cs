@@ -22,8 +22,7 @@ internal static class FeatureResourceReader
         IFeatureStore store,
         long objectId,
         EsriFeatureQuery query,
-        ICoordinateTransforms transforms,
-        IGeometryOperations operations,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
@@ -44,8 +43,8 @@ internal static class FeatureResourceReader
                 continue;
             }
 
-            var transformed = FeatureProjection.TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, transforms, operations, cancellationToken);
-            return FeatureResponseWriter.WriteFeature(transformed, query);
+            var transformed = FeatureProjection.TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, services.Transforms, services.Operations, cancellationToken);
+            return FeatureResponseWriter.WriteFeature(transformed, query, services);
         }
 
         throw GeoServicesErrors.NotFound($"Feature {objectId} does not exist in layer '{dataset.Id}'.");

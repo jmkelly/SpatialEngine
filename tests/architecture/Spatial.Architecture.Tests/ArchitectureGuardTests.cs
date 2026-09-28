@@ -99,7 +99,7 @@ public sealed class ArchitectureGuardTests
     /// spatial packages stay inside the owning implementation. ADR-0035 adds
     /// the shared Esri codec as a permitted reference for the two boundary
     /// projects (they share only <c>Spatial.Esri.Codec</c>, never each
-    /// other). ADR-0084 adds <c>Spatial.Querying</c>, the shared reference
+    /// other). ADR-0098 adds <c>Spatial.Querying</c>, the shared reference
     /// semantics of a query plan: a store's pushdown is measured against that
     /// one executor, so it is linked by the stores and by the adapter rather
     /// than copied into each of them.

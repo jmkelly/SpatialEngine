@@ -10,7 +10,9 @@ namespace Spatial.Stores.Memory;
 /// keeps one cohesive responsibility. A feature whose identity is
 /// <see cref="FeatureId.Unassigned"/> gets the dataset's next generated
 /// identity (ADR-0043); a data-only dataset rejects every edit per feature,
-/// mirroring the PostGIS contract.
+/// mirroring the PostGIS contract. Every edit that changes the dataset moves
+/// its content version (ADR-0083), which is what invalidates the tiles derived
+/// from it.
 /// </summary>
 public sealed class MemoryEditor : IFeatureEditStore
 {
@@ -44,6 +46,7 @@ public sealed class MemoryEditor : IFeatureEditStore
                 outcomes.Add(AddOne(found, feature));
             }
 
+            BumpWhenMutated(found, outcomes);
             return outcomes;
         }));
     }
@@ -70,6 +73,7 @@ public sealed class MemoryEditor : IFeatureEditStore
                 outcomes.Add(Replace(found, feature));
             }
 
+            BumpWhenMutated(found, outcomes);
             return outcomes;
         }));
     }
@@ -98,6 +102,7 @@ public sealed class MemoryEditor : IFeatureEditStore
                     : FeatureEditOutcome.Failure(id, SpatialException.NotFound, $"No feature with identity '{id}' exists."));
             }
 
+            BumpWhenMutated(found, outcomes);
             return outcomes;
         }));
     }
@@ -146,6 +151,20 @@ public sealed class MemoryEditor : IFeatureEditStore
         if (transaction is not null && !_store.Catalog.IsTransaction(transaction))
         {
             throw SpatialException.BadArguments($"Unknown transaction '{transaction}'.");
+        }
+    }
+
+    /// <summary>
+    /// Moves the dataset's content version when at least one feature in the
+    /// batch actually changed (ADR-0083), so a derived cache keyed by the
+    /// version invalidates the dataset for a partially successful edit and
+    /// stays valid when every feature failed.
+    /// </summary>
+    private void BumpWhenMutated(MemoryDataset dataset, IReadOnlyList<FeatureEditOutcome> outcomes)
+    {
+        if (outcomes.Any(outcome => outcome.Succeeded))
+        {
+            _store.Catalog.Bump(dataset.Id);
         }
     }
 }

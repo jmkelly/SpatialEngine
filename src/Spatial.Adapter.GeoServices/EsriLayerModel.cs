@@ -1,5 +1,6 @@
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices;
@@ -117,6 +118,12 @@ internal static class EsriLayerModel
     /// ArcGIS REST JS gate reads before it sends <c>quantizationParameters</c>
     /// — because the query path has served it since ADR-0079; a table omits
     /// it, having no coordinates to quantize (ADR-0081).
+    /// The layer advertises <c>hasZ</c>/<c>hasM</c> exactly when the store
+    /// declares the geometry column carries that ordinate (ADR-0084): a
+    /// client that sees <c>hasZ</c> sends Z in query geometry and edit
+    /// payloads, so the flag is a description of the data, proved by the
+    /// declared column type, and a dataset the engine cannot prove is 2D
+    /// advertises neither.
     /// </summary>
     public static EsriLayer Describe(
         int id,
@@ -130,6 +137,7 @@ internal static class EsriLayerModel
         EsriUniqueIdField? uniqueIdField = uniqueScheme is null
             ? null
             : new(uniqueScheme.FieldName, IsSystemMaintained: false);
+        var layout = isTable ? CoordinateLayout.Xy : dataset.GeometryLayout;
         return new(
             10.0,
             id,
@@ -151,7 +159,9 @@ internal static class EsriLayerModel
             uniqueIdField,
             HasAttachments: hasAttachments,
             AttachmentProperties: hasAttachments ? AttachmentProperties : null,
-            Relationships: relationships is { Count: > 0 } ? relationships : null);
+            Relationships: relationships is { Count: > 0 } ? relationships : null,
+            HasZ: layout.HasZ() ? true : null,
+            HasM: layout.HasM() ? true : null);
     }
 
     /// <summary>The layer's Esri spatial reference, or null when the SRID is unknown to the map.</summary>
@@ -198,7 +208,16 @@ internal sealed record EsriFeatureServerRoot(
 /// <summary>One layer reference under the <c>FeatureServer</c> root.</summary>
 internal sealed record EsriLayerRef(int Id, string Name, string Type);
 
-/// <summary>One layer's full metadata (spec §9.1).</summary>
+/// <summary>
+/// The ordinates the layer's data carries (spec §9.1 layer resource). Unlike
+/// the capability flags these describe the dataset, not the query surface:
+/// <c>hasZ</c> is what tells an ArcGIS client to send Z in query geometry and
+/// edit payloads, so it is emitted only when the store proves the geometry
+/// column declares that ordinate (ADR-0084), and a two-dimensional dataset
+/// advertises neither rather than advertising <c>false</c> (ADR-0081).
+/// </summary>
+/// <param name="HasZ">True only when the dataset declares a Z ordinate; null (absent) otherwise.</param>
+/// <param name="HasM">True only when the dataset declares an M ordinate; null (absent) otherwise.</param>
 internal sealed record EsriLayer(
     double CurrentVersion,
     int Id,
@@ -220,7 +239,9 @@ internal sealed record EsriLayer(
     EsriUniqueIdField? UniqueIdField = null,
     bool HasAttachments = false,
     IReadOnlyList<EsriAttachmentProperty>? AttachmentProperties = null,
-    IReadOnlyList<EsriRelationship>? Relationships = null);
+    IReadOnlyList<EsriRelationship>? Relationships = null,
+    bool? HasZ = null,
+    bool? HasM = null);
 
 /// <summary>
 /// One advertised relationship (spec §9.1 <c>relationships</c>, ADR-0077):

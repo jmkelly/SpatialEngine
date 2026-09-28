@@ -12,11 +12,14 @@ namespace Spatial.Stores.Memory;
 /// <see cref="MemoryCatalogue"/>; the editing and ingest faces are the sibling
 /// <see cref="MemoryEditor"/> and <see cref="MemoryIngest"/> so each type
 /// keeps one cohesive responsibility (the same factoring as PostGIS,
-/// ADR-0040). State is <em>non-durable</em>: a process restart loses every
+/// ADR-0040). It also reports the per-dataset content version
+/// (<see cref="IVersionedFeatureStore"/>, ADR-0083) that a derived cache such
+/// as the tile cache keys on. State is <em>non-durable</em>: a process restart loses every
 /// dataset. Diagnostics state that; it is a development-and-CI provider, not
 /// a persistence guarantee.
 /// </summary>
-public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup, IFeatureAggregateStore, ITransactionStore
+public sealed class MemoryStore
+    : IDataCatalogue, IFeatureStore, IFeatureLookup, IFeatureAggregateStore, ITransactionStore, IVersionedFeatureStore
 {
     private const int BatchSize = 512;
 
@@ -163,8 +166,26 @@ public sealed class MemoryStore : IDataCatalogue, IFeatureStore, IFeatureLookup,
                 found.Features.Add(MemorySchema.BuildStored(found, feature, assignedId: null));
             }
 
+            if (batch.Count > 0)
+            {
+                _catalog.Bump(found.Id);
+            }
+
             return batch.Count;
         }));
+    }
+
+    /// <summary>
+    /// The dataset's content version (ADR-0083): a counter the write, edit and
+    /// ingest paths bump, so a derived cache keyed by it (the tile cache) misses
+    /// for a dataset that changed and hits for one that did not. Unknown
+    /// datasets report <see cref="ContentVersions.Unversioned"/> — the version is
+    /// an opaque token, and a missing dataset still fails at read time.
+    /// </summary>
+    public ValueTask<string> GetContentVersionAsync(string dataset, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(_catalog.WithLock(() => _catalog.Version(dataset)));
     }
 
     public Task<IReadOnlyList<Feature>> GetAsync(

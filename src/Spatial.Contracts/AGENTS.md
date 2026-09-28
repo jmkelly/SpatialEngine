@@ -14,14 +14,19 @@ implementations and the host — never the reverse.
   phase-1 authentication and role-enforcement contract (ADR-0071).
 - `IGeometryOperations` — buffer, intersection, validate, simplify over
   core geometry values.
+- `IGeometryMeasures` / `IGeometryProcessing` / `IGeometryRelations` — the
+  measurement, set/construction and DE-9IM relation faces the GeoServices
+  adapter maps protocol verbs onto (ADR-0036, ADR-0085).
 - `ICrsDirectory` + `ICoordinateTransforms` — CRS description and
   coordinate transformation (x-first convention).
 - `BoundingBox`, `IDataCatalogue`, `IFeatureStore`, `IFeatureEditStore`,
-  `IFeatureLookup`, `ITransactionStore` —
+  `IFeatureLookup`, `ITransactionStore`, and the optional
+  `IVersionedFeatureStore` + `ContentVersions` content-version vocabulary —
   dataset catalogue, feature reads/writes (canonical `FeatureBatch` pages),
   additive per-feature editing (ADR-0037) and read-by-identity lookup for
-  edit resolution (ADR-0038), additive per-feature attachment blobs
-  (ADR-0065), and store-owned string transaction handles.
+  edit resolution (ADR-0038), a per-dataset content version a derived cache
+  such as the tile cache keys on (ADR-0083), additive per-feature attachment
+  blobs (ADR-0065), and store-owned string transaction handles.
 - `IMapRegistry` + `Map`/`MapServiceKind`/`MapLayer`/`MapLayerKind`
   — the runtime map registry (ADR-0053), the neutral unit of authoring and
   exposure (name, store, stable-id layers, enabled services). A map exposes
@@ -49,6 +54,10 @@ implementations and the host — never the reverse.
 - `Providers/DatasetSummary`, `Providers/DatasetDescription` — catalogue DTOs.
 - `Transformations/CrsDescription` (+ axes, ellipsoid, kind, identity) —
   CRS metadata DTOs.
+- `TransformationSearch/CrsTransformation` (+ steps, `HelmertParameters`,
+  area of use, query) — the datum-transformation search face of
+  `ICrsDirectory` (ADR-0087), its own namespace so a caller that describes a
+  CRS does not couple to a transformation graph.
 - `Http/` — the typed host API shapes (`SpatialHttpContracts`) plus the
   shared `HostApiJson` options and the `FeatureSchema`/`FieldDefinition`
   JSON converters.

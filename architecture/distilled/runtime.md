@@ -14,10 +14,10 @@ infrastructure.
 | Interface | Implementations | Behaviour |
 | --- | --- | --- |
 | `IGeometryOperations` | `NtsGeometryOperations` | Buffer, intersection, validate, simplify; pure, planar; invalid geometry = successful `false` |
-| `IGeometryMeasures` | `NtsGeometryMeasures` | Area, length, distance, label point (ADR-0036) |
+| `IGeometryMeasures` | `NtsGeometryMeasures` | Area, length, distance, label point, centroid (ADR-0036, ADR-0085) |
 | `IGeometryProcessing` | `NtsGeometryProcessing` | Union, difference, convex hull, densify, topological repair (ADR-0036) |
 | `IGeometryRelations` | `NtsGeometryRelations` | DE-9IM relate pattern (ADR-0036) |
-| `ICrsDirectory` + `ICoordinateTransforms` | `ProjNetTransforms` | CRS describe + transform; x-first convention; EPSG catalogue with generated UTM families |
+| `ICrsDirectory` + `ICoordinateTransforms` | `ProjNetTransforms` | CRS describe + transform; x-first convention; EPSG catalogue defined in WKT, with generated UTM families |
 | `IDataCatalogue` | `DemoStore`, `PostgisStore`, `ArcGisRestStore` | List (LIKE `pattern`), describe, create-from-batch |
 | `IFeatureStore` | `DemoStore`, `PostgisStore`, `ArcGisRestStore` | Scan, bbox + attribute query, single-transaction write; reads return `FeatureBatch` pages |
 | `IFeatureEditStore` | `PostgisEditStore` | Per-feature add/update/delete with `FeatureEditOutcome`; split from `PostgisStore` so each type keeps one responsibility (ADR-0037) |

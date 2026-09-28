@@ -173,7 +173,7 @@ internal static class PostgisPlanQueries
     /// some of the rows would number those rows 1, 2, 3 — the same feature
     /// would come back with an id that depends on the query, breaking
     /// <c>objectIds</c>, <c>returnIdsOnly</c>, paging and the edit round-trip
-    /// (ADR-0083). Such a dataset keeps its restriction in the caller, which
+    /// (ADR-0097). Such a dataset keeps its restriction in the caller, which
     /// selects over the whole read; so does a dataset with no identity columns
     /// to restrict by identity at all.
     /// </para>
