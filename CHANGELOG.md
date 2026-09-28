@@ -20,6 +20,18 @@ this file together, then tag the release (`RELEASING.md`).
   `returnCentroid` is a new `IGeometryMeasures.Centroid` verb (the area
   centroid, not the envelope middle) written beside each feature's geometry.
   `returnZ`/`returnM` select the output ordinates.
+- **The Feature Server layer advertises the Z/M its data actually carries**
+  (ADR-0084, SpatialEngine-fhf): `hasZ`/`hasM` are on the layer resource, so a
+  client can preflight whether a dataset carries elevations or measures before
+  it asks for them. They are a description of the data, not a capability, and
+  ArcGIS clients branch on them — a client told a 2D layer has Z will send Z
+  in query geometry and edit payloads — so they are emitted only where the store
+  proves the ordinate. `DatasetDescription` now carries the layout its store
+  declares (`geometryLayout`, default `xy`), PostGIS reads it from the
+  geometry column's declared type (`geometry(PointZ,4326)` → `xyz`), and a
+  two-dimensional or unconstrained column advertises neither key rather than
+  `false`. SQL Server (whose spatial types have no Z/M) and the ArcGIS REST
+  provider report `xy` until they can prove more.
 
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries

@@ -137,7 +137,7 @@ and never enters `Spatial.Core`.
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |
-| `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns) |
+| `DescribeAsync` | dataset id | full `DatasetDescription` (fields in column order, geometry column + SRID/type, row estimate, identity columns, and the coordinate layout the store declares for the geometry column — ADR-0084) |
 | `CreateAsync` | dataset id, **sample batch**, SRID | table from batch schema; geometry column at SRID |
 | `ScanAsync` | dataset id | every feature as `FeatureBatch` pages |
 | `QueryAsync` | dataset id, optional bbox (all-or-none, x-first), optional filter | bbox + parameterised attribute filtering. **ADR-0074 decides** that this becomes one core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`, with reductions (count/distinct/aggregate) on an additive `IFeatureAggregateStore` face; not yet implemented — see the ADR-0074 note below |
