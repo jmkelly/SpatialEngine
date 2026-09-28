@@ -86,6 +86,7 @@ internal static class DpiScaling
         OffsetY = options.OffsetY * ratio,
         Padding = options.Padding * ratio,
         IconSize = options.IconSize * ratio,
+        Spacing = options.Spacing * ratio,
     };
 
     /// <summary>

@@ -50,7 +50,7 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | 64-bit objectIds / high-precision dates / time-only/date-only/timestamp-offset/big-integer field types (11.2–11.3) | — | **Partial** | S2 examples 16–17; our `AttributeKind` has no time-only/date-only/bigint faces |
 | `datumTransformation`, `defaultSR`-style WKT2 spatial references | honestly rejected | **Partial** | rejected by name; WKT2 SR input not accepted (`EsriValueParser.ParseSpatialReference`) |
 | `distance`+`units` (query-with-distance), `returnCentroid`, `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.Parse`); pinned by §7.1 non-goals |
-| `quantizationParameters` | served | **Done** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0075); an unservable `mode`/`originPosition` is rejected by name |
+| `quantizationParameters` | served | **Done** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0079); an unservable `mode`/`originPosition` is rejected by name |
 | `returnZ`/`returnM` | honestly rejected | **Non-goal** | codec serves 2D explicitly |
 
 ## 2. Response-shape deltas vs ground truth (same-data proof)

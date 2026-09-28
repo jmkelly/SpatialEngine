@@ -159,7 +159,7 @@ public sealed class RenderEndpointsTests : IClassFixture<PostgisHostFactory>
             """
             { "version": 8, "layers": [
                 { "id": "labels", "type": "symbol", "source-layer": "demo.cities",
-                  "layout": { "text-field": "{name}", "text-transform": "uppercase" } } ] }
+                  "layout": { "text-field": "{name}", "text-rotation-alignment": "map" } } ] }
             """).RootElement.Clone();
         var response = await client.PostAsJsonAsync("/api/render", request);
 

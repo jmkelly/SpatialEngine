@@ -369,7 +369,7 @@ is rejected by name (never silently ignored) and named here with its reason:
 - `quantizationParameters`/`maxAllowableOffset` (T8): no longer a non-goal.
   Both are served through `IGeometryOperations.Generalize`, the verb that
   states a deviation allowance rather than an algorithm tolerance
-  (ADR-0075): the response stays within the allowance, keeps its geometry
+  (ADR-0079): the response stays within the allowance, keeps its geometry
   kind even when the allowance is wider than the feature, and is
   byte-identical to full precision at an allowance of zero. An unservable
   `mode` or `originPosition` is still rejected by name.

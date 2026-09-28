@@ -49,11 +49,19 @@ internal static class SkiaVectorRasterizer
         surface.Canvas.Clear(scene.Background is { } background ? SkiaPaintFactory.ToSkia(background) : SKColors.Transparent);
 
         var hasSymbols = scene.Layers.Any(layer => layer.Layer.Paint is SymbolPaint);
-        using var font = hasSymbols ? new BundledFont() : null;
-        var collision = new List<SKRect>();
-        foreach (var layer in scene.Layers)
+        using var fonts = hasSymbols ? new FontSession() : null;
+        var registry = sprites ?? SpriteRegistry.Default;
+
+        // Placement is decided for every symbol before anything is painted, so
+        // the priority order can span layers while the draw order stays the
+        // style's document order (ADR-0080).
+        var placement = hasSymbols
+            ? SymbolPlacementEngine.Place(scene.Layers, projection, fonts!, registry)
+            : [];
+
+        for (var index = 0; index < scene.Layers.Count; index++)
         {
-            Draw(surface.Canvas, layer, projection, collision, font, sprites ?? SpriteRegistry.Default);
+            Draw(surface.Canvas, scene.Layers[index], projection, placement, fonts, registry, index);
         }
 
         using var image = surface.Snapshot();
@@ -61,7 +69,13 @@ internal static class SkiaVectorRasterizer
     }
 
     private static void Draw(
-        SKCanvas canvas, SceneLayer layer, ViewportProjection projection, List<SKRect> collision, BundledFont? font, SpriteRegistry sprites)
+        SKCanvas canvas,
+        SceneLayer layer,
+        ViewportProjection projection,
+        IReadOnlyList<PlacedSymbol?[]?> placement,
+        FontSession? fonts,
+        SpriteRegistry sprites,
+        int index)
     {
         if (layer.Runs.Count > 0)
         {
@@ -84,7 +98,9 @@ internal static class SkiaVectorRasterizer
                 break;
             case SymbolPaint symbol:
                 SkiaSymbolRasterizer.Draw(
-                    new SymbolDrawContext(canvas, symbol.Options, projection, collision, font!, sprites), layer.Symbols);
+                    new SymbolDrawContext(canvas, symbol.Options, fonts!, sprites),
+                    layer.Symbols,
+                    index < placement.Count ? placement[index] ?? [] : []);
                 break;
         }
     }
