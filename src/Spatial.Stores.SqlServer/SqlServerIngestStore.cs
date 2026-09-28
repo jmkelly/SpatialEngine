@@ -18,9 +18,10 @@ namespace Spatial.Stores.SqlServer;
 /// by <see cref="SqlServerIngestPlan"/> and <see cref="SqlServerQueries"/> from
 /// validated identifiers and bound parameters only. Additive like the other
 /// granular faces: a store that cannot bulk-load simply does not implement
-/// this interface.
+/// this interface. <see cref="IDatasetIngestStream"/> is the same load with the
+/// pages arriving as they are decoded, so the upload is never held in memory.
 /// </summary>
-public sealed class SqlServerIngestStore : IDatasetIngest
+public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
 {
     private readonly SqlServerStore _store;
 
@@ -53,6 +54,83 @@ public sealed class SqlServerIngestStore : IDatasetIngest
 
     private static SpatialException AlreadyExists(SqlServerDatasetName dataset) =>
         SpatialException.BadArguments($"Dataset '{dataset}' already exists.");
+
+    /// <inheritdoc />
+    public async Task<IngestOutcome> IngestStreamAsync(
+        IngestRequest request,
+        FeatureSchema schema,
+        IAsyncEnumerable<FeatureBatch> pages,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(schema);
+        ArgumentNullException.ThrowIfNull(pages);
+
+        var plan = SqlServerIngestPlan.Create(request, schema);
+        _store.RequireConfigured();
+        return await _store.RunStoreOperationAsync(async () =>
+        {
+            try
+            {
+                var loaded = await LoadStreamAsync(plan, pages, cancellationToken).ConfigureAwait(false);
+                return new IngestOutcome(plan.Dataset.Qualified, loaded, plan.Srid, plan.IdentityColumn);
+            }
+            catch (SqlException exception) when (SqlServerFailureCode.IsAlreadyCreated(exception))
+            {
+                throw AlreadyExists(plan.Dataset);
+            }
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Creates the table from the first page and inserts each page as it
+    /// arrives, on one connection and one transaction: a failure or a
+    /// cancellation part-way through rolls the table back rather than leaving
+    /// a half-populated dataset.
+    /// </summary>
+    private async Task<long> LoadStreamAsync(
+        SqlServerIngestPlan plan, IAsyncEnumerable<FeatureBatch> pages, CancellationToken cancellationToken)
+    {
+        await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        long loaded = 0;
+        var position = 0;
+        var started = false;
+        var insert = string.Empty;
+        await foreach (var page in pages.WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (started is false)
+            {
+                plan.Bind(page);
+                await SqlServerDataStore
+                    .ExecuteNonQueryAsync(connection, transaction, plan.CreateTableSql(), [], cancellationToken)
+                    .ConfigureAwait(false);
+                await SqlServerCatalogue
+                    .RecordSridAsync(connection, transaction, plan.Dataset, plan.Srid, cancellationToken)
+                    .ConfigureAwait(false);
+                insert = SqlServerQueries.Insert(plan.Dataset, plan.Schema, plan.Srid);
+                started = true;
+            }
+            else
+            {
+                plan.CheckPage(page, position);
+            }
+
+            await LoadPageAsync(connection, transaction, insert, plan, page, cancellationToken).ConfigureAwait(false);
+            loaded += page.Count;
+            position++;
+        }
+
+        if (started is false)
+        {
+            throw SpatialException.BadArguments("An ingest requires at least one feature.");
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return loaded;
+    }
 
     /// <summary>Runs the whole create + load on one connection and one transaction.</summary>
     private async Task LoadAsync(SqlServerIngestPlan plan, CancellationToken cancellationToken)

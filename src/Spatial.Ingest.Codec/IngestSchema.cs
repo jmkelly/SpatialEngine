@@ -1,39 +1,89 @@
 using System.Globalization;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Ingest;
 
 namespace Spatial.Ingest.Codec;
 
 /// <summary>
 /// Turns parsed raw records into a core schema and canonical feature pages.
-/// Field order is the union of source attribute names in first-seen order
-/// with the geometry field appended last (the same canonical placement the
-/// ArcGIS REST provider uses). Value kinds widen across the document:
-/// int + double becomes double, and any string or mixed boolean/number
-/// becomes string; a missing or null value makes the field nullable.
+/// Field order is the union of source attribute names in first-seen order with
+/// the geometry field appended last (the same canonical placement the ArcGIS
+/// REST provider uses). Value kinds widen across the document: int + double
+/// becomes double, and any string or mixed boolean/number becomes string; a
+/// missing or null value makes the field nullable. The kinds actually observed
+/// are kept, because "the first row was null so the column is a string" and
+/// "the column is a string" are different facts about the same schema.
 /// </summary>
 internal static class IngestSchema
 {
-    /// <summary>Infers the schema of a parsed document.</summary>
-    public static FeatureSchema Infer(RawFeatureSet set, string geometryField)
+    /// <summary>Accumulates one attribute column's evidence as records arrive.</summary>
+    private sealed class Evidence
     {
-        var fields = new List<FieldDefinition>(set.Names.Count + 1);
-        foreach (var name in set.Names)
+        public AttributeKind? Widened { get; private set; }
+
+        public bool Nullable { get; private set; }
+
+        public long Nulls { get; private set; }
+
+        public List<AttributeKind> Observed { get; } = [];
+
+        public void Observe(object? value)
         {
-            fields.Add(InferField(name, set.Features));
+            if (value is null)
+            {
+                Nullable = true;
+                Nulls++;
+                return;
+            }
+
+            var kind = KindOf(value);
+            if (Observed.Contains(kind) is false)
+            {
+                Observed.Add(kind);
+            }
+
+            Widened = Widened is null ? kind : Widen(Widened.Value, kind);
+        }
+
+        public FieldDefinition ToField(string name) =>
+            Widened is null
+                ? new FieldDefinition(name, AttributeKind.String, nullable: true)
+                : new FieldDefinition(name, Widened.Value, Nullable);
+
+        public InferredField ToReport(string name) =>
+            new(name, Widened ?? AttributeKind.String, Nullable, Nulls, Observed.ToArray());
+    }
+
+    /// <summary>Infers the schema of the records seen so far, with its evidence.</summary>
+    public static (FeatureSchema Schema, IReadOnlyList<InferredField> Inferred) Infer(
+        IReadOnlyList<RawFeature> records, IReadOnlyList<string> names, string geometryField)
+    {
+        var fields = new List<FieldDefinition>(names.Count + 1);
+        var report = new List<InferredField>(names.Count);
+        foreach (var name in names)
+        {
+            var evidence = new Evidence();
+            foreach (var record in records)
+            {
+                evidence.Observe(record.Properties.GetValueOrDefault(name));
+            }
+
+            fields.Add(evidence.ToField(name));
+            report.Add(evidence.ToReport(name));
         }
 
         fields.Add(new FieldDefinition(geometryField, AttributeKind.Geometry, nullable: true));
-        return new FeatureSchema(fields);
+        return (new FeatureSchema(fields), report);
     }
 
     /// <summary>Builds the canonical pages, synthesising a source identity when the document had none.</summary>
-    public static IReadOnlyList<FeatureBatch> Build(RawFeatureSet set, FeatureSchema schema, int batchSize)
+    public static IReadOnlyList<FeatureBatch> Build(IReadOnlyList<RawFeature> records, FeatureSchema schema, int batchSize)
     {
         var pages = new List<FeatureBatch>();
         var buffer = new List<Feature>(batchSize);
-        for (var index = 0; index < set.Features.Count; index++)
+        for (var index = 0; index < records.Count; index++)
         {
-            buffer.Add(BuildFeature(set.Features[index], schema, index));
+            buffer.Add(BuildFeature(records[index], schema, index));
             if (buffer.Count == batchSize)
             {
                 pages.Add(new FeatureBatch(schema, buffer.ToArray()));
@@ -49,25 +99,28 @@ internal static class IngestSchema
         return pages;
     }
 
-    private static FieldDefinition InferField(string name, IReadOnlyList<RawFeature> features)
+    /// <summary>
+    /// Builds one canonical feature. Returns false when the record carries an
+    /// attribute the fixed schema has no field for, which only a streaming
+    /// decode can discover: the schema was inferred from a prefix, and a value
+    /// dropped without saying so is exactly the silent data loss the decode
+    /// report exists to end.
+    /// </summary>
+    public static bool TryBuildFeature(RawFeature raw, FeatureSchema schema, int index, out Feature feature, out string? unexpected)
     {
-        AttributeKind? kind = null;
-        var nullable = false;
-        foreach (var feature in features)
+        unexpected = null;
+        foreach (var property in raw.Properties.Keys)
         {
-            if (feature.Properties.TryGetValue(name, out var value) is false || value is null)
+            if (schema.IndexOf(property) < 0)
             {
-                nullable = true;
-                continue;
+                unexpected = property;
+                feature = null!;
+                return false;
             }
-
-            var valueKind = KindOf(value);
-            kind = kind is null ? valueKind : Widen(kind.Value, valueKind);
         }
 
-        return kind is null
-            ? new FieldDefinition(name, AttributeKind.String, nullable: true)
-            : new FieldDefinition(name, kind.Value, nullable);
+        feature = BuildFeature(raw, schema, index);
+        return true;
     }
 
     private static Feature BuildFeature(RawFeature raw, FeatureSchema schema, int index)

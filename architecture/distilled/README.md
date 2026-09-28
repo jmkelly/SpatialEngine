@@ -19,7 +19,7 @@ reflects the state at decision time.
 | Which services exist + their contracts | `contracts.md` | 0033, 0074 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048 |
-| Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0037, 0038 |
+| Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0075, 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `host-and-clients.md` | 0014, 0041, 0047 |
 | MapServer / ImageServer | `host-and-clients.md`, `../image-service-plan.md` | 0035, 0048, 0050, 0051 |
 | Command-line workspace (datasets, maps, project file) | `cli.md` | 0041, 0047, 0052 |
@@ -97,6 +97,7 @@ shape is noted in brackets.
 | 0039 | Desktop (Tauri) packaging is abandoned; host + browser workbench are the product. |
 | 0040 | Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses. |
 | 0041 | Ingest and publications are protocol-neutral SDK faces; Esri admin is a gated projection. |
+| 0075 | Ingest honours a declared source CRS, reports what the decode did, and streams pages into one transaction. |
 | 0044 | Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI. |
 | 0045 | Structured logging is Serilog to Seq; Aspire runs the Seq server in development. |
 | 0046 | Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations. |

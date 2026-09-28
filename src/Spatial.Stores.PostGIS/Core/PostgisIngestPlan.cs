@@ -44,6 +44,62 @@ internal sealed record PostgisIngestPlan(
         return new PostgisIngestPlan(dataset, request.Srid, request.Identity, identityColumn, schema, pages, geometryTypes);
     }
 
+    /// <summary>
+    /// Validates a request against a schema alone, for a streaming load whose
+    /// pages have not arrived yet (ADR-0041 §4). The geometry column types
+    /// still need features, so they are resolved by <see cref="Bind"/> once the
+    /// first page lands and the table is created from there.
+    /// </summary>
+    public static PostgisIngestPlan Create(IngestRequest request, FeatureSchema schema)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(schema);
+        var dataset = ParseDataset(request);
+        ValidateSrid(request);
+        CheckIdentifier(dataset, schema);
+        var identityColumn = ResolveIdentity(request, schema, dataset);
+        return new PostgisIngestPlan(dataset, request.Srid, request.Identity, identityColumn, schema, [], []);
+    }
+
+    /// <summary>
+    /// The plan with its first page bound, which fixes the geometry column
+    /// types the <c>CREATE TABLE</c> statement needs. Every later page must
+    /// share the declared schema.
+    /// </summary>
+    public PostgisIngestPlan Bind(FeatureBatch firstPage)
+    {
+        ArgumentNullException.ThrowIfNull(firstPage);
+        if (firstPage.Count == 0)
+        {
+            throw SpatialException.BadArguments("An ingest requires at least one feature.");
+        }
+
+        if (firstPage.Schema.Equals(Schema) is false)
+        {
+            throw SpatialException.BadArguments("A page does not share the declared schema.");
+        }
+
+        return this with { GeometryTypes = ResolveGeometryTypes(Dataset, Schema, [firstPage]) };
+    }
+
+    /// <summary>Whether a page may be loaded under this plan.</summary>
+    public void CheckPage(FeatureBatch page, int position)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        if (page.Schema.Equals(Schema) is false)
+        {
+            throw SpatialException.BadArguments($"Page {position} does not share the declared schema.");
+        }
+    }
+
+    private static void ValidateSrid(IngestRequest request)
+    {
+        if (request.Srid <= 0)
+        {
+            throw SpatialException.BadArguments($"The SRID must be positive, got {request.Srid}.");
+        }
+    }
+
     private static PostgisDatasetName ParseDataset(IngestRequest request)
     {
         if (!PostgisDatasetName.TryParse(request.Dataset, out var dataset, out var reason))
@@ -56,10 +112,7 @@ internal sealed record PostgisIngestPlan(
 
     private static void ValidateRequest(IngestRequest request, IReadOnlyList<FeatureBatch> pages)
     {
-        if (request.Srid <= 0)
-        {
-            throw SpatialException.BadArguments($"The SRID must be positive, got {request.Srid}.");
-        }
+        ValidateSrid(request);
 
         if (pages.Count == 0 || pages.Sum(page => page.Count) == 0)
         {

@@ -46,6 +46,14 @@ public sealed class IngestOptions
     /// <summary>Features per decoded page.</summary>
     public int BatchSize { get; set; } = 10_000;
 
+    /// <summary>
+    /// Whether a malformed record is dropped and reported rather than failing
+    /// the whole upload. Off by default: a bad row in a large upload should not
+    /// become a load with a silent hole in it, and the report is what makes a
+    /// deliberate choice visible.
+    /// </summary>
+    public bool SkipMalformed { get; set; }
+
     /// <summary>The accepted format names (<c>geojson</c>, <c>ndjson</c>, <c>csv</c>).</summary>
     public IReadOnlyList<string> Formats { get; set; } = ["geojson", "ndjson", "csv"];
 

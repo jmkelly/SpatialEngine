@@ -13,7 +13,7 @@ namespace Spatial.Stores.Memory;
 /// </summary>
 internal sealed record MemoryIngestPlan(
     string Dataset, int Srid, IngestIdentity Identity, string? IdentityColumn,
-    FeatureSchema StoredSchema, IReadOnlyList<FeatureBatch> Pages)
+    FeatureSchema SourceSchema, FeatureSchema StoredSchema, IReadOnlyList<FeatureBatch> Pages)
 {
     /// <summary>Validates a request and its pages, or throws <c>invalid.arguments</c>.</summary>
     public static MemoryIngestPlan Create(IngestRequest request, IReadOnlyList<FeatureBatch> pages)
@@ -21,13 +21,40 @@ internal sealed record MemoryIngestPlan(
         ValidateRequest(request);
         ValidatePages(pages);
         var (identity, identityColumn, storedSchema) = IdentityOf(request, pages[0].Schema);
-        return new MemoryIngestPlan(request.Dataset, request.Srid, identity, identityColumn, storedSchema, pages);
+        return new MemoryIngestPlan(
+            request.Dataset, request.Srid, identity, identityColumn, pages[0].Schema, storedSchema, pages);
+    }
+
+    /// <summary>
+    /// Validates a request against a schema alone, for a streaming load whose
+    /// pages have not arrived yet (ADR-0041 §4). The same rules apply; only the
+    /// "at least one feature" check waits for the pages.
+    /// </summary>
+    public static MemoryIngestPlan Create(IngestRequest request, FeatureSchema schema)
+    {
+        ArgumentNullException.ThrowIfNull(schema);
+        ValidateRequest(request);
+        var (identity, identityColumn, storedSchema) = IdentityOf(request, schema);
+        return new MemoryIngestPlan(request.Dataset, request.Srid, identity, identityColumn, schema, storedSchema, []);
+    }
+
+    /// <summary>
+    /// The plan with its pages bound, after checking that they share the
+    /// declared schema. The in-memory store keeps every feature, so this is
+    /// where the pages are materialised — what the streaming face saves is the
+    /// decoded document, not the dataset.
+    /// </summary>
+    public MemoryIngestPlan Bind(IReadOnlyList<FeatureBatch> pages)
+    {
+        ArgumentNullException.ThrowIfNull(pages);
+        ValidatePages(pages, SourceSchema);
+        return this with { Pages = pages };
     }
 
     /// <summary>Builds the dataset and its stored features in one step (atomic by construction).</summary>
     public MemoryDataset Materialise()
     {
-        var features = new List<Feature>(Pages.Sum(page => page.Count));
+        var features = new List<Feature>(Pages.Sum(page => (int)page.Count));
         long nextId = 1;
         var template = MemoryDataset.Create(Dataset, Srid, StoredSchema, idColumns: [], features: [], nextId: 1);
         foreach (var page in Pages)
@@ -67,6 +94,23 @@ internal sealed record MemoryIngestPlan(
             if (!pages[i].Schema.Equals(pages[0].Schema))
             {
                 throw SpatialException.BadArguments($"Page {i} does not share the first page's schema.");
+            }
+        }
+    }
+
+    /// <summary>The page checks against a declared schema rather than page zero.</summary>
+    private static void ValidatePages(IReadOnlyList<FeatureBatch> pages, FeatureSchema schema)
+    {
+        if (pages.Count == 0 || pages.Sum(page => page.Count) == 0)
+        {
+            throw SpatialException.BadArguments("An ingest requires at least one feature.");
+        }
+
+        for (var i = 0; i < pages.Count; i++)
+        {
+            if (!pages[i].Schema.Equals(schema))
+            {
+                throw SpatialException.BadArguments($"Page {i} does not share the declared schema.");
             }
         }
     }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features;
 using Spatial.Ingest.Codec;
 
 namespace Spatial.Adapter.GeoServices;
@@ -15,7 +16,12 @@ namespace Spatial.Adapter.GeoServices;
 internal static class EsriAdminUploads
 {
     public static async Task<IResult> UploadAsync(
-        EsriAdminOptions options, EsriUploadStaging staging, HttpContext context, IStoreRegistry stores, CancellationToken token)
+        EsriAdminOptions options,
+        EsriUploadStaging staging,
+        HttpContext context,
+        IStoreRegistry stores,
+        ICoordinateTransforms transforms,
+        CancellationToken token)
     {
         var query = context.Request.Query;
         var store = EsriAdminRequest.Query(query, "store") ?? "memory";
@@ -23,16 +29,28 @@ internal static class EsriAdminUploads
         var format = ParseFormat(EsriAdminRequest.Query(query, "format") ?? "geojson");
         var srid = ParseSrid(EsriAdminRequest.Query(query, "srid"));
         var identityField = EsriAdminRequest.Query(query, "identityField");
+        var identity = IdentityOf(EsriAdminRequest.Query(query, "identity"));
         var target = stores.Ingest(store)
             ?? throw GeoServicesErrors.Invalid($"Store '{store}' does not support ingest.");
 
         await using var body = await ReadUploadAsync(context.Request, options.MaxBytes);
-        var decoded = DatasetDecoder.Decode(body, format, new DecodeOptions
+
+        // The declared source CRS is honoured by the decode, and streamed into
+        // the store when it can take pages; the projection reports the item id,
+        // so the decode report is staged with the outcome rather than returned.
+        var request = new IngestRequest(dataset, srid, identity, identityField);
+        if (target is IDatasetIngestStream streaming)
         {
-            Srid = srid,
-            BatchSize = options.BatchSize,
-            IdentityField = identityField,
-        });
+            await using var session = await DatasetDecoder.DecodeStreamingAsync(
+                body, format, Options(options, srid, identityField, transforms), token);
+            var streamed = await streaming
+                .IngestStreamAsync(request, session.Schema, Capped(session.Pages, options, token), token)
+                .ConfigureAwait(false);
+            return EsriAdminResponses.Upload(
+                staging.Stage(streamed with { Report = await session.Report.ConfigureAwait(false) }, store));
+        }
+
+        var decoded = DatasetDecoder.Decode(body, format, Options(options, srid, identityField, transforms), token);
         var features = decoded.Pages.Sum(page => (long)page.Count);
         if (features > options.MaxFeatures)
         {
@@ -40,9 +58,49 @@ internal static class EsriAdminUploads
                 $"The upload has {features} features, above the configured maximum of {options.MaxFeatures}.");
         }
 
-        var outcome = await target.IngestAsync(new IngestRequest(dataset, srid, IdentityOf(EsriAdminRequest.Query(query, "identity")), identityField), decoded.Pages, token);
-        var itemId = staging.Stage(outcome, store);
-        return EsriAdminResponses.Upload(itemId);
+        var outcome = await target.IngestAsync(request, decoded.Pages, token);
+        return EsriAdminResponses.Upload(staging.Stage(outcome with { Report = decoded.Report }, store));
+    }
+
+    /// <summary>
+    /// Fails the upload once more features have been read than the cap allows.
+    /// A streamed decode has to check while reading or the cap is not a cap.
+    /// </summary>
+    private static async IAsyncEnumerable<FeatureBatch> Capped(
+        IAsyncEnumerable<FeatureBatch> pages,
+        EsriAdminOptions options,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        long seen = 0;
+        await foreach (var page in pages.WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            seen += page.Count;
+            if (seen > options.MaxFeatures)
+            {
+                throw GeoServicesErrors.Invalid(
+                    $"The upload is above the configured maximum of {options.MaxFeatures} features.");
+            }
+
+            yield return page;
+        }
+    }
+
+    private static DecodeOptions Options(
+        EsriAdminOptions options, int srid, string? identityField, ICoordinateTransforms transforms) => new()
+        {
+            Srid = srid,
+            BatchSize = options.BatchSize,
+            IdentityField = identityField,
+            SkipMalformed = options.SkipMalformed,
+            Reprojector = new EsriReprojection(transforms),
+        };
+
+    /// <summary>The engine's transform service, adapted onto the codec's seam.</summary>
+    private sealed class EsriReprojection(ICoordinateTransforms transforms) : IIngestReprojection
+    {
+        public Spatial.Core.Geometry.IGeometry Reproject(
+            Spatial.Core.Geometry.IGeometry geometry, string source, string target, CancellationToken cancellationToken = default) =>
+            transforms.Transform(geometry, source, target, cancellationToken);
     }
 
     private static async Task<MemoryStream> ReadUploadAsync(HttpRequest request, long maxBytes)

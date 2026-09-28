@@ -175,10 +175,8 @@ internal static class AdminEndpoints
             var target = stores.Ingest(store)
                 ?? throw SpatialException.BadArguments($"Store '{store}' does not support ingest.");
 
-            var decoded = await DecodeAsync(context, ingest, format, sourceSrid ?? srid, identityField);
-            var pages = IngestPipeline.ConvertIfNeeded(decoded, sourceSrid, srid, transforms, token);
-            var outcome = await target.IngestAsync(
-                new IngestRequest(dataset, srid, identity, identityField), pages, token);
+            var outcome = await LoadAsync(
+                context, ingest, format, dataset, srid, sourceSrid, target, identity, identityField, transforms, token);
 
             return Results.Ok(await WithMapAsync(registry, query["publish"].ToString(), store, outcome, token));
         }
@@ -188,12 +186,24 @@ internal static class AdminEndpoints
         }
     }
 
-    /// <summary>Decodes the upload body (raw or multipart) under the byte and feature caps.</summary>
-    private static async Task<IReadOnlyList<FeatureBatch>> DecodeAsync(
-        HttpContext context, IngestOptions ingest, IngestFormat format, int srid, string? identityField)
+    /// <summary>Reads the upload body (raw or multipart) under the byte cap, then decodes and loads it.</summary>
+    private static async Task<IngestOutcome> LoadAsync(
+        HttpContext context,
+        IngestOptions ingest,
+        IngestFormat format,
+        string dataset,
+        int srid,
+        int? sourceSrid,
+        IDatasetIngest target,
+        IngestIdentity identity,
+        string? identityField,
+        ICoordinateTransforms transforms,
+        CancellationToken token)
     {
         await using var body = await ReadUploadAsync(context.Request, ingest.MaxBytes);
-        return IngestPipeline.DecodePages(body, format, srid, ingest, identityField);
+        return await IngestPipeline.LoadAsync(
+            body, format, dataset, srid, sourceSrid, target, target as IDatasetIngestStream,
+            ingest, identity, identityField, transforms, token);
     }
 
     private static async Task<IngestOutcome> WithMapAsync(

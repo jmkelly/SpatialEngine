@@ -134,7 +134,8 @@ and never enters `Spatial.Core`.
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
 | `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038) |
-| `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). The host ingest route also accepts `sourceSrid` and reprojects the decoded pages through `ICoordinateTransforms` before load |
+| `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). `sourceSrid` asserts the source CRS; a CRS the document declares itself wins over the caller's stamp, the decoded pages are reprojected through `ICoordinateTransforms` before load, and a contradiction between the two is `invalid.arguments` |
+| `IngestStreamAsync` (`IDatasetIngestStream`) | `IngestRequest`, `FeatureSchema`, `IAsyncEnumerable<FeatureBatch>` | the same atomic load with pages arriving as they are decoded, so a large upload is never materialised; the schema is declared up front because the table is created before the first page (ADR-0041 §4) |
 | `ListAsync` / `GetAsync` / `PutAsync` / `DeleteAsync` (`IMapRegistry`) | map name / `Map` | runtime map registry (ADR-0053, evolving ADR-0041): declared entries immutable, runtime entries persisted; `Map` carries name, store, stable-id layers and the enabled `Services` (FeatureServer/MapServer/Tiles/Wms/Wfs/ImageServer); each layer may carry a persisted MapLibre style fragment (ADR-0047) and a `Kind` (feature/image) with an optional per-layer store |
 | `Begin/Commit/RollbackAsync` | — / handle / handle | store-owned string handles; unknown handle = `invalid.arguments` |
 | `SleepAsync` | milliseconds, progress | demo-only cancellable delay |
@@ -200,7 +201,8 @@ writes/creation/editing rejected.
 
 **Memory specifics (ADR-0042):** the ephemeral writable in-memory store
 (keyed `memory`, always available) implements the writable faces including
-`IDatasetIngest`, `IFeatureEditStore` and `IFeatureLookup`. State is
+`IDatasetIngest`, `IDatasetIngestStream`, `IFeatureEditStore` and
+`IFeatureLookup`. State is
 process-local and non-durable; an `Auto`/`Source` dataset is editable and
 lookup-able, a `None` dataset is query-only; bbox queries only (attribute
 filters rejected).

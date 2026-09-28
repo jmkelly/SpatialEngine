@@ -78,6 +78,59 @@ internal sealed record SqlServerIngestPlan(
 
     private static string IdentityColumnSql() => SqlServerIdentifier.Quote(AutoIdentityColumn);
 
+    /// <summary>
+    /// Validates a request against a schema alone, for a streaming load whose
+    /// pages have not arrived yet (ADR-0041 §4). The geometry layout check
+    /// still needs features, so <see cref="Bind"/> applies it to the first page
+    /// before the table is created.
+    /// </summary>
+    public static SqlServerIngestPlan Create(IngestRequest request, FeatureSchema schema)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(schema);
+        var dataset = ParseDataset(request);
+        ValidateSrid(request);
+        SqlServerFieldName.RequireValid(dataset, schema);
+        var identityColumn = ResolveIdentity(request, schema, dataset);
+        return new SqlServerIngestPlan(dataset, request.Srid, request.Identity, identityColumn, schema, []);
+    }
+
+    /// <summary>The plan with its first page bound and validated against it.</summary>
+    public SqlServerIngestPlan Bind(FeatureBatch firstPage)
+    {
+        ArgumentNullException.ThrowIfNull(firstPage);
+        if (firstPage.Count == 0)
+        {
+            throw SpatialException.BadArguments("An ingest requires at least one feature.");
+        }
+
+        if (firstPage.Schema.Equals(Schema) is false)
+        {
+            throw SpatialException.BadArguments("A page does not share the declared schema.");
+        }
+
+        SqlServerGeometryLayout.RequireStorable(Schema, firstPage.Features);
+        return this;
+    }
+
+    /// <summary>Whether a page may be loaded under this plan.</summary>
+    public void CheckPage(FeatureBatch page, int position)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        if (page.Schema.Equals(Schema) is false)
+        {
+            throw SpatialException.BadArguments($"Page {position} does not share the declared schema.");
+        }
+    }
+
+    private static void ValidateSrid(IngestRequest request)
+    {
+        if (request.Srid <= 0)
+        {
+            throw SpatialException.BadArguments($"The SRID must be positive, got {request.Srid}.");
+        }
+    }
+
     private static SqlServerDatasetName ParseDataset(IngestRequest request)
     {
         if (!SqlServerDatasetName.TryParse(request.Dataset, out var dataset, out var reason))
@@ -90,10 +143,7 @@ internal sealed record SqlServerIngestPlan(
 
     private static void ValidateRequest(IngestRequest request, IReadOnlyList<FeatureBatch> pages)
     {
-        if (request.Srid <= 0)
-        {
-            throw SpatialException.BadArguments($"The SRID must be positive, got {request.Srid}.");
-        }
+        ValidateSrid(request);
 
         if (pages.Count == 0 || pages.Sum(page => page.Count) == 0)
         {

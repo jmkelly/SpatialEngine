@@ -1,37 +1,117 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Ingest.Codec;
 
 namespace Spatial.Host.Api;
 
 /// <summary>
-/// The store-facing half of the neutral ingest path (ADR-0041 §3): decode,
-/// cap, reproject and load. Shared by the upload route
-/// (<see cref="AdminEndpoints"/>) and the development seed endpoint
-/// (<see cref="SeedEndpoints"/>), so both enforce the same format allowlist,
-/// feature cap and source-to-target reprojection.
+/// The store-facing half of the neutral ingest path (ADR-0041 §3): decode and
+/// load. Shared by the upload route (<see cref="AdminEndpoints"/>) and the
+/// development seed endpoint (<see cref="SeedEndpoints"/>), so both enforce the
+/// same format allowlist, feature cap and source-to-target reprojection.
+/// <para>
+/// Reprojection belongs to the decode, not to a second pass over the pages
+/// (ADR-0041 §4): the codec resolves the source CRS from the document's own
+/// declaration, transforms as it decodes, and reports both. A second pass
+/// could only be told the source CRS by the caller, which is exactly the
+/// assumption that let a declared CRS be ignored.
+/// </para>
 /// </summary>
 internal static class IngestPipeline
 {
-    /// <summary>Decodes an upload body under the feature cap.</summary>
-    public static IReadOnlyList<FeatureBatch> DecodePages(
-        Stream body, IngestFormat format, int srid, IngestOptions ingest, string? identityField)
+    /// <summary>Adapts the engine's transform service onto the codec's seam.</summary>
+    public static IIngestReprojection Reprojection(ICoordinateTransforms transforms)
     {
-        var decoded = DatasetDecoder.Decode(body, format, new DecodeOptions
+        ArgumentNullException.ThrowIfNull(transforms);
+        return new TransformReprojection(transforms);
+    }
+
+    private sealed class TransformReprojection(ICoordinateTransforms transforms) : IIngestReprojection
+    {
+        public IGeometry Reproject(IGeometry geometry, string source, string target, CancellationToken cancellationToken = default) =>
+            transforms.Transform(geometry, source, target, cancellationToken);
+    }
+
+    /// <summary>
+    /// Decodes an upload body under the feature cap and loads it, streaming
+    /// when the store can take pages as they arrive. The returned outcome
+    /// carries the decode report, so the caller learns what was read, what was
+    /// dropped and why, and what happened to the CRS.
+    /// </summary>
+    public static async Task<IngestOutcome> LoadAsync(
+        Stream body,
+        IngestFormat format,
+        string dataset,
+        int targetSrid,
+        int? sourceSrid,
+        IDatasetIngest target,
+        IDatasetIngestStream? streaming,
+        IngestOptions ingest,
+        IngestIdentity identity,
+        string? identityField,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var options = new DecodeOptions
         {
-            Srid = srid,
+            Srid = targetSrid,
+            SourceSrid = sourceSrid,
+            Reprojector = Reprojection(transforms),
             BatchSize = ingest.BatchSize,
             IdentityField = identityField,
-        });
-        var features = decoded.Pages.Sum(page => (long)page.Count);
+            SkipMalformed = ingest.SkipMalformed,
+        };
+        var request = new IngestRequest(dataset, targetSrid, identity, identityField);
+
+        if (streaming is null)
+        {
+            var decoded = DatasetDecoder.Decode(body, format, options, cancellationToken);
+            UnderCap(decoded.Report.RecordsRead, ingest);
+            var loaded = await target.IngestAsync(request, decoded.Pages, cancellationToken).ConfigureAwait(false);
+            return loaded with { Report = decoded.Report };
+        }
+
+        await using var session = await DatasetDecoder
+            .DecodeStreamingAsync(body, format, options, cancellationToken)
+            .ConfigureAwait(false);
+        var streamed = await streaming
+            .IngestStreamAsync(
+                request,
+                session.Schema,
+                Capped(session.Pages, ingest, cancellationToken),
+                cancellationToken)
+            .ConfigureAwait(false);
+        return streamed with { Report = await session.Report.ConfigureAwait(false) };
+    }
+
+    /// <summary>
+    /// Fails the decode once it has read more features than the cap allows.
+    /// The buffered path checks the count after the fact; a streamed one has to
+    /// check while reading, or the cap is not a cap.
+    /// </summary>
+    private static async IAsyncEnumerable<FeatureBatch> Capped(
+        IAsyncEnumerable<FeatureBatch> pages,
+        IngestOptions ingest,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        long seen = 0;
+        await foreach (var page in pages.WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            seen += page.Count;
+            UnderCap(seen, ingest);
+            yield return page;
+        }
+    }
+
+    private static void UnderCap(long features, IngestOptions ingest)
+    {
         if (features > ingest.MaxFeatures)
         {
             throw SpatialException.BadArguments(
-                $"The upload has {features} features, above the configured maximum of {ingest.MaxFeatures}.");
+                $"The upload is above the configured maximum of {ingest.MaxFeatures} features.");
         }
-
-        return decoded.Pages;
     }
 
     public static IngestFormat ParseFormat(IngestOptions ingest, string name)
@@ -84,52 +164,5 @@ internal static class IngestPipeline
         return int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var srid) && srid > 0
             ? srid
             : throw SpatialException.BadArguments($"The 'sourceSrid' query parameter must be a positive integer, got '{value}'.");
-    }
-
-    /// <summary>
-    /// Reprojects decoded pages from the source CRS to the target SRID through
-    /// the engine's transform service (ADR-0047): uploads may carry data in a
-    /// curated CRS and still land in one declared column CRS. A missing or
-    /// equal source SRID is a pass-through, so the common 4326 case costs
-    /// nothing and the codec stays free of algorithms.
-    /// </summary>
-    public static IReadOnlyList<FeatureBatch> ConvertIfNeeded(
-        IReadOnlyList<FeatureBatch> pages, int? sourceSrid, int targetSrid, ICoordinateTransforms transforms, CancellationToken token)
-    {
-        if (sourceSrid is not { } source || source == targetSrid)
-        {
-            return pages;
-        }
-
-        var sourceCrs = $"EPSG:{source}";
-        var targetCrs = $"EPSG:{targetSrid}";
-        var converted = new List<FeatureBatch>(pages.Count);
-        foreach (var page in pages)
-        {
-            var features = new Feature[page.Count];
-            for (var index = 0; index < page.Count; index++)
-            {
-                features[index] = ConvertFeature(page[index], sourceCrs, targetCrs, transforms, token);
-            }
-
-            converted.Add(new FeatureBatch(page.Schema, features));
-        }
-
-        return converted;
-    }
-
-    private static Feature ConvertFeature(
-        Feature feature, string source, string target, ICoordinateTransforms transforms, CancellationToken token)
-    {
-        var attributes = new AttributeValue[feature.Attributes.Count];
-        for (var index = 0; index < attributes.Length; index++)
-        {
-            var value = feature.Attributes[index];
-            attributes[index] = value.Kind == AttributeKind.Geometry && !value.IsNull
-                ? AttributeValue.FromGeometry(transforms.Transform(value.GeometryValue, source, target, token))
-                : value;
-        }
-
-        return new Feature(feature.Id, feature.Schema, attributes);
     }
 }

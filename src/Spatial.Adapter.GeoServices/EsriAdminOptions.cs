@@ -31,6 +31,12 @@ public sealed class EsriAdminOptions
     /// <summary>The decoded page size.</summary>
     public int BatchSize { get; set; } = 10_000;
 
+    /// <summary>
+    /// Whether a malformed record is dropped and reported rather than failing
+    /// the whole upload (mirrors <c>Spatial:Ingest:SkipMalformed</c>).
+    /// </summary>
+    public bool SkipMalformed { get; set; }
+
     /// <summary>How long a staged upload may be published before it is pruned.</summary>
     public TimeSpan UploadTtl { get; set; } = TimeSpan.FromMinutes(30);
 }

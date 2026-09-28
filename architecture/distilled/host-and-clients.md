@@ -195,7 +195,7 @@ the database-free upload path works out of the box.
 | `Spatial:Ogc:Root` | OGC WMS/WFS URL prefix (default `/ogc`) |
 | `Spatial:Ogc:ServiceTitle` | Capabilities title shared by WMS and WFS |
 | `Spatial:Ogc:MaxFeatures` | Largest feature count one WFS `GetFeature` returns |
-| `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` | Ingest caps and the format allowlist (ADR-0041 §6) |
+| `Spatial:Ingest:MaxBytes` / `MaxFeatures` / `Formats` / `BatchSize` / `SkipMalformed` | Ingest caps, the format allowlist and page size; `SkipMalformed` drops a bad record and reports it instead of failing the upload (ADR-0041 §6, ADR-0075) |
 | `Spatial:ArcGisRest:Services` | Remote ArcGIS REST `{name, url}` stores |
 | `Spatial:ArcGisRest:Token` | Optional ArcGIS token; host config only, redacted, never in request bodies |
 | `Spatial:Logging:Seq:Url` | Seq server URL (ADR-0045); empty/unset leaves the host console-only |
