@@ -11,6 +11,60 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **`findTransformations` is a search, and datum transformations are values**
+  (ADR-0087, SpatialEngine-u2x.15, landed on ADR-0086): the operation used to
+  be a reformulation of the catalogue — same datum `[]`, different datum one
+  forward composite, `extentOfInterest` rejected *by name* because "the
+  catalogue has no area-of-use model" — with the parameters welded to the
+  adapter, so there was one possible answer and nothing outside the adapter
+  could check it. A new `Spatial.Contracts.TransformationSearch` namespace
+  carries `CrsTransformation`, `CrsTransformationStep`, `HelmertParameters`,
+  `CrsAreaOfUse` and `CrsTransformationQuery` (records of strings, doubles
+  and booleans, no packages), and `ICrsDirectory` gains `FindTransformations`.
+  The graph is composed from the catalogue's own datum definitions, so it is a
+  hub and spokes rather than a table of hand-written pairs: between two datums
+  it offers the **direct** composed Helmert (the path the engine applies), the
+  **concatenated** path through the WGS 84 pivot, and the same shift **reduced
+  to three translations**, each carrying its steps, the seven EPSG-9606
+  parameters it applies, its area of use and a stated accuracy. Accuracies
+  combine in quadrature and the reduced form adds the first-order bound on what
+  its dropped rotations cost (14.5 m measured against 41.9 m stated). Area of
+  use follows the EPSG rule for the shape of the operation, so an empty
+  intersection drops the direct candidate outright and `extentOfInterest`
+  *filters* what is left instead of refusing — it is read in the source CRS's
+  own coordinates and reprojected onto the geographic boxes the catalogue
+  records. The search is symmetric: a reversed request returns the same
+  operations with `transformForward: false`, and the default is every ranked
+  candidate rather than one (`numOfResults` and the ArcGIS REST JS
+  `numTransformations` both slice it). `project` now accepts a
+  `datumTransformation` that names the operation it applies and refuses any
+  other by naming that one; `vertical=false` is accepted and `vertical=true`
+  stays refused. The published parameters are the engine's: a control point
+  applies the returned Helmert to the London point by hand and lands within a
+  millimetre of the PROJ 9 (OSTN15) reference. **Caller-visible changes:** a
+  `findTransformations` response is a ranked array of candidates with
+  `name`/`geoTransforms`/`accuracy`/`approximate`/`areaOfUse` (and `helmert` per
+  step) instead of a one-element array, an unknown CRS is `invalid.arguments`
+  rather than `[]`, and `project` no longer refuses `datumTransformation`
+  outright.
+
+- **The CRS catalogue's model is decided: WKT definitions, and datum quality
+  data that is not part of a definition** (ADR-0086, SpatialEngine-u2x.28):
+  the WKT path and the transformation graph were mutually incompatible because
+  the graph read a datum's *accuracy* and *area of use* off the hand-written
+  catalogue rows, which the WKT path deletes — and a WKT2 `GEOGCRS` genuinely
+  carries neither, because both are attributes of the registered coordinate
+  operation, not of the CRS. A definition therefore owns the datum's
+  `TOWGS84` shift (a construction input ProjNet needs), and a new curated
+  `EpsgDatumOperations` table beside the vendored WKT owns the accuracy in
+  metres and the registered extent, joined to a definition by the datum's EPSG
+  name. A datum with no published operation contributes no graph node rather
+  than an invented accuracy, and a test fails if a geodetic definition is
+  added to the WKT without a row. EPSG:3857 is unaffected: the pseudo-Mercator
+  interception lives in the reader, and the graph builds no coordinate systems
+  at all. The ADR also settles ADR numbering: the next free number on `main`,
+  with `AdrNumberingTests` as the enforcement.
+
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries
   `supportsQuantization` — at the top level, where the ArcGIS REST JS gate

@@ -66,7 +66,7 @@ engine is x-first for every CRS (`contracts.md`).
 
 | GeoServices op | Engine | Status |
 | --- | --- | --- |
-| `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string |
+| `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string; `datumTransformation` is accepted only when it names the ranked operation project applies (ADR-0087) |
 | `simplify` (generalization; §7.0.5) | `Simplify` | **Present** — tolerance from `deviation`, or mutually exclusively from `value`; one of the two is required |
 | `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
 | `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
@@ -268,8 +268,19 @@ Ordered by dependency:
   `bufferSR`/`outSR`/`inSR` chaining per spec §7.0.6 via
   transform-then-buffer; `geodesic=false` is accepted as planar while
   `geodesic=true`/`unionResults` stay rejected. `findTransformations`
-  honestly lists the curated catalogue path (same datum → `[]`, datum step →
-  one forward composite with the OSGB36 classic-Helmert note).
+  is a ranked search over the provider's transformation graph (ADR-0087):
+  same datum → `[]`, a datum step → the direct composed Helmert (the path the
+  engine applies), the concatenated path through the WGS 84 pivot and the
+  three-parameter reduction, each carrying its steps, the seven Helmert
+  parameters it applies, its area of use and a derived accuracy (ADR-0086
+  says where the datum accuracy and extent come from). It is symmetric (a
+  reversed request returns the same operations with
+  `transformForward: false`), `extentOfInterest` filters rather than refusing
+  (in the source CRS's own coordinates, reprojected to the geographic boxes
+  the catalogue records), `vertical=false` is accepted while `vertical=true`
+  stays refused, and `numOfResults`/`numTransformations` slice the ranked
+  list — every candidate by default. `project` accepts a `datumTransformation`
+  that names the operation it applies and refuses any other by naming it.
   `fromGeoCoordinateString`/`toGeoCoordinateString` are recorded non-goals
   (§7.1): rejected by name, unadvertised.
 - Serving status update: `f=pjson` is accepted as a JSON alias everywhere
@@ -385,7 +396,7 @@ is rejected by name (never silently ignored) and named here with its reason:
   byte-identical to full precision at an allowance of zero. An unservable
   `mode` or `originPosition` is still rejected by name.
 - Full-text `text`, `sqlFormat`, `resultType`, `gdbVersion`,
-  `historicMoment`, `datumTransformation`, `returnCentroid`,
+  `historicMoment`, `returnCentroid`,
   `distance`/`units`, `relationParam`, `returnTrueCurves`,
   `multipatchOption` (T9/T-024): each is rejected by name — dropping any of
   them would silently change the result set (`distance`/`units`, `text`,

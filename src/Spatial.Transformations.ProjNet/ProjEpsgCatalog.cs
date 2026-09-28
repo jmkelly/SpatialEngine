@@ -66,6 +66,54 @@ internal static class ProjEpsgCatalog
     public static CrsDefinition DefinitionOf(int code) => Entries[code].Definition.Value;
 
     /// <summary>
+    /// The datum a CRS is on, for the datum-transformation graph (ADR-0087).
+    /// A projected CRS resolves through its geographic base, so a search is
+    /// keyed on datums rather than on CRSs.
+    /// <para>
+    /// The shift comes out of the definition the WKT was read into — the one
+    /// place a datum's parameters live — and the accuracy and area of use come
+    /// from the registered datum-to-WGS 84 operation
+    /// (<see cref="EpsgDatumOperations"/>), because WKT states neither
+    /// (ADR-0086). A datum the operation table does not name is reported as
+    /// absent rather than given an accuracy nobody published.
+    /// </para>
+    /// </summary>
+    public static bool TryGetDatum(int code, [NotNullWhen(true)] out DatumNode? datum)
+    {
+        if (Entries.TryGetValue(code, out var entry) && GeodeticOf(entry.Definition.Value) is { } geodetic)
+        {
+            return EpsgDatumOperations.TryGetNode(geodetic, out datum);
+        }
+
+        datum = null;
+        return false;
+    }
+
+    /// <summary>
+    /// The catalogue's WGS 84 datum: the pivot every other datum's shift is
+    /// published against. It is read from the WKT definition like any other
+    /// node, so the graph and the transform path cannot drift apart.
+    /// </summary>
+    public static DatumNode WorldDatum() =>
+        TryGetDatum(WorldGeodeticCode, out var world)
+            ? world
+            : throw new InvalidOperationException($"The catalogue serves no WGS 84 datum (EPSG:{WorldGeodeticCode}), so it has no transformation pivot.");
+
+    /// <summary>The EPSG code of the geodetic datum every other shift is published against.</summary>
+    private const int WorldGeodeticCode = 4326;
+
+    /// <summary>
+    /// A definition's geodetic base, whether the definition is itself geodetic
+    /// or the one a projected CRS names.
+    /// </summary>
+    private static GeodeticDefinition? GeodeticOf(CrsDefinition definition) => definition switch
+    {
+        GeodeticDefinition geodetic => geodetic,
+        ProjectedDefinition projected => projected.Base,
+        _ => null,
+    };
+
+    /// <summary>
     /// Test pin: reads a definition exactly as a vendored row is read, so the
     /// guard that stops a broken vendored definition reaching a caller is
     /// exercised rather than assumed.

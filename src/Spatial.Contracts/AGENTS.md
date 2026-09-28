@@ -51,6 +51,10 @@ implementations and the host — never the reverse.
 - `Providers/DatasetSummary`, `Providers/DatasetDescription` — catalogue DTOs.
 - `Transformations/CrsDescription` (+ axes, ellipsoid, kind, identity) —
   CRS metadata DTOs.
+- `TransformationSearch/CrsTransformation` (+ steps, `HelmertParameters`,
+  area of use, query) — the datum-transformation search face of
+  `ICrsDirectory` (ADR-0087), its own namespace so a caller that describes a
+  CRS does not couple to a transformation graph.
 - `Http/` — the typed host API shapes (`SpatialHttpContracts`) plus the
   shared `HostApiJson` options and the `FeatureSchema`/`FieldDefinition`
   JSON converters.

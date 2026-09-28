@@ -111,6 +111,12 @@ about its accuracy limits (below).
   measured in `ProjNetWktCatalogTests`, not asserted in a comment, and the
   coordinates of all fifteen codes the catalogue served before the WKT path
   are pinned to the last bit.
+- The definition carries a datum's *shift*; it does not carry the datum's
+  accuracy or its area of use. Those are attributes of the registered
+  coordinate operation, which WKT states only inside a `BOUNDCRS` node and
+  which the catalogue therefore keeps in a separate curated table
+  (`EpsgDatumOperations`). ADR-0086 decides the split; ADR-0087 is the
+  transformation graph that joins the two.
 - Adding a CRS is adding its WKT. The reader is deliberately narrow — four
   projection methods, both WKT dialects — because a wider method map means
   claiming equivalence with PROJ for projections nobody here has checked

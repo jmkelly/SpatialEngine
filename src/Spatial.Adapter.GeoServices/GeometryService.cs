@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Contracts.Transformations;
+using Spatial.Contracts.TransformationSearch;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 
@@ -38,7 +39,7 @@ internal static class GeometryService
     private static readonly Dictionary<string, Func<EsriRequestParameters, GeometryServiceCapabilities, CancellationToken, IResult>> Operations =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["project"] = (parameters, capabilities, token) => Project(parameters, capabilities.Transforms, token),
+            ["project"] = (parameters, capabilities, token) => Project(parameters, capabilities, token),
             ["generalize"] = (parameters, capabilities, token) => Generalize(parameters, capabilities.Operations, token),
             ["buffer"] = (parameters, capabilities, token) => Buffer(parameters, capabilities, token),
             ["intersect"] = (parameters, capabilities, token) => Intersect(parameters, capabilities.Operations, token),
@@ -52,7 +53,7 @@ internal static class GeometryService
             ["relation"] = (parameters, capabilities, token) => Relation(parameters, capabilities.Relations, token),
             ["densify"] = (parameters, capabilities, token) => Densify(parameters, capabilities.Processing, token),
             ["labelpoints"] = (parameters, capabilities, token) => LabelPoints(parameters, capabilities.Measures, token),
-            ["findtransformations"] = (parameters, capabilities, token) => FindTransformations(parameters, capabilities.Catalogue, token),
+            ["findtransformations"] = (parameters, capabilities, token) => FindTransformations(parameters, capabilities, token),
             ["fromgeocoordinatestring"] = (_, _, _) => throw GeoServicesErrors.Invalid(
                 "The 'fromGeoCoordinateString' operation is not supported: the engine has no coordinate-notation codec " +
                 "(MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD) and half-parsing notations is a deliberate non-goal."),
@@ -68,21 +69,57 @@ internal static class GeometryService
             "SpatialEngine Geometry Service",
             "Project,Generalize,Buffer,Intersect,AreasAndLengths,Lengths,Distance,ConvexHull,Difference,Union,Simplify,Relation,Densify,LabelPoints,FindTransformations"));
 
-    private static IResult Project(EsriRequestParameters parameters, ICoordinateTransforms transforms, CancellationToken cancellationToken)
+    private static IResult Project(EsriRequestParameters parameters, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
     {
-        // The engine has no datum tables: reject a client-supplied datum
-        // transformation by name (like the query path) rather than project
-        // silently without it. Clients needing a datum step should consult
-        // findTransformations for the curated catalogue path.
-        Reject(parameters, "datumTransformation", "datum transformations are not supported; reprojection uses the registered transforms.");
         var source = EsriValueParser.ParseSpatialReference(parameters.Get("inSR"));
         var target = EsriValueParser.ParseSpatialReference(parameters.Require("outSR"))
             ?? throw GeoServicesErrors.Invalid("'outSR' is required for project.");
+        // findTransformations publishes the ranked operations between two
+        // CRSs; project applies the one it ranks first, so naming that
+        // operation back is honoured. Any other candidate is refused by name,
+        // with the path the engine does apply, rather than projected as if it
+        // had been: the catalogue carries Helmert operations only, and the
+        // registered transform is the composed geocentric path.
+        var named = parameters.Get("datumTransformation");
+        if (!string.IsNullOrWhiteSpace(named))
+        {
+            EnsureAppliedTransformation(named, source, target, capabilities, cancellationToken);
+        }
+
         var geometries = EsriValueParser.ParseGeometries(parameters.Require("geometries"), source);
         var results = geometries
-            .Select(geometry => transforms.Transform(geometry, source?.ToString(), target.ToString(), cancellationToken))
+            .Select(geometry => capabilities.Transforms.Transform(geometry, source?.ToString(), target.ToString(), cancellationToken))
             .ToArray();
         return Geometries(results);
+    }
+
+    /// <summary>
+    /// Accepts a <c>datumTransformation</c> that names the operation project
+    /// applies, and refuses any other by naming that one: a client that asked
+    /// for a different path deserves to know which path it got, not a result
+    /// computed by a transformation it did not choose.
+    /// </summary>
+    private static void EnsureAppliedTransformation(
+        string named,
+        CoordinateReference? source,
+        CoordinateReference target,
+        GeometryServiceCapabilities capabilities,
+        CancellationToken cancellationToken)
+    {
+        var candidates = SearchTransformations(source, target, capabilities, null, cancellationToken);
+        var applied = candidates.Count == 0 ? null : candidates[0];
+        if (applied is not null && string.Equals(applied.Name, named, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var available = applied is null
+            ? "the catalogue lists no datum transformation for this pair"
+            : $"project applies '{applied.Name}'";
+        throw GeoServicesErrors.Invalid(
+            $"The 'datumTransformation' parameter names '{named}', which project does not apply: {available}. " +
+            "The catalogue carries Helmert operations only, so no alternative is projected in its place; " +
+            "call findTransformations for the ranked candidates and their accuracies.");
     }
 
     private static IResult Generalize(EsriRequestParameters parameters, IGeometryOperations operations, CancellationToken cancellationToken)
@@ -349,92 +386,151 @@ internal static class GeometryService
     private static string Describe(CrsKind? kind) => kind?.ToString().ToLowerInvariant() ?? "unclassified";
 
     /// <summary>
-    /// The datum-transformation lookup (10.x <c>findTransformations</c>): an
-    /// honest listing of the curated catalogue path, not the Esri WKID
-    /// registry. Same underlying datum → the empty list (no transformation
-    /// needed); a datum step → one forward composite naming the Helmert
-    /// path, with the OSGB36 classic-Helmert note. The response is the bare
-    /// JSON array clients paste into <c>project</c> as-is.
+    /// The datum-transformation search (10.x <c>findTransformations</c>). The
+    /// candidates come from the provider's transformation graph (ADR-0087), so
+    /// the response is a ranked list of real operations — each with its steps,
+    /// the Helmert parameters it applies, the area it is valid over and its
+    /// stated accuracy — rather than one composite naming a path. A pair on
+    /// one datum returns the empty list: there is nothing to apply.
     /// </summary>
-    private static IResult FindTransformations(EsriRequestParameters parameters, ICrsDirectory catalogue, CancellationToken cancellationToken)
+    private static IResult FindTransformations(EsriRequestParameters parameters, GeometryServiceCapabilities capabilities, CancellationToken cancellationToken)
     {
         var source = EsriValueParser.ParseSpatialReference(parameters.Require("inSR"))
             ?? throw GeoServicesErrors.Invalid("'inSR' must be a spatial reference (a WKID or {wkid} object).");
         var target = EsriValueParser.ParseSpatialReference(parameters.Require("outSR"))
             ?? throw GeoServicesErrors.Invalid("'outSR' must be a spatial reference (a WKID or {wkid} object).");
-        RejectUnsupportedTransformationOptions(parameters);
+        RejectVerticalSearch(parameters);
         var count = ParseTransformationCount(parameters);
-        var from = catalogue.Describe(source!.ToString(), cancellationToken);
-        var to = catalogue.Describe(target!.ToString(), cancellationToken);
-        if (source == target || SameDatum(from.Datum, to.Datum))
-        {
-            return EsriJson.Value(Array.Empty<TransformationEntry>());
-        }
-
-        return EsriJson.Value(SliceTransformations(TransformationEntries(from.Datum, to.Datum), count));
+        var areaOfInterest = ParseAreaOfInterest(parameters, capabilities, source, cancellationToken);
+        var entries = SearchTransformations(source, target, capabilities, areaOfInterest, cancellationToken)
+            .Select(TransformationEntry.From)
+            .ToArray();
+        return EsriJson.Value(count == -1 ? entries : entries.Take(Math.Max(count, 0)).ToArray());
     }
 
-    private static void RejectUnsupportedTransformationOptions(EsriRequestParameters parameters)
+    /// <summary>
+    /// The candidates the graph returns. A CRS the provider does not serve
+    /// fails here rather than answering with an empty list, because "no
+    /// transformation needed" and "no such CRS" are different answers.
+    /// </summary>
+    private static IReadOnlyList<CrsTransformation> SearchTransformations(
+        CoordinateReference? source,
+        CoordinateReference target,
+        GeometryServiceCapabilities capabilities,
+        CrsAreaOfUse? areaOfInterest,
+        CancellationToken cancellationToken) =>
+        capabilities.Catalogue.FindTransformations(
+            new CrsTransformationQuery(source?.ToString() ?? target.ToString(), target.ToString(), areaOfInterest),
+            cancellationToken);
+
+    /// <summary>
+    /// <c>extentOfInterest</c> filters the candidates whose area of use covers
+    /// it, so a search over ground no datum step is published for comes back
+    /// with what is left rather than a refusal. The extent is in the source
+    /// CRS's own coordinates, as Esri clients send it: a projected inSR brings
+    /// metres, and the engine reprojects the two corners onto the geographic
+    /// box the catalogue records areas of use in.
+    /// </summary>
+    private static CrsAreaOfUse? ParseAreaOfInterest(
+        EsriRequestParameters parameters,
+        GeometryServiceCapabilities capabilities,
+        CoordinateReference source,
+        CancellationToken cancellationToken)
+    {
+        var raw = parameters.Get("extentOfInterest");
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var (xMin, yMin, xMax, yMax) = ParseExtent(raw);
+        if (capabilities.Catalogue.Describe(source.ToString(), cancellationToken).Kind == CrsKind.Geographic)
+        {
+            return new CrsAreaOfUse("the requested extent of interest", xMin, yMin, xMax, yMax);
+        }
+
+        var (west, south) = ToGeographic(xMin, yMin, source, capabilities.Transforms, cancellationToken);
+        var (east, north) = ToGeographic(xMax, yMax, source, capabilities.Transforms, cancellationToken);
+        return new CrsAreaOfUse(
+            "the requested extent of interest",
+            Math.Min(west, east),
+            Math.Min(south, north),
+            Math.Max(west, east),
+            Math.Max(south, north));
+    }
+
+    /// <summary>
+    /// The extent in either the comma syntax (<c>xmin,ymin,xmax,ymax</c>) or
+    /// the JSON envelope clients paste from a map extent.
+    /// </summary>
+    private static (double XMin, double YMin, double XMax, double YMax) ParseExtent(string raw)
+    {
+        if (raw.TrimStart().StartsWith('{'))
+        {
+            var envelope = EsriValueParser.ParseGeometry(raw, null).Envelope
+                ?? throw GeoServicesErrors.Invalid($"'extentOfInterest' must be 'xmin,ymin,xmax,ymax', got '{raw}'.");
+            return (envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+        }
+
+        var values = EsriValueParser.ParseDoubles(raw, "extentOfInterest");
+        return values.Count == 4
+            ? (values[0], values[1], values[2], values[3])
+            : throw GeoServicesErrors.Invalid(
+                $"'extentOfInterest' must be 'xmin,ymin,xmax,ymax' (four numbers), got '{raw}'.");
+    }
+
+    /// <summary>
+    /// One corner of the requested extent, in the geographic degrees the
+    /// catalogue records its areas of use in.
+    /// </summary>
+    private static (double Lon, double Lat) ToGeographic(
+        double x,
+        double y,
+        CoordinateReference source,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var corner = GeometryFactory.CreatePoint(x, y, source);
+        var point = (Point)transforms.Transform(corner, source.ToString(), "EPSG:4326", cancellationToken);
+        return (point.X!.Value, point.Y!.Value);
+    }
+
+    /// <summary>
+    /// <c>vertical=false</c> — the default every client sends — is accepted:
+    /// the catalogue carries horizontal CRSs only, so a horizontal search is
+    /// what it is asked for either way. <c>vertical=true</c> asks for vertical
+    /// transformations, which the catalogue does not carry, and stays refused
+    /// by name.
+    /// </summary>
+    private static void RejectVerticalSearch(EsriRequestParameters parameters)
     {
         if (parameters.GetBool("vertical", false))
         {
-            throw GeoServicesErrors.Invalid("The 'vertical' parameter is not supported: the curated catalogue carries horizontal CRSs only.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(parameters.Get("extentOfInterest")))
-        {
-            throw GeoServicesErrors.Invalid("The 'extentOfInterest' parameter is not supported: the catalogue has no area-of-use model to rank transformations; omit it.");
+            throw GeoServicesErrors.Invalid(
+                "The 'vertical' parameter is not supported: the curated catalogue carries horizontal CRSs only, so no vertical transformation can be found.");
         }
     }
 
+    /// <summary>
+    /// How many candidates to return: <c>-1</c> for all, otherwise a
+    /// non-negative count. Both spellings clients use are read —
+    /// <c>numOfResults</c> from the spec and <c>numTransformations</c> from
+    /// the ArcGIS REST JS client. The default is every ranked candidate,
+    /// because a search that hides its second-best answer behind a default is
+    /// not a search.
+    /// </summary>
     private static int ParseTransformationCount(EsriRequestParameters parameters)
     {
-        var count = ParseOptionalInt(parameters, "numOfResults", 1);
-        return count < -1
-            ? throw GeoServicesErrors.Invalid($"'numOfResults' must be -1 (all) or a non-negative count, got '{parameters.Get("numOfResults")}'.")
-            : count;
-    }
-
-    private static bool SameDatum(string? from, string? to) =>
-        from is not null && string.Equals(from, to, StringComparison.OrdinalIgnoreCase);
-
-    private static TransformationEntry[] TransformationEntries(string? from, string? to) =>
-        [
-            new([new TransformationStep($"{DatumName(from)}_To_{DatumName(to)}_Helmert", true, TransformationMethod(from, to))]),
-        ];
-
-    private static string TransformationMethod(string? from, string? to) =>
-        "Helmert datum shift on the transform path via the WGS 84 pivot (embedded TOWGS84 parameters; zero for modern datums)."
-            + (IsOrdnanceSurvey(from) || IsOrdnanceSurvey(to)
-                ? " OSGB36 uses the classic Helmert approximation: no OSTN grid support, metre-level accuracy."
-                : string.Empty);
-
-    private static TransformationEntry[] SliceTransformations(TransformationEntry[] entries, int count) =>
-        count == -1 ? entries : entries.Take(Math.Max(count, 0)).ToArray();
-
-    private static bool IsOrdnanceSurvey(string? datum) =>
-        datum?.Contains("Ordnance Survey", StringComparison.OrdinalIgnoreCase) == true;
-
-    private static string DatumName(string? datum)
-    {
-        var name = string.IsNullOrWhiteSpace(datum) ? "unknown datum" : datum.Trim();
-        var builder = new System.Text.StringBuilder(name.Length);
-        var underscore = false;
-        foreach (var rune in name)
+        var name = parameters.Has("numOfResults") ? "numOfResults" : "numTransformations";
+        if (!parameters.Has(name))
         {
-            if (char.IsLetterOrDigit(rune))
-            {
-                builder.Append(rune);
-                underscore = false;
-            }
-            else if (!underscore)
-            {
-                builder.Append('_');
-                underscore = true;
-            }
+            return -1;
         }
 
-        return builder.ToString().Trim('_');
+        var raw = parameters.Get(name);
+        return int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) && count >= -1
+            ? count
+            : throw GeoServicesErrors.Invalid($"'{name}' must be -1 (all) or a non-negative count, got '{raw}'.");
     }
 
     private static IResult Intersect(EsriRequestParameters parameters, IGeometryOperations operations, CancellationToken cancellationToken)
@@ -816,8 +912,53 @@ internal sealed record DistanceResponse(double Distance);
 /// <summary>The <c>relation</c> operation result (one 1/0 per input geometry).</summary>
 internal sealed record RelationResponse(IReadOnlyList<int> Relations);
 
-/// <summary>One forward step of a <c>findTransformations</c> listing.</summary>
-internal sealed record TransformationStep(string Name, bool TransformForward, string Method);
+/// <summary>One candidate from a <c>findTransformations</c> listing: the operation's name, its steps, the accuracy the catalogue states for it and where it is valid (spec §7.0.9).</summary>
+internal sealed record TransformationEntry(
+    string Name,
+    IReadOnlyList<TransformationStep> GeoTransforms,
+    double Accuracy,
+    bool Approximate,
+    TransformationAreaOfUse AreaOfUse)
+{
+    public static TransformationEntry From(CrsTransformation candidate) =>
+        new(
+            candidate.Name,
+            candidate.Steps.Select(TransformationStep.From).ToArray(),
+            candidate.AccuracyMetres,
+            candidate.Approximate,
+            new TransformationAreaOfUse(
+                candidate.AreaOfUse.Name,
+                candidate.AreaOfUse.XMin,
+                candidate.AreaOfUse.YMin,
+                candidate.AreaOfUse.XMax,
+                candidate.AreaOfUse.YMax));
+}
 
-/// <summary>One forward composite of a <c>findTransformations</c> listing.</summary>
-internal sealed record TransformationEntry(IReadOnlyList<TransformationStep> GeoTransforms);
+/// <summary>One step of a candidate: the operation, the direction it runs in, and the parameters it applies.</summary>
+internal sealed record TransformationStep(string Name, bool TransformForward, string Method, TransformationHelmert Helmert)
+{
+    public static TransformationStep From(CrsTransformationStep step) =>
+        new(
+            step.Name,
+            step.TransformForward,
+            step.Method,
+            new TransformationHelmert(
+                step.Parameters.Tx,
+                step.Parameters.Ty,
+                step.Parameters.Tz,
+                step.Parameters.Rx,
+                step.Parameters.Ry,
+                step.Parameters.Rz,
+                step.Parameters.ScalePpm));
+}
+
+/// <summary>The seven parameters of a Helmert step: metres, arc-seconds, parts per million (EPSG method 9606).</summary>
+internal sealed record TransformationHelmert(double Tx, double Ty, double Tz, double Rx, double Ry, double Rz, double Scale);
+
+/// <summary>Where a candidate is valid, in the degrees EPSG records extents in. The member names are the Esri envelope names (<c>xmin</c>), not camel-cased capitals.</summary>
+internal sealed record TransformationAreaOfUse(
+    [property: System.Text.Json.Serialization.JsonPropertyName("name")] string Name,
+    [property: System.Text.Json.Serialization.JsonPropertyName("xmin")] double XMin,
+    [property: System.Text.Json.Serialization.JsonPropertyName("ymin")] double YMin,
+    [property: System.Text.Json.Serialization.JsonPropertyName("xmax")] double XMax,
+    [property: System.Text.Json.Serialization.JsonPropertyName("ymax")] double YMax);
