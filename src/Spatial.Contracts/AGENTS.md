@@ -14,6 +14,9 @@ implementations and the host — never the reverse.
   phase-1 authentication and role-enforcement contract (ADR-0071).
 - `IGeometryOperations` — buffer, intersection, validate, simplify over
   core geometry values.
+- `IGeometryMeasures` / `IGeometryProcessing` / `IGeometryRelations` — the
+  measurement, set/construction and DE-9IM relation faces the GeoServices
+  adapter maps protocol verbs onto (ADR-0036, ADR-0083).
 - `ICrsDirectory` + `ICoordinateTransforms` — CRS description and
   coordinate transformation (x-first convention).
 - `BoundingBox`, `IDataCatalogue`, `IFeatureStore`, `IFeatureEditStore`,

@@ -27,6 +27,9 @@ public sealed class FeatureServiceQueryTests
 
     private static readonly ProjNetTransforms Transforms = new();
 
+    /// <summary>The engine services one query path resolves (ProjNetTransforms is both the CRS directory and the transform service).</summary>
+    private static QueryServices Services => new(Operations, Relations, new NtsGeometryMeasures(), Transforms, Transforms);
+
     private static readonly FeatureSchema Schema = new(
     [
         new FieldDefinition("name", AttributeKind.String),
@@ -85,7 +88,7 @@ public sealed class FeatureServiceQueryTests
         EsriFeatureQuery query,
         CancellationToken cancellationToken = default)
     {
-        var result = await FeatureResponseWriter.ServiceQueryAsync(layers, store, query, Operations, Relations, Transforms, cancellationToken);
+        var result = await FeatureResponseWriter.ServiceQueryAsync(layers, store, query, Services, cancellationToken);
         var context = new DefaultHttpContext();
         context.RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider();
         context.Response.Body = new MemoryStream();

@@ -21,17 +21,16 @@ internal static class RasterCatalogQuery
         RasterDatasetDescription description,
         IReadOnlyList<RasterCatalogItem> items,
         EsriFeatureQuery query,
-        IGeometryOperations operations,
-        IGeometryRelations relations,
-        ICoordinateTransforms transforms,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var dataset = Describe(description, items.Count);
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
-        var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
+        var queryGeometry = FeatureProjection.MatchGeometry(
+            new FeatureProjection.QueryGeometryRequest(query, layerCrs, services), cancellationToken);
         var matches = Match(
-            new CatalogMatch(description, dataset, items, query, queryGeometry), operations, relations, cancellationToken);
-        return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, transforms, operations, cancellationToken);
+            new CatalogMatch(description, dataset, items, query, queryGeometry), services, cancellationToken);
+        return FeatureQueryEngine.Project(dataset, matches, query, layerCrs, services, cancellationToken);
     }
 
     /// <summary>
@@ -48,8 +47,7 @@ internal static class RasterCatalogQuery
 
     private static List<MatchedFeature> Match(
         CatalogMatch match,
-        IGeometryOperations operations,
-        IGeometryRelations relations,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var (description, dataset, items, query, queryGeometry) = match;
@@ -61,7 +59,7 @@ internal static class RasterCatalogQuery
             cancellationToken.ThrowIfCancellationRequested();
             var feature = ImageService.Feature(item, schema);
             var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
-            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, operations, relations, uniqueId), cancellationToken))
+            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, services.Operations, services.Relations, uniqueId), cancellationToken))
             {
                 matches.Add(new MatchedFeature(item.ObjectId, feature));
             }

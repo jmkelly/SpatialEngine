@@ -3,6 +3,7 @@ using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 using Spatial.Operations.NetTopologySuite;
+using Spatial.Transformations.ProjNet;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 
@@ -46,6 +47,13 @@ public sealed class FeatureSpatialRelationTests
 {
     private static readonly NtsGeometryOperations Operations = new();
     private static readonly NtsGeometryRelations Relations = new();
+
+    private static QueryServices Services { get; } = new(
+        Operations,
+        Relations,
+        new NtsGeometryMeasures(),
+        new ProjNetTransforms(),
+        new ProjNetTransforms());
 
     private static readonly FeatureSchema Schema = new(
         [new FieldDefinition("shape", AttributeKind.Geometry, nullable: true)]);
@@ -179,7 +187,7 @@ public sealed class FeatureSpatialRelationTests
         var query = await QueryAsync("square-equal", EsriFeatureQuery.Contains);
         var feature = new Feature(new FeatureId("empty"), Schema, [AttributeValue.Null]);
         Assert.False(FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, Square(0, 0, 10, 10), Operations, Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, Square(0, 0, 10, 10), Services.Operations, Services.Relations),
             CancellationToken.None));
     }
 
@@ -191,7 +199,7 @@ public sealed class FeatureSpatialRelationTests
         await cancelled.CancelAsync();
 
         Assert.Throws<OperationCanceledException>(() => FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Operations, Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Services.Operations, Services.Relations),
             cancelled.Token));
     }
 
@@ -202,7 +210,7 @@ public sealed class FeatureSpatialRelationTests
     }
 
     private static FeatureSpatialMatcher.MatchCandidate Candidate(EsriFeatureQuery query) =>
-        new(query, Feature(Square(0, 0, 10, 10)), 1, query.Geometry, Operations, Relations);
+        new(query, Feature(Square(0, 0, 10, 10)), 1, query.Geometry, Services.Operations, Services.Relations);
 
     private static async Task<EsriFeatureQuery> QueryAsync(string geometry, string spatialRel)
     {

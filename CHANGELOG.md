@@ -11,6 +11,16 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **Query `distance`/`units` band, `returnCentroid` and `returnZ`/`returnM`**
+  (ADR-0083, SpatialEngine-u2x.16): the three §7.1 query rejects that were
+  really engine verbs are served. `distance` is a band from the query
+  geometry applied as a buffer in the layer CRS, with the unit code resolved
+  from the same curated table and projected/geographic rule the Geometry
+  Service uses, so it composes with every exact `spatialRel`.
+  `returnCentroid` is a new `IGeometryMeasures.Centroid` verb (the area
+  centroid, not the envelope middle) written beside each feature's geometry.
+  `returnZ`/`returnM` select the output ordinates.
+
 - **The Feature Server layer advertises the capability flags its query surface
   earns** (ADR-0081, SpatialEngine-u2x.25): the layer resource now carries
   `supportsQuantization` — at the top level, where the ArcGIS REST JS gate
@@ -110,6 +120,7 @@ this file together, then tag the release (`RELEASING.md`).
   `queryRelatedRecords` (and, wrongly, attachments) as absent is now
   corrected.
 
+
 - **SQL Server store provider** (ADR-0073, T-113): `Spatial.Stores.SqlServer`
   implements the catalogue, feature, lookup, transaction, editing, ingest and
   attachment faces on Microsoft.Data.SqlClient, wired into the host under the
@@ -122,6 +133,14 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **The Esri geometry writer states its `hasZ`/`hasM` flags**
+  (ADR-0083, SpatialEngine-u2x.16): a three-ordinate Esri coordinate array is
+  Z when only `hasZ` is set and M when only `hasM` is set — the codec's own
+  read rule — so a 3D geometry was being written in a form the same codec
+  would read back with the wrong ordinate. Checked as the bead asked: the
+  canonical binary codec round-trips `Xyzm` exactly, so the loss was Esri
+  codec depth, not the engine model.
+
 - **Geometry Service `simplify` is generalization again** (ADR-0036, §7.0.5):
   it now calls `IGeometryOperations.Simplify` (Douglas-Peucker) with the
   tolerance the request carries — `deviation`, or mutually exclusively
@@ -133,6 +152,7 @@ this file together, then tag the release (`RELEASING.md`).
   negative one is now a named `invalid.arguments` failure. Topological
   repair keeps its engine verb and its home: no Esri operation names it, so
   nothing in the facade maps to it.
+
 - **Feature Service `spatialRel` is exact DE-9IM, not envelope arithmetic**
   (ADR-0036, SpatialEngine-u2x.2): `Contains`, `Within`, `Touches`,
   `Overlaps` and `Crosses` on the Feature/Map query and Image Service

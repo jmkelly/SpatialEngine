@@ -14,7 +14,7 @@ infrastructure.
 | Interface | Implementations | Behaviour |
 | --- | --- | --- |
 | `IGeometryOperations` | `NtsGeometryOperations` | Buffer, intersection, validate, simplify; pure, planar; invalid geometry = successful `false` |
-| `IGeometryMeasures` | `NtsGeometryMeasures` | Area, length, distance, label point (ADR-0036) |
+| `IGeometryMeasures` | `NtsGeometryMeasures` | Area, length, distance, label point, centroid (ADR-0036, ADR-0083) |
 | `IGeometryProcessing` | `NtsGeometryProcessing` | Union, difference, convex hull, densify, topological repair (ADR-0036) |
 | `IGeometryRelations` | `NtsGeometryRelations` | DE-9IM relate pattern (ADR-0036) |
 | `ICrsDirectory` + `ICoordinateTransforms` | `ProjNetTransforms` | CRS describe + transform; x-first convention; EPSG catalogue with generated UTM families |

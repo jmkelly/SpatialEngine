@@ -20,16 +20,16 @@ internal static class FeatureQueryEngine
         DatasetDescription dataset,
         IFeatureStore store,
         EsriFeatureQuery query,
-        IGeometryOperations operations,
-        IGeometryRelations relations,
-        ICoordinateTransforms transforms,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
         var scheme = EsriObjectIdScheme.For(dataset);
-        var queryGeometry = FeatureProjection.TransformQueryGeometry(query.Geometry, layerCrs, transforms, cancellationToken);
-        var matches = await FeatureSpatialMatcher.MatchAsync(new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, operations, relations, scheme), cancellationToken);
-        return Project(dataset, matches, query, layerCrs, transforms, operations, cancellationToken);
+        var queryGeometry = FeatureProjection.MatchGeometry(
+            new FeatureProjection.QueryGeometryRequest(query, layerCrs, services), cancellationToken);
+        var matches = await FeatureSpatialMatcher.MatchAsync(
+            new FeatureSpatialMatcher.QuerySpec(dataset, store, query, queryGeometry, services, scheme), cancellationToken);
+        return Project(dataset, matches, query, layerCrs, services, cancellationToken);
     }
 
     /// <summary>
@@ -44,8 +44,7 @@ internal static class FeatureQueryEngine
         IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query,
         CoordinateReference? layerCrs,
-        ICoordinateTransforms transforms,
-        IGeometryOperations operations,
+        QueryServices services,
         CancellationToken cancellationToken)
     {
         var ordered = FeatureOrdering.Apply([.. matches], FeatureOrdering.Compile(dataset, query));
@@ -61,7 +60,7 @@ internal static class FeatureQueryEngine
 
         if (query.ReturnExtentOnly)
         {
-            return FeatureResponseWriter.ExtentOnly(ordered, layerCrs, query.OutSr, transforms, cancellationToken);
+            return FeatureResponseWriter.ExtentOnly(ordered, layerCrs, query.OutSr, services.Transforms, cancellationToken);
         }
 
         if (query.ReturnDistinctValues)
@@ -81,8 +80,8 @@ internal static class FeatureQueryEngine
 
         var page = FeaturePaging.Page(ordered, query);
         var features = page.Items
-            .Select(item => FeatureProjection.TransformFeature(item, query, layerCrs, transforms, operations, cancellationToken))
+            .Select(item => FeatureProjection.TransformFeature(item, query, layerCrs, services.Transforms, services.Operations, cancellationToken))
             .ToArray();
-        return FeatureResponseWriter.WriteFeatures(dataset, layerCrs, query, features, page.Exceeded, page.NextToken);
+        return FeatureResponseWriter.WriteFeatures(dataset, layerCrs, query, features, services, page.Exceeded, page.NextToken);
     }
 }

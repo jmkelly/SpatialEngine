@@ -69,6 +69,62 @@ internal static class FeatureProjection
     }
 
     /// <summary>
+    /// The geometry a query matches against: the request's own
+    /// <c>geometry</c>, reprojected into the layer's CRS and widened by the
+    /// <c>distance</c>/<c>units</c> band (spec §9.1.4). Widening is a
+    /// buffer in the layer CRS — the same transform-then-buffer the Geometry
+    /// Service uses — so a feature matches when it comes within the band of
+    /// the query geometry, and every <c>spatialRel</c> then runs over the
+    /// band. Returns the geometry unchanged when there is no band, no
+    /// geometry, an unprojected layer, or the two CRSs already agree.
+    /// </summary>
+    internal static IGeometry? MatchGeometry(QueryGeometryRequest request, CancellationToken cancellationToken)
+    {
+        var geometry = TransformQueryGeometry(request.Query.Geometry, request.LayerCrs, request.Services.Transforms, cancellationToken);
+        return geometry is null || request.Query.Distance is not { } band
+            ? geometry
+            : Buffer(geometry, band, request, cancellationToken);
+    }
+
+    /// <summary>
+    /// The band as a buffer of the query geometry. A zero band is left
+    /// alone: buffering a point by zero yields an empty geometry, and "no
+    /// distance" is exactly the unbuffered query.
+    /// </summary>
+    private static IGeometry Buffer(
+        IGeometry geometry, EsriQueryDistance band, QueryGeometryRequest request, CancellationToken cancellationToken)
+    {
+        if (band.Value == 0)
+        {
+            return geometry;
+        }
+
+        return request.Services.Operations.Buffer(geometry, BandInLayerUnits(band, request, cancellationToken), cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// The band expressed in the layer CRS's own units: a curated unit code
+    /// is converted with the same linear/angular rule the Geometry Service
+    /// applies to <c>unit</c>, and an absent code is already in those units.
+    /// </summary>
+    private static double BandInLayerUnits(EsriQueryDistance band, QueryGeometryRequest request, CancellationToken cancellationToken)
+    {
+        if (band.UnitsCode is not { } code)
+        {
+            return band.Value;
+        }
+
+        if (request.LayerCrs is not { } layerCrs)
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'units' parameter needs a layer spatial reference to convert unit {code} into; the layer is unprojected.");
+        }
+
+        var kind = request.Services.Catalogue.Describe(layerCrs.ToString(), cancellationToken).Kind;
+        return band.Value * EsriUnitCode.Factor(code, layerCrs, kind);
+    }
+
+    /// <summary>
     /// Reprojects a query's own <c>geometry</c> into the layer's CRS so the
     /// spatial match runs in the coordinates the features are stored in.
     /// Returns the geometry unchanged when it is absent, the layer is
@@ -87,4 +143,10 @@ internal static class FeatureProjection
 
         return transforms.Transform(geometry, source.ToString(), layerCrs.Value.ToString(), cancellationToken);
     }
+
+    /// <summary>What a match geometry needs: the parsed query, the layer's CRS and the engine services.</summary>
+    internal readonly record struct QueryGeometryRequest(
+        EsriFeatureQuery Query,
+        CoordinateReference? LayerCrs,
+        QueryServices Services);
 }

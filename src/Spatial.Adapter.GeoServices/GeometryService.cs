@@ -296,55 +296,14 @@ internal static class GeometryService
             throw GeoServicesErrors.Invalid("'unit' requires a spatial reference: name 'bufferSR' (or 'inSR'/'sr') so distances have units.");
         }
 
-        return ResolveUnitFactor(code, bufferCrs.Value, kind);
+        return EsriUnitCode.Factor(code, bufferCrs.Value, kind ?? CrsKind.Geographic);
     }
 
     /// <summary>
     /// Parses the <c>unit</c> parameter to a curated Esri unit code, rejecting
     /// non-numeric codes and codes outside the curated linear/angular tables.
     /// </summary>
-    internal static int ParseUnitCode(string raw)
-    {
-        if (!int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var code))
-        {
-            throw GeoServicesErrors.Invalid($"'unit' must be a numeric Esri unit code, got '{raw}'. Supported: {EsriUnits.DescribeSupported()}.");
-        }
-
-        var angular = EsriUnits.IsAngular(code);
-        if (!angular && !EsriUnits.TryGetLinear(code, out _, out _)
-            || angular && !EsriUnits.TryGetAngular(code, out _, out _))
-        {
-            throw GeoServicesErrors.Invalid($"Unit code {code} is not in the curated unit table. Supported: {EsriUnits.DescribeSupported()}.");
-        }
-
-        return code;
-    }
-
-    private static double ResolveUnitFactor(int code, CoordinateReference bufferCrs, CrsKind? kind)
-    {
-        var angular = EsriUnits.IsAngular(code);
-        if (!angular && kind == CrsKind.Projected && EsriUnits.TryGetLinear(code, out _, out var metres))
-        {
-            // Every projected CRS in the curated catalogue is metre-based.
-            return metres;
-        }
-
-        if (angular && kind == CrsKind.Geographic && EsriUnits.TryGetAngular(code, out _, out var degrees))
-        {
-            return degrees;
-        }
-
-        if (!angular)
-        {
-            throw GeoServicesErrors.Invalid(
-                $"Unit code {code} is linear but the buffer CRS {bufferCrs} is {Describe(kind)}: " +
-                "the engine buffers ground distances against a geographic CRS and metres in a projected one. Name a projected 'bufferSR'.");
-        }
-
-        throw GeoServicesErrors.Invalid(
-            $"Unit code {code} is angular but the buffer CRS {bufferCrs} is {Describe(kind)}: " +
-            "name a geographic 'bufferSR' or a linear unit with a projected 'bufferSR'.");
-    }
+    internal static int ParseUnitCode(string raw) => EsriUnitCode.Parse(raw, "unit");
 
     private static string Describe(CrsKind? kind) => kind?.ToString().ToLowerInvariant() ?? "unclassified";
 

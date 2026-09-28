@@ -136,16 +136,11 @@ public sealed class EsriFeatureQueryTests
     }
 
     [Theory]
-    [InlineData("returnZ")]
-    [InlineData("returnM")]
     [InlineData("sqlFormat")]
     [InlineData("resultType")]
     [InlineData("gdbVersion")]
     [InlineData("historicMoment")]
     [InlineData("datumTransformation")]
-    [InlineData("returnCentroid")]
-    [InlineData("distance")]
-    [InlineData("units")]
     [InlineData("relationParam")]
     [InlineData("text")]
     [InlineData("returnTrueCurves")]
@@ -161,26 +156,38 @@ public sealed class EsriFeatureQueryTests
     }
 
     [Theory]
-    [InlineData("returnM", "false")]
-    [InlineData("returnM", "0")]
-    [InlineData("returnZ", "false")]
-    [InlineData("returnZ", "0")]
-    public async Task False_return_m_and_z_are_accepted(string name, string value)
+    [InlineData("returnM", "false", false)]
+    [InlineData("returnM", "0", false)]
+    [InlineData("returnM", "true", true)]
+    [InlineData("returnM", "1", true)]
+    [InlineData("returnZ", "false", false)]
+    [InlineData("returnZ", "0", false)]
+    [InlineData("returnZ", "true", true)]
+    [InlineData("returnZ", "1", true)]
+    public async Task Return_m_and_z_select_the_served_ordinates(string name, string value, bool expected)
     {
         // QGIS always sends returnM=false&returnZ=false on per-feature fetches.
         var query = await ParseAsync((name, value));
 
-        Assert.Null(query.ObjectIds);
+        Assert.Equal(expected, name == "returnM" ? query.ReturnM : query.ReturnZ);
+    }
+
+    [Fact]
+    public async Task Return_m_and_z_default_to_serving_the_stored_ordinates()
+    {
+        var query = await ParseAsync();
+
+        Assert.True(query.ReturnM);
+        Assert.True(query.ReturnZ);
     }
 
     [Theory]
-    [InlineData("returnM", "true")]
-    [InlineData("returnM", "1")]
-    [InlineData("returnZ", "true")]
-    [InlineData("returnZ", "1")]
-    public async Task True_return_m_and_z_are_rejected(string name, string value)
+    [InlineData("returnZ")]
+    [InlineData("returnM")]
+    [InlineData("returnCentroid")]
+    public async Task A_non_boolean_output_flag_is_rejected(string name)
     {
-        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, value)));
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => ParseAsync((name, "x")));
 
         Assert.Contains($"'{name}'", exception.Message);
     }
