@@ -168,14 +168,20 @@ immutable node tree and evaluated per feature:
   `["geometry-type"]`, `["var", name]`, `["let", …]`.
 - **Operators**: `==` `!=` `<` `<=` `>` `>=`; `all` `any` `!`; `in`; `+` `-`
   `*` `/` `%` and unary `-`; `concat`; `case`; `match` (with a label list);
-  `coalesce`; `step`; `interpolate` over `["linear"]` or
-  `["exponential", base]`, interpolating numbers and colours per channel.
+  `coalesce`; `step`; `interpolate` over `["linear"]`,
+  `["exponential", base]` or `["cubic-bezier", x1, y1, x2, y2]`, and
+  `at-interpolate` (the same ramp sampled at a literal stop); `to-color`.
+  Numbers and colours interpolate per channel.
+- **The one coercion is asked for by name**: `["to-color", value]` clamps a
+  number to [0, 1] and writes it to all three channels, or parses a colour
+  name. Its type is `Color`, so the MapLibre idiom
+  `["interpolate", …, 5, ["to-color", 0], 10, ["to-color", 1]]` ramps a number
+  into a colour. A bare number on a colour property is still rejected.
 - **Typed, not coerced**: the compiler rejects an expression whose static type
   does not fit the property (`'circle-color' expects a colour, but … yields a
   number`) and a value discovered per feature is rejected the same way at
   render time. A number is *not* a colour, so the MapLibre idiom of ramping a
-  number into a colour needs colour stops; `to-color` and `at-interpolate`
-  are not served.
+  number into a colour needs `to-color` at every stop.
 - **An expression with no value for a feature** (a missing attribute) falls
   back to the property's documented constant rather than failing the render.
 - **Once per feature, not per property**: the scene builder keeps one
@@ -225,7 +231,11 @@ Imagery `Source` is a configured name/path, never a caller-supplied URL
   traps (sRGB interpretation before `composite2`, equal band counts,
   premultiplied input, stride padding).
 - Expressions: a MapLibre conformance table (every served operator, with and
-  without an interpolation exponent, plus zoom/geometry-type/id/let-var),
+  without an interpolation exponent, over `linear`, `exponential` and
+  `cubic-bezier`, plus `to-color`, `at-interpolate` and
+  zoom/geometry-type/id/let-var; the cubic-bezier rows are pinned on the
+  closed form, X(0.5) = 0.5 for x1 + x2 = 1 and Y(0.5) = 0.375·(y1 + y2) +
+  0.125),
   the typed rejections (a number for a colour property, an attribute of the
   wrong type, a negative size, a filter that is not boolean, an unbound `var`,
   a non-ascending stop), a per-feature render proving data-driven paint and
@@ -275,5 +285,4 @@ Offline `.vtpk` packaging and `exportTiles` are not part of this phase;
 live MVT, OGC API Tiles and the existing raster tile surface are supported.
 A GPU backend is not planned. Within the symbol subset, curved or
 variable-along-a-line placement, sprite sheets, `text-rotation-alignment`,
-`symbol-z-order` and expressions in symbol *layout* are not claimed, and the
-expression dialect serves neither `to-color` nor `at-interpolate`.
+`symbol-z-order` and expressions in symbol *layout* are not claimed.
