@@ -74,7 +74,7 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
 | Method | Input | Output | Behaviour |
 | --- | --- | --- | --- |
 | `Describe` | crs identity string (`EPSG:4326`) | structured `CrsDescription` | name, family, axes (name/orientation/unit), datum, ellipsoid |
-| `FindTransformations` | `CrsTransformationQuery` (source, target, optional area of interest) | ranked `CrsTransformation` list | candidates with steps, Helmert parameters, area of use and derived accuracy; same datum → empty; the first candidate is the path `Transform` applies (ADR-0087) |
+| `FindTransformations` | `CrsTransformationQuery` (source, target, optional area of interest) | ranked `CrsTransformation` list | candidates with steps, Helmert or grid parameters, area of use and derived accuracy; same datum → empty; the first candidate is the path `Transform` applies (ADR-0087, ADR-0107) |
 | `Transform` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
 
 - **Axis order: x-first for every CRS** (x = longitude/easting). Describe
@@ -91,7 +91,8 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   construction (reading EPSG:3857 as `Mercator_1SP` is 33 km out). A code
   outside the catalogue and the families is `invalid.arguments`; there is no
   WKT *input*. Accuracy: modern datums zero-shift (sub-mm vs PROJ); OSGB36
-  classic Helmert (±0.1 m, no grid). The catalogue is built once, and each
+  classic Helmert (±0.1 m), or a deployed datum shift grid (ADR-0105). The
+  catalogue is built once, and each
   definition read and each CRS built on first use.
 - **A definition is WKT text; a datum's accuracy and area of use are not part
   of it** (ADR-0086). The definition carries the datum's `TOWGS84` shift —
@@ -102,6 +103,16 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   `DATUM` node carries, and joined to a definition to form the graph's datum
   node. A datum with no published operation contributes no node rather than an
   invented accuracy. Both halves have exactly one home, so they cannot drift.
+- **A deployed datum shift grid is applied per coordinate** (ADR-0105,
+  ADR-0107). Grids are configured, not embedded (`Spatial:Grids:Directories`,
+  a priority order), read as NTv2, and cached once found. Where a grid covers a
+  coordinate the shift is the grid's; where it does not — off its block, or for
+  a datum no bundle serves — the classic Helmert stands, bit for bit as before.
+  The choice is per coordinate, not per request, so a geometry crossing a
+  block edge is shifted by both in one request, and nothing is extrapolated
+  across an edge. A host with no bundle deployed is exactly the host it was,
+  and the first ranked candidate is the applied path for a grid as well as a
+  Helmert.
 
 ## Data stores (`IDataCatalogue`, `IFeatureStore`, `IFeatureLookup`, `IFeatureEditStore`, `ITransactionStore`, `IDatasetIngest`, `IVersionedFeatureStore`, `IStoreRegistry`, `IMapRegistry`, `IDemoWork`)
 

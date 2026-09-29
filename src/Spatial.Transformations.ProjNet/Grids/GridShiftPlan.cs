@@ -1,3 +1,4 @@
+using Spatial.Contracts;
 using ProjCs = ProjNet.CoordinateSystems;
 using ProjTf = ProjNet.CoordinateSystems.Transformations;
 
@@ -77,7 +78,10 @@ internal sealed class GridShiftPlan
             return null;
         }
 
-        ProjCs.CoordinateSystem pivot = Required(ProjEpsgCatalog.ShiftFreeGeographicBaseOf(WorldDatumCode), WorldDatumCode);
+        // The pivot as the two middle legs see it: WGS 84 with its (zero)
+        // conversion still on, so pairing a catalogued system with it is a
+        // single datum shift in the direction asked for.
+        var pivot = Required(ProjEpsgCatalog.ShiftFreeGeographicBaseOf(WorldDatumCode), WorldDatumCode);
         var sourceGeographic = Required(ProjEpsgCatalog.ShiftFreeGeographicBaseOf(sourceCode), sourceCode);
         var targetGeographic = Required(ProjEpsgCatalog.ShiftFreeGeographicBaseOf(targetCode), targetCode);
         var sourceReal = ProjEpsgCatalog.GeographicBaseOf(sourceCode);
@@ -111,8 +115,12 @@ internal sealed class GridShiftPlan
     }
 
     private static ProjCs.CoordinateSystem Required(ProjCs.CoordinateSystem? system, int code) =>
-        system ?? throw new InvalidOperationException(
-            $"The catalogue builds no coordinate system for EPSG:{code}, so a datum shift grid cannot be applied to it.");
+        // A structured failure, not an assertion: a catalogue that serves a
+        // code the plan cannot build a shift-free copy of is a request this
+        // host cannot answer, and the verb's failures are SpatialException
+        // codes (invalid.arguments) whatever the cause.
+        system ?? throw SpatialException.BadArguments(
+            $"EPSG:{code} is in the catalogue but no datum shift grid can be applied to it.");
 
     /// <summary>
     /// Shifts one coordinate, choosing the grid or the Helmert for that

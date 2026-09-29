@@ -261,73 +261,17 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     }
 
     /// <summary>
-    /// Applies a grid-backed plan to every coordinate, preserving shapes, empty
-    /// geometries, layouts and Z/M ordinates, and stamping the target CRS
-    /// (ADR-0107).
-    /// <para>
-    /// The walk is per coordinate because the plan is: a geometry is free to
-    /// cross the edge of a grid's block, and every one of its coordinates is
-    /// answered by whichever operation covers that coordinate. Cancellation is
-    /// honoured at the top of the walk and periodically inside it, because a
-    /// large geometry is a long operation and a client that asked to stop
-    /// should not wait for the whole of it.
-    /// </para>
+    /// Applies a grid-backed plan to every coordinate. The walk is per
+    /// coordinate because the plan is: a geometry is free to cross the edge of
+    /// a grid's block, and every one of its coordinates is answered by
+    /// whichever operation covers that coordinate (ADR-0107).
     /// </summary>
     private static IGeometry ApplyPerCoordinate(
         IGeometry geometry,
         GridShiftPlan plan,
         CoordinateReference? target,
-        CancellationToken cancellationToken)
-    {
-        if (geometry.IsEmpty)
-        {
-            return EmptyLike(geometry, target);
-        }
-
-        return geometry switch
-        {
-            Point point => new Point(point.Coordinate is { } coordinate ? ShiftCoordinate(plan, coordinate) : null, target),
-            LineString line => new LineString(ShiftSequence(line.Sequence, plan, cancellationToken), target),
-            Polygon polygon => new Polygon(
-                ShiftLine(polygon.ExteriorRing, plan, cancellationToken),
-                polygon.InteriorRings.Select(ring => ShiftLine(ring, plan, cancellationToken)),
-                target),
-            _ => ShiftComposite(geometry, plan, target, cancellationToken),
-        };
-    }
-
-    private static IGeometry ShiftComposite(
-        IGeometry geometry,
-        GridShiftPlan plan,
-        CoordinateReference? target,
-        CancellationToken cancellationToken)
-    {
-        var (parts, build) = Composites[geometry.Type];
-        var shifted = parts(geometry).Select(part => ApplyPerCoordinate(part, plan, null, cancellationToken)).ToArray();
-        return build(shifted, target);
-    }
-
-    private static LineString ShiftLine(LineString line, GridShiftPlan plan, CancellationToken cancellationToken) =>
-        new(ShiftSequence(line.Sequence, plan, cancellationToken));
-
-    private static PackedCoordinateSequence ShiftSequence(
-        ICoordinateSequence sequence,
-        GridShiftPlan plan,
-        CancellationToken cancellationToken)
-    {
-        var coordinates = new Coordinate[sequence.Count];
-        for (var index = 0; index < sequence.Count; index++)
-        {
-            if (index % CancellationCheckInterval == 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-
-            coordinates[index] = ShiftCoordinate(plan, sequence.GetCoordinate(index));
-        }
-
-        return PackedCoordinateSequence.FromCoordinates(coordinates, sequence.Layout);
-    }
+        CancellationToken cancellationToken) =>
+        Walk(geometry, coordinate => ShiftCoordinate(plan, coordinate), target, cancellationToken);
 
     private static Coordinate ShiftCoordinate(GridShiftPlan plan, Coordinate coordinate)
     {
@@ -340,15 +284,6 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
 
         return coordinate with { X = x, Y = y };
     }
-
-    /// <summary>
-    /// How many coordinates are shifted between cancellation checks on the
-    /// grid-backed path. The walk is per coordinate, so a large geometry is a
-    /// long operation; checking every coordinate would cost more than the
-    /// check is worth, and every few hundred bounds a cancellation to work a
-    /// client cannot tell from the work already done.
-    /// </summary>
-    private const int CancellationCheckInterval = 256;
 
     private static readonly Dictionary<GeometryType, (Func<IGeometry, IReadOnlyList<IGeometry>> Parts, Func<IReadOnlyList<IGeometry>, CoordinateReference?, IGeometry> Build)> Composites = new()
     {
@@ -365,7 +300,27 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     /// transformation over its own working plane, which is not a catalogue
     /// CRS and so cannot go through <see cref="Transform"/>.
     /// </summary>
-    internal static IGeometry Apply(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
+    internal static IGeometry Apply(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target) =>
+        Walk(geometry, coordinate => TransformCoordinate(coordinate, math), target, CancellationToken.None);
+
+    /// <summary>
+    /// The one walk both paths take: every coordinate replaced by
+    /// <paramref name="shift"/>, shapes, empty geometries, layouts and Z/M
+    /// ordinates preserved, and the target CRS stamped. Keeping it single is
+    /// what stops the grid-backed path (ADR-0107) and the ProjNet path from
+    /// differing in anything but the answer they give a coordinate.
+    /// <para>
+    /// Cancellation is honoured at the top of the walk and periodically inside
+    /// it, because on the grid path a large geometry is a long operation and a
+    /// client that asked to stop should not wait for the whole of it. A path
+    /// given <see cref="CancellationToken.None"/> never pays for the check.
+    /// </para>
+    /// </summary>
+    private static IGeometry Walk(
+        IGeometry geometry,
+        Func<Coordinate, Coordinate> shift,
+        CoordinateReference? target,
+        CancellationToken cancellationToken)
     {
         if (geometry.IsEmpty)
         {
@@ -374,39 +329,66 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
 
         return geometry switch
         {
-            Point point => new Point(point.Coordinate is { } coordinate ? TransformCoordinate(coordinate, math) : null, target),
-            LineString line => new LineString(TransformSequence(line.Sequence, math), target),
-            Polygon polygon => TransformPolygon(polygon, math, target),
-            _ => TransformComposite(geometry, math, target),
+            Point point => new Point(point.Coordinate is { } coordinate ? shift(coordinate) : null, target),
+            LineString line => new LineString(ShiftSequence(line.Sequence, shift, cancellationToken), target),
+            Polygon polygon => ShiftPolygon(polygon, shift, target, cancellationToken),
+            _ => ShiftComposite(geometry, shift, target, cancellationToken),
         };
     }
 
-    private static IGeometry TransformComposite(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
+    private static IGeometry ShiftComposite(
+        IGeometry geometry,
+        Func<Coordinate, Coordinate> shift,
+        CoordinateReference? target,
+        CancellationToken cancellationToken)
     {
         var (parts, build) = Composites[geometry.Type];
-        var transformed = parts(geometry).Select(part => Apply(part, math, null)).ToArray();
+        var transformed = parts(geometry).Select(part => Walk(part, shift, null, cancellationToken)).ToArray();
         return build(transformed, target);
     }
 
-    private static Polygon TransformPolygon(Polygon polygon, ProjTf.MathTransform math, CoordinateReference? target) =>
+    private static Polygon ShiftPolygon(
+        Polygon polygon,
+        Func<Coordinate, Coordinate> shift,
+        CoordinateReference? target,
+        CancellationToken cancellationToken) =>
         new(
-            TransformLine(polygon.ExteriorRing, math),
-            polygon.InteriorRings.Select(ring => TransformLine(ring, math)),
+            ShiftLine(polygon.ExteriorRing, shift, cancellationToken),
+            polygon.InteriorRings.Select(ring => ShiftLine(ring, shift, cancellationToken)),
             target);
 
-    private static LineString TransformLine(LineString line, ProjTf.MathTransform math) =>
-        new(TransformSequence(line.Sequence, math));
+    private static LineString ShiftLine(
+        LineString line,
+        Func<Coordinate, Coordinate> shift,
+        CancellationToken cancellationToken) =>
+        new(ShiftSequence(line.Sequence, shift, cancellationToken));
 
-    private static PackedCoordinateSequence TransformSequence(ICoordinateSequence sequence, ProjTf.MathTransform math)
+    private static PackedCoordinateSequence ShiftSequence(
+        ICoordinateSequence sequence,
+        Func<Coordinate, Coordinate> shift,
+        CancellationToken cancellationToken)
     {
         var coordinates = new Coordinate[sequence.Count];
         for (var index = 0; index < sequence.Count; index++)
         {
-            coordinates[index] = TransformCoordinate(sequence.GetCoordinate(index), math);
+            if (cancellationToken.CanBeCanceled && index % CancellationCheckInterval == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            coordinates[index] = shift(sequence.GetCoordinate(index));
         }
 
         return PackedCoordinateSequence.FromCoordinates(coordinates, sequence.Layout);
     }
+
+    /// <summary>
+    /// How many coordinates are shifted between cancellation checks. Checking
+    /// every coordinate would cost more than the check is worth, and every few
+    /// hundred bounds a cancellation to work a client cannot tell from the work
+    /// already done.
+    /// </summary>
+    private const int CancellationCheckInterval = 256;
 
     private static Coordinate TransformCoordinate(Coordinate coordinate, ProjTf.MathTransform math)
     {

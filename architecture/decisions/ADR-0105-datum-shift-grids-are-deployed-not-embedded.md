@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+amended by: ADR-0107
 ---
 
 # ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback
@@ -155,6 +156,13 @@ written against.
     catalogue's datum codes and the two tables cannot drift on codes.
 
 ## §applied: what the engine does with a deployed grid, and what it does not
+
+> **Amended by ADR-0107.** The transform verb now applies a deployed grid, per
+> coordinate, over the classic Helmert. Every claim below about the verb still
+> performing the Helmert is superseded; the measurements stay, because they are
+> what the fix was built on. What is *not* superseded is the licence position
+> below and the last paragraph: the grid is still deployed rather than vendored,
+> and agreement with a published bundle is still unmeasured.
 
 **This slice publishes the grid operation; it does not yet apply it.**
 `project` and the coordinate transform path still perform the classic Helmert,
