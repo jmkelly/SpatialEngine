@@ -86,7 +86,12 @@ without interpreting the token.
 - A tile renders the whole map, so a write to one layer still invalidates that
   map's tiles, not only the affected layer's. That is the pre-existing
   composition granularity, unchanged by this ADR; per-layer composition is a
-  separate, measured decision.
+  separate, measured decision. **That decision is now made: ADR-0110 caches
+  per-layer tiles and composites them at serve time.** Measured on a
+  five-layer city basemap, a single-layer edit invalidated all 25 warm tiles
+  of a one-viewport working set while one tile's pixels changed, and per-layer
+  composition repays itself from about one to three tiles served per edit
+  (ADR-0110, `eng/spike-u2x-tile-cache/RESULTS.md`).
 - A store that reports no version (PostGIS, SQL Server, demo, ArcGIS REST)
   keeps its current behaviour, which means a write to a durable store from
   *this* process also still leaves its tiles stale until a flush. Closing that
