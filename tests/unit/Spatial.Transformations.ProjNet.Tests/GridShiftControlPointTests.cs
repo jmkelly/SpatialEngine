@@ -151,7 +151,7 @@ public sealed class GridShiftControlPointTests : IDisposable
             .FindTransformations(new CrsTransformationQuery(
                 "EPSG:4326",
                 "EPSG:4277",
-                new CrsAreaOfUse("over France", 2.0, 46.0, 3.0, 47.0)));
+                CrsAreaOfUse.One("over France", 2.0, 46.0, 3.0, 47.0)));
 
         Assert.DoesNotContain(overFrance, candidate => candidate.Steps.Any(step => step.GridShift is not null));
         Assert.Contains(overFrance, candidate => candidate.Steps.All(step => step.GridShift is null));

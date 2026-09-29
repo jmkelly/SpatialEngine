@@ -128,15 +128,22 @@ public sealed class DatumTransformationGraphTests
         Assert.Equal("Alpha_To_WGS84_Helmert", chained.Steps[0].Name);
         Assert.Equal("WGS84_To_Beta_Helmert", chained.Steps[1].Name);
         // The composed operation is valid where both datums apply, the
-        // concatenated one wherever either does.
-        Assert.Equal(41.0, composed.AreaOfUse.YMin, 6);
-        Assert.Equal(52.0, composed.AreaOfUse.YMax, 6);
-        Assert.Equal(40.0, chained.AreaOfUse.YMin, 6);
-        Assert.Equal(55.0, chained.AreaOfUse.YMax, 6);
+        // concatenated one wherever either does. The union is a set of
+        // rectangles rather than their bounding box: the two extents here
+        // overlap, so the concatenated operation names the ground of both
+        // and not the sea between them, and a wrapped extent makes the
+        // bounding box the whole planet (ADR-0111).
+        Assert.Equal(
+            [new CrsAreaOfUseBox(-9.0, 40.0, -3.0, 52.0), new CrsAreaOfUseBox(-4.0, 41.0, 2.0, 55.0)],
+            chained.AreaOfUse.Boxes);
+        Assert.Equal(41.0, GraphInvoker.Only(composed.AreaOfUse).YMin, 6);
+        Assert.Equal(52.0, GraphInvoker.Only(composed.AreaOfUse).YMax, 6);
+        Assert.Equal(40.0, chained.AreaOfUse.Boxes[0].YMin, 6);
+        Assert.Equal(55.0, chained.AreaOfUse.Boxes[1].YMax, 6);
     }
 
     private static DatumNode Shifted(string name, double tx, double accuracy, double xMin, double yMin, double xMax, double yMax) =>
-        new(name, name, new HelmertParameters(tx, 0, 0, 0, 0, 0, 0), accuracy, new CrsAreaOfUse(name, xMin, yMin, xMax, yMax));
+        new(name, name, new HelmertParameters(tx, 0, 0, 0, 0, 0, 0), accuracy, CrsAreaOfUse.One(name, xMin, yMin, xMax, yMax));
 
     [Fact]
     public void The_search_is_symmetric()

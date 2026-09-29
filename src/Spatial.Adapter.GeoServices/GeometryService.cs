@@ -405,17 +405,33 @@ internal static class GeometryService
         var (xMin, yMin, xMax, yMax) = ParseExtent(raw);
         if (capabilities.Catalogue.Describe(source.ToString(), cancellationToken).Kind == CrsKind.Geographic)
         {
-            return new CrsAreaOfUse("the requested extent of interest", xMin, yMin, xMax, yMax);
+            return Area("the requested extent of interest", xMin, yMin, xMax, yMax);
         }
 
         var (west, south) = ToGeographic(xMin, yMin, source, capabilities.Transforms, cancellationToken);
         var (east, north) = ToGeographic(xMax, yMax, source, capabilities.Transforms, cancellationToken);
-        return new CrsAreaOfUse(
-            "the requested extent of interest",
-            Math.Min(west, east),
-            Math.Min(south, north),
-            Math.Max(west, east),
-            Math.Max(south, north));
+        return Area("the requested extent of interest", west, south, east, north);
+    }
+
+    /// <summary>
+    /// The requested extent, as the set of rectangles it is. Neither
+    /// reprojection nor a client knows the world has a seam: an extent over
+    /// New Zealand arrives with a west of 170E and an east of 172W, and
+    /// ordering the two into one interval would ask the catalogue about the
+    /// whole Pacific — the largest area of interest a caller can send, and
+    /// the one that makes the filter return everything. An area of use is a
+    /// set of rectangles for exactly this reason, so the request is split at
+    /// the antimeridian instead of sorted (ADR-0111).
+    /// </summary>
+    private static CrsAreaOfUse Area(string name, double west, double south, double east, double north)
+    {
+        var yMin = Math.Min(south, north);
+        var yMax = Math.Max(south, north);
+        return west <= east
+            ? new CrsAreaOfUse(name, [new CrsAreaOfUseBox(west, yMin, east, yMax)])
+            : new CrsAreaOfUse(
+                name,
+                [new CrsAreaOfUseBox(west, yMin, 180.0, yMax), new CrsAreaOfUseBox(-180.0, yMin, east, yMax)]);
     }
 
     /// <summary>
@@ -924,7 +940,7 @@ internal sealed record TransformationEntry(
     IReadOnlyList<TransformationStep> GeoTransforms,
     double Accuracy,
     bool Approximate,
-    TransformationAreaOfUse AreaOfUse)
+    IReadOnlyList<TransformationAreaOfUse> AreaOfUse)
 {
     public static TransformationEntry From(CrsTransformation candidate) =>
         new(
@@ -932,12 +948,7 @@ internal sealed record TransformationEntry(
             candidate.Steps.Select(TransformationStep.From).ToArray(),
             candidate.AccuracyMetres,
             candidate.Approximate,
-            new TransformationAreaOfUse(
-                candidate.AreaOfUse.Name,
-                candidate.AreaOfUse.XMin,
-                candidate.AreaOfUse.YMin,
-                candidate.AreaOfUse.XMax,
-                candidate.AreaOfUse.YMax));
+            TransformationAreaOfUse.From(candidate.AreaOfUse));
 }
 
 /// <summary>
@@ -990,10 +1001,29 @@ internal sealed record TransformationGrid(string Name, string File, string Forma
 /// <summary>The seven parameters of a Helmert step: metres, arc-seconds, parts per million (EPSG method 9606).</summary>
 internal sealed record TransformationHelmert(double Tx, double Ty, double Tz, double Rx, double Ry, double Rz, double Scale);
 
-/// <summary>Where a candidate is valid, in the degrees EPSG records extents in. The member names are the Esri envelope names (<c>xmin</c>), not camel-cased capitals.</summary>
+/// <summary>Where a candidate is valid, in the degrees EPSG records extents in. The member names are the Esri envelope names (<c>xmin</c>), not camel-cased capitals. An area of use that crosses the antimeridian is more than one of these, and a listing publishes a list of them rather than the one envelope the spec sketches, because one envelope cannot say "160.6E to 171.2W" without reading as the empty box (ADR-0111).</summary>
 internal sealed record TransformationAreaOfUse(
     [property: System.Text.Json.Serialization.JsonPropertyName("name")] string Name,
     [property: System.Text.Json.Serialization.JsonPropertyName("xmin")] double XMin,
     [property: System.Text.Json.Serialization.JsonPropertyName("ymin")] double YMin,
     [property: System.Text.Json.Serialization.JsonPropertyName("xmax")] double XMax,
-    [property: System.Text.Json.Serialization.JsonPropertyName("ymax")] double YMax);
+    [property: System.Text.Json.Serialization.JsonPropertyName("ymax")] double YMax)
+{
+    /// <summary>One published rectangle per box of the area of use. A second
+    /// box is on the other side of the antimeridian, and the name says so
+    /// rather than repeating the area's name twice over: a client reading the
+    /// list can tell the two halves apart, which is the only thing it could
+    /// not do from a single envelope.</summary>
+    public static IReadOnlyList<TransformationAreaOfUse> From(CrsAreaOfUse areaOfUse) =>
+        [.. areaOfUse.Boxes.Select(box => new TransformationAreaOfUse(
+            areaOfUse.Boxes.Count == 1 ? areaOfUse.Name : $"{areaOfUse.Name}, {SideOf(box)}",
+            box.XMin,
+            box.YMin,
+            box.XMax,
+            box.YMax))];
+
+    private static string SideOf(CrsAreaOfUseBox box) =>
+        box.XMin > 0.0 ? "east of the antimeridian"
+        : box.XMax < 0.0 ? "west of the antimeridian"
+        : "across the antimeridian";
+}

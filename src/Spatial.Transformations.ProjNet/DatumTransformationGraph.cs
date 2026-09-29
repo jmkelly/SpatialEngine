@@ -36,6 +36,12 @@ internal sealed record DatumNode(
 /// block, whatever the other leg covers. Accuracies combine in quadrature, and
 /// the reduced translation carries the first-order bound on the rotation it
 /// drops, so no accuracy here is a round number picked for convenience.
+/// <para>
+/// Both set operations are rectangle algebra over the boxes of an area of use
+/// and neither of them merges, because an area of use may be two rectangles
+/// either side of the antimeridian and the merge that would collapse them
+/// would fabricate one running from the east across the world (ADR-0111).
+/// </para>
 /// </summary>
 internal static class DatumTransformationGraph
 {
@@ -240,7 +246,7 @@ internal static class DatumTransformationGraph
             : $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: no NTv2 grid is deployed, so this is the operation applied and the Helmert is the fallback";
 
     private static bool Covers(CrsAreaOfUse areaOfUse, CrsAreaOfUse? areaOfInterest) =>
-        !HelmertAlgebra.IsEmpty(areaOfUse) && (areaOfInterest is null || Contains(areaOfUse, areaOfInterest));
+        !IsEmpty(areaOfUse) && (areaOfInterest is null || Contains(areaOfUse, areaOfInterest));
 
     /// <summary>
     /// The order operations are published in, so both directions of a search
@@ -249,35 +255,102 @@ internal static class DatumTransformationGraph
     /// </summary>
     private static string CanonicalKey(DatumNode node) => node.Code == World.Code ? "0" : $"1 {node.Code:D5}";
 
+    /// <summary>
+    /// Whether an area of use covers any ground at all: where it does not,
+    /// no operation stands for it anywhere. Emptiness is the absence of
+    /// boxes, never a pair of bounds the wrong way round — an extent that
+    /// crosses the antimeridian is two boxes, and reading its western box's
+    /// east bound against its eastern box's west bound used to conclude that
+    /// a datum used nowhere shares no ground with WGS 84 (ADR-0111).
+    /// </summary>
+    internal static bool IsEmpty(CrsAreaOfUse areaOfUse) => areaOfUse.Boxes.Count == 0;
+
+    /// <summary>
+    /// Whether the area of use covers the area of interest in full. A filter,
+    /// not a sample: a request over ground that straddles a candidate's edge
+    /// is not a request the candidate can answer, and answering it with the
+    /// candidate anyway is how a wrapped extent used to be served by an
+    /// operation that does not reach the strip west of the antimeridian.
+    /// </summary>
     private static bool Contains(CrsAreaOfUse areaOfUse, CrsAreaOfUse areaOfInterest) =>
-        areaOfInterest.XMin >= areaOfUse.XMin && areaOfInterest.YMin >= areaOfUse.YMin
-        && areaOfInterest.XMax <= areaOfUse.XMax && areaOfInterest.YMax <= areaOfUse.YMax;
+        areaOfInterest.Boxes.Count > 0
+        && areaOfInterest.Boxes.All(box => areaOfUse.Boxes.Any(candidate => Covers(candidate, box)));
+
+    /// <summary>
+    /// Whether one rectangle covers another. The degenerate cases count: two
+    /// identical rectangles cover each other, which is what lets a union drop
+    /// a duplicate rather than publish the ground twice.
+    /// </summary>
+    private static bool Covers(CrsAreaOfUseBox outer, CrsAreaOfUseBox inner) =>
+        inner.XMin >= outer.XMin && inner.YMin >= outer.YMin
+        && inner.XMax <= outer.XMax && inner.YMax <= outer.YMax;
 
     /// <summary>
     /// Where both datums apply. A direct operation is valid nowhere else, so
     /// an empty intersection drops the candidate outright — that is how
-    /// OSGB36-to-NAD83 comes back with only the concatenated path.
+    /// OSGB36-to-NAD83 comes back with only the concatenated path. The
+    /// intersection is rectangle by rectangle, because the two extents may
+    /// share ground in more than one place and min/max over a set of boxes
+    /// answers a question about their bounding box rather than about them
+    /// (ADR-0111).
     /// </summary>
     internal static CrsAreaOfUse Intersect(CrsAreaOfUse left, CrsAreaOfUse right)
     {
-        var xMin = Math.Max(left.XMin, right.XMin);
-        var yMin = Math.Max(left.YMin, right.YMin);
-        var xMax = Math.Min(left.XMax, right.XMax);
-        var yMax = Math.Min(left.YMax, right.YMax);
-        return xMin > xMax || yMin > yMax
-            ? new CrsAreaOfUse($"no shared area of use between {left.Name} and {right.Name}", xMin, yMin, xMin - 1.0, yMin - 1.0)
-            : new CrsAreaOfUse($"the {left.Name} and {right.Name} areas of use", xMin, yMin, xMax, yMax);
+        var boxes = new List<CrsAreaOfUseBox>();
+        foreach (var one in left.Boxes)
+        {
+            foreach (var other in right.Boxes)
+            {
+                var box = new CrsAreaOfUseBox(
+                    Math.Max(one.XMin, other.XMin),
+                    Math.Max(one.YMin, other.YMin),
+                    Math.Min(one.XMax, other.XMax),
+                    Math.Min(one.YMax, other.YMax));
+                if (box.XMin <= box.XMax && box.YMin <= box.YMax)
+                {
+                    boxes.Add(box);
+                }
+            }
+        }
+
+        return boxes.Count == 0
+            ? new CrsAreaOfUse($"no shared area of use between {left.Name} and {right.Name}", [])
+            : new CrsAreaOfUse($"the {left.Name} and {right.Name} areas of use", WithoutDuplicates(boxes));
     }
 
-    /// <summary>Where either step applies. The box is the bounding box of the
-    /// two extents, so it also covers the ground between them; the name says
-    /// which regions the operation stands for.</summary>
+    /// <summary>Where either step applies. The two sets of rectangles, with
+    /// the parts already inside another rectangle dropped: a concatenation
+    /// through WGS 84 covers the world where the world is one of the
+    /// operands, and publishing New Zealand's two boxes beside it would draw
+    /// New Zealand twice. Nothing is merged, because the only two boxes that
+    /// could be are the ones either side of the antimeridian, and joining
+    /// those would fabricate a rectangle running from 160.6E to 171.2W
+    /// (ADR-0111).</summary>
     internal static CrsAreaOfUse Union(CrsAreaOfUse left, CrsAreaOfUse right) =>
-        new($"{left.Name} and {right.Name}",
-            Math.Min(left.XMin, right.XMin),
-            Math.Min(left.YMin, right.YMin),
-            Math.Max(left.XMax, right.XMax),
-            Math.Max(left.YMax, right.YMax));
+        new($"{left.Name} and {right.Name}", WithoutDuplicates([.. left.Boxes, .. right.Boxes]));
+
+    /// <summary>The rectangles of <paramref name="boxes"/> that no other one
+    /// of them covers. A duplicate is dropped in favour of the one that comes
+    /// first, so the result is a set rather than a multiset.</summary>
+    private static List<CrsAreaOfUseBox> WithoutDuplicates(List<CrsAreaOfUseBox> boxes)
+    {
+        var kept = new List<CrsAreaOfUseBox>();
+        for (var index = 0; index < boxes.Count; index++)
+        {
+            var covered = false;
+            for (var other = 0; other < boxes.Count && !covered; other++)
+            {
+                covered = other != index && Covers(boxes[other], boxes[index]) && (other < index || !boxes[other].Equals(boxes[index]));
+            }
+
+            if (!covered)
+            {
+                kept.Add(boxes[index]);
+            }
+        }
+
+        return kept;
+    }
 
     private static string OperationName(DatumNode from, DatumNode to) => $"{from.Code}_To_{to.Code}_Helmert";
 }

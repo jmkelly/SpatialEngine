@@ -92,14 +92,14 @@ internal static class GridShiftCandidate
     /// </summary>
     private static CrsAreaOfUse Area(List<Leg> legs)
     {
-        var area = new CrsAreaOfUse("the WGS 84 pivot", -180.0, -90.0, 180.0, 90.0);
+        var area = CrsAreaOfUse.One("the WGS 84 pivot", -180.0, -90.0, 180.0, 90.0);
         foreach (var leg in legs)
         {
             area = DatumTransformationGraph.Intersect(area, leg.AreaOfUse);
         }
 
-        return HelmertAlgebra.IsEmpty(area)
-            ? new CrsAreaOfUse("the WGS 84 pivot", -180.0, -90.0, 180.0, 90.0)
+        return DatumTransformationGraph.IsEmpty(area)
+            ? CrsAreaOfUse.One("the WGS 84 pivot", -180.0, -90.0, 180.0, 90.0)
             : area;
     }
 
@@ -167,7 +167,7 @@ internal static class GridShiftCandidate
                         grid.YMin,
                         grid.XMax,
                         grid.YMax)),
-                new CrsAreaOfUse($"the block the {grid.Name} grid covers", grid.XMin, grid.YMin, grid.XMax, grid.YMax),
+                CrsAreaOfUse.One($"the block the {grid.Name} grid covers", grid.XMin, grid.YMin, grid.XMax, grid.YMax),
                 grid.AccuracyMetres,
                 grid);
         }

@@ -11,6 +11,31 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **An area of use is a set of rectangles, so an extent across the
+  antimeridian is not an empty one** (ADR-0111, SpatialEngine-u2x.32): EPSG
+  writes a wrapped extent as a west bound in the east and an east bound in the
+  west — extent 1175 "New Zealand" is 160.6E to 171.2W — and read as one
+  rectangle that is the empty box, which the graph reads as "valid nowhere", so
+  New Zealand left the transformation graph entirely rather than the part of it
+  that does not overlap; clipped at 180 the node survived and left the
+  registered ground west of the antimeridian uncovered. `CrsAreaOfUse` is now a
+  name and a list of `CrsAreaOfUseBox`, the wrapped extent is the two
+  rectangles it is with their registered bounds, and emptiness is the absence of
+  boxes. The graph's intersection and union are rectangle algebra over that set
+  and merge nothing — joining the halves would fabricate the very rectangle this
+  removes — so a wrapped operand can no longer widen a composition it takes
+  part in. **Caller-visible changes:** `CrsAreaOfUse` carries `Boxes` instead
+  of `XMin`/`YMin`/`XMax`/`YMax`; a `findTransformations` response publishes
+  `areaOfUse` as a list of envelopes (`areaOfUse[0]` is the one a client was
+  reading); a concatenated operation publishes the two extents rather than
+  their bounding box; and an `extentOfInterest` across the seam is split at
+  the antimeridian instead of being sorted into one interval. The area's name
+  stays a short label and the registry's verbatim extent name stays with the
+  row, because half the areas in a listing are composed ones that name no
+  extent. NZGD2000 still serves no transformation through the service — its
+  vendored WKT carries no `TOWGS84` — which is a gap in the *parameters* of
+  EPSG:1565 and is not fixed here.
+
 - **A deployed datum shift grid is applied, per coordinate, over the classic
   Helmert** (ADR-0107, SpatialEngine-7at): `project` and the coordinate
   transform path now use a bundle an operator has deployed wherever that bundle

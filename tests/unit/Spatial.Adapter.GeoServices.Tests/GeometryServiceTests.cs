@@ -747,9 +747,33 @@ public sealed class GeometryServiceTests
         var helmert = step.GetProperty("helmert");
         Assert.Equal(20.489, helmert.GetProperty("scale").GetDouble(), 3);
         Assert.Equal(-542.072, helmert.GetProperty("tz").GetDouble(), 3);
-        var areaOfUse = applied.GetProperty("areaOfUse");
+        // The area of use is a list of rectangles (ADR-0111). It is one here,
+        // because no extent in the catalogue crosses the antimeridian, and a
+        // client reading a single rectangle out of a one-element list reads
+        // the envelope the spec sketches.
+        var areaOfUse = Assert.Single(applied.GetProperty("areaOfUse").EnumerateArray());
         Assert.Equal(49.79, areaOfUse.GetProperty("ymin").GetDouble(), 3);
         Assert.Contains("Great Britain", areaOfUse.GetProperty("name").GetString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_extent_of_interest_across_the_antimeridian_is_not_sorted_into_one_envelope()
+    {
+        // A client asking about ground either side of the seam sends a west
+        // of 170E and an east of 172W. Ordering the two into one interval
+        // would make the request the whole Pacific, which contains Great
+        // Britain, and the direct operation would come back for a question
+        // about New Zealand. Split at the antimeridian, neither half is in
+        // Britain and only the concatenated path — valid wherever either step
+        // applies, and WGS 84 applies everywhere — survives (ADR-0111).
+        var overNewZealand = await DispatchAsync(
+            "findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "27700"),
+            ("extentOfInterest", "170,-45,-172,-42"));
+
+        var concatenated = Assert.Single(overNewZealand.EnumerateArray());
+        Assert.Equal("WGS84_To_OSGB36_Helmert_via_WGS84", concatenated.GetProperty("name").GetString());
     }
 
     [Fact]

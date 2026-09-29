@@ -103,6 +103,20 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   `DATUM` node carries, and joined to a definition to form the graph's datum
   node. A datum with no published operation contributes no node rather than an
   invented accuracy. Both halves have exactly one home, so they cannot drift.
+- **An area of use is a set of rectangles** (ADR-0111). EPSG publishes
+  extents that cross the antimeridian as a west bound in the east and an east
+  bound in the west — extent 1175 "New Zealand" is 160.6E to 171.2W — and
+  read as one rectangle that is the empty box, which the graph means by "valid
+  nowhere", so the datum drops out of the graph rather than the part of it that
+  does not overlap. The area is `CrsAreaOfUse(Name, Boxes)`, the wrapped
+  extent is its two rectangles, and emptiness is the absence of boxes. The
+  graph's intersection and union are rectangle algebra over that set and merge
+  nothing: joining the two halves of a wrapped extent would fabricate the very
+  rectangle this removes. `findTransformations` publishes `areaOfUse` as a
+  list of envelopes for the same reason, and an `extentOfInterest` across the
+  seam is split rather than sorted into one interval. The area's name stays a
+  short label — the registry's verbatim wording stays with the row, because
+  half the areas in a listing are composed ones that name no extent.
 - **A deployed datum shift grid is applied per coordinate** (ADR-0105,
   ADR-0107). Grids are configured, not embedded (`Spatial:Grids:Directories`,
   a priority order), read as NTv2, and cached once found. Where a grid covers a

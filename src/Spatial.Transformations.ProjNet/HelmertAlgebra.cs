@@ -40,12 +40,6 @@ internal static class HelmertAlgebra
         && Math.Abs(parameters.ScalePpm) < 1e-9;
 
     /// <summary>
-    /// Whether two datums' areas of use overlap at all: where they do not,
-    /// no direct operation between them is valid anywhere.
-    /// </summary>
-    public static bool IsEmpty(CrsAreaOfUse areaOfUse) => areaOfUse.XMin > areaOfUse.XMax || areaOfUse.YMin > areaOfUse.YMax;
-
-    /// <summary>
     /// The transform equivalent to applying <paramref name="first"/> and then
     /// <paramref name="second"/> — the geocentric composition of two datum
     /// steps, which is how a direct shift between two datums is published.
