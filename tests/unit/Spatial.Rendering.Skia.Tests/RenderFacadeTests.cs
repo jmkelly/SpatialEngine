@@ -281,7 +281,7 @@ public sealed class RenderFacadeTests
     /// <summary>
     /// The identity/envelope-centre tie-break is the last key of the placement
     /// order, so line labels land the same way whichever order the store pages
-    /// its features in (ADR-0075).
+    /// its features in (ADR-0098 §3).
     /// </summary>
     [Fact]
     public async Task RenderAsync_LineLabelsAreDeterministicAcrossFeatureOrder()

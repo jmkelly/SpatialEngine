@@ -15,7 +15,7 @@ using Spatial.Transformations.ProjNet;
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
-/// The served query compiled onto the store's query surface (ADR-0075 §7):
+/// The served query compiled onto the store's query surface (ADR-0098 §7):
 /// the count, the distinct set and the paged feature read are asked of the
 /// store's own face instead of being computed over a materialised match set,
 /// and a request the plan cannot carry keeps the match path. Each test asserts
