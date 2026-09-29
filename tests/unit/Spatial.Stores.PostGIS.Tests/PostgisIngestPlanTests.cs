@@ -265,4 +265,47 @@ public sealed class PostgisIngestPlanTests
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
         Assert.Contains("mixes XY and XYZ", failure.Message);
     }
+
+    [Fact]
+    public void A_streamed_page_that_drops_the_declared_layout_is_rejected()
+    {
+        var schema = FeatureTests.Schema(
+            ("name", AttributeKind.String, true),
+            ("geom", AttributeKind.Geometry, true));
+        var xyz = FeatureTests.Feature(
+            "1", schema, "a", GeometryFactory.CreatePoint(1, 2, 3, CoordinateReference.Epsg(4326)));
+        var xy = FeatureTests.Feature(
+            "2", schema, "b", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)));
+
+        // The table is created from the first page, so a later page that drops
+        // the Z is refused by the plan rather than by the driver.
+        var bound = PostgisIngestPlan
+            .Create(new IngestRequest("public.upload", 4326), schema)
+            .Bind(Batch(schema, xyz));
+
+        var failure = Assert.Throws<SpatialException>(() => bound.CheckPage(Batch(schema, xy), 1));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("carries Geometry coordinates, but its column is GeometryZ", failure.Message);
+    }
+
+    [Fact]
+    public void A_streamed_page_that_shares_the_declared_layout_is_accepted()
+    {
+        var schema = FeatureTests.Schema(
+            ("name", AttributeKind.String, true),
+            ("geom", AttributeKind.Geometry, true));
+        var first = FeatureTests.Feature(
+            "1", schema, "a", GeometryFactory.CreatePoint(1, 2, 3, CoordinateReference.Epsg(4326)));
+        var second = FeatureTests.Feature(
+            "2", schema, "b", GeometryFactory.CreatePoint(4, 5, 6, CoordinateReference.Epsg(4326)));
+
+        var bound = PostgisIngestPlan
+            .Create(new IngestRequest("public.upload", 4326), schema)
+            .Bind(Batch(schema, first));
+
+        bound.CheckPage(Batch(schema, second), 1);
+
+        Assert.Contains("geometry(GeometryZ, 4326)", bound.CreateTableSql());
+    }
 }
