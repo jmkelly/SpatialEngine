@@ -736,6 +736,28 @@ class StaleReservationTests(unittest.TestCase):
             got = self.run_tool(seeded.repo, "--reserve", "--max-age-days", "14")
             self.assertEqual(got.stdout.strip(), "0011")
 
+    def test_a_holder_named_by_a_remote_ref_is_not_swept(self):
+        # The reproduction for SpatialEngine-ivp: the numbering gate went red
+        # on every ci run because the holder it fabricated ("origin", from
+        # whichever refs the checkout had) names a ref that exists, while
+        # branch_exists looked only under refs/heads. A live hold was declared
+        # dead and unlinked, which is the one sweep that hands the same number
+        # to two branches (SpatialEngine-u2x.34). A checkout that has no local
+        # branch for a holder at all is what actions/checkout hands ci.
+        with SeededRepo() as seeded:
+            git("update-ref", "refs/remotes/origin/holder", "HEAD",
+                cwd=seeded.repo)
+            self.assertFalse(
+                subprocess.run(
+                    ["git", "rev-parse", "--verify", "--quiet",
+                     "refs/heads/origin/holder"],
+                    cwd=seeded.repo, capture_output=True).returncode == 0)
+            self.write_reservation(seeded.repo, 10, "origin/holder", age_days=3)
+            got = self.run_tool(seeded.repo, "--reserve", "--max-age-days", "14")
+            self.assertEqual(
+                got.stdout.strip(), "0011",
+                "a hold whose branch exists is live, whatever ref names it")
+
     def test_list_reports_the_holder_of_each_reservation(self):
         with SeededRepo() as seeded:
             self.write_reservation(seeded.repo, 10, "feature", age_days=3)
