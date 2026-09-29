@@ -47,7 +47,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
         var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
-        var order = PostgisPlanQueries.Order(query.Order ?? [], description.IdColumns);
+        var order = PostgisPlanQueries.Order(
+            query.Order ?? [], description.IdColumns, description.Schema, await ByteOrderTextAsync(cancellationToken));
         if (!Pushed(where, query, order))
         {
             // The restriction is not expressible without renumbering this
@@ -130,6 +131,17 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     }
 
     /// <summary>
+    /// Whether this database already compares text by bytes, which is what
+    /// decides whether a pushed-down sort key over a text column carries an
+    /// explicit <c>COLLATE "C"</c> (ADR-0117). Read once per store and cached;
+    /// a database the probe cannot answer for is treated as a locale collation,
+    /// because the term is the only thing standing between the pushdown and the
+    /// contract's answer.
+    /// </summary>
+    private async Task<bool> ByteOrderTextAsync(CancellationToken cancellationToken) =>
+        PostgisTextCollation.IsByteOrder(await storage.DatabaseCollationAsync(cancellationToken));
+
+    /// <summary>
     /// The reduction a plan selects, pushed down when the dialect can return its
     /// row order: an ungrouped reduction is one group whatever the order, and a
     /// grouped one is pushed when the plan's order is over the group key itself
@@ -156,7 +168,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // restricted plan, so the reduction is finished over the selected rows
         // instead. An unrestricted plan's null really is "every row".
         var pushed = where is not null || !PostgisPlanQueries.Restricts(query)
-            ? await PushedGroupsAsync(name, description, aggregate, where, order, parameters, cancellationToken)
+            ? await PushedGroupsAsync(
+                name, description, aggregate, where, order, await ByteOrderTextAsync(cancellationToken), parameters, cancellationToken)
                 .ConfigureAwait(false)
             : null;
         return pushed ?? FeatureReduction.Aggregate(
@@ -171,11 +184,12 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         AggregateQuery aggregate,
         string? where,
         IReadOnlyList<OrderTerm> order,
+        bool byteOrderText,
         List<object?> parameters,
         CancellationToken cancellationToken)
     {
         var sql = PostgisPlanQueries.Aggregate(
-            name, where, aggregate.GroupBy?.ToArray() ?? [], aggregate.Specs, order, parameters);
+            name, where, aggregate.GroupBy?.ToArray() ?? [], aggregate.Specs, order, description.Schema, byteOrderText, parameters);
         if (sql is null)
         {
             // A group order the dialect cannot return is not an error and not a

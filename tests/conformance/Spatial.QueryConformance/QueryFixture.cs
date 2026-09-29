@@ -25,6 +25,16 @@ namespace Spatial.QueryConformance;
 /// <c>PERCENTILE_CONT</c> and a hand-rolled interpolation can disagree.</item>
 /// <item><b>An empty set</b> — for the one-row-of-nulls rule, and for a count
 /// that is zero rather than one.</item>
+/// <item><b>Text sort keys whose locale-collation order is not their ordinal
+/// order</b> — the group key and the label both carry case (<c>a</c> beside
+/// <c>A</c>) and punctuation (<c>_c</c>, <c>_charlie</c>, <c>a-delta</c>), which
+/// is what separates a byte comparison from a locale one: <c>C</c> orders
+/// <c>"A"</c> before <c>"a"</c> and puts <c>"_c"</c> between the upper- and
+/// lower-case letters, while <c>en_US.utf8</c> orders <c>"a"</c> before
+/// <c>"A"</c> and pushes the punctuated names to where their letters sort. A
+/// pushed-down <c>ORDER BY</c> that inherits the database's collation therefore
+/// returns a <em>different sequence</em> from the reference for the same plan
+/// (ADR-0098 §3, ADR-0117).</item>
 /// </list>
 ///
 /// </summary>
@@ -46,16 +56,26 @@ public static class QueryFixture
     /// <summary>The fixture's rows, in the order a store returns them when it
     /// is asked for nothing: two tied sort keys, four categories (two of them a
     /// single row, one with a null key and two with a null summed value), nulls
-    /// in the summed field, and one row outside the box the paging cases
-    /// use.</summary>
+    /// in the summed field, and one row outside the box the paging cases use.
+    ///
+    /// <para>The two text columns are the ones a collation gets wrong. The
+    /// group key is <c>a, a, A, A, null, _c</c> and the label is <c>Alpha,
+    /// bravo, _charlie, Charlie, a-delta, echo</c>: byte order puts
+    /// <c>"A"</c> and <c>"_c"</c> before the lower-case names, and
+    /// <c>en_US.utf8</c> puts them after, so no two of the six rows are in the
+    /// same place under both rules. The <em>group</em> shape is unchanged by
+    /// that — still two groups of two rows, a null-keyed group of its own and a
+    /// single-row group — so a percentile that interpolates and a variance that
+    /// divides are still measured.</para>
+    /// </summary>
     public static IReadOnlyList<Feature> Features { get; } =
     [
-        Row(1, "a", 10, 1.5, "alpha", x: 1.0),
+        Row(1, "a", 10, 1.5, "Alpha", x: 1.0),
         Row(2, "a", 15, 2.5, "bravo", x: 1.0),
-        Row(3, "b", null, 0.5, "charlie", x: 2.0),
-        Row(4, "b", 30, null, "delta", x: 2.0),
-        Row(5, null, 20, 4.5, "echo", x: 3.0),
-        Row(6, "c", 20, 4.5, "foxtrot", x: 9.0),
+        Row(3, "A", null, 0.5, "_charlie", x: 2.0),
+        Row(4, "A", 30, null, "Charlie", x: 2.0),
+        Row(5, null, 20, 4.5, "a-delta", x: 3.0),
+        Row(6, "_c", 20, 4.5, "echo", x: 9.0),
     ];
 
     /// <summary>The box the paged cases use: it selects four of the six rows.</summary>
