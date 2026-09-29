@@ -21,6 +21,16 @@ namespace Spatial.Stores.PostGIS.Core;
 /// PostGIS half of the back end, and the identifier quoting, the
 /// <c>!=</c> spelling and the envelope test are the whole of its dialect.
 /// Built fragments are deterministic for equal plans.
+///
+/// <para>
+/// Every string comparison it writes says which order it wants: the column is
+/// rendered by <see cref="PostgisPlanQueries.Ordered"/>, the same helper the
+/// <c>ORDER BY</c> terms go through, so a <c>WHERE</c> cannot inherit the
+/// database's collation where the order already refuses to (ADR-0098 §3,
+/// ADR-0121, ADR-0123). <see cref="ComparesText"/> is what a caller asks
+/// before reading that collation, so a plan that compares no text never pays
+/// for the catalog read.
+/// </para>
 /// </summary>
 internal static class PostgisPredicateSql
 {
@@ -33,19 +43,45 @@ internal static class PostgisPredicateSql
         DatasetDescription description,
         BoundingBox? bbox,
         Predicate? where,
+        bool byteOrderText,
         List<object?> parameters)
     {
         var prefilter = BoundingBox(bbox, description, parameters);
-        var filter = where is null ? null : Where(where, description.Schema, parameters);
+        var filter = where is null ? null : Where(where, description.Schema, byteOrderText, parameters);
         return Combine(prefilter, filter);
     }
 
     /// <summary>Builds the attribute fragment, or fails with an actionable error for an unknown or geometry field.</summary>
-    public static string Where(Predicate where, IFeatureSchema schema, List<object?> parameters)
+    public static string Where(Predicate where, IFeatureSchema schema, bool byteOrderText, List<object?> parameters)
     {
-        var builder = new SqlBuilder(schema, parameters);
+        var builder = new SqlBuilder(schema, byteOrderText, parameters);
         builder.Visit(where);
         return builder.Error is { } error ? throw SpatialException.BadArguments(error) : builder.ToString();
+    }
+
+    /// <summary>
+    /// Whether a predicate compares a text column at all, which is the only
+    /// part of a <c>WHERE</c> the database's collation can change. A caller
+    /// reads the collation when this is true and skips the catalog read
+    /// otherwise: a plan over a bounding box and a number is not a question the
+    /// collation answers, and a store that asked anyway would pay a round trip
+    /// for a plan that cannot use the answer.
+    /// </summary>
+    public static bool ComparesText(Predicate where, IFeatureSchema schema) => Text(where, schema);
+
+    private static bool Text(Predicate predicate, IFeatureSchema schema) => predicate switch
+    {
+        Predicate.Compare compare => IsText(compare.Field, schema),
+        Predicate.IsIn isIn => IsText(isIn.Field, schema),
+        Predicate.Every every => every.Terms.Any(term => Text(term, schema)),
+        Predicate.Some some => some.Terms.Any(term => Text(term, schema)),
+        _ => false,
+    };
+
+    private static bool IsText(FieldRef field, IFeatureSchema schema)
+    {
+        var index = schema.IndexOf(field.Name);
+        return index >= 0 && schema[index].Kind == AttributeKind.String;
     }
 
     /// <summary>Builds the bounded-box spatial predicate and appends its bound values.</summary>
@@ -57,7 +93,7 @@ internal static class PostgisPredicateSql
             return null;
         }
 
-        var builder = new SqlBuilder(null!, parameters);
+        var builder = new SqlBuilder(null!, false, parameters);
         return builder.AppendBoundingBox(
             description.GeometryColumn,
             description.Srid,
@@ -78,13 +114,15 @@ internal static class PostgisPredicateSql
     private sealed class SqlBuilder
     {
         private readonly IFeatureSchema? _schema;
+        private readonly bool _byteOrderText;
         private readonly List<object?> _parameters;
         private readonly StringBuilder _sql = new();
         private int _parameterIndex;
 
-        public SqlBuilder(IFeatureSchema? schema, List<object?> parameters)
+        public SqlBuilder(IFeatureSchema? schema, bool byteOrderText, List<object?> parameters)
         {
             _schema = schema;
+            _byteOrderText = byteOrderText;
             _parameters = parameters;
             // Continue placeholder numbering from already-bound values so a
             // bbox predicate combined with an attribute filter never reuses
@@ -203,7 +241,7 @@ internal static class PostgisPredicateSql
                 return;
             }
 
-            _sql.Append(Quote(_schema![index].Name))
+            _sql.Append(Column(_schema![index].Name))
                 .Append(' ')
                 .Append(SqlOperator(compare.Operator))
                 .Append(' ')
@@ -259,7 +297,7 @@ internal static class PostgisPredicateSql
                 return;
             }
 
-            _sql.Append(Quote(_schema![index].Name))
+            _sql.Append(Column(_schema![index].Name))
                 .Append(isIn.Negated ? " NOT IN (" : " IN (");
             for (var i = 0; i < bindable.Length; i++)
             {
@@ -384,6 +422,18 @@ internal static class PostgisPredicateSql
             kind = default;
             return false;
         }
+
+        /// <summary>
+        /// The filter column as a comparison operand: the same rendering an
+        /// <c>ORDER BY</c> term gets, so a string comparison in a
+        /// <c>WHERE</c> states the byte order the contract compares strings in
+        /// instead of inheriting the database's collation (ADR-0123). A column
+        /// of another kind takes no term — <c>COLLATE</c> is a string
+        /// operator — and neither does one in a database that already compares
+        /// by bytes (ADR-0121).
+        /// </summary>
+        private string Column(string name) =>
+            _schema is null ? Quote(name) : PostgisPlanQueries.Ordered(name, _schema, _byteOrderText);
 
         /// <summary>The identifier quoting of the PostGIS dialect (a discovered or schema-validated name).</summary>
         private static string Quote(string name) => $"\"{name}\"";

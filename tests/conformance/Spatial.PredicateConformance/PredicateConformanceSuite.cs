@@ -13,6 +13,16 @@ namespace Spatial.PredicateConformance;
 /// <see cref="AssertAsync"/>; the assertion is the same code in all three
 /// suites, so a second implementation of the vocabulary cannot drift from the
 /// reference one without a suite going red.
+///
+/// <para>
+/// The row set is built to make a pushdown <em>tempted</em> to differ from the
+/// reference, and its string column carries the case and the punctuation a
+/// byte comparison and a locale one order differently (ADR-0123) — the same
+/// property ADR-0121 gave the ordering fixture. Every expectation below is the
+/// reference's own answer over <see cref="Rows"/>, which is a byte
+/// comparison, so a store that inherits its database's collation answers a
+/// different set and the suite says so.
+/// </para>
 /// </summary>
 public static class PredicateConformanceSuite
 {
@@ -47,9 +57,26 @@ public static class PredicateConformanceSuite
     private static readonly Guid Reference = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
     /// <summary>
-    /// The fixture rows. The codes are lower-case words, so a <c>LIKE</c>
-    /// case matches the same set whatever collation the store's string
-    /// comparison uses; the null row pins null semantics.
+    /// The fixture rows. The codes carry <em>case</em> (<c>Delta</c> beside
+    /// <c>delta</c>) and <em>punctuation</em> (<c>_bravo</c>), because that is
+    /// what separates a byte comparison from a locale one: the contract
+    /// compares strings ordinally — <c>C</c> orders
+    /// <c>Delta, _bravo, alpha, beta, delta, epsilon, gamma</c> — while
+    /// <c>en_US.utf8</c> orders them
+    /// <c>alpha, beta, _bravo, delta, Delta, epsilon, gamma</c>, and a
+    /// case-insensitive collation (SQL Server's own default) folds
+    /// <c>Delta</c> onto <c>delta</c> entirely. A fixture of lower-case words
+    /// in alphabetical order cannot see any of that: every collation in use
+    /// agrees with a byte comparison on them, so a pushed <c>WHERE</c> that
+    /// inherits the database's collation went unmeasured (ADR-0098 §3,
+    /// ADR-0121, ADR-0123).
+    ///
+    /// <para>
+    /// The two codes that differ under a locale collation sit outside the
+    /// bounding box the box cases use, so those cases still measure the box
+    /// and nothing else, and the <c>LIKE</c> cases still match a set that is
+    /// the same under both orders. The null row pins null semantics.
+    /// </para>
     /// </summary>
     public static Feature[] Rows { get; } =
     [
@@ -58,6 +85,8 @@ public static class PredicateConformanceSuite
         Row("gamma", 900_000, 0.5, true, null, null, -0.12, 51.5),
         Row("delta", null, null, null, Reference, null, 12.5, 41.9),
         Row("epsilon", 9_007_199_254_740_993L, 3.5, true, Reference, Seen, 13.0, 52.0),
+        Row("_bravo", 1_200_000, null, false, null, null, 5.0, 5.0),
+        Row("Delta", null, null, null, null, null, 5.5, 5.5),
     ];
 
     /// <summary>
@@ -80,10 +109,18 @@ public static class PredicateConformanceSuite
     public static IReadOnlyList<PredicateCase> Cases { get; } =
     [
         new("equality on a string", "code = 'alpha'", ["alpha"]),
-        new("inequality on a string", "code != 'alpha'", ["beta", "gamma", "delta", "epsilon"]),
-        new("both inequality spellings agree", "code <> 'alpha'", ["beta", "gamma", "delta", "epsilon"]),
-        new("ordering on a string", "code < 'delta'", ["alpha", "beta"]),
-        new("ordering on a string, inclusive", "code <= 'delta'", ["alpha", "beta", "delta"]),
+        new("inequality on a string", "code != 'alpha'", ["Delta", "_bravo", "beta", "delta", "epsilon", "gamma"]),
+        new("both inequality spellings agree", "code <> 'alpha'", ["Delta", "_bravo", "beta", "delta", "epsilon", "gamma"]),
+        // The two ordering cases and the range below are the ones a pushed
+        // `WHERE` gets wrong without a collation of its own: the answer is the
+        // byte order of the codes, and a locale collation puts `Delta` and
+        // `_bravo` on the other side of the bound (ADR-0123).
+        new("ordering on a string", "code < 'delta'", ["Delta", "_bravo", "alpha", "beta"]),
+        new("ordering on a string, inclusive", "code <= 'delta'", ["Delta", "_bravo", "alpha", "beta", "delta"]),
+        new(
+            "a case and a punctuation-leading code in one range",
+            "code >= '_bravo' AND code <= 'delta'",
+            ["_bravo", "alpha", "beta", "delta"]),
         new("ordering on a number", "population > 2000000", ["alpha", "epsilon"]),
         new("ordering on a number, fractional", "score >= 1.5 AND score < 3.5", ["alpha", "beta"]),
         new("a whole number past double precision", "population = 9007199254740993", ["epsilon"]),
@@ -91,10 +128,10 @@ public static class PredicateConformanceSuite
         new("a negative bound on a fractional column", "score > -1", ["alpha", "beta", "epsilon", "gamma"]),
         new("equality on a boolean", "active = TRUE", ["alpha", "gamma", "epsilon"]),
         new("equality on a guid", $"reference = '{Reference}'", ["alpha", "beta", "delta", "epsilon"]),
-        new("a null value satisfies no comparison", "population > 0", ["alpha", "beta", "gamma", "epsilon"]),
-        new("a null value is not unequal either", "population != 900000", ["alpha", "beta", "epsilon"]),
-        new("null test", "population IS NULL", ["delta"]),
-        new("negated null test", "population IS NOT NULL", ["alpha", "beta", "gamma", "epsilon"]),
+        new("a null value satisfies no comparison", "population > 0", ["alpha", "_bravo", "beta", "epsilon", "gamma"]),
+        new("a null value is not unequal either", "population != 900000", ["alpha", "_bravo", "beta", "epsilon"]),
+        new("null test", "population IS NULL", ["Delta", "delta"]),
+        new("negated null test", "population IS NOT NULL", ["alpha", "_bravo", "beta", "epsilon", "gamma"]),
         new("a date-time literal", "seen >= TIMESTAMP '2023-01-01 00:00:00'", ["alpha", "epsilon"]),
         new("a date-time range", "seen > TIMESTAMP '2022-01-01 00:00:00' AND seen < TIMESTAMP '2023-01-01 00:00:00'", ["beta"]),
         // A date-time is an instant, so a number is the same axis: this is the
@@ -102,13 +139,21 @@ public static class PredicateConformanceSuite
         // cannot touch a timestamp column and answering "no rows".
         new("a number against a date-time column", "seen = 1700000000000", ["alpha", "epsilon"]),
         new("like with a wildcard suffix", "code LIKE 'a%'", ["alpha"]),
-        new("like with a single-character wildcard", "code LIKE '_elta'", ["delta"]),
+        // `_` is one character whatever it stands for, so this pattern answers
+        // the same set under every collation: a case-folding one still matches
+        // the upper-case code, which is what a `LIKE` under `en_US.utf8`
+        // answers too.
+        new("like with a single-character wildcard", "code LIKE '_elta'", ["Delta", "delta"]),
         new("like is a whole-value test", "code LIKE 'lph'", []),
         new("conjunction", "code = 'alpha' AND population = 3664000", ["alpha"]),
         new("disjunction", "code = 'alpha' OR code = 'beta'", ["alpha", "beta"]),
         new("parenthesised precedence", "code = 'alpha' OR (population >= 2000000 AND active = FALSE)", ["alpha", "beta"]),
         new("membership", "code IN ('alpha', 'gamma')", ["alpha", "gamma"]),
-        new("negated membership", "code NOT IN ('alpha', 'gamma')", ["beta", "delta", "epsilon"]),
+        new("negated membership", "code NOT IN ('alpha', 'gamma')", ["Delta", "_bravo", "beta", "delta", "epsilon"]),
+        new(
+            "membership in codes a case-insensitive collation folds together",
+            "code IN ('Delta', 'delta')",
+            ["Delta", "delta"]),
         new(
             "a bounding box with a filter that keeps everything",
             "code LIKE '%'",

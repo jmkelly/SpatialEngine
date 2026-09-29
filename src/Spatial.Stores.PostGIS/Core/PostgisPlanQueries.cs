@@ -185,6 +185,13 @@ internal static class PostgisPlanQueries
     /// so a plan and a filter cannot drift into two different answers.
     ///
     /// <para>
+    /// <paramref name="byteOrderText"/> is the database's own answer to whether
+    /// it already compares text by bytes (ADR-0121), and it decides the
+    /// collation every string comparison in the attribute clause states
+    /// (ADR-0123). The caller reads it from the database — once per store,
+    /// cached — and only when the clause actually compares text.
+    /// </para>
+    /// <para>
     /// Returns <c>null</c> when the restriction cannot be expressed without
     /// changing what a feature is. A dataset with no identity column names its
     /// features by the ordinal of the read, so a <c>WHERE</c> that returns only
@@ -197,7 +204,11 @@ internal static class PostgisPlanQueries
     /// </para>
     /// </summary>
     public static string? Predicate(
-        PostgisDatasetName dataset, DatasetDescription description, FeatureQuery query, List<object?> parameters)
+        PostgisDatasetName dataset,
+        DatasetDescription description,
+        FeatureQuery query,
+        bool byteOrderText,
+        List<object?> parameters)
     {
         if (description.IdColumns.Count == 0 && Restricts(query))
         {
@@ -207,7 +218,7 @@ internal static class PostgisPlanQueries
         var identity = Identity(description, query.Ids, parameters);
         var box = BoundingBox(description, query.BoundingBox, parameters);
         var clause = query.Where is { } where
-            ? PostgisPredicateSql.Where(where, description.Schema, parameters)
+            ? PostgisPredicateSql.Where(where, description.Schema, byteOrderText, parameters)
             : null;
         return Join(identity, Join(box, clause));
     }
@@ -348,17 +359,18 @@ internal static class PostgisPlanQueries
     /// compare by bytes — <c>COLLATE "C"</c>.
     ///
     /// <para>
-    /// Every string comparison this file writes goes through here, because they
-    /// are one question: an <c>ORDER BY</c> over a text sort key, the tie-break
-    /// a page boundary is cut on, a <c>GROUP BY</c>'s group order and a
-    /// <c>MIN</c>/<c>MAX</c> over a text column all inherit the database's
-    /// collation, and the contract's answer is a byte comparison (ADR-0098 §3,
-    /// ADR-0121). A numeric, date-time or boolean column takes no collation:
-    /// <c>COLLATE</c> is a string operator, and applying it to a column of
-    /// another kind is a statement Postgres refuses.
+    /// Every string comparison this store writes goes through here, because
+    /// they are one question: an <c>ORDER BY</c> over a text sort key, the
+    /// tie-break a page boundary is cut on, a <c>GROUP BY</c>'s group order, a
+    /// <c>MIN</c>/<c>MAX</c> over a text column and a pushed <c>WHERE</c>'s own
+    /// comparison all inherit the database's collation, and the contract's
+    /// answer is a byte comparison (ADR-0098 §3, ADR-0121, ADR-0123). A
+    /// numeric, date-time or boolean column takes no collation: <c>COLLATE</c>
+    /// is a string operator, and applying it to a column of another kind is a
+    /// statement Postgres refuses.
     /// </para>
     /// </summary>
-    private static string Ordered(string column, IFeatureSchema schema, bool byteOrderText)
+    internal static string Ordered(string column, IFeatureSchema schema, bool byteOrderText)
     {
         var quoted = Quote(column);
         var index = schema.IndexOf(column);

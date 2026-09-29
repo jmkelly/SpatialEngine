@@ -1,5 +1,6 @@
 using Npgsql;
 using Spatial.Stores.PostGIS.Configuration;
+using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
 
 namespace Spatial.Stores.PostGIS;
@@ -24,11 +25,11 @@ internal sealed class PostgisStorage : IAsyncDisposable
 
     /// <summary>
     /// The database's own collation, read once (ADR-0121). A <c>text</c> column
-    /// carries it, so a pushed-down sort key over one has to correct for it; a
-    /// property of the database is read once rather than per query. Held as the
-    /// value itself so a cancelled or failed probe is retried rather than
-    /// cached, and marked <c>volatile</c> so a reader on another thread sees a
-    /// published value.
+    /// carries it, so a pushed-down sort key <em>and</em> a pushed-down
+    /// comparison over one have to correct for it (ADR-0123); a property of the
+    /// database is read once rather than per query. Held as the value itself so
+    /// a cancelled or failed probe is retried rather than cached, and marked
+    /// <c>volatile</c> so a reader on another thread sees a published value.
     /// </summary>
     private volatile string? _databaseCollation;
 
@@ -98,6 +99,17 @@ internal sealed class PostgisStorage : IAsyncDisposable
             _collationGate.Release();
         }
     }
+
+    /// <summary>
+    /// Whether this database already compares text by bytes, which is what
+    /// decides whether a pushed-down statement that compares a text column
+    /// carries an explicit <c>COLLATE "C"</c> — a sort key (ADR-0121) or a
+    /// predicate (ADR-0123). The answer is the cached catalog read above, so
+    /// both faces ask the same question of the same property and neither keeps
+    /// its own copy of it.
+    /// </summary>
+    public async Task<bool> ByteOrderTextAsync(CancellationToken cancellationToken) =>
+        PostgisTextCollation.IsByteOrder(await DatabaseCollationAsync(cancellationToken).ConfigureAwait(false));
 
     public async ValueTask DisposeAsync()
     {
