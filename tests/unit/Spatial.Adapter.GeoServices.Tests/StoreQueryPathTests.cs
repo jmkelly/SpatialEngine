@@ -176,6 +176,13 @@ public sealed class StoreQueryPathTests
         Assert.Equal(1, store.Scans);
     }
 
+    /// <summary>
+    /// A topological relation keeps the <em>match</em> path rather than the
+    /// paged store read: the relation is not a plan's shaping, so the store
+    /// must not page over it. The match path is not a table read either — the
+    /// query geometry's envelope goes down as the plan's box and the relation
+    /// is evaluated per feature on the rows that come back (ADR-0110).
+    /// </summary>
     [Fact]
     public async Task A_topological_spatial_relation_keeps_the_match_path()
     {
@@ -187,7 +194,9 @@ public sealed class StoreQueryPathTests
 
         Assert.Equal(0, body.GetProperty("count").GetInt32());
         Assert.Equal(0, store.Counts);
-        Assert.Equal(1, store.Scans);
+        Assert.Equal(0, store.Scans);
+        Assert.Equal(1, store.Queries);
+        Assert.NotNull(store.LastPlan?.BoundingBox);
     }
 
     [Fact]
@@ -239,6 +248,8 @@ public sealed class StoreQueryPathTests
     {
         public int Scans { get; private set; }
 
+        public int Queries { get; private set; }
+
         public int Counts { get; private set; }
 
         public int Distincts { get; private set; }
@@ -255,6 +266,7 @@ public sealed class StoreQueryPathTests
         public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            Queries++;
             LastPlan = query;
             return Task.FromResult(FeaturePlanExecutor.Execute(Schema, features, query, cancellationToken));
         }
