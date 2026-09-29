@@ -4,7 +4,7 @@ date: 2026-09-29
 deciders: maintainer + agent
 ---
 
-# ADR-0116: The tile cache holds per-layer tiles, composited at serve time
+# ADR-0117: The tile cache holds per-layer tiles, composited at serve time
 
 ## Context
 

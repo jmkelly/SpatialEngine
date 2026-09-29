@@ -12,7 +12,7 @@ this file together, then tag the release (`RELEASING.md`).
 ### Changed
 
 - **The tile cache holds per-layer tiles, composited at serve time**
-  (ADR-0116, SpatialEngine-u2x.21.2): a write to one layer now invalidates
+  (ADR-0117, SpatialEngine-u2x.21.2): a write to one layer now invalidates
   that layer's tiles for that map rather than every tile of the map, which
   closes the composition half of the decision ADR-0083 left open and measured.
   Measured on a five-layer city basemap over a one-viewport working set, a
