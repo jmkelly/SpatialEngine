@@ -226,10 +226,17 @@ internal static class DatumTransformationGraph
     /// text is deliberate (ADR-0105 §fallback): the Esri listing has no field
     /// for it, and a candidate that is quietly second-best reads as though it
     /// were the path applied.
+    /// <para>
+    /// Where a bundle is deployed this Helmert is not superseded but demoted:
+    /// it is still what the engine applies to every coordinate the grid does
+    /// not cover (ADR-0107), so the text says that rather than calling the
+    /// operation unused, which would be a claim about the whole plane when it
+    /// is a claim about the part of it outside the block.
+    /// </para>
     /// </summary>
     private static string Fallback(double accuracyMetres, bool gridDeployed) =>
         gridDeployed
-            ? $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: a grid is deployed and ranked ahead of this, so this is not the operation applied"
+            ? $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: a grid is deployed and ranked ahead of this, and this is what the transform verb applies to every point the grid does not cover"
             : $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: no NTv2 grid is deployed, so this is the operation applied and the Helmert is the fallback";
 
     private static bool Covers(CrsAreaOfUse areaOfUse, CrsAreaOfUse? areaOfInterest) =>

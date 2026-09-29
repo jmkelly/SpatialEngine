@@ -91,6 +91,62 @@ internal static class ProjEpsgCatalog
 
     private static readonly ConcurrentDictionary<int, ProjCs.CoordinateSystem> GeographicBases = new();
 
+    /// <summary>
+    /// The coordinate system a code builds with its datum's WGS 84 shift
+    /// zeroed, and the same for the geographic base it is measured on
+    /// (ADR-0107).
+    /// <para>
+    /// A zeroed shift is not a different datum — it is the same ellipsoid, the
+    /// same projection and the same axes with the conversion switched off — so
+    /// a pair built from these is pure projection and ellipsoid maths, and a
+    /// leg that pairs one of these with the pivot cannot apply a shift that
+    /// some earlier leg has already applied. That is what lets the transform
+    /// verb own the datum shift outright and choose per point between a
+    /// deployed grid and the Helmert behind it.
+    /// </para>
+    /// <para>
+    /// Built once per code and cached, for the same reason the ordinary
+    /// systems are: a transform's hot path must not rebuild a coordinate
+    /// system per request.
+    /// </para>
+    /// </summary>
+    public static ProjCs.CoordinateSystem? ShiftFreeOf(int code) =>
+        ShiftFreeSystems.GetOrAdd(code, _ => BuildShiftFree(ProjEpsgCatalog.DefinitionOf(code)));
+
+    /// <summary>The shift-free counterpart of <see cref="GeographicBaseOf"/>.</summary>
+    public static ProjCs.CoordinateSystem? ShiftFreeGeographicBaseOf(int code) =>
+        ShiftFreeGeographicBases.GetOrAdd(code, _ => BuildShiftFree(GeographicDefinitionOf(ProjEpsgCatalog.DefinitionOf(code))));
+
+    private static readonly ConcurrentDictionary<int, ProjCs.CoordinateSystem> ShiftFreeSystems = new();
+
+    private static readonly ConcurrentDictionary<int, ProjCs.CoordinateSystem> ShiftFreeGeographicBases = new();
+
+    /// <summary>
+    /// Builds a definition with its datum's shift to WGS 84 zeroed, through
+    /// the same construction path the catalogued systems take.
+    /// </summary>
+    private static ProjCs.CoordinateSystem BuildShiftFree(CrsDefinition definition) => definition switch
+    {
+        GeodeticDefinition geodetic => Build(geodetic with { ToWgs84 = NoShift }),
+        ProjectedDefinition projected => Build(projected with { Base = ShiftFreeBase(projected.Base) }),
+        _ => throw new InvalidOperationException($"The EPSG definition '{definition.Name}' is neither geodetic nor projected."),
+    };
+
+    /// <summary>A projected definition's own shift-free geodetic base.</summary>
+    private static GeodeticDefinition ShiftFreeBase(GeodeticDefinition baseDefinition) =>
+        baseDefinition with { ToWgs84 = NoShift };
+
+    /// <summary>The geodetic base a definition is built on: itself, or the one a projected CRS names.</summary>
+    private static GeodeticDefinition GeographicDefinitionOf(CrsDefinition definition) => definition switch
+    {
+        GeodeticDefinition geodetic => geodetic,
+        ProjectedDefinition projected => projected.Base,
+        _ => throw new InvalidOperationException($"The EPSG definition '{definition.Name}' is neither geodetic nor projected."),
+    };
+
+    /// <summary>The seven zeros a datum with no shift of its own carries.</summary>
+    private static readonly double[] NoShift = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+
     /// <summary>Test pin: whether a code's coordinate system has been built yet (the catalogue builds each one once, on first use).</summary>
     public static bool IsBuilt(int code) =>
         Entries.TryGetValue(code, out var entry) && entry.System.IsValueCreated;

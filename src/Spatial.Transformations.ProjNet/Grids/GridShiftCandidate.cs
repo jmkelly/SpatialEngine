@@ -106,18 +106,17 @@ internal static class GridShiftCandidate
     /// <summary>
     /// The method text. It names the bundle the shift came from and the
     /// interpolation, because those are the two facts a client cannot infer
-    /// from a set of parameters; it says when a Helmert leg is still in the
-    /// path; and it says plainly that the transform verb does not yet apply
-    /// the grid.
+    /// from a set of parameters; and it says when a Helmert leg is still in the
+    /// path.
     /// <para>
-    /// That last clause is the price of ranking this candidate first. ADR-0087
-    /// §6 promises that the first candidate is the path the engine applies, and
-    /// the grid is the more accurate operation so it ranks first by accuracy —
-    /// but the transform path still applies the classic Helmert (ADR-0105
-    /// §applied). A listing that read as though the grid were being applied
-    /// would be claiming a sub-metre answer the engine is not giving, so the
-    /// method text carries the truth and the gap is recorded rather than papered
-    /// over. The clause goes when the transform verb does.
+    /// It also says how the two are chosen, which is the part a client has to
+    /// know to read a coordinate: the grid over the ground the grid covers and
+    /// the Helmert everywhere else, per coordinate (ADR-0107). Until that slice
+    /// landed this text also carried the opposite claim — that the transform
+    /// verb still applied the Helmert — because ADR-0087 §6 promises the first
+    /// candidate is the path the engine applies and that promise was knowingly
+    /// broken. It is no longer broken, so the clause is gone rather than
+    /// reworded.
     /// </para>
     /// </summary>
     private static string Method(List<Leg> legs)
@@ -131,7 +130,7 @@ internal static class GridShiftCandidate
         var composed = legs.Any(leg => leg.IsHelmert)
             ? $"{described}, with a classic Helmert on the leg no grid serves"
             : described;
-        return $"{composed} (published from the deployed grid; the transform verb still applies the classic Helmert: ADR-0105 §applied)";
+        return $"{composed} (the transform verb applies the grid per coordinate where it covers the ground, and the Helmert elsewhere)";
     }
 
     /// <summary>One leg of the path: the operation applied, and what it costs.</summary>

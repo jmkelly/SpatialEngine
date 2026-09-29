@@ -178,7 +178,7 @@ public sealed class GridShiftGraphTests : IDisposable
     }
 
     [Fact]
-    public void With_a_bundle_deployed_the_Helmert_candidate_says_it_is_not_the_one_applied()
+    public void With_a_bundle_deployed_the_Helmert_candidate_says_what_it_still_answers()
     {
         var deployed = Search("EPSG:4326", "EPSG:4277", deployed: true);
         // The direct Helmert candidate: single step, not a concatenation and
@@ -189,8 +189,12 @@ public sealed class GridShiftGraphTests : IDisposable
             && candidate.Steps[0].Parameters is not null
             && !candidate.Approximate);
 
+        // The Helmert is not superseded by a deployed grid, it is demoted: it
+        // is still what the engine applies to every point the grid does not
+        // cover (ADR-0107), and the text has to say that rather than call the
+        // operation unused.
         Assert.Contains("Helmert approximation", helmert.Method, StringComparison.Ordinal);
-        Assert.Contains("not the operation applied", helmert.Method, StringComparison.Ordinal);
+        Assert.Contains("every point the grid does not cover", helmert.Method, StringComparison.Ordinal);
     }
 
     [Fact]
