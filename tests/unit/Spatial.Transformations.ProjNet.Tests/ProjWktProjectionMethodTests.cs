@@ -66,6 +66,24 @@ public sealed class ProjWktProjectionMethodTests
         """;
 
     /// <summary>
+    /// EPSG:29873 Timbalai 1948 / RSO Borneo, Hotine Oblique Mercator (variant
+    /// B, EPSG method 9815) — the variant B definition that is not the Swiss
+    /// one, and so the one that can see whether the oblique parameters are
+    /// read at all. LV95's azimuth of initial line and angle from rectified to
+    /// skew grid are both 90°, which is what ProjNet's Hotine defaults to, so
+    /// a reader that quietly dropped either of them would reproduce LV95 to
+    /// the last bit. Here they are 53.3158204722222° and 53.1301023611111°,
+    /// different from each other and from every default, on an Everest
+    /// ellipsoid nothing else in the catalogue uses, and EPSG spells the
+    /// azimuth parameter "Azimuth at projection centre" rather than the Swiss
+    /// "Azimuth of initial line" — two spellings of EPSG 8813, so both have
+    /// to be read for the method to be usable on anything but Switzerland.
+    /// </summary>
+    private const string BorneoObliqueMercator = """
+        PROJCRS["Timbalai 1948 / RSO Borneo (m)",BASEGEOGCRS["Timbalai 1948",DATUM["Timbalai 1948",ELLIPSOID["Everest 1830 (1967 Definition)",6377298.556,300.8017,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4298]],CONVERSION["Rectified Skew Orthomorphic Borneo Grid (metre)",METHOD["Hotine Oblique Mercator (variant B)",ID["EPSG",9815]],PARAMETER["Latitude of projection centre",4,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8811]],PARAMETER["Longitude of projection centre",115,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8812]],PARAMETER["Azimuth at projection centre",53.3158204722222,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8813]],PARAMETER["Angle from Rectified to Skew Grid",53.1301023611111,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8814]],PARAMETER["Scale factor at projection centre",0.99984,SCALEUNIT["unity",1],ID["EPSG",8815]],PARAMETER["Easting at projection centre",590476.87,LENGTHUNIT["metre",1],ID["EPSG",8816]],PARAMETER["Northing at projection centre",442857.65,LENGTHUNIT["metre",1],ID["EPSG",8817]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",29873]]
+        """;
+
+    /// <summary>
     /// EPSG:3078 NAD83 / Michigan Oblique Mercator, Hotine Oblique Mercator
     /// (variant A, EPSG method 9812) — the one variant-A definition whose
     /// false offsets PROJ applies at the natural origin rather than at the
@@ -102,6 +120,7 @@ public sealed class ProjWktProjectionMethodTests
     [InlineData(LaeaEurope, "Lambert Azimuthal Equal Area", "Lambert_Azimuthal_Equal_Area")]
     [InlineData(UpsNorth, "Polar Stereographic (variant A)", "Polar_Stereographic")]
     [InlineData(SwissObliqueMercator, "Hotine Oblique Mercator (variant B)", "Hotine_Oblique_Mercator")]
+    [InlineData(BorneoObliqueMercator, "Hotine Oblique Mercator (variant B)", "Hotine_Oblique_Mercator")]
     public void A_method_verified_against_PROJ_resolves_to_its_ProjNet_projection(
         string wkt, string method, string projectionClass)
     {
@@ -146,6 +165,13 @@ public sealed class ProjWktProjectionMethodTests
         data.Add(SwissObliqueMercator, 6.0, 46.0, 2488489.649525768, 1095160.8587208204);
         data.Add(SwissObliqueMercator, 10.0, 46.5, 2796491.3125768597, 1152921.7672456983);
 
+        // EPSG:29873, Timbalai 1948 / RSO Borneo — the variant B definition
+        // whose oblique parameters are not ProjNet's defaults.
+        data.Add(BorneoObliqueMercator, 115.0, 5.0, 590121.1779573819, 553415.8095151458);
+        data.Add(BorneoObliqueMercator, 116.0, 6.0, 700491.1134436313, 664407.7098906768);
+        data.Add(BorneoObliqueMercator, 114.0, 4.0, 479457.4987435189, 442562.66950517416);
+        data.Add(BorneoObliqueMercator, 117.0, 7.0, 810510.9238337873, 775563.6956500097);
+
         return data;
     }
 
@@ -161,8 +187,13 @@ public sealed class ProjWktProjectionMethodTests
     {
         var (x, y) = Project(wkt, longitude, latitude);
 
-        Assert.Equal(easting, x, 3);
-        Assert.Equal(northing, y, 3);
+        // Six decimal places of a metre, i.e. a micrometre: the tolerance is
+        // the documented agreement, not a loose bound. Every method in the
+        // map is in fact closer than this — the largest deviation measured
+        // across the control points above is 3e-9 m — so this is a claim the
+        // numbers keep rather than one they merely clear.
+        Assert.Equal(easting, x, 6);
+        Assert.Equal(northing, y, 6);
     }
 
     /// <summary>
@@ -324,7 +355,8 @@ public sealed class ProjWktProjectionMethodTests
     {
         var factory = new ProjCs.CoordinateSystemFactory();
         var geographic = Geographic(factory, semiMajor, inverseFlattening);
-        var projected = factory.CreateProjectedCoordinateSystem(            "probe",
+        var projected = factory.CreateProjectedCoordinateSystem(
+            "probe",
             geographic,
             factory.CreateProjection(projectionClass, projectionClass, [.. parameters]),
             ProjCs.LinearUnit.Metre,

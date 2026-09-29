@@ -515,7 +515,7 @@ internal static class ProjWkt
     /// <term>added by u2x.26: agrees to 1e-6 m at both poles, 2,000 km offsets included</term>
     /// </item>
     /// <item>
-    /// <term>Hotine Oblique Mercator (variant B)</term><term>9815</term><term>EPSG:2056, EPSG:2057</term>
+    /// <term>Hotine Oblique Mercator (variant B)</term><term>9815</term><term>EPSG:2056, EPSG:2057, EPSG:29873</term>
     /// <term>added by u2x.26: agrees to 1e-6 m; variant B is the no-rotation form</term>
     /// </item>
     /// <item>
@@ -594,7 +594,12 @@ internal static class ProjWkt
         // form is the one ProjNet and PROJ agree on; the variant A
         // definitions are not in the method map, so nothing that reaches
         // here depends on the difference between the two conventions.
+        // EPSG spells parameter 8813 two ways — "Azimuth of initial line" on
+        // the Swiss grids and "Azimuth at projection centre" on the Borneo
+        // ones (EPSG:29873) — and both are the same number, so both are
+        // read; taking only one leaves the Borneo grid unreadable.
         [Normalise("Azimuth of initial line")] = "azimuth",
+        [Normalise("Azimuth at projection centre")] = "azimuth",
         [Normalise("azimuth")] = "azimuth",
         [Normalise("Angle from Rectified to Skew Grid")] = "rectified_grid_angle",
         [Normalise("rectified_grid_angle")] = "rectified_grid_angle",

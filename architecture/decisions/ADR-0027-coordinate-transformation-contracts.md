@@ -102,7 +102,12 @@ about its accuracy limits (below).
    projection maths itself is measured separately, per method, against
    PROJ 9.8.1 on the definition's own ellipsoid with no datum shift: every
    method in the reader's map agrees to a micrometre or better, forward and
-   inverse, at points inside each definition's area of use.
+   inverse, at points inside each definition's area of use. A control point
+   only counts where it is off the defaults — the Hotine variant B points
+   span the Swiss grid (azimuth 90°, rectified angle 90°) and the Borneo grid
+   (53.3158°, 53.1301°), because the Swiss parameters are the ones ProjNet
+   would use if the reader dropped them, so the Swiss grid alone cannot tell
+   a reader that reads the oblique parameters from one that ignores them.
    OSGB36 uses the classic Helmert approximation (446.448, -125.157,
    542.060, 0.15, 0.247, 0.842, -20.489) because the WKT1 library has no
    grid support (OSTN15); control-point tests assert within 0.1 m and
@@ -134,6 +139,9 @@ about its accuracy limits (below).
   dialects, and a method map that holds a projection only where it has been
   measured against PROJ and agrees (SpatialEngine-u2x.26 measured the
   candidates and widened the map to eight methods; the three that diverge are
-  out, and the decisions their repair would need are separate beads).
+  out, and the decisions their repair would need are separate beads —
+  SpatialEngine-r4o for Hotine variant A's false-offset origin, SpatialEngine-ufn
+  for Krovak's axes, SpatialEngine-g2m for Polar Stereographic variant B's
+  latitude of standard parallel).
 - The `$geometry` interchange carries transformed results unchanged; only the
   contract ids and the `$crs` description value are new on the wire.

@@ -73,7 +73,16 @@ this file together, then tag the release (`RELEASING.md`).
   projection centre where PROJ applies them at the natural origin (2,047 km),
   and Krovak computes the right magnitudes in the south-oriented axis
   convention the catalogue does not serve. Each divergence is sized in a
-  test, so closing one has to move a number.
+  test, so closing one has to move a number, and each repair that would need
+  a decision the bead did not authorise is recorded as its own bead
+  (SpatialEngine-r4o, SpatialEngine-ufn, SpatialEngine-g2m). Measuring the
+  variant B Hotine also found that EPSG spells parameter 8813 two ways --
+  "Azimuth of initial line" on the Swiss grids and "Azimuth at projection
+  centre" on the Borneo one -- and only the first was read, so EPSG:29873
+  was unreadable; both spellings are read now, and the control points
+  include a definition whose azimuth and skew angle are not ProjNet's
+  defaults, so the test can tell a reader that reads them from one that
+  ignores them.
 
 - **`to-color`, `at-interpolate` and `cubic-bezier` in the MapLibre style
   dialect** (ADR-0088, SpatialEngine-ymh): the three interpolation constructs
