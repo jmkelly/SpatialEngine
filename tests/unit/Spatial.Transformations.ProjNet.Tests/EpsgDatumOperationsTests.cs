@@ -59,8 +59,11 @@ public sealed class EpsgDatumOperationsTests
         Assert.Equal("OSGB36", operation.GraphName);
     }
 
-    // The rows below are the EPSG Geodetic Parameter Dataset v13.102, read from
-    // its own coordinate-operation and extent records. Every number a row
+    // The rows below are the EPSG Geodetic Parameter Dataset as carried by
+    // PROJ 9.8.1 — EPSG v12.029 — read from its own coordinate-operation and
+    // extent records. That is the citation the table's own doc comment makes,
+    // and it is the one a reader can reproduce: a version a reader has to take
+    // on trust is not one they can check a number against. Every number a row
     // carries is pinned here against the registry code it was read from, so a
     // number that drifts from what EPSG publishes fails instead of quietly
     // becoming the engine's opinion. The coverage test above proves every

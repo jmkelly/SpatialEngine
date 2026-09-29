@@ -287,8 +287,10 @@ this file together, then tag the release (`RELEASING.md`).
   `098020E63C0A00CB39`.
 - **Four datum operations now carry the numbers EPSG publishes**
   (SpatialEngine-u2x.28.1): the curated operation table behind ADR-0086 was
-  reconciled against the EPSG Geodetic Parameter Dataset v13.102, and four of
-  its six rows did not match the registry. NAD83 stated 2 m where
+  reconciled against the EPSG Geodetic Parameter Dataset as carried by PROJ
+  9.8.1 — EPSG v12.029, a citation a reader can reproduce rather than one
+  they must take on trust — and four of its six rows did not match the
+  registry. NAD83 stated 2 m where
   EPSG:1188 "NAD83 to WGS 84 (1)" states 4 m — the "accuracy 2m in each axis"
   in that record's remarks is a note on how the parameters were derived, not
   the accuracy of the operation, and a search between NAD83 and WGS 84
