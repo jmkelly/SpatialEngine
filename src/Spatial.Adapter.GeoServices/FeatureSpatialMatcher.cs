@@ -18,21 +18,60 @@ namespace Spatial.Adapter.GeoServices;
 internal static class FeatureSpatialMatcher
 {
     /// <summary>
-    /// The features that match the query. The attribute <c>where</c> clause is
-    /// handed to the store as a predicate (ADR-0074 §7) so the filter is
-    /// answered by the provider — pushed down to SQL where the store has a
-    /// dialect for it, evaluated in memory where it has not — instead of
-    /// being tested feature by feature here. The facets a store cannot
-    /// express (ids, unique ids, <c>time</c>, the topology verbs) stay
-    /// per-feature matches on the rows the store returned.
+    /// The features that match the query. The match envelope is compiled onto
+    /// the store's query surface (ADR-0110), so the store is asked for the
+    /// candidate rows — the identities, the attribute clause, the time extent
+    /// and the query geometry's envelope — rather than read whole and filtered
+    /// here feature by feature.
+    ///
+    /// <para>
+    /// What the store returns is a <em>pre-filter</em>, never the answer:
+    /// every row it hands back is still matched here, by the same
+    /// <see cref="Matches"/>, so the pushed read is verified by the matcher
+    /// rather than trusted in place of it. An envelope that cannot be compiled
+    /// for this layer takes <see cref="ScanAndMatchAsync"/>, the whole-dataset
+    /// read that was the only path before — never a scan after a pushdown
+    /// attempt (principle 15).
+    /// </para>
     /// </summary>
     internal static async Task<List<MatchedFeature>> MatchAsync(QuerySpec spec, CancellationToken cancellationToken)
     {
-        var pushdown = EsriWhereResolver.Pushdown(spec.Query.Where, spec.Scheme, spec.Dataset);
-        var batches = pushdown is null
-            ? await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken)
-            : (await spec.Store.QueryAsync(
-                spec.Dataset.Id, new FeatureQuery(Where: pushdown), cancellationToken)).Batches;
+        if (FeatureMatchPushdown.Compile(spec) is not { } plan)
+        {
+            return await ScanAndMatchAsync(spec, cancellationToken).ConfigureAwait(false);
+        }
+
+        var page = await spec.Store.QueryAsync(spec.Dataset.Id, plan, cancellationToken).ConfigureAwait(false);
+        return MatchRows(spec, page.Batches, wherePushedDown: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// The whole-dataset match: every feature of the layer, read and matched in
+    /// the facade. This is the path a request whose envelope cannot be compiled
+    /// for its layer takes (ADR-0097's identity rule, a <c>uniqueIds</c>
+    /// request, an unsupported <c>spatialRel</c>), and it is what the pushed
+    /// path is measured against.
+    /// </summary>
+    internal static async Task<List<MatchedFeature>> ScanAndMatchAsync(QuerySpec spec, CancellationToken cancellationToken) =>
+        MatchRows(
+            spec,
+            await spec.Store.ScanAsync(spec.Dataset.Id, cancellationToken).ConfigureAwait(false),
+            wherePushedDown: false,
+            cancellationToken);
+
+    /// <summary>
+    /// The per-feature match over the rows a read returned, numbering each row
+    /// with the layer's own identity scheme. <paramref name="wherePushedDown"/>
+    /// says the attribute clause reached the store as the plan's predicate, so
+    /// the facade does not test it again here — and must not, or a store that
+    /// answered a different row set would look right (ADR-0097).
+    /// </summary>
+    private static List<MatchedFeature> MatchRows(
+        QuerySpec spec,
+        IReadOnlyList<FeatureBatch> batches,
+        bool wherePushedDown,
+        CancellationToken cancellationToken)
+    {
         var matches = new List<MatchedFeature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
@@ -45,12 +84,8 @@ internal static class FeatureSpatialMatcher
             }
 
             var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
-            // The clause reached the store as the plan's predicate, so the
-            // facade does not test it again here — and must not, or a store
-            // that answered a different row set would look right (ADR-0097).
             var candidate = new MatchCandidate(
-                spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Relations, uniqueId,
-                WherePushedDown: pushdown is not null);
+                spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Relations, uniqueId, wherePushedDown);
             if (Matches(candidate, cancellationToken))
             {
                 matches.Add(new MatchedFeature(objectId, feature));

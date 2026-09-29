@@ -140,6 +140,7 @@ public static class FeaturePlanExecutor
         for (var i = 0; i < schema.Count; i++)
         {
             if (schema[i].Kind == AttributeKind.Geometry
+                && !feature[i].IsNull
                 && feature[i].GeometryValue.Envelope is { } envelope
                 && envelope.MinX <= bbox.MaxX
                 && envelope.MaxX >= bbox.MinX

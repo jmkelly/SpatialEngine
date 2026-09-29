@@ -189,6 +189,24 @@ column) compiles to the constant the evaluator already answers rather than
 coercing or failing. Which pairs are answerable at all is one table,
 `PredicateCompatibility`, which is structural and lives in Core.
 
+**The match envelope is a plan too (ADR-0110, implemented).** The GeoServices
+feature match compiles onto the same plan rather than reading the layer and
+filtering it in the adapter: `objectIds` becomes `FeatureQuery.Ids` (the
+layer's own identity column values), the `where` clause and the `time` extent
+become `Where` — `time` as `observed IS NULL OR (observed >= start AND
+observed <= end)` per date field, because the facade's rule keeps a feature
+with no date value and drops only the rows whose every date is outside the
+window — and the query geometry's envelope, already in the layer CRS, becomes
+`BoundingBox`. The compilation is all-or-nothing and decided from the request
+and the layer's identity model before any store is asked, so there is no
+scan after a pushdown attempt. Three requests are never compiled and are still
+refused or scanned: a layer whose `OBJECTID` is the scan ordinal (ADR-0097), a
+`uniqueIds` request (the refusal is per feature, and a restricted read could
+return none to refuse on) and an unsupported `spatialRel` (the same reason).
+The pushed rows are a *pre-filter*: the in-memory matcher still decides each
+of them, so it is the verification path rather than a fallback. Every served
+`spatialRel` implies an intersection, so one box serves all of them.
+
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |

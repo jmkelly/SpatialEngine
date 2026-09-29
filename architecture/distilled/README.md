@@ -14,7 +14,7 @@ reflects the state at decision time.
 | --- | --- | --- |
 | Core geometry / feature types, codecs | `core.md` | 0001, 0004, 0009, 0020, 0029, 0032 |
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
-| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074 |
+| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074, 0110 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
 | Which services exist + their contracts | `contracts.md` | 0033, 0074, 0083, 0084 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
@@ -132,6 +132,7 @@ shape is noted in brackets.
 | 0090 | An upload is staged and then loaded, so a large ingest is resumable: the staged part survives a dropped connection and the chunk cap is measured from the chunk's own offset. |
 | 0092 | A dataset created or ingested by a SQL store carries its spatial and attribute indexes from the commit that creates it, so a created dataset is queryable with no out-of-band DDL; an index that cannot be created rolls the create back, and `PostgisOptions.CreateIndexes` / `SqlServerOptions.CreateIndexes` are the operator's opt-out. |
 | 0100 | The map root advertises `supportsTimeRelation:false` because the engine applies the overlaps relation only; the contains/within relations are typed `invalid.arguments` on export and identify rather than served as overlaps (amends 0058). |
+| 0110 | The feature-match envelope (`objectIds`, `where`, `time`, the query geometry's envelope) is compiled onto the store's query plan instead of a full-dataset scan, all-or-nothing and decided before the store is asked; the in-memory matcher stays the verification path, and a layer whose `OBJECTID` is the scan ordinal, a `uniqueIds` request and an unsupported `spatialRel` are still refused rather than answered from a narrower read. |
 
 ## How to change the architecture
 
