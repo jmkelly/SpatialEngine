@@ -173,6 +173,20 @@ internal static class Basemap
     }
 
     private static Coordinate Point(double lon, double lat) => new(lon, lat);
+
+    /// <summary>
+    /// A geometry of <paramref name="family"/>'s own kind, anchored at the
+    /// supplied point. The invalidation measurement adds one feature to one
+    /// layer and needs that feature to actually draw: a point written into a
+    /// polygon or line layer is filtered out by the renderer, which would make
+    /// the edit a no-op and the measured fan-out meaningless.
+    /// </summary>
+    public static IGeometry GeometryFor(GeometryFamily family, Point at, Random random) => family switch
+    {
+        GeometryFamily.Point => at,
+        GeometryFamily.LineString => Segment(at.X!.Value, at.Y!.Value, random),
+        _ => Block(at.X!.Value, at.Y!.Value, random),
+    };
 }
 
 /// <summary>The geometry family a generated layer draws as.</summary>
