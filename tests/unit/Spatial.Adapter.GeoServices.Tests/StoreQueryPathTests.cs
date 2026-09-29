@@ -59,6 +59,30 @@ public sealed class StoreQueryPathTests
         Row(3, "Rome", 300, 12.5, 41.9),
     ];
 
+    /// <summary>A table layer's schema and rows: the same attributes, and no geometry at all.</summary>
+    private static readonly FeatureSchema Table = new(
+    [
+        new FieldDefinition("id", AttributeKind.Int64),
+        new FieldDefinition("name", AttributeKind.String, nullable: true),
+        new FieldDefinition("population", AttributeKind.Int64, nullable: true),
+    ]);
+
+    private static IReadOnlyList<Feature> TableRows { get; } =
+    [
+        TableRow(1, "Berlin", 100),
+        TableRow(2, "Paris", 200),
+        TableRow(3, "Rome", 300),
+    ];
+
+    private static Feature TableRow(long id, string name, long population) => new(
+        new FeatureId(id.ToString(CultureInfo.InvariantCulture)),
+        Table,
+        [
+            AttributeValue.FromInt64(id),
+            AttributeValue.FromString(name),
+            AttributeValue.FromInt64(population),
+        ]);
+
     private static async Task<EsriFeatureQuery> ParseAsync(params (string Key, string Value)[] values)
     {
         var context = new DefaultHttpContext();
@@ -66,6 +90,13 @@ public sealed class StoreQueryPathTests
         var parameters = await EsriRequestParameters.ReadAsync(context, CancellationToken.None);
         return EsriFeatureQuery.Parse(parameters, Crs4326);
     }
+
+    /// <summary>
+    /// The same request answered by a store with no reduction face, which is
+    /// the match-and-materialise path every request used to take.
+    /// </summary>
+    private static async Task<string> Matched(DatasetDescription dataset, EsriFeatureQuery query) =>
+        (await BodyAsync(dataset, new MatchStore(Rows), query)).GetRawText();
 
     private static async Task<JsonElement> BodyAsync(DatasetDescription dataset, IFeatureStore store, EsriFeatureQuery query)
     {
@@ -225,6 +256,102 @@ public sealed class StoreQueryPathTests
         Assert.Equal(1, store.Counts);
     }
 
+    /// <summary>
+    /// The <c>returnExtentOnly</c> response is the store's envelope reduction
+    /// over the whole match (ADR-0120), with the match's restriction and
+    /// nothing else: an extent spans the match, so a page or a projection over
+    /// the plan would answer a different question. The JSON is the one the match
+    /// path wrote.
+    /// </summary>
+    [Fact]
+    public async Task Return_extent_only_is_the_store_envelope_reduction()
+    {
+        var store = new PushingStore(Rows);
+        var query = await ParseAsync(("returnExtentOnly", "true"), ("f", "json"));
+
+        var body = await BodyAsync(Layer(), store, query);
+        var matched = await Matched(Layer(), query);
+
+        Assert.Equal(matched, body.GetRawText());
+        Assert.Equal(1, store.Aggregates);
+        Assert.Equal(0, store.Scans);
+
+        // Berlin 13.4,52.5 to Rome 12.5,41.9: the box over the three points.
+        var extent = body.GetProperty("extent");
+        Assert.Equal(2.35, extent.GetProperty("xmin").GetDouble(), 9);
+        Assert.Equal(41.9, extent.GetProperty("ymin").GetDouble(), 9);
+        Assert.Equal(13.4, extent.GetProperty("xmax").GetDouble(), 9);
+        Assert.Equal(52.5, extent.GetProperty("ymax").GetDouble(), 9);
+
+        var plan = Assert.IsType<FeatureQuery>(store.LastPlan);
+        Assert.Null(plan.Limit);
+        Assert.Null(plan.Projection);
+        Assert.Null(plan.Order);
+    }
+
+    /// <summary>
+    /// A <c>where</c> clause rides along, so the extent is the box over the
+    /// <em>matched</em> rows and not over the whole layer — the same answer the
+    /// match set produced.
+    /// </summary>
+    [Fact]
+    public async Task A_return_extent_only_reduces_the_matched_rows()
+    {
+        var store = new PushingStore(Rows);
+        var query = await ParseAsync(("returnExtentOnly", "true"), ("where", "population > 150"), ("f", "json"));
+
+        var body = await BodyAsync(Layer(), store, query);
+        var matched = await Matched(Layer(), query);
+
+        Assert.Equal(matched, body.GetRawText());
+        Assert.Equal(1, store.Aggregates);
+        Assert.Equal(0, store.Scans);
+        Assert.Equal(12.5, body.GetProperty("extent").GetProperty("xmax").GetDouble(), 9);
+        Assert.NotNull(store.LastPlan?.Where);
+    }
+
+    /// <summary>
+    /// A reprojecting <c>outSR</c> keeps the match path: this response has
+    /// always been the union of the <em>reprojected</em> geometries, and
+    /// reprojecting the layer's own rectangle is a different operation.
+    /// </summary>
+    [Fact]
+    public async Task A_reprojecting_out_sr_keeps_the_match_path()
+    {
+        var store = new PushingStore(Rows);
+        var query = await ParseAsync(("returnExtentOnly", "true"), ("outSR", "3857"), ("f", "json"));
+
+        var body = await BodyAsync(Layer(), store, query);
+        var matched = await Matched(Layer(), query);
+
+        Assert.Equal(matched, body.GetRawText());
+        Assert.Equal(0, store.Aggregates);
+        Assert.Equal(1, store.Scans);
+    }
+
+    /// <summary>
+    /// A layer with no geometry field has no rectangle to reduce, so the match
+    /// path answers it: the extent is null, which is what the union over
+    /// geometry-less features has always been.
+    /// </summary>
+    [Fact]
+    public async Task A_layer_with_no_geometry_keeps_the_match_path()
+    {
+        var store = new PushingStore(TableRows, Table);
+        var layer = new DatasetDescription("demo.places", "demo", "places", string.Empty, 0, string.Empty, 3, ["id"], Table);
+        var query = await ParseAsync(("returnExtentOnly", "true"), ("f", "json"));
+
+        var body = await BodyAsync(layer, store, query);
+        var matched = (await BodyAsync(layer, new MatchStore(TableRows, Table), query)).GetRawText();
+
+        // No geometry field, so there is no rectangle to reduce: the match path
+        // answers, and the answer is the null extent it has always written.
+        Assert.Equal(matched, body.GetRawText());
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("extent").ValueKind);
+        Assert.Equal(0, store.Aggregates);
+        Assert.Equal(1, store.Scans);
+    }
+
     [Fact]
     public async Task A_cancelled_request_cancels_rather_than_answers()
     {
@@ -240,12 +367,39 @@ public sealed class StoreQueryPathTests
     }
 
     /// <summary>
+    /// A store with no reduction face, so every request takes the
+    /// scan-and-match path: the answer this surface has always produced.
+    /// </summary>
+    private sealed class MatchStore(IReadOnlyList<Feature> features, FeatureSchema? schema = null) : IFeatureStore
+    {
+        private readonly FeatureSchema _schema = schema ?? Schema;
+
+        public int Scans { get; private set; }
+
+        public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Scans++;
+            return Task.FromResult<IReadOnlyList<FeatureBatch>>([new FeatureBatch(_schema, features)]);
+        }
+
+        public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(FeaturePlanExecutor.Execute(_schema, features, query, cancellationToken));
+
+        public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    /// <summary>
     /// A store with the whole query surface: it records what it was asked and
     /// answers with the shared reference executor, which is exactly what a
     /// pushing provider must reproduce.
     /// </summary>
-    private sealed class PushingStore(IReadOnlyList<Feature> features) : IFeatureStore, IFeatureAggregateStore
+    private sealed class PushingStore(IReadOnlyList<Feature> features, FeatureSchema? schema = null) :
+        IFeatureStore, IFeatureAggregateStore
     {
+        private readonly FeatureSchema _schema = schema ?? Schema;
+
         public int Scans { get; private set; }
 
         public int Queries { get; private set; }
@@ -254,13 +408,15 @@ public sealed class StoreQueryPathTests
 
         public int Distincts { get; private set; }
 
+        public int Aggregates { get; private set; }
+
         public FeatureQuery? LastPlan { get; private set; }
 
         public Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Scans++;
-            return Task.FromResult<IReadOnlyList<FeatureBatch>>([new FeatureBatch(Schema, features)]);
+            return Task.FromResult<IReadOnlyList<FeatureBatch>>([new FeatureBatch(_schema, features)]);
         }
 
         public Task<FeatureQueryPage> QueryAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
@@ -268,7 +424,7 @@ public sealed class StoreQueryPathTests
             cancellationToken.ThrowIfCancellationRequested();
             Queries++;
             LastPlan = query;
-            return Task.FromResult(FeaturePlanExecutor.Execute(Schema, features, query, cancellationToken));
+            return Task.FromResult(FeaturePlanExecutor.Execute(_schema, features, query, cancellationToken));
         }
 
         public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
@@ -276,7 +432,7 @@ public sealed class StoreQueryPathTests
             cancellationToken.ThrowIfCancellationRequested();
             Counts++;
             LastPlan = query;
-            return Task.FromResult(FeatureReduction.CountFeatures(FeaturePlanExecutor.Select(Schema, features, query, cancellationToken)));
+            return Task.FromResult(FeatureReduction.CountFeatures(FeaturePlanExecutor.Select(_schema, features, query, cancellationToken)));
         }
 
         public Task<DistinctPage> DistinctAsync(
@@ -286,13 +442,17 @@ public sealed class StoreQueryPathTests
             Distincts++;
             LastPlan = query;
             return Task.FromResult(
-                FeatureReduction.Distinct(Schema, FeaturePlanExecutor.Select(Schema, features, query, cancellationToken), distinct));
+                FeatureReduction.Distinct(_schema, FeaturePlanExecutor.Select(_schema, features, query, cancellationToken), distinct));
         }
 
         public Task<AggregatePage> AggregateAsync(
-            string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default) =>
-            Task.FromResult(
-                FeatureReduction.Aggregate(Schema, FeaturePlanExecutor.Select(Schema, features, query, cancellationToken), aggregate));
+            string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
+        {
+            Aggregates++;
+            LastPlan = query;
+            return Task.FromResult(
+                FeatureReduction.Aggregate(_schema, FeaturePlanExecutor.Select(_schema, features, query, cancellationToken), aggregate));
+        }
 
 
         public Task<int> WriteAsync(string dataset, FeatureBatch batch, string? transaction = null, CancellationToken cancellationToken = default) =>

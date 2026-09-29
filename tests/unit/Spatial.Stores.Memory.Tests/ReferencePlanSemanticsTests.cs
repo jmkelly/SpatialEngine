@@ -1,6 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
+using Spatial.Core.Geometry;
 using Spatial.Querying;
 
 namespace Spatial.Stores.Memory.Tests;
@@ -10,8 +11,9 @@ namespace Spatial.Stores.Memory.Tests;
 /// conformance suite compares a store's answer with the reference's, so a bug
 /// in the reference would be invisible to it; these tests fix the reference's
 /// own rules — null ordering, the identity tie-break, the paging walk, the
-/// cursor's fingerprint, the projection, and the empty-set reductions — so a
-/// provider's pushdown is written against rules that are themselves pinned.
+/// cursor's fingerprint, the projection, the empty-set reductions and the
+/// envelope of a geometry field (ADR-0120) — so a provider's pushdown is
+/// written against rules that are themselves pinned.
 /// </summary>
 public sealed class ReferencePlanSemanticsTests
 {
@@ -200,4 +202,91 @@ public sealed class ReferencePlanSemanticsTests
         var none = Assert.Single(FeatureReduction.Aggregate(Schema, [], query).Groups).Values;
         Assert.All(none, value => Assert.Equal(AttributeValue.Null, value));
     }
+
+    /// <summary>
+    /// The envelope of a geometry field is the smallest rectangle over the
+    /// group's non-null geometries (ADR-0120) — the reduction a layer's extent
+    /// is, which is why the nulls are skipped rather than counted as the origin
+    /// and why a group with no geometry at all is the same null every other
+    /// statistic with nothing to reduce gives.
+    /// </summary>
+    [Fact]
+    public void The_envelope_of_a_geometry_field_is_the_smallest_rectangle_over_its_non_null_geometries()
+    {
+        var page = FeatureReduction.Aggregate(
+            Places,
+            PlaceRows,
+            new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, "place", "box")], ["name"]));
+
+        // Group "a" holds two points and a null; group "b" holds one point and
+        // a null, so its rectangle is that point's own.
+        Assert.Equal(new Envelope(1, 5, 2, 9), page.Groups[0].Values[0].EnvelopeValue);
+        Assert.Equal(new Envelope(3, 3, 3, 3), page.Groups[1].Values[0].EnvelopeValue);
+        Assert.Equal(AttributeKind.Envelope, page.Groups[0].Values[0].Kind);
+    }
+
+    [Fact]
+    public void The_envelope_of_a_group_with_no_geometry_is_null_and_the_kind_is_the_reduced_one()
+    {
+        var spec = new AggregateSpec(AggregateStatistic.Envelope, "place", "box");
+        var query = new AggregateQuery([spec]);
+
+        // A group whose every geometry is null, and a reduction of no rows at
+        // all: both are "no values to reduce", which is a null and not the
+        // empty rectangle.
+        var nulls = Assert.Single(FeatureReduction.Aggregate(Places, [Place(1, "a", null)], query).Groups).Values;
+        Assert.Equal(AttributeValue.Null, nulls[0]);
+        Assert.Equal(AttributeValue.Null, Assert.Single(FeatureReduction.Aggregate(Places, [], query).Groups).Values[0]);
+
+        Assert.Equal(AttributeKind.Envelope, FeatureReduction.ResultKind(spec, AttributeKind.Geometry));
+    }
+
+    /// <summary>
+    /// The envelope reduces geometries and takes nothing else, exactly as every
+    /// other statistic takes the kinds it can reduce: a sum of a geometry column
+    /// and an envelope of a numeric one are both requests no store can answer,
+    /// so they are refused at the boundary rather than guessed at.
+    /// </summary>
+    [Fact]
+    public void An_envelope_needs_a_geometry_field_and_no_other_statistic_takes_one()
+    {
+        var overNumbers = new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, "score", "box")]);
+        var failure = Assert.Throws<SpatialException>(() => FeatureReduction.Aggregate(Schema, Rows, overNumbers));
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("an envelope needs a geometry field", failure.Message, StringComparison.Ordinal);
+
+        var overGeometry = new AggregateQuery([new AggregateSpec(AggregateStatistic.Sum, "place", "total")]);
+        var refused = Assert.Throws<SpatialException>(() => FeatureReduction.Aggregate(Places, PlaceRows, overGeometry));
+        Assert.Equal(SpatialException.InvalidArguments, refused.Code);
+        Assert.Contains("a geometry field cannot be aggregated", refused.Message, StringComparison.Ordinal);
+    }
+
+    private static readonly FeatureSchema Places = new(
+    [
+        new FieldDefinition("id", AttributeKind.Int64),
+        new FieldDefinition("name", AttributeKind.String),
+        new FieldDefinition("score", AttributeKind.Int64, nullable: true),
+        new FieldDefinition("place", AttributeKind.Geometry, nullable: true),
+    ]);
+
+    private static Feature Place(long id, string name, (double X, double Y)? at) => new(
+        new FeatureId(id.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        Places,
+        [
+            AttributeValue.FromInt64(id),
+            AttributeValue.FromString(name),
+            AttributeValue.Null,
+            at is { } point
+                ? AttributeValue.FromGeometry(GeometryFactory.CreatePoint(point.X, point.Y))
+                : AttributeValue.Null,
+        ]);
+
+    private static IReadOnlyList<Feature> PlaceRows { get; } =
+    [
+        Place(1, "a", (1, 5)),
+        Place(2, "a", null),
+        Place(3, "a", (2, 9)),
+        Place(4, "b", (3, 3)),
+        Place(5, "b", null),
+    ];
 }

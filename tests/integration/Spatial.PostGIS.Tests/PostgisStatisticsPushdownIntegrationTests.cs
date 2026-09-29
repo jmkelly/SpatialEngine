@@ -69,6 +69,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
         new(AggregateStatistic.StdDev, "population", "sd"),
         new(AggregateStatistic.PercentileContinuous, "population", "p90", 0.9),
         new(AggregateStatistic.PercentileDiscrete, "population", "p50", 0.5),
+        new(AggregateStatistic.Envelope, "geom", "box"),
     ];
 
     [SkippableFact]
@@ -154,6 +155,62 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
 
         var reference = await ReferenceAsync(context.Store, dataset, plan, aggregate);
         Assert.Equal(Render(reference.Groups), Render(page.Groups));
+    }
+
+    /// <summary>
+    /// The layer extent is this reduction, so the case is worth its own
+    /// assertion: one aggregate row out of the database, no feature read
+    /// behind it, and the box the reference takes over the same table
+    /// (ADR-0120). A store that answered it by projecting the geometry column
+    /// and unioning the rows in managed code would pass every other case here
+    /// and fail this one.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_layer_extent_is_one_extent_aggregate_and_no_row_is_read()
+    {
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = await SeedAsync(context);
+        var counting = new CountingStore(context.Store);
+
+        var page = await counting.AggregateAsync(
+            dataset,
+            FeatureQuery.All,
+            new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, "geom", "box")]));
+
+        Assert.Equal(0, counting.Scans);
+        Assert.Equal(1, counting.Aggregates);
+
+        // The five points are (1,1) to (5,5), the third of them with a
+        // nullable geometry the extent skips.
+        var extent = Assert.Single(page.Groups).Values[0];
+        Assert.Equal(AttributeKind.Envelope, extent.Kind);
+        Assert.Equal(new Envelope(1, 1, 5, 5), extent.EnvelopeValue);
+    }
+
+    /// <summary>
+    /// A geometry column whose every value is null is the empty set, not a
+    /// rectangle at the origin: the reduction answers null and the caller reads
+    /// that as the empty extent, which is what the union over no geometry was.
+    /// </summary>
+    [SkippableFact]
+    public async Task An_envelope_of_no_geometry_is_null_and_not_the_origin()
+    {
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = await SeedAsync(context);
+        var counting = new CountingStore(context.Store);
+        var none = new FeatureQuery(
+            Where: new Predicate.Compare(
+                new FieldRef("population"),
+                ComparisonOperator.GreaterThan,
+                Literal.FromNumber(double.MaxValue)));
+
+        var page = await counting.AggregateAsync(
+            dataset,
+            none,
+            new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, "geom", "box")]));
+
+        Assert.Equal(0, counting.Scans);
+        Assert.Equal(AttributeValue.Null, Assert.Single(page.Groups).Values[0]);
     }
 
     [SkippableFact]

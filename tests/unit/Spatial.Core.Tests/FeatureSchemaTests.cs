@@ -36,10 +36,20 @@ public class FeatureSchemaTests
         Assert.Throws<ArgumentException>(() => new FieldDefinition("f", AttributeKind.Null));
 
     [Theory]
-    [InlineData((AttributeKind)8)]
+    [InlineData((AttributeKind)9)]
     [InlineData((AttributeKind)255)]
     public void Field_definition_rejects_unknown_kinds(AttributeKind kind) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new FieldDefinition("f", kind));
+
+    /// <summary>
+    /// A rectangle is what a reduction of a geometry column is, not something a
+    /// column holds (ADR-0120), so the reduced value kind cannot be declared:
+    /// every codec, store and adapter would then have to carry one in a feature
+    /// row, for a value only a reduction ever produces.
+    /// </summary>
+    [Fact]
+    public void Field_definition_rejects_the_reduced_envelope_kind() =>
+        Assert.Throws<ArgumentException>(() => new FieldDefinition("box", AttributeKind.Envelope));
 
     [Fact]
     public void Field_definition_rejects_blank_description() =>
