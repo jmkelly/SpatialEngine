@@ -4,14 +4,23 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The opaque <c>resultPaginationToken</c> workflow (spec §9.1.4, S3): a
-/// page that fills up returns a token for the next page; the client repeats
-/// the identical query with the token instead of <c>resultOffset</c>. The
-/// engine materialises the deterministic ordered match set per request, so
-/// the token is a versioned offset cursor into that set — behaviourally the
-/// keyset continuation S3 describes, without server-side paging state. A
-/// token is only valid with the query that minted it; anything else is a
-/// typed invalid-argument failure that restarts paging from the first page.
+/// The opaque <c>resultPaginationToken</c> of the <em>match</em> path
+/// (spec §9.1.4, S3): a page that fills up returns a token for the next page;
+/// the client repeats the identical query with the token instead of
+/// <c>resultOffset</c>. On this path the engine materialises the
+/// deterministic ordered match set per request, so the token is a versioned
+/// offset cursor into that set — behaviourally the keyset continuation S3
+/// describes, without server-side paging state. A token is only valid with the
+/// query that minted it; anything else is a typed invalid-argument failure that
+/// restarts paging from the first page.
+///
+/// <para>
+/// This vocabulary belongs to the match path alone (ADR-0116 §3). A request the
+/// store answers is served the store's own continuation, which is a position
+/// in the rows rather than an index into a list this process held, and the
+/// store refuses a token that is not its own. Keeping the two apart is what
+/// stops a token from one path being replayed as if it belonged to the other.
+/// </para>
 /// </summary>
 internal static class ResultPagination
 {

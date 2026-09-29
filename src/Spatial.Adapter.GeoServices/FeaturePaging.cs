@@ -10,6 +10,17 @@ namespace Spatial.Adapter.GeoServices;
 /// <see cref="FeatureQueryEngine"/> so the query facade keeps only
 /// orchestration and the paging fan-out lives with the code that uses it
 /// (ADR-0040).
+///
+/// <para>
+/// This is the paging of the <em>match</em> path: the surface evaluated the
+/// match itself, so the position it pages is a position in the match set it
+/// holds, and <see cref="ResultPagination"/> mints the token for it (ADR-0116
+/// §3). A request the store answers carries the store's own continuation
+/// instead, and never comes through here — the two token vocabularies never mix
+/// on one request, which is why a token minted on one path is a typed
+/// invalid-argument failure on the other rather than a page of the wrong
+/// question.
+/// </para>
 /// </summary>
 internal static class FeaturePaging
 {

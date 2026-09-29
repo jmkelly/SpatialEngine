@@ -11,6 +11,20 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **A store read is a page, a position and a "one more"** (ADR-0116,
+  SpatialEngine-u2x.10): a large-layer query is read with a `LIMIT`/`OFFSET`
+  instead of being materialised and paged on the way in, a page says outright
+  whether more remains (`FeatureQueryPage.HasMore`), and the Esri
+  `resultPaginationToken` on a store-answered query *is* the store's own
+  continuation rather than an adapter-minted index into a match set that was
+  thrown away. A plan that restricts nothing is now read whole only when its
+  order is not a total order the dialect can reproduce, which is the one reason
+  the page genuinely has no position; a store with no pushdown still pages, and
+  the contract now says in words what such a store does and does not promise
+  (its answer is one page; it cannot promise to read fewer rows than it holds).
+  Paging still terminates with the exact total in stable `OBJECTID` order and no
+  duplicates, on both the token and the `resultOffset` workflow.
+
 - **An area of use is a set of rectangles, so an extent across the
   antimeridian is not an empty one** (ADR-0111, SpatialEngine-u2x.32): EPSG
   writes a wrapped extent as a west bound in the east and an east bound in the
@@ -35,6 +49,7 @@ this file together, then tag the release (`RELEASING.md`).
   extent. NZGD2000 still serves no transformation through the service — its
   vendored WKT carries no `TOWGS84` — which is a gap in the *parameters* of
   EPSG:1565 and is not fixed here.
+
 
 - **A deployed datum shift grid is applied, per coordinate, over the classic
   Helmert** (ADR-0107, SpatialEngine-7at): `project` and the coordinate

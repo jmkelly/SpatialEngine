@@ -54,7 +54,16 @@ public sealed record BoundingBox(double MinX, double MinY, double MaxX, double M
 /// field list is validated against the dataset's schema before the read.
 /// </param>
 /// <param name="Order">The requested sort keys, or <c>null</c> for the store's own order.</param>
-/// <param name="Limit">The maximum number of features to return, or <c>null</c> for no cap.</param>
+/// <param name="Limit">
+/// The maximum number of features to return, or <c>null</c> for no cap — the
+/// unbounded read, which is what <see cref="FeatureQuery.All"/> and
+/// <see cref="IFeatureStore.ScanAsync"/> are. A caller that wants a page asks
+/// for one: the engine's canonical page and batch size is 512 features
+/// (<c>FeaturePlanExecutor.BatchSize</c>), and a served surface raises it to
+/// its own cap (<c>maxRecordCount</c> on the Esri surface). What the cap buys
+/// is stated on the page (<see cref="FeatureQueryPage.HasMore"/>), so a caller
+/// never has to fetch a whole match set to learn whether there was more of it.
+/// </param>
 /// <param name="Offset">The number of features to skip, or <c>null</c> to start at the first.</param>
 /// <param name="Cursor">A store-issued continuation token, or <c>null</c> to start the plan.</param>
 public sealed record FeatureQuery(
@@ -98,15 +107,31 @@ public interface IDataCatalogue
 /// evaluates the residual over the rows it fetched: the answer is the
 /// evaluation of the plan over the whole dataset, in the same order, every
 /// time (principle 15).
+///
+/// <para>
+/// <b>Paging is a property of the read, not of the caller</b> (ADR-0116). A
+/// store reads the page a plan names: the cap and the page start are the
+/// store's, the page says whether more remains, and the continuation is the
+/// store's own position, so a large layer answers a small request without the
+/// other rows ever being built. A store that has nothing to push the plan into —
+/// the in-memory provider answers every plan itself, and a store whose dialect
+/// cannot express the plan's order reduces over what it read — still owes its
+/// caller the same three things: the <em>answer</em> is one page and never the
+/// whole match set, the page states whether more remains, and the continuation
+/// is a cursor the store refuses if it did not issue it. What such a store
+/// cannot promise is reading fewer rows than it already holds; that is the
+/// store's own set, and a caller that needs the rows off the heap needs a store
+/// that can push the page down.
+/// </para>
 /// </summary>
 public interface IFeatureStore
 {
     Task<IReadOnlyList<FeatureBatch>> ScanAsync(string dataset, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Reads the features a plan selects, as one page: the batches, the
-    /// cursor that continues the plan, and the total when the store computed
-    /// it cheaply.
+    /// Reads the features a plan selects, as one page: the batches, whether
+    /// more remain, the cursor that continues the plan, and the total when the
+    /// store computed it cheaply.
     /// </summary>
     Task<FeatureQueryPage> QueryAsync(
         string dataset, FeatureQuery query, CancellationToken cancellationToken = default);
