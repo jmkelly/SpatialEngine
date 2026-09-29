@@ -24,7 +24,10 @@ namespace Spatial.Querying;
 /// the groups were first met — a store that sorts them differently has the
 /// same set and a different answer, so the suite compares the sequence.</item>
 /// <item>Variance and standard deviation are the sample forms (dividing by
-/// n − 1), and are zero for fewer than two values.</item>
+/// n − 1), and are <em>null</em> for fewer than two values: the sample form of
+/// a single observation is undefined, and a store's <c>VAR_SAMP</c> answers
+/// null there too, so a zero would be the population form of a group the
+/// sample form cannot describe.</item>
 /// </list>
 /// </summary>
 public static class FeatureReduction
@@ -78,6 +81,28 @@ public static class FeatureReduction
             reduced,
             query.GroupBy is { Count: > 0 } ? reduced.Length : null);
     }
+
+    /// <summary>
+    /// The reduction of <em>no</em> rows, for an ungrouped request: one group
+    /// of nulls, not zero groups (ADR-0098 §3). The reference gets this from
+    /// <see cref="Aggregate"/>'s empty bucket, so a store that pushes the
+    /// reduction into SQL and gets no row back composes this answer rather
+    /// than reporting nothing — a pushed-down ungrouped reduction over an empty
+    /// set that answered zero groups would be a different answer from the
+    /// reference's, not a faster one.
+    /// </summary>
+    public static AggregateGroup EmptyGroup(IReadOnlyList<AggregateSpec> specs) =>
+        new([], [.. specs.Select(_ => AttributeValue.Null)]);
+
+    /// <summary>
+    /// A count of <em>non-null</em> values, as a reduction over them reports it:
+    /// zero non-null values is <em>no values to reduce</em>, which every other
+    /// statistic answers as a null — a group whose every value is null has no
+    /// count of them, and a store that pushed the reduction down will have been
+    /// handed a dialect's zero for <c>COUNT(field)</c> and must translate it.
+    /// </summary>
+    public static AttributeValue Counted(long nonNullValues) =>
+        nonNullValues == 0 ? AttributeValue.Null : AttributeValue.FromInt64(nonNullValues);
 
     /// <summary>
     /// The kind a reduced value has, so a caller can declare the result's
@@ -159,8 +184,10 @@ public static class FeatureReduction
             AggregateStatistic.Minimum or AggregateStatistic.Maximum => Extreme(present, spec.Statistic),
             AggregateStatistic.Sum => Sum(schema[index].Kind, present),
             AggregateStatistic.Average => AttributeValue.FromDouble(present.Select(AsDouble).Average()),
-            AggregateStatistic.Variance => AttributeValue.FromDouble(Variance(present)),
-            AggregateStatistic.StdDev => AttributeValue.FromDouble(Math.Sqrt(Variance(present))),
+            AggregateStatistic.Variance => Sample(present, out var variance) ? AttributeValue.FromDouble(variance) : AttributeValue.Null,
+            AggregateStatistic.StdDev => Sample(present, out var deviation)
+                ? AttributeValue.FromDouble(Math.Sqrt(deviation))
+                : AttributeValue.Null,
             AggregateStatistic.PercentileContinuous => Percentile(present, spec, continuous: true),
             AggregateStatistic.PercentileDiscrete => Percentile(present, spec, continuous: false),
             _ => AttributeValue.Null,
@@ -233,16 +260,24 @@ public static class FeatureReduction
     private static double Discrete(List<double> sorted, double fraction) =>
         sorted[Math.Clamp((int)Math.Ceiling(fraction * sorted.Count) - 1, 0, sorted.Count - 1)];
 
-    private static double Variance(List<AttributeValue> values)
+    /// <summary>
+    /// The sample variance of the group's non-null values, or <c>false</c> — a
+    /// null result — for fewer than two of them: the sample form divides by
+    /// n − 1, and one value has no such division. The standard deviation is its
+    /// square root, so it is undefined on exactly the same groups.
+    /// </summary>
+    private static bool Sample(List<AttributeValue> values, out double result)
     {
-        if (values.Count <= 1)
+        if (values.Count < 2)
         {
-            return 0;
+            result = 0;
+            return false;
         }
 
         var numbers = values.Select(AsDouble).ToArray();
         var mean = numbers.Average();
-        return numbers.Sum(number => (number - mean) * (number - mean)) / (numbers.Length - 1);
+        result = numbers.Sum(number => (number - mean) * (number - mean)) / (numbers.Length - 1);
+        return true;
     }
 
     private static double AsDouble(AttributeValue value) => value.Kind switch

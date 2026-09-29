@@ -146,6 +146,51 @@ public sealed class PostgisPlanSurfaceTests
         Assert.Null(sql);
     }
 
+    /// <summary>
+    /// An ungrouped reduction is <em>one</em> group, so its row order cannot
+    /// differ from the store's own whatever the plan asked for: it is a single
+    /// aggregate row, and pushing it is the whole win of the shape (a table
+    /// scan reduced in managed code is what this query used to cost).
+    /// </summary>
+    [Fact]
+    public void An_ungrouped_reduction_is_one_aggregate_row_even_with_no_order()
+    {
+        var parameters = new List<object?>();
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: [],
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            order: [],
+            parameters);
+
+        Assert.NotNull(sql);
+        Assert.DoesNotContain(" GROUP BY", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain(" ORDER BY", sql, StringComparison.Ordinal);
+        Assert.Contains("SELECT COUNT(*) FROM \"public\".\"places\"", sql, StringComparison.Ordinal);
+        Assert.Empty(parameters);
+    }
+
+    /// <summary>
+    /// An order a group row does not carry cannot be a group order: grouping by
+    /// it as well would answer a different question (more groups), and ordering
+    /// by an aggregate of the group is not a <c>GROUP BY</c> order at all. The
+    /// reduction is reduced here instead, where the row order is knowable.
+    /// </summary>
+    [Fact]
+    public void A_group_order_the_group_key_does_not_carry_is_declined()
+    {
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: ["city"],
+            [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
+            [new OrderTerm("population")],
+            parameters: []);
+
+        Assert.Null(sql);
+    }
+
     [Fact]
     public void An_order_without_an_identity_column_is_declined_rather_than_left_unstable()
     {

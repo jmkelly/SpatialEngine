@@ -418,17 +418,17 @@ internal static class FeatureStatisticsEngine
     private static bool AllInt64(List<AttributeValue> raw) => raw.All(value => value.Kind == AttributeKind.Int64);
 
     /// <summary>The numeric reductions, keyed by Esri statistic type; an unlisted type yields null.</summary>
-    private static readonly Dictionary<string, Func<double[], double>> NumericStatistics = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, Func<double[], double?>> NumericStatistics = new(StringComparer.Ordinal)
     {
         ["sum"] = numbers => numbers.Sum(),
         ["avg"] = numbers => numbers.Average(),
-        ["var"] = numbers => Variance(numbers),
-        ["stddev"] = numbers => Math.Sqrt(Variance(numbers)),
+        ["var"] = Variance,
+        ["stddev"] = numbers => Variance(numbers) is { } variance ? Math.Sqrt(variance) : null,
     };
 
     private static AttributeValue NumericStatistic(string type, double[] numbers) =>
-        NumericStatistics.TryGetValue(type, out var reduce)
-            ? AttributeValue.FromDouble(reduce(numbers))
+        NumericStatistics.TryGetValue(type, out var reduce) && reduce(numbers) is { } value
+            ? AttributeValue.FromDouble(value)
             : AttributeValue.Null;
 
     /// <summary>
@@ -475,11 +475,18 @@ internal static class FeatureStatisticsEngine
         _ => throw GeoServicesErrors.Invalid($"Cannot aggregate non-numeric value of kind {value.Kind}."),
     };
 
-    private static double Variance(double[] numbers)
+    /// <summary>
+    /// The sample variance, or <c>null</c> for fewer than two values: the
+    /// sample form divides by n − 1, and a single value has no such division —
+    /// the same answer SQL's <c>VAR_SAMP</c> gives, and the same one
+    /// <see cref="FeatureReduction"/> states, which is what a store that pushes
+    /// the reduction down is measured against.
+    /// </summary>
+    private static double? Variance(double[] numbers)
     {
-        if (numbers.Length <= 1)
+        if (numbers.Length < 2)
         {
-            return 0;
+            return null;
         }
 
         var mean = numbers.Average();
