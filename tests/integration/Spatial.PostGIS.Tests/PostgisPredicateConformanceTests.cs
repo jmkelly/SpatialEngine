@@ -35,4 +35,35 @@ public sealed class PostgisPredicateConformanceTests : IClassFixture<PostgisCont
 
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
+
+    /// <summary>
+    /// The same cases against a table that has a <em>primary key</em>, which is
+    /// the precondition for a plan's <c>WHERE</c> to be pushed at all: a
+    /// dataset with no identity column names its features by the ordinal of the
+    /// read, so the store keeps the restriction in the caller and finishes the
+    /// plan in managed code (ADR-0097). Over a table without one, the pushed
+    /// comparison — and the collation it inherits or states — is never measured,
+    /// which is why this case is the one that catches a store whose
+    /// <c>WHERE</c> compares strings by the database's collation instead of by
+    /// the contract's bytes (ADR-0123).
+    /// </summary>
+    [SkippableFact]
+    public async Task Every_conformance_case_answers_the_same_through_a_pushed_where()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        const string dataset = "public.predicates_pushed";
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await context.ExecuteAsync(
+            $"DROP TABLE IF EXISTS {dataset}; CREATE TABLE {dataset} ("
+            + "\"code\" text PRIMARY KEY, \"population\" bigint, \"score\" double precision, "
+            + "\"active\" boolean, \"reference\" uuid, \"seen\" timestamptz, "
+            + "\"geometry\" geometry(Geometry, 4326))");
+        await context.Store.WriteAsync(
+            dataset,
+            new FeatureBatch(PredicateConformanceSuite.Schema, PredicateConformanceSuite.Rows));
+
+        var failures = await PredicateConformanceSuite.AssertAsync(context.Store, dataset);
+
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
 }
