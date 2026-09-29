@@ -1,9 +1,26 @@
 name: ci
 
-# The one-command gate (`eng/verify.sh`) plus the JavaScript suites and both
-# end-to-end scripts, so a clean checkout is verified the same way a developer
-# verifies locally. PostGIS integration runs here because GitHub's Linux
-# runners provide Docker (Testcontainers).
+# The JavaScript suites, the two end-to-end scripts, and the .NET gate split
+# across two jobs: `verify` carries the formatter, the build, the unit and
+# architecture suites and the python tooling tests; `integration` carries the
+# Testcontainers suites (PostGIS, SQL Server, the host, the ingest codec).
+# Together they are what `eng/verify.sh --full` runs, so this workflow is the
+# merge gate: it runs on every pull request and again on main after the merge,
+# and a formatting violation turns it red rather than reaching main. The local
+# default lane (`eng/verify.sh`) is a build gate and does not stand in for it
+# (ADR-0118; the lanes are implemented in ADR-0109). The contract is decided in
+# ADR-0118, which also says what CI is not *yet*: `main` has no branch
+# protection and this job is red on every push, so today the full lane is
+# enforced by the coordinator's pre-merge `eng/verify.sh --full` and this
+# workflow is the detector. A bare `eng/verify.sh` under `CI=true` runs the full
+# lane anyway, so the next workflow that calls the script without a lane does
+# not silently get the scoped one; the split below is the deliberate exception
+# and spells out the steps each job owns.
+# PostGIS integration runs here because GitHub's Linux runners provide Docker
+# (Testcontainers) and the same boxes are not contended by eight agents.
+# `eng/verify.sh --full` is still runnable locally, for when a change needs the
+# whole thing before it goes near a PR; these jobs spell its steps out because
+# one job cannot run half a script.
 on:
   push:
     branches: [main]
@@ -22,7 +39,7 @@ env:
 
 jobs:
   verify:
-    name: verify (format · build · tests)
+    name: verify (format · build · unit · architecture · tooling)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -35,8 +52,53 @@ jobs:
       - name: Toolchain
         run: dotnet --info
 
-      - name: Verify
-        run: ./eng/verify.sh
+      # The formatter is scoped per project in `eng/verify.sh --format` (~45 s
+      # each) and whole-solution here. On a pull request the whole solution is
+      # ~11 minutes on a runner nobody else is on, and it is the step that has
+      # to be exactly what a local `--full` runs.
+      - name: Format check
+        run: dotnet format SpatialEngine.slnx --verify-no-changes
+
+      - name: Build
+        run: dotnet build SpatialEngine.slnx
+
+      # The unit lane is every test project outside tests/integration, listed
+      # from the solution itself so a new project cannot be forgotten here.
+      - name: Unit and architecture tests
+        run: |
+          set -euo pipefail
+          for project in $(python3 tools/verify_scope.py --list lane --lane unit); do
+            dotnet test "$project" --no-build
+          done
+
+      - name: Python tooling tests
+        run: python3 -m unittest discover --start-directory tools --pattern 'test_*.py'
+
+  integration:
+    name: integration (host · postgis · sqlserver · ingest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build SpatialEngine.slnx
+
+      # The container-backed half of the flat gate, on its own runner: these
+      # are the suites that start Testcontainers, so they need a box of their
+      # own rather than a share of one that is already running 22 test
+      # projects. Together with the `verify` job this is the same set of
+      # projects `dotnet test SpatialEngine.slnx` runs.
+      - name: Host, store and ingest suites
+        run: |
+          set -euo pipefail
+          for project in $(python3 tools/verify_scope.py --list lane --lane integration); do
+            dotnet test "$project" --no-build
+          done
 
   web:
     name: web (sdk drift · unit)
@@ -67,7 +129,7 @@ jobs:
   e2e:
     name: e2e (host · sdk · browser)
     runs-on: ubuntu-latest
-    needs: [verify]
+    needs: [verify, integration]
     steps:
       - uses: actions/checkout@v7
 

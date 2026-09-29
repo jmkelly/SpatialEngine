@@ -52,7 +52,7 @@ So the order matters:
    No per-agent step is needed.
 
 **Verified on this host:** `docker ps` succeeds and the live daemon (pid 3185)
-reports `Groups: 967 998 1000`. `eng/verify.sh` on clean `main` was red before
+reports `Groups: 967 998 1000`. `eng/verify.sh --full` on clean `main` was red before
 this (215 Testcontainers failures in `Spatial.Host.Tests`) and the re-run after
 Docker was restored is the go/no-go signal for the whole run — check
 `/tmp/depth/verify-docker.log` for `EXIT=0` before triggering.
@@ -74,11 +74,14 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    why, and let it re-enter `bd ready`.
 
 2. MERGE. For every bead labelled `needs-merge`: rebase its branch onto
-   `origin/main`, run `eng/verify.sh` on it, and if green, merge to `main` and
-   `bd close <id> --reason="…"`. If red, `bd note` the failure on the bead and
-   unlabel it. Never close a bead whose gate is red — `AGENTS.md` requires
-   verify green on `main`, never on the branch. If a merge conflict is not a
-   trivial textual conflict, stop and escalate.
+   `origin/main`, run `eng/verify.sh --full` on it — explicitly `--full`, never
+   the bare script, because the bare script is the build gate under ADR-0118 —
+   and if green, merge to `main` and
+   `bd close <id> --reason="…"`. If red, re-run once on the same commit; green
+   merges, red twice for the same reason stops the run. Otherwise `bd note` the
+   failure on the bead and unlabel it. Never close a bead whose gate is red —
+   `AGENTS.md` requires verify green on `main`, never on the branch. If a merge
+   conflict is not a trivial textual conflict, stop and escalate.
 
 3. DRAIN. Count running workers with `paseo ls`. While workers < 8:
    - take from `bd ready`, in this order: children of `SpatialEngine-u2x` first,
@@ -141,14 +144,31 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    the right reason. Only then fix.
 4. Implement, staying inside the bead's scope. If you find a second problem, do
    not fix it — `bd create` a new bead with the evidence and carry on.
-5. `eng/verify.sh` must be green, with Docker reachable so the PostGIS and
-   SQL Server integration suites actually run. If a suite fails for a reason
-   unrelated to your change, prove it was already failing (name the bead and the
-   failure) rather than editing the test to make it pass.
-6. Commit with a `Task: BEAD_ID` trailer. Then
+5. Lanes. `eng/verify.sh` with no arguments is the **build gate** — build, plus
+   the test projects that reach what the branch changed over
+   `ProjectReference`, plus `Spatial.Architecture.Tests` — and it is what you
+   run on every iteration. `eng/verify.sh --format` is the format lane
+   (`dotnet format --verify-no-changes` over the changed projects, ~45 s each)
+   and belongs with the handoff. `eng/verify.sh --full` is everything, and it
+   is the **merge gate**: the coordinator runs it on the rebased branch, and CI
+   runs it on the pull request and again after the merge to `main`. You do not
+   run `--full` before a hand-off; the default lane plus `--format` are your
+   step, and nothing else (ADR-0118).
+   A change to a solution-wide file (a root `.props`,
+   `Directory.Packages.props`, `.editorconfig`), or a change set the lane
+   cannot read at all, makes every lane fall back to the whole solution rather
+   than guess (ADR-0109). `eng/verify.sh --plan` prints what a lane would run.
+   `CI=true` with no lane named runs `--full`, so a workflow that calls the
+   bare script gets the gate rather than the scoped lane.
+6. A suite that fails for a reason unrelated to your change: prove it was
+   already failing (name the bead and the failure) rather than editing the test
+   to make it pass. A default-lane run that skips a suite you expected is
+   scoping working as designed, not a green light — the full lane and CI cover
+   it.
+7. Commit with a `Task: BEAD_ID` trailer. Then
    `bd update BEAD_ID --label needs-merge --append-notes "<commit> <branch>"`.
    Do **not** close the bead — the coordinator merges and closes.
-7. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
+8. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
    `Task: BEAD_ID`, and `bd show BEAD_ID` must show *your* bead as the one
    labelled `needs-merge`. If they disagree, you worked the wrong bead — say so
    in your summary rather than papering over it.
@@ -160,10 +180,20 @@ accepted and ignored.
 
 ## Notes
 
-- `eng/verify.sh` = `dotnet format --verify-no-changes` + full build + full test
-  across 23 projects. At 8 concurrent workers this host (12 cores / 15 GB) will
-  be busy; if a tick finds the machine saturated, prefer merging (step 2) over
-  spawning (step 3).
+- `eng/verify.sh` (default) is the build gate; `eng/verify.sh --format` is the
+  format lane; `eng/verify.sh --full` is the flat gate, and it is the one that
+  decides whether a merge is allowed — the coordinator's pre-merge run on the
+  rebased branch today, and CI on every pull request and after every merge to
+  `main` once `main`'s CI is green and those jobs are required status checks
+  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 8 concurrent workers
+  this host (12 cores /
+  15 GB) will be busy; if a tick finds the machine saturated, prefer merging
+  (step 2) over spawning (step 3).
+- The container-backed suites also run in their own CI job
+  (`.github/workflows/ci.yml`, `integration`), on a runner that is not this
+  box. A branch green there has already run the PostGIS, SQL Server, host and
+  ingest suites; the local re-run before merge is still the coordinator's, and
+  it is the one that wants an idle box to mean anything.
 - The PostGIS and SQL Server integration suites start their own containers
   (ADR-0072, ADR-0073). Eight workers can each start a SQL Server container
   (~2 GB). If memory pressure shows up, drop the cap to 4 and say so in the tick

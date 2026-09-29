@@ -19,7 +19,7 @@
   (typed routes, keyed DI `"demo"`/`"postgis"`, `PostgisOptions`).
   Rendering adds `IMapRenderer` (`MapRenderer` in `Spatial.Rendering.Skia`,
   SkiaSharp) and `IRasterOperations` (NetVips).
-- **Tests:** `eng/verify.sh` is the gate. Counts (post-refactor):
+- **Tests:** `eng/verify.sh --full` is the gate. Counts (post-refactor):
   Core 308, NTS 28, ProjNet 61, Demo 15, PostGIS 130 unit, Client 9,
   Host 14, Architecture 8, PostGIS integration 16 (skip without Docker).
   TS SDK 7+1 skip; workbench unit 22; Playwright 5.
@@ -131,9 +131,9 @@ compatibility claim is now proven against a real Esri client. Completed:
    and pinned by `GeometryServiceTests`.
 4. The `research/arcgis` corpus is a provider regression gate: the recorded
    fixtures are copied into `Spatial.Stores.ArcGisRest.Tests` and run by
-   `eng/verify.sh`.
+   `eng/verify.sh --full`.
 
-`eng/verify.sh` is green, and so are all four quality-loop gates
+`eng/verify.sh --full` is green, and so are all four quality-loop gates
 (warnings, coverage, CRAP, metrics) after the 2026-09-12 facade/CRAP
 cleanup: `FeatureService` split into query/edit/geometry engines,
 `SpatialClient` into client + transport, `PostgisStore`'s stateless leaves

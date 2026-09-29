@@ -9,7 +9,7 @@ description: Behaviour-preserving simplification, one small step at a time on a 
 
 ## 1. Raise the safety net
 
-Run the repo's documented gate before touching anything (`eng/verify.sh` here; elsewhere the documented build-and-test command). A gate that cannot go green is a finding, not a licence: report it, and offer characterisation tests (see [references/hazards.md](references/hazards.md)) as the way to build one.
+Run the repo's documented gate before touching anything (`eng/verify.sh --full` here — the bare `eng/verify.sh` is the scoped build gate, ADR-0118; elsewhere the documented build-and-test command). A gate that cannot go green is a finding, not a licence: report it, and offer characterisation tests (see [references/hazards.md](references/hazards.md)) as the way to build one.
 
 *Done when:* the gate is green on the tree as it stands, and the exact command and result are written down. Step 5 compares against that line.
 

@@ -5,7 +5,8 @@ name: esri-fixtures-refresh
 # services and reports the SAME/DRIFT/UNREACHABLE summary. It never writes
 # fixtures, never commits, and never gates a PR — drift is filed via
 # `bd create -l interop.esri` and lands as a fixture-only refresh PR.
-# The PR gate (ci.yml -> eng/verify.sh) replays checked-in fixtures offline.
+# The PR gate (ci.yml, the verify job -- eng/verify.sh --full spelled out) replays
+# checked-in fixtures offline.
 on:
   schedule:
     - cron: "17 3 * * *"

@@ -4,7 +4,7 @@ The nightly job (`.github/workflows/perf-nightly.yml`, 03:23 UTC daily plus
 `workflow_dispatch`) runs the measurements that are too slow or too noisy
 for a PR: the full BenchmarkDotNet Medium job over every micro, the
 sustained-rate host confirmation, and the baseline regression gate. The PR
-gate (`eng/verify.sh`, `eng/perf.sh --smoke`) is untouched and stays under
+gate (`eng/verify.sh --full`, `eng/perf.sh --smoke`) is untouched and stays under
 2 minutes: every nightly test skips in the default gate with an explicit
 reason.
 

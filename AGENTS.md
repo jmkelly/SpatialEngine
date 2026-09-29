@@ -23,7 +23,26 @@ interop surface.
 
 ## Commands
 
-- `eng/verify.sh` — format, build, full tests; the gate before done.
+- `eng/verify.sh` — the **build gate**, and the default: build the solution,
+  then the test projects that reach what this branch changed over
+  `ProjectReference`, plus `Spatial.Architecture.Tests` (and the python tooling
+  tests when `tools/**` changed). Minutes rather than a quarter of an hour, and
+  what every agent runs while iterating.
+- `eng/verify.sh --format` — `dotnet format --verify-no-changes` scoped to the
+  projects owning the changed files (~45 s each, against ~700 s for the whole
+  solution). A pre-handoff step: run it before handing a bead off.
+- `eng/verify.sh --full` — the **full gate**: format over the whole solution,
+  build, every test project, the python tooling tests. This is the **merge
+  gate**, and it is not an agent's step: the coordinator runs it on the
+  rebased branch before a merge, and CI runs it on every pull request and again
+  on `main` after the merge, so a formatting violation is caught by the merge
+  rather than by an agent's inner loop. `main` has no branch protection and its
+  CI is red today, so the coordinator's run is what currently enforces it
+  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). Run it locally when a
+  change needs the whole thing before it goes near a PR.
+  `eng/verify.sh --plan` prints what a lane would run and runs nothing.
+  `CI=true` with no lane named selects `--full`, so a workflow that calls the
+  bare script gets the gate rather than the build gate (ADR-0118).
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
@@ -39,9 +58,11 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 
 - Capture: `bd create --title="…" --description="…" --priority 2 -l <area>`
 - Pick: `bd ready` then `bd update <id> --claim` — never start unclaimed work.
-- Hand off: label the bead `needs-merge` with the commit and PR in `--notes`.
-- Complete: `bd close <id> --reason="…"` — only after `eng/verify.sh` is green
-  on `main`, never on the branch.
+- Hand off: label the bead `needs-merge` with the commit and PR in `--notes`,
+  after `eng/verify.sh` and `eng/verify.sh --format` are green on the branch.
+- Complete: `bd close <id> --reason="…"` — only after the full lane
+  (`eng/verify.sh --full`) is green on `main`, never on the branch. The default
+  lane is never the only thing that ran.
 - Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
   expires — never bare `bd reclaim`. `bd reclaim` keys on lease age alone and a
   long-running worker does not heartbeat, so an expired lease only means "this

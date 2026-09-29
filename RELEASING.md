@@ -5,7 +5,9 @@ mirrored in `CHANGELOG.md`, and never declared in individual projects.
 
 ## Checklist
 
-1. **Green gate from a clean checkout.** `./eng/verify.sh`, then
+1. **Green gate from a clean checkout.** `./eng/verify.sh --full` — the full
+   lane, which is what "green" means for a release; the bare `eng/verify.sh` is
+   the scoped build gate (ADR-0118) — then
    `./eng/e2e-web.sh` and `./eng/workbench-e2e.sh`. CI runs all three plus the
    JavaScript suites on every push and pull request.
 2. **Update the version.** Bump `<Version>` in `Directory.Build.props`.

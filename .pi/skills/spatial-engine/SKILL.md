@@ -147,7 +147,9 @@ before writing any client code.
 
 Route the task through `architecture/distilled/README.md` (ADRs win on
 conflict), land contract + SDK + test + ADR together, and gate on
-`eng/verify.sh`. After a CLI or HTTP change run `eng/cli-e2e.sh`; after a
+`eng/verify.sh --full` (the bare `eng/verify.sh` is the scoped build gate an
+agent runs while iterating — ADR-0118). After a CLI or HTTP change run
+`eng/cli-e2e.sh`; after a
 browser-facing change run `eng/e2e-web.sh` or `eng/workbench-e2e.sh`. Quality
 gates are part of done: the quality-loop skill, branch floor in
 `coverage-policy.json`.
