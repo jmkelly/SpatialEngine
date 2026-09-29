@@ -30,8 +30,21 @@ internal sealed class PostgisTestContext : IAsyncDisposable
 
     public string ConnectionString { get; }
 
-    public static PostgisTestContext Create(string connectionString) =>
-        new(new PostgisStore(new PostgisOptions { ConnectionString = connectionString }), connectionString);
+    /// <summary>
+    /// A context over the container, optionally with the description cache's
+    /// window and a clock the test moves (ADR-0122) — expiry without sleeping.
+    /// </summary>
+    public static PostgisTestContext Create(
+        string connectionString, TimeSpan? descriptionCacheTtl = null, TimeProvider? clock = null) =>
+        new(
+            new PostgisStore(
+                new PostgisOptions
+                {
+                    ConnectionString = connectionString,
+                    DescriptionCacheTtl = descriptionCacheTtl ?? PostgisOptions.DefaultDescriptionCacheTtl,
+                },
+                clock ?? TimeProvider.System),
+            connectionString);
 
     public async Task ExecuteAsync(string sql, CancellationToken cancellationToken = default)
     {

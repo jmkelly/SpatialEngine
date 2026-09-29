@@ -10,7 +10,10 @@ namespace Spatial.Stores.PostGIS;
 /// features (<see cref="PostgisFeatures"/>) and the open transaction handles
 /// (<see cref="PostgisTransactions"/>). It owns the <see cref="PostgisDataStore"/>
 /// lifecycle — created on first use, disposed with the store — so the store
-/// itself stays the contract facade (ADR-0033).
+/// itself stays the contract facade (ADR-0033). The faces are built per
+/// operation, so what outlives a call lives here: the transaction handles, the
+/// database's collation (ADR-0121) and the discovered dataset descriptions
+/// (ADR-0122).
 /// </summary>
 internal sealed class PostgisStorage : IAsyncDisposable
 {
@@ -29,15 +32,27 @@ internal sealed class PostgisStorage : IAsyncDisposable
     /// </summary>
     private volatile string? _databaseCollation;
 
-    public PostgisStorage(PostgisConnectionConfiguration configuration, bool createIndexes = true)
+    public PostgisStorage(
+        PostgisConnectionConfiguration configuration,
+        bool createIndexes = true,
+        TimeSpan? descriptionCacheTtl = null,
+        TimeProvider? clock = null)
     {
         _data = new Lazy<PostgisDataStore>(() => PostgisDataStore.Open(configuration));
         _transactions = new PostgisTransactions(this);
         _createIndexes = createIndexes;
+        Descriptions = new PostgisDescriptionCache(
+            descriptionCacheTtl ?? PostgisOptions.DefaultDescriptionCacheTtl, clock ?? TimeProvider.System);
     }
 
     /// <summary>Whether a dataset created through this storage gets its indexes (ADR-0092).</summary>
     public bool CreateIndexes => _createIndexes;
+
+    /// <summary>
+    /// The descriptions discovered so far, shared by every face of this store
+    /// and dropped by the write paths (ADR-0122).
+    /// </summary>
+    public PostgisDescriptionCache Descriptions { get; }
 
     public PostgisCatalogue Catalogue => new(this);
 

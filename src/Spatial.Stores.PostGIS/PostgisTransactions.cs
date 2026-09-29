@@ -4,7 +4,6 @@ using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Stores.PostGIS.Core;
-
 namespace Spatial.Stores.PostGIS;
 
 /// <summary>
@@ -37,7 +36,14 @@ internal sealed class PostgisTransactions(PostgisStorage storage) : IAsyncDispos
         CancellationToken cancellationToken) =>
         Require(handle).WriteAsync(name, description, batch, cancellationToken);
 
-    /// <summary>Commits or rolls the handle back, then always releases its connection.</summary>
+    /// <summary>
+    /// Commits or rolls the handle back, then always releases its connection.
+    /// The datasets it wrote through are forgotten either way: a commit made
+    /// their writes visible and a rollback decided they never happened, and a
+    /// description read before that decision cannot describe them after it
+    /// (ADR-0122). A commit whose outcome is in doubt — one that threw — is the
+    /// case where holding a description would be worst.
+    /// </summary>
     public async Task<bool> EndAsync(string handle, bool commit, CancellationToken cancellationToken)
     {
         if (!_handles.TryRemove(handle, out var entry))
@@ -45,7 +51,17 @@ internal sealed class PostgisTransactions(PostgisStorage storage) : IAsyncDispos
             throw SpatialException.BadArguments($"Unknown transaction '{handle}'.");
         }
 
-        return await entry.CompleteAsync(commit, cancellationToken);
+        try
+        {
+            return await entry.CompleteAsync(commit, cancellationToken);
+        }
+        finally
+        {
+            foreach (var dataset in entry.Written)
+            {
+                storage.Descriptions.Invalidate(dataset);
+            }
+        }
     }
 
     /// <summary>
@@ -82,13 +98,33 @@ internal sealed class PostgisTransactions(PostgisStorage storage) : IAsyncDispos
     }
 }
 
-/// <summary>One open transaction: the connection it began on and the Npgsql handle itself.</summary>
-internal sealed record PostgisTransactionEntry(NpgsqlConnection Connection, NpgsqlTransaction Transaction)
+/// <summary>
+/// One open transaction: the connection it began on and the Npgsql handle
+/// itself, plus the datasets written through it — the ones whose descriptions
+/// have to be forgotten when it ends (ADR-0122). A class rather than a record
+/// because it now carries that state, and a record's equality is not what
+/// anything here wants.
+/// </summary>
+internal sealed class PostgisTransactionEntry(NpgsqlConnection connection, NpgsqlTransaction transaction)
 {
+    private readonly ConcurrentDictionary<PostgisDatasetName, byte> _written = new();
+
+    /// <summary>The connection the transaction began on.</summary>
+    public NpgsqlConnection Connection { get; } = connection;
+
+    /// <summary>The transaction itself.</summary>
+    public NpgsqlTransaction Transaction { get; } = transaction;
+
+    /// <summary>The datasets a write joined this transaction to.</summary>
+    public ICollection<PostgisDatasetName> Written => _written.Keys;
+
     /// <summary>Appends a batch inside this transaction.</summary>
-    public Task<int> WriteAsync(
-        PostgisDatasetName name, DatasetDescription description, FeatureBatch batch, CancellationToken cancellationToken) =>
-        PostgisWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
+    public async Task<int> WriteAsync(
+        PostgisDatasetName name, DatasetDescription description, FeatureBatch batch, CancellationToken cancellationToken)
+    {
+        _written.TryAdd(name, 0);
+        return await PostgisWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
+    }
 
     /// <summary>Commits or rolls back, then always releases the connection.</summary>
     public async Task<bool> CompleteAsync(bool commit, CancellationToken cancellationToken)

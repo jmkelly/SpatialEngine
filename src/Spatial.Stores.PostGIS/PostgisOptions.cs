@@ -11,6 +11,9 @@ public sealed class PostgisOptions
 {
     public const string EnvironmentVariable = "SPATIAL_POSTGIS_CONNECTION";
 
+    /// <summary>How long a discovered description is reused before it is re-read (ADR-0122).</summary>
+    public static readonly TimeSpan DefaultDescriptionCacheTtl = TimeSpan.FromSeconds(30);
+
     public string ConnectionString { get; set; } = string.Empty;
 
     /// <summary>
@@ -21,6 +24,26 @@ public sealed class PostgisOptions
     /// dataset is unindexed until it does.
     /// </summary>
     public bool CreateIndexes { get; set; } = true;
+
+    /// <summary>
+    /// How long the store reuses a dataset description it has discovered from
+    /// the catalogue before reading it again (ADR-0122). Every read face
+    /// describes its dataset first, so this is what keeps a walk of <c>N</c>
+    /// pages over one layer to a single description read rather than one per
+    /// page.
+    ///
+    /// <para>
+    /// Every write the store performs drops the descriptions it can have
+    /// changed, so the window is about changes made <em>outside</em> the store
+    /// — a hand-run <c>ALTER TABLE</c>, a migration by another process — and not
+    /// about the store's own. Within it, a description read before the change
+    /// is the one reads keep answering with; a column added out of band is not
+    /// in the schema until the entry expires. A non-positive value turns the
+    /// cache off, which is the store's earlier behaviour and the right setting
+    /// for a database whose schema moves on a schedule this store cannot see.
+    /// </para>
+    /// </summary>
+    public TimeSpan DescriptionCacheTtl { get; set; } = DefaultDescriptionCacheTtl;
 
     public static PostgisOptions FromEnvironment() =>
         new() { ConnectionString = Environment.GetEnvironmentVariable(EnvironmentVariable) ?? string.Empty };
