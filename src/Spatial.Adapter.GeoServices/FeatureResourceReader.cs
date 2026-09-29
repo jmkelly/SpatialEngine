@@ -8,7 +8,10 @@ namespace Spatial.Adapter.GeoServices;
 /// The Feature (object) resource (spec §9.1.2): reads one feature by its Esri
 /// <c>OBJECTID</c> and writes the <c>{"feature": ...}</c> envelope. Split out
 /// of <see cref="FeatureQueryEngine"/> so the query path and the single-feature
-/// read carry their own fan-out (ADR-0040).
+/// read carry their own fan-out (ADR-0040). The object id is resolved through
+/// <see cref="FeatureAttachmentTargets"/>, so the resource reads one feature
+/// through the store's identity lookup rather than scanning the layer
+/// (ADR-0038, ADR-0112).
 /// </summary>
 internal static class FeatureResourceReader
 {
@@ -26,27 +29,11 @@ internal static class FeatureResourceReader
         CancellationToken cancellationToken)
     {
         var layerCrs = EsriLayerModel.LayerCoordinateReference(dataset.Srid);
-        var scheme = EsriObjectIdScheme.For(dataset);
-        var batches = await store.ScanAsync(dataset.Id, cancellationToken);
-        long ordinal = 0;
-        foreach (var feature in batches.SelectMany(batch => batch.Features))
-        {
-            ordinal++;
-            if (!scheme.TryResolve(feature, ordinal, out var candidate))
-            {
-                throw GeoServicesErrors.ServerError(
-                    $"The identity column of layer '{dataset.Id}' is not an integer.");
-            }
-
-            if (candidate != objectId)
-            {
-                continue;
-            }
-
-            var transformed = FeatureProjection.TransformFeature(new MatchedFeature(objectId, feature), query, layerCrs, services.Transforms, services.Operations, cancellationToken);
-            return FeatureResponseWriter.WriteFeature(transformed, query, services);
-        }
-
-        throw GeoServicesErrors.NotFound($"Feature {objectId} does not exist in layer '{dataset.Id}'.");
+        var feature = await FeatureAttachmentTargets
+            .FindFeatureAsync(dataset, store, objectId, cancellationToken)
+            .ConfigureAwait(false);
+        var transformed = FeatureProjection.TransformFeature(
+            new MatchedFeature(objectId, feature), query, layerCrs, services.Transforms, services.Operations, cancellationToken);
+        return FeatureResponseWriter.WriteFeature(transformed, query, services);
     }
 }

@@ -238,6 +238,38 @@ this file together, then tag the release (`RELEASING.md`).
   between the two upload paths is now the one `IngestPageCap` helper, so both
   count the same way and answer with the same message.
 
+### Changed
+
+- **The MapServer and per-feature read surfaces push down, and the adapter
+  keeps only what it must** (ADR-0112, SpatialEngine-u2x.12): the last five
+  whole-layer reads in the GeoServices adapter moved onto faces the tree
+  already had. MapServer `identify` reads a plan carrying the query geometry's
+  envelope, and the tolerance-buffered intersection test plus the `layerDefs`
+  and temporal filters stay the answer, so a layer whose `OBJECTID` is the scan
+  ordinal — the one whose `layerDefs` clause is numbered off that ordinal —
+  keeps its scan untouched. `find` reads a plan carrying the one restriction
+  the predicate vocabulary can state without changing the answer (a searched
+  field is not null) and keeps the case-insensitive comparison of the text
+  itself: `LIKE` is case-sensitive on some back ends and not on others while
+  the served search is case-insensitive on all of them, so a pushed pattern
+  would drop matches rather than pre-filter them. `generateRenderer` asks the
+  aggregate face for the minimum and maximum behind the class breaks and the
+  distinct set behind the unique values, and keeps the quantisation
+  (ADR-0055) and the scan for a `where` no store can read. The advertised
+  layer extent is now a geometry-only projection rather than a whole-row read
+  (the reduction it wants is an envelope statistic the aggregate vocabulary
+  does not have yet). The per-feature (`FeatureServer/<layer>/<objectId>`)
+  resource and the attachment targets resolve through the store's identity
+  face, one targeted read for a request naming several ids, keyed by the
+  `OBJECTID` each row carries rather than by the id the lookup was asked with
+  — so a store whose `Feature.Id` is not the identity column (a
+  source-identity ingest numbers features as it reads them) misses and the
+  scan decides, rather than the wrong feature being served under the right
+  object id. Every response is byte-identical to the pre-change output,
+  including the `layerDefs` and `dynamicLayers` paths the compatibility
+  reference pins, and the `not.found`, `invalid.arguments` and
+  `serverError` refusals are unchanged.
+
 ### Fixed
 
 - **A vector tile whose bounds collapse on one axis is rejected instead of

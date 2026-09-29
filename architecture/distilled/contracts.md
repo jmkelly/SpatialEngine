@@ -221,6 +221,28 @@ The pushed rows are a *pre-filter*: the in-memory matcher still decides each
 of them, so it is the verification path rather than a fallback. Every served
 `spatialRel` implies an intersection, so one box serves all of them.
 
+**The map and per-feature surfaces use the same faces (ADR-0112,
+implemented).** Each of the five remaining whole-layer reads in the GeoServices
+adapter moved onto a face the tree already had, and each keeps the part that
+has to stay: MapServer `identify` pushes only the query envelope's box (and
+only on a layer whose `OBJECTID` is store-derived — its `layerDefs` clause
+resolves the synthetic `OBJECTID` against the scan ordinal), so the
+intersection test and the filters stay the answer; MapServer `find` pushes only
+"a searched string field is not null", because the vocabulary's one text
+comparison (`LIKE`) is case-sensitive on some back ends and the served search
+is not, so a pushed pattern would *lose* matches rather than pre-filter them;
+`generateRenderer` asks `IFeatureAggregateStore` for the minimum and maximum
+behind the class breaks and for the distinct set behind the unique values,
+keeping the quantisation in the adapter, and keeps the scan when the `where`
+clause is one no store can read; the layer extent is a geometry-only
+projection rather than a reduction (there is no envelope statistic in the
+aggregate vocabulary, which is a follow-up). The per-feature (object) resource
+and the attachment targets resolve through `IFeatureLookup`, keyed by the
+`OBJECTID` each row **carries** rather than by the id the lookup was asked
+with — a store whose `Feature.Id` is not the identity column (a
+source-identity ingest numbers features as it reads them) then misses, and the
+scan decides rather than the wrong feature being served.
+
 | Method | Input | Behaviour |
 | --- | --- | --- |
 | `ListAsync` | optional LIKE `pattern` | one `DatasetSummary` per spatial dataset (id, schema, table, geometry column, SRID, row estimate) |

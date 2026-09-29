@@ -3,7 +3,9 @@ using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Esri.Codec;
+using Spatial.Querying;
 
 namespace Spatial.Adapter.GeoServices;
 
@@ -16,12 +18,27 @@ namespace Spatial.Adapter.GeoServices;
 ///   <item><c>classBreaksDef</c> with <c>esriClassifyEqualInterval</c> over a numeric field;</item>
 ///   <item><c>uniqueValueDef</c> with exactly one <c>uniqueValueFields</c> entry.</item>
 /// </list>
+/// <para>
+/// The two reductions a classification needs are the store's, not a pass over
+/// a materialised match set: the class-break domain is a minimum and a maximum
+/// of the classification field, and the unique-value domain is a distinct set
+/// (ADR-0112). The <c>where</c> clause rides along in the plan's predicate
+/// (ADR-0097), and the quantisation — the equal-interval breaks and the
+/// palette — stays here, over the two numbers the store returned.
+/// </para>
+/// <para>
+/// A request whose clause no store can read — one naming the synthetic
+/// <c>OBJECTID</c> of a layer whose object id is the scan ordinal — is not
+/// reduced at all: it keeps the scan, because a reduction without the clause
+/// would answer a different question (ADR-0097).
+/// </para>
+/// <para>
 /// Anything else (quantile/natural-breaks methods, multi-field unique values)
-/// is a typed <c>invalid.arguments</c>, never a silent fallback. The scan
-/// honours <c>where</c> (the shared <see cref="EsriWhere"/> grammar)
-/// and cancellation. This is the single <c>generateRenderer</c>
-/// implementation for map-service layers; the feature write-model track
-/// (T-038) must reuse it rather than duplicate it.
+/// is a typed <c>invalid.arguments</c>, never a silent fallback. The reduction
+/// honours <c>where</c> (the shared <see cref="EsriWhere"/> grammar) and
+/// cancellation. This is the single <c>generateRenderer</c> implementation for
+/// map-service layers; the feature write-model track (T-038) must reuse it
+/// rather than duplicate it.
 /// </summary>
 internal static class MapGenerateRenderer
 {
@@ -147,15 +164,13 @@ internal static class MapGenerateRenderer
                 $"The 'breakCount' value '{breakCount}' is out of range; use 1 to {MaxBreaks}.");
         }
 
-        var values = await NumericValuesAsync(store, dataset, index, filter, field, cancellationToken);
-        if (values.Count == 0)
+        var (minimum, maximum) = await ClassBreakDomainAsync(store, dataset, field, index, filter, cancellationToken);
+        if (minimum is not { } min || maximum is not { } max)
         {
             throw GeoServicesErrors.Invalid(
                 $"No features of layer '{dataset.Id}' match, so no breaks can be classified for field '{field}'.");
         }
 
-        var min = values.Min();
-        var max = values.Max();
         var bounds = min == max
             ? [max]
             : Enumerable.Range(1, breakCount).Select(step => min + ((max - min) * step / breakCount)).ToArray();
@@ -176,7 +191,7 @@ internal static class MapGenerateRenderer
     {
         var field = RequireSingleUniqueField(definition.Root);
         var index = FieldIndex(dataset, field);
-        var values = await DistinctValuesAsync(store, dataset, index, filter, cancellationToken);
+        var values = await DistinctValuesAsync(store, dataset, field, index, filter, cancellationToken);
         RequireEnumerableValues(dataset, field, values);
 
         var infos = values
@@ -226,16 +241,40 @@ internal static class MapGenerateRenderer
         GeoServicesErrors.Invalid(
             $"Field '{field}' has {count} distinct values (at most {MaxUniqueValues} supported); narrow the request with 'where'.");
 
-    private static async Task<List<double>> NumericValuesAsync(
+    /// <summary>
+    /// The class-break domain: the smallest and the largest value the
+    /// classification field takes over the features the request selects, or
+    /// null when it takes none. Asked of the store as an aggregate whenever
+    /// the request's clause can ride along, and otherwise read off the scan
+    /// the same way the reduction would have computed it.
+    /// </summary>
+    private static async Task<(double? Minimum, double? Maximum)> ClassBreakDomainAsync(
         IFeatureStore store,
         DatasetDescription dataset,
+        string field,
         int index,
         EsriWhere? filter,
-        string field,
         CancellationToken cancellationToken)
     {
-        var values = new List<double>();
+        var clause = ReductionClause(dataset, filter);
+        if (clause is not null || filter is null)
+        {
+            var reduction = new AggregateQuery(
+            [
+                new AggregateSpec(AggregateStatistic.Minimum, field),
+                new AggregateSpec(AggregateStatistic.Maximum, field),
+            ]);
+            var page = await FeatureReductionFallback
+                .AggregateAsync(store, dataset.Id, new FeatureQuery(Where: clause), reduction, cancellationToken)
+                .ConfigureAwait(false);
+            var group = page.Groups.Count > 0 ? page.Groups[0] : null;
+            var values = group?.Values;
+            return (Bound(values, 0, field), Bound(values, 1, field));
+        }
+
         var scheme = EsriObjectIdScheme.For(dataset);
+        double? minimum = null;
+        double? maximum = null;
         long ordinal = 0;
         var batches = await store.ScanAsync(dataset.Id, cancellationToken);
         foreach (var feature in batches.SelectMany(batch => batch.Features))
@@ -247,11 +286,29 @@ internal static class MapGenerateRenderer
                 continue;
             }
 
-            values.Add(StatisticNumber(feature[index], field));
+            var value = StatisticNumber(feature[index], field);
+            minimum = minimum is { } low ? Math.Min(low, value) : value;
+            maximum = maximum is { } high ? Math.Max(high, value) : value;
         }
 
-        return values;
+        return (minimum, maximum);
     }
+
+    /// <summary>One reduced value of an aggregate group, or null when the group has no value for it.</summary>
+    private static double? Bound(IReadOnlyList<AttributeValue>? values, int position, string field) =>
+        values is { Count: > 0 } && position < values.Count && !values[position].IsNull
+            ? StatisticNumber(values[position], field)
+            : null;
+
+    /// <summary>
+    /// The clause the plan can carry, or null when there is no clause to carry
+    /// one. A clause the resolver refuses (a synthetic <c>OBJECTID</c> on a
+    /// layer whose object id is the scan ordinal) is reported as "no plan",
+    /// which is what keeps the request on the scan path rather than reducing
+    /// an unfiltered set (ADR-0097).
+    /// </summary>
+    private static Predicate? ReductionClause(DatasetDescription dataset, EsriWhere? filter) =>
+        filter is null ? null : EsriWhereResolver.Pushdown(filter, EsriObjectIdScheme.For(dataset), dataset);
 
     private static bool MatchesFilter(Feature feature, long ordinal, EsriObjectIdScheme scheme, EsriWhere? filter, int index) =>
         Matches(feature, ordinal, scheme, filter) && !feature[index].IsNull;
@@ -264,14 +321,41 @@ internal static class MapGenerateRenderer
             $"The classification field '{field}' holds {value.Kind} values, but 'classBreaksDef' needs numbers."),
     };
 
+    /// <summary>
+    /// The unique-value domain: the distinct non-null values the field takes
+    /// over the features the request selects, deduplicated on the rendered
+    /// value. Asked of the store as a distinct set whenever the request's
+    /// clause can ride along, and otherwise read off the scan.
+    /// </summary>
     private static async Task<List<string>> DistinctValuesAsync(
         IFeatureStore store,
         DatasetDescription dataset,
+        string field,
         int index,
         EsriWhere? filter,
         CancellationToken cancellationToken)
     {
         var values = new HashSet<string>(StringComparer.Ordinal);
+        var clause = ReductionClause(dataset, filter);
+        if (clause is not null || filter is null)
+        {
+            var page = await FeatureReductionFallback
+                .DistinctAsync(store, dataset.Id, new FeatureQuery(Where: clause), new DistinctQuery([field]), cancellationToken)
+                .ConfigureAwait(false);
+            // The store dedups by value, the renderer enumerates by rendered
+            // value: two values that render alike are one class here, as they
+            // were when the set was built in memory.
+            foreach (var row in page.Rows)
+            {
+                if (row is { Count: > 0 } && !row[0].IsNull)
+                {
+                    values.Add(Format(row[0]));
+                }
+            }
+
+            return [.. values];
+        }
+
         var scheme = EsriObjectIdScheme.For(dataset);
         long ordinal = 0;
         var batches = await store.ScanAsync(dataset.Id, cancellationToken);
