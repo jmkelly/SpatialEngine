@@ -5,13 +5,15 @@ using Spatial.Esri.Codec;
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
-/// The MapServer identify match pipeline (spec §4.0.5): scan each selected
+/// The MapServer identify match pipeline (spec §4.0.5): read each selected
 /// layer's features, keep the ones that pass the layer's attribute and
 /// temporal filters and whose geometry intersects the query geometry
 /// (reprojected into the layer's own CRS first), and project the hit's
 /// geometry back to the identify CRS. Split out of
 /// <see cref="MapIdentifyEngine"/> so matching is testable and named apart
-/// from the request grammar that plans it.
+/// from the request grammar that plans it. The read is the store's plan when
+/// the layer can push one — the query envelope compiled onto the plan's box
+/// (ADR-0112) — and the whole-dataset read when it cannot.
 /// </summary>
 internal static class MapIdentifyMatcher
 {
@@ -47,7 +49,13 @@ internal static class MapIdentifyMatcher
         var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Dataset.Srid);
         var localQuery = Transform(query.QueryGeometry, layerCrs, services.Transforms, cancellationToken);
         var extent = query.Times?.GetValueOrDefault(layer.Layer.Id);
-        var batches = await services.Store.ScanAsync(layer.Layer.Dataset, cancellationToken);
+        // The identify envelope rides along as the plan's box (ADR-0112); the
+        // intersection test below stays the answer, so what comes back is a
+        // superset of the hits and every one of them is tested here.
+        var plan = MapMatchPushdown.Identify(layer.Dataset, localQuery);
+        var batches = plan is null
+            ? await services.Store.ScanAsync(layer.Layer.Dataset, cancellationToken)
+            : (await services.Store.QueryAsync(layer.Layer.Dataset, plan, cancellationToken)).Batches;
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {

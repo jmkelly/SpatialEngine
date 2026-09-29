@@ -18,7 +18,7 @@ reflects the state at decision time.
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
 | Which services exist + their contracts | `contracts.md` | 0033, 0074, 0083, 0084 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
-| Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048 |
+| Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048, 0112 |
 | Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0082, 0037, 0038 |
 | Map composer (layers, styling, drag/drop, upload) | `host-and-clients.md` | 0014, 0041, 0047 |
 | MapServer / ImageServer | `host-and-clients.md`, `../image-service-plan.md` | 0035, 0048, 0050, 0051 |
@@ -134,7 +134,7 @@ shape is noted in brackets.
 | 0100 | The map root advertises `supportsTimeRelation:false` because the engine applies the overlaps relation only; the contains/within relations are typed `invalid.arguments` on export and identify rather than served as overlaps (amends 0058). |
 | 0110 | The feature-match envelope (`objectIds`, `where`, `time`, the query geometry's envelope) is compiled onto the store's query plan instead of a full-dataset scan, all-or-nothing and decided before the store is asked; the in-memory matcher stays the verification path, and a layer whose `OBJECTID` is the scan ordinal, a `uniqueIds` request and an unsupported `spatialRel` are still refused rather than answered from a narrower read. |
 | 0111 | An area of use is a set of rectangles, so an extent that crosses the antimeridian (EPSG 1175, 2157) is the two rectangles it is rather than an empty one; the graph's intersection and union are rectangle algebra over that set and never merge, and `findTransformations` publishes `areaOfUse` as a list of envelopes (amends 0086, 0087). |
->
+| 0112 | The MapServer and per-feature read surfaces push what the store can answer and keep what it must: identify pushes only the query envelope's box, find pushes only the null test the case-insensitive search cannot be expressed as, generateRenderer asks the store for its minimum/maximum and its distinct set, the layer extent reads a geometry-only projection, and a per-feature target resolves through the identity face — keyed by the `OBJECTID` the row carries, so a store that keys `Feature.Id` differently misses and the scan decides rather than serving the wrong feature. |
 
 ## How to change the architecture
 

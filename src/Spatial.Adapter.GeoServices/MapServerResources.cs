@@ -7,11 +7,11 @@ namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Shapes Map Service resources (spec §4) from a publication's layers and the
-/// engine's dataset metadata. It computes each layer's extent by scanning the
-/// store (the engine has no extent verb — ADR-0048 records the follow-up),
-/// maps the map SRID to Esri units and projects the persisted style onto a
-/// simple <c>drawingInfo</c>. No spatial algorithm lives here; the adapter
-/// delegates geometry work to the engine verbs.
+/// engine's dataset metadata. It computes each layer's extent by reading its
+/// geometry through the store's plan (the engine has no extent verb — ADR-0048
+/// records the follow-up), maps the map SRID to Esri units and projects the
+/// persisted style onto a simple <c>drawingInfo</c>. No spatial algorithm
+/// lives here; the adapter delegates geometry work to the engine verbs.
 /// </summary>
 internal static class MapServerResources
 {
@@ -24,12 +24,12 @@ internal static class MapServerResources
     private const int MaxImageDimension = 4096;
     private const double TileDpi = 96;
 
-    /// <summary>Describes and extents one published layer (scanning its features).</summary>
+    /// <summary>Describes and extents one published layer (reading its features).</summary>
     public static async Task<MapLayerInfo> ReadLayerAsync(
         IFeatureStore store, IDataCatalogue catalogue, PublishedLayer layer, CancellationToken cancellationToken)
     {
         var dataset = await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
-        var extent = await ExtentAsync(store, layer.Dataset, cancellationToken);
+        var extent = await ExtentAsync(store, dataset, cancellationToken);
         return new MapLayerInfo(layer, dataset, extent);
     }
 
@@ -251,10 +251,23 @@ internal static class MapServerResources
         _ => "esriUnknownUnits",
     };
 
-    private static async Task<Envelope> ExtentAsync(IFeatureStore store, string dataset, CancellationToken cancellationToken)
+    /// <summary>
+    /// The layer's extent: the union of its features' envelopes, read through
+    /// the store's plan so the columns the extent is not computed from are
+    /// projected away at the store rather than shipped and dropped
+    /// (ADR-0112). A table has no geometry column, so there is nothing to
+    /// project and the read is the whole-dataset one.
+    /// </summary>
+    private static async Task<Envelope> ExtentAsync(
+        IFeatureStore store, DatasetDescription dataset, CancellationToken cancellationToken)
     {
+        var plan = FeatureGeometry.Index(dataset.Schema) is var index && index >= 0
+            ? new FeatureQuery(Projection: [dataset.Schema[index].Name])
+            : null;
+        var batches = plan is null
+            ? await store.ScanAsync(dataset.Id, cancellationToken)
+            : (await store.QueryAsync(dataset.Id, plan, cancellationToken)).Batches;
         var extent = Envelope.Empty;
-        var batches = await store.ScanAsync(dataset, cancellationToken);
         foreach (var feature in batches.SelectMany(batch => batch.Features))
         {
             cancellationToken.ThrowIfCancellationRequested();
