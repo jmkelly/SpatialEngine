@@ -29,10 +29,27 @@ this file together, then tag the release (`RELEASING.md`).
   a sort on a locale-collated database: a btree index on a text column is built
   with that column's collation, so an `ORDER BY` that overrides it cannot use
   the index. The answer is not optional; the index is.
+- **A read no longer re-discovers the dataset it is reading** (ADR-0122,
+  SpatialEngine-u2x.41): every read face describes its dataset before it can
+  compile any SQL, and a description is five catalogue queries (columns,
+  geometry columns, type modifiers, primary key, row estimate). A paged walk
+  therefore paid that fixed cost once per *page* to learn the same schema over
+  and over — about 26 MB of allocation per read whatever the page size, which
+  swamped the difference between a page and a whole table by two orders of
+  magnitude in the ADR-0111 measurement, and a round trip per page on the wire.
+  The store now holds the description it discovered, and forgets it on every
+  write it makes: create, ingest (both faces), append, edit, and the end of a
+  transaction — commit or rollback, because a description read before that
+  decision cannot describe the dataset after it. A description that failed to be
+  read is never remembered, so `not.found` and a cancelled read behave as they
+  did. A schema changed *outside* the store — a hand-run `ALTER TABLE`, a
+  migration by another process — is picked up when the entry expires (30 s by
+  default, `Spatial:Postgis:DescriptionCacheTtl`; a non-positive value turns
+  the cache off). A walk of N pages now issues one description read rather than
+  N.
 
 ### Changed
 
-<<<<<<< HEAD
 - **A stored feature's identity is the identity column's value** (ADR-0119,
   SpatialEngine-u2x.38): a GeoJSON ingested with
   `identity=source&identityField=id` now stores each row under the value of the

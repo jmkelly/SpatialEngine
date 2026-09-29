@@ -19,10 +19,13 @@ namespace Spatial.PostGIS.Tests;
 /// plan carries an <c>ORDER BY</c> and a <c>LIMIT</c> — see
 /// <c>PostgisPlanSurfaceTests</c>), and the allocation of a large-layer query
 /// on the served surface (<c>PagedStoreReadTests</c>). It is deliberately not
-/// measured in bytes here: every read re-reads the dataset description from
-/// the catalogue, and that fixed cost is two orders of magnitude larger than
-/// the difference between a page and a whole table, so the instrument would
-/// measure the catalogue, not the read.
+/// measured in bytes here, and no longer because the catalogue was in the way:
+/// a read re-used to re-discover the dataset's description, a fixed cost two
+/// orders of magnitude larger than the difference between a page and a whole
+/// table, so the instrument measured the catalogue rather than the read. That
+/// cost is gone (ADR-0122) and the walk's per-page description reads are
+/// pinned as a count in <c>PostgisDescriptionCacheTests</c>; the byte
+/// measurement stays where it is, on the served surface.
 /// </para>
 /// </summary>
 public sealed class PostgisPagedReadTests : IClassFixture<PostgisContainerFixture>
