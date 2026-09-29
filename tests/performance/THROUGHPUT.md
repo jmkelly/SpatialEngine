@@ -13,7 +13,7 @@ SPATIAL_THROUGHPUT=1 dotnet test tests/performance/Spatial.HostThroughput.Tests/
 ```
 
 Without `SPATIAL_THROUGHPUT=1` every test skips with an explicit reason, so
-the default gate (`eng/verify.sh`, `dotnet test SpatialEngine.slnx`) stays
+the full gate (`eng/verify.sh --full`, `dotnet test SpatialEngine.slnx`) stays
 fast and green — the smoke is `ShortRun`-only and excluded from the default
 gate exactly like the BenchmarkDotNet slice, which builds but never executes
 under `dotnet test`. The project is a solution member (the architecture

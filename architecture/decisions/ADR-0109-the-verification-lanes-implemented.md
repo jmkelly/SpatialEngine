@@ -1,10 +1,25 @@
 ---
 status: accepted
-date: 2026-09-29
+date: 2026-09-30
 deciders: maintainer + agent
 ---
 
-# ADR-0109: the default verification lane is a build gate, and CI runs the full one
+# ADR-0109: the verification lanes, implemented
+
+**This record is the implementation of a decision taken elsewhere. The decision
+is ADR-0118** — "the default verify lane is a build gate, and the full lane is
+enforced at the merge" — and where the two disagree about the gate contract,
+ADR-0118 wins. This record does not decide anything; it says what was built for
+it and what the build cost.
+
+An earlier draft of this file was titled "the default verification lane is a
+build gate, and CI runs the full one", and read as the decision itself. It is
+not: an ADR written by the implementer of a gate change is a proposal about
+the repo's documented gate, and SpatialEngine-lyz's own acceptance criteria
+asked for the opposite shape (no-arg = full, `--quick` = scoped). ADR-0118 is
+the maintainer's authorisation of the shape actually built, and it is what the
+rest of the repository cites. What follows is the engineering content that
+ADR-0118 refers to as "SpatialEngine-lyz's implementation record".
 
 ## Context
 
@@ -51,18 +66,29 @@ that signal can move to the merge.
 
 ## Decision
 
-`eng/verify.sh` keeps its name and gains lanes. What each one runs, and who
-runs it:
+What ADR-0118 decides, restated here as built: `eng/verify.sh` keeps its name
+and gains lanes. What each one runs, and who runs it:
 
 | Lane | Runs | Who |
 | --- | --- | --- |
-| `eng/verify.sh` (default) | build, plus the test projects that reach the change over `ProjectReference`, plus `Spatial.Architecture.Tests`; the python tooling tests when `tools/**` moved | every agent, every iteration |
+| `eng/verify.sh` (default; `--quick` is a synonym) | build, plus the test projects that reach the change over `ProjectReference`, plus `Spatial.Architecture.Tests`; the python tooling tests when `tools/**` moved | every agent, every iteration |
 | `eng/verify.sh --format` | `dotnet format --verify-no-changes` on the projects that own the changed files (~45 s each) | before a bead is handed off |
-| `eng/verify.sh --full` | format over the whole solution, build, every test project, the python tooling tests | CI on every pull request and after every merge to `main`; locally when a change needs it |
+| `eng/verify.sh --full` | format over the whole solution, build, every test project, the python tooling tests | the coordinator on the rebased branch before a merge; CI on every pull request and after every merge to `main`; locally on demand |
+| `eng/verify.sh --plan` | print the lane's steps, run nothing | the tests, and anyone checking what a run would do |
 
 **The default is the build gate**, because that is what gets run twenty times a
 day and it should feel like a save. It does not format and it does not run the
 whole suite.
+
+**`CI=true` selects `--full` unless a lane is named.** The bare name is the
+build gate, so the next workflow someone writes that calls it without thinking
+would otherwise get the scoped lane where it meant the merge gate. A named lane
+always wins, which is what lets the split CI jobs run the two halves of `--full`
+without either of them picking up the other.
+
+**Before a hand-off an agent runs the default lane and `--format`, and nothing
+else** — not `--full`, which is 15–25 minutes on a contended box and is the
+merge gate's job, not the agent loop's.
 
 **Formatting is not dropped, it moves.** It is still enforced on every pull
 request and on `main` after the merge, where a failure is a red check rather
@@ -95,7 +121,11 @@ python tooling tests in `verify`, and `Spatial.Host.Tests`,
 lanes partition the test projects exactly — `LaneTests` proves that against the
 real solution rather than trusting the YAML — and `e2e` waits on both. Together
 they are what `eng/verify.sh --full` runs, so a pull request gets the full
-signal and `main` gets it again after the merge.
+signal and `main` gets it again after the merge. What CI is *not*, today, is a
+gate: `main` has no branch protection and its verify job is red on every push
+(ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). Until those two hold, the
+full lane is enforced by the coordinator's pre-merge `--full` run and CI is a
+detector.
 
 `eng/verify.sh --plan` prints the steps a lane would run and runs nothing,
 which is how the contract is tested (`ScriptLaneTests` runs the real script
@@ -150,6 +180,8 @@ recorded in SpatialEngine-4h0.
 
 ## References
 
+- ADR-0118 — the decision these lanes implement, and the authority for the
+  gate contract
 - `eng/verify.sh`, `tools/verify_scope.py`, `tools/test_verify_scope.py`
 - `.github/workflows/ci.yml` (`verify`, `integration`, `e2e`)
 - `AGENTS.md` ("Commands"), `eng/swarm-runbook.md` (worker steps 5–6, Notes)

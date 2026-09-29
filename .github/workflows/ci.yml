@@ -8,7 +8,14 @@ name: ci
 # merge gate: it runs on every pull request and again on main after the merge,
 # and a formatting violation turns it red rather than reaching main. The local
 # default lane (`eng/verify.sh`) is a build gate and does not stand in for it
-# (ADR-0109).
+# (ADR-0118; the lanes are implemented in ADR-0109). The contract is decided in
+# ADR-0118, which also says what CI is not *yet*: `main` has no branch
+# protection and this job is red on every push, so today the full lane is
+# enforced by the coordinator's pre-merge `eng/verify.sh --full` and this
+# workflow is the detector. A bare `eng/verify.sh` under `CI=true` runs the full
+# lane anyway, so the next workflow that calls the script without a lane does
+# not silently get the scoped one; the split below is the deliberate exception
+# and spells out the steps each job owns.
 # PostGIS integration runs here because GitHub's Linux runners provide Docker
 # (Testcontainers) and the same boxes are not contended by eight agents.
 # `eng/verify.sh --full` is still runnable locally, for when a change needs the

@@ -332,11 +332,16 @@ class ScriptLaneTests(unittest.TestCase):
         self.repo.git("branch", "-f", "main", "HEAD")
         self.repo.commit("src/Spatial.Maps/Map.cs")
 
-    def plan(self, *arguments, base="main"):
+    def plan(self, *arguments, base="main", ci="false"):
+        # `ci` is forced rather than inherited: the CI=true clause below is
+        # about what a runner gets, and a suite whose result depends on where
+        # it was invoked is not a suite anyone can read.
+        env = {key: value for key, value in os.environ.items() if key != "CI"}
+        env["CI"] = ci
         result = subprocess.run(
             ["bash", "eng/verify.sh", "--plan", *arguments],
             cwd=str(self.repo.root), check=True, capture_output=True, text=True,
-            env={**os.environ, "VERIFY_BASE": base})
+            env={**env, "VERIFY_BASE": base})
         return [line for line in result.stdout.splitlines()
                 if line.startswith(("dotnet ", "python3 "))]
 
@@ -392,6 +397,32 @@ class ScriptLaneTests(unittest.TestCase):
 
     def test_quick_is_a_synonym_for_the_default_lane(self):
         self.assertEqual(self.plan("--quick"), self.plan())
+
+    def test_ci_true_with_no_lane_named_runs_the_full_gate(self):
+        """A workflow calling the bare script must not get the scoped lane.
+
+        ADR-0118: the bare name is the build gate, so on a runner it means the
+        gate until a lane says otherwise. Without this the next workflow
+        written by someone not thinking about it silently under-runs.
+        """
+        self.assertEqual(self.plan(ci="true"), [
+            "dotnet format SpatialEngine.slnx --verify-no-changes",
+            "dotnet build SpatialEngine.slnx",
+            "dotnet test SpatialEngine.slnx --no-build",
+            "python3 -m unittest discover --start-directory tools --pattern test_*.py",
+        ])
+
+    def test_a_named_lane_beats_ci_true(self):
+        """The split CI jobs each own half of --full, so --format stays --format."""
+        self.assertEqual(self.plan("--format", ci="true"), [
+            f"dotnet format {MAPS} --verify-no-changes",
+        ])
+
+    def test_ci_true_is_not_every_value_of_ci(self):
+        """Only the literal `true` GitHub Actions sets selects the full lane."""
+        for value in ("1", "yes", "True", ""):
+            with self.subTest(ci=value):
+                self.assertEqual(self.plan(ci=value), self.plan())
 
     def test_an_unresolvable_base_falls_back_to_everything(self):
         """A scoping failure costs time; a silent under-run costs a defect."""

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Verification, in three lanes. Every one of them is `eng/verify.sh`.
+# Verification, in three lanes. Every one of them is `eng/verify.sh`. The
+# contract is ADR-0118; these lanes are the implementation, ADR-0109.
 #
 #   eng/verify.sh            the build gate — the default, and what an agent
 #                            runs on every iteration. Builds the solution and
@@ -10,12 +11,14 @@
 #                            --verify-no-changes` over the projects that own the
 #                            changed files (~45 s each, against ~700 s for the
 #                            whole solution). A pre-handoff step.
-#   eng/verify.sh --full     everything: format over the whole solution, build,
-#                            every test project, the python tooling tests. This
-#                            is the gate CI runs on every pull request and on
-#                            main after the merge; run it locally when a change
-#                            genuinely needs the whole thing before it goes
-#                            near a PR.
+#   eng/verify.sh --full     the full gate: format over the whole solution,
+#                            build, every test project, the python tooling
+#                            tests. This is the MERGE gate — the coordinator
+#                            runs it on the rebased branch before a merge, and
+#                            CI runs it on every pull request and on main after
+#                            the merge. An agent does NOT run it before a
+#                            hand-off: the default lane plus --format are that
+#                            step.
 #   eng/verify.sh --plan     print the steps a lane would run, and run nothing
 #
 # The split exists because the flat gate costs ~25 minutes warm on a 12-core
@@ -23,8 +26,12 @@
 # signal: `dotnet format` over the solution is ~30% of it, and the 22 minutes
 # of Spatial.Host.Tests is in there whether or not the branch touched the host.
 # What enforces what did not change, only where it runs: the formatter and the
-# full suite are enforced by the pull request and the post-merge CI run, not by
-# an agent's inner loop. ADR-0109 records the three lanes.
+# full suite are enforced at the merge, not by an agent's inner loop.
+#
+# Because the bare name now means the fast lane, CI=true selects --full unless
+# a lane is named on the command line: a workflow that calls a bare
+# `eng/verify.sh` must not silently become the scoped build gate. The split CI
+# jobs are the deliberate exception — they spell out the steps they each own.
 #
 # `--quick` is accepted as a synonym for the default lane, from the draft of
 # this script that had it as a flag.
@@ -32,17 +39,27 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 LANE=default
+LANE_NAMED=0
 PLAN_ONLY=0
 for arg in "$@"; do
   case "$arg" in
-    --full) LANE=full ;;
-    --format) LANE=format ;;
-    --quick) LANE=default ;;
+    --full) LANE=full; LANE_NAMED=1 ;;
+    --format) LANE=format; LANE_NAMED=1 ;;
+    --quick) LANE=default; LANE_NAMED=1 ;;
     --plan) PLAN_ONLY=1 ;;
-    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
+
+# The merge gate is `--full` and a bare `eng/verify.sh` is the build gate, so
+# on a runner the bare invocation means the gate until a lane says otherwise.
+# A named lane always wins: the CI jobs that each own half of `--full` depend on
+# this, and so does anyone deliberately running one lane.
+if [[ "$LANE_NAMED" == "0" && "${CI:-}" == "true" ]]; then
+  echo "== CI=true with no lane named: the bare script is the build gate, so the full lane runs =="
+  LANE=full
+fi
 
 # Run a gate step, or just print it under --plan.
 step() {
@@ -116,8 +133,8 @@ if [[ "$LANE" == "full" ]]; then
   step dotnet test SpatialEngine.slnx --no-build
 
   echo "== tooling tests =="
-  # The repo also carries Python tooling (tools/), and this lane is the gate
-  # before a pull request, so its unit tests run here too.
+  # The repo also carries Python tooling (tools/), and this lane is the merge
+  # gate, so its unit tests run here too.
   step python3 -m unittest discover --start-directory tools --pattern 'test_*.py'
   exit 0
 fi

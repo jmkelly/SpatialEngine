@@ -31,12 +31,18 @@ interop surface.
 - `eng/verify.sh --format` — `dotnet format --verify-no-changes` scoped to the
   projects owning the changed files (~45 s each, against ~700 s for the whole
   solution). A pre-handoff step: run it before handing a bead off.
-- `eng/verify.sh --full` — everything: format over the whole solution, build,
-  every test project, the python tooling tests. CI runs this on every pull
-  request and again on `main` after the merge, so a formatting violation is
-  caught by the merge rather than by an agent's inner loop. Run it locally when
-  a change needs the whole thing before it goes near a PR.
+- `eng/verify.sh --full` — the **full gate**: format over the whole solution,
+  build, every test project, the python tooling tests. This is the **merge
+  gate**, and it is not an agent's step: the coordinator runs it on the
+  rebased branch before a merge, and CI runs it on every pull request and again
+  on `main` after the merge, so a formatting violation is caught by the merge
+  rather than by an agent's inner loop. `main` has no branch protection and its
+  CI is red today, so the coordinator's run is what currently enforces it
+  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). Run it locally when a
+  change needs the whole thing before it goes near a PR.
   `eng/verify.sh --plan` prints what a lane would run and runs nothing.
+  `CI=true` with no lane named selects `--full`, so a workflow that calls the
+  bare script gets the gate rather than the build gate (ADR-0118).
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.

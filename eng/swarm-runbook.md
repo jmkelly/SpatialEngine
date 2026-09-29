@@ -74,11 +74,14 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    why, and let it re-enter `bd ready`.
 
 2. MERGE. For every bead labelled `needs-merge`: rebase its branch onto
-   `origin/main`, run `eng/verify.sh --full` on it, and if green, merge to `main` and
-   `bd close <id> --reason="…"`. If red, `bd note` the failure on the bead and
-   unlabel it. Never close a bead whose gate is red — `AGENTS.md` requires
-   verify green on `main`, never on the branch. If a merge conflict is not a
-   trivial textual conflict, stop and escalate.
+   `origin/main`, run `eng/verify.sh --full` on it — explicitly `--full`, never
+   the bare script, because the bare script is the build gate under ADR-0118 —
+   and if green, merge to `main` and
+   `bd close <id> --reason="…"`. If red, re-run once on the same commit; green
+   merges, red twice for the same reason stops the run. Otherwise `bd note` the
+   failure on the bead and unlabel it. Never close a bead whose gate is red —
+   `AGENTS.md` requires verify green on `main`, never on the branch. If a merge
+   conflict is not a trivial textual conflict, stop and escalate.
 
 3. DRAIN. Count running workers with `paseo ls`. While workers < 8:
    - take from `bd ready`, in this order: children of `SpatialEngine-u2x` first,
@@ -146,13 +149,17 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    `ProjectReference`, plus `Spatial.Architecture.Tests` — and it is what you
    run on every iteration. `eng/verify.sh --format` is the format lane
    (`dotnet format --verify-no-changes` over the changed projects, ~45 s each)
-   and belongs with the handoff. `eng/verify.sh --full` is everything, and is
-   what CI runs on the pull request and again after the merge to `main`; run it
-   locally only when a change needs the whole thing before it goes near a PR.
+   and belongs with the handoff. `eng/verify.sh --full` is everything, and it
+   is the **merge gate**: the coordinator runs it on the rebased branch, and CI
+   runs it on the pull request and again after the merge to `main`. You do not
+   run `--full` before a hand-off; the default lane plus `--format` are your
+   step, and nothing else (ADR-0118).
    A change to a solution-wide file (a root `.props`,
    `Directory.Packages.props`, `.editorconfig`), or a change set the lane
    cannot read at all, makes every lane fall back to the whole solution rather
    than guess (ADR-0109). `eng/verify.sh --plan` prints what a lane would run.
+   `CI=true` with no lane named runs `--full`, so a workflow that calls the
+   bare script gets the gate rather than the scoped lane.
 6. A suite that fails for a reason unrelated to your change: prove it was
    already failing (name the bead and the failure) rather than editing the test
    to make it pass. A default-lane run that skips a suite you expected is
@@ -175,8 +182,11 @@ accepted and ignored.
 
 - `eng/verify.sh` (default) is the build gate; `eng/verify.sh --format` is the
   format lane; `eng/verify.sh --full` is the flat gate, and it is the one that
-  decides whether a merge is allowed — CI runs it on every pull request and
-  after every merge to `main`. At 8 concurrent workers this host (12 cores /
+  decides whether a merge is allowed — the coordinator's pre-merge run on the
+  rebased branch today, and CI on every pull request and after every merge to
+  `main` once `main`'s CI is green and those jobs are required status checks
+  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 8 concurrent workers
+  this host (12 cores /
   15 GB) will be busy; if a tick finds the machine saturated, prefer merging
   (step 2) over spawning (step 3).
 - The container-backed suites also run in their own CI job
