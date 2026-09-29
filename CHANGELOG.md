@@ -11,6 +11,28 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A pushed-down string comparison is a byte comparison too** (ADR-0123,
+  SpatialEngine-u2x.48): ADR-0121 stopped a pushed *order* from inheriting the
+  database's collation and left the predicate compiler to inherit it, so
+  `code < 'delta'` was compiled as a plain comparison and answered by the same
+  locale rules — the statement that decides *which rows a query sees* returned
+  a different set from the reference evaluator's, for the same plan. Every
+  string comparison a pushed `WHERE` writes (`=`, `!=`, the four orderings,
+  `IN`, `NOT IN` and `LIKE`) now goes through the same helper the sort keys
+  do, so a comparison and an order cannot disagree about what a string is; the
+  term is skipped on a `C`/`POSIX` database, and the catalog read that decides
+  it is paid only by a plan whose predicate actually compares text. The SQL
+  Server store had the same defect with a sharper edge — its shipped collation
+  is *case-insensitive*, so a pushed `LIKE` matched a case the pattern did not
+  name — and carries `Latin1_General_100_BIN2` on every string comparison, as
+  there is no probe there to read. The predicate fixture's `code` column now
+  carries case and punctuation (`Delta` beside `delta`, and `_bravo`), whose
+  byte order is not its `en_US.utf8` order, and the suite runs a second time
+  over a table with a primary key: without one the store keeps the restriction
+  in the caller and finishes the plan in managed code, so the first version of
+  this suite was measuring the fallback rather than the pushdown. The cost is
+  that a pushed text filter can no longer seek a default-collation index; the
+  answer is not optional, the index is.
 - **A pushed-down string comparison is a byte comparison, not a locale one**
   (ADR-0121, SpatialEngine-u2x.43): the PostGIS provider wrote its sort keys
   into SQL because Postgres's null ordering is not the contract's, and left
