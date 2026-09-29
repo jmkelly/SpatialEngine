@@ -13,7 +13,8 @@ namespace Spatial.Adapter.GeoServices;
 /// (ADR-0098 §7): <c>outFields</c> becomes the projection,
 /// <c>orderByFields</c> the store's ordering, <c>resultOffset</c> /
 /// <c>resultRecordCount</c> the page start and cap, <c>returnCountOnly</c> a
-/// count, <c>returnDistinctValues</c> a distinct set, and each reduction is
+/// count, <c>returnDistinctValues</c> a distinct set and <c>outStatistics</c> +
+/// <c>groupByFieldsForStatistics</c> a grouped aggregate; each reduction is
 /// asked of the store's own face when it has one. What the adapter used to
 /// count, deduplicate and group over a materialised match set is now the
 /// store's answer.
@@ -75,12 +76,16 @@ internal static class StoreQueryPath
             return await CountAsync(dataset, store, plan, query, cancellationToken).ConfigureAwait(false);
         }
 
-        if (query.ReturnExtentOnly || query.OutStatistics is not null)
+        if (query.ReturnExtentOnly)
         {
-            // An extent spans the whole match set and a statistics response is
-            // grouped over it; neither is a page. Both stay on the match path
-            // until the reduction face carries the shape end to end.
+            // An extent spans the whole match set; it is not a reduction the
+            // store's face carries, so it stays on the match path.
             return null;
+        }
+
+        if (query.OutStatistics is not null)
+        {
+            return await StatisticsAsync(dataset, store, query, queryGeometry, clause, cancellationToken).ConfigureAwait(false);
         }
 
         if (query.ReturnDistinctValues)
@@ -243,6 +248,95 @@ internal static class StoreQueryPath
 
         var count = await FeatureReductionFallback.CountAsync(store, dataset.Id, plan, cancellationToken).ConfigureAwait(false);
         return FeatureResponseWriter.Count(count);
+    }
+
+    /// <summary>
+    /// The <c>outStatistics</c> reduction, asked of the store's own face: the
+    /// request's statistics and its grouping compiled onto an
+    /// <see cref="AggregateQuery"/> (the two vocabularies are name-for-name),
+    /// the plan carrying the whole match, and the groups the store returned fed
+    /// to the writer that shaped the in-memory ones.
+    ///
+    /// <para>
+    /// The plan carries no page and no projection: a statistics response pages
+    /// and filters <em>groups</em> (<c>having</c>, the statistic order), which
+    /// the store must not cut into rows it never grouped, and the statistics
+    /// name their own fields whatever <c>outFields</c> says.
+    /// </para>
+    ///
+    /// <para>
+    /// A request the plan cannot carry keeps the match path, and so does one
+    /// whose group order the plan cannot state: a grouped reduction returns
+    /// groups in the order the plan asked for (ADR-0098 §3), which is the order
+    /// <c>orderByFields</c> gives only when it names exactly the group fields —
+    /// then the group keys are a total order the store can return and the
+    /// writer's statistic order is that same order. Anything else would be the
+    /// first-seen order of a match set SQL never assembled, which is not an
+    /// answer a store can be asked for.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult?> StatisticsAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        EsriFeatureQuery query,
+        IGeometry? queryGeometry,
+        Predicate? clause,
+        CancellationToken cancellationToken)
+    {
+        var spec = FeatureStatisticsEngine.Compile(dataset, query);
+        if (!TryGroupOrder(dataset, spec, query, out var order))
+        {
+            return null;
+        }
+
+        var plan = new FeatureQuery(Where: clause, BoundingBox: Envelope(queryGeometry), Order: order);
+        var page = await FeatureReductionFallback
+            .AggregateAsync(store, dataset.Id, plan, FeatureStatisticsEngine.Reduction(spec), cancellationToken)
+            .ConfigureAwait(false);
+        return FeatureStatisticsEngine.StatisticsFromGroups(spec, query, page);
+    }
+
+    /// <summary>
+    /// The order the group rows are asked for: the group fields themselves, in
+    /// the request's direction, or no order at all for an ungrouped reduction
+    /// (there is a single group, so its order cannot differ). <c>false</c> — and
+    /// therefore the match path — when the request ordered something else.
+    /// </summary>
+    private static bool TryGroupOrder(
+        DatasetDescription dataset,
+        FeatureStatisticsEngine.StatisticsSpec spec,
+        EsriFeatureQuery query,
+        out IReadOnlyList<OrderTerm>? order)
+    {
+        order = null;
+        if (!spec.Aggregate.IsGrouped)
+        {
+            return true;
+        }
+
+        // Compiled here so an order naming an unknown or geometry field is
+        // rejected exactly as the match path rejects it.
+        var keys = FeatureOrdering.Compile(dataset, query);
+        if (keys is null || keys.Length != spec.GroupFields.Count)
+        {
+            return false;
+        }
+
+        var terms = new List<OrderTerm>(keys.Length);
+        for (var i = 0; i < keys.Length; i++)
+        {
+            var group = spec.GroupFields[i];
+            if (keys[i].ObjectId
+                || !string.Equals(dataset.Schema[keys[i].Index].Name, group.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            terms.Add(new OrderTerm(group.Name, keys[i].Descending ? SortDirection.Descending : SortDirection.Ascending));
+        }
+
+        order = terms;
+        return true;
     }
 
     /// <summary>

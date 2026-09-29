@@ -1,6 +1,8 @@
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Esri.Codec;
+using Spatial.Querying;
 
 namespace Spatial.Adapter.GeoServices;
 
@@ -10,9 +12,22 @@ namespace Spatial.Adapter.GeoServices;
 /// Split out of <see cref="FeatureQueryEngine"/> so the query facade keeps
 /// only orchestration and the statistics fan-out (schema, filter, codecs)
 /// lives with the code that uses it (ADR-0040).
+///
+/// <para>
+/// The fan-out is compiled once, into a <see cref="StatisticsSpec"/>, and the
+/// rows can then come from either place: the matched feature set, or the
+/// reduction a store returned when the plan carried the whole match
+/// (ADR-0098 §7). Everything after the rows — <c>having</c>, the statistic
+/// order, the group paging and the JSON — is the writer's, and is the same
+/// writer for both, which is what keeps a pushed-down answer byte-identical to
+/// the in-memory one.
+/// </para>
 /// </summary>
 internal static class FeatureStatisticsEngine
 {
+    /// <summary>The result name the row-count probe is asked under, when the caller needs to know whether the match set was empty.</summary>
+    private const string RowCountProbe = "__spatial_match_rows";
+
     /// <summary>
     /// The <c>outStatistics</c> response (10.x): aggregations over the matched
     /// set, optionally grouped with a <c>having</c> filter on the groups.
@@ -27,34 +42,172 @@ internal static class FeatureStatisticsEngine
         IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query)
     {
-        var statistics = query.OutStatistics!;
-        var groupFields = ResolveGroupFields(dataset, query.GroupByFields);
-        var statInputs = ResolveStatisticInputs(dataset, statistics);
-        var groups = GroupMatches(matches, groupFields);
+        var spec = Compile(dataset, query);
+        var groups = GroupMatches(matches, spec.GroupFields);
         var rows = new List<StatisticRow>();
-        if (groups.Count == 0 && groupFields.Count == 0)
+        if (groups.Count == 0 && spec.GroupFields.Count == 0)
         {
-            rows.Add(NullRow(groupFields, statistics, statInputs));
+            rows.Add(NullRow(spec));
         }
         else
         {
             foreach (var group in groups)
             {
-                rows.Add(ComputeRow(group.Key, group.Value, groupFields, statistics, statInputs));
+                rows.Add(ComputeRow(spec, group.Key, group.Value));
             }
         }
 
-        if (query.Having is { } having)
+        return Write(spec, query, rows);
+    }
+
+    /// <summary>
+    /// The statistics response from the reduction a store returned: the groups
+    /// the plan selected, in the order the plan asked for, become the rows the
+    /// writer already knew how to shape.
+    ///
+    /// <para>
+    /// The one thing the store's numbers do not carry is whether the match set
+    /// was empty, and the served surface does: an ungrouped statistics query
+    /// over no rows answers with <em>one row of nulls</em> (Esri response
+    /// example 5), which is not the same as a reduction over zero rows — a
+    /// row count is zero there, not null. So an ungrouped request asks the
+    /// store for the row count alongside the statistics and writes the null row
+    /// when it comes back zero, exactly as the in-memory path does.
+    /// </para>
+    /// </summary>
+    internal static IResult StatisticsFromGroups(StatisticsSpec spec, EsriFeatureQuery query, AggregatePage page)
+    {
+        var rows = new List<StatisticRow>(page.Groups.Count);
+        foreach (var group in page.Groups)
         {
-            rows = rows.Where(row => HavingMatches(row, groupFields, statistics, having)).ToList();
+            rows.Add(spec.GroupFields.Count == 0 && IsEmptyMatch(spec, group)
+                ? NullRow(spec)
+                : new StatisticRow([.. group.Key], spec.Values(group), spec.Kinds));
         }
 
-        rows = ApplyStatisticOrder(rows, groupFields, statistics, query.OrderByFields, dataset);
+        // A grouped reduction of an empty set is no groups, as it always was.
+        return Write(spec, query, rows);
+    }
+
+    /// <summary>
+    /// The request as the store's own reduction surface takes it: the statistics
+    /// as an <see cref="AggregateQuery"/> (the two vocabularies are
+    /// name-for-name), the group fields as the grouping, and — ungrouped only —
+    /// the row count the empty-set rule above is decided by.
+    /// </summary>
+    internal static AggregateQuery Reduction(StatisticsSpec spec) =>
+        spec.GroupFields.Count == 0
+            ? spec.Aggregate with { Specs = [.. spec.Aggregate.Specs, RowCount(spec)] }
+            : spec.Aggregate;
+
+    /// <summary>
+    /// The row-count probe, under a result name no requested statistic uses, so
+    /// the extra statistic can never collide with one the response reports.
+    /// </summary>
+    private static AggregateSpec RowCount(StatisticsSpec spec)
+    {
+        var name = RowCountProbe;
+        while (spec.Statistics.Any(statistic => string.Equals(statistic.OutStatisticFieldName, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            name += "_";
+        }
+
+        return new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, name);
+    }
+
+    /// <summary>
+    /// Everything after the rows: <c>having</c>, the statistic order, the group
+    /// paging and the JSON — shared by the matched-set path and the pushed-down
+    /// path, so the two differ only in where the numbers came from.
+    /// </summary>
+    private static IResult Write(StatisticsSpec spec, EsriFeatureQuery query, List<StatisticRow> rows)
+    {
+        if (query.Having is { } having)
+        {
+            rows = rows.Where(row => HavingMatches(row, spec, having)).ToList();
+        }
+
+        rows = ApplyStatisticOrder(rows, spec, query.OrderByFields);
         var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
         var count = FeaturePaging.EffectivePageSize(query);
         var page = rows.Skip(offset).Take(count).ToArray();
         var exceeded = offset + page.Length < rows.Count;
-        return WriteStatistics(new StatisticsPage(dataset, groupFields, statistics, statInputs, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null));
+        return WriteStatistics(new StatisticsPage(
+            spec,
+            page,
+            exceeded,
+            exceeded ? ResultPagination.Encode(offset + page.Length) : null));
+    }
+
+    /// <summary>
+    /// Compiles the served statistics onto the contract's own vocabulary
+    /// (ADR-0098 §7): the same validation the match path has always run, the
+    /// group fields resolved against the schema, and one
+    /// <see cref="AggregateSpec"/> per <c>outStatistics</c> entry.
+    /// </summary>
+    internal static StatisticsSpec Compile(DatasetDescription dataset, EsriFeatureQuery query)
+    {
+        var statistics = query.OutStatistics!;
+        var groupFields = ResolveGroupFields(dataset, query.GroupByFields);
+        var inputs = ResolveStatisticInputs(dataset, statistics);
+        var specs = new AggregateSpec[inputs.Count];
+        for (var i = 0; i < inputs.Count; i++)
+        {
+            specs[i] = Aggregate(inputs[i]);
+        }
+
+        var aggregate = new AggregateQuery(
+            specs,
+            groupFields.Count == 0 ? null : groupFields.Select(field => field.Name).ToArray());
+        return new StatisticsSpec(dataset, groupFields, statistics, inputs, aggregate, Kinds(inputs, specs));
+    }
+
+    /// <summary>One served statistic as the store's reduction surface states it.</summary>
+    private static AggregateSpec Aggregate(StatisticInput input)
+    {
+        var statistic = input.Spec;
+        return new AggregateSpec(
+            Statistic(statistic.StatisticType),
+            input.CountRows ? AggregateSpec.AllFields : statistic.OnStatisticField,
+            statistic.OutStatisticFieldName,
+            statistic.PercentileValue,
+            statistic.PercentileDescending);
+    }
+
+    private static AggregateStatistic Statistic(string type) => type switch
+    {
+        "count" => AggregateStatistic.Count,
+        "sum" => AggregateStatistic.Sum,
+        "min" => AggregateStatistic.Minimum,
+        "max" => AggregateStatistic.Maximum,
+        "avg" => AggregateStatistic.Average,
+        "var" => AggregateStatistic.Variance,
+        "stddev" => AggregateStatistic.StdDev,
+        "percentile_cont" => AggregateStatistic.PercentileContinuous,
+        _ => AggregateStatistic.PercentileDiscrete,
+    };
+
+    /// <summary>
+    /// The kind each result is reported as, from the reference's own rule
+    /// (<see cref="FeatureReduction.ResultKind"/>) rather than a second copy of
+    /// it here: a count is an integer, an integer field's sum is an integer,
+    /// every other numeric reduction is a double and an extreme takes the
+    /// field's kind. A kind the Esri field type has no name for is reported as
+    /// a double, as it always was.
+    /// </summary>
+    private static AttributeKind[] Kinds(List<StatisticInput> inputs, AggregateSpec[] specs)
+    {
+        var kinds = new AttributeKind[inputs.Count];
+        for (var i = 0; i < inputs.Count; i++)
+        {
+            var kind = FeatureReduction.ResultKind(specs[i], inputs[i].Kind);
+            kinds[i] = kind is AttributeKind.Int64 or AttributeKind.Double or AttributeKind.String
+                or AttributeKind.DateTimeOffset or AttributeKind.Guid or AttributeKind.Boolean
+                    ? kind
+                    : AttributeKind.Double;
+        }
+
+        return kinds;
     }
 
     private static List<GroupField> ResolveGroupFields(DatasetDescription dataset, IReadOnlyList<string>? names)
@@ -149,61 +302,36 @@ internal static class FeatureStatisticsEngine
         return order.Select(key => new KeyValuePair<AttributeValue[], List<MatchedFeature>>(key, groups[key])).ToList();
     }
 
-    private static StatisticRow NullRow(
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        IReadOnlyList<StatisticInput> inputs)
+    private static StatisticRow NullRow(StatisticsSpec spec)
     {
-        var groupValues = new AttributeValue[groupFields.Count];
+        var groupValues = new AttributeValue[spec.GroupFields.Count];
         for (var i = 0; i < groupValues.Length; i++)
         {
             groupValues[i] = AttributeValue.Null;
         }
 
-        var values = new AttributeValue[statistics.Count];
+        var values = new AttributeValue[spec.Statistics.Count];
         for (var i = 0; i < values.Length; i++)
         {
             values[i] = AttributeValue.Null;
         }
 
-        return new StatisticRow(groupValues, values, StatisticKinds(inputs));
+        return new StatisticRow(groupValues, values, spec.Kinds);
     }
 
     private static StatisticRow ComputeRow(
+        StatisticsSpec spec,
         AttributeValue[] key,
-        IReadOnlyList<MatchedFeature> members,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        List<StatisticInput> inputs)
+        IReadOnlyList<MatchedFeature> members)
     {
-        var values = new AttributeValue[statistics.Count];
-        for (var i = 0; i < statistics.Count; i++)
+        var values = new AttributeValue[spec.Statistics.Count];
+        for (var i = 0; i < values.Length; i++)
         {
-            values[i] = Aggregate(members, inputs[i]);
+            values[i] = Aggregate(members, spec.Inputs[i]);
         }
 
-        return new StatisticRow(key, values, StatisticKinds(inputs));
+        return new StatisticRow(key, values, spec.Kinds);
     }
-
-    private static AttributeKind[] StatisticKinds(IReadOnlyList<StatisticInput> inputs)
-    {
-        var kinds = new AttributeKind[inputs.Count];
-        for (var i = 0; i < inputs.Count; i++)
-        {
-            kinds[i] = ResultKind(inputs[i]);
-        }
-
-        return kinds;
-    }
-
-    private static AttributeKind ResultKind(StatisticInput input) => input.Spec.StatisticType switch
-    {
-        "count" => AttributeKind.Int64,
-        "sum" when input.Kind == AttributeKind.Int64 => AttributeKind.Int64,
-        "sum" or "avg" or "stddev" or "var" or "percentile_cont" or "percentile_disc" => AttributeKind.Double,
-        "min" or "max" => input.Kind,
-        _ => AttributeKind.Double,
-    };
 
     internal static AttributeValue Aggregate(IReadOnlyList<MatchedFeature> members, StatisticInput input)
     {
@@ -358,12 +486,10 @@ internal static class FeatureStatisticsEngine
         return numbers.Sum(number => (number - mean) * (number - mean)) / (numbers.Length - 1);
     }
 
-    private static bool HavingMatches(
-        StatisticRow row,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        EsriWhere having)
+    private static bool HavingMatches(StatisticRow row, StatisticsSpec spec, EsriWhere having)
     {
+        var groupFields = spec.GroupFields;
+        var statistics = spec.Statistics;
         var fields = new List<FieldDefinition>(groupFields.Count + statistics.Count);
         var values = new List<AttributeValue>(fields.Capacity);
         for (var i = 0; i < groupFields.Count; i++)
@@ -387,10 +513,8 @@ internal static class FeatureStatisticsEngine
 
     private static List<StatisticRow> ApplyStatisticOrder(
         List<StatisticRow> rows,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        IReadOnlyList<EsriOrderByField>? orderBy,
-        DatasetDescription dataset)
+        StatisticsSpec spec,
+        IReadOnlyList<EsriOrderByField>? orderBy)
     {
         if (orderBy is not { Count: > 0 })
         {
@@ -400,7 +524,7 @@ internal static class FeatureStatisticsEngine
         IOrderedEnumerable<StatisticRow>? ordered = null;
         foreach (var key in orderBy)
         {
-            var selector = StatisticSelector(key.Name, groupFields, statistics, dataset);
+            var selector = StatisticSelector(key.Name, spec);
             ordered = ordered is null
                 ? (key.Descending ? rows.OrderByDescending(selector, FeatureOrdering.AttributeValueComparer.Instance) : rows.OrderBy(selector, FeatureOrdering.AttributeValueComparer.Instance))
                 : (key.Descending ? ordered.ThenByDescending(selector, FeatureOrdering.AttributeValueComparer.Instance) : ordered.ThenBy(selector, FeatureOrdering.AttributeValueComparer.Instance));
@@ -409,12 +533,11 @@ internal static class FeatureStatisticsEngine
         return ordered!.ToList();
     }
 
-    private static Func<StatisticRow, AttributeValue> StatisticSelector(
-        string name,
-        IReadOnlyList<GroupField> groupFields,
-        IReadOnlyList<EsriOutStatistic> statistics,
-        DatasetDescription dataset)
+    private static Func<StatisticRow, AttributeValue> StatisticSelector(string name, StatisticsSpec spec)
     {
+        var groupFields = spec.GroupFields;
+        var statistics = spec.Statistics;
+        var dataset = spec.Dataset;
         var groupIndex = IndexOfField(groupFields, group => group.Name, name);
         if (groupIndex >= 0)
         {
@@ -440,10 +563,9 @@ internal static class FeatureStatisticsEngine
 
     private static IResult WriteStatistics(StatisticsPage page)
     {
-        var dataset = page.Dataset;
-        var groupFields = page.GroupFields;
-        var statistics = page.Statistics;
-        var inputs = page.Inputs;
+        var spec = page.Spec;
+        var groupFields = spec.GroupFields;
+        var statistics = spec.Statistics;
         var rows = page.Rows;
         var exceeded = page.Exceeded;
         var nextToken = page.NextToken;
@@ -460,7 +582,7 @@ internal static class FeatureStatisticsEngine
 
             for (var i = 0; i < statistics.Count; i++)
             {
-                FeatureResponseWriter.WriteField(writer, statistics[i].OutStatisticFieldName, EsriFieldType.FromAttributeKind(ResultKindForWrite(inputs[i], rows)), true, false);
+                FeatureResponseWriter.WriteField(writer, statistics[i].OutStatisticFieldName, EsriFieldType.FromAttributeKind(spec.Kinds[i]), true, false);
             }
 
             writer.WriteEndArray();
@@ -492,33 +614,50 @@ internal static class FeatureStatisticsEngine
         });
     }
 
-    private static AttributeKind ResultKindForWrite(StatisticInput input, IReadOnlyList<StatisticRow> rows)
-    {
-        var kind = ResultKind(input);
-        if (kind is not (AttributeKind.Int64 or AttributeKind.Double or AttributeKind.String or AttributeKind.DateTimeOffset or AttributeKind.Guid or AttributeKind.Boolean))
-        {
-            return AttributeKind.Double;
-        }
-
-        return kind;
-    }
-
-    private sealed record GroupField(string Name, int Index, AttributeKind Kind);
+    internal sealed record GroupField(string Name, int Index, AttributeKind Kind);
 
     internal sealed record StatisticInput(EsriOutStatistic Spec, int Index, AttributeKind Kind, bool CountRows);
 
     private sealed record StatisticRow(AttributeValue[] GroupValues, AttributeValue[] StatValues, AttributeKind[] StatKinds);
 
     /// <summary>
-    /// One statistics response page: the layer, its grouping, the requested
-    /// statistics and their resolved inputs, the computed rows and the paging
-    /// outcome. Grouping one value keeps the writer to a single parameter.
+    /// A served statistics request compiled once: the layer it was compiled
+    /// against, the group fields, the requested statistics and their resolved
+    /// inputs, the same request as the store's own reduction surface states it,
+    /// and the kind each result is reported as. Both paths — the matched set and
+    /// the pushed-down reduction — are written from one of these, so they can
+    /// only differ in where the numbers came from.
     /// </summary>
-    private sealed record StatisticsPage(
+    internal sealed record StatisticsSpec(
         DatasetDescription Dataset,
         IReadOnlyList<GroupField> GroupFields,
         IReadOnlyList<EsriOutStatistic> Statistics,
         IReadOnlyList<StatisticInput> Inputs,
+        AggregateQuery Aggregate,
+        AttributeKind[] Kinds)
+    {
+        /// <summary>The statistic values of a returned group, without the row-count probe.</summary>
+        public AttributeValue[] Values(AggregateGroup group) =>
+            [.. group.Values.Take(Statistics.Count)];
+    }
+
+    /// <summary>
+    /// Whether a returned group came from an empty match set — the served
+    /// surface's one-row-of-nulls rule, which a reduction's own numbers cannot
+    /// express (a row count of zero is not a null) and the row-count probe the
+    /// ungrouped request asked for can.
+    /// </summary>
+    private static bool IsEmptyMatch(StatisticsSpec spec, AggregateGroup group) =>
+        group.Values.Count > spec.Statistics.Count
+        && group.Values[spec.Statistics.Count].Kind == AttributeKind.Int64
+        && group.Values[spec.Statistics.Count].Int64Value == 0;
+
+    /// <summary>
+    /// One statistics response page: the compiled request the rows were written
+    /// from, the rows of this page and the paging outcome.
+    /// </summary>
+    private sealed record StatisticsPage(
+        StatisticsSpec Spec,
         IReadOnlyList<StatisticRow> Rows,
         bool Exceeded,
         string? NextToken);
