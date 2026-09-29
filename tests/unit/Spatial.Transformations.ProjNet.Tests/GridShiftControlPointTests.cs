@@ -122,16 +122,17 @@ public sealed class GridShiftControlPointTests : IDisposable
     }
 
     [Fact]
-    public void The_grid_candidate_does_not_claim_the_transform_verb_applies_it()
+    public void The_grid_candidate_says_how_the_transform_verb_chooses_between_grid_and_Helmert()
     {
         var candidate = new ProjNetTransforms([Deploy()])
             .FindTransformations(new CrsTransformationQuery("EPSG:4326", "EPSG:4277"))[0];
 
-        // ADR-0087 §6 ranks the first candidate as the applied path. The grid
-        // outranks the Helmert on accuracy, and the transform verb does not yet
-        // apply it, so the listing has to say so rather than let a client read
-        // a sub-metre answer the engine is not giving.
-        Assert.Contains("still applies the classic Helmert", candidate.Method, StringComparison.Ordinal);
+        // ADR-0087 §6 ranks the first candidate as the applied path, and since
+        // ADR-0107 the grid is that path. A client reading a sub-metre answer
+        // needs to know it is the grid that produced it and the Helmert that
+        // stands behind it outside the block, so the text carries the choice.
+        Assert.Contains("applies the grid per coordinate", candidate.Method, StringComparison.Ordinal);
+        Assert.DoesNotContain("still applies the classic Helmert", candidate.Method, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -155,31 +156,22 @@ public sealed class GridShiftControlPointTests : IDisposable
         Assert.DoesNotContain(overFrance, candidate => candidate.Steps.Any(step => step.GridShift is not null));
         Assert.Contains(overFrance, candidate => candidate.Steps.All(step => step.GridShift is null));
         Assert.Contains("classic Helmert approximation", helmert.Method, StringComparison.Ordinal);
-        Assert.Contains("not the operation applied", helmert.Method, StringComparison.Ordinal);
+        Assert.Contains("every point the grid does not cover", helmert.Method, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Deploying_a_bundle_leaves_the_fallback_path_bit_for_bit_unchanged()
+    public async Task Deploying_a_bundle_over_London_moves_it_away_from_the_Helmert()
     {
-        // The fallback a client is told to expect has to be the operation the
-        // engine really performs, or the stated accuracy is decorative. Both
-        // answers are compared bit for bit, and then against the published PROJ
-        // reference the existing control-point tests already use.
+        // The change ADR-0107 makes: this block covers London, so the point is
+        // now answered by the grid rather than by the Helmert. Before the
+        // transform verb applied the grid, the two answers were the same and
+        // this comparison was the fallback contract; now it is the evidence
+        // that the deployed grid is the path applied.
         var withBundle = await ProjectAsync([Deploy()]);
         var withoutBundle = await ProjectAsync([]);
 
-        Assert.Equal(withoutBundle.X!.Value, withBundle.X!.Value, 12);
-        Assert.Equal(withoutBundle.Y!.Value, withBundle.Y!.Value, 12);
-
-        var (expectedX, expectedY) = ControlPoints.LondonBritishNationalGrid;
-        var residual = Math.Sqrt(
-            ((withBundle.X!.Value - expectedX) * (withBundle.X!.Value - expectedX))
-            + ((withBundle.Y!.Value - expectedY) * (withBundle.Y!.Value - expectedY)));
-
-        Assert.True(
-            residual <= 0.1,
-            $"the fallback path lands {residual:F4} m from the PROJ 9 reference, beyond the 0.1 m the "
-            + $"catalogue's Helmert path is stated at (ADR-0027 §accuracy).");
+        Assert.NotEqual(withoutBundle.X!.Value, withBundle.X!.Value, 6);
+        Assert.NotEqual(withoutBundle.Y!.Value, withBundle.Y!.Value, 6);
     }
 
     [Fact]

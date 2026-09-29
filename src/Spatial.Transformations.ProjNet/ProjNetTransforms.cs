@@ -66,6 +66,40 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     internal static bool TryGetCachedMathTransform(int sourceCode, int targetCode, out ProjTf.MathTransform? math) =>
         MathTransforms.TryGetValue((sourceCode, targetCode), out math);
 
+    /// <summary>
+    /// The grid-backed plan for a CRS pair, cached per host and built on first
+    /// use (ADR-0107). A pair with no deployed grid has no plan at all, which
+    /// is what keeps a host that deploys nothing on exactly the path it was on
+    /// before. The cache is per instance rather than static because the plans
+    /// name the grids this host was configured with, and two hosts in one
+    /// process may be configured differently.
+    /// </summary>
+    private readonly ConcurrentDictionary<(int Source, int Target), GridShiftPlan?> _plans = new();
+
+    private bool GridShiftPlanFor((int Source, int Target) key, out GridShiftPlan plan)
+    {
+        if (!_plans.TryGetValue(key, out var found))
+        {
+            found = Build(key.Source, key.Target);
+            _plans[key] = found;
+        }
+
+        plan = found!;
+        return found is not null;
+    }
+
+    private GridShiftPlan? Build(int sourceCode, int targetCode)
+    {
+        if (!ProjEpsgCatalog.TryGetDatum(sourceCode, out var from) || !ProjEpsgCatalog.TryGetDatum(targetCode, out var to))
+        {
+            // A datum the graph does not publish has no shift to replace, so
+            // there is nothing for a grid to do on this pair.
+            return null;
+        }
+
+        return GridShiftPlan.For(sourceCode, targetCode, from!, to!, _grids);
+    }
+
     public CrsDescription Describe(string crs, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -141,12 +175,23 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
 
         try
         {
+            var stamped = new CoordinateReference(targetIdentity.Authority, targetIdentity.Code);
+
+            // A deployed grid takes the point away from ProjNet's single
+            // composition and onto the explicit one (ADR-0107). With no bundle
+            // there is no plan, and the path below is the one this host has
+            // always run.
+            if (GridShiftPlanFor(key, out var plan))
+            {
+                return ApplyPerCoordinate(geometry, plan, stamped, cancellationToken);
+            }
+
             if (!MathTransforms.TryGetValue(key, out var math))
             {
                 math = MathTransforms.GetOrAdd(key, _ => Transformations.CreateFromCoordinateSystems(sourceSystem, targetSystem).MathTransform);
             }
 
-            return Apply(geometry, math, new CoordinateReference(targetIdentity.Authority, targetIdentity.Code));
+            return Apply(geometry, math, stamped);
         }
         catch (SpatialException)
         {
@@ -215,6 +260,31 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
         return system;
     }
 
+    /// <summary>
+    /// Applies a grid-backed plan to every coordinate. The walk is per
+    /// coordinate because the plan is: a geometry is free to cross the edge of
+    /// a grid's block, and every one of its coordinates is answered by
+    /// whichever operation covers that coordinate (ADR-0107).
+    /// </summary>
+    private static IGeometry ApplyPerCoordinate(
+        IGeometry geometry,
+        GridShiftPlan plan,
+        CoordinateReference? target,
+        CancellationToken cancellationToken) =>
+        Walk(geometry, coordinate => ShiftCoordinate(plan, coordinate), target, cancellationToken);
+
+    private static Coordinate ShiftCoordinate(GridShiftPlan plan, Coordinate coordinate)
+    {
+        var (x, y) = plan.Shift(coordinate.X, coordinate.Y);
+        if (!double.IsFinite(x) || !double.IsFinite(y))
+        {
+            throw SpatialException.BadArguments(
+                $"Transforming ({coordinate.X}, {coordinate.Y}) produced non-finite coordinates; the point falls outside the target CRS's valid area.");
+        }
+
+        return coordinate with { X = x, Y = y };
+    }
+
     private static readonly Dictionary<GeometryType, (Func<IGeometry, IReadOnlyList<IGeometry>> Parts, Func<IReadOnlyList<IGeometry>, CoordinateReference?, IGeometry> Build)> Composites = new()
     {
         [GeometryType.MultiPoint] = (geometry => ((MultiPoint)geometry).Points, (parts, crs) => new MultiPoint(parts.Cast<Point>(), crs)),
@@ -230,7 +300,27 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
     /// transformation over its own working plane, which is not a catalogue
     /// CRS and so cannot go through <see cref="Transform"/>.
     /// </summary>
-    internal static IGeometry Apply(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
+    internal static IGeometry Apply(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target) =>
+        Walk(geometry, coordinate => TransformCoordinate(coordinate, math), target, CancellationToken.None);
+
+    /// <summary>
+    /// The one walk both paths take: every coordinate replaced by
+    /// <paramref name="shift"/>, shapes, empty geometries, layouts and Z/M
+    /// ordinates preserved, and the target CRS stamped. Keeping it single is
+    /// what stops the grid-backed path (ADR-0107) and the ProjNet path from
+    /// differing in anything but the answer they give a coordinate.
+    /// <para>
+    /// Cancellation is honoured at the top of the walk and periodically inside
+    /// it, because on the grid path a large geometry is a long operation and a
+    /// client that asked to stop should not wait for the whole of it. A path
+    /// given <see cref="CancellationToken.None"/> never pays for the check.
+    /// </para>
+    /// </summary>
+    private static IGeometry Walk(
+        IGeometry geometry,
+        Func<Coordinate, Coordinate> shift,
+        CoordinateReference? target,
+        CancellationToken cancellationToken)
     {
         if (geometry.IsEmpty)
         {
@@ -239,39 +329,66 @@ public sealed class ProjNetTransforms : ICrsDirectory, ICoordinateTransforms
 
         return geometry switch
         {
-            Point point => new Point(point.Coordinate is { } coordinate ? TransformCoordinate(coordinate, math) : null, target),
-            LineString line => new LineString(TransformSequence(line.Sequence, math), target),
-            Polygon polygon => TransformPolygon(polygon, math, target),
-            _ => TransformComposite(geometry, math, target),
+            Point point => new Point(point.Coordinate is { } coordinate ? shift(coordinate) : null, target),
+            LineString line => new LineString(ShiftSequence(line.Sequence, shift, cancellationToken), target),
+            Polygon polygon => ShiftPolygon(polygon, shift, target, cancellationToken),
+            _ => ShiftComposite(geometry, shift, target, cancellationToken),
         };
     }
 
-    private static IGeometry TransformComposite(IGeometry geometry, ProjTf.MathTransform math, CoordinateReference? target)
+    private static IGeometry ShiftComposite(
+        IGeometry geometry,
+        Func<Coordinate, Coordinate> shift,
+        CoordinateReference? target,
+        CancellationToken cancellationToken)
     {
         var (parts, build) = Composites[geometry.Type];
-        var transformed = parts(geometry).Select(part => Apply(part, math, null)).ToArray();
+        var transformed = parts(geometry).Select(part => Walk(part, shift, null, cancellationToken)).ToArray();
         return build(transformed, target);
     }
 
-    private static Polygon TransformPolygon(Polygon polygon, ProjTf.MathTransform math, CoordinateReference? target) =>
+    private static Polygon ShiftPolygon(
+        Polygon polygon,
+        Func<Coordinate, Coordinate> shift,
+        CoordinateReference? target,
+        CancellationToken cancellationToken) =>
         new(
-            TransformLine(polygon.ExteriorRing, math),
-            polygon.InteriorRings.Select(ring => TransformLine(ring, math)),
+            ShiftLine(polygon.ExteriorRing, shift, cancellationToken),
+            polygon.InteriorRings.Select(ring => ShiftLine(ring, shift, cancellationToken)),
             target);
 
-    private static LineString TransformLine(LineString line, ProjTf.MathTransform math) =>
-        new(TransformSequence(line.Sequence, math));
+    private static LineString ShiftLine(
+        LineString line,
+        Func<Coordinate, Coordinate> shift,
+        CancellationToken cancellationToken) =>
+        new(ShiftSequence(line.Sequence, shift, cancellationToken));
 
-    private static PackedCoordinateSequence TransformSequence(ICoordinateSequence sequence, ProjTf.MathTransform math)
+    private static PackedCoordinateSequence ShiftSequence(
+        ICoordinateSequence sequence,
+        Func<Coordinate, Coordinate> shift,
+        CancellationToken cancellationToken)
     {
         var coordinates = new Coordinate[sequence.Count];
         for (var index = 0; index < sequence.Count; index++)
         {
-            coordinates[index] = TransformCoordinate(sequence.GetCoordinate(index), math);
+            if (cancellationToken.CanBeCanceled && index % CancellationCheckInterval == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            coordinates[index] = shift(sequence.GetCoordinate(index));
         }
 
         return PackedCoordinateSequence.FromCoordinates(coordinates, sequence.Layout);
     }
+
+    /// <summary>
+    /// How many coordinates are shifted between cancellation checks. Checking
+    /// every coordinate would cost more than the check is worth, and every few
+    /// hundred bounds a cancellation to work a client cannot tell from the work
+    /// already done.
+    /// </summary>
+    private const int CancellationCheckInterval = 256;
 
     private static Coordinate TransformCoordinate(Coordinate coordinate, ProjTf.MathTransform math)
     {

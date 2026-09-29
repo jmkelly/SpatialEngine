@@ -11,6 +11,32 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **A deployed datum shift grid is applied, per coordinate, over the classic
+  Helmert** (ADR-0107, SpatialEngine-7at): `project` and the coordinate
+  transform path now use a bundle an operator has deployed wherever that bundle
+  covers the coordinate, and the classic Helmert everywhere else, in the same
+  request — so a geometry straddling a grid's block edge is shifted by both
+  operations. This closes the gap ADR-0105 §applied left open and priced into
+  every grid method string, and with it the last break of the ADR-0087 §6
+  invariant that the first ranked candidate is the path the engine applies; the
+  grid candidate's method text now says how the two are chosen instead of
+  confessing that the verb does not apply it. The composition is
+  *source → the source's own geographic coordinates → datum shift → WGS 84 →
+  the target's own → target*, built on shift-free copies of the source and
+  target systems (the same definitions with their WGS 84 conversion zeroed), so
+  the outer legs are pure projection maths and no leg re-applies a shift —
+  the re-application ADR-0105 measured, 113 m at London on a same-datum leg. The
+  fallback leg is still ProjNet's own maths asked in the direction the engine
+  means, so no seven-parameter Helmert is re-implemented: with the grid out of
+  the way the answer is bit-for-bit what it always was, and the 0.1 m London
+  control point still holds against the PROJ 9 reference the repo pins. A pair
+  no bundle serves takes no plan at all and runs the path it always ran. Grids
+  stay configured rather than embedded (ADR-0105); the change is in
+  `Spatial.Transformations.ProjNet` and its method strings, with no contract,
+  SDK or workbench change. Not measured, and stated in the ADR: agreement with
+  a *published* bundle such as OSTN15, which this machine has no PROJ to check
+  against.
+
 - **A created dataset carries its own indexes** (ADR-0092, SpatialEngine-0zp):
   `CreateAsync` and ingest on PostGIS and SQL Server now create the GiST (resp.
   spatial) index on the dataset's primary geometry column and a btree on every
