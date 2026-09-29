@@ -99,7 +99,15 @@ internal sealed record PostgisIngestPlan(
         return this with { GeometryTypes = ResolveGeometryTypes(Dataset, Schema, [firstPage]) };
     }
 
-    /// <summary>Whether a page may be loaded under this plan.</summary>
+    /// <summary>
+    /// Whether a page may be loaded under this plan. Beyond sharing the
+    /// declared schema, a page must carry the coordinate layout the table was
+    /// created with: the <c>CREATE TABLE</c> typmod is fixed by the first
+    /// page, and a later 2D-only page cannot be stored in a
+    /// <c>geometry(PointZ, srid)</c> column. Refusing it here reports the same
+    /// actionable <c>invalid.arguments</c> the batched path gives for the same
+    /// input, instead of letting the driver reject the insert.
+    /// </summary>
     public void CheckPage(FeatureBatch page, int position)
     {
         ArgumentNullException.ThrowIfNull(page);
@@ -107,6 +115,40 @@ internal sealed record PostgisIngestPlan(
         {
             throw SpatialException.BadArguments($"Page {position} does not share the declared schema.");
         }
+
+        if (GeometryTypes.Count == 0 || TryDescribeLayoutMismatch(page, out var reason) is false)
+        {
+            return;
+        }
+
+        throw SpatialException.BadArguments(
+            $"Page {position} cannot be loaded into the dataset '{Dataset}': {reason}.");
+    }
+
+    /// <summary>
+    /// Whether every non-empty geometry on the page resolves to the typmod its
+    /// column was created with, and if not, why in the store's own vocabulary.
+    /// </summary>
+    private bool TryDescribeLayoutMismatch(FeatureBatch page, out string reason)
+    {
+        if (PostgisGeometryType.TryResolve(Schema, page.Features, out var observed, out var mixed) is false)
+        {
+            reason = mixed;
+            return true;
+        }
+
+        for (var i = 0; i < Schema.Count; i++)
+        {
+            if (Schema[i].Kind == AttributeKind.Geometry &&
+                observed[i].Equals(GeometryTypes[i], StringComparison.Ordinal) is false)
+            {
+                reason = $"the geometry field '{Schema[i].Name}' carries {observed[i]} coordinates, but its column is {GeometryTypes[i]}; use one coordinate layout per dataset.";
+                return true;
+            }
+        }
+
+        reason = string.Empty;
+        return false;
     }
 
     private static void ValidateSrid(IngestRequest request)

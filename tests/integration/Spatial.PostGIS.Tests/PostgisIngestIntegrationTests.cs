@@ -180,6 +180,55 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
     }
 
     [SkippableFact]
+    public async Task A_3d_ingest_is_described_as_3d()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_z_describe");
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var pages = new[]
+        {
+            new FeatureBatch(
+                schema,
+                [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, 34.5, CoordinateReference.Epsg(4326)))]),
+        };
+
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+
+        // The typmod the batch's own coordinate layout resolved to is the one the
+        // description reads back, so a 3D load is not advertised as 2D.
+        Assert.Equal(CoordinateLayout.Xyz, (await context.Store.DescribeAsync(dataset)).GeometryLayout);
+    }
+
+    [SkippableFact]
+    public async Task A_stream_whose_later_page_drops_the_z_is_rejected()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("ingest_stream_mixed");
+        var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
+        var pages = new[]
+        {
+            new FeatureBatch(
+                schema,
+                [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, 34.5, CoordinateReference.Epsg(4326)))]),
+            new FeatureBatch(
+                schema,
+                [Feature(schema, "2", "Paris", GeometryFactory.CreatePoint(2.35, 48.85, CoordinateReference.Epsg(4326)))]),
+        };
+
+        // The first page declares geometry(PointZ, 4326); a later 2D page cannot
+        // be stored in it, so the load is refused as bad input rather than
+        // surfacing as an opaque driver failure.
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => context.Ingest.IngestStreamAsync(
+            new IngestRequest(dataset, 4326), schema, ToStream(pages)));
+
+        Assert.Equal("invalid.arguments", failure.Code);
+        Assert.Contains("use one coordinate layout per dataset", failure.Message, StringComparison.Ordinal);
+        await Assert.ThrowsAsync<SpatialException>(() => context.Store.DescribeAsync(dataset));
+    }
+
+    [SkippableFact]
     public async Task A_pre_cancelled_ingest_throws_operation_cancelled()
     {
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
