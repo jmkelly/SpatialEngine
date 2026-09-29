@@ -180,7 +180,10 @@ them (ADR-0115): a statistic with no non-null input is a **null** — the count
 included, so a `COUNT(field)` of zero is a null and not a zero — the sample
 forms `var`/`stddev` are **null** for fewer than two values rather than zero,
 and an ungrouped reduction of an empty set is **one group of nulls** where a
-dialect returns no row at all. The page over groups and `having` remain
+dialect returns no row at all. One statistic is not a number: `Envelope`
+reduces a geometry field to the smallest rectangle over its non-null
+geometries, reported as an `AttributeKind.Envelope` value (a reduced kind no
+field may declare, ADR-0120). The page over groups and `having` remain
 adapter-side over the groups the store returned, because a cap the plan asked
 for would cut rows the store never grouped. The one definition of that
 evaluation is `Spatial.Querying`: `FeaturePlanExecutor` selects, orders, pages
@@ -245,9 +248,12 @@ is not, so a pushed pattern would *lose* matches rather than pre-filter them;
 `generateRenderer` asks `IFeatureAggregateStore` for the minimum and maximum
 behind the class breaks and for the distinct set behind the unique values,
 keeping the quantisation in the adapter, and keeps the scan when the `where`
-clause is one no store can read; the layer extent is a geometry-only
-projection rather than a reduction (there is no envelope statistic in the
-aggregate vocabulary, which is a follow-up). The per-feature (object) resource
+clause is one no store can read; the layer extent is the aggregate
+vocabulary's envelope statistic over the geometry column, one store aggregate
+and no row read behind it (ADR-0120), and a table layer's empty extent is not
+read at all. The per-feature `returnExtentOnly` query is the same reduction
+over the match, and a reprojecting `outSR` keeps the match path, because the
+union of the reprojected geometries is not the reprojected union. The per-feature (object) resource
 and the attachment targets resolve through `IFeatureLookup`, keyed by the
 `OBJECTID` each row **carries** rather than by the id the lookup was asked
 with. A store therefore misses only if it keys `Feature.Id` by something other

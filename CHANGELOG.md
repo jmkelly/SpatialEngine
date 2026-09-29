@@ -32,6 +32,7 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+<<<<<<< HEAD
 - **A stored feature's identity is the identity column's value** (ADR-0119,
   SpatialEngine-u2x.38): a GeoJSON ingested with
   `identity=source&identityField=id` now stores each row under the value of the
@@ -43,6 +44,21 @@ this file together, then tag the release (`RELEASING.md`).
   A source-identity layer is now keyed like every other identity-backed layer,
   which is what makes ADR-0038's lookup a keyed read rather than a scan on the
   store a hosted ingest always reaches.
+- **A layer's extent is reduced at the store** (ADR-0120,
+  SpatialEngine-u2x.37): the aggregate vocabulary has an `Envelope` statistic
+  that reduces a geometry field to the smallest rectangle over its non-null
+  values, so the MapServer layer extent and a `returnExtentOnly` feature query
+  are one store aggregate instead of a whole-layer read unioned in managed
+  code. The statistic is defined in the reference first and the in-memory, SQL
+  Server, demo and ArcGIS REST faces have it through it; PostGIS pushes
+  `ST_Extent` cast back to a geometry, so the one EWKB reader it has reads the
+  rectangle. The result travels as a new `AttributeKind.Envelope` — a reduced
+  kind no field may declare, so no feature row, codec or writer grew a case for
+  it. A layer with no geometry column is not read at all (its extent is the
+  union over nothing), and a `returnExtentOnly` with a reprojecting `outSR`
+  keeps the match path: the union of the reprojected geometries is not the
+  reprojected union. The served map root, layer metadata and extent responses
+  are byte-identical.
 
 - **The tile cache holds per-layer tiles, composited at serve time**
   (ADR-0117, SpatialEngine-u2x.21.2): a write to one layer now invalidates

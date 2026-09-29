@@ -540,12 +540,12 @@ public sealed class MapResourcePushdownTests
     // ------------------------------------------------------------ layer extent
 
     /// <summary>
-    /// The layer extent is read through the store's plan, which projects the
-    /// geometry column the extent is computed from; the extent itself is the
-    /// one the whole-layer read produced.
+    /// The layer extent is the store's own envelope reduction: one aggregate
+    /// over the layer, no whole-dataset read behind it, and the extent the
+    /// union over the whole layer produced (ADR-0120).
     /// </summary>
     [Fact]
-    public async Task The_layer_extent_is_a_projected_store_read()
+    public async Task The_layer_extent_is_a_store_aggregate()
     {
         var store = new PushingStore(Rows);
 
@@ -555,26 +555,37 @@ public sealed class MapResourcePushdownTests
         Assert.Equal(legacy.Extent, layer.Extent);
         Assert.Equal(new Envelope(1, 1, 40, 40), layer.Extent);
         Assert.Equal(0, store.Scans);
-        Assert.Equal(1, store.Queries);
-        Assert.Equal(["geometry"], Assert.IsType<FeatureQuery>(store.LastPlan).Projection);
+        Assert.Equal(0, store.Queries);
+        Assert.Equal(1, store.Aggregates);
+        var spec = Assert.Single(Assert.IsType<AggregateQuery>(store.LastAggregate!).Specs);
+        Assert.Equal(AggregateStatistic.Envelope, spec.Statistic);
+        Assert.Equal("geometry", spec.Field);
     }
 
     /// <summary>
-    /// A table layer has no geometry column, so there is nothing to project
-    /// and nothing to extent: the read stays the whole-dataset one.
+    /// A table layer has no geometry column, so there is nothing to reduce: the
+    /// extent is the union over nothing, and the table is not scanned to
+    /// discover that none of its features has one.
     /// </summary>
     [Fact]
-    public async Task A_table_layer_extents_over_the_whole_dataset()
+    public async Task A_table_layer_extents_to_nothing_without_reading_it()
     {
         var schema = new FeatureSchema([new FieldDefinition("id", AttributeKind.Int64)]);
         var dataset = new DatasetDescription("demo.places", "demo", "places", string.Empty, 0, string.Empty, 1, ["id"], schema);
         var store = new PushingStore([new Feature(new FeatureId("1"), schema, [AttributeValue.FromInt64(1)])], schema);
 
         var layer = await MapServerResources.ReadLayerAsync(store, Catalogue(dataset), Published(), CancellationToken.None);
+        var legacy = await MapServerResources.ReadLayerAsync(
+            new LegacyStore([new Feature(new FeatureId("1"), schema, [AttributeValue.FromInt64(1)])]),
+            Catalogue(dataset),
+            Published(),
+            CancellationToken.None);
 
+        Assert.Equal(legacy.Extent, layer.Extent);
         Assert.True(layer.Extent.IsEmpty);
-        Assert.Equal(1, store.Scans);
+        Assert.Equal(0, store.Scans);
         Assert.Equal(0, store.Queries);
+        Assert.Equal(0, store.Aggregates);
     }
 
     // -------------------------------------------------- per-feature resources

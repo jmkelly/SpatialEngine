@@ -216,6 +216,7 @@ public class FeatureBatchCodecTests
         var name = String("f");
         AssertFailed(Payload(Int32(1), name, [0x00], [0x00], [0x00]), "invalid kind byte 0");
         AssertFailed(Payload(Int32(1), name, [0x08], [0x00], [0x00]), "invalid kind byte 8");
+        AssertFailed(Payload(Int32(1), name, [0x09], [0x00], [0x00]), "invalid kind byte 9");
         AssertFailed(Payload(Int32(1), name, [0xFF], [0x00], [0x00]), "invalid kind byte 255");
     }
 

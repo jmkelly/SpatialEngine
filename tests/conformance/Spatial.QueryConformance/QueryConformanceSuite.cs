@@ -433,11 +433,14 @@ public static class QueryConformanceSuite
     /// <summary>
     /// The reductions compared: every statistic, grouped and ungrouped, with a
     /// result name that differs from the field name so a caller can see the two
-    /// are independent.
+    /// are independent. The envelope of the geometry field rides along whenever
+    /// the schema has one (ADR-0120): it is the only statistic whose answer is
+    /// not a scalar, so a store that answered it with a number would agree with
+    /// the reference on nothing else in the row.
     /// </summary>
     private static IEnumerable<AggregateQuery> Aggregates(Fields fields)
     {
-        var specs = new AggregateSpec[]
+        var specs = new List<AggregateSpec>
         {
             new(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
             new(AggregateStatistic.Count, fields.Numeric, "scored"),
@@ -450,6 +453,11 @@ public static class QueryConformanceSuite
             new(AggregateStatistic.PercentileContinuous, fields.Numeric, "p90", 0.9),
             new(AggregateStatistic.PercentileDiscrete, fields.Numeric, "p50", 0.5),
         };
+
+        if (fields.Geometry is { } geometry)
+        {
+            specs.Add(new AggregateSpec(AggregateStatistic.Envelope, geometry, "box"));
+        }
 
         yield return new AggregateQuery(specs);
         yield return new AggregateQuery(specs, [fields.Group]);
@@ -490,9 +498,9 @@ public static class QueryConformanceSuite
     /// The schema fields the suite exercises, derived from whatever store it is
     /// run against: a key to order by, a nullable-or-first field to group by, a
     /// numeric field for the numeric statistics, a comparable field for the
-    /// extremes, a text field to sort by ordinally, a projection, and a box
-    /// over the dataset's own geometry so the spatial restriction has rows to
-    /// select.
+    /// extremes, a text field to sort by ordinally, a geometry field for the
+    /// envelope, a projection, and a box over the dataset's own geometry so the
+    /// spatial restriction has rows to select.
     /// </summary>
     private sealed record Fields(
         string Key,
@@ -501,6 +509,7 @@ public static class QueryConformanceSuite
         string Extreme,
         string Text,
         string Orderable,
+        string? Geometry,
         IReadOnlyList<string> Projection,
         BoundingBox Box)
     {
@@ -546,6 +555,7 @@ public static class QueryConformanceSuite
                 extremes.Name,
                 extremes.Name,
                 numeric.Name,
+                schema.Fields.FirstOrDefault(field => field.Kind == AttributeKind.Geometry).Name,
                 [attributes[0].Name, numeric.Name],
                 Enclosing(schema));
         }

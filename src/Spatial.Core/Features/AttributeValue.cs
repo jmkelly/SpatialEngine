@@ -10,11 +10,12 @@ namespace Spatial.Core.Features;
 ///
 /// Equality is structural and exact, following the geometry model: NaN
 /// doubles compare equal, strings compare ordinally, geometries compare via
-/// <see cref="GeometryComparer"/>, and date-time values compare by UTC ticks
+/// <see cref="GeometryComparer"/>, date-time values compare by UTC ticks
 /// <em>and</em> offset (two values representing the same instant with
 /// different offsets are not equal, unlike BCL
 /// <see cref="DateTimeOffset.Equals(DateTimeOffset)"/> semantics — so equal
-/// values always encode to identical bytes).
+/// values always encode to identical bytes), and a reduced
+/// <see cref="AttributeKind.Envelope"/> compares by its four bounds.
 /// </summary>
 public readonly struct AttributeValue : IEquatable<AttributeValue>
 {
@@ -71,6 +72,12 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         _guid = value;
     }
 
+    private AttributeValue(Envelope value)
+    {
+        _kind = AttributeKind.Envelope;
+        _reference = value;
+    }
+
     /// <summary>The absence of a value (only valid in nullable fields).</summary>
     public static AttributeValue Null { get; } = new(AttributeKind.Null);
 
@@ -96,6 +103,14 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
 
     public static AttributeValue FromGuid(Guid value) => new(value);
 
+    /// <summary>
+    /// A reduced bounding rectangle (ADR-0120). The value is boxed rather than
+    /// stored inline, because a feature row never holds one — only a
+    /// reduction's results do — and the inline fields belong to the value kinds
+    /// a feature is made of.
+    /// </summary>
+    public static AttributeValue FromEnvelope(Envelope value) => new(value);
+
     /// <summary>The kind of the value; <see cref="AttributeKind.Null"/> when absent.</summary>
     public AttributeKind Kind => _kind;
 
@@ -116,6 +131,8 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         GetChecked(AttributeKind.DateTimeOffset) ? FromUtcTicks(_int64, _offsetMinutes) : default;
 
     public Guid GuidValue => GetChecked(AttributeKind.Guid) ? _guid : default;
+
+    public Envelope EnvelopeValue => GetChecked(AttributeKind.Envelope) ? (Envelope)_reference! : default;
 
     public bool Equals(AttributeValue other)
     {
@@ -138,6 +155,7 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Geometry => EqualsGeometry(other),
         AttributeKind.DateTimeOffset => EqualsDateTimeOffset(other),
         AttributeKind.Guid => _guid == other._guid,
+        AttributeKind.Envelope => _reference is Envelope left && left.Equals((Envelope)other._reference!),
         _ => false,
     };
 
@@ -165,6 +183,7 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Geometry => HashCode.Combine(_kind, GeometryComparer.GetHashCode((IGeometry)_reference!)),
         AttributeKind.DateTimeOffset => HashCode.Combine(_kind, _int64, _offsetMinutes),
         AttributeKind.Guid => HashCode.Combine(_kind, _guid),
+        AttributeKind.Envelope => HashCode.Combine(_kind, ((Envelope)_reference!).GetHashCode()),
         _ => HashCode.Combine(_kind),
     };
 
@@ -182,6 +201,7 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Geometry => $"Geometry({_reference})",
         AttributeKind.DateTimeOffset => FormattableString.Invariant($"DateTimeOffset({DateTimeOffsetValue:O})"),
         AttributeKind.Guid => $"Guid({_guid})",
+        AttributeKind.Envelope => $"Envelope({_reference})",
         _ => FormattableString.Invariant($"Unknown({(int)_kind})"),
     };
 

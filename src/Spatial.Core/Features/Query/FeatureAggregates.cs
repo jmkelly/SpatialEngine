@@ -2,10 +2,10 @@ namespace Spatial.Core.Features.Query;
 
 /// <summary>
 /// The statistics a group reduction can compute (ADR-0074 §6). The set is the
-/// one the engine's served statistics surface already computes; a store is
-/// never asked for a statistic outside it, and a statistic the store's dialect
-/// cannot express is evaluated over the rows it fetched, so the answer is the
-/// same either way.
+/// one the engine's served statistics surface already computes, plus the
+/// envelope of a geometry field (ADR-0120); a store is never asked for a
+/// statistic outside it, and a statistic the store's dialect cannot express is
+/// evaluated over the rows it fetched, so the answer is the same either way.
 /// </summary>
 public enum AggregateStatistic
 {
@@ -35,6 +35,17 @@ public enum AggregateStatistic
 
     /// <summary>Dataset value at rank <c>ceil(f × n)</c>.</summary>
     PercentileDiscrete = 8,
+
+    /// <summary>
+    /// The axis-aligned bounding rectangle of the field's non-null geometry
+    /// values (ADR-0120). It is the one statistic whose answer is not a scalar
+    /// — it is a rectangle, reported as an <see cref="AttributeKind.Envelope"/>
+    /// value — and the one whose whole point is that the rows never have to
+    /// cross: a layer's extent is this reduction at the store, not a union
+    /// taken over every feature. A group with no non-null geometry is
+    /// <c>null</c>, like every other reduction of nothing.
+    /// </summary>
+    Envelope = 9,
 }
 
 /// <summary>

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Stores.PostGIS.Geometry;
 
 namespace Spatial.Stores.PostGIS.Core;
@@ -78,7 +79,10 @@ internal static class PostgisRowMapper
     /// aggregated: a <c>COUNT</c> arrives as <c>long</c> and a <c>SUM</c> over
     /// an integer column as <c>numeric</c>, and both are mapped here to the
     /// kinds the shared reference reports, so a pushed-down value and a
-    /// reference value are the same value.
+    /// reference value are the same value. An
+    /// <see cref="AttributeKind.Envelope"/> arrives as the rectangle's own
+    /// geometry (ADR-0120), because that is the one geometry value the
+    /// provider already knows how to read.
     /// </summary>
     internal static AttributeValue MapValue(AttributeKind kind, object? value)
     {
@@ -99,6 +103,10 @@ internal static class PostgisRowMapper
         [AttributeKind.Geometry] = value => PostgisEwkb.ReadGeometry((byte[])value!),
         [AttributeKind.DateTimeOffset] = value => AttributeValue.FromDateTimeOffset(ToOffset(value!)),
         [AttributeKind.Guid] = value => AttributeValue.FromGuid((Guid)value!),
+        // The envelope of a reduction of a geometry column, which the database
+        // answers as that rectangle's geometry (ADR-0120): read exactly like a
+        // stored one, then reduced to the box it encloses.
+        [AttributeKind.Envelope] = value => AttributeValue.FromEnvelope(PostgisEwkb.ReadGeometry((byte[])value!).GeometryValue.Envelope ?? Envelope.Empty),
     };
 
     private static DateTimeOffset ToOffset(object value) =>

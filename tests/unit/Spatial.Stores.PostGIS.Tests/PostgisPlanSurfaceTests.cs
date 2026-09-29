@@ -131,6 +131,33 @@ public sealed class PostgisPlanSurfaceTests
         Assert.Contains("COUNT(*)", sql);
     }
 
+    /// <summary>
+    /// The envelope of a geometry column is one aggregate expression the server
+    /// evaluates over the whole table (ADR-0120) — a layer's extent, which used
+    /// to be a projected read of every row reduced in managed code. It is cast
+    /// back to a geometry so the one EWKB reader this provider has reads it,
+    /// rather than through a second reader for a box the dialect returns.
+    /// </summary>
+    [Fact]
+    public void An_envelope_is_one_extent_expression_over_the_geometry_column()
+    {
+        var parameters = new List<object?>();
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: [],
+            [new AggregateSpec(AggregateStatistic.Envelope, "geom", "box")],
+            order: [],
+            Schema,
+            byteOrderText: false,
+            parameters);
+
+        Assert.Equal(
+            "SELECT ST_AsEWKB(ST_Extent(\"geom\")::geometry) FROM \"public\".\"places\"",
+            sql);
+        Assert.Empty(parameters);
+    }
+
     [Fact]
     public void A_grouped_reduction_with_no_order_is_declined_rather_than_invented()
     {

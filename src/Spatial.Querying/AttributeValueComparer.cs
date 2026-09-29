@@ -1,4 +1,5 @@
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Querying;
 
@@ -46,8 +47,34 @@ public sealed class AttributeValueComparer : IComparer<AttributeValue>
         AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
         AttributeKind.DateTimeOffset => left.DateTimeOffsetValue.UtcTicks.CompareTo(right.DateTimeOffsetValue.UtcTicks),
         AttributeKind.Guid => left.GuidValue.CompareTo(right.GuidValue),
+        AttributeKind.Envelope => Compare(left.EnvelopeValue, right.EnvelopeValue),
         _ => 0,
     };
+
+    /// <summary>
+    /// Two rectangles compared lower-left corner first, then upper-right: a
+    /// total order over an unbounded continuum of values, which an envelope
+    /// never actually needs (a reduction's result is never a group key or a
+    /// sort term) but which keeps the comparer honest for every kind it
+    /// accepts.
+    /// </summary>
+    private static int Compare(Envelope left, Envelope right)
+    {
+        var corners = left.MinX.CompareTo(right.MinX);
+        if (corners != 0)
+        {
+            return corners;
+        }
+
+        corners = left.MinY.CompareTo(right.MinY);
+        if (corners != 0)
+        {
+            return corners;
+        }
+
+        corners = left.MaxX.CompareTo(right.MaxX);
+        return corners != 0 ? corners : left.MaxY.CompareTo(right.MaxY);
+    }
 }
 
 /// <summary>

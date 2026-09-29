@@ -22,4 +22,13 @@ public enum AttributeKind : byte
     DateTimeOffset = 6,
 
     Guid = 7,
+
+    /// <summary>
+    /// A reduced bounding rectangle, reported by the envelope statistic of a
+    /// grouped reduction (ADR-0120). Like <see cref="Null"/> it is never a
+    /// field's declared kind: a column holds a geometry, and a rectangle is what
+    /// a reduction of a column of geometries is — so the value exists only in
+    /// the results of a reduction, and a schema cannot declare one.
+    /// </summary>
+    Envelope = 8,
 }
