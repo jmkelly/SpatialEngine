@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Ingest;
@@ -169,28 +170,106 @@ public sealed class StreamingDecodeTests
     public async Task A_large_geojson_upload_streams_instead_of_materialising()
     {
         const int features = 40_000;
-        var session = await DatasetDecoder.DecodeStreamingAsync(
+        const int batchSize = 1_000;
+
+        // Reachability, not bytes. A peak-heap ceiling was a statement about the
+        // machine that ran it: it read 77 MB streamed against 96 MB buffered on
+        // the ci runner — while the sampler counted every byte another test in
+        // the assembly was allocating, and how much garbage the heap had simply
+        // not collected yet — and passed everywhere else. What makes a decode
+        // streaming is not how many bytes it costs but what stays reachable
+        // after a page has been handed over: a streamed upload keeps the page
+        // in flight and nothing else, and a materialised one keeps all of them
+        // for as long as the caller holds the result. Both halves are asserted,
+        // because either alone would pass for the wrong reason.
+        var streamed = await StreamedPages(features, batchSize);
+        var buffered = BufferedPages(features, batchSize);
+
+        Assert.Equal(features / batchSize, buffered.Total);
+        Assert.True(
+            streamed.Peak <= 2,
+            $"streaming kept {streamed.Peak} of the {streamed.Emitted} pages it " +
+            "had already handed over reachable; a streamed upload must not " +
+            "materialise what the consumer has moved past");
+        Assert.True(
+            buffered.Alive == buffered.Total,
+            $"the buffered decode kept {buffered.Alive} of its {buffered.Total} " +
+            "pages reachable while its result was held, which is what " +
+            "streaming exists not to do");
+    }
+
+    /// <summary>
+    /// The pages a streamed decode hands over, as weak references, and how many
+    /// of them are reachable halfway through while the consumer is holding
+    /// nothing but the page in flight. The collection has to happen mid-decode:
+    /// a decode that has returned has dropped whatever it was keeping by then,
+    /// so measuring afterwards would say nothing about whether it materialised.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static async Task<(int Emitted, int Peak)> StreamedPages(int features, int batchSize)
+    {
+        await using var session = await DatasetDecoder.DecodeStreamingAsync(
             FeatureCollection(features),
             IngestFormat.GeoJson,
-            new DecodeOptions { BatchSize = 1_000 },
+            new DecodeOptions { BatchSize = batchSize },
             CancellationToken.None);
 
-        var streamed = await MeasureAsync(async () =>
+        var pages = new List<WeakReference>();
+        var halfway = features / batchSize / 2;
+        var peak = 0;
+
+        await foreach (var page in session.Pages)
         {
-            await using (session)
+            pages.Add(new WeakReference(page));
+            if (pages.Count == halfway)
             {
-                await foreach (var _ in session.Pages)
-                {
-                }
+                peak = Collect(pages);
             }
-        });
+        }
 
-        var buffered = await MeasureAsync(() => Task.FromResult(DatasetDecoder.Decode(
-            FeatureCollection(features), IngestFormat.GeoJson, new DecodeOptions { BatchSize = 1_000 })));
+        // Two is the page in flight and the enumerator's copy of it; the
+        // nineteen pages before it are what must be gone.
+        return (pages.Count, peak);
+    }
 
-        Assert.True(
-            streamed < buffered / 2,
-            $"streaming peaked at {streamed:N0} bytes against {buffered:N0} buffered; a streamed upload must not be materialised");
+    /// <summary>
+    /// The same document through the buffered decode: how many pages it has,
+    /// and how many of them are still reachable <em>while its result is
+    /// held</em>. Every page has to survive that, or the control says nothing
+    /// about what the streamed half is being compared against.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (int Total, int Alive) BufferedPages(int features, int batchSize)
+    {
+        var dataset = DatasetDecoder.Decode(
+            FeatureCollection(features),
+            IngestFormat.GeoJson,
+            new DecodeOptions { BatchSize = batchSize });
+
+        var pages = dataset.Pages.Select(page => new WeakReference(page)).ToList();
+        var alive = Collect(pages);
+
+        // The result has to stay reachable across the collection, or this
+        // measures when the JIT decided the local was dead, not what the
+        // buffered decode holds.
+        GC.KeepAlive(dataset);
+        return (pages.Count, alive);
+    }
+
+    /// <summary>
+    /// The pages of <paramref name="pages"/> still reachable after a full
+    /// collection. Three passes, because a finalised object and the reference
+    /// its finaliser left behind are not reachable in the same collection.
+    /// </summary>
+    private static int Collect(IEnumerable<WeakReference> pages)
+    {
+        for (var pass = 0; pass < 3; pass++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        return pages.Count(page => page.IsAlive);
     }
 
     /// <summary>A FeatureCollection of <paramref name="features"/> point features.</summary>
@@ -210,56 +289,6 @@ public sealed class StreamingDecodeTests
 
         builder.Append("]}");
         return new MemoryStream(Encoding.UTF8.GetBytes(builder.ToString()));
-    }
-
-    /// <summary>
-    /// The peak live managed memory during one operation, in bytes. Sampled
-    /// rather than measured at the end, because a decode that materialises its
-    /// input holds it exactly until it returns, while a streamed one never
-    /// does — and the difference is the whole claim.
-    /// </summary>
-    private static async Task<long> MeasureAsync(Func<Task> operation)
-    {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-
-        var baseline = GC.GetTotalMemory(forceFullCollection: true);
-        var peak = baseline;
-        using var sampling = new CancellationTokenSource();
-        var sampler = Task.Run(async () =>
-        {
-            while (sampling.Token.IsCancellationRequested is false)
-            {
-                var live = GC.GetTotalMemory(forceFullCollection: false);
-                if (live > peak)
-                {
-                    peak = live;
-                }
-
-                try
-                {
-                    await Task.Delay(1, sampling.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-            }
-        });
-
-        try
-        {
-            await operation();
-        }
-        finally
-        {
-            await sampling.CancelAsync();
-            await sampler;
-        }
-
-        var end = GC.GetTotalMemory(forceFullCollection: false);
-        return Math.Max(peak, end) - baseline;
     }
 
     [Fact]

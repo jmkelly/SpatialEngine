@@ -69,7 +69,14 @@ reserve-then-recheck flow is idempotent. `--list` names the holder of every
 live reservation, `--release` gives the number back, and a reservation goes
 stale — reusable — when its branch no longer exists, when the file cannot be
 read, or when it is older than `--max-age-days` (14), because a worker that
-dies mid-bead must not hold a number for ever. A branch can only release its
+dies mid-bead must not hold a number for ever. "No longer exists" means no ref
+resolves the recorded holder, not that nothing is under `refs/heads`: the
+holder is a short ref name and which ref names it depends on the checkout that
+recorded it, so a hold whose branch survives as a remote-tracking ref stays
+live until it ages out. Looking only under `refs/heads` swept live holds on a
+ci runner — `actions/checkout` leaves it with no local branches of its own —
+and a sweep is the one thing that hands a number to two branches
+(SpatialEngine-ivp). A branch can only release its
 own reservation: releasing someone else's is how a collision gets manufactured
 by hand.
 

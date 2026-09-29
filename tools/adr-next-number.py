@@ -181,9 +181,26 @@ def current_branch(str_repo: Path) -> str:
 
 
 def branch_exists(str_repo: Path, branch: str) -> bool:
+    """Whether the holder a reservation names is still a branch of this repo.
+
+    The holder is a short ref name, and which ref it names depends on the
+    checkout that wrote it: a worktree records a local branch as `bd/x`, while
+    a checkout with no local branch for it — what `actions/checkout` hands ci,
+    where the only refs are remote-tracking ones — records the ref it does
+    have. Looking only under `refs/heads` therefore declared a live hold dead,
+    and the sweep unlinked it and handed the number to the next branch, which
+    is the one outcome the sweep exists to prevent (SpatialEngine-ivp; the
+    numbering gate read as red on every ci run because of it). A hold whose
+    branch is gone from every ref is still swept; a hold that survives only as
+    a remote-tracking ref stays live until `--max-age-days` reaps it, which is
+    the cheap direction to be wrong in.
+    """
     if branch in ("", "HEAD"):
         return True
-    return ref_exists(str_repo, f"refs/heads/{branch}")
+    return any(ref_exists(str_repo, candidate)
+               for candidate in (f"refs/heads/{branch}",
+                                 f"refs/remotes/{branch}",
+                                 branch))
 
 
 def reservation_path(str_repo: Path, number: int) -> Path:

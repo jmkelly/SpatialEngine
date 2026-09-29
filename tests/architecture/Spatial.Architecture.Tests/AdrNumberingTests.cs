@@ -240,20 +240,32 @@ public sealed class AdrNumberingTests
     /// in the repo, from a file none of them had touched. The reservation here
     /// is written into a store the test creates, so the reproduction never
     /// touches the real one.
+    ///
+    /// It also read as red on every ci run, where it failed for the opposite
+    /// reason: <c>--check</c> cleared the number, because the holder this test
+    /// fabricated came from whatever refs the checkout had (on the runner that
+    /// was <c>origin</c>, the remote alias, under a checkout with no local
+    /// branches of its own), and the allocator looked the holder up under
+    /// <c>refs/heads</c> only, judged the hold dead and swept it — a live
+    /// reservation unlinked, which is the collision the sweep exists to
+    /// prevent. Both halves are fixed (SpatialEngine-ivp): the allocator reads
+    /// the holder wherever its ref names it, and <see cref="LiveBranch"/> makes
+    /// this test's holder a branch that exists rather than whatever the
+    /// checkout happened to be carrying.
     /// </summary>
     [Fact]
     public void The_check_gate_refuses_a_number_a_live_reservation_holds()
     {
         var next = OnePast(ClaimedNumbers());
-        var holder = OtherBranch();
+        using var holder = new LiveBranch();
 
         using var store = new ScratchStore();
-        store.Hold(next, holder);
+        store.Hold(next, holder.Name);
 
         var verdicts = Gate(store, ["--check", next]);
 
         Assert.Equal(1, verdicts.ExitCode);
-        Assert.Contains(holder, verdicts.Output, StringComparison.Ordinal);
+        Assert.Contains(holder.Name, verdicts.Output, StringComparison.Ordinal);
         Assert.DoesNotContain(next, Cleared(verdicts.Output));
     }
 
@@ -275,7 +287,8 @@ public sealed class AdrNumberingTests
         // The swarm's store, and the store the gate reads: two different ones.
         using var shared = new ScratchStore();
         using var owned = new ScratchStore();
-        shared.Hold(next, OtherBranch());
+        using var holder = new LiveBranch();
+        shared.Hold(next, holder.Name);
 
         Assert.NotEqual(
             Path.GetFullPath(shared.Store), Path.GetFullPath(owned.Store));
@@ -330,24 +343,61 @@ public sealed class AdrNumberingTests
             .ToString("D4", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// A branch that exists and is not the one running the test, so the
-    /// allocator reads the reservation as another worktree's hold rather than
-    /// as this branch re-reserving a number it already holds.
+    /// A branch that exists, and is not the one under test, so the allocator
+    /// reads the reservation as another worktree's hold rather than as this
+    /// branch re-reserving a number it already holds.
+    ///
+    /// It has to exist. The earlier version named whatever ref
+    /// <c>for-each-ref</c> offered first, and a shallow
+    /// <c>actions/checkout</c> carries none but remote ones — so on the runner
+    /// the holder was <c>origin</c>, a ref no branch is checked out from, the
+    /// allocator read the hold as a branch that no longer existed and swept it,
+    /// and the test asserted its opposite and failed (SpatialEngine-ivp). A
+    /// checkout with no local branch of its own gets one here, so "live" is a
+    /// property of the reproduction rather than of the machine running it.
     /// </summary>
-    private static string OtherBranch()
+    private sealed class LiveBranch : IDisposable
     {
-        var here = Git("rev-parse", "--abbrev-ref", "HEAD").Output;
-        var refs = Git("for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes")
-            .Output
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim())
-            .Where(name => name != here)
-            .ToList();
+        private readonly bool _created;
 
-        return refs.FirstOrDefault()
-            ?? throw new InvalidOperationException(
-                "the repository has no ref besides the branch under test, so no "
-                + "reservation can be held by another worktree at all.");
+        public string Name { get; }
+
+        public LiveBranch()
+        {
+            var here = Git("rev-parse", "--abbrev-ref", "HEAD").Output;
+            var existing = Git("for-each-ref", "--format=%(refname:short)", "refs/heads")
+                .Output
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim())
+                .Where(name => name != here)
+                .ToList();
+
+            if (existing.Count > 0)
+            {
+                Name = existing[0];
+                return;
+            }
+
+            Name = $"adr-hold-{Guid.NewGuid():N}";
+            var created = Git("branch", Name);
+            if (created.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"a local branch for the reservation could not be created " +
+                    $"({created.Error}), so the gate would run against a holder " +
+                    "that does not exist and the reproduction would not be one.");
+            }
+
+            _created = true;
+        }
+
+        public void Dispose()
+        {
+            if (_created)
+            {
+                Git("branch", "-D", Name);
+            }
+        }
     }
 
     /// <summary>
