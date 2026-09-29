@@ -40,8 +40,16 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 - Capture: `bd create --title="…" --description="…" --priority 2 -l <area>`
 - Pick: `bd ready` then `bd update <id> --claim` — never start unclaimed work.
 - Hand off: label the bead `needs-merge` with the commit and PR in `--notes`.
-- Complete: `bd close <id> --reason="…"` — only after `eng/verify.sh` is green
-  on `main`, never on the branch.
+- Merge and complete: `python3 tools/bd-merge-bead.py --bead <id>` — never a
+  hand-rolled `git merge` + `bd close`. It fetches, rebases onto `origin/main`,
+  runs `eng/verify.sh`, merges, **pushes**, and only then closes, and only
+  after `git merge-base --is-ancestor <merge> origin/main` passes. A green
+  `eng/verify.sh` on the *branch* is not a close gate: a branch is not what the
+  next worker starts from, and a merge left unpushed makes `origin/main` — the
+  base every worktree is branched off — miss work that is already merged
+  (SpatialEngine-xbz). `--check` is the top-of-tick gate (is `main` published?),
+  `--publish` pushes it, and `--audit` finds closed beads whose work never
+  reached `origin/main`.
 - Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
   expires — never bare `bd reclaim`. `bd reclaim` keys on lease age alone and a
   long-running worker does not heartbeat, so an expired lease only means "this
