@@ -1,8 +1,10 @@
+using Npgsql;
 using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.QueryConformance;
 using Spatial.Stores.PostGIS;
+using Spatial.Stores.PostGIS.Configuration;
 
 namespace Spatial.PostGIS.Tests;
 
@@ -56,5 +58,67 @@ public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisContaine
         Assert.Equal(6, seen.Count);
         Assert.Equal(seen.OrderBy(id => id), seen);
         Assert.Equal(6, seen.Distinct().Count());
+    }
+
+    /// <summary>
+    /// The database's own collation, read once per store: it is what decides
+    /// whether a pushed-down sort key over a text column carries
+    /// <c>COLLATE "C"</c> (ADR-0121). Read against the database rather than
+    /// asserted, because the fixture container may be created with a locale
+    /// collation or with <c>C</c> and the store has to be right about either.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_collation_the_sort_keys_are_written_against_is_the_databases_own()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var storage = Storage();
+        Assert.Equal(await ContainerCollationAsync(), await storage.DatabaseCollationAsync(CancellationToken.None));
+
+        // Read once and cached: a property of the database is not a property of
+        // a query, and the second call is answered without a round trip.
+        Assert.Equal(await storage.DatabaseCollationAsync(CancellationToken.None), await storage.DatabaseCollationAsync(CancellationToken.None));
+    }
+
+    /// <summary>
+    /// A cancelled probe caches nothing, so the next reader asks the database
+    /// again instead of inheriting a half-read value — and the plan that needed
+    /// the collation still answers the reference's answer afterwards.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_cancelled_collation_probe_leaves_the_next_read_to_ask_again()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"public.collate_{Guid.NewGuid().ToString("N")[..8]}";
+        await context.Store.CreateAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features), 4326);
+        await context.Store.WriteAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features));
+
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        await using var storage = Storage();
+        var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => storage.DatabaseCollationAsync(cancellation.Token));
+        Assert.Equal(cancellation.Token, failure.CancellationToken);
+
+        // Same storage, live token: the value is read, not remembered.
+        Assert.Equal(await ContainerCollationAsync(), await storage.DatabaseCollationAsync(CancellationToken.None));
+
+        // And the store's own answer is the reference's, collation and all.
+        var page = await context.Store.QueryAsync(dataset, new FeatureQuery(Order: [new OrderTerm("category")]));
+        Assert.Equal(
+            ["A", "A", "_c", "a", "a", "-"],
+            page.Features.Select(feature => feature["category"].IsNull ? "-" : feature["category"].StringValue).ToArray());
+    }
+
+    private PostgisStorage Storage() =>
+        new(PostgisConnectionConfiguration.FromConnectionString(_fixture.ConnectionString));
+
+    private async Task<string?> ContainerCollationAsync()
+    {
+        await using var dataSource = NpgsqlDataSource.Create(_fixture.ConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT datcollate FROM pg_database WHERE datname = current_database()";
+        return (string?)await command.ExecuteScalarAsync();
     }
 }

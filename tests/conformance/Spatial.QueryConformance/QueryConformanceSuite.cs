@@ -114,12 +114,50 @@ public static class QueryConformanceSuite
                 Order: [new OrderTerm(fields.Group), new OrderTerm(fields.Orderable, SortDirection.Descending)]));
         }
 
+        foreach (var query in TextOrders(fields))
+        {
+            queries.Add(query);
+        }
+
         foreach (var query in queries)
         {
             var actual = await store.QueryAsync(dataset, query, token).ConfigureAwait(false);
             var expected = FeaturePlanExecutor.Execute(schema, fixture, query, token);
             Assert.Equal(Sequence(expected), Sequence(actual));
         }
+    }
+
+    /// <summary>
+    /// The plans that order by a <em>text</em> key, which is where the
+    /// reference's rule and a database's default disagree: the contract
+    /// compares strings ordinally — by bytes, never by a locale collation
+    /// (ADR-0098 §3) — while an <c>ORDER BY</c> pushed into SQL inherits the
+    /// collation of the database it runs against. The fixture's text columns
+    /// are built so the two rules put every row somewhere different
+    /// (ADR-0121), so a store that pushes a text sort key down without saying
+    /// so returns a different sequence here, and one that never pushes it
+    /// cannot.
+    ///
+    /// <para>The list is empty for a store whose schema carries no text field
+    /// of its own, rather than a no-op that passes for the same reason as a
+    /// correct one.</para>
+    /// </summary>
+    private static IEnumerable<FeatureQuery> TextOrders(Fields fields)
+    {
+        if (string.Equals(fields.Text, fields.Numeric, StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        return
+        [
+            new FeatureQuery(Order: [new OrderTerm(fields.Text)]),
+            new FeatureQuery(Order: [new OrderTerm(fields.Text, SortDirection.Descending)]),
+            new FeatureQuery(Where: Matching(fields), Order: [new OrderTerm(fields.Text)]),
+            // A text key as the second term of a composite order, so the text
+            // comparison is the tie-break rather than the whole sort.
+            new FeatureQuery(Order: [new OrderTerm(fields.Numeric), new OrderTerm(fields.Text, SortDirection.Descending)]),
+        ];
     }
 
     /// <summary>
@@ -131,7 +169,28 @@ public static class QueryConformanceSuite
     private static async Task SamePagedWalkAsync(
         IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, CancellationToken token)
     {
-        var order = Fields.Of(schema).Orderable;
+        var fields = Fields.Of(schema);
+        foreach (var key in PagingKeys(fields))
+        {
+            await PagedWalkAsync(store, dataset, schema, fixture, key, token).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// The order keys the walk is taken over: the numeric one every store
+    /// carries, and the text one when the schema has a text field of its own —
+    /// a page boundary is exactly where a collation drift shows up, because a
+    /// store that sorts each page under a different rule than the reference
+    /// returns a page the reference never handed out (ADR-0121).
+    /// </summary>
+    private static IEnumerable<string> PagingKeys(Fields fields) =>
+        string.Equals(fields.Text, fields.Numeric, StringComparison.Ordinal)
+            ? [fields.Orderable]
+            : [fields.Orderable, fields.Text];
+
+    private static async Task PagedWalkAsync(
+        IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, string order, CancellationToken token)
+    {
         var expected = FeaturePlanExecutor.Execute(
             schema, fixture, new FeatureQuery(Order: [new OrderTerm(order)]), token);
         var walked = new List<Feature>();
@@ -218,6 +277,11 @@ public static class QueryConformanceSuite
         var fields = Fields.Of(schema);
         foreach (var direction in new[] { SortDirection.Ascending, SortDirection.Descending })
         {
+            // The group order is a *text* order (ADR-0098 §3), and the
+            // fixture's group key is built so a locale collation and an ordinal
+            // comparison disagree about it (ADR-0121), so the grouped
+            // reductions below are a collation case as well as a null-placement
+            // one.
             var query = new FeatureQuery(Where: Matching(fields), Order: [new OrderTerm(fields.Group, direction)]);
             foreach (var aggregate in Aggregates(fields).Where(request => request.IsGrouped))
             {
@@ -426,14 +490,16 @@ public static class QueryConformanceSuite
     /// The schema fields the suite exercises, derived from whatever store it is
     /// run against: a key to order by, a nullable-or-first field to group by, a
     /// numeric field for the numeric statistics, a comparable field for the
-    /// extremes, a projection, and a box over the dataset's own geometry so the
-    /// spatial restriction has rows to select.
+    /// extremes, a text field to sort by ordinally, a projection, and a box
+    /// over the dataset's own geometry so the spatial restriction has rows to
+    /// select.
     /// </summary>
     private sealed record Fields(
         string Key,
         string Group,
         string Numeric,
         string Extreme,
+        string Text,
         string Orderable,
         IReadOnlyList<string> Projection,
         BoundingBox Box)
@@ -477,6 +543,7 @@ public static class QueryConformanceSuite
                 attributes[0].Name,
                 group.Name,
                 numeric.Name,
+                extremes.Name,
                 extremes.Name,
                 numeric.Name,
                 [attributes[0].Name, numeric.Name],

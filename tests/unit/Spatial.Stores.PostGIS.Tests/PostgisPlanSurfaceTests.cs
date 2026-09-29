@@ -121,6 +121,8 @@ public sealed class PostgisPlanSurfaceTests
             ["city"],
             [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
             [new OrderTerm("city")],
+            Schema,
+            byteOrderText: true,
             parameters);
 
         Assert.NotNull(sql);
@@ -141,6 +143,8 @@ public sealed class PostgisPlanSurfaceTests
             ["city"],
             [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
             order: [],
+            Schema,
+            byteOrderText: true,
             parameters: []);
 
         Assert.Null(sql);
@@ -162,6 +166,8 @@ public sealed class PostgisPlanSurfaceTests
             groupColumns: [],
             [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
             order: [],
+            schema: Schema,
+            byteOrderText: true,
             parameters);
 
         Assert.NotNull(sql);
@@ -186,6 +192,8 @@ public sealed class PostgisPlanSurfaceTests
             groupColumns: ["city"],
             [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
             [new OrderTerm("population")],
+            Schema,
+            byteOrderText: true,
             parameters: []);
 
         Assert.Null(sql);
@@ -197,11 +205,11 @@ public sealed class PostgisPlanSurfaceTests
         // No identity means no tie-break to append, so the order SQL could give
         // back is not total: a page boundary could fall between two rows the
         // next page re-orders (ADR-0098 §3).
-        Assert.Null(PostgisPlanQueries.Order([new OrderTerm("city")], identityColumns: []));
+        Assert.Null(PostgisPlanQueries.Order([new OrderTerm("city")], identityColumns: [], Schema, byteOrderText: true));
 
         Assert.Equal(
             ["\"city\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
-            PostgisPlanQueries.Order([new OrderTerm("city")], ["id"]));
+            PostgisPlanQueries.Order([new OrderTerm("city")], ["id"], Schema, byteOrderText: true));
     }
 
     [Fact]
@@ -209,10 +217,10 @@ public sealed class PostgisPlanSurfaceTests
     {
         Assert.Equal(
             ["\"population\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
-            PostgisPlanQueries.Order([new OrderTerm("population")], ["id"]));
+            PostgisPlanQueries.Order([new OrderTerm("population")], ["id"], Schema, byteOrderText: true));
 
         Assert.Equal(
             ["\"population\" DESC NULLS FIRST", "\"id\" ASC NULLS LAST"],
-            PostgisPlanQueries.Order([new OrderTerm("population", SortDirection.Descending)], ["id"]));
+            PostgisPlanQueries.Order([new OrderTerm("population", SortDirection.Descending)], ["id"], Schema, byteOrderText: true));
     }
 }

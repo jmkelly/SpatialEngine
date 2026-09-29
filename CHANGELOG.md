@@ -9,6 +9,27 @@ this file together, then tag the release (`RELEASING.md`).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A pushed-down string comparison is a byte comparison, not a locale one**
+  (ADR-0121, SpatialEngine-u2x.43): the PostGIS provider wrote its sort keys
+  into SQL because Postgres's null ordering is not the contract's, and left
+  the one difference that does not change a key set to be inherited — a `text`
+  column carries the *database's* collation, so a stock-template `en_US.utf8`
+  database ordered `a, a, A, A, _c` where the contract orders
+  `A, A, _c, a, a`, and returned a `MIN`/`MAX`, a group order, a discrete
+  percentile and a paged walk in someone else's sequence. Every string
+  comparison the store writes now carries `COLLATE "C"`, and every order term,
+  tie-break and percentile ranking goes through the one helper that decides it.
+  The term is skipped on a `C`/`POSIX` database, which the store reads from the
+  catalog once and caches rather than guessing — the fixture container may be
+  either. The conformance fixture's text columns were rebuilt so no two rows sit
+  in the same place under both rules, and the suite gained the text order, tie-
+  break and second paged walk that could not see the drift before. The cost is
+  a sort on a locale-collated database: a btree index on a text column is built
+  with that column's collation, so an `ORDER BY` that overrides it cannot use
+  the index. The answer is not optional; the index is.
+
 ### Changed
 
 - **The tile cache holds per-layer tiles, composited at serve time**

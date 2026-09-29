@@ -16,7 +16,18 @@ internal sealed class PostgisStorage : IAsyncDisposable
 {
     private readonly Lazy<PostgisDataStore> _data;
     private readonly PostgisTransactions _transactions;
+    private readonly SemaphoreSlim _collationGate = new(1, 1);
     private readonly bool _createIndexes;
+
+    /// <summary>
+    /// The database's own collation, read once (ADR-0121). A <c>text</c> column
+    /// carries it, so a pushed-down sort key over one has to correct for it; a
+    /// property of the database is read once rather than per query. Held as the
+    /// value itself so a cancelled or failed probe is retried rather than
+    /// cached, and marked <c>volatile</c> so a reader on another thread sees a
+    /// published value.
+    /// </summary>
+    private volatile string? _databaseCollation;
 
     public PostgisStorage(PostgisConnectionConfiguration configuration, bool createIndexes = true)
     {
@@ -38,6 +49,41 @@ internal sealed class PostgisStorage : IAsyncDisposable
     public Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken) =>
         _data.Value.OpenConnectionAsync(cancellationToken);
 
+    /// <summary>
+    /// The collation this database compares text under, or <c>null</c> when the
+    /// catalog has none to report — in which case the caller treats the database
+    /// as a locale collation and says so in the <c>ORDER BY</c>, which is the
+    /// direction that costs a planner step rather than the answer. One query
+    /// per store, then cached; a cancelled probe caches nothing and the next
+    /// caller asks again.
+    /// </summary>
+    public async Task<string?> DatabaseCollationAsync(CancellationToken cancellationToken)
+    {
+        if (_databaseCollation is { } known)
+        {
+            return known;
+        }
+
+        await _collationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_databaseCollation is null)
+            {
+                await using var connection = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+                var rows = await PostgisDataStore
+                    .ReadRowsAsync(connection, PostgisQueries.DatabaseCollation(), [], cancellationToken)
+                    .ConfigureAwait(false);
+                _databaseCollation = rows.Count > 0 ? (string?)rows[0][0] ?? string.Empty : string.Empty;
+            }
+
+            return _databaseCollation;
+        }
+        finally
+        {
+            _collationGate.Release();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _transactions.DisposeAsync();
@@ -45,5 +91,7 @@ internal sealed class PostgisStorage : IAsyncDisposable
         {
             await _data.Value.DisposeAsync();
         }
+
+        _collationGate.Dispose();
     }
 }
