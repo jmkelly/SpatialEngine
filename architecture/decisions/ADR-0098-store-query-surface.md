@@ -120,6 +120,49 @@ exactly when the layer's `OBJECTID` is store-derived. A request with a residual
 `spatialRel` — keeps the scan-and-match path unchanged. The match envelope's
 remaining members becoming pushdown is SpatialEngine-u2x.11, not this decision.
 
+## Amendment (SpatialEngine-u2x.9.2): when a grouped `outStatistics` reduction is offered
+
+§7 says a grouped `outStatistics` becomes a grouped aggregate, and §3 says a
+reduction's row order is the order the plan asked for. Those two rules decide
+the boundary, and the boundary is not "always":
+
+- **The plan carries the whole match, and nothing else.** A statistics request
+  that carries a residual — a `time`, an `objectIds`, a topological
+  `spatialRel` — keeps the match path, exactly as every other verb here does.
+  The plan also carries **no page and no projection**: a statistics response
+  pages and filters *groups* (`having`, the statistic order), so a cap the plan
+  asked for would cut rows the store never grouped, and `outFields` is not what
+  the statistics reduce.
+- **An ungrouped reduction is always offered.** There is one group, so its order
+  cannot differ from the store's own.
+- **A grouped reduction is offered only when `orderByFields` names exactly the
+  group fields, in the request's direction.** Then the group keys are a *total*
+  order — a group key is unique per group — so it is an order a store can
+  return, and the writer's statistic order is that same order over those same
+  values. Any other request orders something a group row does not carry, and
+  the served order would then be the first-seen order of a match set SQL never
+  assembled, which is not an answer to ask a store for. Those requests keep the
+  match path, exactly and for the same reason.
+- **The empty set stays the served surface's one row of nulls.** A reduction of
+  zero rows is one group whose *row count* is zero, and Esri's empty statistics
+  response is a row of nulls — the same rule §3 states, read the way the
+  statistics surface has always read it. So an ungrouped request asks the store
+  for the row count alongside the statistics (under a result name no requested
+  statistic uses) and writes the null row when it comes back zero. This is the
+  one place the adapter asks for a statistic it does not report: the number is
+  never in the JSON, and without it a pushed-down count over no rows would be
+  `0` where the served answer is `null`.
+- **The result kind comes from the reference.** `FeatureReduction.ResultKind`
+  states the rule that both the Esri field metadata and the `having` comparison
+  read, so a pushed-down statistic is declared with the kind the in-memory path
+  declared it with.
+
+What this amendment protects is byte-identity, not "the same numbers": the
+adapter's test for the path compares the served response body of a store with
+the reduction face against one without it, as text, over a fixture with a null
+group key, names whose ordinal order is not their alphabetical one, and rows
+whose scan order is no order any plan asked for.
+
 ## Merge note (SpatialEngine-u2x.8)
 
 Both beads rewrite `IFeatureStore` from the same base. `FeatureQuery` is

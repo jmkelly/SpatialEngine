@@ -151,7 +151,13 @@ reads correctly; `FeatureReductionFallback` reduces for a caller whose store
 has no such face. Pushdown is per-conjunct and best-effort: a provider pushes
 what its dialect can express and evaluates the residual in memory, so a valid
 plan is never refused for a dialect gap and the result always equals
-evaluating the plan over the whole dataset. The one definition of that
+evaluating the plan over the whole dataset. A reduction's row order is the order
+the plan asked for, so a store offers a grouped reduction only when the plan
+requests an order — and the GeoServices adapter offers a grouped
+`outStatistics` only when `orderByFields` names exactly the group fields, the
+case where the group keys are the total order the store can return; every other
+statistics request keeps the scan-and-match path and the same answer (ADR-0098
+§7 as amended by SpatialEngine-u2x.9.2). The one definition of that
 evaluation is `Spatial.Querying`: `FeaturePlanExecutor` selects, orders, pages
 and projects, `FeaturePlanExecutor.Finish` is the shaping half for a store that
 already applied the restriction, and `ReferencePredicate` is the one predicate
