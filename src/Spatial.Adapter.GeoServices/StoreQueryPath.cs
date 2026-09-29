@@ -118,6 +118,15 @@ internal static class StoreQueryPath
     /// <c>returnGeometry</c> and <c>outSR</c> are the response's business, not
     /// the store's), the order from <c>orderByFields</c>, and the page start and
     /// cap.
+    ///
+    /// <para>
+    /// A <c>resultPaginationToken</c> is not an offset this surface decodes and
+    /// re-states: it is the store's own continuation, handed to the plan as its
+    /// cursor so the store reads the page it minted the token for and refuses
+    /// one that was not its own (ADR-0116 §3). Only a <c>resultOffset</c> is an
+    /// offset, and only a store with no pushdown to page by falls back to
+    /// <see cref="FeaturePaging"/>'s own token.
+    /// </para>
     /// </summary>
     private static FeatureQuery? Plan(
         DatasetDescription dataset, EsriFeatureQuery query, IGeometry? queryGeometry, Predicate? clause)
@@ -128,14 +137,18 @@ internal static class StoreQueryPath
         }
 
         var projection = Projection(dataset, query);
-        var offset = Math.Min(FeaturePaging.ResolveOffset(query), int.MaxValue);
+        var token = query.ResultPaginationToken;
+        var offset = token is null
+            ? Math.Min(FeaturePaging.ResolveOffset(query), int.MaxValue)
+            : (int?)null;
         return new FeatureQuery(
             Where: clause,
             BoundingBox: Envelope(queryGeometry),
             Projection: projection,
             Order: order,
             Limit: FeaturePaging.EffectivePageSize(query),
-            Offset: offset);
+            Offset: offset,
+            Cursor: token);
     }
 
     private static BoundingBox? Envelope(IGeometry? geometry) =>
@@ -369,8 +382,11 @@ internal static class StoreQueryPath
     /// The feature page: the store ordered, projected and capped it, so the
     /// adapter's sort and page are not applied twice — only <c>outSR</c> and
     /// <c>geometryPrecision</c>, which are the response's business. The page's
-    /// continuation is the same token this surface has always issued, derived
-    /// from the start and the rows returned.
+    /// continuation is the store's own cursor, served verbatim as the
+    /// <c>resultPaginationToken</c>: the position lives where the rows are, so
+    /// the response never carries an index into a match set this process
+    /// materialised, and <c>exceededTransferLimit</c> is the store's own "one
+    /// more" answer (ADR-0116 §3).
     /// </summary>
     private static async Task<IResult> FeaturesAsync(
         DatasetDescription dataset,
@@ -405,9 +421,7 @@ internal static class StoreQueryPath
         var features = matches
             .Select(match => FeatureProjection.TransformFeature(match, query, layerCrs, services.Transforms, services.Operations, cancellationToken))
             .ToArray();
-        var offset = Math.Min(FeaturePaging.ResolveOffset(query), int.MaxValue);
-        var next = offset + features.Length;
         return FeatureResponseWriter.WriteFeatures(
-            dataset, layerCrs, query, features, services, page.NextCursor is not null, page.NextCursor is not null ? ResultPagination.Encode(next) : null);
+            dataset, layerCrs, query, features, services, page.HasMore, page.NextCursor);
     }
 }

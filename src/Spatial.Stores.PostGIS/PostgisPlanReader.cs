@@ -26,6 +26,14 @@ namespace Spatial.Stores.PostGIS;
 /// no order (the same reason). A reduction this store cannot push down is not a
 /// failure and not a refusal: it is the same value, computed here.
 /// </para>
+///
+/// <para>
+/// The <em>page</em> is pushed whenever it can be addressed: a plan that
+/// restricts nothing is a read of the whole table, and a whole table read with
+/// a <c>LIMIT</c> is a page rather than a materialisation (ADR-0116 §1). Only an
+/// unordered or inexpressible order falls back, because a page whose rows are
+/// in no total order has no position an <c>OFFSET</c> can name.
+/// </para>
 /// </summary>
 internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue catalogue)
 {
@@ -40,7 +48,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var parameters = new List<object?>();
         var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
         var order = PostgisPlanQueries.Order(query.Order ?? [], description.IdColumns);
-        if (where is null || (query.Order is { Count: > 0 } && order is null))
+        if (!Pushed(where, query, order))
         {
             // The restriction is not expressible without renumbering this
             // dataset's features, or the plan asks for an order this table
@@ -61,10 +69,35 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             name, shape.Columns, where, order, new PostgisPlanQueries.Paging(query.Limit, start), parameters);
         var page = await BatchesAsync(sql, parameters, shape, cancellationToken);
         var consumed = page.Sum(batch => batch.Count);
-        var next = total is { } matched && start + consumed < matched
-            ? FeaturePageCursor.Issue(query, start + consumed)
-            : null;
-        return new FeatureQueryPage(page, next, total);
+        var more = total is { } matched && start + consumed < matched;
+        return FeatureQueryPage.Page(
+            page,
+            more,
+            more ? FeaturePageCursor.Issue(query, start + consumed) : null,
+            total);
+    }
+
+    /// <summary>
+    /// Whether the whole page can be addressed in SQL. A restriction the
+    /// dialect expressed is one; an <em>empty</em> restriction is one too — a
+    /// plan that restricts nothing is a read of the whole table, and reading it
+    /// with a <c>LIMIT</c> is what keeps a large layer off the heap (ADR-0116
+    /// §1) — but only when the plan's order is an <c>ORDER BY</c> this table can
+    /// make total, identity tie-break included. Without one, a row's place in
+    /// the page is its place in whatever order the scan happened to return, and
+    /// an <c>OFFSET</c> into that order is not a position the next statement
+    /// can reproduce. So an unordered plan keeps the reference's in-memory page
+    /// over the whole read, and a plan whose requested order the dialect cannot
+    /// express does too.
+    /// </summary>
+    internal static bool Pushed(string? where, FeatureQuery query, IReadOnlyList<string>? order)
+    {
+        if (query.Order is { Count: > 0 })
+        {
+            return order is not null;
+        }
+
+        return where is not null || order is not null;
     }
 
     /// <summary>The count of the rows a plan selects, counted by the database.</summary>
@@ -339,11 +372,16 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             : features.Chunk(BatchSize).Select(chunk => new FeatureBatch(shape.Result, chunk)).ToArray();
     }
 
-    private static async Task<int?> TotalAsync(
+    /// <summary>
+    /// The number of rows the plan matches, counted by the database. It runs on
+    /// every pushed read — with or without a <c>WHERE</c> — because an
+    /// aggregate row is not a row set: the count is what lets the page say
+    /// whether the plan has more without over-fetching, and it is the same
+    /// number the reference reports as the page's total.
+    /// </summary>
+    private static async Task<int> TotalAsync(
         PostgisStorage storage, PostgisDatasetName name, string? where, List<object?> parameters, CancellationToken cancellationToken) =>
-        where is null
-            ? null
-            : (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
+        (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
 
     private static async Task<long> ScalarAsync(
         PostgisStorage storage, string sql, IReadOnlyList<object?> parameters, CancellationToken cancellationToken)

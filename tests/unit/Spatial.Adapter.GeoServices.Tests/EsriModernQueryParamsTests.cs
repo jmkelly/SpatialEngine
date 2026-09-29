@@ -216,17 +216,27 @@ public sealed class EsriModernQueryParamsTests
         Assert.False(second.GetProperty("exceededTransferLimit").GetBoolean());
     }
 
+    /// <summary>
+    /// A token this store did not issue is the store's refusal, not the
+    /// surface's: the continuation on a store-answered query is the store's own
+    /// cursor (ADR-0116 §3), so the store is what recognises a bogus one and
+    /// answers <c>invalid.arguments</c> — which the wire carries as the Esri
+    /// envelope with <c>invalidParameters</c>, as every store failure on this
+    /// path does.
+    /// </summary>
     [Fact]
     public async Task A_bogus_pagination_token_is_rejected()
     {
         var dataset = IntLayer();
         var store = new QueryStore(IntRow(1, "a", 0, 0));
 
-        await Assert.ThrowsAsync<EsriInteropException>(async () => await QueryBodyAsync(
+        var failure = await Assert.ThrowsAsync<SpatialException>(async () => await QueryBodyAsync(
             dataset, store,
             EsriFeatureQuery.Parse(
                 await ParamsAsync(("where", "1=1"), ("resultPaginationToken", "!!not-a-token!!")),
                 EsriLayerModel.LayerCoordinateReference(dataset.Srid))));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
     }
 
     [Fact]

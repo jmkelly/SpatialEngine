@@ -60,7 +60,8 @@ public static class FeaturePlanExecutor
     /// this rather than <see cref="Execute"/>, because re-selecting rows a
     /// dialect already filtered would be wasted work and, where the store has
     /// no in-memory evaluator, impossible. The page's total is the selected
-    /// count: these rows are everything the plan matched.
+    /// count: these rows are everything the plan matched, so exhaustion is
+    /// known from the page itself and never needs a second count (ADR-0116 §2).
     ///
     /// <para>
     /// The plan is still validated against the schema on the way in: a store
@@ -85,7 +86,7 @@ public static class FeaturePlanExecutor
         var cursor = hasMore
             ? FeaturePageCursor.Issue(query, start + consumed)
             : null;
-        return new FeatureQueryPage(batches, cursor, selected.Count);
+        return new FeatureQueryPage(batches, cursor, selected.Count, hasMore);
     }
 
     /// <summary>
