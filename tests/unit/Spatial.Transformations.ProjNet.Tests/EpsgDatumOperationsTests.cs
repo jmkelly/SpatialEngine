@@ -48,8 +48,8 @@ public sealed class EpsgDatumOperationsTests
 
         Assert.Equal(2.0, node.AccuracyMetres, 9);
         Assert.Equal("Great Britain", node.AreaOfUse.Name);
-        Assert.Equal(-8.82, node.AreaOfUse.XMin, 6);
-        Assert.Equal(60.94, node.AreaOfUse.YMax, 6);
+        Assert.Equal(-8.82, GraphInvoker.Only(node.AreaOfUse).XMin, 6);
+        Assert.Equal(60.94, GraphInvoker.Only(node.AreaOfUse).YMax, 6);
 
         // The row itself, read the way the join reads it, is keyed on the
         // datum name the vendored DATUM node carries verbatim.
@@ -69,34 +69,34 @@ public sealed class EpsgDatumOperationsTests
     // EPSG:1262 "World" - the WGS 84 datum ensemble's own registered extent,
     // and the pivot rather than a published operation, so its accuracy is the
     // zero a datum already at the pivot has rather than a measured one.
-    [InlineData("World Geodetic System 1984", 6326, "WGS84", 0.0, "World", -180.0, -90.0, 180.0, 90.0, 0, 1262)]
+    [InlineData("World Geodetic System 1984", 6326, "WGS84", 0.0, "World", -180.0, -90.0, 180.0, 90.0, 0, 1262, "World")]
     // EPSG:1149 "ETRS89 to WGS 84 (1)" over extent 4755 "Europe - ETRF by
     // country". Registered west 16.1W, east 38.01E, south 33.26N, north
     // 84.73N. The east bound is 38.01, not 38.0: EPSG publishes it to two
     // decimal places, and a bound rounded past the precision the registry
     // states is a value a reader checking the row against the extent record
     // cannot reproduce.
-    [InlineData("European Terrestrial Reference System 1989", 6258, "ETRS89", 1.0, "Europe", -16.1, 33.26, 38.01, 84.73, 1149, 4755)]
+    [InlineData("European Terrestrial Reference System 1989", 6258, "ETRS89", 1.0, "Europe", -16.1, 33.26, 38.01, 84.73, 1149, 4755, "Europe - ETRF by country")]
     // EPSG:1188 "NAD83 to WGS 84 (1)" over extent 1325. The registry states
     // 4.0 m; the "2m in each axis" in the row's own remarks is where the old
     // 2.0 came from, and it is a statement about the derivation, not the
     // published accuracy of the operation.
-    [InlineData("North American Datum 1983", 6269, "NAD83", 4.0, "North America", -172.54, 23.81, -47.74, 86.46, 1188, 1325)]
+    [InlineData("North American Datum 1983", 6269, "NAD83", 4.0, "North America", -172.54, 23.81, -47.74, 86.46, 1188, 1325, "North America - Canada and USA (CONUS, Alaska mainland)")]
     // EPSG:1314 "OSGB36 to WGS 84 (6)" over extent 1264 - the operation whose
     // seven parameters are exactly the vendored TOWGS84 node, so it is the one
     // this row describes, and it states 2.0 m.
-    [InlineData("Ordnance Survey of Great Britain 1936", 6277, "OSGB36", 2.0, "Great Britain", -8.82, 49.79, 1.92, 60.94, 1314, 1264)]
+    [InlineData("Ordnance Survey of Great Britain 1936", 6277, "OSGB36", 2.0, "Great Britain", -8.82, 49.79, 1.92, 60.94, 1314, 1264, "UK - Great Britain onshore and nearshore; Isle of Man")]
     // EPSG:1671 "ETRS89-FRA [RGF93 v1] to WGS 84 (1)" over extent 1096
     // "France" - the operation registered for CRS EPSG:4171, which is the
     // vendored RGF93 v1 definition.
-    [InlineData("Reseau Geodesique Francais 1993", 6171, "RGF93", 1.0, "France", -9.86, 41.15, 10.38, 51.56, 1671, 1096)]
+    [InlineData("Reseau Geodesique Francais 1993", 6171, "RGF93", 1.0, "France", -9.86, 41.15, 10.38, 51.56, 1671, 1096, "France")]
     // EPSG:1565 "NZGD2000 to WGS 84 (1)" over extent 1175 "New Zealand":
     // south 55.95S, north 25.88S, and a longitude span the registry publishes
-    // as 160.6E to 171.2W. That span crosses the antimeridian, which is a
-    // wrapped extent rather than a box, and an area of use here is a box - so
-    // the row carries the registered extent clipped at 180. See
-    // The_new_zealand_extent_is_clipped_where_it_crosses_the_antimeridian.
-    [InlineData("New Zealand Geodetic Datum 2000", 6167, "NZGD2000", 1.0, "New Zealand", 160.6, -55.95, 180.0, -25.88, 1565, 1175)]
+    // as 160.6E to 171.2W. The east bound in this row is 180, because the
+    // span is a set of rectangles (ADR-0111) and the second of them - 180W to
+    // 171.2W - is pinned by
+    // The_new_zealand_extent_carries_both_halves_of_a_wrapped_extent.
+    [InlineData("New Zealand Geodetic Datum 2000", 6167, "NZGD2000", 1.0, "New Zealand", 160.6, -55.95, 180.0, -25.88, 1565, 1175, "New Zealand")]
     public void Every_row_states_the_numbers_the_registry_publishes(
         string datumName,
         int datumCode,
@@ -108,7 +108,8 @@ public sealed class EpsgDatumOperationsTests
         double xMax,
         double yMax,
         int operationCode,
-        int extentCode)
+        int extentCode,
+        string extentName)
     {
         var row = EpsgDatumOperations.ReadForTest(datumName);
         Assert.NotNull(row);
@@ -124,37 +125,42 @@ public sealed class EpsgDatumOperationsTests
         Assert.Equal(graphName, row.GraphName);
         Assert.Equal(accuracyMetres, row.AccuracyMetres, 9);
         Assert.Equal(areaOfUseName, row.AreaOfUseName);
-        Assert.Equal(xMin, row.AreaOfUse.XMin, 9);
-        Assert.Equal(yMin, row.AreaOfUse.YMin, 9);
-        Assert.Equal(xMax, row.AreaOfUse.XMax, 9);
-        Assert.Equal(yMax, row.AreaOfUse.YMax, 9);
+
+        // The registry's own name for the extent travels with the short label
+        // the graph composes into strings, and the label may only be a
+        // shortening of it: an area of use is named after a place, and a label
+        // that renames the place is a claim no extent record supports
+        // (ADR-0111).
+        Assert.Equal(extentName, row.ExtentName);
+        Assert.Contains(row.AreaOfUseName, row.ExtentName, StringComparison.Ordinal);
+
+        // The first rectangle of the extent. A second one, where the extent
+        // crosses the antimeridian, is pinned by the test below.
+        var box = row.AreaOfUse.Boxes[0];
+        Assert.Equal(xMin, box.XMin, 9);
+        Assert.Equal(yMin, box.YMin, 9);
+        Assert.Equal(xMax, box.XMax, 9);
+        Assert.Equal(yMax, box.YMax, 9);
     }
 
     [Fact]
-    public void The_new_zealand_extent_is_clipped_where_it_crosses_the_antimeridian()
+    public void The_new_zealand_extent_carries_both_halves_of_a_wrapped_extent()
     {
-        // EPSG:1175 registers New Zealand as 160.6E to 171.2W. An area of use
-        // in this engine is a box that cannot wrap, so the row carries the
-        // registered latitudes and the registered western bound, clipped at
-        // the edge of the world rather than invented past it. The clip is the
-        // documented behaviour, not a number nobody chose: a point inside the
-        // registered extent west of the antimeridian (the Chathams) falls
-        // outside the clipped box, which is the gap a wrapped-extent area of
-        // use would close.
+        // EPSG:1175 registers New Zealand as 160.6E to 171.2W - a west bound
+        // in the east and an east bound in the west, which is how the registry
+        // writes an extent across the antimeridian. Taken as one rectangle it
+        // is the empty box, and an area of use the graph reads as empty is one
+        // it drops the candidate over, so the datum would leave the
+        // transformation graph entirely. Clipping the east bound at 180 keeps
+        // the node but leaves registered ground west of the antimeridian
+        // outside it. As a set of rectangles the extent is both halves, each
+        // with its registered bounds (ADR-0111).
         var row = EpsgDatumOperations.ReadForTest("New Zealand Geodetic Datum 2000");
         Assert.NotNull(row);
 
-        Assert.Equal(-55.95, row!.AreaOfUse.YMin, 9);
-        Assert.Equal(-25.88, row.AreaOfUse.YMax, 9);
-        Assert.Equal(160.6, row.AreaOfUse.XMin, 9);
-        Assert.Equal(180.0, row.AreaOfUse.XMax, 9);
-
-        // The clipped box is still a box: a rectangle that had been taken from
-        // the registry verbatim would have been 160.6E to 171.2W, which reads
-        // as empty and would drop New Zealand out of the graph as a datum no
-        // operation covers.
-        Assert.True(row.AreaOfUse.XMin <= row.AreaOfUse.XMax, "the clipped extent must not be an empty box.");
-        Assert.True(row.AreaOfUse.YMin <= row.AreaOfUse.YMax, "the clipped extent must not be an empty box.");
+        Assert.Equal(
+            [new CrsAreaOfUseBox(160.6, -55.95, 180.0, -25.88), new CrsAreaOfUseBox(-180.0, -55.95, -171.2, -25.88)],
+            row!.AreaOfUse.Boxes);
     }
 
     [Fact]
@@ -209,7 +215,17 @@ public sealed class EpsgDatumOperationsTests
         // 27700 stands on OSGB 36 and 2193 on NZGD2000: the graph is keyed on
         // datums, so a projected definition resolves through the base the WKT
         // names.
-        Assert.Equal(NodeOf(4277), ProjEpsgCatalog.TryGetDatum(27700, out var british) ? british : null);
+        // The node is compared field by field rather than as a record: an
+        // area of use is a set of rectangles, and a record's generated
+        // equality compares that set by reference, which would pass for two
+        // different sets and fail for the same one (ADR-0111).
+        var expected = NodeOf(4277);
+        var british = ProjEpsgCatalog.TryGetDatum(27700, out var node) ? node : null;
+        Assert.Equal(expected.Code, british!.Code);
+        Assert.Equal(expected.Name, british.Name);
+        Assert.Equal(expected.ToWgs84, british.ToWgs84);
+        Assert.Equal(expected.AccuracyMetres, british.AccuracyMetres);
+        Assert.Equal(expected.AreaOfUse, british.AreaOfUse);
         Assert.True(ProjEpsgCatalog.TryGetDatum(2193, out var newZealand));
         Assert.Equal("NZGD2000", newZealand!.Code);
         Assert.Equal("New Zealand", newZealand.AreaOfUse.Name);

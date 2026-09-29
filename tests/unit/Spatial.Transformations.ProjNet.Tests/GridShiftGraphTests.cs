@@ -261,5 +261,5 @@ public sealed class GridShiftGraphTests : IDisposable
             name,
             new HelmertParameters(translation, 0, 0, 0, 0, 0, 0),
             accuracy,
-            new CrsAreaOfUse(name, xMin, yMin, xMax, yMax));
+            CrsAreaOfUse.One(name, xMin, yMin, xMax, yMax));
 }

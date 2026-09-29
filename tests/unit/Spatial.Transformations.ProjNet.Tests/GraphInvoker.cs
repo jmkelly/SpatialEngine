@@ -1,5 +1,6 @@
 using Spatial.Contracts.TransformationSearch;
 using Spatial.Transformations.ProjNet.Grids;
+using Xunit;
 
 namespace Spatial.Transformations.ProjNet.Tests;
 
@@ -40,5 +41,13 @@ internal static class GraphInvoker
 
     /// <summary>A geographic area of interest in degrees (x = longitude, y = latitude).</summary>
     public static CrsAreaOfUse NewArea(double xMin, double yMin, double xMax, double yMax) =>
-        new("area of interest", xMin, yMin, xMax, yMax);
+        CrsAreaOfUse.One("area of interest", xMin, yMin, xMax, yMax);
+
+    /// <summary>The one rectangle of an area of use, for an assertion about
+    /// the bounds of a candidate that is not a wrapped one (ADR-0111).</summary>
+    public static CrsAreaOfUseBox Only(CrsAreaOfUse areaOfUse)
+    {
+        var box = Assert.Single(areaOfUse.Boxes);
+        return box;
+    }
 }

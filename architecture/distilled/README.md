@@ -133,6 +133,8 @@ shape is noted in brackets.
 | 0092 | A dataset created or ingested by a SQL store carries its spatial and attribute indexes from the commit that creates it, so a created dataset is queryable with no out-of-band DDL; an index that cannot be created rolls the create back, and `PostgisOptions.CreateIndexes` / `SqlServerOptions.CreateIndexes` are the operator's opt-out. |
 | 0100 | The map root advertises `supportsTimeRelation:false` because the engine applies the overlaps relation only; the contains/within relations are typed `invalid.arguments` on export and identify rather than served as overlaps (amends 0058). |
 | 0110 | The feature-match envelope (`objectIds`, `where`, `time`, the query geometry's envelope) is compiled onto the store's query plan instead of a full-dataset scan, all-or-nothing and decided before the store is asked; the in-memory matcher stays the verification path, and a layer whose `OBJECTID` is the scan ordinal, a `uniqueIds` request and an unsupported `spatialRel` are still refused rather than answered from a narrower read. |
+| 0111 | An area of use is a set of rectangles, so an extent that crosses the antimeridian (EPSG 1175, 2157) is the two rectangles it is rather than an empty one; the graph's intersection and union are rectangle algebra over that set and never merge, and `findTransformations` publishes `areaOfUse` as a list of envelopes (amends 0086, 0087). |
+>
 
 ## How to change the architecture
 

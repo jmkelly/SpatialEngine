@@ -51,7 +51,12 @@ internal static class EpsgDatumOperations
     /// registry's verbatim: EPSG's extent names run to sentences
     /// ("North America - Canada and USA (CONUS, Alaska mainland)"), and the
     /// name is composed into client-facing strings, so each row carries a
-    /// short label for the extent it cites. The bounds are the extent's own.
+    /// short label for the extent it cites. It is a shortening and never a
+    /// rename — <c>ExtentName</c> carries the registry's own wording beside
+    /// it, and <c>EpsgDatumOperationsTests</c> holds the label to being a
+    /// substring of it (ADR-0111). The bounds are the extent's own, one
+    /// rectangle per box, and an extent that crosses the antimeridian carries
+    /// both of them.
     /// </para>
     /// </summary>
     private static readonly DatumOperation[] Operations =
@@ -60,20 +65,20 @@ internal static class EpsgDatumOperations
         // than a published operation - a datum already at the pivot has no
         // shift to state an accuracy for, so the 0.0 is the absence of an
         // operation, not a measured figure. Extent 1262 "World".
-        new(6326, "WGS84", "World Geodetic System 1984", 0.0, "World", [-180.0, -90.0, 180.0, 90.0], 0, 1262),
+        new(6326, "WGS84", "World Geodetic System 1984", 0.0, "World", [[-180.0, -90.0, 180.0, 90.0]], 0, 1262, "World"),
         // EPSG:1149 "ETRS89 to WGS 84 (1)", source CRS EPSG:4258 - the
         // vendored ETRS89 definition. Extent 4755 "Europe - ETRF by country"
         // registers 16.1W-38.01E, 33.26N-84.73N; the east bound is 38.01 as
         // published, not rounded to 38.0, so a reader can reproduce it from the
         // extent record.
-        new(6258, "ETRS89", "European Terrestrial Reference System 1989", 1.0, "Europe", [-16.1, 33.26, 38.01, 84.73], 1149, 4755),
+        new(6258, "ETRS89", "European Terrestrial Reference System 1989", 1.0, "Europe", [[-16.1, 33.26, 38.01, 84.73]], 1149, 4755, "Europe - ETRF by country"),
         // EPSG:1188 "NAD83 to WGS 84 (1)", source CRS EPSG:4269 - the vendored
         // NAD83 definition. The published accuracy is 4.0 m; the "Accuracy 2m
         // in each axis" in the record's own remarks is a note on how the
         // parameters were derived, not the accuracy of the operation, and is
         // not what a row about a published operation may carry. Extent 1325
         // "North America - Canada and USA (CONUS, Alaska mainland)".
-        new(6269, "NAD83", "North American Datum 1983", 4.0, "North America", [-172.54, 23.81, -47.74, 86.46], 1188, 1325),
+        new(6269, "NAD83", "North American Datum 1983", 4.0, "North America", [[-172.54, 23.81, -47.74, 86.46]], 1188, 1325, "North America - Canada and USA (CONUS, Alaska mainland)"),
         // EPSG:1314 "OSGB36 to WGS 84 (6)", source CRS EPSG:4277 - the vendored
         // OSGB36 definition, and the operation whose seven parameters are
         // exactly the definition's TOWGS84 node (446.448, -125.157, 542.06,
@@ -81,22 +86,25 @@ internal static class EpsgDatumOperations
         // Metre-level because the engine applies this Helmert rather than the
         // OSTN grid shift. Extent 1264 "UK - Great Britain onshore and
         // nearshore; Isle of Man".
-        new(6277, "OSGB36", "Ordnance Survey of Great Britain 1936", 2.0, "Great Britain", [-8.82, 49.79, 1.92, 60.94], 1314, 1264),
+        new(6277, "OSGB36", "Ordnance Survey of Great Britain 1936", 2.0, "Great Britain", [[-8.82, 49.79, 1.92, 60.94]], 1314, 1264, "UK - Great Britain onshore and nearshore; Isle of Man"),
         // EPSG:1671 "RGF93 v1 to WGS 84 (1)", source CRS EPSG:4171 - the
         // vendored RGF93 v1 definition. Extent 1096 "France".
-        new(6171, "RGF93", "Reseau Geodesique Francais 1993", 1.0, "France", [-9.86, 41.15, 10.38, 51.56], 1671, 1096),
+        new(6171, "RGF93", "Reseau Geodesique Francais 1993", 1.0, "France", [[-9.86, 41.15, 10.38, 51.56]], 1671, 1096, "France"),
         // EPSG:1565 "NZGD2000 to WGS 84 (1)", source CRS EPSG:4167 - the
         // geographic base of the vendored EPSG:2193. Extent 1175 "New Zealand"
         // registers 55.95S-25.88S and 160.6E-171.2W, so the longitude span
-        // crosses the antimeridian; the latitudes and the western bound are the
-        // registered ones, and the eastern bound is the registered extent
-        // clipped at the edge of the world, because an area of use here is a
-        // box and a wrapped extent read as one reads as empty and would drop
-        // New Zealand out of the graph. The cost is that ground west of the
-        // antimeridian inside the registered extent - the Chathams - is
-        // outside the clipped box; that gap is a wrapped area of use, which no
-        // ADR has authorised.
-        new(6167, "NZGD2000", "New Zealand Geodetic Datum 2000", 1.0, "New Zealand", [160.6, -55.95, 180.0, -25.88], 1565, 1175),
+        // crosses the antimeridian and the registry writes it as a west bound
+        // in the east and an east bound in the west. An area of use is a
+        // *set* of rectangles (ADR-0111), so the row carries the extent as
+        // the two rectangles it is, split at the seam and each with the
+        // registered bounds: 160.6E-180E and 180W-171.2W. Taking it as one
+        // rectangle would read as the empty box, which the graph reads as an
+        // operation valid nowhere - New Zealand would drop out of the
+        // transformation graph entirely - and clipping the east bound at 180
+        // would keep the node but leave registered ground west of the
+        // antimeridian uncovered, which is where the Chatham Islands are.
+        new(6167, "NZGD2000", "New Zealand Geodetic Datum 2000", 1.0, "New Zealand",
+            [[160.6, -55.95, 180.0, -25.88], [-180.0, -55.95, -171.2, -25.88]], 1565, 1175, "New Zealand"),
     ];
 
     /// <summary>
@@ -164,6 +172,9 @@ internal static class EpsgDatumOperations
     /// names where it drifted from. An <paramref name="OperationCode"/> of 0
     /// is the WGS 84 pivot alone, which is not a published operation; every
     /// row, the pivot included, names the extent it was read from.
+    /// <paramref name="ExtentName"/> is the registry's own name for that
+    /// extent, kept beside the short label the graph composes into strings so
+    /// the label can be checked against the wording it shortens.
     /// </summary>
     public sealed record DatumOperation(
         int DatumCode,
@@ -171,12 +182,14 @@ internal static class EpsgDatumOperations
         string DatumName,
         double AccuracyMetres,
         string AreaOfUseName,
-        double[] AreaOfUseBounds,
+        double[][] AreaOfUseBounds,
         int OperationCode,
-        int ExtentCode)
+        int ExtentCode,
+        string ExtentName)
     {
-        /// <summary>The registered extent, in the degrees EPSG records extents in.</summary>
+        /// <summary>The registered extent, in the degrees EPSG records extents in: one rectangle per
+        /// box, and two of them where the extent crosses the antimeridian (ADR-0111).</summary>
         public CrsAreaOfUse AreaOfUse =>
-            new(AreaOfUseName, AreaOfUseBounds[0], AreaOfUseBounds[1], AreaOfUseBounds[2], AreaOfUseBounds[3]);
+            new(AreaOfUseName, Array.ConvertAll(AreaOfUseBounds, bounds => new CrsAreaOfUseBox(bounds[0], bounds[1], bounds[2], bounds[3])));
     }
 }

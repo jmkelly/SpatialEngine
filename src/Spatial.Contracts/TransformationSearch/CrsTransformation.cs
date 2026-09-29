@@ -1,14 +1,66 @@
 namespace Spatial.Contracts.TransformationSearch;
 
 /// <summary>
-/// Where a datum-transformation operation applies (ADR-0074). The area of
-/// use is a geographic bounding box in degrees, the unit EPSG records extents
-/// in: a datum shift is only *meaningful* inside its datum's extent, which is
-/// what makes <c>extentOfInterest</c> a filter over candidates rather than a
-/// reason to refuse the search. Pure data — the intersection and containment
-/// rules live in the provider that owns the catalogue.
+/// One rectangle of an area of use: degrees of longitude and latitude, the
+/// unit EPSG records extents in. The box is real — its west is not east of
+/// its east — and its longitudes are in [-180, 180]. An area of use that
+/// crosses the antimeridian is two of these, not one that wraps (ADR-0111).
 /// </summary>
-public sealed record CrsAreaOfUse(string Name, double XMin, double YMin, double XMax, double YMax);
+public sealed record CrsAreaOfUseBox(double XMin, double YMin, double XMax, double YMax);
+
+/// <summary>
+/// Where a datum-transformation operation applies (ADR-0074). A datum shift
+/// is only *meaningful* inside its datum's extent, which is what makes
+/// <c>extentOfInterest</c> a filter over candidates rather than a reason to
+/// refuse the search.
+/// <para>
+/// The area is a <em>set</em> of boxes, not one box, because EPSG publishes
+/// extents that cross the antimeridian by giving a west bound in the east and
+/// an east bound in the west — extent 1175 "New Zealand" is 160.6E to 171.2W.
+/// Read as one box that is an empty rectangle, and an area of use that
+/// happens to be empty is the one the graph reads as "this operation is valid
+/// nowhere", so the datum drops out of the transformation graph entirely
+/// (ADR-0111). As a set, the extent is the two boxes it actually is, every
+/// box is a rectangle, and emptiness is the absence of boxes rather than an
+/// inference from a pair of numbers that happens to be the wrong way round.
+/// </para>
+/// <para>
+/// The name is a short label, not EPSG's verbatim extent name, because it is
+/// composed into client-facing strings and half the areas of use in a
+/// listing are composed ones that name no EPSG extent at all. What a row was
+/// read from stays with the row, not here (ADR-0086, ADR-0111). Pure data —
+/// the intersection, union and containment rules live in the provider that
+/// owns the catalogue.
+/// </para>
+/// </summary>
+public sealed record CrsAreaOfUse(string Name, IReadOnlyList<CrsAreaOfUseBox> Boxes)
+{
+    /// <summary>An area of use that is one rectangle, which is nearly all of
+    /// them. The empty area is the one with no boxes at all.</summary>
+    public static CrsAreaOfUse One(string name, double xMin, double yMin, double xMax, double yMax) =>
+        new(name, [new CrsAreaOfUseBox(xMin, yMin, xMax, yMax)]);
+
+    /// <summary>
+    /// Equality is by the boxes and not by the reference the list happens to
+    /// be: the generated one would call two identical areas unequal and two
+    /// different ones equal, which is worse than no equality at all in a type
+    /// that is passed between the graph, the adapter and the tests.
+    /// </summary>
+    public bool Equals(CrsAreaOfUse? other) =>
+        other is not null && Name == other.Name && Boxes.SequenceEqual(other.Boxes);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Name);
+        foreach (var box in Boxes)
+        {
+            hash.Add(box);
+        }
+
+        return hash.ToHashCode();
+    }
+}
 
 /// <summary>
 /// A seven-parameter Helmert transformation (EPSG method 9606, the position
