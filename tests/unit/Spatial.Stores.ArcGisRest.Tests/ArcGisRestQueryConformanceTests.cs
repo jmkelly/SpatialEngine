@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Spatial.Contracts;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.QueryConformance;
 
@@ -76,6 +77,95 @@ public sealed class ArcGisRestQueryConformanceTests
         Assert.Equal(4326, (await Store().DescribeAsync("arcgis.l0")).Srid);
     }
 
+    /// <summary>
+    /// The other half of the pushdown claim, and the half an answer-comparison
+    /// cannot see: that the plan's restriction is asked of the remote at all.
+    ///
+    /// <para>
+    /// The suite above compares answers, and an answer comparison is blind to
+    /// <em>where</em> the work happened: a store that read the whole layer and
+    /// dropped the rows itself returns exactly the reference's answer, over
+    /// every row, which is the shallowness this bead exists to remove. So the
+    /// restriction is pinned as a request: the predicate is rendered into the
+    /// service's own <c>where</c>, the box becomes its <c>geometry</c>
+    /// envelope, and the paging walk is served by <c>resultOffset</c> windows
+    /// rather than by the engine re-slicing a materialised set.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task The_plan_s_restriction_is_asked_of_the_remote_rather_than_applied_locally()
+    {
+        var remote = FakeFeatureServer.Create();
+        var store = new ArcGisRestStore(new HttpClient(remote), new ArcGisRestServiceOptions { Name = "remote", Url = FakeFeatureServer.BaseUrl });
+
+        // A plan the remote can express end to end: a predicate, a box, an
+        // order and a cap. Everything here should be in the request.
+        await store.QueryAsync(
+            "arcgis.l0",
+            new FeatureQuery(
+                Where: new Predicate.Compare(new FieldRef("score"), ComparisonOperator.GreaterOrEqual, Literal.FromInteger("20")),
+                BoundingBox: QueryFixture.Box,
+                Order: [new OrderTerm("score")],
+                Limit: 2),
+            CancellationToken.None);
+
+        var queries = remote.Queries;
+        Assert.NotEmpty(queries);
+
+        // The predicate and the box crossed the wire in the service's own terms
+        // — every page of the read carries them, not just the first.
+        Assert.All(queries, page =>
+        {
+            Assert.Equal("score >= 20", page.GetValueOrDefault("where"));
+            Assert.NotNull(page.GetValueOrDefault("geometry"));
+        });
+
+        // The sharpest evidence that the *remote* restricted rather than the
+        // engine filtering afterwards: with the pushdown, the restricted read
+        // is answered in a single window. Read the whole layer and drop the
+        // rows locally instead and the same answer takes three — the page
+        // count is the difference between pushing down and computing in
+        // memory, and it is observable only from here.
+        Assert.Equal(["0"], queries.Select(page => page["resultOffset"]));
+        Assert.All(queries, page => Assert.Equal(FakeFeatureServer.PageSize.ToString(CultureInfo.InvariantCulture), page["resultRecordCount"]));
+    }
+
+    /// <summary>
+    /// Paging is the remote's: an unrestricted read of the six-row fixture is
+    /// served as a walk of <c>resultOffset</c> windows the store follows, each
+    /// capped at the service's own <c>maxRecordCount</c>, rather than one
+    /// generous read the engine slices afterwards. The offsets are the proof —
+    /// they are the store asking the service for its next window, and the last
+    /// one is reached only because the service said it had more.
+    /// </summary>
+    [Fact]
+    public async Task Paging_is_the_service_s_own_window_walk_and_not_a_local_slice()
+    {
+        var remote = FakeFeatureServer.Create();
+        var store = new ArcGisRestStore(new HttpClient(remote), new ArcGisRestServiceOptions { Name = "remote", Url = FakeFeatureServer.BaseUrl });
+
+        await store.QueryAsync("arcgis.l0", FeatureQuery.All, CancellationToken.None);
+
+        Assert.Equal(["0", "2", "4"], remote.Queries.Select(page => page["resultOffset"]));
+    }
+
+    /// <summary>A plan with nothing to push is asked without a restriction, so
+    /// the absence of the parameters is itself pinned rather than assumed.</summary>
+    [Fact]
+    public async Task A_plan_with_no_predicate_and_no_box_asks_for_no_restriction()
+    {
+        var remote = FakeFeatureServer.Create();
+        var store = new ArcGisRestStore(new HttpClient(remote), new ArcGisRestServiceOptions { Name = "remote", Url = FakeFeatureServer.BaseUrl });
+
+        await store.QueryAsync("arcgis.l0", FeatureQuery.All, CancellationToken.None);
+
+        Assert.All(remote.Queries, page =>
+        {
+            Assert.False(page.ContainsKey("where"));
+            Assert.False(page.ContainsKey("geometry"));
+        });
+    }
+
     private static ArcGisRestStore Store() =>
         new(new HttpClient(FakeFeatureServer.Create()), new ArcGisRestServiceOptions { Name = "remote", Url = FakeFeatureServer.BaseUrl });
 
@@ -93,7 +183,7 @@ public sealed class ArcGisRestQueryConformanceTests
 
         /// <summary>Two rows a page, so every read of the six-row fixture is three
         /// round trips and a dropped or repeated row is a red test.</summary>
-        private const int PageSize = 2;
+        internal const int PageSize = 2;
 
         private const string Metadata = """
             {
@@ -124,14 +214,24 @@ public sealed class ArcGisRestQueryConformanceTests
 
         private readonly IReadOnlyList<Feature> _features = QueryFixture.Features;
 
+        /// <summary>Every query request the store issued, in order, so a test
+        /// can assert what was asked of the remote rather than only what came
+        /// back.</summary>
+        public List<Dictionary<string, string>> Queries { get; } = [];
+
         public static FakeFeatureServer Create() => new();
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var path = request.RequestUri!.AbsolutePath;
-            return Task.FromResult(path.EndsWith("/query", StringComparison.Ordinal)
-                ? Query(Parameters(request.RequestUri))
-                : Json(path.EndsWith("/0", StringComparison.Ordinal) ? Metadata : """{"layers":[],"tables":[]}"""));
+            if (!path.EndsWith("/query", StringComparison.Ordinal))
+            {
+                return Task.FromResult(Json(path.EndsWith("/0", StringComparison.Ordinal) ? Metadata : """{"layers":[],"tables":[]}"""));
+            }
+
+            var parameters = Parameters(request.RequestUri);
+            Queries.Add(parameters);
+            return Task.FromResult(Query(parameters));
         }
 
         private HttpResponseMessage Query(Dictionary<string, string> parameters)
