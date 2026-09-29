@@ -326,6 +326,18 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **`deleteFeatures?where=` is served by the store, not by a facade-side
+  scan** (ADR-0074 §7, ADR-0097 §1, SpatialEngine-7rq): the write path's last
+  full read. The clause compiled to the one core predicate vocabulary and is
+  handed to the store as the query plan's `Where`, so a delete by where reads
+  the matching features instead of scanning and materialising the whole
+  dataset, and deletes exactly the rows that read returned — no identity round
+  trip over features the read already resolved. The resolver is the one the
+  read paths already use, so a clause naming the synthetic `OBJECTID` is
+  rewritten onto the layer's identity column and keeps its meaning, and a layer
+  whose object id is the scan ordinal keeps the clause in the facade (such a
+  layer is not editable anyway). The per-position `deleteResults` are
+  unchanged; nothing in the request, response or capability flags moved.
 - **The feature query answers `Intersects` with the OGC intersect patterns,
   not by building the intersection** (ADR-0036, SpatialEngine-51k):
   `spatialRel=esriSpatialRelIntersects` was exact but materialised

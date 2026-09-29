@@ -80,11 +80,12 @@ lookup path runs without Docker; a wrapper without it pins the scan fallback.
 - Read-only stores (`DemoStore`, `ArcGisRestStore`) stay unchanged and the
   facade's `query` path still scans, because an arbitrary `where`/bbox cannot
   be expressed as identity lookups.
-- A `deleteFeatures` `where` clause still needs the whole dataset once, since
-  the filter is evaluated in the facade, but the match hands its features
-  straight to the delete: it issues no lookup over identities the read already
-  resolved, and no second full scan on a store without the lookup face. The
-  per-position delete results are unchanged.
+- A `deleteFeatures` `where` clause hands the clause to the store as a
+  predicate and deletes the features that read returned, so it issues no
+  lookup over identities the read already resolved, no second full scan on a
+  store without the lookup face, and no full scan at all on a store that can
+  answer the plan (ADR-0074 §7, ADR-0097 §1). The per-position delete results
+  are unchanged.
 - The capability is additive: a store that never implements it keeps working
   through the fallback, and no public version bump is needed.
 

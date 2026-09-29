@@ -2,6 +2,7 @@ using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 
@@ -14,9 +15,10 @@ namespace Spatial.Adapter.GeoServices;
 /// integer identity column and whose store implements
 /// <see cref="IFeatureEditStore"/> (ADR-0037); partial updates and per-object
 /// deletes resolve their targets through <see cref="IFeatureLookup"/> when the
-/// store provides it (ADR-0038); a <c>where</c> delete matches the dataset in
-/// one read and deletes the features that read already resolved, so it never
-/// reads them twice. Split out of <see cref="FeatureService"/> so
+/// store provides it (ADR-0038); a <c>where</c> delete hands its clause to the
+/// store as a predicate and deletes the features that read returned, so it
+/// reads neither the whole dataset nor the features twice. Split out of
+/// <see cref="FeatureService"/> so
 /// the facade stays a thin per-operation surface (ADR-0040).
 /// </summary>
 internal static class FeatureEditEngine
@@ -277,10 +279,22 @@ internal static class FeatureEditEngine
         return Finalise(results);
     }
 
-    /// <summary>The features of the dataset a <c>where</c> clause matches, in scan order.</summary>
+    /// <summary>
+    /// The features of the dataset a <c>where</c> clause matches. The clause
+    /// is handed to the store as a predicate where the layer can push one down
+    /// (ADR-0097 §1, ADR-0074 §7) — which is every editable layer, since
+    /// editing requires a store-derived <c>OBJECTID</c> — so the delete reads
+    /// the matching features and nothing else. A layer whose object id is the
+    /// scan ordinal keeps the clause here, because filtering at the store would
+    /// renumber the rows the id is counted from.
+    /// </summary>
     private static async Task<List<Feature>> MatchAsync(EditSession session, EsriWhere where)
     {
-        var batches = await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken);
+        var pushdown = EsriWhereResolver.Pushdown(where, session.Scheme, session.Dataset);
+        var batches = pushdown is null
+            ? await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken)
+            : (await session.Store.QueryAsync(
+                session.Dataset.Id, new FeatureQuery(Where: pushdown), session.CancellationToken)).Batches;
         var matched = new List<Feature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))
@@ -292,10 +306,17 @@ internal static class FeatureEditEngine
                 continue;
             }
 
-            if (EsriPredicateEvaluator.Matches(where.Predicate, feature, new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId))))
+            // A pushed-down clause is not tested again here: the store already
+            // answered it, and re-testing would let a store that returned a
+            // different row set look right (ADR-0097).
+            if (pushdown is null
+                && !EsriPredicateEvaluator.Matches(
+                    where.Predicate, feature, new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(objectId))))
             {
-                matched.Add(feature);
+                continue;
             }
+
+            matched.Add(feature);
         }
 
         return matched;
