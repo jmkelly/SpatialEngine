@@ -101,11 +101,19 @@ internal sealed class PostgisTransactions(PostgisStorage storage) : IAsyncDispos
 /// <summary>
 /// One open transaction: the connection it began on and the Npgsql handle
 /// itself, plus the datasets written through it — the ones whose descriptions
-/// have to be forgotten when it ends (ADR-0122).
+/// have to be forgotten when it ends (ADR-0122). A class rather than a record
+/// because it now carries that state, and a record's equality is not what
+/// anything here wants.
 /// </summary>
-internal sealed record PostgisTransactionEntry(NpgsqlConnection Connection, NpgsqlTransaction Transaction)
+internal sealed class PostgisTransactionEntry(NpgsqlConnection connection, NpgsqlTransaction transaction)
 {
     private readonly ConcurrentDictionary<PostgisDatasetName, byte> _written = new();
+
+    /// <summary>The connection the transaction began on.</summary>
+    public NpgsqlConnection Connection { get; } = connection;
+
+    /// <summary>The transaction itself.</summary>
+    public NpgsqlTransaction Transaction { get; } = transaction;
 
     /// <summary>The datasets a write joined this transaction to.</summary>
     public ICollection<PostgisDatasetName> Written => _written.Keys;
