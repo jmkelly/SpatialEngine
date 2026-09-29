@@ -96,7 +96,14 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         return FeatureReduction.Distinct((FeatureSchema)description.Schema, selected, distinct);
     }
 
-    /// <summary>The grouped reduction a plan selects, pushed down when the plan's order is expressible.</summary>
+    /// <summary>
+    /// The reduction a plan selects, pushed down when the dialect can return its
+    /// row order: an ungrouped reduction is one group whatever the order, and a
+    /// grouped one is pushed when the plan's order is over the group key itself
+    /// (a <c>GROUP BY</c> returns rows in no defined order, and a key is a total
+    /// order over the groups). Anything else is reduced here over the rows the
+    /// restriction selected, where first-seen order is knowable.
+    /// </summary>
     public async Task<AggregatePage> AggregateAsync(
         PostgisDatasetName name, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken)
     {
@@ -105,9 +112,19 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         FeatureQueryValidation.ValidateAggregate(schema, aggregate);
         var parameters = new List<object?>();
         var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
-        var order = query.Order ?? [];
-        var pushed = where is not null && order.Count > 0
+        // An ungrouped reduction is one row, so the plan's order has nothing to
+        // order: it is not written into the SQL at all (an `ORDER BY` over an
+        // ungrouped aggregate's column is a query Postgres refuses).
+        var order = aggregate.IsGrouped ? query.Order ?? [] : [];
+        // A restriction this table cannot carry (a dataset with no identity
+        // column names its features by the read's ordinal, so a `WHERE` would
+        // renumber them — ADR-0097) leaves `where` null for a plan that *does*
+        // restrict. Pushing on that null would aggregate the whole table for a
+        // restricted plan, so the reduction is finished over the selected rows
+        // instead. An unrestricted plan's null really is "every row".
+        var pushed = where is not null || !PostgisPlanQueries.Restricts(query)
             ? await PushedGroupsAsync(name, description, aggregate, where, order, parameters, cancellationToken)
+                .ConfigureAwait(false)
             : null;
         return pushed ?? FeatureReduction.Aggregate(
             schema,
@@ -115,19 +132,27 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             aggregate);
     }
 
-    private async Task<AggregatePage> PushedGroupsAsync(
+    private async Task<AggregatePage?> PushedGroupsAsync(
         PostgisDatasetName name,
         DatasetDescription description,
         AggregateQuery aggregate,
-        string where,
+        string? where,
         IReadOnlyList<OrderTerm> order,
         List<object?> parameters,
         CancellationToken cancellationToken)
     {
         var sql = PostgisPlanQueries.Aggregate(
             name, where, aggregate.GroupBy?.ToArray() ?? [], aggregate.Specs, order, parameters);
+        if (sql is null)
+        {
+            // A group order the dialect cannot return is not an error and not a
+            // refusal (ADR-0074 §6): the caller reduces the rows the
+            // restriction selected and answers the reference's reduction.
+            return null;
+        }
+
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
-        var rows = await PostgisDataStore.ReadRowsAsync(connection, sql!, parameters, cancellationToken);
+        var rows = await PostgisDataStore.ReadRowsAsync(connection, sql, parameters, cancellationToken);
         return Groups((FeatureSchema)description.Schema, aggregate, rows);
     }
 
@@ -136,10 +161,38 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// coerced value per statistic. A value the dialect returned as
     /// <c>numeric</c> becomes the kind the reference reports, so a sum over an
     /// integer field is an integer on both sides of the comparison.
+    ///
+    /// <para>
+    /// An <em>ungrouped</em> reduction over no rows is <em>one row of nulls</em>
+    /// (ADR-0098 §3), which SQL does not say: an ungrouped aggregate always
+    /// returns a row, and its <c>COUNT(*)</c> of that row is a zero where the
+    /// contract's answer is a null. So the row is replaced by the null row when
+    /// the row count says no rows were selected, and when the dialect returned
+    /// no row at all (which a grouped reduction does over an empty set — and
+    /// there the answer is no groups, as it always was). A
+    /// <c>COUNT(field)</c> of zero is translated to null for the same reason:
+    /// the dialect counts the column's values, and the contract counts its
+    /// <em>non-null</em> values, of which there were none.
+    /// </para>
     /// </summary>
     private static AggregatePage Groups(FeatureSchema schema, AggregateQuery aggregate, IReadOnlyList<IReadOnlyList<object?>> rows)
     {
         var groupCount = aggregate.GroupBy?.Count ?? 0;
+        var names = aggregate.Specs.Select(spec => spec.Name).ToArray();
+        if (rows.Count == 0)
+        {
+            return new AggregatePage(
+                aggregate.GroupBy ?? (IReadOnlyList<string>)[],
+                names,
+                groupCount == 0 ? [FeatureReduction.EmptyGroup(aggregate.Specs)] : [],
+                groupCount == 0 ? null : 0);
+        }
+
+        if (groupCount == 0 && MatchedNothing(aggregate, rows[0]))
+        {
+            return new AggregatePage(aggregate.GroupBy ?? (IReadOnlyList<string>)[]!, names, [FeatureReduction.EmptyGroup(aggregate.Specs)], null);
+        }
+
         var groups = new List<AggregateGroup>(rows.Count);
         foreach (var row in rows)
         {
@@ -153,10 +206,13 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             for (var i = 0; i < aggregate.Specs.Count; i++)
             {
                 var spec = aggregate.Specs[i];
+                var value = row[groupCount + i];
                 values[i] = spec.IsRowCount
-                    ? PostgisRowMapper.MapValue(AttributeKind.Int64, row[groupCount + i])
-                    : PostgisRowMapper.MapValue(
-                        FeatureReduction.ResultKind(spec, schema[schema.IndexOf(spec.Field)].Kind), row[groupCount + i]);
+                    ? PostgisRowMapper.MapValue(AttributeKind.Int64, value)
+                    : spec.Statistic == AggregateStatistic.Count
+                        ? FeatureReduction.Counted(Convert.ToInt64(value, CultureInfo.InvariantCulture))
+                        : PostgisRowMapper.MapValue(
+                            FeatureReduction.ResultKind(spec, schema[schema.IndexOf(spec.Field)].Kind), value);
             }
 
             groups.Add(new AggregateGroup(key, values));
@@ -167,6 +223,26 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             aggregate.Specs.Select(spec => spec.Name).ToArray(),
             groups,
             aggregate.IsGrouped ? groups.Count : null);
+    }
+
+    /// <summary>
+    /// Whether the single row an ungrouped reduction returned reduced no rows at
+    /// all, which only the row count can say: every other statistic of an empty
+    /// set is null either way, and a null is the answer for those whatever this
+    /// returns.
+    /// </summary>
+    private static bool MatchedNothing(AggregateQuery aggregate, IReadOnlyList<object?> row)
+    {
+        var groupCount = aggregate.GroupBy?.Count ?? 0;
+        for (var i = 0; i < aggregate.Specs.Count; i++)
+        {
+            if (aggregate.Specs[i].IsRowCount)
+            {
+                return Convert.ToInt64(row[groupCount + i], CultureInfo.InvariantCulture) == 0;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

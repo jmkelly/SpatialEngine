@@ -262,6 +262,112 @@ public sealed class FeatureStatisticsPushdownTests
     }
 
     /// <summary>
+    /// A group of one row is the one case where a pushed-down reduction and
+    /// the reference could disagree about a number: the sample variance
+    /// divides by n − 1, so a single value has no sample variance, and SQL's
+    /// <c>VAR_SAMP</c>/<c>STDDEV_SAMP</c> answer null where a hand-rolled
+    /// reduction that guards the division answers zero. The reference says
+    /// null — the population form of a group the sample form cannot describe
+    /// is not the statistic that was asked for — and both paths answer it.
+    /// </summary>
+    [Fact]
+    public async Task A_group_of_one_row_has_no_sample_variance_and_answers_null_on_both_paths()
+    {
+        var parameters = new (string Key, string Value)[]
+        {
+            ("outStatistics",
+                """[{"statisticType":"var","onStatisticField":"population","outStatisticFieldName":"var"},{"statisticType":"stddev","onStatisticField":"population","outStatisticFieldName":"sd"},{"statisticType":"count","onStatisticField":"*","outStatisticFieldName":"n"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("orderByFields", "name ASC"),
+            ("f", "json"),
+        };
+
+        await AssertSameAsTheMatchPathAsync(parameters);
+
+        // Every group in this fixture reduces to a single non-null population,
+        // so every one of them is undefined and every one answers null — with
+        // the row count beside it, so the row is a reduction and not the
+        // empty-set row of nulls.
+        var body = await BodyAsync(Layer(), new AggregatingStore(Rows), await ParseAsync(parameters));
+        Assert.Contains("\"var\":null", body, StringComparison.Ordinal);
+        Assert.Contains("\"sd\":null", body, StringComparison.Ordinal);
+        Assert.Contains("\"n\":1", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"var\":0", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The S3 percentiles are the statistics most likely to disagree between a
+    /// dialect and a hand-rolled interpolation: <c>PERCENTILE_CONT</c> and
+    /// <c>PERCENTILE_DISC</c> rank, interpolate and round their own way, and
+    /// the reference ranks at <c>f × (n − 1)</c> and <c>ceil(f × n)</c>. Both
+    /// directions are compared, because a descending rank order is a second
+    /// rule and not a flag.
+    /// </summary>
+    [Fact]
+    public async Task Every_percentile_reduces_the_same_way_pushed_down_and_in_memory()
+    {
+        const string Continuous =
+            """[{"statisticType":"percentile_cont","statisticParameters":{"value":0.9},"onStatisticField":"population","outStatisticFieldName":"p90"}]""";
+        const string Both =
+            """[{"statisticType":"percentile_cont","statisticParameters":{"value":0.9},"onStatisticField":"population","outStatisticFieldName":"p90"},{"statisticType":"percentile_disc","statisticParameters":{"value":0.5},"onStatisticField":"population","outStatisticFieldName":"p50"}]""";
+        const string Descending =
+            """[{"statisticType":"percentile_cont","statisticParameters":{"value":0.9,"orderBy":"DESC"},"onStatisticField":"population","outStatisticFieldName":"p90d"}]""";
+
+        await AssertSameAsTheMatchPathAsync(("where", "name IS NOT NULL"), ("outStatistics", Both));
+        await AssertSameAsTheMatchPathAsync(("outStatistics", Descending));
+
+        // Two distinct values in the group, so the continuous percentile has to
+        // interpolate between them: 100 and 300 at 0.9 is 280.
+        var body = await BodyAsync(
+            Layer(),
+            new AggregatingStore([Row(1, "a", 100, 1, 1), Row(2, "a", 300, 2, 2)]),
+            await ParseAsync(("outStatistics", Continuous), ("groupByFieldsForStatistics", "name"), ("f", "json")));
+
+        Assert.Contains("\"p90\":280", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A statistics response pages and filters <em>groups</em>, not features, so
+    /// the cap and the page start apply to the rows the reduction returned: the
+    /// same rows, the same order, the same <c>exceededTransferLimit</c> and the
+    /// same continuation token, whether the groups came from a store or from a
+    /// materialised match set.
+    /// </summary>
+    [Fact]
+    public async Task A_grouped_reduction_paged_over_its_groups_is_written_the_same_way()
+    {
+        var parameters = new (string Key, string Value)[]
+        {
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("orderByFields", "name ASC"),
+            ("resultOffset", "1"),
+            ("resultRecordCount", "1"),
+            ("f", "json"),
+        };
+
+        await AssertSameAsTheMatchPathAsync(parameters);
+
+        var body = await BodyAsync(Layer(), new AggregatingStore(Rows), await ParseAsync(parameters));
+
+        // The four groups, the second one only, and the token for the third.
+        Assert.Equal(1, CountOccurrences(body, "\"total\":"));
+        Assert.Contains("\"exceededTransferLimit\":true", body, StringComparison.Ordinal);
+        Assert.Contains("\"resultPaginationToken\"", body, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        for (var at = text.IndexOf(value, StringComparison.Ordinal); at >= 0; at = text.IndexOf(value, at + value.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    /// <summary>
     /// A group order the plan cannot state is not a reduction to push: the
     /// groups would come back in a store's own order, where the served response
     /// is the first-seen order of a match set. The request keeps the match path.

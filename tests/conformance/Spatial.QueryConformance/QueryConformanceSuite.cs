@@ -1,3 +1,4 @@
+using System.Globalization;
 using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
@@ -67,6 +68,7 @@ public static class QueryConformanceSuite
         await SameCountAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
         await SameDistinctAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
         await SameAggregateAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
+        await SameOrderedAggregateAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
         await RejectsBadPlansAsync(store, dataset, cancellationToken).ConfigureAwait(false);
     }
 
@@ -187,22 +189,140 @@ public static class QueryConformanceSuite
     private static async Task SameAggregateAsync(
         IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, CancellationToken token)
     {
-        foreach (var query in Plans(Fields.Of(schema)))
+        var fields = Fields.Of(schema);
+        foreach (var query in Plans(fields))
         {
-            foreach (var aggregate in Aggregates(Fields.Of(schema)))
+            foreach (var aggregate in Aggregates(fields))
             {
                 var actual = await FeatureReductionFallback
                     .AggregateAsync(store, dataset, query, aggregate, token)
                     .ConfigureAwait(false);
                 var expected = FeatureReduction.Aggregate(
                     schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate);
-                Assert.Equal(expected.GroupFields, actual.GroupFields);
-                Assert.Equal(expected.ValueNames, actual.ValueNames);
-                Assert.Equal(expected.TotalCount, actual.TotalCount);
-                Assert.Equal(Groups(expected.Groups), Groups(actual.Groups));
+                SameGroups(query, aggregate, expected, actual);
             }
         }
     }
+
+    /// <summary>
+    /// The same reduction under a plan that asks for its rows in group-key
+    /// order, which is the only order a <c>GROUP BY</c> can return and the one
+    /// the served statistics surface offers its store (ADR-0098 §3, and §7 as
+    /// amended by SpatialEngine-u2x.9.2). Both directions are compared, because
+    /// a store that puts a null-keyed group last ascending and first descending
+    /// has two rules to get right and only one of them is the ascending default.
+    /// </summary>
+    private static async Task SameOrderedAggregateAsync(
+        IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, CancellationToken token)
+    {
+        var fields = Fields.Of(schema);
+        foreach (var direction in new[] { SortDirection.Ascending, SortDirection.Descending })
+        {
+            var query = new FeatureQuery(Where: Matching(fields), Order: [new OrderTerm(fields.Group, direction)]);
+            foreach (var aggregate in Aggregates(fields).Where(request => request.IsGrouped))
+            {
+                var actual = await FeatureReductionFallback
+                    .AggregateAsync(store, dataset, query, aggregate, token)
+                    .ConfigureAwait(false);
+                var expected = FeatureReduction.Aggregate(
+                    schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate);
+                SameGroups(query, aggregate, expected, actual);
+            }
+        }
+    }
+
+    /// <summary>
+    /// One reduction, compared whole. The groups are compared as a set, always:
+    /// a store that groups by more than the group key (an order's own columns
+    /// leaking into the <c>GROUP BY</c>, so the same key comes back twice),
+    /// drops a group, or invents a row for a group that does not exist fails
+    /// here. The <em>sequence</em> is compared against the orders the contract
+    /// allows — the reference's first-seen order, and, when the plan's order is
+    /// over the group key itself, the order the plan asked for, computed here
+    /// with the reference's own value ordering (nulls last ascending, first
+    /// descending) so a store's explicit <c>NULLS LAST</c> is measured against
+    /// the same rule. Everything else — a count, a sum, an extreme, a
+    /// percentile, a null, a key — is compared exactly.
+    /// </summary>
+    private static void SameGroups(FeatureQuery query, AggregateQuery aggregate, AggregatePage expected, AggregatePage actual)
+    {
+        Assert.Equal(expected.GroupFields, actual.GroupFields);
+        Assert.Equal(expected.ValueNames, actual.ValueNames);
+        Assert.Equal(expected.TotalCount, actual.TotalCount);
+
+        var groups = Groups(expected.Groups);
+        var answered = Groups(actual.Groups);
+        Assert.Equal(groups.Order(StringComparer.Ordinal), answered.Order(StringComparer.Ordinal));
+        Assert.True(
+            answered.SequenceEqual(groups) || answered.SequenceEqual(OverGroupKey(query, aggregate, expected.Groups)),
+            $"groups {string.Join(" ; ", answered)} are neither the reference's first-seen order nor the plan's");
+    }
+
+    /// <summary>
+    /// The reference's groups in the plan's order, or the same sequence when
+    /// the plan's order is not over the group key — an order a group row does
+    /// not carry is not an order a store can return, so it never becomes an
+    /// admissible answer.
+    /// </summary>
+    private static string[] OverGroupKey(FeatureQuery query, AggregateQuery aggregate, IReadOnlyList<AggregateGroup> groups) =>
+        query.Order is { Count: > 0 } order
+            && aggregate.GroupBy is { Count: > 0 } groupBy
+            && order.All(term => groupBy.Contains(term.Field, StringComparer.Ordinal))
+                ? Groups(Ordered(groups, aggregate.GroupBy, order))
+                : Groups(groups);
+
+    /// <summary>
+    /// Groups put in the order the plan's terms ask for, term by term over the
+    /// group key, compared with the reference's own value ordering: nulls last
+    /// ascending, first descending, and strings compared ordinally. A group key
+    /// is unique per group, so the order this produces is total and two stores
+    /// cannot both be right about it.
+    /// </summary>
+    private static IEnumerable<AggregateGroup> Ordered(
+        IEnumerable<AggregateGroup> groups, IReadOnlyList<string> groupBy, IReadOnlyList<OrderTerm> order)
+    {
+        var keys = groupBy.ToList();
+        var positioned = groups.Select((group, position) => (Group: group, Position: position)).ToList();
+        IOrderedEnumerable<(AggregateGroup Group, int Position)>? ordered = null;
+        foreach (var term in order)
+        {
+            var index = keys.IndexOf(term.Field);
+            if (index < 0)
+            {
+                continue;
+            }
+
+            var comparer = term.IsDescending ? Descending : Ascending;
+            ordered = ordered is null
+                ? positioned.OrderBy(pair => pair.Group.Key[index], comparer)
+                : ordered.ThenBy(pair => pair.Group.Key[index], comparer);
+        }
+
+        if (ordered is null)
+        {
+            return positioned.OrderBy(pair => pair.Position).Select(pair => pair.Group);
+        }
+
+        // A store makes the order total by appending whatever of the group key
+        // the plan's terms did not name, ascending — the group key is unique per
+        // group, so this is a tie-break over the rest of the key and nothing
+        // else. Leaving it out would make a correct store look like a
+        // differently-ordered one.
+        var named = order.Select(term => keys.IndexOf(term.Field)).Where(index => index >= 0).ToHashSet();
+        foreach (var index in Enumerable.Range(0, keys.Count).Where(index => !named.Contains(index)))
+        {
+            ordered = ordered.ThenBy(pair => pair.Group.Key[index], Ascending);
+        }
+
+        return ordered.Select(pair => pair.Group);
+    }
+
+    /// <summary>The order value a descending term sorts by, as the reference orders values.</summary>
+    private static IComparer<AttributeValue> Descending =>
+        Comparer<AttributeValue>.Create((left, right) => -AttributeValueComparer.Instance.Compare(left, right));
+
+    /// <summary>The order value an ascending term sorts by, as the reference orders values.</summary>
+    private static IComparer<AttributeValue> Ascending => AttributeValueComparer.Instance;
 
     /// <summary>
     /// The plans every verb is compared over: the whole dataset, a box, the
@@ -332,10 +452,19 @@ public static class QueryConformanceSuite
                     && !string.Equals(field.Name, attributes[0].Name, StringComparison.Ordinal));
             }
 
-            var nullable = attributes.FirstOrDefault(field => field.Nullable);
-            if (nullable.Name is null)
+            // The group key is a nullable field that is neither the key nor the
+            // numeric, so the groups it makes hold several rows and include a
+            // null-keyed group of its own — the shape a reduction is tempted to
+            // get wrong. Grouping by the numeric itself would make every group
+            // a single row, which answers nothing about a percentile that has
+            // to interpolate or a variance that has to divide.
+            var group = attributes.FirstOrDefault(field =>
+                field.Nullable
+                && !string.Equals(field.Name, attributes[0].Name, StringComparison.Ordinal)
+                && !string.Equals(field.Name, numeric.Name, StringComparison.Ordinal));
+            if (group.Name is null)
             {
-                nullable = numeric;
+                group = numeric;
             }
 
             var extremes = attributes.FirstOrDefault(field => field.Kind == AttributeKind.String);
@@ -346,7 +475,7 @@ public static class QueryConformanceSuite
 
             return new Fields(
                 attributes[0].Name,
-                nullable.Name,
+                group.Name,
                 numeric.Name,
                 extremes.Name,
                 numeric.Name,
@@ -373,9 +502,27 @@ public static class QueryConformanceSuite
         $"{feature.Id}={string.Join("|", feature.Attributes.Select(value => value.IsNull ? "-" : $"{value.Kind}:{value}"))}";
 
     private static string[] Rows(IEnumerable<IReadOnlyList<AttributeValue>> rows) =>
-        rows.Select(row => string.Join("|", row.Select(value => value.IsNull ? "-" : value.ToString()))).ToArray();
+        rows.Select(row => string.Join("|", row.Select(Text))).ToArray();
 
     private static string[] Groups(IEnumerable<AggregateGroup> groups) =>
-        groups.Select(group => string.Join("|", group.Key.Concat(group.Values).Select(value => value.IsNull ? "-" : value.ToString())))
-            .ToArray();
+        groups.Select(group => string.Join("|", group.Key.Concat(group.Values).Select(Text))).ToArray();
+
+    /// <summary>
+    /// One reduced value as text, for the whole-answer comparison. Everything
+    /// is rendered exactly; a <em>double</em> reduction is rendered to twelve
+    /// significant digits, because that is the precision a pushed-down
+    /// statistic can honestly promise: Postgres reduces in <c>numeric</c> and
+    /// converts once at the end, so <c>STDDEV_SAMP</c> comes back as the last
+    /// representable digit either side of the reference's <c>sqrt</c> of the
+    /// same variance. A tolerance the size of the double's own representation
+    /// is not a licence to be approximately right — it is the statement that a
+    /// decimal engine and a binary one agree to the precision a JSON client can
+    /// tell. Every other value — a count, a sum, an extreme, a null, a key —
+    /// is compared exactly, because those have no such slack.
+    /// </summary>
+    private static string Text(AttributeValue value) => value.Kind switch
+    {
+        AttributeKind.Double => value.DoubleValue.ToString("G12", CultureInfo.InvariantCulture),
+        _ => value.IsNull ? "-" : value.ToString(),
+    };
 }

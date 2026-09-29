@@ -19,6 +19,10 @@ namespace Spatial.QueryConformance;
 /// to zero) and in a group key (a null is a group of its own).</item>
 /// <item><b>Single-row groups</b> — where a percentile's rank arithmetic or a
 /// variance's n − 1 divides by zero, or is taken to divide.</item>
+/// <item><b>A group with two distinct values</b> — so a percentile
+/// interpolates between rows rather than answering a value that happens to be
+/// in the group, which is the only case where
+/// <c>PERCENTILE_CONT</c> and a hand-rolled interpolation can disagree.</item>
 /// <item><b>An empty set</b> — for the one-row-of-nulls rule, and for a count
 /// that is zero rather than one.</item>
 /// </list>
@@ -40,13 +44,14 @@ public static class QueryFixture
     ]);
 
     /// <summary>The fixture's rows, in the order a store returns them when it
-    /// is asked for nothing: two tied sort keys, three categories (one with a
-    /// single row, one with a null key), nulls in the summed field, and one
-    /// row outside the box the paging cases use.</summary>
+    /// is asked for nothing: two tied sort keys, four categories (two of them a
+    /// single row, one with a null key and two with a null summed value), nulls
+    /// in the summed field, and one row outside the box the paging cases
+    /// use.</summary>
     public static IReadOnlyList<Feature> Features { get; } =
     [
         Row(1, "a", 10, 1.5, "alpha", x: 1.0),
-        Row(2, "a", 10, 2.5, "bravo", x: 1.0),
+        Row(2, "a", 15, 2.5, "bravo", x: 1.0),
         Row(3, "b", null, 0.5, "charlie", x: 2.0),
         Row(4, "b", 30, null, "delta", x: 2.0),
         Row(5, null, 20, 4.5, "echo", x: 3.0),

@@ -176,4 +176,28 @@ public sealed class ReferencePlanSemanticsTests
         Assert.Equal(4.0 / 3.0, values[0].DoubleValue, 10);
         Assert.Equal(Math.Sqrt(4.0 / 3.0), values[1].DoubleValue, 10);
     }
+
+    /// <summary>
+    /// The sample forms divide by n − 1, which is zero for a single value, so
+    /// they are <em>undefined</em> there rather than zero: a store asked for
+    /// <c>VAR_SAMP</c> answers null, and an answer of zero would be the
+    /// population form of a group the sample form cannot describe. This is the
+    /// rule the pushdown is measured against, so it is stated here rather than
+    /// left to whichever reduction runs first.
+    /// </summary>
+    [Fact]
+    public void The_sample_variance_of_fewer_than_two_values_is_null_and_not_zero()
+    {
+        var query = new AggregateQuery(
+        [
+            new AggregateSpec(AggregateStatistic.Variance, "score", "var"),
+            new AggregateSpec(AggregateStatistic.StdDev, "score", "sd"),
+        ]);
+
+        var one = Assert.Single(FeatureReduction.Aggregate(Schema, [Row(1, "a", 5)], query).Groups).Values;
+        Assert.All(one, value => Assert.Equal(AttributeValue.Null, value));
+
+        var none = Assert.Single(FeatureReduction.Aggregate(Schema, [], query).Groups).Values;
+        Assert.All(none, value => Assert.Equal(AttributeValue.Null, value));
+    }
 }

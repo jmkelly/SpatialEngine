@@ -21,9 +21,9 @@ namespace Spatial.Stores.PostGIS.Core;
 /// explicitly rather than inherited; <c>SUM</c>/<c>AVG</c>/<c>VAR_SAMP</c>
 /// return <c>numeric</c>, so a reduced value is coerced back to the kind the
 /// reference reports; and <c>GROUP BY</c> returns rows in no defined order, so a
-/// grouped reduction is only pushed down when the plan asks for an order (a
-/// group order SQL can express) — otherwise the rows are reduced here, where
-/// first-seen order is knowable.
+/// grouped reduction is only pushed down when the plan asks for an order over
+/// the group key itself (a group order SQL can return) — otherwise the rows are
+/// reduced here, where first-seen order is knowable.
 /// </para>
 /// </summary>
 internal static class PostgisPlanQueries
@@ -61,12 +61,22 @@ internal static class PostgisPlanQueries
 
     /// <summary>
     /// The grouped reduction: the group key, one aggregate expression per
-    /// statistic, grouped over the key plus every ordered column (an
-    /// <c>ORDER BY</c> expression must be grouped), and ordered by the plan's
-    /// order with the group key appended so the row order is total. Returns
-    /// <c>null</c> when the plan asks for no order: a group order the plan did
-    /// not ask for is not this store's to invent, and the caller then reduces
-    /// the rows it read instead.
+    /// statistic, grouped over the key, and ordered by the plan's order with
+    /// the group key appended so the row order is total.
+    ///
+    /// <para>
+    /// Returns <c>null</c> when a <em>grouped</em> reduction has no order the
+    /// store can return: a group order the plan did not ask for is not this
+    /// store's to invent (<c>GROUP BY</c> returns rows in no defined order,
+    /// while the contract's order for a reduction is the plan's), and an order
+    /// naming a column the group key does not carry is a different question
+    /// again — grouping by it too would return more groups than the reference
+    /// does, and ordering a group by one of its own aggregates is not a
+    /// <c>GROUP BY</c> order at all. The caller then reduces the rows it read
+    /// instead, where first-seen order is knowable. An <em>ungrouped</em>
+    /// reduction is one group whatever the order, so it is always one aggregate
+    /// row.
+    /// </para>
     /// </summary>
     public static string? Aggregate(
         PostgisDatasetName dataset,
@@ -76,22 +86,13 @@ internal static class PostgisPlanQueries
         IReadOnlyList<OrderTerm> order,
         List<object?> parameters)
     {
-        if (order.Count == 0)
+        if (groupColumns.Count > 0 && (order.Count == 0 || order.Any(term => !groupColumns.Contains(term.Field, StringComparer.Ordinal))))
         {
             return null;
         }
 
-        var grouped = new List<string>(groupColumns);
-        foreach (var field in groupColumns.Concat(order.Select(term => term.Field)))
-        {
-            if (!grouped.Contains(field, StringComparer.Ordinal))
-            {
-                grouped.Add(field);
-            }
-        }
-
         var terms = order.Select(Term).ToList();
-        terms.AddRange(grouped.Select(Ascending));
+        terms.AddRange(groupColumns.Select(Ascending));
         var selects = groupColumns.Select(Quote).ToList();
         selects.AddRange(specs.Select(spec => new Statistic(spec).Expression(parameters)));
         var builder = new StringBuilder("SELECT ")
@@ -99,8 +100,16 @@ internal static class PostgisPlanQueries
             .Append(" FROM ")
             .Append(dataset.QuoteQualified());
         AppendWhere(builder, where);
-        builder.Append(" GROUP BY ").Append(string.Join(", ", grouped.Select(Quote)));
-        builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
+        if (groupColumns.Count > 0)
+        {
+            builder.Append(" GROUP BY ").Append(string.Join(", ", groupColumns.Select(Quote)));
+        }
+
+        if (terms.Count > 0)
+        {
+            builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
+        }
+
         return builder.ToString();
     }
 
@@ -195,7 +204,7 @@ internal static class PostgisPlanQueries
     }
 
     /// <summary>Whether the plan asks for anything other than every row.</summary>
-    private static bool Restricts(FeatureQuery query) =>
+    public static bool Restricts(FeatureQuery query) =>
         query.Ids is not null || query.BoundingBox is not null || query.Where is not null;
 
     private static string? Identity(DatasetDescription description, IReadOnlyList<FeatureId>? ids, List<object?> parameters)

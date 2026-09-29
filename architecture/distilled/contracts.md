@@ -171,7 +171,18 @@ requests an order — and the GeoServices adapter offers a grouped
 `outStatistics` only when `orderByFields` names exactly the group fields, the
 case where the group keys are the total order the store can return; every other
 statistics request keeps the scan-and-match path and the same answer (ADR-0098
-§7 as amended by SpatialEngine-u2x.9.2). The one definition of that
+§7 as amended by SpatialEngine-u2x.9.2). An **ungrouped** reduction has one
+group, so its order cannot differ and it is always offered; a **grouped** one
+is offered only when the plan's order is over the group key itself, and is
+reduced in the caller otherwise. Three rules about the values are the
+reference's, and a store that reduces in its own dialect is measured against
+them (ADR-0115): a statistic with no non-null input is a **null** — the count
+included, so a `COUNT(field)` of zero is a null and not a zero — the sample
+forms `var`/`stddev` are **null** for fewer than two values rather than zero,
+and an ungrouped reduction of an empty set is **one group of nulls** where a
+dialect returns no row at all. The page over groups and `having` remain
+adapter-side over the groups the store returned, because a cap the plan asked
+for would cut rows the store never grouped. The one definition of that
 evaluation is `Spatial.Querying`: `FeaturePlanExecutor` selects, orders, pages
 and projects, `FeaturePlanExecutor.Finish` is the shaping half for a store that
 already applied the restriction, and `ReferencePredicate` is the one predicate
