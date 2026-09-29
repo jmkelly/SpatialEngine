@@ -1,7 +1,7 @@
 # SpatialEngine-u2x.21.2 — is per-layer tile composition worth building?
 
 **Decision: yes — cache per-layer tiles and composite them at serve time,
-compositing from per-layer PNGs. Recorded in ADR-0110.**
+compositing from per-layer PNGs. Recorded in ADR-0116.**
 
 The measurement bead behind ADR-0083's deferred decision. Run it with:
 
