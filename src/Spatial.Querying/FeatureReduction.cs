@@ -1,6 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
+using Spatial.Core.Geometry;
 
 namespace Spatial.Querying;
 
@@ -28,6 +29,10 @@ namespace Spatial.Querying;
 /// a single observation is undefined, and a store's <c>VAR_SAMP</c> answers
 /// null there too, so a zero would be the population form of a group the
 /// sample form cannot describe.</item>
+/// <item>The envelope of a geometry field is a rectangle, not a number
+/// (ADR-0120): the smallest box over the group's non-null geometries, or a
+/// null when the group has none — the same "no values to reduce" answer every
+/// other statistic gives.</item>
 /// </list>
 /// </summary>
 public static class FeatureReduction
@@ -115,6 +120,7 @@ public static class FeatureReduction
         AggregateStatistic.Count => AttributeKind.Int64,
         AggregateStatistic.Sum when fieldKind == AttributeKind.Int64 => AttributeKind.Int64,
         AggregateStatistic.Minimum or AggregateStatistic.Maximum => fieldKind,
+        AggregateStatistic.Envelope => AttributeKind.Envelope,
         _ => AttributeKind.Double,
     };
 
@@ -190,8 +196,26 @@ public static class FeatureReduction
                 : AttributeValue.Null,
             AggregateStatistic.PercentileContinuous => Percentile(present, spec, continuous: true),
             AggregateStatistic.PercentileDiscrete => Percentile(present, spec, continuous: false),
+            AggregateStatistic.Envelope => BoundingRectangle(present),
             _ => AttributeValue.Null,
         };
+    }
+
+    /// <summary>
+    /// The bounding rectangle of the group's non-null geometries, or the
+    /// envelope of the first one when there is only one (ADR-0120). The nulls
+    /// are already gone, so a group of nothing never reaches here: it is a
+    /// null, like every other reduction of no non-null input.
+    /// </summary>
+    private static AttributeValue BoundingRectangle(List<AttributeValue> present)
+    {
+        var extent = present[0].GeometryValue.Envelope ?? Envelope.Empty;
+        for (var i = 1; i < present.Count; i++)
+        {
+            extent = extent.Union(present[i].GeometryValue.Envelope ?? Envelope.Empty);
+        }
+
+        return AttributeValue.FromEnvelope(extent);
     }
 
     private static List<AttributeValue> NonNull(List<Feature> members, int index)

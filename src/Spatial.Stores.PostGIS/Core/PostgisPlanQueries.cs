@@ -23,11 +23,13 @@ namespace Spatial.Stores.PostGIS.Core;
 /// reference reports; <c>GROUP BY</c> returns rows in no defined order, so a
 /// grouped reduction is only pushed down when the plan asks for an order over
 /// the group key itself (a group order SQL can return) — otherwise the rows are
-/// reduced here, where first-seen order is knowable; and a text sort key
+/// reduced here, where first-seen order is knowable; a text sort key
 /// inherits the <em>database's</em> collation, which is a locale comparison
 /// where the contract's is a byte one, so a term over a text column carries
 /// <c>COLLATE "C"</c> unless the database already compares by bytes
-/// (ADR-0121).
+/// (ADR-0121); and <c>ST_Extent</c>
+/// answers a <c>box2d</c>, so the rectangle is cast back to a geometry and read
+/// through the one geometry reader this provider has (ADR-0120).
 /// </para>
 /// </summary>
 internal static class PostgisPlanQueries
@@ -277,8 +279,20 @@ internal static class PostgisPlanQueries
             AggregateStatistic.StdDev => $"STDDEV_SAMP({Quote(spec.Field)})",
             AggregateStatistic.Minimum => $"MIN({Ordered(spec.Field, schema, byteOrderText)})",
             AggregateStatistic.Maximum => $"MAX({Ordered(spec.Field, schema, byteOrderText)})",
+            AggregateStatistic.Envelope => Extent(),
             _ => Percentile(spec, parameters),
         };
+
+        /// <summary>
+        /// The bounding rectangle of a geometry column as one value the
+        /// provider's own EWKB reader can read back, so a pushed-down extent is
+        /// mapped exactly like a stored geometry rather than through a second,
+        /// box-shaped reader. <c>ST_Extent</c> answers a <c>box2d</c> and casts
+        /// to a <c>POLYGON</c> whose envelope is that box; over a group whose
+        /// geometries are all null it answers <c>NULL</c>, which is the
+        /// reference's answer for a group with nothing to reduce.
+        /// </summary>
+        private string Extent() => $"ST_AsEWKB(ST_Extent({Quote(spec.Field)})::geometry)";
 
         /// <summary>
         /// A percentile as an ordered-set aggregate over the field, ranked

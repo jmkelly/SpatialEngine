@@ -2,8 +2,9 @@ namespace Spatial.Core.Features;
 
 /// <summary>
 /// The declaration of one attribute column: name, value kind (never
-/// <see cref="AttributeKind.Null"/>), nullability and an optional description.
-/// Equality includes the description.
+/// <see cref="AttributeKind.Null"/> nor <see cref="AttributeKind.Envelope"/>,
+/// which are reduced values rather than column kinds), nullability and an
+/// optional description. Equality includes the description.
 /// </summary>
 public readonly record struct FieldDefinition : IFieldDefinition
 {
@@ -15,6 +16,13 @@ public readonly record struct FieldDefinition : IFieldDefinition
         {
             throw new ArgumentException(
                 $"A field cannot have the reserved {nameof(AttributeKind.Null)} kind; use the nullable flag instead.", nameof(kind));
+        }
+
+        if (kind == AttributeKind.Envelope)
+        {
+            throw new ArgumentException(
+                $"A field cannot have the {nameof(AttributeKind.Envelope)} kind: a rectangle is what a reduction of a geometry field is, not something a column holds (ADR-0120).",
+                nameof(kind));
         }
 
         if (!Enum.IsDefined(kind))

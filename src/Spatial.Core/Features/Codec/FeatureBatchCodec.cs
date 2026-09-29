@@ -414,7 +414,12 @@ public static class FeatureBatchCodec
             return false;
         }
 
-        if (!Enum.IsDefined(typeof(AttributeKind), (AttributeKind)kindByte) || (AttributeKind)kindByte == AttributeKind.Null)
+        // The two reduced kinds are not column kinds (ADR-0120): a batch carries
+        // values a schema declares, and a rectangle is only ever the result of
+        // a reduction, so a kind byte naming one is a malformed field rather
+        // than a kind the writer might have meant.
+        if (!Enum.IsDefined(typeof(AttributeKind), (AttributeKind)kindByte)
+            || (AttributeKind)kindByte is AttributeKind.Null or AttributeKind.Envelope)
         {
             error = Error(offset, $"field {index} '{name}': invalid kind byte {kindByte}.");
             return false;

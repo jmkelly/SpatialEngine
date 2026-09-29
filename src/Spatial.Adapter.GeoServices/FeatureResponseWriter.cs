@@ -200,8 +200,17 @@ internal static class FeatureResponseWriter
             }
         }
 
-        return WriteExtent(extent, outSr ?? layerCrs);
+        return ExtentOnly(extent, outSr ?? layerCrs);
     }
+
+    /// <summary>
+    /// The same response for an extent the store reduced rather than one taken
+    /// over a materialised match set (ADR-0120): the geometry is the layer's
+    /// and the reference is the layer's, because the reduction is the same one
+    /// the writer has always written out.
+    /// </summary>
+    internal static IResult ExtentOnly(Envelope extent, CoordinateReference? coordinateReference) =>
+        WriteExtent(extent, coordinateReference);
 
     private static IResult WriteExtent(Envelope extent, CoordinateReference? coordinateReference) =>
         EsriJson.Write(writer =>

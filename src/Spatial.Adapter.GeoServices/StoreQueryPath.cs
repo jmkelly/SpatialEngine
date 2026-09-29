@@ -34,6 +34,13 @@ namespace Spatial.Adapter.GeoServices;
 /// </para>
 ///
 /// <para>
+/// <c>returnExtentOnly</c> is a reduction of the whole match, and is the
+/// store's answer for the same reason (ADR-0120): a rectangle is what the
+/// database already computes. A reprojecting <c>outSR</c> and a layer with no
+/// geometry keep the match path — see <see cref="ExtentAsync"/>.
+/// </para>
+///
+/// <para>
 /// The feature path additionally needs a layer whose <c>OBJECTID</c> is a durable
 /// identity column (ADR-0037): a layer without one serves its object ids as scan
 /// ordinals, which a paged store read does not have. The reduction paths need
@@ -78,9 +85,7 @@ internal static class StoreQueryPath
 
         if (query.ReturnExtentOnly)
         {
-            // An extent spans the whole match set; it is not a reduction the
-            // store's face carries, so it stays on the match path.
-            return null;
+            return await ExtentAsync(dataset, store, plan, query, layerCrs, cancellationToken).ConfigureAwait(false);
         }
 
         if (query.OutStatistics is not null)
@@ -143,7 +148,7 @@ internal static class StoreQueryPath
             : (int?)null;
         return new FeatureQuery(
             Where: clause,
-            BoundingBox: Envelope(queryGeometry),
+            BoundingBox: QueryBox(queryGeometry),
             Projection: projection,
             Order: order,
             Limit: FeaturePaging.EffectivePageSize(query),
@@ -151,7 +156,7 @@ internal static class StoreQueryPath
             Cursor: token);
     }
 
-    private static BoundingBox? Envelope(IGeometry? geometry) =>
+    private static BoundingBox? QueryBox(IGeometry? geometry) =>
         geometry?.Envelope is { } envelope
             ? new BoundingBox(envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY)
             : null;
@@ -264,6 +269,55 @@ internal static class StoreQueryPath
     }
 
     /// <summary>
+    /// The <c>returnExtentOnly</c> response, asked of the store as the envelope
+    /// reduction over the whole match (ADR-0120) — the same statistic the
+    /// MapServer layer extent is, one request shape away. The plan carries the
+    /// restriction alone: an extent spans the match, so a page or a projection
+    /// over it would answer a different question.
+    ///
+    /// <para>
+    /// Two requests keep the match path instead, both because the reduction
+    /// would answer a different question. A layer with no geometry field has no
+    /// envelope to reduce, and one asking for a reprojected <c>outSR</c> wants
+    /// the union of the <em>reprojected</em> geometries, which is not the
+    /// rectangle of the layer's own: reprojecting a box and reprojecting the
+    /// geometries inside it are different operations, and only the second is
+    /// what this response has always said.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult?> ExtentAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        FeatureQuery plan,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs,
+        CancellationToken cancellationToken)
+    {
+        var index = FeatureGeometry.Index(dataset.Schema);
+        if (index < 0)
+        {
+            return null;
+        }
+
+        if (query.OutSr is { } target && layerCrs is not null && target != layerCrs)
+        {
+            return null;
+        }
+
+        var reduction = new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, dataset.Schema[index].Name)]);
+        var page = await FeatureReductionFallback
+            .AggregateAsync(
+                store,
+                dataset.Id,
+                plan with { Projection = null, Order = null, Limit = null, Offset = null, Cursor = null },
+                reduction,
+                cancellationToken)
+            .ConfigureAwait(false);
+        var extent = page.Groups.Count == 1 ? page.Groups[0].Values[0] : AttributeValue.Null;
+        return FeatureResponseWriter.ExtentOnly(extent.IsNull ? Envelope.Empty : extent.EnvelopeValue, layerCrs);
+    }
+
+    /// <summary>
     /// The <c>outStatistics</c> reduction, asked of the store's own face: the
     /// request's statistics and its grouping compiled onto an
     /// <see cref="AggregateQuery"/> (the two vocabularies are name-for-name),
@@ -302,7 +356,7 @@ internal static class StoreQueryPath
             return null;
         }
 
-        var plan = new FeatureQuery(Where: clause, BoundingBox: Envelope(queryGeometry), Order: order);
+        var plan = new FeatureQuery(Where: clause, BoundingBox: QueryBox(queryGeometry), Order: order);
         var page = await FeatureReductionFallback
             .AggregateAsync(store, dataset.Id, plan, FeatureStatisticsEngine.Reduction(spec), cancellationToken)
             .ConfigureAwait(false);

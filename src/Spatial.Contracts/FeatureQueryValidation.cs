@@ -19,6 +19,15 @@ namespace Spatial.Contracts;
 /// left to each store's compiler, so a plan naming a field no store has is
 /// rejected the same way whether it is evaluated in memory or pushed to SQL.
 /// </para>
+///
+/// <para>
+/// One statistic is a statistic <em>of</em> a field rather than over its
+/// values: the envelope of a geometry field, which reduces geometries and so
+/// takes the one field kind no other statistic accepts, and takes nothing else
+/// (ADR-0120). It is checked here for the same reason the rest are: a store
+/// that met a sum of a geometry column, or an envelope of a numeric one, would
+/// have to invent the answer.
+/// </para>
 /// </summary>
 public static class FeatureQueryValidation
 {
@@ -99,6 +108,17 @@ public static class FeatureQueryValidation
 
         var index = Require(schema, spec.Field, label);
         var kind = schema[index].Kind;
+        if (IsEnvelope(spec.Statistic))
+        {
+            if (kind != AttributeKind.Geometry)
+            {
+                throw SpatialException.BadArguments(
+                    $"Aggregate {label} '{spec.Name}': an envelope needs a geometry field, but '{spec.Field}' is {kind}.");
+            }
+
+            return;
+        }
+
         if (kind == AttributeKind.Geometry)
         {
             throw SpatialException.BadArguments(
@@ -213,6 +233,8 @@ public static class FeatureQueryValidation
     private static bool IsNumeric(AggregateStatistic statistic) =>
         statistic is AggregateStatistic.Sum or AggregateStatistic.Average or AggregateStatistic.Variance
             or AggregateStatistic.StdDev or AggregateStatistic.PercentileContinuous or AggregateStatistic.PercentileDiscrete;
+
+    private static bool IsEnvelope(AggregateStatistic statistic) => statistic == AggregateStatistic.Envelope;
 
     private static bool IsPercentile(AggregateStatistic statistic) =>
         statistic is AggregateStatistic.PercentileContinuous or AggregateStatistic.PercentileDiscrete;

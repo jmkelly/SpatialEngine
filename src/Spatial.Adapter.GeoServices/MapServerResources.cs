@@ -1,17 +1,19 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
+using Spatial.Querying;
 
 namespace Spatial.Adapter.GeoServices;
 
 /// <summary>
 /// Shapes Map Service resources (spec §4) from a publication's layers and the
-/// engine's dataset metadata. It computes each layer's extent by reading its
-/// geometry through the store's plan (the engine has no extent verb — ADR-0048
-/// records the follow-up), maps the map SRID to Esri units and projects the
-/// persisted style onto a simple <c>drawingInfo</c>. No spatial algorithm
-/// lives here; the adapter delegates geometry work to the engine verbs.
+/// engine's dataset metadata. It asks the store for each layer's advertised
+/// extent as a reduction over the layer (ADR-0120), maps the map SRID to Esri
+/// units and projects the persisted style onto a simple <c>drawingInfo</c>. No
+/// spatial algorithm lives here; the adapter delegates geometry work to the
+/// engine verbs.
 /// </summary>
 internal static class MapServerResources
 {
@@ -252,32 +254,37 @@ internal static class MapServerResources
     };
 
     /// <summary>
-    /// The layer's extent: the union of its features' envelopes, read through
-    /// the store's plan so the columns the extent is not computed from are
-    /// projected away at the store rather than shipped and dropped
-    /// (ADR-0112). A table has no geometry column, so there is nothing to
-    /// project and the read is the whole-dataset one.
+    /// The layer's extent: the store's own envelope reduction over the layer
+    /// (ADR-0120), so the rows that carry the geometries never cross and the
+    /// <c>ST_Extent</c> that answers this is the database's. What ADR-0112
+    /// reached by projecting the geometry column out of a whole-dataset read
+    /// and unioning what came back is one aggregate row now.
+    ///
+    /// <para>
+    /// A table layer has no geometry column, so there is nothing to reduce and
+    /// the answer is the union over nothing: the read is not issued at all,
+    /// because a table is not scanned to discover that none of its features has
+    /// an extent.
+    /// </para>
     /// </summary>
     private static async Task<Envelope> ExtentAsync(
         IFeatureStore store, DatasetDescription dataset, CancellationToken cancellationToken)
     {
-        var plan = FeatureGeometry.Index(dataset.Schema) is var index && index >= 0
-            ? new FeatureQuery(Projection: [dataset.Schema[index].Name])
-            : null;
-        var batches = plan is null
-            ? await store.ScanAsync(dataset.Id, cancellationToken)
-            : (await store.QueryAsync(dataset.Id, plan, cancellationToken)).Batches;
-        var extent = Envelope.Empty;
-        foreach (var feature in batches.SelectMany(batch => batch.Features))
+        var index = FeatureGeometry.Index(dataset.Schema);
+        if (index < 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (FeatureGeometry.Find(feature)?.Envelope is { } envelope)
-            {
-                extent = extent.Union(envelope);
-            }
+            return Envelope.Empty;
         }
 
-        return extent;
+        var reduction = new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, dataset.Schema[index].Name)]);
+        var page = await FeatureReductionFallback
+            .AggregateAsync(store, dataset.Id, FeatureQuery.All, reduction, cancellationToken)
+            .ConfigureAwait(false);
+        // An ungrouped reduction of no features is one group of nulls (the
+        // served statistics surface's rule), so the group is there to read and
+        // its null is the empty extent.
+        var extent = page.Groups.Count == 1 ? page.Groups[0].Values[0] : AttributeValue.Null;
+        return extent.IsNull ? Envelope.Empty : extent.EnvelopeValue;
     }
 
     private static string DisplayField(DatasetDescription dataset)
