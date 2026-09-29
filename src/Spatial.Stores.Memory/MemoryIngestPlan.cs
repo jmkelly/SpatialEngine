@@ -9,7 +9,10 @@ namespace Spatial.Stores.Memory;
 /// identity mode and the stored schema (with the appended auto-identity
 /// column), plus the pages to load. Pure and top-level so the identity rules
 /// are unit-testable without the catalog (the same factoring as PostGIS's
-/// <c>PostgisIngestPlan</c>).
+/// <c>PostgisIngestPlan</c>). A stored feature is keyed by the identity
+/// column's value: an auto ingest's assigned id, a source ingest's own column
+/// (ADR-0038), and the caller's identity only when the dataset has no
+/// identity column at all.
 /// </summary>
 internal sealed record MemoryIngestPlan(
     string Dataset, int Srid, IngestIdentity Identity, string? IdentityColumn,
@@ -57,12 +60,14 @@ internal sealed record MemoryIngestPlan(
         var features = new List<Feature>(Pages.Sum(page => (int)page.Count));
         long nextId = 1;
         var template = MemoryDataset.Create(Dataset, Srid, StoredSchema, idColumns: [], features: [], nextId: 1);
+        var identityIndex = IdentityColumn is null ? -1 : StoredSchema.IndexOf(IdentityColumn);
         foreach (var page in Pages)
         {
             foreach (var feature in page.Features)
             {
                 long? assigned = Identity == IngestIdentity.Auto ? nextId++ : null;
-                features.Add(MemorySchema.BuildStored(template, feature, assigned));
+                var stored = MemorySchema.BuildStored(template, feature, assigned);
+                features.Add(Identity == IngestIdentity.Source ? MemorySchema.Rekey(stored, identityIndex) : stored);
             }
         }
 
