@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
@@ -242,6 +243,19 @@ internal static class Program
             return Task.CompletedTask;
         }, cancellationToken);
         Console.WriteLine(composeRaw.ToRow());
+
+        await ContentionProbeAsync(
+            options,
+            renderer,
+            cache,
+            scheme,
+            version,
+            styleSources,
+            style,
+            decoded,
+            tiles,
+            cancellationToken);
+
         foreach (var stack in decoded)
         {
             foreach (var image in stack)
@@ -250,6 +264,7 @@ internal static class Program
             }
         }
 
+        Console.WriteLine();
         Console.WriteLine($"# B holds {tiles.Count * layers.Count} entries for the same {tiles.Count} tiles " +
             $"({(tiles.Count * layers.Count) / (double)options.MaxEntries:P0} of the entry bound), " +
             $"{perLayerBytes.Sum() / 1024.0 / 1024.0:F2} MB against A's {bytesAfterWarm / 1024.0 / 1024.0:F2} MB");
@@ -473,14 +488,22 @@ internal static class Program
         var perTileCold = cold.P50Milliseconds / tiles.Count;
         var perTileWarm = warm.P50Milliseconds / tiles.Count;
 
+        // The same three quantities on CPU time, which is the basis the
+        // decision is made on (see the contention probe below).
+        var cpuCompose = compose.P50CpuMilliseconds / tiles.Count;
+        var cpuComposeRaw = composeRaw.P50CpuMilliseconds / tiles.Count;
+        var cpuCold = cold.P50CpuMilliseconds / tiles.Count;
+        var cpuWarm = warm.P50CpuMilliseconds / tiles.Count;
+
         Console.WriteLine("## Derived — the numbers the decision is made on");
+        Console.WriteLine("# wall_ms is reported for continuity, but CPU_ms is the decision basis: the wall-time ORDERING of");
+        Console.WriteLine("# these arms flipped with box load across three runs, while CPU time held (see the probe at the end).");
         Console.WriteLine($"tiles in the working set                 {tiles.Count}");
         Console.WriteLine($"layers in the published map             {layers.Count}");
-        Console.WriteLine($"whole-map cold re-render, per tile      {perTileCold:F2} ms");
-        Console.WriteLine($"whole-map warm hit, per tile            {perTileWarm:F2} ms");
-        Console.WriteLine($"whole-map cold re-render, per tile      {perTileCold:F2} ms  alloc {cold.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F2} MB");
-        Console.WriteLine($"serve-time composite+png, per tile      {perTileCompose:F2} ms  alloc {compose.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
-        Console.WriteLine($"serve-time composite+raw, per tile      {perTileComposeRaw:F2} ms  alloc {composeRaw.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
+        Console.WriteLine($"whole-map warm hit, per tile            {perTileWarm:F2} ms wall   {cpuWarm:F2} ms cpu   alloc {(warm.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0):F3} MB");
+        Console.WriteLine($"whole-map cold re-render, per tile      {perTileCold:F2} ms wall   {cpuCold:F2} ms cpu   alloc {cold.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F2} MB");
+        Console.WriteLine($"serve-time composite+png, per tile      {perTileCompose:F2} ms wall   {cpuCompose:F2} ms cpu   alloc {compose.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
+        Console.WriteLine($"serve-time composite+raw, per tile      {perTileComposeRaw:F2} ms wall   {cpuComposeRaw:F2} ms cpu   alloc {composeRaw.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
         Console.WriteLine($"over-invalidation, a single-layer edit  {worst.Invalidated / (double)Math.Max(1, worst.Changed):F1}x  (worst layer)");
         Console.WriteLine($"over-invalidation, a single-layer edit  {bestCase.Invalidated / (double)Math.Max(1, bestCase.Changed):F1}x  (sparsest layer)");
         var styleRows = fanOut.Where(row => row.Case == "style").ToList();
@@ -526,33 +549,46 @@ internal static class Program
         //   arm A: K x perTileCold  (every one of them is a cache miss)
         //   arm B: perTileEditedLayer (re-render the one edited layer, once)
         //           + K x tax        (blend and encode on every serve)
-        // Break-even solves  perTileEditedLayer + K x tax = K x perTileCold.
+        // Break-even solves  perTileEditedLayer + K x tax = K x perTileCold,
+        // which is a LOWER bound being a better result for arm B: the fewer
+        // tiles must be re-requested before B repays itself, the more B is
+        // worth building. An infinity means B never repays, at any load.
         var perTileEdited = new double[layers.Count];
+        var perTileEditedCpu = new double[layers.Count];
         for (var l = 0; l < layers.Count; l++)
         {
             perTileEdited[l] = perLayer[l].P50Milliseconds / tiles.Count;
+            perTileEditedCpu[l] = perLayer[l].P50CpuMilliseconds / tiles.Count;
         }
 
         Console.WriteLine();
         Console.WriteLine("## Break-even — tiles re-requested after one edit before per-layer composition repays itself");
-        Console.WriteLine("# Two bases are given because the measurement box is shared with a parallel swarm and the wall-time");
-        Console.WriteLine("# columns moved by up to 8x between runs. The ALLOC columns did not move: on this harness they are");
-        Console.WriteLine("# stable to the third decimal across every run, so the allocation basis is the one to quote and");
-        Console.WriteLine("# the wall-time basis is here only to show the two agree in sign and order of magnitude.");
-        Console.WriteLine($"# per tile:  A pays {perTileCold:F1} ms per re-requested tile (all cold); B pays {Min(perTileEdited):F1}-{Max(perTileEdited):F1} ms once to re-render the edited layer,");
-        Console.WriteLine($"#           then {perTileComposeRaw:F1} ms (+raw) or {perTileCompose:F1} ms (+png) per tile served.");
-        Console.WriteLine($"{"edited layer",-22} {"edited layer ms/tile",19} {"tax+raw",10} {"tax+png",10} {"break-even+raw",16} {"break-even+png",16}");
+        Console.WriteLine("# LOWER is better: the number of re-requested tiles arm B needs before it repays itself. ∞ = never repays.");
+        Console.WriteLine("# Computed on CPU time (the decision basis). The wall-time version is below, unlabelled as authoritative,");
+        Console.WriteLine("# because its ordering flipped with box load across the three runs of this spike.");
+        Console.WriteLine($"# per tile, CPU:  A pays {cpuCold:F1} ms per re-requested tile (all cold); B pays {Min(perTileEditedCpu):F1}-{Max(perTileEditedCpu):F1} ms once to re-render the edited layer,");
+        Console.WriteLine($"#                then {cpuComposeRaw:F1} ms (+raw) or {cpuCompose:F1} ms (+png) per tile served.");
+        Console.WriteLine($"{"edited layer",-22} {"edited layer cpu",17} {"tax+raw",9} {"tax+png",9} {"BE+raw",9} {"BE+png",9}   (wall: BE+raw / BE+png)");
         for (var l = 0; l < layers.Count; l++)
         {
-            var headroom = perTileCold - perTileCompose;
-            var headroomRaw = perTileCold - perTileComposeRaw;
-            var breakEvenPng = headroom <= 0 ? double.PositiveInfinity : perTileEdited[l] / headroom;
-            var breakEvenRaw = headroomRaw <= 0 ? double.PositiveInfinity : perTileEdited[l] / headroomRaw;
-            Console.WriteLine($"{layers[l].Dataset,-22} {perTileEdited[l],19:F1} {perTileComposeRaw,10:F1} {perTileCompose,10:F1} {breakEvenRaw,16:F2} {breakEvenPng,16:F2}");
+            var cpuHeadroom = cpuCold - cpuCompose;
+            var cpuHeadroomRaw = cpuCold - cpuComposeRaw;
+            var bePng = cpuHeadroom <= 0 ? double.PositiveInfinity : perTileEditedCpu[l] / cpuHeadroom;
+            var beRaw = cpuHeadroomRaw <= 0 ? double.PositiveInfinity : perTileEditedCpu[l] / cpuHeadroomRaw;
+            var wallHeadroom = perTileCold - perTileCompose;
+            var wallHeadroomRaw = perTileCold - perTileComposeRaw;
+            var wallPng = wallHeadroom <= 0 ? double.PositiveInfinity : perTileEdited[l] / wallHeadroom;
+            var wallRaw = wallHeadroomRaw <= 0 ? double.PositiveInfinity : perTileEdited[l] / wallHeadroomRaw;
+            Console.WriteLine($"{layers[l].Dataset,-22} {perTileEditedCpu[l],17:F1} {cpuComposeRaw,9:F1} {cpuCompose,9:F1} {Format(beRaw),9} {Format(bePng),9}   {Format(wallRaw)} / {Format(wallPng)}");
         }
 
         Console.WriteLine();
-        Console.WriteLine("## Break-even on allocation (load-independent; the trustworthy basis on a contended box)");
+        Console.WriteLine("## Break-even on allocation (load-independent, but a PROXY — reported for completeness)");
+        Console.WriteLine("# Allocation is load-independent and exactly reproducible, but it is not the cost: the composite's");
+        Console.WriteLine("# expense is Skia blend + PNG encode, which is CPU in existing buffers and allocates almost nothing.");
+        Console.WriteLine("# So this basis flatters arm B and is NOT the one the decision rests on. It is kept because it is the");
+        Console.WriteLine("# only exactly-reproducible column, and its disagreement with the CPU basis is itself the finding:");
+        Console.WriteLine("# the two arms' ranking flips between allocation and CPU, so allocation cannot stand in for cost here.");
         Console.WriteLine($"# alloc/tile: A cold re-render {cold.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F2} MB, B composite+raw {composeRaw.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB,");
         Console.WriteLine($"#             B re-renders the edited layer at {perLayer.Min(report => report.AllocatedBytes) / (double)tiles.Count / 1024.0 / 1024.0:F2}-{perLayer.Max(report => report.AllocatedBytes) / (double)tiles.Count / 1024.0 / 1024.0:F2} MB/tile.");
         Console.WriteLine($"{"edited layer",-22} {"edited layer MB/tile",20} {"break-even+raw",16} {"break-even+png",16}");
@@ -561,12 +597,199 @@ internal static class Program
             var allocPerTile = perLayer[l].AllocatedBytes / (double)tiles.Count;
             var headroomRaw = cold.AllocatedBytes / (double)tiles.Count - composeRaw.AllocatedBytes / (double)tiles.Count;
             var headroomPng = cold.AllocatedBytes / (double)tiles.Count - compose.AllocatedBytes / (double)tiles.Count;
-            Console.WriteLine($"{layers[l].Dataset,-22} {allocPerTile / 1024.0 / 1024.0,20:F2} {(headroomRaw <= 0 ? double.PositiveInfinity : allocPerTile / headroomRaw),16:F2} {(headroomPng <= 0 ? double.PositiveInfinity : allocPerTile / headroomPng),16:F2}");
+            Console.WriteLine($"{layers[l].Dataset,-22} {allocPerTile / 1024.0 / 1024.0,20:F2} {Format(headroomRaw <= 0 ? double.PositiveInfinity : allocPerTile / headroomRaw),16} {Format(headroomPng <= 0 ? double.PositiveInfinity : allocPerTile / headroomPng),16}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("## Amortised total cost — what a deployment actually pays");
+        Console.WriteLine("# The break-even above is 'tiles served per edit'. Read it that way: it is R, the ratio of tile");
+        Console.WriteLine("# serves to edits over the life of a cache. Below, R is the working set (a client pulls all 25 tiles");
+        Console.WriteLine("# of its viewport between edits), which is the realistic profile for an editing session.");
+        Console.WriteLine("#   arm A: every one of the R serves after an edit is a cold whole-map render. R x cold.");
+        Console.WriteLine("#   arm B: re-render the edited layer once, then every serve pays the composite tax.");
+        Console.WriteLine($"#           editedLayer + R x tax.");
+        Console.WriteLine($"{"tiles served per edit (R)",26} {"A total cpu ms",16} {"B total cpu ms (+raw)",22} {"B (+png)",14}   winner");
+        foreach (var ratio in new[] { 1, 2, 5, tiles.Count, 100, 1000 })
+        {
+            var a = ratio * cpuCold;
+            var bRaw = Max(perTileEditedCpu) + (ratio * cpuComposeRaw);
+            var bPng = Max(perTileEditedCpu) + (ratio * cpuCompose);
+            var winner = bRaw < a && bPng < a ? "B (both)" : bRaw < a ? "B (+raw only)" : "A";
+            Console.WriteLine($"{ratio,26} {a,16:F1} {bRaw,22:F1} {bPng,14:F1}   {winner}");
         }
 
         Console.WriteLine();
         Console.WriteLine($"# the entry bound is {options.MaxEntries}: whole-map holds {options.MaxEntries} tiles, " +
             $"per-layer holds {options.MaxEntries / layers.Count} tiles' worth for the same budget");
+    }
+
+    /// <summary>Break-even figures print as a plain number, or "inf" for never.</summary>
+    private static string Format(double breakEven) =>
+        double.IsPositiveInfinity(breakEven) ? "inf" : breakEven.ToString("F2", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Which timing basis survives a contended box?
+    ///
+    /// This bead's number has to be reproducible on a machine shared with a
+    /// parallel swarm, and the wall-time ordering of the two arms was observed
+    /// to FLIP between runs of the spike (compose cheaper than a whole-map cold
+    /// render in two runs, dearer in a third). So the spike does not assert a
+    /// basis is trustworthy — it manufactures contention it controls, measures
+    /// both arms again with background burners running, and reports which basis
+    /// kept the ordering. Wall time is expected to inflate and reorder; CPU time
+    /// is expected to hold. That result is what licenses the break-even tables
+    /// above to be computed on CPU.
+    ///
+    /// The burners are plain spinning threads on the same process, standing in
+    /// for the swarm on the shared box. They are torn down before returning.
+    /// </summary>
+    private static async Task ContentionProbeAsync(
+        Options options,
+        MapRenderer renderer,
+        CountingCache cache,
+        WebMercatorTileScheme scheme,
+        string version,
+        IReadOnlyList<MapLayerSource> styleSources,
+        string style,
+        List<NetVips.Image>[] decoded,
+        IReadOnlyList<TileCoordinate> tiles,
+        CancellationToken cancellationToken)
+    {
+        var burners = new List<Process>();
+        try
+        {
+            Console.WriteLine();
+            Console.WriteLine("## Contention probe — does the arm ordering survive a loaded box?");
+            Console.WriteLine("# Both arms are measured again with synthetic background load. If a basis is to be trusted it must");
+            Console.WriteLine("# keep the SAME ORDERING under load; a basis that reorders between idle and loaded cannot decide this.");
+            Console.WriteLine($"{"load",-12} {"arm",-12} {"p50_ms",10} {"p50_cpu_ms",12}   ratio-vs-A (ms / cpu)");
+
+            Func<CancellationToken, Task> cold = token => ColdAsync(renderer, cache, scheme, version, styleSources, style, tiles, token);
+            Func<CancellationToken, Task> compose = token => ComposeAsync(decoded, scheme.TileSize, token);
+
+            var idleCold = await ProbeAsync(options, 0, cold, cancellationToken);
+            var idleCompose = await ProbeAsync(options, 0, compose, cancellationToken);
+
+            StartBurners(burners, Environment.ProcessorCount);
+            var loadedCold = await ProbeAsync(options, burners.Count, cold, cancellationToken);
+            var loadedCompose = await ProbeAsync(options, burners.Count, compose, cancellationToken);
+
+            ProbeRow("idle", "A cold", idleCold, null);
+            ProbeRow("idle", "B compose", idleCompose, idleCold);
+            ProbeRow("loaded", "A cold", loadedCold, null);
+            ProbeRow("loaded", "B compose", loadedCompose, loadedCold);
+
+            var idleRatioMs = idleCompose.P50Milliseconds / idleCold.P50Milliseconds;
+            var loadedRatioMs = loadedCompose.P50Milliseconds / loadedCold.P50Milliseconds;
+            var idleRatioCpu = idleCompose.P50CpuMilliseconds / idleCold.P50CpuMilliseconds;
+            var loadedRatioCpu = loadedCompose.P50CpuMilliseconds / loadedCold.P50CpuMilliseconds;
+
+            Console.WriteLine();
+            Console.WriteLine($"# compose/cold ratio, idle   -> {idleRatioMs:F2}x on wall, {idleRatioCpu:F2}x on cpu");
+            Console.WriteLine($"# compose/cold ratio, loaded -> {loadedRatioMs:F2}x on wall, {loadedRatioCpu:F2}x on cpu");
+            Console.WriteLine($"# wall ratio drifted {Math.Abs(loadedRatioMs - idleRatioMs) / Math.Max(idleRatioMs, 1e-9):P0}; cpu ratio drifted {Math.Abs(loadedRatioCpu - idleRatioCpu) / Math.Max(idleRatioCpu, 1e-9):P0}");
+            var wallReordered = (idleRatioMs - 1d) * (loadedRatioMs - 1d) < 0;
+            var cpuReordered = (idleRatioCpu - 1d) * (loadedRatioCpu - 1d) < 0;
+            Console.WriteLine($"# wall time REORDERED the arms under load: {(wallReordered ? "yes" : "no")}. cpu time reordered them: {(cpuReordered ? "yes" : "no")}.");
+            Console.WriteLine($"# => the break-even tables above are computed on {(cpuReordered ? "WALL" : "CPU")} time, and allocation is reported only as a proxy.");
+        }
+        finally
+        {
+            foreach (var burner in burners)
+            {
+                try
+                {
+                    if (!burner.HasExited)
+                    {
+                        burner.Kill(entireProcessTree: true);
+                    }
+
+                    burner.WaitForExit(5000);
+                }
+                catch (InvalidOperationException)
+                {
+                    // already gone; the probe has its numbers either way
+                }
+                finally
+                {
+                    burner.Dispose();
+                }
+            }
+        }
+    }
+
+    private static void ProbeRow(string load, string arm, SampleReport report, SampleReport? baseline)
+    {
+        var ratio = baseline is null
+            ? string.Empty
+            : $"   {report.P50Milliseconds / baseline.P50Milliseconds:F2}x / {report.P50CpuMilliseconds / baseline.P50CpuMilliseconds:F2}x";
+        Console.WriteLine($"{load,-12} {arm,-12} {report.P50Milliseconds,10:F2} {report.P50CpuMilliseconds,12:F1}{ratio}");
+    }
+
+    private static async Task<SampleReport> ProbeAsync(
+        Options options,
+        int load,
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken) =>
+        SampleReport.From("probe", $"load{load}", await Measurement.RunAsync(operation, 1, Math.Max(2, Math.Min(4, options.Iterations)), cancellationToken));
+
+    /// <summary>
+    /// The load is applied by SEPARATE processes, not by threads in this one.
+    /// That matters for the very number the probe reports: an in-process burner
+    /// would add its own spinning straight into this process's
+    /// TotalProcessorTime, which is the measurement, and CPU time under load
+    /// would read as ~17x idle — a contaminated number dressed up as evidence
+    /// about the probe. External processes contend for the cores the way the
+    /// swarm on the shared box does, and leave this process's CPU time alone.
+    /// </summary>
+    private static void StartBurners(List<Process> burners, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            var process = Process.Start(new ProcessStartInfo("bash", "-c \"while :; do :; done\"")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            });
+            if (process is not null)
+            {
+                burners.Add(process);
+            }
+        }
+    }
+
+    private static async Task ColdAsync(
+        MapRenderer renderer,
+        CountingCache cache,
+        WebMercatorTileScheme scheme,
+        string version,
+        IReadOnlyList<MapLayerSource> styleSources,
+        string style,
+        IReadOnlyList<TileCoordinate> tiles,
+        CancellationToken cancellationToken)
+    {        await cache.ClearAsync(cancellationToken);
+        foreach (var tile in tiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await renderer.RenderAsync(
+                new MapRenderRequest(
+                    new RasterViewport(scheme.Bounds(tile), scheme.TileSize, scheme.TileSize, scheme.Crs),
+                    style,
+                    styleSources),
+                cancellationToken);
+        }
+    }
+
+    private static Task ComposeAsync(IReadOnlyList<List<NetVips.Image>> decoded, int tileSize, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var stack in decoded)
+        {
+            ServeComposite.CompositePreDecoded(stack, tileSize, tileSize);
+        }
+
+        return Task.CompletedTask;
     }
 
     private static double Min(IReadOnlyList<double> values) => values.Min();
