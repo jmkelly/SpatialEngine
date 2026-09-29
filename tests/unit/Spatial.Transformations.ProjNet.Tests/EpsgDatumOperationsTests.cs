@@ -71,9 +71,12 @@ public sealed class EpsgDatumOperationsTests
     // zero a datum already at the pivot has rather than a measured one.
     [InlineData("World Geodetic System 1984", 6326, "WGS84", 0.0, "World", -180.0, -90.0, 180.0, 90.0, 0, 1262)]
     // EPSG:1149 "ETRS89 to WGS 84 (1)" over extent 4755 "Europe - ETRF by
-    // country". Registered west 16.1W, east 38.0E, south 33.26N, north
-    // 84.73N.
-    [InlineData("European Terrestrial Reference System 1989", 6258, "ETRS89", 1.0, "Europe", -16.1, 33.26, 38.0, 84.73, 1149, 4755)]
+    // country". Registered west 16.1W, east 38.01E, south 33.26N, north
+    // 84.73N. The east bound is 38.01, not 38.0: EPSG publishes it to two
+    // decimal places, and a bound rounded past the precision the registry
+    // states is a value a reader checking the row against the extent record
+    // cannot reproduce.
+    [InlineData("European Terrestrial Reference System 1989", 6258, "ETRS89", 1.0, "Europe", -16.1, 33.26, 38.01, 84.73, 1149, 4755)]
     // EPSG:1188 "NAD83 to WGS 84 (1)" over extent 1325. The registry states
     // 4.0 m; the "2m in each axis" in the row's own remarks is where the old
     // 2.0 came from, and it is a statement about the derivation, not the

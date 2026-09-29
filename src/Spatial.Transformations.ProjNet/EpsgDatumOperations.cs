@@ -35,13 +35,15 @@ internal static class EpsgDatumOperations
     /// §accuracy).
     /// <para>
     /// Every row is a transcription of one record of the <em>EPSG Geodetic
-    /// Parameter Dataset v13.102</em>, and each row says which: the
+    /// Parameter Dataset</em> — the release carried by PROJ 9.8.1, EPSG
+    /// v12.029 — and each row says which: the
     /// <paramref name="OperationCode"/> is the
-    /// <c>helmert_transformation</c> the accuracy was read from, the
+    /// <c>helmert_transformation</c> the accuracy was read from, and the
     /// <paramref name="ExtentCode"/> is the <c>extent</c> the bounds were read
-    /// from, and the vendored definition for every one of these datums is the
-    /// operation's own scope CRS — so a row is checked by opening one EPSG
-    /// record, and a row that has drifted names the record it drifted from.
+    /// from. Each operation's source CRS is a CRS on the datum this row
+    /// describes, which is the datum the vendored definition uses, so a row is
+    /// checked by opening one EPSG operation and one EPSG extent, and a row
+    /// that has drifted names the record it drifted from.
     /// <c>EpsgDatumOperationsTests</c> pins all of it.
     /// </para>
     /// <para>
@@ -59,28 +61,31 @@ internal static class EpsgDatumOperations
         // shift to state an accuracy for, so the 0.0 is the absence of an
         // operation, not a measured figure. Extent 1262 "World".
         new(6326, "WGS84", "World Geodetic System 1984", 0.0, "World", [-180.0, -90.0, 180.0, 90.0], 0, 1262),
-        // EPSG:1149 "ETRS89 to WGS 84 (1)", scope CRS EPSG:4258 - the vendored
-        // ETRS89 definition. Extent 4755 "Europe - ETRF by country":
-        // 16.1W-38.0E, 33.26N-84.73N.
-        new(6258, "ETRS89", "European Terrestrial Reference System 1989", 1.0, "Europe", [-16.1, 33.26, 38.0, 84.73], 1149, 4755),
-        // EPSG:1188 "NAD83 to WGS 84 (1)", scope CRS EPSG:4269 - the vendored
+        // EPSG:1149 "ETRS89 to WGS 84 (1)", source CRS EPSG:4258 - the
+        // vendored ETRS89 definition. Extent 4755 "Europe - ETRF by country"
+        // registers 16.1W-38.01E, 33.26N-84.73N; the east bound is 38.01 as
+        // published, not rounded to 38.0, so a reader can reproduce it from the
+        // extent record.
+        new(6258, "ETRS89", "European Terrestrial Reference System 1989", 1.0, "Europe", [-16.1, 33.26, 38.01, 84.73], 1149, 4755),
+        // EPSG:1188 "NAD83 to WGS 84 (1)", source CRS EPSG:4269 - the vendored
         // NAD83 definition. The published accuracy is 4.0 m; the "Accuracy 2m
         // in each axis" in the record's own remarks is a note on how the
         // parameters were derived, not the accuracy of the operation, and is
         // not what a row about a published operation may carry. Extent 1325
         // "North America - Canada and USA (CONUS, Alaska mainland)".
         new(6269, "NAD83", "North American Datum 1983", 4.0, "North America", [-172.54, 23.81, -47.74, 86.46], 1188, 1325),
-        // EPSG:1314 "OSGB36 to WGS 84 (6)", scope CRS EPSG:4277 - the vendored
+        // EPSG:1314 "OSGB36 to WGS 84 (6)", source CRS EPSG:4277 - the vendored
         // OSGB36 definition, and the operation whose seven parameters are
-        // exactly the definition's TOWGS84 node, so it is the one this row
-        // describes. Metre-level because the engine applies this Helmert rather
-        // than the OSTN grid shift. Extent 1264 "UK - Great Britain onshore and
+        // exactly the definition's TOWGS84 node (446.448, -125.157, 542.06,
+        // 0.15, 0.247, 0.842, -20.489), so it is the one this row describes.
+        // Metre-level because the engine applies this Helmert rather than the
+        // OSTN grid shift. Extent 1264 "UK - Great Britain onshore and
         // nearshore; Isle of Man".
         new(6277, "OSGB36", "Ordnance Survey of Great Britain 1936", 2.0, "Great Britain", [-8.82, 49.79, 1.92, 60.94], 1314, 1264),
-        // EPSG:1671 "ETRS89-FRA [RGF93 v1] to WGS 84 (1)", scope CRS
-        // EPSG:4171 - the vendored RGF93 v1 definition. Extent 1096 "France".
+        // EPSG:1671 "RGF93 v1 to WGS 84 (1)", source CRS EPSG:4171 - the
+        // vendored RGF93 v1 definition. Extent 1096 "France".
         new(6171, "RGF93", "Reseau Geodesique Francais 1993", 1.0, "France", [-9.86, 41.15, 10.38, 51.56], 1671, 1096),
-        // EPSG:1565 "NZGD2000 to WGS 84 (1)", scope CRS EPSG:4167 - the
+        // EPSG:1565 "NZGD2000 to WGS 84 (1)", source CRS EPSG:4167 - the
         // geographic base of the vendored EPSG:2193. Extent 1175 "New Zealand"
         // registers 55.95S-25.88S and 160.6E-171.2W, so the longitude span
         // crosses the antimeridian; the latitudes and the western bound are the
@@ -156,8 +161,9 @@ internal static class EpsgDatumOperations
     /// <paramref name="OperationCode"/> and <paramref name="ExtentCode"/> are
     /// the EPSG records the accuracy and the bounds were read from, so a
     /// reader can check the row against the registry and a row that drifts
-    /// names where it drifted from. Both are 0 only for the WGS 84 pivot,
-    /// which is not a published operation.
+    /// names where it drifted from. An <paramref name="OperationCode"/> of 0
+    /// is the WGS 84 pivot alone, which is not a published operation; every
+    /// row, the pivot included, names the extent it was read from.
     /// </summary>
     public sealed record DatumOperation(
         int DatumCode,

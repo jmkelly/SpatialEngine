@@ -210,13 +210,15 @@ this file together, then tag the release (`RELEASING.md`).
   operation whose seven parameters are exactly the vendored `TOWGS84` node —
   states 2 m. ETRS89's area of use reached 32.88N-40.18E, which is no extent
   the registry publishes; EPSG:1149 is registered over extent 4755 at
-  33.26N-38.0E. NZGD2000's area of use (166.36E-178.52E, 46.64S-34.1S) was not
+  33.26N-38.01E. NZGD2000's area of use (166.36E-178.52E, 46.64S-34.1S) was not
   traceable to the registry at all; EPSG:1565 is registered over extent 1175,
   160.6E to 171.2W and 55.95S to 25.88S. Every row now names the EPSG
   operation and extent record it was read from, so a value can be checked
   against the registry and a row that drifts says where it drifted from, and
-  tests pin the reconciled numbers rather than only proving coverage. The one
-  value still not verbatim is New Zealand's eastern bound: EPSG's extent
+  tests pin the reconciled numbers rather than only proving coverage. Every
+  bound is the one the registry publishes, at the precision it publishes it —
+  ETRS89's eastern bound is 38.01E, not a rounded 38.0E. The one exception is
+  New Zealand's eastern bound: EPSG's extent
   crosses the antimeridian and an area of use is a box, so it is the
   registered extent clipped at 180E, which keeps the datum in the graph
   (SpatialEngine-u2x.32).
