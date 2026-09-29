@@ -738,7 +738,11 @@ public sealed class GeometryServiceTests
         Assert.True(step.GetProperty("transformForward").GetBoolean());
         Assert.Contains("Helmert", step.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Helmert", step.GetProperty("method").GetString(), StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(3.0, applied.GetProperty("accuracy").GetDouble(), 3);
+        // The accuracy EPSG publishes for the operation the engine applies,
+        // EPSG:1314 "OSGB36 to WGS 84 (6)": 2.0 m. It was 3.0 here while the
+        // table carried a figure traceable to no registered operation
+        // (SpatialEngine-u2x.28.1).
+        Assert.Equal(2.0, applied.GetProperty("accuracy").GetDouble(), 3);
         Assert.False(applied.GetProperty("approximate").GetBoolean());
         var helmert = step.GetProperty("helmert");
         Assert.Equal(20.489, helmert.GetProperty("scale").GetDouble(), 3);

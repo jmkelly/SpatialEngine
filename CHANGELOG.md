@@ -199,6 +199,29 @@ this file together, then tag the release (`RELEASING.md`).
   position the caller never asked for. Ordinary tiles are byte-identical: a
   vertical line over `Envelope(0, -10, 10, 10)` still encodes as
   `098020E63C0A00CB39`.
+- **Four datum operations now carry the numbers EPSG publishes**
+  (SpatialEngine-u2x.28.1): the curated operation table behind ADR-0086 was
+  reconciled against the EPSG Geodetic Parameter Dataset v13.102, and four of
+  its six rows did not match the registry. NAD83 stated 2 m where
+  EPSG:1188 "NAD83 to WGS 84 (1)" states 4 m — the "accuracy 2m in each axis"
+  in that record's remarks is a note on how the parameters were derived, not
+  the accuracy of the operation, and a search between NAD83 and WGS 84
+  reported it. OSGB36 stated 3 m where EPSG:1314 "OSGB36 to WGS 84 (6)" — the
+  operation whose seven parameters are exactly the vendored `TOWGS84` node —
+  states 2 m. ETRS89's area of use reached 32.88N-40.18E, which is no extent
+  the registry publishes; EPSG:1149 is registered over extent 4755 at
+  33.26N-38.01E. NZGD2000's area of use (166.36E-178.52E, 46.64S-34.1S) was not
+  traceable to the registry at all; EPSG:1565 is registered over extent 1175,
+  160.6E to 171.2W and 55.95S to 25.88S. Every row now names the EPSG
+  operation and extent record it was read from, so a value can be checked
+  against the registry and a row that drifts says where it drifted from, and
+  tests pin the reconciled numbers rather than only proving coverage. Every
+  bound is the one the registry publishes, at the precision it publishes it —
+  ETRS89's eastern bound is 38.01E, not a rounded 38.0E. The one exception is
+  New Zealand's eastern bound: EPSG's extent
+  crosses the antimeridian and an area of use is a box, so it is the
+  registered extent clipped at 180E, which keeps the datum in the graph
+  (SpatialEngine-u2x.32).
 - **A resumed upload is no longer refused for "the chunk does not fit"** (ADR-0090
   §3, SpatialEngine-u2x.27): the staging bounded an incoming chunk against the
   bytes already staged rather than against the offset the chunk was addressed

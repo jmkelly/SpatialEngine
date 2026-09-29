@@ -180,7 +180,11 @@ public sealed class GeoServicesTests : IClassFixture<PostgisHostFactory>
         var applied = stepped[0];
         Assert.Equal("WGS84_To_OSGB36_Helmert", applied.GetProperty("name").GetString());
         Assert.True(applied.GetProperty("geoTransforms")[0].GetProperty("transformForward").GetBoolean());
-        Assert.Equal(3.0, applied.GetProperty("accuracy").GetDouble(), 3);
+        // The accuracy the search reports is the one EPSG publishes for the
+        // operation the engine applies, EPSG:1314 "OSGB36 to WGS 84 (6)", which
+        // states 2.0 m. It was 3.0 here while the table carried a figure
+        // traceable to no registered operation (SpatialEngine-u2x.28.1).
+        Assert.Equal(2.0, applied.GetProperty("accuracy").GetDouble(), 3);
         Assert.Equal(20.489, applied.GetProperty("geoTransforms")[0].GetProperty("helmert").GetProperty("scale").GetDouble(), 3);
 
         // And the name project accepts is the name the search published.
