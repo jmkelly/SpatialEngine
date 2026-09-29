@@ -11,6 +11,23 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **The merge tool ran the build gate where the merge gate belongs**
+  (ADR-0118, ADR-0109, SpatialEngine-u2x.51): `tools/bd-merge-bead.py`
+  invoked `eng/verify.sh` with no lane argument, and since the lanes were
+  tiered the bare script is the scoped build gate — minutes, only the projects
+  the branch reaches — while `eng/verify.sh --full` is the merge gate. The tool
+  would therefore publish a bead and close it on a build-gate green, which is
+  the loss `tools/bd-merge-bead.py` was written to prevent, reintroduced
+  through the tool claiming to prevent it. It now runs
+  `eng/verify.sh --full` explicitly, on the rebased branch, before the merge;
+  an interrupted run aborts with the bead open rather than reading a cancelled
+  lane as a green one; and the `--no-verify` escape hatch is now
+  `--full-verified`, which skips the run only and records that fact in the
+  `bd close` reason. The publish half of the gate is unchanged: `--check`,
+  `--publish`, `--audit` and the `git merge-base --is-ancestor` push check all
+  still stand. `AGENTS.md` and `eng/swarm-runbook.md` now carry the lane
+  contract and the tooling together instead of one replacing the other.
+
 - **The committed TypeScript SDK did not carry the host's relationship
   endpoints** (SpatialEngine-tte): `clients/typescript`'s OpenAPI snapshot and
   its generated wire types were regenerated from the live host, and the
@@ -22,7 +39,6 @@ this file together, then tag the release (`RELEASING.md`).
   unnoticed because the verify job above it was red for an unrelated reason,
   which meant the drift step never executed. Additive only — no committed
   contract changed shape.
-
 - **A SQL Server grouped reduction ignored the plan's group order**
   (ADR-0128 §8, SpatialEngine-u2x.58): the store reduces in managed code over
   the rows it read, and it was not handed the plan's order, so the groups came
@@ -35,7 +51,6 @@ this file together, then tag the release (`RELEASING.md`).
   groups — the clause and the cap already rode on the reduction, and the cap
   now cuts the ordered groups. Pinned by name over a case-varying text group
   key that also has a null, in both directions and across a page.
-
 - **A pushed PostGIS read of a keyed table named every feature by its row
   ordinal** (ADR-0131, SpatialEngine-u2x.55): `objectIds`, an `Ids`
   restriction, the edit round-trip and a paged walk all answered `0, 1, 2, …`
@@ -53,7 +68,6 @@ this file together, then tag the release (`RELEASING.md`).
   distinct set, grouped aggregate, `having` and group page are measured against
   the reference for the first time — the conformance fixture is created without
   a primary key, and without one the pushed path is never taken.
-
 - **An attachment is not another feature's attachment** (ADR-0130,
   SpatialEngine-u2x.57): the `spatial_attachments` sidecar is the store's own
   table, keyed on a text `dataset` and a text `feature_id`, and both columns
@@ -85,7 +99,6 @@ this file together, then tag the release (`RELEASING.md`).
   would separate, so widening it is what lets `delta` and `Delta` live in one
   table. Both providers' attachment suites now measure a real folding sidecar
   end to end, and `Delta`'s first attachment is id one.
-
 - **`spatialRel` `Touches` reads a point or line feature on a query
   polygon's boundary** (ADR-0036, SpatialEngine-u2x.35): the served table
   asked for `F***T****` (interiors disjoint, the feature's interior reaching
@@ -108,7 +121,6 @@ this file together, then tag the release (`RELEASING.md`).
   implementation's own `Touches` on all 225 ordered pairs of the polygon,
   line and point fixtures. The `Overlaps` and `Crosses` dimension gating and
   every other row of the table are unchanged.
-
 - **A composite order applies every key the plan asked for** (ADR-0127,
   SpatialEngine-u2x.54): the reference executor walked the plan's order terms
   and re-sorted with a fresh `OrderBy` for each one, so every key after the

@@ -25,9 +25,19 @@ pass before `bd close` runs. Everything upstream of that (fetch, rebase onto
 `origin/main`, verify, merge, push) is in this tool too, so the step a
 coordinator performs is the step that is checked.
 
+The verify step names `--full`, and that is the second half of the gate
+(SpatialEngine-u2x.51). ADR-0118 made a bare `eng/verify.sh` the *build* gate
+— minutes, scoped to what the branch touched — and made `eng/verify.sh --full`
+the merge gate. Invoking the bare script here would have made the swarm's merge
+tool publish and close work on a build-gate green, which is the loss this tool
+exists to stop, reintroduced through the tool that claims to prevent it. It is
+run on the rebased branch, which is what has to be green.
+
 Deliberate refusals, because a gate that can be talked past is not a gate:
 
-  * a **red** `eng/verify.sh` aborts before the merge;
+  * a **red** `eng/verify.sh --full` aborts before the merge;
+  * an **interrupted** `--full` lane aborts the same way — a cancelled 20-minute
+    run is not a gate, and the tool merges nothing on its way out;
   * a **rebase conflict** aborts (the runbook escalates a non-trivial one);
   * a **local `main` that `origin/main` does not have** aborts: merging into an
     unpublished `main` is how the queue drifts, so publish it first with
@@ -36,6 +46,12 @@ Deliberate refusals, because a gate that can be talked past is not a gate:
   * a **failed push** aborts. The bead stays open and the commit stays in local
     `main` for a human, which is recoverable; a closed bead on an unpushed
     branch is not.
+
+`--full-verified` declares that the operator already ran `eng/verify.sh --full`
+green on this rebased commit — the re-run after a failed push, which would
+otherwise pay the full lane twice for one merge. It skips the run and nothing
+else: the publish gate, the ancestor check and the close all still apply, and
+the fact is recorded in the reason `bd close` writes.
 """
 from __future__ import annotations
 
@@ -52,6 +68,15 @@ from pathlib import Path
 PUBLISHED_REF = "origin/main"
 
 LOCAL_REF = "main"
+
+# The merge gate's verify lane. `eng/verify.sh` with no arguments is the build
+# gate under ADR-0118, so a bare invocation here would under-run the gate this
+# tool exists to enforce.
+FULL_LANE = "--full"
+
+# An interrupted long run is not a gate result: 130 is what a shell reports for
+# a signalled command, and the coordinator's tick keys on non-zero.
+CANCELLED = 130
 
 # A commit sha recorded in a bead's notes, as the hand-off rule tells a worker
 # to write it: "<sha> bd/<id>".
@@ -249,7 +274,7 @@ def audit(run, emit, cwd=None):
     return 0
 
 
-def merge_bead(run, emit, bead_id, branch=None, reason=None, verify=True,
+def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=True,
                allow_lease=False, cwd=None):
     """`--bead <id>`: the whole merge step, ending in a justified close."""
     branch = branch or f"bd/{bead_id}"
@@ -275,9 +300,12 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, verify=True,
             f"git rebase {PUBLISHED_REF} {branch} "
             f"(conflict: escalate, do not resolve silently)", tree)
 
-        if verify:
-            _ok(run, [str(Path(tree) / "eng" / "verify.sh")],
-               "eng/verify.sh (red gate: the bead stays open)", tree)
+        if full_lane:
+            _ok(run, [str(Path(tree) / "eng" / "verify.sh"), FULL_LANE],
+               "eng/verify.sh --full (red gate: the bead stays open)", tree)
+        else:
+            emit("skipping the full lane: eng/verify.sh --full was declared "
+                 "green on this rebased commit (--full-verified)")
 
         subject = _ok(run, ["git", "log", "-1", "--format=%s", branch],
                       "git log", cwd).stdout.strip() or bead_id
@@ -307,13 +335,23 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, verify=True,
             emit(f"refusing to close {bead_id}: {merge_sha[:7]} is not an "
                  f"ancestor of {PUBLISHED_REF}. The bead stays open.")
             return 1
+    except KeyboardInterrupt:
+        # A cancelled 20-minute lane is not a green one. Say so, merge nothing,
+        # close nothing, and let the branch stand for a re-run.
+        emit(f"{bead_id} not merged: eng/verify.sh {FULL_LANE} was interrupted "
+             f"(Ctrl-C), which is not a gate result. The bead stays open; "
+             f"re-run this command.")
+        return CANCELLED
     except RuntimeError as error:
         emit(f"{bead_id} not merged: {error}")
         return 1
 
     run(["bd", "label", "remove", "needs-merge", bead_id], cwd=cwd)
-    close = run(["bd", "close", bead_id, "--reason",
-                 reason or f"merged and published as {merge_sha[:7]}"], cwd=cwd)
+    close_reason = reason or f"merged and published as {merge_sha[:7]}"
+    if not full_lane:
+        close_reason += (f"; eng/verify.sh {FULL_LANE} declared green on the "
+                         f"rebased commit by the operator")
+    close = run(["bd", "close", bead_id, "--reason", close_reason], cwd=cwd)
     if close.returncode != 0:
         emit(f"work is published but closing {bead_id} failed: "
              f"{_detail(close)}")
@@ -345,9 +383,11 @@ def main(argv=None, run=None, out=None, cwd=None):
     parser.add_argument("--allow-lease", action="store_true",
                         help="permit a force-with-lease push when rebasing "
                              "a branch that was already merged")
-    parser.add_argument("--no-verify", action="store_true",
-                        help="skip eng/verify.sh (the branch was verified "
-                             "separately; the publish gate still applies)")
+    parser.add_argument("--full-verified", action="store_true",
+                        help="skip the eng/verify.sh --full run because it was "
+                             "already green on this rebased commit (a re-run "
+                             "after a failed push); the publish gate and the "
+                             "close still apply")
     args = parser.parse_args(argv)
 
     if args.check:
@@ -359,7 +399,7 @@ def main(argv=None, run=None, out=None, cwd=None):
     if not args.bead:
         parser.error("nothing to do: pass --bead, --check, --publish or --audit")
     return merge_bead(run, emit, args.bead, branch=args.branch,
-                      reason=args.reason, verify=not args.no_verify,
+                      reason=args.reason, full_lane=not args.full_verified,
                       allow_lease=args.allow_lease, cwd=cwd)
 
 

@@ -107,7 +107,10 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    recorded commit is not on `origin/main`; run it when a merge looks lost,
    before creating a recovery bead. It is a triage list, not proof of loss — a
    commit whose content was amended on the way in (an ADR renumbered) has a
-   different patch-id and reads as stranded too.
+   different patch-id and reads as stranded too. A re-run after a failed push
+   passes `--full-verified`, which skips the (unchanged) full lane because it
+   was already green on that rebased commit; it skips nothing else, and the fact
+   is written into the `bd close` reason.
 
 3. DRAIN. Count running workers with `paseo ls`. While workers < 8:
    - take from `bd ready`, in this order: children of `SpatialEngine-u2x` first,
