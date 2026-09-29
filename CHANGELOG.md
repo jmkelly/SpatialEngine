@@ -32,6 +32,18 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **A stored feature's identity is the identity column's value** (ADR-0119,
+  SpatialEngine-u2x.38): a GeoJSON ingested with
+  `identity=source&identityField=id` now stores each row under the value of the
+  column the request named, where it was stored under the number the decode
+  happened to read it at. The in-memory provider was the only store that did
+  otherwise, and on such a layer a read-by-identity could not resolve an
+  `OBJECTID`: the per-feature and attachment resources paid a whole-dataset
+  scan for every target, and `updateFeatures` refused an object id that exists.
+  A source-identity layer is now keyed like every other identity-backed layer,
+  which is what makes ADR-0038's lookup a keyed read rather than a scan on the
+  store a hosted ingest always reaches.
+
 - **The tile cache holds per-layer tiles, composited at serve time**
   (ADR-0117, SpatialEngine-u2x.21.2): a write to one layer now invalidates
   that layer's tiles for that map rather than every tile of the map, which

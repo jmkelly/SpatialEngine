@@ -105,4 +105,41 @@ internal static class MemorySchema
         assignedId is { } assigned
             ? new FeatureId(assigned.ToString(CultureInfo.InvariantCulture))
             : feature.Id;
+
+    /// <summary>
+    /// Re-keys a stored feature on its identity column's value
+    /// (ADR-0038). A store that declares an identity column keys its features
+    /// by that column, so <see cref="Feature.Id"/> has to be the column's
+    /// value and not the identity the decode happened to read the record
+    /// under: a lookup asked for object 13 has to find the feature whose
+    /// identity column is 13, on a source-identity ingest exactly as on a
+    /// database-assigned one.
+    /// </summary>
+    public static Feature Rekey(Feature stored, int identityIndex)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
+        if (identityIndex < 0 || identityIndex >= stored.Schema.Count)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(identityIndex), identityIndex, "The feature has no identity column at that index.");
+        }
+
+        var identity = stored[identityIndex];
+        if (identity.IsNull)
+        {
+            throw SpatialException.BadArguments(
+                $"The identity column '{stored.Schema[identityIndex].Name}' of feature '{stored.Id}' carries no value to key it by.");
+        }
+
+        var id = identity.Kind switch
+        {
+            AttributeKind.Int64 => identity.Int64Value.ToString(CultureInfo.InvariantCulture),
+            AttributeKind.String => identity.StringValue,
+            AttributeKind.Guid => identity.GuidValue.ToString("D"),
+            _ => throw SpatialException.BadArguments(
+                $"The identity column '{stored.Schema[identityIndex].Name}' is {identity.Kind}, which cannot key a feature."),
+        };
+
+        return id == stored.Id.Value ? stored : new Feature(new FeatureId(id), stored.Schema, stored.Attributes);
+    }
 }
