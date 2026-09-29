@@ -100,8 +100,11 @@ Two clauses exist because the default lane no longer carries the signal:
 
 - **`CI=true` selects `--full` unless a lane is named explicitly.** A workflow
   that calls a bare `eng/verify.sh` must not silently become the scoped lane.
-  `.github/workflows/ci.yml` calls `--full` in both jobs as well; the `CI=true`
-  default is the backstop for the next workflow someone writes.
+  The split CI jobs are the deliberate exception: they are two boxes running one
+  gate, so they spell out the steps they each own, and a test proves the two
+  together are exactly what `--full` runs rather than trusting the YAML. The
+  `CI=true` default is the backstop for the next workflow someone writes that
+  does not think about it.
 - **Every document that says "run `eng/verify.sh`" as *the gate* names
   `--full`.** The bare name now means the fast lane. The places that carry the
   old sentence: `AGENTS.md` (Commands; Hand off; Complete), `README.md`,
