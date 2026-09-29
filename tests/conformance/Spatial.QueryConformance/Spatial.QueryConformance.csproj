@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The pushdown-equals-reference conformance suite (ADR-0075 §3): one suite,
+    The pushdown-equals-reference conformance suite (ADR-0098 §3): one suite,
     run against every store, comparing each store's own answer for a plan and
     a reduction with the shared reference executor's answer over the same
     fixture. A dialect that drifts is a failing test, not a different number
