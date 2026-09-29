@@ -60,6 +60,21 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 - Pick: `bd ready` then `bd update <id> --claim` — never start unclaimed work.
 - Hand off: label the bead `needs-merge` with the commit and PR in `--notes`,
   after `eng/verify.sh` and `eng/verify.sh --format` are green on the branch.
+  That is the agent's whole step — `--full` is the merge gate, not an
+  agent's step.
+- Merge and complete: `python3 tools/bd-merge-bead.py --bead <id>` — never a
+  hand-rolled `git merge` + `bd close`. It fetches, rebases onto `origin/main`,
+  runs the full lane (`eng/verify.sh --full`) on the rebased branch, merges,
+  **pushes**, and only then closes, and only after
+  `git merge-base --is-ancestor <merge> origin/main` passes. A green
+  `eng/verify.sh` on the *branch* is not a close gate: a branch is not what the
+  next worker starts from, a merge left unpushed makes `origin/main` — the
+  base every worktree is branched off — miss work that is already merged, and
+  under ADR-0118 the bare `eng/verify.sh` is the build gate, so the merge gate
+  names `--full` explicitly (SpatialEngine-xbz, SpatialEngine-u2x.51).
+  `--check` is the top-of-tick gate (is `main` published?),
+  `--publish` pushes it, and `--audit` finds closed beads whose work never
+  reached `origin/main`.
 - Complete: `bd close <id> --reason="…"` — only after the full lane
   (`eng/verify.sh --full`) is green on `main`, never on the branch. The default
   lane is never the only thing that ran.

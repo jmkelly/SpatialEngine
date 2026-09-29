@@ -65,6 +65,18 @@ You are the swarm coordinator for the SpatialEngine repo, running the epic
 
 Each tick, do exactly this, in order, and stop early if you hit a stop condition:
 
+0. PUBLISH GATE. `python3 tools/bd-merge-bead.py --check` first. It exits
+   non-zero when local `main` has commits `origin/main` does not, and names
+   them. If it fails, run `python3 tools/bd-merge-bead.py --publish` (add
+   `--allow-lease` only if this run rebased a branch that was already merged)
+   and then merge nothing else this tick. This is not housekeeping: the
+   coordinator spawns every worker with `--base origin/main`, so a stale
+   origin means new branches start from a base that is missing everything
+   already merged, and a later tick reading `origin/main` re-merges work that
+   was merged long ago (SpatialEngine-u2x.11 sat in local `main` unpublished
+   for a whole run, and two live workers had no copy of it). `--check` after
+   merging is the same check, and it is how a tick proves it published.
+
 1. RECOVER. `python3 tools/bd-safe-reclaim.py --dry-run` first, read the
    KEEP/RECLAIM verdicts against `paseo ls`, then run it without `--dry-run`.
    It reclaims only leases no live agent holds; bare `bd reclaim` does not, and
@@ -73,15 +85,29 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    with no running paseo agent working its branch is stale: reclaim it, note
    why, and let it re-enter `bd ready`.
 
-2. MERGE. For every bead labelled `needs-merge`: rebase its branch onto
-   `origin/main`, run `eng/verify.sh --full` on it — explicitly `--full`, never
-   the bare script, because the bare script is the build gate under ADR-0118 —
-   and if green, merge to `main` and
-   `bd close <id> --reason="…"`. If red, re-run once on the same commit; green
-   merges, red twice for the same reason stops the run. Otherwise `bd note` the
-   failure on the bead and unlabel it. Never close a bead whose gate is red —
-   `AGENTS.md` requires verify green on `main`, never on the branch. If a merge
-   conflict is not a trivial textual conflict, stop and escalate.
+2. MERGE. For every bead labelled `needs-merge`, run
+   `python3 tools/bd-merge-bead.py --bead <id>`. Do not do the steps by hand
+   and do not call `bd close` yourself: the tool fetches, rebases the branch
+   onto `origin/main`, runs the full lane (`eng/verify.sh --full`) on that
+   rebased branch, merges to `main`, pushes, and closes only once
+   `git merge-base --is-ancestor <merge> origin/main` passes. Both halves are
+   the gate. The ancestor check is the publish half (SpatialEngine-xbz):
+   closing on the strength of a green gate on the *branch* stranded three
+   completed beads, and a merge that was never pushed made `origin/main` miss
+   work that was already in `main`. The full lane is the verify half
+   (ADR-0118): the tool names `--full` explicitly, never the bare
+   `eng/verify.sh`, because the bare script is the build gate and using it here
+   would make the scoped lane the merge gate. The tool refuses rather than
+   guesses — red verify, a rebase conflict, a failed push, or a `main` that is
+   not published all leave the bead open with its work intact. If it exits
+   non-zero, `bd note` the output on the bead and move on. Never close a bead
+   whose gate is red. A red `--full` is re-run once on the same commit: green
+   merges, red twice for the same reason is a stop condition.
+   `python3 tools/bd-merge-bead.py --audit` reports closed beads whose
+   recorded commit is not on `origin/main`; run it when a merge looks lost,
+   before creating a recovery bead. It is a triage list, not proof of loss — a
+   commit whose content was amended on the way in (an ADR renumbered) has a
+   different patch-id and reads as stranded too.
 
 3. DRAIN. Count running workers with `paseo ls`. While workers < 8:
    - take from `bd ready`, in this order: children of `SpatialEngine-u2x` first,
@@ -105,7 +131,10 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
      idle, so the eight spawns serialise and one tick never finishes.
    - label the bead `in-flight` and record the agent id + branch in its notes
 
-4. REPORT. One short line per bead touched this tick. If nothing was ready and
+4. REPORT. One short line per bead touched this tick, and the output of
+   `python3 tools/bd-merge-bead.py --check` — a tick that did not finish
+   `published: main is at origin/main` did something unrecoverable, and the
+   report is where a human sees it. If nothing was ready and
    nothing is in flight, say "queue drained" and stop doing work. Do not poll,
    do not wait, do not sleep — the cron brings you back.
 
@@ -150,10 +179,11 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    run on every iteration. `eng/verify.sh --format` is the format lane
    (`dotnet format --verify-no-changes` over the changed projects, ~45 s each)
    and belongs with the handoff. `eng/verify.sh --full` is everything, and it
-   is the **merge gate**: the coordinator runs it on the rebased branch, and CI
-   runs it on the pull request and again after the merge to `main`. You do not
-   run `--full` before a hand-off; the default lane plus `--format` are your
-   step, and nothing else (ADR-0118).
+   is the **merge gate**: the coordinator runs it on the rebased branch — the
+   merge tool above invokes it as `--full`, never bare — and CI runs it on the
+   pull request and again after the merge to `main`. You do not run `--full`
+   before a hand-off; the default lane plus `--format` are your step, and
+   nothing else (ADR-0118).
    A change to a solution-wide file (a root `.props`,
    `Directory.Packages.props`, `.editorconfig`), or a change set the lane
    cannot read at all, makes every lane fall back to the whole solution rather
@@ -164,10 +194,13 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    already failing (name the bead and the failure) rather than editing the test
    to make it pass. A default-lane run that skips a suite you expected is
    scoping working as designed, not a green light — the full lane and CI cover
-   it.
-7. Commit with a `Task: BEAD_ID` trailer. Then
-   `bd update BEAD_ID --label needs-merge --append-notes "<commit> <branch>"`.
-   Do **not** close the bead — the coordinator merges and closes.
+   it. Keep Docker reachable so the PostGIS and SQL Server integration suites
+   actually run.
+7. Commit with a `Task: BEAD_ID` trailer, and **push your branch to
+   origin** (`git push -u origin bd/BEAD_ID`). Then
+   `bd update BEAD_ID --label needs-merge --append-notes "<commit> <branch>
+   agent <id> workspace <id>"`. Do **not** close the bead — the coordinator
+   merges, publishes and closes, in that order.
 8. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
    `Task: BEAD_ID`, and `bd show BEAD_ID` must show *your* bead as the one
    labelled `needs-merge`. If they disagree, you worked the wrong bead — say so
