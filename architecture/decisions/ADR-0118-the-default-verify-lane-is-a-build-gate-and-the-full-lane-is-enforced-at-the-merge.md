@@ -20,8 +20,8 @@ keeps the documented contract: `--quick` is the scoped inner loop, **no
 arguments is the full gate unchanged**, CI gains a job for the heavy suites. The
 branch as it stands ships the inverse. No arguments is now a scoped build gate,
 the format check moved behind `--format`, and the full lane moved behind a new
-`--full`, with `AGENTS.md`, `eng/swarm-runbook.md` and ADR-0109 rewritten to
-match. The hand-off note claimed the no-argument contract was unchanged; it was
+`--full`, with `AGENTS.md`, `eng/swarm-runbook.md` and the branch's own
+implementation record rewritten to match. The hand-off note claimed the no-argument contract was unchanged; it was
 not.
 
 That divergence is why this record exists. An ADR written by the implementer of
@@ -79,8 +79,10 @@ real, and the two measurements above are why the record has to say how.
 build gate, the full lane is `eng/verify.sh --full`, and the full lane is
 enforced at the merge. ADR-0118 supersedes the no-argument-is-the-full-gate
 contract in SpatialEngine-lyz's original text, and it is the authority for
-SpatialEngine-lyz's implementation record (ADR-0109, renumbered at merge): where
-the two disagree about the gate contract, this one wins.
+SpatialEngine-lyz's implementation record (it holds 0109 on
+`bd/SpatialEngine-lyz` and is renumbered at merge, so it is named rather
+than cited here): where the two disagree about the gate contract, this one
+wins.
 
 ### 1. The contract, stated once
 
@@ -197,8 +199,8 @@ either way — but the claim "nothing goes unenforced" does.
 ## Supersedes and references
 
 - SpatialEngine-lyz's original design (no-arg = full, `--quick` = scoped). Its
-  implementation record is ADR-0109 as renumbered; this record is the
-  authorisation it was missing.
+  implementation record, whatever number the merge gives it; this record is
+  the authorisation it was missing.
 - `eng/verify.sh`, `tools/verify_scope.py`, `tools/test_verify_scope.py`
 - `.github/workflows/ci.yml`; `eng/swarm-runbook.md` (merge step, worker steps)
 - `AGENTS.md` ("Commands", "Task queue")
