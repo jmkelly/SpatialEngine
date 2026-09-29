@@ -9,6 +9,26 @@ this file together, then tag the release (`RELEASING.md`).
 
 ## [Unreleased]
 
+### Changed
+
+- **The tile cache holds per-layer tiles, composited at serve time**
+  (ADR-0116, SpatialEngine-u2x.21.2): a write to one layer now invalidates
+  that layer's tiles for that map rather than every tile of the map, which
+  closes the composition half of the decision ADR-0083 left open and measured.
+  Measured on a five-layer city basemap over a one-viewport working set, a
+  single-layer edit invalidated all 25 warm tiles while one tile's pixels
+  actually changed — 25× over-invalidation — and per-layer composition repays
+  itself from about one to three tiles served per edit, saving 10% of tile CPU
+  at a realistic profile. The per-layer entries are PNGs, the representation
+  the whole-map entries already cache: compositing from decoded raw buffers is
+  faster still but needs 23.7× the bytes, which would overrun the cache's byte
+  bound by 16×. The standing cost is a composite on every tile response,
+  including warm hits, so a host serving under about one to three tiles per
+  edit is slower than before — a measured trade, not an oversight. Style saves
+  are unaffected: they already moved the key per layer and were never
+  over-invalidated. The spike and its reading are
+  `eng/spike-u2x-tile-cache/RESULTS.md`.
+
 ### Added
 
 - **A store read is a page, a position and a "one more"** (ADR-0116,
