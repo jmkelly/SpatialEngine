@@ -148,6 +148,8 @@ public sealed class PostgisPlanSurfaceTests
             groupColumns: [],
             [new AggregateSpec(AggregateStatistic.Envelope, "geom", "box")],
             order: [],
+            Schema,
+            byteOrderText: false,
             parameters);
 
         Assert.Equal(
