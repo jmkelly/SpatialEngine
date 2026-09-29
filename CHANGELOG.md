@@ -32,7 +32,6 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
-<<<<<<< HEAD
 - **A stored feature's identity is the identity column's value** (ADR-0119,
   SpatialEngine-u2x.38): a GeoJSON ingested with
   `identity=source&identityField=id` now stores each row under the value of the
