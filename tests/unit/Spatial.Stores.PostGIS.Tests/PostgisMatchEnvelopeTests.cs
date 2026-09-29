@@ -61,7 +61,7 @@ public sealed class PostgisMatchEnvelopeTests
                 ]),
             ]),
             BoundingBox: new BoundingBox(0, 0, 10, 10));
-        var where = PostgisPlanQueries.Predicate(Dataset, Description, plan, parameters);
+        var where = PostgisPlanQueries.Predicate(Dataset, Description, plan, byteOrderText: false, parameters);
 
         Assert.Equal(
             "((\"id\" = @p0 OR \"id\" = @p1)) AND ((\"geom\" && ST_MakeEnvelope(@p2, @p3, @p4, @p5, 4326)) "
@@ -92,7 +92,7 @@ public sealed class PostgisMatchEnvelopeTests
             Ids: [new FeatureId("7")],
             Where: new Predicate.Compare(new FieldRef("population"), ComparisonOperator.Equals, Literal.FromInteger("200")),
             BoundingBox: new BoundingBox(1, 2, 3, 4));
-        var where = PostgisPlanQueries.Predicate(Dataset, Description, plan, parameters);
+        var where = PostgisPlanQueries.Predicate(Dataset, Description, plan, byteOrderText: false, parameters);
 
         var sql = PostgisPlanQueries.Read(
             Dataset,

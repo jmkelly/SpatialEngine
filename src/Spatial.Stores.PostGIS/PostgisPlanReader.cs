@@ -46,7 +46,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var description = await catalogue.DescribeAsync(name, cancellationToken);
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
-        var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
+        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
         var order = PostgisPlanQueries.Order(
             query.Order ?? [], description.IdColumns, description.Schema, await ByteOrderTextAsync(cancellationToken));
         if (!Pushed(where, query, order))
@@ -107,7 +107,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var description = await catalogue.DescribeAsync(name, cancellationToken);
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
-        var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
+        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
         return where is null
             ? FeatureReduction.CountFeatures(await SelectedAsync(name, description, query, null, cancellationToken))
             : (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
@@ -125,10 +125,35 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var description = await catalogue.DescribeAsync(name, cancellationToken);
         FeatureQueryValidation.ValidateDistinct(description.Schema, distinct);
         var parameters = new List<object?>();
-        var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
+        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
         var selected = await SelectedAsync(name, description, query, where, parameters, cancellationToken);
         return FeatureReduction.Distinct((FeatureSchema)description.Schema, selected, distinct);
     }
+
+    /// <summary>
+    /// The restriction a plan pushes, with the database's collation read only
+    /// when the restriction actually compares text (ADR-0123). Every face
+    /// compiles its <c>WHERE</c> through here, so a plan read, a count, a
+    /// distinct set, a grouped reduction and a fallback selection all state
+    /// the same comparison — and a plan whose predicate is a bounding box and a
+    /// number never pays the catalog read that decides the term.
+    /// </summary>
+    private async Task<string?> RestrictionAsync(
+        PostgisDatasetName name,
+        DatasetDescription description,
+        FeatureQuery query,
+        List<object?> parameters,
+        CancellationToken cancellationToken) =>
+        PostgisPlanQueries.Predicate(
+            name,
+            description,
+            query,
+            // A predicate that compares no text cannot be changed by the
+            // collation, so the read is skipped and the answer is unused.
+            query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema)
+                ? await storage.ByteOrderTextAsync(cancellationToken)
+                : false,
+            parameters);
 
     /// <summary>
     /// Whether this database already compares text by bytes, which is what
@@ -138,8 +163,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// because the term is the only thing standing between the pushdown and the
     /// contract's answer.
     /// </summary>
-    private async Task<bool> ByteOrderTextAsync(CancellationToken cancellationToken) =>
-        PostgisTextCollation.IsByteOrder(await storage.DatabaseCollationAsync(cancellationToken));
+    private Task<bool> ByteOrderTextAsync(CancellationToken cancellationToken) =>
+        storage.ByteOrderTextAsync(cancellationToken);
 
     /// <summary>
     /// The reduction a plan selects, pushed down when the dialect can return its
@@ -156,7 +181,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var schema = (FeatureSchema)description.Schema;
         FeatureQueryValidation.ValidateAggregate(schema, aggregate);
         var parameters = new List<object?>();
-        var where = PostgisPlanQueries.Predicate(name, description, query, parameters);
+        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
         // An ungrouped reduction is one row, so the plan's order has nothing to
         // order: it is not written into the SQL at all (an `ORDER BY` over an
         // ungrouped aggregate's column is a query Postgres refuses).
@@ -316,7 +341,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var pushed = where is not null;
         if (!pushed)
         {
-            where = PostgisPlanQueries.Predicate(name, description, query, parameters);
+            where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
         }
 
         // The store's own row order, never a SQL order of this store's choosing:

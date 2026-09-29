@@ -33,6 +33,9 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
     /// tuples (ADR-0038), the bounding box and the attribute predicate as one
     /// parameterised fragment (ADR-0074) — so the plan is answered by the
     /// database in one read and nothing is evaluated a second time in memory.
+    /// An attribute predicate that compares text says which order it wants, so
+    /// a filter cannot inherit the database's collation where the order
+    /// refuses to (ADR-0123).
     /// </summary>
     public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
         PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
@@ -48,7 +51,7 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
 
             var identityParameters = PostgisIdentity.Parameters(description, query.Ids);
             var identityPredicate = PostgisPredicateSql.Build(
-                description, query.BoundingBox, query.Where, identityParameters);
+                description, query.BoundingBox, query.Where, await ByteOrderTextAsync(description, query, cancellationToken), identityParameters);
             return await ReadBatchesAsync(
                 PostgisQueries.SelectByIdentity(
                     name, description.Schema, description.IdColumns, query.Ids.Count, identityPredicate),
@@ -58,10 +61,22 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
         }
 
         var parameters = new List<object?>();
-        var predicate = PostgisPredicateSql.Build(description, query.BoundingBox, query.Where, parameters);
+        var predicate = PostgisPredicateSql.Build(
+            description, query.BoundingBox, query.Where, await ByteOrderTextAsync(description, query, cancellationToken), parameters);
         return await ReadBatchesAsync(
             PostgisQueries.Query(name, description.Schema, predicate), parameters, description, cancellationToken);
     }
+
+    /// <summary>
+    /// Whether this database already compares text by bytes, read only when the
+    /// plan's predicate compares a text column — the one part of a
+    /// <c>WHERE</c> the collation can change (ADR-0123).
+    /// </summary>
+    private Task<bool> ByteOrderTextAsync(
+        DatasetDescription description, FeatureQuery query, CancellationToken cancellationToken) =>
+        query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema)
+            ? storage.ByteOrderTextAsync(cancellationToken)
+            : Task.FromResult(false);
 
     /// <summary>The features the dataset's identity columns name, or nothing when it has no identity.</summary>
     public async Task<IReadOnlyList<Feature>> ByIdentityAsync(

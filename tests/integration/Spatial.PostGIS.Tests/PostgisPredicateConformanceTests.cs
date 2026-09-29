@@ -1,5 +1,6 @@
 using Spatial.Contracts;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.PredicateConformance;
 
 namespace Spatial.PostGIS.Tests;
@@ -65,5 +66,46 @@ public sealed class PostgisPredicateConformanceTests : IClassFixture<PostgisCont
         var failures = await PredicateConformanceSuite.AssertAsync(context.Store, dataset);
 
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    /// <summary>
+    /// A cancelled pushdown fails as a cancellation and leaves nothing behind:
+    /// the collation the comparison needs is a catalog read of its own, so a
+    /// token cancelled before the statement is a token cancelled before the
+    /// answer, and the next caller asks the database again instead of
+    /// inheriting a half-read value.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_cancelled_pushed_filter_is_a_cancellation_and_leaves_the_next_read_correct()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        const string dataset = "public.predicates_cancelled";
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await context.ExecuteAsync(
+            $"DROP TABLE IF EXISTS {dataset}; CREATE TABLE {dataset} ("
+            + "\"code\" text PRIMARY KEY, \"population\" bigint, \"score\" double precision, "
+            + "\"active\" boolean, \"reference\" uuid, \"seen\" timestamptz, "
+            + "\"geometry\" geometry(Geometry, 4326))");
+        await context.Store.WriteAsync(
+            dataset,
+            new FeatureBatch(PredicateConformanceSuite.Schema, PredicateConformanceSuite.Rows));
+
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => context.Store.QueryAsync(
+                dataset,
+                new FeatureQuery(Where: FeatureFilter.Parse("code < 'delta'")),
+                cancellation.Token));
+        Assert.Equal(cancellation.Token, failure.CancellationToken);
+
+        // Same store, live token: the restriction is still the reference's, and
+        // it is still the restriction the database was asked for.
+        var page = await context.Store.QueryAsync(
+            dataset,
+            new FeatureQuery(Where: FeatureFilter.Parse("code < 'delta'")));
+        Assert.Equal(
+            ["Delta", "_bravo", "alpha", "beta"],
+            page.Features.Select(feature => feature["code"].StringValue).Order(StringComparer.Ordinal).ToArray());
     }
 }

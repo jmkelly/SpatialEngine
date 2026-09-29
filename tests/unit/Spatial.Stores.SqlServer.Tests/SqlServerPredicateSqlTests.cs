@@ -165,7 +165,7 @@ public sealed class SqlServerPredicateSqlTests
 
         var sql = Build("city = 'Berlin'", parameters);
 
-        Assert.Equal("[city] = @p0", sql);
+        Assert.Equal("[city] COLLATE Latin1_General_100_BIN2" + " = @p0", sql);
         Assert.Equal(["Berlin"], parameters);
     }
 
@@ -176,7 +176,7 @@ public sealed class SqlServerPredicateSqlTests
     [InlineData("population >= 3", "[population] >= @p0")]
     [InlineData("population != 3", "[population] <> @p0")]
     [InlineData("population <> 3", "[population] <> @p0")]
-    [InlineData("city LIKE 'P%'", "[city] LIKE @p0")]
+    [InlineData("city LIKE 'P%'", "[city] COLLATE Latin1_General_100_BIN2 LIKE @p0")]
     [InlineData("active = TRUE", "[active] = @p0")]
     [InlineData("score > -1.5", "[score] > @p0")]
     [InlineData("city IS NULL", "[city] IS NULL")]
@@ -189,7 +189,7 @@ public sealed class SqlServerPredicateSqlTests
     {
         var sql = Build("population = 1 OR population = 2 AND city = 'x'", new List<object?>());
 
-        Assert.Equal("[population] = @p0 OR ([population] = @p1 AND [city] = @p2)", sql);
+        Assert.Equal("[population] = @p0 OR ([population] = @p1 AND [city] COLLATE Latin1_General_100_BIN2 = @p2)", sql);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class SqlServerPredicateSqlTests
 
         var sql = Build("city = 'a''b' AND population = 12", parameters);
 
-        Assert.Equal("[city] = @p0 AND [population] = @p1", sql);
+        Assert.Equal("[city] COLLATE Latin1_General_100_BIN2" + " = @p0 AND [population] = @p1", sql);
         Assert.Equal(["a'b", 12L], parameters);
         Assert.DoesNotContain("'a''b'", sql);
     }
@@ -233,9 +233,9 @@ public sealed class SqlServerPredicateSqlTests
     {
         var parameters = new List<object?>();
 
-        Assert.Equal("[city] IN (@p0, @p1)", Build("city IN ('a', 'b')", parameters));
+        Assert.Equal("[city] COLLATE Latin1_General_100_BIN2" + " IN (@p0, @p1)", Build("city IN ('a', 'b')", parameters));
         Assert.Equal(["a", "b"], parameters);
-        Assert.Equal("[city] NOT IN (@p0)", Build("city NOT IN ('a')", new List<object?>()));
+        Assert.Equal("[city] COLLATE Latin1_General_100_BIN2" + " NOT IN (@p0)", Build("city NOT IN ('a')", new List<object?>()));
     }
 
     [Fact]
@@ -341,7 +341,7 @@ public sealed class SqlServerPredicateSqlTests
         var parameters = new List<object?>();
         SqlServerPredicateSql.BoundingBox(new BoundingBox(1, 2, 3, 4), Description(), parameters);
 
-        Assert.Equal("[city] = @p1", SqlServerPredicateSql.Where(Where("city = 'x'"), Schema, parameters));
+        Assert.Equal("[city] COLLATE Latin1_General_100_BIN2" + " = @p1", SqlServerPredicateSql.Where(Where("city = 'x'"), Schema, parameters));
         Assert.Equal(2, parameters.Count);
     }
 

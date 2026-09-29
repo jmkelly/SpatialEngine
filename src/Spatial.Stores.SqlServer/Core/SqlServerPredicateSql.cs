@@ -21,9 +21,29 @@ namespace Spatial.Stores.SqlServer.Core;
 /// (<c>Spatial.Core.Features.Query.FeatureFilterText</c>); this is the thin
 /// T-SQL half of the back end, and the bracket quoting, the <c>&lt;&gt;</c>
 /// spelling and the envelope test are the whole of its dialect.
+///
+/// <para>
+/// Every string comparison it writes carries
+/// <see cref="ByteOrderCollation"/>, so a pushed <c>WHERE</c> cannot inherit
+/// the database's collation where the contract compares strings by bytes
+/// (ADR-0098 §3, ADR-0123). The term is not conditional: a SQL Server
+/// database's default collation is a linguistic one — the shipped default is
+/// case-insensitive — and nothing in the store's own metadata says which, so
+/// the one comparison that is always the contract's is the one always written.
+/// </para>
 /// </summary>
 internal static class SqlServerPredicateSql
 {
+    /// <summary>
+    /// The binary collation a pushed string comparison is written under: it
+    /// compares code points rather than letters, which is the nearest thing
+    /// T-SQL has to the contract's byte comparison and the only one of the
+    /// collations SQL Server ships that is not case-folding. It is the same
+    /// answer the Postgres side states as <c>COLLATE "C"</c>, and it follows
+    /// the <c>ORDER BY</c> pushdown's own argument (ADR-0121).
+    /// </summary>
+    public const string ByteOrderCollation = "Latin1_General_100_BIN2";
+
     /// <summary>
     /// Builds the <c>WHERE</c> fragment (without the keyword) for a plan's
     /// predicate: the bounding-box pre-filter and the attribute predicate
@@ -202,7 +222,7 @@ internal static class SqlServerPredicateSql
                 return;
             }
 
-            _sql.Append(SqlServerIdentifier.Quote(_schema![index].Name)).Append(' ')
+            _sql.Append(Column(_schema, index)).Append(' ')
                 .Append(SqlOperator(compare.Operator))
                 .Append(' ')
                 .Append(Parameter(comparable));
@@ -257,7 +277,7 @@ internal static class SqlServerPredicateSql
                 return;
             }
 
-            _sql.Append(SqlServerIdentifier.Quote(_schema![index].Name))
+            _sql.Append(Column(_schema, index))
                 .Append(isIn.Negated ? " NOT IN (" : " IN (");
             for (var i = 0; i < bindable.Length; i++)
             {
@@ -381,6 +401,22 @@ internal static class SqlServerPredicateSql
             index = -1;
             kind = default;
             return false;
+        }
+
+        /// <summary>
+        /// The filter column as a comparison operand. A text column carries
+        /// <see cref="ByteOrderCollation"/>, because a case-insensitive
+        /// collation answers a different set from the reference for
+        /// <c>code &lt; 'delta'</c> and for a <c>LIKE</c> (ADR-0123); a column
+        /// of another kind carries no collation, because T-SQL will not apply a
+        /// text collation to a number, a date or a guid.
+        /// </summary>
+        private static string Column(IFeatureSchema? schema, int index)
+        {
+            var name = schema![index].Name;
+            return schema[index].Kind == AttributeKind.String
+                ? $"{SqlServerIdentifier.Quote(name)} COLLATE {ByteOrderCollation}"
+                : SqlServerIdentifier.Quote(name);
         }
 
         private static string SqlOperator(ComparisonOperator comparison) => comparison switch

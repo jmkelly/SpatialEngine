@@ -36,11 +36,11 @@ public sealed class PostgisPredicateSqlTests
     public void String_literal_with_escaped_quote_and_like_parameterise()
     {
         var escaped = Build("city = 'O''Brien'");
-        Assert.Equal("\"city\" = @p0", escaped.Sql);
+        Assert.Equal("\"city\" COLLATE \"C\" = @p0", escaped.Sql);
         Assert.Equal("O'Brien", escaped.Parameters[0]);
 
         var like = Build("city LIKE 'Be%'");
-        Assert.Equal("\"city\" LIKE @p0", like.Sql);
+        Assert.Equal("\"city\" COLLATE \"C\" LIKE @p0", like.Sql);
         Assert.Equal("Be%", like.Parameters[0]);
     }
 
@@ -81,13 +81,13 @@ public sealed class PostgisPredicateSqlTests
     {
         var sql = Build("city = 'a' OR (population > 1 AND city != 'b')");
 
-        Assert.Equal("\"city\" = @p0 OR (\"population\" > @p1 AND \"city\" != @p2)", sql.Sql);
+        Assert.Equal("\"city\" COLLATE \"C\" = @p0 OR (\"population\" > @p1 AND \"city\" COLLATE \"C\" != @p2)", sql.Sql);
         Assert.Equal(3, sql.Parameters.Count);
 
         // The other grouping direction matters too: (a OR b) AND c must not
         // become a OR b AND c (different precedence).
         var grouped = Build("city = 'a' OR city = 'b' AND population > 1");
-        Assert.Equal("\"city\" = @p0 OR (\"city\" = @p1 AND \"population\" > @p2)", grouped.Sql);
+        Assert.Equal("\"city\" COLLATE \"C\" = @p0 OR (\"city\" COLLATE \"C\" = @p1 AND \"population\" > @p2)", grouped.Sql);
     }
 
     [Fact]
@@ -102,11 +102,11 @@ public sealed class PostgisPredicateSqlTests
     public void Membership_binds_every_value()
     {
         var included = Build("city IN ('a', 'b')");
-        Assert.Equal("\"city\" IN (@p0, @p1)", included.Sql);
+        Assert.Equal("\"city\" COLLATE \"C\" IN (@p0, @p1)", included.Sql);
         Assert.Equal(["a", "b"], included.Parameters);
 
         var excluded = Build("city NOT IN ('a')");
-        Assert.Equal("\"city\" NOT IN (@p0)", excluded.Sql);
+        Assert.Equal("\"city\" COLLATE \"C\" NOT IN (@p0)", excluded.Sql);
     }
 
     [Fact]
@@ -122,8 +122,8 @@ public sealed class PostgisPredicateSqlTests
     {
         // The constant is the plan's own truth value (the Esri `1=1` idiom,
         // ADR-0074 §7), not a client value, so it is not bound.
-        Assert.Equal("TRUE", PostgisPredicateSql.Where(Predicate.All, Schema, []));
-        Assert.Equal("FALSE", PostgisPredicateSql.Where(Predicate.None, Schema, []));
+        Assert.Equal("TRUE", PostgisPredicateSql.Where(Predicate.All, Schema, byteOrderText: false, []));
+        Assert.Equal("FALSE", PostgisPredicateSql.Where(Predicate.None, Schema, byteOrderText: false, []));
     }
 
     [Theory]
@@ -211,6 +211,7 @@ public sealed class PostgisPredicateSqlTests
         var sql = PostgisPredicateSql.Where(
             new Predicate.IsIn(new FieldRef("city"), [Literal.FromText("a"), Literal.Null], false),
             Schema,
+            byteOrderText: false,
             []);
 
         Assert.Equal("FALSE", sql);
@@ -383,16 +384,16 @@ public sealed class PostgisPredicateSqlTests
     {
         var parameters = new List<object?>();
 
-        var sql = PostgisPredicateSql.Build(Description(), new BoundingBox(13.0, 52.0, 14.0, 53.0), Where("city = 'x'"), parameters);
+        var sql = PostgisPredicateSql.Build(Description(), new BoundingBox(13.0, 52.0, 14.0, 53.0), Where("city = 'x'"), byteOrderText: false, parameters);
 
-        Assert.Equal("(\"geom\" && ST_MakeEnvelope(@p0, @p1, @p2, @p3, 4326)) AND (\"city\" = @p4)", sql);
+        Assert.Equal("(\"geom\" && ST_MakeEnvelope(@p0, @p1, @p2, @p3, 4326)) AND (\"city\" COLLATE \"C\" = @p4)", sql);
         Assert.Equal(5, parameters.Count);
     }
 
     [Fact]
     public void A_plan_with_no_predicate_selects_everything()
     {
-        Assert.Null(PostgisPredicateSql.Build(Description(), null, null, []));
+        Assert.Null(PostgisPredicateSql.Build(Description(), null, null, byteOrderText: false, []));
     }
 
     [Fact]
@@ -422,7 +423,7 @@ public sealed class PostgisPredicateSqlTests
     private static BuiltSql Build(string filter, FeatureSchema schema)
     {
         var parameters = new List<object?>();
-        return new BuiltSql(PostgisPredicateSql.Where(Where(filter), schema, parameters), parameters);
+        return new BuiltSql(PostgisPredicateSql.Where(Where(filter), schema, byteOrderText: false, parameters), parameters);
     }
 
     private static DatasetDescription Description() =>
