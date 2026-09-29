@@ -29,6 +29,7 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
     /// <summary>The discovered description of one dataset; <c>not.found</c> when it is not a spatial dataset.</summary>
     public async Task<DatasetDescription> DescribeAsync(PostgisDatasetName name, CancellationToken cancellationToken)
     {
+        storage.Descriptions.NoteRead();
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
         var facts = await ReadSchemaFactsAsync(connection, name, cancellationToken);
         if (PostgisSchemaDiscovery.TryBuild(name, facts, out var description, out var reason))
