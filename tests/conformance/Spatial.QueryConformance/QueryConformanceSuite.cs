@@ -134,7 +134,7 @@ public static class QueryConformanceSuite
     /// (ADR-0098 §3) — while an <c>ORDER BY</c> pushed into SQL inherits the
     /// collation of the database it runs against. The fixture's text columns
     /// are built so the two rules put every row somewhere different
-    /// (ADR-0117), so a store that pushes a text sort key down without saying
+    /// (ADR-0121), so a store that pushes a text sort key down without saying
     /// so returns a different sequence here, and one that never pushes it
     /// cannot.
     ///
@@ -181,7 +181,7 @@ public static class QueryConformanceSuite
     /// carries, and the text one when the schema has a text field of its own —
     /// a page boundary is exactly where a collation drift shows up, because a
     /// store that sorts each page under a different rule than the reference
-    /// returns a page the reference never handed out (ADR-0117).
+    /// returns a page the reference never handed out (ADR-0121).
     /// </summary>
     private static IEnumerable<string> PagingKeys(Fields fields) =>
         string.Equals(fields.Text, fields.Numeric, StringComparison.Ordinal)
@@ -279,7 +279,7 @@ public static class QueryConformanceSuite
         {
             // The group order is a *text* order (ADR-0098 §3), and the
             // fixture's group key is built so a locale collation and an ordinal
-            // comparison disagree about it (ADR-0117), so the grouped
+            // comparison disagree about it (ADR-0121), so the grouped
             // reductions below are a collation case as well as a null-placement
             // one.
             var query = new FeatureQuery(Where: Matching(fields), Order: [new OrderTerm(fields.Group, direction)]);

@@ -6,7 +6,7 @@ namespace Spatial.Stores.PostGIS.Tests;
 
 /// <summary>
 /// A pushed-down sort key over a <em>text</em> column, measured as SQL
-/// (ADR-0098 §3, ADR-0117).
+/// (ADR-0098 §3, ADR-0121).
 ///
 /// <para>
 /// The contract compares strings ordinally — by bytes, never by a locale

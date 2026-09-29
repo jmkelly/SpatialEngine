@@ -34,7 +34,7 @@ namespace Spatial.QueryConformance;
 /// <c>"A"</c> and pushes the punctuated names to where their letters sort. A
 /// pushed-down <c>ORDER BY</c> that inherits the database's collation therefore
 /// returns a <em>different sequence</em> from the reference for the same plan
-/// (ADR-0098 §3, ADR-0117).</item>
+/// (ADR-0098 §3, ADR-0121).</item>
 /// </list>
 ///
 /// </summary>

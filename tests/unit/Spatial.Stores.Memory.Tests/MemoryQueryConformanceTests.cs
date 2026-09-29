@@ -40,7 +40,7 @@ public sealed class MemoryQueryConformanceTests
     public void The_fixture_orders_its_text_keys_by_bytes_and_not_by_a_locale_collation()
     {
         // The suite's text-order cases are only worth running if the fixture's
-        // text columns make the two rules disagree (ADR-0117). These two pins
+        // text columns make the two rules disagree (ADR-0121). These two pins
         // are the property: the reference's ordinal sequence is stated, and the
         // case-insensitive sequence a locale collation approximates is asserted
         // to be a different one — so a pushed-down text sort key that inherits

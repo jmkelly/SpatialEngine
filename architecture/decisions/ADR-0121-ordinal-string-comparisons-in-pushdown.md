@@ -4,7 +4,7 @@ date: 2026-09-29
 deciders: maintainer + agent
 ---
 
-# ADR-0117: A pushed-down string comparison is a byte comparison — the database's collation is never inherited
+# ADR-0121: A pushed-down string comparison is a byte comparison — the database's collation is never inherited
 
 ## Context
 

@@ -63,7 +63,7 @@ public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisContaine
     /// <summary>
     /// The database's own collation, read once per store: it is what decides
     /// whether a pushed-down sort key over a text column carries
-    /// <c>COLLATE "C"</c> (ADR-0117). Read against the database rather than
+    /// <c>COLLATE "C"</c> (ADR-0121). Read against the database rather than
     /// asserted, because the fixture container may be created with a locale
     /// collation or with <c>C</c> and the store has to be right about either.
     /// </summary>

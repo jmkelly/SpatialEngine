@@ -12,7 +12,7 @@ this file together, then tag the release (`RELEASING.md`).
 ### Fixed
 
 - **A pushed-down string comparison is a byte comparison, not a locale one**
-  (ADR-0117, SpatialEngine-u2x.43): the PostGIS provider wrote its sort keys
+  (ADR-0121, SpatialEngine-u2x.43): the PostGIS provider wrote its sort keys
   into SQL because Postgres's null ordering is not the contract's, and left
   the one difference that does not change a key set to be inherited — a `text`
   column carries the *database's* collation, so a stock-template `en_US.utf8`

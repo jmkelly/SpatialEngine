@@ -20,7 +20,7 @@ internal sealed class PostgisStorage : IAsyncDisposable
     private readonly bool _createIndexes;
 
     /// <summary>
-    /// The database's own collation, read once (ADR-0117). A <c>text</c> column
+    /// The database's own collation, read once (ADR-0121). A <c>text</c> column
     /// carries it, so a pushed-down sort key over one has to correct for it; a
     /// property of the database is read once rather than per query. Held as the
     /// value itself so a cancelled or failed probe is retried rather than

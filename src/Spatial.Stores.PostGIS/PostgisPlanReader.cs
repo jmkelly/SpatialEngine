@@ -133,7 +133,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// <summary>
     /// Whether this database already compares text by bytes, which is what
     /// decides whether a pushed-down sort key over a text column carries an
-    /// explicit <c>COLLATE "C"</c> (ADR-0117). Read once per store and cached;
+    /// explicit <c>COLLATE "C"</c> (ADR-0121). Read once per store and cached;
     /// a database the probe cannot answer for is treated as a locale collation,
     /// because the term is the only thing standing between the pushdown and the
     /// contract's answer.

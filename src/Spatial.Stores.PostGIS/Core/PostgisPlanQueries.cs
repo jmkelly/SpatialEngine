@@ -27,7 +27,7 @@ namespace Spatial.Stores.PostGIS.Core;
 /// inherits the <em>database's</em> collation, which is a locale comparison
 /// where the contract's is a byte one, so a term over a text column carries
 /// <c>COLLATE "C"</c> unless the database already compares by bytes
-/// (ADR-0117).
+/// (ADR-0121).
 /// </para>
 /// </summary>
 internal static class PostgisPlanQueries
@@ -143,7 +143,7 @@ internal static class PostgisPlanQueries
     /// A plan that does ask for one gets each term with its explicit null
     /// placement (nulls last ascending, first descending — the contract's rule),
     /// each text term under the byte-order collation the contract compares
-    /// strings in (ADR-0117), and then the dataset's identity columns as the
+    /// strings in (ADR-0121), and then the dataset's identity columns as the
     /// contract's mandatory tie-break, so the total order is deterministic and a
     /// page boundary can never fall between two rows the next page would
     /// re-order. When the table has no identity there is no tie-break to append,
@@ -285,7 +285,7 @@ internal static class PostgisPlanQueries
         /// ascending or descending as the statistic asked, with the fraction
         /// bound as a parameter rather than written into the text. The
         /// <c>ORDER BY</c> is a sort key like any other, so a text field is
-        /// ranked under the same byte-order collation (ADR-0117).
+        /// ranked under the same byte-order collation (ADR-0121).
         /// </summary>
         private string Percentile(AggregateSpec spec, List<object?> parameters)
         {
@@ -339,7 +339,7 @@ internal static class PostgisPlanQueries
     /// a page boundary is cut on, a <c>GROUP BY</c>'s group order and a
     /// <c>MIN</c>/<c>MAX</c> over a text column all inherit the database's
     /// collation, and the contract's answer is a byte comparison (ADR-0098 §3,
-    /// ADR-0117). A numeric, date-time or boolean column takes no collation:
+    /// ADR-0121). A numeric, date-time or boolean column takes no collation:
     /// <c>COLLATE</c> is a string operator, and applying it to a column of
     /// another kind is a statement Postgres refuses.
     /// </para>

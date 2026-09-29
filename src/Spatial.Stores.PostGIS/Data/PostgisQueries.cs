@@ -288,7 +288,7 @@ internal static class PostgisQueries
     /// The collation this database was created with, which is the collation a
     /// <c>text</c> column carries unless it declares one of its own — and so the
     /// comparison an <c>ORDER BY</c> over a text sort key inherits when the
-    /// store does not say otherwise (ADR-0117). Read once per store: it is a
+    /// store does not say otherwise (ADR-0121). Read once per store: it is a
     /// property of the database, not of a query, and it never changes while a
     /// connection is open.
     /// </summary>

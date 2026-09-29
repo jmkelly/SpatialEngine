@@ -3,7 +3,7 @@ namespace Spatial.Stores.PostGIS.Core;
 /// <summary>
 /// Whether a text sort key pushed into this database's <c>ORDER BY</c> is
 /// compared by bytes or by the database's own locale collation (ADR-0098 §3,
-/// ADR-0117).
+/// ADR-0121).
 ///
 /// <para>
 /// The contract compares strings <em>ordinally</em>, which is a byte
