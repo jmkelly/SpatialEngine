@@ -226,7 +226,9 @@ public sealed class PostgisDescriptionCacheTests : IClassFixture<PostgisContaine
             await context.Store.WriteAsync(dataset, new FeatureBatch(Schema, [Row(90, Schema)]), transaction);
             Assert.Equal(0, context.Store.CachedDescriptions);
 
-            Assert.True(await context.Store.CommitAsync(transaction) == commit);
+            Assert.True(commit
+                ? await context.Store.CommitAsync(transaction)
+                : await context.Store.RollbackAsync(transaction));
             Assert.Equal(0, context.Store.CachedDescriptions);
         }
     }
@@ -255,7 +257,13 @@ public sealed class PostgisDescriptionCacheTests : IClassFixture<PostgisContaine
         var description = await context.Store.DescribeAsync(dataset);
         Assert.Equal(["id"], description.IdColumns);
         Assert.Equal(4326, description.Srid);
-        Assert.Equal(1, context.Store.DescriptionReads - before);
+
+        // Two catalogue reads, not one: the description that failed went to the
+        // catalogue too — it cost the same five queries as any other read, which
+        // is why the count is the honest instrument. What it did not do is
+        // leave an entry behind for the read that followed it.
+        Assert.Equal(2, context.Store.DescriptionReads - before);
+        Assert.Equal(1, context.Store.CachedDescriptions);
     }
 
     /// <summary>

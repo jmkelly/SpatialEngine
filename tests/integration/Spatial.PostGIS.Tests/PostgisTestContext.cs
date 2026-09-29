@@ -37,15 +37,13 @@ internal sealed class PostgisTestContext : IAsyncDisposable
     public static PostgisTestContext Create(
         string connectionString, TimeSpan? descriptionCacheTtl = null, TimeProvider? clock = null) =>
         new(
-            clock is null
-                ? new PostgisStore(new PostgisOptions { ConnectionString = connectionString })
-                : new PostgisStore(
-                    new PostgisOptions
-                    {
-                        ConnectionString = connectionString,
-                        DescriptionCacheTtl = descriptionCacheTtl ?? PostgisOptions.DefaultDescriptionCacheTtl,
-                    },
-                    clock),
+            new PostgisStore(
+                new PostgisOptions
+                {
+                    ConnectionString = connectionString,
+                    DescriptionCacheTtl = descriptionCacheTtl ?? PostgisOptions.DefaultDescriptionCacheTtl,
+                },
+                clock ?? TimeProvider.System),
             connectionString);
 
     public async Task ExecuteAsync(string sql, CancellationToken cancellationToken = default)

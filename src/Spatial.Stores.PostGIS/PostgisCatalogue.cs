@@ -26,14 +26,31 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
         return rows.Select(PostgisSchemaDiscovery.SummaryFromRow).ToArray();
     }
 
-    /// <summary>The discovered description of one dataset; <c>not.found</c> when it is not a spatial dataset.</summary>
+    /// <summary>
+    /// The discovered description of one dataset; <c>not.found</c> when it is not a spatial dataset.
+    ///
+    /// <para>
+    /// The description a held entry carries is this store's answer without a
+    /// round trip (ADR-0122): a read is described before it can be compiled,
+    /// and a walk of <c>N</c> pages over one dataset would otherwise discover
+    /// the same schema <c>N</c> times. Only a description that was really read
+    /// is held — a dataset that is not a spatial dataset, and a read that was
+    /// cancelled, are both answered from the database every time.
+    /// </para>
+    /// </summary>
     public async Task<DatasetDescription> DescribeAsync(PostgisDatasetName name, CancellationToken cancellationToken)
     {
+        if (storage.Descriptions.TryGet(name, out var held))
+        {
+            return held;
+        }
+
         storage.Descriptions.NoteRead();
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
         var facts = await ReadSchemaFactsAsync(connection, name, cancellationToken);
         if (PostgisSchemaDiscovery.TryBuild(name, facts, out var description, out var reason))
         {
+            storage.Descriptions.Set(name, description);
             return description;
         }
 
@@ -61,6 +78,9 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
             connection, transaction, PostgisQueries.CreateTable(name, sample.Schema, srid, geometryTypes), [], cancellationToken);
         await CreateIndexesAsync(connection, transaction, name, sample.Schema, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        // A table this store just created is a table it has never described:
+        // whatever the store held for this name was a different table (ADR-0122).
+        storage.Descriptions.Invalidate(name);
         return name.Qualified;
     }
 

@@ -52,14 +52,23 @@ public sealed class PostgisEditStore : IFeatureEditStore
         string? transaction,
         CancellationToken cancellationToken)
     {
-        var description = await _store.DescribeInternalAsync(name, cancellationToken);
-        if (description.IdColumns.Count == 0)
+        try
         {
-            return WithoutPrimaryKey(featureIds.Select(id => id), "deleted");
-        }
+            var description = await _store.DescribeInternalAsync(name, cancellationToken);
+            if (description.IdColumns.Count == 0)
+            {
+                return WithoutPrimaryKey(featureIds.Select(id => id), "deleted");
+            }
 
-        await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-        return await PostgisFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
+            await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
+            return await PostgisFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
+        }
+        finally
+        {
+            // An edit is a write the store made, and the description it read
+            // above predates it (ADR-0122).
+            _store.ForgetDescription(name);
+        }
     }
 
     private Task<IReadOnlyList<FeatureEditOutcome>> EditBatchAsync(
@@ -85,15 +94,25 @@ public sealed class PostgisEditStore : IFeatureEditStore
         Func<Feature, NpgsqlCommand, CancellationToken, Task<FeatureEditOutcome>> apply,
         CancellationToken cancellationToken)
     {
-        var description = await _store.DescribeInternalAsync(name, cancellationToken);
-        PostgisWriteOperations.CheckWritable(description, batch);
-        if (description.IdColumns.Count == 0)
+        try
         {
-            return WithoutPrimaryKey(batch.Features.Select(feature => feature.Id), "edited");
-        }
+            var description = await _store.DescribeInternalAsync(name, cancellationToken);
+            PostgisWriteOperations.CheckWritable(description, batch);
+            if (description.IdColumns.Count == 0)
+            {
+                return WithoutPrimaryKey(batch.Features.Select(feature => feature.Id), "edited");
+            }
 
-        await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-        return await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
+            await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
+            return await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
+        }
+        finally
+        {
+            // As with a delete: the description was read before the edit, and a
+            // batch that applied some of its features and failed the rest is
+            // still a write (ADR-0122).
+            _store.ForgetDescription(name);
+        }
     }
 
     /// <summary>One edit batch: the target dataset, its description, the features and whether they are updated.</summary>

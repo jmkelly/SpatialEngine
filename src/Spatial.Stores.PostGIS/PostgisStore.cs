@@ -189,7 +189,19 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
         CancellationToken cancellationToken)
     {
         var description = await DescribeInternalAsync(name, cancellationToken);
-        return await Features.WriteAsync(name, description, batch, transaction, cancellationToken);
+        try
+        {
+            return await Features.WriteAsync(name, description, batch, transaction, cancellationToken);
+        }
+        finally
+        {
+            // The description was read before the write, so it describes the
+            // dataset as it was before it; a description carries the row
+            // estimate too, and an append is what moves it. A write that did
+            // not complete cleanly is exactly the case where the store should
+            // not claim to know (ADR-0122).
+            ForgetDescription(name);
+        }
     }
 
     public Task<string> BeginAsync(CancellationToken cancellationToken = default)
