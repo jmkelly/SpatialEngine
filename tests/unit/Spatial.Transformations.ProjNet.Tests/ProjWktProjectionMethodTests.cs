@@ -103,6 +103,41 @@ public sealed class ProjWktProjectionMethodTests
         """;
 
     /// <summary>
+    /// EPSG:3032 WGS 84 / Australian Antarctic Polar Stereographic, Polar
+    /// Stereographic (variant B, EPSG method 9829) — the same standard
+    /// parallel as EPSG:3031 on a central meridian of 70°E, with 6,000 km of
+    /// false offset in each axis, so the derivation of the scale factor and
+    /// the longitude and the offsets are all read.
+    /// </summary>
+    private const string AustralianAntarcticPolarStereographic = """
+        PROJCRS["WGS 84 / Australian Antarctic Polar Stereographic",BASEGEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4326]],CONVERSION["Australian Antarctic Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",-71,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",70,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",6000000,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",6000000,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3032]]
+        """;
+
+    /// <summary>
+    /// EPSG:3413 WGS 84 / NSIDC Sea Ice Polar Stereographic North, Polar
+    /// Stereographic (variant B, EPSG method 9829) — the Arctic case, whose
+    /// standard parallel is 70°N rather than 71°S, so the pole the reader
+    /// derives is the northern one and the sign of the northing follows.
+    /// </summary>
+    private const string SeaIcePolarStereographicNorth = """
+        PROJCRS["WGS 84 / NSIDC Sea Ice Polar Stereographic North",BASEGEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4326]],CONVERSION["US NSIDC Sea Ice polar stereographic north",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",70,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",-45,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3413]]
+        """;
+
+    /// <summary>
+    /// EPSG:3031 with the parameter the derivation reads left out, and
+    /// EPSG:3031 with that parameter and a scale factor as well: a document
+    /// that states neither or both says something the reader cannot honour,
+    /// and says it by name.
+    /// </summary>
+    private const string AntarcticWithoutItsStandardParallel = """
+        PROJCRS["WGS 84 / Antarctic Polar Stereographic",BASEGEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4326]],CONVERSION["Antarctic Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Longitude of origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3031]]
+        """;
+
+    private const string AntarcticWithBothScaleFactors = """
+        PROJCRS["WGS 84 / Antarctic Polar Stereographic",BASEGEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4326]],CONVERSION["Antarctic Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",-71,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Scale factor at natural origin",0.9727690128917972,SCALEUNIT["unity",1],ID["EPSG",8805]],PARAMETER["Longitude of origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3031]]
+        """;
+
+    /// <summary>
     /// EPSG:5513 S-JTSK / Krovak, Krovak (EPSG method 9819) — the axes are
     /// the ones the method's own convention produces, which are not
     /// easting-and-northing.
@@ -121,6 +156,9 @@ public sealed class ProjWktProjectionMethodTests
     [InlineData(UpsNorth, "Polar Stereographic (variant A)", "Polar_Stereographic")]
     [InlineData(SwissObliqueMercator, "Hotine Oblique Mercator (variant B)", "Hotine_Oblique_Mercator")]
     [InlineData(BorneoObliqueMercator, "Hotine Oblique Mercator (variant B)", "Hotine_Oblique_Mercator")]
+    [InlineData(AntarcticPolarStereographic, "Polar Stereographic (variant B)", "Polar_Stereographic")]
+    [InlineData(AustralianAntarcticPolarStereographic, "Polar Stereographic (variant B)", "Polar_Stereographic")]
+    [InlineData(SeaIcePolarStereographicNorth, "Polar Stereographic (variant B)", "Polar_Stereographic")]
     public void A_method_verified_against_PROJ_resolves_to_its_ProjNet_projection(
         string wkt, string method, string projectionClass)
     {
@@ -136,7 +174,10 @@ public sealed class ProjWktProjectionMethodTests
     /// Chicago, Los Angeles and the projection origin on the Conus Albers
     /// parameters; four points across Europe on the LAEA Europe parameters;
     /// four points in the northern polar cap on the UPS North parameters; and
-    /// three points in Switzerland on the LV95 parameters.
+    /// three points in Switzerland on the LV95 parameters. The polar
+    /// stereographic variant B points are the two hemispheres and the
+    /// 6,000 km of false offset, because the scale factor the reader derives
+    /// from the standard parallel is what puts them where PROJ puts them.
     /// </summary>
     public static TheoryData<string, double, double, double, double> ProjControlPoints()
     {
@@ -171,6 +212,28 @@ public sealed class ProjWktProjectionMethodTests
         data.Add(BorneoObliqueMercator, 116.0, 6.0, 700491.1134436313, 664407.7098906768);
         data.Add(BorneoObliqueMercator, 114.0, 4.0, 479457.4987435189, 442562.66950517416);
         data.Add(BorneoObliqueMercator, 117.0, 7.0, 810510.9238337873, 775563.6956500097);
+
+        // EPSG:3031, WGS 84 / Antarctic Polar Stereographic.
+        data.Add(AntarcticPolarStereographic, 0.0, -80.0, 0.0, 1089179.4556261837);
+        data.Add(AntarcticPolarStereographic, 30.0, -75.0, 819391.6192036181, 1419227.9157567972);
+        data.Add(AntarcticPolarStereographic, -45.0, -72.0, -1393947.5396750527, 1393947.5396750532);
+        data.Add(AntarcticPolarStereographic, 179.0, -85.0, 9487.011175154154, -543510.5062151697);
+
+        // EPSG:3032, WGS 84 / Australian Antarctic Polar Stereographic — the
+        // 6,000 km of false offset, which a derived scale factor must not
+        // disturb.
+        data.Add(AustralianAntarcticPolarStereographic, 70.0, -80.0, 6000000.0, 7089179.455626184);
+        data.Add(AustralianAntarcticPolarStereographic, 120.0, -75.0, 7255380.793258387, 7053389.560610154);
+        data.Add(AustralianAntarcticPolarStereographic, 150.0, -72.0, 7941390.439023555, 6342319.514489304);
+        data.Add(AustralianAntarcticPolarStereographic, 0.0, -85.0, 5489189.389059778, 6185919.857729575);
+
+        // EPSG:3413, WGS 84 / NSIDC Sea Ice Polar Stereographic North — the
+        // northern pole, where the northing is negative off the central
+        // meridian.
+        data.Add(SeaIcePolarStereographicNorth, -45.0, 80.0, 0.0, -1085920.2973930992);
+        data.Add(SeaIcePolarStereographicNorth, -15.0, 75.0, 816939.7487353927, -1414981.1515322526);
+        data.Add(SeaIcePolarStereographicNorth, -60.0, 72.0, -508693.4760589377, -1898469.8981307785);
+        data.Add(SeaIcePolarStereographicNorth, -45.0, 89.0, 0.0, -108329.9596389848);
 
         return data;
     }
@@ -221,7 +284,6 @@ public sealed class ProjWktProjectionMethodTests
     /// </summary>
     [Theory]
     [InlineData(MichiganObliqueMercator, "Hotine Oblique Mercator (variant A)")]
-    [InlineData(AntarcticPolarStereographic, "Polar Stereographic (variant B)")]
     [InlineData(Krovak, "Krovak")]
     public void A_method_that_diverges_from_PROJ_is_refused_by_name(string wkt, string method)
     {
@@ -272,25 +334,51 @@ public sealed class ProjWktProjectionMethodTests
     }
 
     /// <summary>
-    /// The polar stereographic variant B gap, sized. ProjNet's polar
+    /// The polar stereographic variant B derivation. ProjNet's polar
     /// stereographic is the variant A formulation — a pole, a scale factor and
     /// the false offsets — and it agrees with PROJ there to well under a
-    /// micrometre. What it has no parameter for is EPSG's variant B
-    /// parameterisation, the latitude of standard parallel, which PROJ turns
-    /// into the scale factor 0.9727690128917965 for EPSG:3031. Handed that
-    /// scale factor, ProjNet reproduces EPSG:3031 exactly; handed the
-    /// definition as EPSG states it, it is off by 527 km of northing, so the
-    /// method stays out of the map.
+    /// micrometre. What EPSG's variant B states instead is a latitude of
+    /// standard parallel, so the reader derives the two variant A parameters
+    /// from it, on the definition's own ellipsoid and by PROJ's own
+    /// expression: the scale factor is 0.9727690128917972 for EPSG:3031 and
+    /// 0.9698581903263522 for EPSG:3413 (PROJ 9.8.1's own value for each,
+    /// recovered by handing ProjNet the variant A parameters and reading the
+    /// multiplier back).
+    /// </summary>
+    [Theory]
+    [InlineData(AntarcticPolarStereographic, -90.0, 0.9727690128917972)]
+    [InlineData(SeaIcePolarStereographicNorth, 90.0, 0.9698581903263522)]
+    public void The_polar_stereographic_variant_B_scale_factor_is_derived_from_the_standard_parallel(
+        string wkt, double pole, double scaleFactor)
+    {
+        Assert.True(ProjWkt.TryParse(wkt, out var definition, out var error), error);
+        var projected = Assert.IsType<ProjectedDefinition>(definition);
+
+        Assert.Equal("Polar_Stereographic", projected.ProjectionClass);
+        Assert.Equal(pole, projected.Parameters.Single(p => p.Name == "latitude_of_origin").Value, 9);
+        Assert.Equal(scaleFactor, projected.Parameters.Single(p => p.Name == "scale_factor").Value, 12);
+
+        // The standard parallel is not handed on as a parameter the
+        // projection does not read: it has been turned into the scale factor,
+        // so it is gone rather than quietly ignored.
+        Assert.DoesNotContain(projected.Parameters, parameter => parameter.Name == "latitude_of_standard_parallel");
+    }
+
+    /// <summary>
+    /// And the size of what the derivation is for. Handed the variant A
+    /// parameters the reader derives, ProjNet reproduces EPSG:3031; handed
+    /// the definition as a plain polar stereographic it does not, which is
+    /// the 527 km of northing that kept the method out of the map.
     /// </summary>
     [Fact]
-    public void The_polar_stereographic_variant_B_gap_is_the_standard_parallel_parameter()
+    public void The_polar_stereographic_variant_B_derivation_is_worth_527_km_of_northing()
     {
         var (easting, northing) = Direct(
             "Polar_Stereographic",
             [
                 Parameter("latitude_of_origin", -90.0),
                 Parameter("central_meridian", 0.0),
-                Parameter("scale_factor", 0.9727690128917965),
+                Parameter("scale_factor", 0.9727690128917972),
                 Parameter("false_easting", 0.0),
                 Parameter("false_northing", 0.0),
             ],
@@ -303,8 +391,30 @@ public sealed class ProjWktProjectionMethodTests
         Assert.Equal(0.0, easting, 6);
         Assert.Equal(1089179.4556261837, northing, 6);
 
-        // Left to its own parameters, the projection lands 527 km away.
+        // Left to its own parameters — a scale factor of 1 at the pole — the
+        // projection lands 527 km away.
         Assert.InRange(1089179.4556261837 - 561713.6916, 527_000.0, 528_000.0);
+    }
+
+    /// <summary>
+    /// A parameter is honoured or refused by name, never accepted and
+    /// ignored, and a variant B conversion states the parallel the derivation
+    /// reads: a document that omits it, or that also states the variant A
+    /// scale factor, is a named failure rather than a projection built from
+    /// half a definition.
+    /// </summary>
+    [Fact]
+    public void A_polar_stereographic_variant_B_definition_without_the_standard_parallel_is_refused_by_name()
+    {
+        Assert.False(ProjWkt.TryParse(AntarcticWithoutItsStandardParallel, out var definition, out var error));
+        Assert.Null(definition);
+        Assert.NotNull(error);
+        Assert.Contains("latitude of standard parallel", error, StringComparison.OrdinalIgnoreCase);
+
+        Assert.False(ProjWkt.TryParse(AntarcticWithBothScaleFactors, out definition, out error));
+        Assert.Null(definition);
+        Assert.NotNull(error);
+        Assert.Contains("scale factor", error, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
