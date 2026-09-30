@@ -77,6 +77,36 @@ SOLUTION_WIDE_FILES = frozenset({
 IGNORED_DIR_NAMES = frozenset({"obj", "bin", "node_modules", ".git", "dist",
                                "artifacts", "TestResults", "obj-ref"})
 
+#: The MSBuild spellings of false. MSBuild's condition evaluator reads `false`
+#: and `False` and `0` and `off` (case-insensitively) as the boolean false and
+#: everything else as true, so a project file read here is read the same way.
+MSBUILD_FALSE = frozenset({"false", "0", "off"})
+
+
+def _is_test_project(tree: ET.ElementTree) -> bool:
+    """Whether a project file says it is a test project.
+
+    The property's *value*, not its presence. A project can carry
+    `<IsTestProject>false</IsTestProject>` and mean it —
+    `tests/conformance/Spatial.QueryConformance` does, with the comment "Test
+    support, not a test project: the suite is run by each store's own tests,
+    and the runner must not try to execute the library itself" — and asking
+    whether the element exists calls that a suite. Nothing then goes right:
+    `dotnet test` skips a project whose `IsTestProject` is false and writes no
+    trx for it, so a suite that cannot report is counted as one that must
+    report, and the whole-solution lane's `--expect` (the two CI lane lists
+    added up, ADR-0139) can never be met — a red lane on a green repository
+    (SpatialEngine-l2k).
+
+    Absent means not a test project: MSBuild's default is false, and every
+    suite in this repository declares the property `true` explicitly rather than
+    relying on a package reference to imply it.
+    """
+    element = tree.find(".//IsTestProject")
+    if element is None or element.text is None:
+        return False
+    return element.text.strip().lower() not in MSBUILD_FALSE
+
 SOLUTION_FILE = "SpatialEngine.slnx"
 
 #: How the test projects split across the two CI jobs. The integration lane
@@ -229,7 +259,7 @@ def load_repository(root: Path) -> Repository:
             return
         seen.add(resolved)
         tree = ET.parse(resolved)
-        is_test = tree.find(".//IsTestProject") is not None
+        is_test = _is_test_project(tree)
         references = []
         for node in tree.iter("ProjectReference"):
             include = node.get("Include")
