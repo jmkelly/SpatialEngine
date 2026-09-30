@@ -5,7 +5,6 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -24,7 +23,7 @@ public sealed class MapRenderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory() => new RenderFactory(Path.Combine(_directory, "maps.json"));
+    private RenderFactory Factory() => new RenderFactory(Path.Combine(_directory, "maps.json"));
 
     private static async Task PutMapAsync(HttpClient client, string name, string? style)
     {
@@ -113,7 +112,7 @@ public sealed class MapRenderTests : IDisposable
     }
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class RenderFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class RenderFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

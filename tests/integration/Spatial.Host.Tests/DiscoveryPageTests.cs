@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -23,7 +22,7 @@ public sealed class DiscoveryPageTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory() => new RoutesFactory(Path.Combine(_directory, "maps.json"));
+    private RoutesFactory Factory() => new RoutesFactory(Path.Combine(_directory, "maps.json"));
 
     [Fact]
     public async Task Routes_page_is_html_and_lists_the_mounted_endpoints()
@@ -104,7 +103,7 @@ public sealed class DiscoveryPageTests : IDisposable
     }
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class RoutesFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class RoutesFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

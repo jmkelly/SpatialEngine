@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -57,7 +56,7 @@ public sealed class GeoServicesRelationshipsTests : IDisposable
     private static readonly string[] KreuzbergAndBelleville = ["Kreuzberg", "Belleville"];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-relationships-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesRelationshipsTests() => _factory = new RelationshipFactory(Path.Combine(_directory, "maps.json"));
 
@@ -490,7 +489,7 @@ public sealed class GeoServicesRelationshipsTests : IDisposable
         Assert.Empty(empty.GetProperty("relationships").EnumerateArray());
     }
 
-    private sealed class RelationshipFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class RelationshipFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

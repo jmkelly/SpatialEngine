@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -22,7 +21,7 @@ public sealed class ResumableUploadTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory(long maxBytes = 100_000_000) =>
+    private UploadFactory Factory(long maxBytes = 100_000_000) =>
         new UploadFactory(Path.Combine(_directory, "uploads"), maxBytes);
 
     private static HttpRequestMessage Authorized(HttpMethod method, string path, HttpContent? content = null)
@@ -281,7 +280,7 @@ public sealed class ResumableUploadTests : IDisposable
         Assert.Empty((await BodyAsync(await AuthorizedGetAsync(client, "/api/uploads"))).EnumerateArray());
     }
 
-    private sealed class UploadFactory(string uploadsPath, long maxBytes) : WebApplicationFactory<Program>
+    private sealed class UploadFactory(string uploadsPath, long maxBytes) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

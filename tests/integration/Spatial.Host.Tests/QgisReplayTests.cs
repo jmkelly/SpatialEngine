@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -96,9 +95,9 @@ public sealed class QgisReplayTests : IDisposable
     /// memory store, published as the <c>qgis</c> WMS map.</summary>
     private sealed class QgisContext : IDisposable
     {
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly SpatialHostFactory _factory;
 
-        private QgisContext(WebApplicationFactory<Program> factory, HttpClient client)
+        private QgisContext(SpatialHostFactory factory, HttpClient client)
         {
             _factory = factory;
             Client = client;
@@ -157,7 +156,7 @@ public sealed class QgisReplayTests : IDisposable
     }
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class QgisFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class QgisFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

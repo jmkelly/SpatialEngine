@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
@@ -58,7 +57,7 @@ public sealed class SeedEndpointTests : IDisposable
         }
     }
 
-    private WebApplicationFactory<Program> Factory(
+    private SeedFactory Factory(
         Dictionary<string, string>? files = null, string? token = null, string? environment = null) =>
         new SeedFactory(
             Path.Combine(_directory, $"maps-{Guid.NewGuid():N}.json"),
@@ -257,7 +256,7 @@ public sealed class SeedEndpointTests : IDisposable
 
     private sealed class SeedFactory(
         string mapsPath, Dictionary<string, string> files, string? token, string? environment)
-        : WebApplicationFactory<Program>
+        : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

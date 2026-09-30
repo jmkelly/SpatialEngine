@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Client;
 using Spatial.Contracts;
 using Spatial.Core.Features;
@@ -204,11 +203,11 @@ public sealed class PostgisTileDataVersionTests : IAsyncLifetime
     {
         public const string Token = "postgis-tile-admin-token";
 
-        private readonly WebApplicationFactory<Program> _factory;
+        private readonly SpatialHostFactory _factory;
 
         private readonly string _mapsDirectory;
 
-        private HostScope(WebApplicationFactory<Program> factory, string mapsDirectory)
+        private HostScope(SpatialHostFactory factory, string mapsDirectory)
         {
             _factory = factory;
             _mapsDirectory = mapsDirectory;
@@ -235,7 +234,7 @@ public sealed class PostgisTileDataVersionTests : IAsyncLifetime
     }
 
     /// <summary>A host with the containerised PostGIS and an admin token for the write routes.</summary>
-    private sealed class HostFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class HostFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

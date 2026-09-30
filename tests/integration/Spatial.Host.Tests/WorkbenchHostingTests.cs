@@ -1,5 +1,4 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -19,7 +18,7 @@ public sealed class WorkbenchHostingTests : IDisposable
         var webRoot = Path.Combine(_root, "web");
         Directory.CreateDirectory(webRoot);
         File.WriteAllText(Path.Combine(webRoot, "index.html"), "<!doctype html><title>workbench</title><div id=app></div>");
-        using var factory = new WebApplicationFactory<Program>()
+        using var factory = new SpatialHostFactory()
             .WithWebHostBuilder(builder => builder.UseSetting("Spatial:WebRoot", webRoot));
         var client = factory.CreateClient();
 
@@ -34,7 +33,7 @@ public sealed class WorkbenchHostingTests : IDisposable
     [Fact]
     public async Task Without_a_web_root_the_host_serves_its_identity()
     {
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new SpatialHostFactory();
         var client = factory.CreateClient();
 
         var root = await client.GetAsync("/");
@@ -46,7 +45,7 @@ public sealed class WorkbenchHostingTests : IDisposable
     public void A_missing_web_root_fails_fast_naming_the_directory()
     {
         var missing = Path.Combine(_root, "nope");
-        using var factory = new WebApplicationFactory<Program>()
+        using var factory = new SpatialHostFactory()
             .WithWebHostBuilder(builder => builder.UseSetting("Spatial:WebRoot", missing));
 
         var exception = Assert.Throws<InvalidOperationException>(() => factory.CreateClient());

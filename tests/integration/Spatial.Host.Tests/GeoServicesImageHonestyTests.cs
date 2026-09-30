@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NetVips;
@@ -216,7 +215,7 @@ public sealed class GeoServicesImageHonestyTests : IDisposable
         Assert.Equal(400, error.GetProperty("code").GetInt32());
     }
 
-    private static async Task<HttpClient> ImageServiceAsync(WebApplicationFactory<Program> factory, string service, string dataset)
+    private static async Task<HttpClient> ImageServiceAsync(SpatialHostFactory factory, string service, string dataset)
     {
         var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
@@ -246,7 +245,7 @@ public sealed class GeoServicesImageHonestyTests : IDisposable
     private sealed class HonestyFactory(
         string directory, string rasterPath, string dataset, bool catalog, bool statistics, bool attributeTable,
         long maxDownloadBytes = 0, int maxDownloadFiles = 0)
-        : WebApplicationFactory<Program>
+        : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

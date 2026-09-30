@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NetVips;
@@ -41,8 +40,8 @@ public sealed class GeoServicesMapOfflineTests : IDisposable
     private const int RasterHeight = 6;
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-offline-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly WebApplicationFactory<Program> _imageFactory;
+    private readonly SpatialHostFactory _factory;
+    private readonly SpatialHostFactory _imageFactory;
 
     public GeoServicesMapOfflineTests()
     {
@@ -246,7 +245,7 @@ public sealed class GeoServicesMapOfflineTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private sealed class MapFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class MapFactory(string publicationsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -256,7 +255,7 @@ public sealed class GeoServicesMapOfflineTests : IDisposable
     }
 
     private sealed class OfflineImageFactory(string directory, string rasterPath, string dataset)
-        : WebApplicationFactory<Program>
+        : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

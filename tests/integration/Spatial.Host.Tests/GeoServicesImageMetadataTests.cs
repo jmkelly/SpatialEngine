@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NetVips;
@@ -163,7 +162,7 @@ public sealed class GeoServicesImageMetadataTests : IDisposable
     }
 
     private static async Task<HttpClient> ImageServiceAsync(
-        WebApplicationFactory<Program> factory, string service, string dataset, string? serviceMetadata)
+        SpatialHostFactory factory, string service, string dataset, string? serviceMetadata)
     {
         var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
@@ -186,7 +185,7 @@ public sealed class GeoServicesImageMetadataTests : IDisposable
 
     private sealed class MetadataFactory(
         string directory, string rasterPath, string dataset, string? itemMetadata, bool catalog = true)
-        : WebApplicationFactory<Program>
+        : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

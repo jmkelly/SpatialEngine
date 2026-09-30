@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts.Providers;
 
@@ -17,7 +16,7 @@ namespace Spatial.Host.Tests;
 /// </summary>
 public sealed class AttachmentStoreWiringTests : IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory = new WiringFactory();
+    private readonly WiringFactory _factory = new WiringFactory();
 
     public void Dispose() => _factory.Dispose();
 
@@ -53,7 +52,7 @@ public sealed class AttachmentStoreWiringTests : IDisposable
         Assert.Null(stores.AttachmentStore("demo"));
     }
 
-    private sealed class WiringFactory : WebApplicationFactory<Program>
+    private sealed class WiringFactory : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

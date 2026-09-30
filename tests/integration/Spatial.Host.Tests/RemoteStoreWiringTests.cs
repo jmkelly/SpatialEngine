@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 
@@ -15,7 +14,7 @@ public sealed class RemoteStoreWiringTests
     [Fact]
     public void Catalogue_and_feature_faces_share_one_remote_store_adapter()
     {
-        using var factory = new WebApplicationFactory<Program>()
+        using var factory = new SpatialHostFactory()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting("Spatial:ArcGisRest:Services:0:Name", "remote");

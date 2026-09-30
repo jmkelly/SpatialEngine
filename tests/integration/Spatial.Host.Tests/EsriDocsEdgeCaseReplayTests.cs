@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
@@ -43,7 +42,7 @@ public sealed class EsriDocsEdgeCaseReplayTests : IDisposable
     private static readonly double Tolerance = Manifest.GetProperty("tolerance").GetDouble();
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-esri-edge-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public EsriDocsEdgeCaseReplayTests() => _factory = new EdgeFactory(_directory, Token);
 
@@ -139,7 +138,7 @@ public sealed class EsriDocsEdgeCaseReplayTests : IDisposable
     }
 
     /// <summary>Admin token plus the writable <c>editable</c> service (fresh store per test).</summary>
-    private sealed class EdgeFactory(string directory, string token) : WebApplicationFactory<Program>
+    private sealed class EdgeFactory(string directory, string token) : SpatialHostFactory
     {
         private readonly WritableMemoryStore _store = new();
 

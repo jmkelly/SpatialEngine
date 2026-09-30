@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
@@ -291,7 +290,7 @@ public sealed class GeoServicesEditTests
     }
 
     /// <summary>Mounts an extra <c>editable</c> FeatureServer backed by the writable in-memory store.</summary>
-    public sealed class EditableFactory : WebApplicationFactory<Program>
+    public sealed class EditableFactory : SpatialHostFactory
     {
         private readonly WritableMemoryStore _store = new();
         private readonly bool _scanFallback;
