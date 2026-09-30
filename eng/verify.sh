@@ -117,6 +117,16 @@ PLAN_ONLY=0
 # covered by CI on `main` whatever a merge does (ADR-0134 §3): a merge that
 # skips them is a merge that leaned on CI, and the close reason says so.
 SKIP_PATTERNS=()
+# The `--help` output: every paragraph of the header comment above
+# `set -euo pipefail`, which is the whole of what the lanes document
+# themselves in. The end used to be a hard-coded line number in a `sed -n
+# '2,100p'`, and it went stale the next time a paragraph was appended — the
+# usage block silently lost its last paragraphs and only reading the file
+# showed the step that was missing (SpatialEngine-2hf). So the end is derived
+# here rather than written down, and a header that grows is a help that grows.
+print_header() {
+  sed -e '1d' -e '/^set -euo pipefail$/,$d' "$0"
+}
 add_skip_patterns() {
   local list="$1"
   [[ -n "$list" ]] || return 0
@@ -159,11 +169,11 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --plan) PLAN_ONLY=1; shift ;;
-    # The whole header comment: every paragraph above `set -euo pipefail`, which
-    # on this tree is line 100. Both gates document themselves there, so a range
-    # that stops short of the last paragraph prints a usage block that omits
-    # the step a caller is about to be surprised by.
-    -h|--help) sed -n '2,100p' "$0"; exit 0 ;;
+    # The whole header comment, through `print_header` above: both gates
+    # document themselves there, and a range that stops short of the last
+    # paragraph prints a usage block that omits the step a caller is about to
+    # be surprised by.
+    -h|--help) print_header; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done

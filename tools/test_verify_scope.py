@@ -896,6 +896,32 @@ class ScriptLaneTests(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.plan("--everything")
 
+    def test_the_help_prints_the_whole_header(self):
+        """`--help` is where the lanes document themselves, so it cannot stop short.
+
+        The help block used to be `sed -n '2,80p' "$0"` with a hard-coded line,
+        and every paragraph appended above `set -euo pipefail` fell silently out
+        of the usage text until someone read the file instead of the help
+        (SpatialEngine-2hf). Asserting against the header as it is *now* is what
+        makes appending a paragraph safe: there is no number left to keep
+        current.
+        """
+        lines = self.VERIFY.read_text(encoding="utf-8").splitlines()
+        header = lines[1:lines.index("set -euo pipefail")]
+
+        result = subprocess.run(["bash", str(self.VERIFY), "--help"],
+                                check=True, capture_output=True, text=True)
+
+        self.assertEqual(result.stdout.splitlines(), header)
+
+    def test_the_help_ends_at_the_last_header_paragraph(self):
+        """The specific paragraph a stale range dropped, named so the loss is legible."""
+        result = subprocess.run(["bash", str(self.VERIFY), "--help"],
+                                check=True, capture_output=True, text=True)
+
+        self.assertIn("trim_trailing_whitespace", result.stdout)
+        self.assertIn("--quick` is accepted as a synonym", result.stdout)
+
     def test_the_script_is_valid_bash(self):
         subprocess.run(["bash", "-n", str(self.VERIFY)], check=True)
 
