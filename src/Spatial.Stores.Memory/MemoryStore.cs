@@ -145,7 +145,10 @@ public sealed class MemoryStore
         {
             var found = _catalog.Find(dataset);
             return FeatureReduction.Aggregate(
-                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), aggregate);
+                found.Schema,
+                FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken),
+                aggregate,
+                query.Order);
         }));
     }
 

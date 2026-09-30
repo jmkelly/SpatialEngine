@@ -158,6 +158,65 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     }
 
     /// <summary>
+    /// The <c>having</c> clause and the page over the groups that survive it
+    /// are the grouped statement's own <c>HAVING</c> and <c>LIMIT</c>
+    /// (ADR-0128), so they cost no rows the store would otherwise read. The
+    /// assertions are the reference's — the clause over a statistic's result
+    /// name, the clause over the group key, the cap that leaves more and the
+    /// start that reaches the end — beside a call count, because a store that
+    /// read the groups and filtered them afterwards would agree with every one
+    /// of them and have pushed nothing.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_group_clause_and_a_group_page_are_a_having_and_a_limit_and_agree_with_the_reference()
+    {
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = await SeedAsync(context);
+        var plan = new FeatureQuery(Order: [new OrderTerm("city")]);
+        var groups = new[] { "alpha", "bravo", "charlie", "a-null" };
+
+        // Only "alpha" (300 over two rows) and "charlie" (400) clear a sum of
+        // 250, and so does the null-keyed group (300): the clause is over a
+        // *reduced* value, so it is a comparison the dialect evaluates per
+        // group. "bravo" reduces to no sum at all, and a null satisfies no
+        // comparison.
+        var filtered = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
+            ["city"],
+            Having: new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromInteger("250")));
+        var byResult = await new CountingStore(context.Store).AggregateAsync(dataset, plan, filtered);
+        Assert.Equal(["alpha", "charlie", "-"], byResult.Groups.Select(group => group.Key[0].IsNull ? "-" : group.Key[0].StringValue));
+        Assert.Equal(Render((await ReferenceAsync(context.Store, dataset, plan, filtered)).Groups), Render(byResult.Groups));
+
+        // The same clause over the group key, which is the column the GROUP BY
+        // already carries — and it compares strings by bytes, not by the
+        // database's collation (ADR-0121).
+        var byKey = filtered with
+        {
+            Having = new Predicate.Compare(new FieldRef("city"), ComparisonOperator.GreaterThan, Literal.FromText("b")),
+        };
+        var keyed = await new CountingStore(context.Store).AggregateAsync(dataset, plan, byKey);
+        Assert.Equal(["bravo", "charlie"], keyed.Groups.Select(group => group.Key[0].StringValue));
+        Assert.Equal(Render((await ReferenceAsync(context.Store, dataset, plan, byKey)).Groups), Render(keyed.Groups));
+
+        // A cap that leaves more, and the flag that says so; then the start
+        // that reaches the end of the group set and no flag.
+        var paged = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            ["city"],
+            Limit: 2);
+        var first = await new CountingStore(context.Store).AggregateAsync(dataset, plan, paged);
+        Assert.Equal(groups.Take(2), first.Groups.Select(group => group.Key[0].IsNull ? "a-null" : group.Key[0].StringValue));
+        Assert.True(first.HasMore);
+        Assert.Equal(Render((await ReferenceAsync(context.Store, dataset, plan, paged)).Groups), Render(first.Groups));
+
+        var last = await new CountingStore(context.Store).AggregateAsync(dataset, plan, paged with { Limit = 2, Offset = 2 });
+        Assert.Equal(groups.Skip(2), last.Groups.Select(group => group.Key[0].IsNull ? "a-null" : group.Key[0].StringValue));
+        Assert.False(last.HasMore);
+        Assert.Equal(Render((await ReferenceAsync(context.Store, dataset, plan, paged with { Limit = 2, Offset = 2 })).Groups), Render(last.Groups));
+    }
+
+    /// <summary>
     /// The layer extent is this reduction, so the case is worth its own
     /// assertion: one aggregate row out of the database, no feature read
     /// behind it, and the box the reference takes over the same table
@@ -270,7 +329,8 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
         return FeatureReduction.Aggregate(
             scan[0].Schema,
             FeaturePlanExecutor.Select(scan[0].Schema, scan.SelectMany(batch => batch.Features).ToList(), plan, CancellationToken.None),
-            aggregate);
+            aggregate,
+            plan.Order);
     }
 
     private static string[] Render(IEnumerable<AggregateGroup> groups) =>

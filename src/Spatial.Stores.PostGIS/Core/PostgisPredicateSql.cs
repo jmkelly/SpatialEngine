@@ -60,6 +60,39 @@ internal static class PostgisPredicateSql
     }
 
     /// <summary>
+    /// One operand of a clause over a reduced group row: the SQL it is compared
+    /// as, and the kind its value compares under (ADR-0128).
+    /// </summary>
+    /// <param name="Sql">The operand's SQL — a column for a group key, a statistic's aggregate expression for a result.</param>
+    /// <param name="Kind">The kind the value compares under, which is what binds the literal.</param>
+    internal readonly record struct GroupColumn(string Sql, AttributeKind Kind);
+
+    /// <summary>
+    /// Builds the <c>HAVING</c> fragment (without the keyword) for a reduction's
+    /// clause over its groups, or <c>null</c> when the clause names a value the
+    /// group row does not carry.
+    ///
+    /// <para>
+    /// It is the same builder as the <c>WHERE</c> fragment over a different
+    /// resolution: instead of a schema's columns, the caller's
+    /// <paramref name="resolve"/> answers with the operand to compare. So the
+    /// tree walk, the operator spellings, the literal binding and the
+    /// three-valued reading of a null are one definition, and a clause a store
+    /// pushes into a <c>HAVING</c> answers what the reference evaluator answers
+    /// for the reduced value.
+    /// </para>
+    /// </summary>
+    public static string? Having(
+        Predicate having,
+        Func<FieldRef, GroupColumn?> resolve,
+        List<object?> parameters)
+    {
+        var builder = new SqlBuilder(resolve, parameters);
+        builder.Visit(having);
+        return builder.Error is not null ? null : builder.ToString();
+    }
+
+    /// <summary>
     /// Whether a predicate compares a text column at all, which is the only
     /// part of a <c>WHERE</c> the database's collation can change. A caller
     /// reads the collation when this is true and skips the catalog read
@@ -114,6 +147,7 @@ internal static class PostgisPredicateSql
     private sealed class SqlBuilder
     {
         private readonly IFeatureSchema? _schema;
+        private readonly Func<FieldRef, GroupColumn?>? _resolve;
         private readonly bool _byteOrderText;
         private readonly List<object?> _parameters;
         private readonly StringBuilder _sql = new();
@@ -130,7 +164,17 @@ internal static class PostgisPredicateSql
             _parameterIndex = parameters.Count;
         }
 
+        /// <summary>A builder over a group row rather than a dataset's columns (a <c>HAVING</c> clause).</summary>
+        public SqlBuilder(Func<FieldRef, GroupColumn?> resolve, List<object?> parameters)
+            : this(schema: null, byteOrderText: true, parameters)
+        {
+            _resolve = resolve;
+        }
+
         public string? Error { get; private set; }
+
+        /// <summary>The group-row operand the last resolved name stood for, when this builder is a <c>HAVING</c> one.</summary>
+        private GroupColumn? _group;
 
         public string AppendBoundingBox(
             string geometryColumn,
@@ -241,7 +285,7 @@ internal static class PostgisPredicateSql
                 return;
             }
 
-            _sql.Append(Column(_schema![index].Name))
+            _sql.Append(Operand(index))
                 .Append(' ')
                 .Append(SqlOperator(compare.Operator))
                 .Append(' ')
@@ -255,7 +299,12 @@ internal static class PostgisPredicateSql
                 return;
             }
 
-            _sql.Append(Quote(_schema![index].Name)).Append(" IS ")
+            // A null test on a filtered column is the column alone: `COLLATE` is
+            // a string operator on a comparison, and a collation never changes
+            // whether a value is null. A group row's operand is its own SQL
+            // either way, which for a statistic is the aggregate that answers
+            // null for a group with nothing to reduce.
+            _sql.Append(_resolve is not null ? _group!.Value.Sql : Quote(_schema![index].Name)).Append(" IS ")
                 .Append(isNull.Negated ? "NOT NULL" : "NULL");
         }
 
@@ -297,7 +346,7 @@ internal static class PostgisPredicateSql
                 return;
             }
 
-            _sql.Append(Column(_schema![index].Name))
+            _sql.Append(Operand(index))
                 .Append(isIn.Negated ? " NOT IN (" : " IN (");
             for (var i = 0; i < bindable.Length; i++)
             {
@@ -401,6 +450,25 @@ internal static class PostgisPredicateSql
 
         private bool TryResolveColumn(FieldRef field, out int index, out AttributeKind kind)
         {
+            // A group row resolves through the caller's own operands, not through
+            // a schema: its names are the group key's and the statistics' result
+            // names, and the value compared is the reduced one (ADR-0128).
+            if (_resolve is { } resolve)
+            {
+                if (resolve(field) is { } group)
+                {
+                    _group = group;
+                    index = 0;
+                    kind = group.Kind;
+                    return true;
+                }
+
+                Error = $"the group row has no '{field.Name}' to filter on.";
+                index = -1;
+                kind = default;
+                return false;
+            }
+
             if (_schema is not null)
             {
                 index = _schema.IndexOf(field.Name);
@@ -434,6 +502,14 @@ internal static class PostgisPredicateSql
         /// </summary>
         private string Column(string name) =>
             _schema is null ? Quote(name) : PostgisPlanQueries.Ordered(name, _schema, _byteOrderText);
+
+        /// <summary>
+        /// The operand a clause compares: the group row's own SQL where the
+        /// clause is over reduced groups, and the filtered column under the byte
+        /// order where the clause is over a dataset's rows.
+        /// </summary>
+        private string Operand(int index) =>
+            _resolve is not null && _group is { } group ? group.Sql : Column(_schema![index].Name);
 
         /// <summary>The identifier quoting of the PostGIS dialect (a discovered or schema-validated name).</summary>
         private static string Quote(string name) => $"\"{name}\"";

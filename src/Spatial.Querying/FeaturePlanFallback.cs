@@ -63,7 +63,11 @@ public static class FeaturePlanFallback
         IFeatureStore store, string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
     {
         var (schema, selected) = await SelectAsync(store, dataset, query, cancellationToken).ConfigureAwait(false);
-        return FeatureReduction.Aggregate(schema, selected, aggregate);
+
+        // The plan's order is handed to the reduction, not applied to the rows:
+        // a group order is a total order over the *groups*, and only the
+        // reduction knows which rows a group has (ADR-0115 §4).
+        return FeatureReduction.Aggregate(schema, selected, aggregate, query.Order);
     }
 
     private static async Task<(FeatureSchema Schema, IReadOnlyList<Feature> Selected)> SelectAsync(

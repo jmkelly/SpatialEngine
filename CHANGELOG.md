@@ -119,6 +119,34 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **The group page and `having` belong to the reduction, and a store that
+  implements the reduction face answers both** (ADR-0128, SpatialEngine-u2x.44):
+  a statistics query with `resultRecordCount=1` asked the store for *every*
+  group, built them all in managed code and skipped all but one, and a `having`
+  clause filtered them there too — so a layer with a million distinct
+  `groupByFieldsForStatistics` values shipped a million rows over the wire to
+  write one. `AggregateQuery` now carries `Having`, `Limit` and `Offset`, and
+  `AggregatePage` carries `HasMore`: they are the reduction's own members
+  because a cap the *plan* carried would cut rows the store never grouped
+  (ADR-0098 §7 as amended by SpatialEngine-u2x.9.2), and the clause is asked
+  first so the cap cuts the groups that survived it. The clause is the one
+  predicate vocabulary, over the *group row* — the group fields and the
+  statistics' result names — so it is parsed once at the boundary, evaluated by
+  the reference evaluator and validated before any store is asked, and a name
+  that is neither is `invalid.arguments` on every path. PostGIS writes it as
+  the dialect's own aggregate expression in the grouped statement's `HAVING`,
+  before its `LIMIT` (so `HAVING SUM("population") > 150` is one statement and
+  the server assembles no group past the page), with a group key compared as
+  the column under the byte-order collation every comparison in that store
+  states. A store that reduces in managed code — the in-memory, demo, ArcGIS
+  REST and SQL Server providers — is correct by going through the reference, and
+  the shared conformance suite now runs nine clause and page shapes under a
+  plan a `GROUP BY` can answer and one it cannot. Making the store the sole
+  answerer of the group order also settled a rule the writer had been papering
+  over: a store reducing in managed code is handed the plan's order and the
+  reference applies it to the *groups* when every term names a group field, so
+  a managed reduction and a pushed one now return the same sequence.
+
 - **A paged read on SQL Server is a page, not a materialisation** (ADR-0124,
   SpatialEngine-u2x.42): the provider pushed the restriction and then finished
   the plan with the reference executor over every selected row, so an ordered,

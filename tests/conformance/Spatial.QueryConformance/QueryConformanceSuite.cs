@@ -69,7 +69,81 @@ public static class QueryConformanceSuite
         await SameDistinctAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
         await SameAggregateAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
         await SameOrderedAggregateAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
+        await SameGroupFilterAndPageAsync(store, dataset, schema, features, cancellationToken).ConfigureAwait(false);
         await RejectsBadPlansAsync(store, dataset, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The <c>having</c> clause and the page over the groups that survive it,
+    /// compared against the reference for every store that implements the
+    /// reduction face (ADR-0128). They are the two members of a reduction that
+    /// shape the answer rather than describe it, and both are answers a store
+    /// can get wrong while every other case still passes: a store that ignores
+    /// the clause returns groups the request excluded, and one that ignores the
+    /// cap returns the whole group set and says nothing was more.
+    ///
+    /// <para>
+    /// Three shapes of clause and three of page, because each is a different
+    /// rule. The clauses are over a statistic's <em>result name</em> (a value
+    /// no column carries, so a store has to answer it from the reduced group),
+    /// over the group key (a value that is a column), and an <c>IS NULL</c> test
+    /// on a sample form — which is null for a group of one, so it is a clause
+    /// that keeps exactly the groups the sample variance cannot describe. The
+    /// pages are a cap that leaves more, a cap that reaches the end, and a
+    /// start past the last group.
+    /// </para>
+    /// </summary>
+    private static async Task SameGroupFilterAndPageAsync(
+        IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, CancellationToken token)
+    {
+        var fields = Fields.Of(schema);
+        var grouped = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
+             new AggregateSpec(AggregateStatistic.Sum, fields.Numeric, "total"),
+             new AggregateSpec(AggregateStatistic.Variance, fields.Numeric, "var")],
+            [fields.Group]);
+        var shapes = new List<AggregateQuery>
+        {
+            grouped with { Having = new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromNumber(0)) },
+            grouped with { Having = new Predicate.IsNull(new FieldRef(fields.Group), Negated: false) },
+            grouped with { Having = new Predicate.IsNull(new FieldRef("var"), Negated: false) },
+            grouped with { Having = new Predicate.Constant(false) },
+            grouped with { Limit = 2 },
+            grouped with { Limit = 2, Offset = 1 },
+            grouped with { Limit = 1, Offset = 100 },
+            grouped with { Having = new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromNumber(0)), Limit = 2, Offset = 1 },
+            // An ungrouped reduction is one group, so a page over it is either
+            // that group or none of them, and a clause over it is the same
+            // question asked of a single group.
+            new AggregateQuery(
+                [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
+                 new AggregateSpec(AggregateStatistic.Sum, fields.Numeric, "total")],
+                Having: new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromNumber(0)),
+                Limit: 1,
+                Offset: 1),
+        };
+
+        // Both plans: the one a <c>GROUP BY</c> can answer and the one it cannot,
+        // because the pushed store and the reduced-here store have to agree on
+        // all nine shapes.
+        var plans = new List<FeatureQuery>
+        {
+            new(Where: Matching(fields), Order: [new OrderTerm(fields.Group)]),
+            new(Where: Matching(fields)),
+        };
+
+        foreach (var query in plans)
+        {
+            foreach (var aggregate in shapes)
+            {
+                var actual = await FeatureReductionFallback
+                    .AggregateAsync(store, dataset, query, aggregate, token)
+                    .ConfigureAwait(false);
+                var expected = FeatureReduction.Aggregate(
+                    schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate, query.Order);
+                SameGroups(query, aggregate, expected, actual);
+            }
+        }
     }
 
     private static async Task SamePlanAnswerAsync(
@@ -257,7 +331,7 @@ public static class QueryConformanceSuite
                     .AggregateAsync(store, dataset, query, aggregate, token)
                     .ConfigureAwait(false);
                 var expected = FeatureReduction.Aggregate(
-                    schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate);
+                    schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate, query.Order);
                 SameGroups(query, aggregate, expected, actual);
             }
         }
@@ -289,7 +363,7 @@ public static class QueryConformanceSuite
                     .AggregateAsync(store, dataset, query, aggregate, token)
                     .ConfigureAwait(false);
                 var expected = FeatureReduction.Aggregate(
-                    schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate);
+                    schema, FeaturePlanExecutor.Select(schema, fixture, query, token), aggregate, query.Order);
                 SameGroups(query, aggregate, expected, actual);
             }
         }
@@ -312,7 +386,17 @@ public static class QueryConformanceSuite
     {
         Assert.Equal(expected.GroupFields, actual.GroupFields);
         Assert.Equal(expected.ValueNames, actual.ValueNames);
-        Assert.Equal(expected.TotalCount, actual.TotalCount);
+        // The total is the store's own business on a *paged* reduction — the
+        // rows the cap cut are exactly the ones it did not count — so it is
+        // compared where it is a question every store can answer, and the flag
+        // is compared always, because "one more group" is a question every store
+        // owes (ADR-0128).
+        if (!aggregate.IsPaged)
+        {
+            Assert.Equal(expected.TotalCount, actual.TotalCount);
+        }
+
+        Assert.Equal(expected.HasMore, actual.HasMore);
 
         var groups = Groups(expected.Groups);
         var answered = Groups(actual.Groups);

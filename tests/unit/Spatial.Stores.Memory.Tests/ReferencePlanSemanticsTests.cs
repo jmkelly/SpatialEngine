@@ -227,6 +227,150 @@ public sealed class ReferencePlanSemanticsTests
     }
 
     /// <summary>
+    /// The <c>having</c> clause of a reduction is a filter over the
+    /// <em>group row</em> — the group key's values followed by one value per
+    /// requested statistic, under the result name each statistic is reported
+    /// under — and it runs after the reduction, never inside it (ADR-0128).
+    /// A clause over a statistic is the one that is not a column, which is why
+    /// the reference answers it from the reduced value rather than from the
+    /// rows that produced it.
+    /// </summary>
+    [Fact]
+    public void A_having_clause_filters_the_reduced_groups_by_result_name_and_by_group_key()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Sum, "score", "total")],
+            ["name"],
+            Having: new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromInteger("5")));
+
+        var groups = FeatureReduction.Aggregate(Schema, Rows, query).Groups;
+
+        // alpha and bravo sum to 10 and survive; charlie and delta reduce
+        // nothing, and a null satisfies no comparison — the same answer a
+        // `HAVING SUM(score) > 5` gives, because a group with nothing to
+        // reduce has no sum.
+        Assert.Equal(["alpha", "bravo"], groups.Select(group => group.Key[0].StringValue).ToArray());
+
+        var nulls = FeatureReduction.Aggregate(
+            Schema,
+            Rows,
+            query with { Having = new Predicate.IsNull(new FieldRef("total"), Negated: false) });
+
+        Assert.Equal(["charlie", "delta"], nulls.Groups.Select(group => group.Key[0].StringValue).ToArray());
+    }
+
+    [Fact]
+    public void A_having_clause_can_name_a_group_field()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            ["name"],
+            Having: new Predicate.Compare(new FieldRef("name"), ComparisonOperator.Equals, Literal.FromText("alpha")));
+
+        var group = Assert.Single(FeatureReduction.Aggregate(Schema, Rows, query).Groups);
+        Assert.Equal("alpha", group.Key[0].StringValue);
+    }
+
+    [Fact]
+    public void A_having_clause_over_no_statistic_and_no_key_drops_every_group()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Sum, "score", "total")],
+            ["name"],
+            Having: new Predicate.Constant(false));
+
+        Assert.Empty(FeatureReduction.Aggregate(Schema, Rows, query).Groups);
+    }
+
+    /// <summary>
+    /// The page over groups is a member of the <em>reduction</em>, not of the
+    /// plan: a plan's cap would cut rows the store never grouped, so the cap and
+    /// the start belong to the group set and are cut after the having has
+    /// already chosen which groups exist (ADR-0128).
+    /// </summary>
+    /// <summary>
+    /// The reduction is handed the <em>plan's</em> order, and when every term
+    /// names a group field the groups come back in it — the order a
+    /// <c>GROUP BY</c> can return, and the only way a store that reduces in
+    /// managed code answers the same sequence as one that pushed the order into
+    /// SQL (ADR-0115 §4, ADR-0128). An order the group row does not carry is
+    /// not a group order, so the first-seen order stands.
+    /// </summary>
+    [Fact]
+    public void The_plan_order_over_the_group_key_is_the_group_order()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            ["name"]);
+
+        var ascending = FeatureReduction.Aggregate(
+            Schema, Rows, query, [new OrderTerm("name")]).Groups;
+        var descending = FeatureReduction.Aggregate(
+            Schema, Rows, query, [new OrderTerm("name", SortDirection.Descending)]).Groups;
+
+        // The scan order is charlie, alpha, bravo, delta, so neither direction
+        // is what the rows happen to be in.
+        Assert.Equal(["alpha", "bravo", "charlie", "delta"], ascending.Select(group => group.Key[0].StringValue).ToArray());
+        Assert.Equal(["delta", "charlie", "bravo", "alpha"], descending.Select(group => group.Key[0].StringValue).ToArray());
+
+        // An order over a field the group row does not carry: the groups keep
+        // the order they were first met in.
+        Assert.Equal(
+            ["charlie", "alpha", "bravo", "delta"],
+            FeatureReduction.Aggregate(Schema, Rows, query, [new OrderTerm("score")])
+                .Groups.Select(group => group.Key[0].StringValue).ToArray());
+    }
+
+    [Fact]
+    public void The_group_page_is_cut_after_the_having_clause_and_says_whether_more_remain()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Sum, "score", "total")],
+            ["name"],
+            Having: new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterOrEqual, Literal.FromInteger("10")),
+            Limit: 1);
+
+        var page = FeatureReduction.Aggregate(Schema, Rows, query);
+
+        // Alpha and bravo are the two groups that survive the having, so the
+        // first page is alpha alone and the second one is still there.
+        Assert.Equal(["alpha"], page.Groups.Select(group => group.Key[0].StringValue).ToArray());
+        Assert.True(page.HasMore);
+
+        var last = FeatureReduction.Aggregate(Schema, Rows, query with { Limit = 1, Offset = 1 });
+        Assert.Equal(["bravo"], last.Groups.Select(group => group.Key[0].StringValue).ToArray());
+        Assert.False(last.HasMore);
+    }
+
+    [Fact]
+    public void A_group_page_that_reaches_the_end_of_the_groups_says_so()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            ["name"],
+            Limit: 10);
+
+        var page = FeatureReduction.Aggregate(Schema, Rows, query);
+
+        Assert.Equal(4, page.Groups.Count);
+        Assert.False(page.HasMore);
+    }
+
+    [Fact]
+    public void An_ungrouped_reduction_paged_past_its_one_group_is_no_groups()
+    {
+        var query = new AggregateQuery(
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            Limit: 1,
+            Offset: 1);
+
+        var page = FeatureReduction.Aggregate(Schema, Rows, query);
+
+        Assert.Empty(page.Groups);
+        Assert.False(page.HasMore);
+    }
+
+    /// <summary>
     /// The envelope of a geometry field is the smallest rectangle over the
     /// group's non-null geometries (ADR-0120) — the reduction a layer's extent
     /// is, which is why the nulls are skipped rather than counted as the origin

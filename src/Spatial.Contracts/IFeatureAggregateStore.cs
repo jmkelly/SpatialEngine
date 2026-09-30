@@ -27,6 +27,20 @@ namespace Spatial.Contracts;
 /// admit is <c>invalid.arguments</c> (see <see cref="FeatureQueryValidation"/>)
 /// and a store that cannot be reached is <c>store.unavailable</c>.
 /// </para>
+///
+/// <para>
+/// A store that implements this face honours the whole of the reduction,
+/// including the parts that shape the <em>group set</em>: the
+/// <see cref="AggregateQuery.Having"/> clause and its
+/// <see cref="AggregateQuery.Limit"/>/<see cref="AggregateQuery.Offset"/> page
+/// (ADR-0128). There is no second face and no flag to set — the interface is
+/// the capability, so a store that answers a reduction owes the clause and the
+/// page the same way <see cref="IFeatureStore.QueryAsync"/> owes the plan's cap,
+/// and <see cref="AggregatePage.HasMore"/> is how it says there is more, in the
+/// same role <see cref="FeatureQueryPage.HasMore"/> plays for a row page.
+/// Honouring them is not a pushdown requirement: a store that reduces in
+/// managed code has the same obligation as one that writes a <c>GROUP BY</c>.
+/// </para>
 /// </summary>
 public interface IFeatureAggregateStore
 {
@@ -53,6 +67,12 @@ public interface IFeatureAggregateStore
     /// values — the served statistics surface's "one row of nulls" rule, so
     /// the reduction of an empty set is never an empty answer.
     /// </summary>
+    /// <remarks>
+    /// The <see cref="AggregateQuery.Having"/> clause is applied to the reduced
+    /// groups and the query's page is cut from the groups that survive it, so
+    /// <see cref="AggregatePage.Groups"/> is a page of groups and
+    /// <see cref="AggregatePage.HasMore"/> says whether more remain.
+    /// </remarks>
     Task<AggregatePage> AggregateAsync(
         string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default);
 }

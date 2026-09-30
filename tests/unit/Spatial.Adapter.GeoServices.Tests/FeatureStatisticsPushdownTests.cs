@@ -368,6 +368,95 @@ public sealed class FeatureStatisticsPushdownTests
     }
 
     /// <summary>
+    /// The page over groups and the <c>having</c> clause are the store's
+    /// reduction to answer, not the writer's: the reduction carries the clause
+    /// as a predicate over the group row (the group fields and the statistics'
+    /// result names) and the page as its own cap and start, because a cap the
+    /// <em>plan</em> asked for would cut rows the store never grouped
+    /// (ADR-0128). The cap is asked for on every statistics request, so a store
+    /// that ignored the plan's page would be over-read on the most ordinary
+    /// query there is.
+    /// </summary>
+    [Fact]
+    public async Task The_group_page_and_the_having_clause_are_asked_of_the_store()
+    {
+        var store = new AggregatingStore(Rows);
+        await BodyAsync(
+            Layer(),
+            store,
+            await ParseAsync(
+                ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"},{"statisticType":"count","onStatisticField":"*","outStatisticFieldName":"n"}]"""),
+                ("groupByFieldsForStatistics", "name"),
+                ("orderByFields", "name ASC"),
+                ("having", "total > 150"),
+                ("resultOffset", "1"),
+                ("resultRecordCount", "2"),
+                ("f", "json")));
+
+        var reduction = Assert.IsType<AggregateQuery>(store.LastReduction);
+        Assert.Equal(2, reduction.Limit);
+        Assert.Equal(1, reduction.Offset);
+        var clause = Assert.IsType<Predicate.Compare>(reduction.Having);
+        Assert.Equal("total", clause.Field.Name);
+        Assert.Equal(ComparisonOperator.GreaterThan, clause.Operator);
+        Assert.Equal(1, store.Aggregates);
+        Assert.Equal(0, store.Scans);
+    }
+
+    /// <summary>
+    /// A <c>having</c> clause that names neither a statistic nor a group field
+    /// is a clause over nothing, and the pushed path rejects it the same way
+    /// the match path does rather than answering a page of every group.
+    /// </summary>
+    [Fact]
+    public async Task A_having_clause_over_an_unknown_name_fails_the_same_way_on_both_paths()
+    {
+        var parameters = new (string Key, string Value)[]
+        {
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("orderByFields", "name ASC"),
+            ("having", "missing > 1"),
+            ("f", "json"),
+        };
+
+        var pushed = await Assert.ThrowsAsync<EsriInteropException>(
+            async () => await BodyAsync(Layer(), new AggregatingStore(Rows), await ParseAsync(parameters)));
+        var matched = await Assert.ThrowsAsync<EsriInteropException>(
+            async () => await BodyAsync(Layer(), new MatchStore(Rows), await ParseAsync(parameters)));
+
+        Assert.Contains("missing", pushed.Message, StringComparison.Ordinal);
+        Assert.Equal(matched.Message, pushed.Message);
+    }
+
+    /// <summary>
+    /// The store's page is the page: the rows it returned are the rows written,
+    /// and its own "one more group" answer is the <c>exceededTransferLimit</c>
+    /// flag — the adapter no longer skips and takes over the whole group set, so
+    /// a store that returns exactly the page and says so is served without a
+    /// second question.
+    /// </summary>
+    [Fact]
+    public async Task The_store_s_group_page_is_the_page_the_response_writes()
+    {
+        var parameters = new (string Key, string Value)[]
+        {
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("orderByFields", "name ASC"),
+            ("resultOffset", "1"),
+            ("resultRecordCount", "1"),
+            ("f", "json"),
+        };
+
+        await AssertSameAsTheMatchPathAsync(parameters);
+
+        var body = await BodyAsync(Layer(), new AggregatingStore(Rows), await ParseAsync(parameters));
+        Assert.Equal(1, CountOccurrences(body, "\"total\":"));
+        Assert.Contains("\"exceededTransferLimit\":true", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A group order the plan cannot state is not a reduction to push: the
     /// groups would come back in a store's own order, where the served response
     /// is the first-seen order of a match set. The request keeps the match path.
@@ -486,7 +575,11 @@ public sealed class FeatureStatisticsPushdownTests
             LastPlan = query;
             LastReduction = aggregate;
             return Task.FromResult(
-                FeatureReduction.Aggregate(Schema, FeaturePlanExecutor.Select(Schema, features, query, cancellationToken), aggregate));
+                FeatureReduction.Aggregate(
+                    Schema,
+                    FeaturePlanExecutor.Select(Schema, features, query, cancellationToken),
+                    aggregate,
+                    query.Order));
         }
     }
 

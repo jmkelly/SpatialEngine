@@ -321,14 +321,17 @@ internal static class StoreQueryPath
     /// The <c>outStatistics</c> reduction, asked of the store's own face: the
     /// request's statistics and its grouping compiled onto an
     /// <see cref="AggregateQuery"/> (the two vocabularies are name-for-name),
-    /// the plan carrying the whole match, and the groups the store returned fed
-    /// to the writer that shaped the in-memory ones.
+    /// the <c>having</c> clause and the page over groups on the reduction where
+    /// they belong, the plan carrying the whole match, and the groups the store
+    /// returned fed to the writer that shaped the in-memory ones.
     ///
     /// <para>
-    /// The plan carries no page and no projection: a statistics response pages
-    /// and filters <em>groups</em> (<c>having</c>, the statistic order), which
-    /// the store must not cut into rows it never grouped, and the statistics
-    /// name their own fields whatever <c>outFields</c> says.
+    /// The plan carries no page and no projection: the statistics name their own
+    /// fields whatever <c>outFields</c> says, and the page a plan carried would
+    /// cut rows the store never grouped (ADR-0098 §7 as amended by
+    /// SpatialEngine-u2x.9.2). The page and the clause ride on the
+    /// <em>reduction</em> instead, in the order the response applies them — the
+    /// clause chooses which groups exist, and the cap cuts those (ADR-0128).
     /// </para>
     ///
     /// <para>
@@ -358,7 +361,7 @@ internal static class StoreQueryPath
 
         var plan = new FeatureQuery(Where: clause, BoundingBox: QueryBox(queryGeometry), Order: order);
         var page = await FeatureReductionFallback
-            .AggregateAsync(store, dataset.Id, plan, FeatureStatisticsEngine.Reduction(spec), cancellationToken)
+            .AggregateAsync(store, dataset.Id, plan, FeatureStatisticsEngine.Reduction(spec, query), cancellationToken)
             .ConfigureAwait(false);
         return FeatureStatisticsEngine.StatisticsFromGroups(spec, query, page);
     }

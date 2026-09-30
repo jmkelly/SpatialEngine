@@ -17,10 +17,13 @@ namespace Spatial.Adapter.GeoServices;
 /// The fan-out is compiled once, into a <see cref="StatisticsSpec"/>, and the
 /// rows can then come from either place: the matched feature set, or the
 /// reduction a store returned when the plan carried the whole match
-/// (ADR-0098 §7). Everything after the rows — <c>having</c>, the statistic
-/// order, the group paging and the JSON — is the writer's, and is the same
-/// writer for both, which is what keeps a pushed-down answer byte-identical to
-/// the in-memory one.
+/// (ADR-0098 §7). The JSON is the same writer either way, which is what keeps
+/// a pushed-down answer byte-identical to the in-memory one. What happens
+/// <em>after</em> the rows is where the two paths part: on the match path the
+/// writer applies the <c>having</c> clause, the statistic order and the page
+/// over the groups, and on the pushed path all three were the store's to answer
+/// — the clause and the page ride on the reduction, in that order, because a
+/// cap cut before the filter would be a page of the wrong question (ADR-0128).
 /// </para>
 /// </summary>
 internal static class FeatureStatisticsEngine
@@ -61,9 +64,13 @@ internal static class FeatureStatisticsEngine
     }
 
     /// <summary>
-    /// The statistics response from the reduction a store returned: the groups
-    /// the plan selected, in the order the plan asked for, become the rows the
-    /// writer already knew how to shape.
+    /// The response from the reduction a store returned: the groups the store
+    /// answered with — the page of them, when the request asked for one — become
+    /// the rows the writer already knew how to shape. Nothing is filtered and
+    /// nothing is skipped here: the <c>having</c> clause and the page were the
+    /// store's to answer (ADR-0128), so the rows it returned are the rows this
+    /// response is, and its own "one more group" answer is the
+    /// <c>exceededTransferLimit</c> flag.
     ///
     /// <para>
     /// The one thing the store's numbers do not carry is whether the match set
@@ -86,19 +93,41 @@ internal static class FeatureStatisticsEngine
         }
 
         // A grouped reduction of an empty set is no groups, as it always was.
-        return Write(spec, query, rows);
+        return WriteStatistics(new StatisticsPage(
+            spec,
+            rows,
+            page.HasMore,
+            page.HasMore ? ResultPagination.Encode(FeaturePaging.ResolveOffset(query) + rows.Count) : null));
     }
 
     /// <summary>
     /// The request as the store's own reduction surface takes it: the statistics
     /// as an <see cref="AggregateQuery"/> (the two vocabularies are
-    /// name-for-name), the group fields as the grouping, and — ungrouped only —
-    /// the row count the empty-set rule above is decided by.
+    /// name-for-name), the group fields as the grouping, the <c>having</c>
+    /// clause as a predicate over the group row, the page as the reduction's
+    /// own cap and start, and — ungrouped only — the row count the empty-set
+    /// rule above is decided by.
+    ///
+    /// <para>
+    /// The cap and the clause go on the <em>reduction</em> and not on the plan:
+    /// a plan's cap would cut rows the store never grouped, and the two steps
+    /// have an order — the clause chooses which groups exist, and only then is
+    /// the page cut — that a plan's cap could not express at all
+    /// (ADR-0098 §7 as amended by SpatialEngine-u2x.9.2, ADR-0128).
+    /// </para>
     /// </summary>
-    internal static AggregateQuery Reduction(StatisticsSpec spec) =>
-        spec.GroupFields.Count == 0
-            ? spec.Aggregate with { Specs = [.. spec.Aggregate.Specs, RowCount(spec)] }
-            : spec.Aggregate;
+    internal static AggregateQuery Reduction(StatisticsSpec spec, EsriFeatureQuery query)
+    {
+        var page = new AggregateQuery(
+            spec.Aggregate.Specs,
+            spec.Aggregate.GroupBy,
+            spec.Having,
+            FeaturePaging.EffectivePageSize(query),
+            FeaturePaging.ResolveOffset(query));
+        return spec.GroupFields.Count == 0
+            ? page with { Specs = [.. page.Specs, RowCount(spec)] }
+            : page;
+    }
 
     /// <summary>
     /// The row-count probe, under a result name no requested statistic uses, so
@@ -116,9 +145,11 @@ internal static class FeatureStatisticsEngine
     }
 
     /// <summary>
-    /// Everything after the rows: <c>having</c>, the statistic order, the group
-    /// paging and the JSON — shared by the matched-set path and the pushed-down
-    /// path, so the two differ only in where the numbers came from.
+    /// Everything after the rows on the <em>match</em> path: <c>having</c>, the
+    /// statistic order, the group page and the JSON. The pushed path does none
+    /// of it — the store answered the clause and the page, and its page is
+    /// written as it came back — so what is shared is the JSON, which is what
+    /// keeps a pushed-down answer byte-identical to the in-memory one.
     /// </summary>
     private static IResult Write(StatisticsSpec spec, EsriFeatureQuery query, List<StatisticRow> rows)
     {
@@ -159,7 +190,37 @@ internal static class FeatureStatisticsEngine
         var aggregate = new AggregateQuery(
             specs,
             groupFields.Count == 0 ? null : groupFields.Select(field => field.Name).ToArray());
-        return new StatisticsSpec(dataset, groupFields, statistics, inputs, aggregate, Kinds(inputs, specs));
+        return new StatisticsSpec(dataset, groupFields, statistics, inputs, aggregate, Kinds(inputs, specs), Having(dataset, query, aggregate));
+    }
+
+    /// <summary>
+    /// The <c>having</c> clause as a predicate over the <em>group row</em> — the
+    /// group fields and the statistics' result names, which is the whole
+    /// vocabulary a clause over a reduced group has (ADR-0128). The Esri clause
+    /// is parsed once at the boundary into the same predicate vocabulary the
+    /// plan's <c>where</c> uses, so this is a validated tree rather than text a
+    /// store would have to parse, and the names it may use are checked here so
+    /// the pushed reduction and the match path reject the same clause with the
+    /// same message.
+    /// </summary>
+    private static Predicate? Having(DatasetDescription dataset, EsriFeatureQuery query, AggregateQuery aggregate)
+    {
+        if (query.Having?.Predicate is not { } clause)
+        {
+            return null;
+        }
+
+        var names = aggregate.GroupRowFields;
+        foreach (var field in clause.Fields())
+        {
+            if (!names.Contains(field.Name, StringComparer.Ordinal))
+            {
+                throw GeoServicesErrors.Invalid(
+                    $"The 'having' clause names unknown statistic or group field '{field.Name}' in layer '{dataset.Id}'.");
+            }
+        }
+
+        return clause;
     }
 
     /// <summary>One served statistic as the store's reduction surface states it.</summary>
@@ -631,9 +692,10 @@ internal static class FeatureStatisticsEngine
     /// A served statistics request compiled once: the layer it was compiled
     /// against, the group fields, the requested statistics and their resolved
     /// inputs, the same request as the store's own reduction surface states it,
-    /// and the kind each result is reported as. Both paths — the matched set and
-    /// the pushed-down reduction — are written from one of these, so they can
-    /// only differ in where the numbers came from.
+    /// the <c>having</c> clause over the group row, and the kind each result is
+    /// reported as. Both paths — the matched set and the pushed-down reduction —
+    /// are written from one of these, so they can only differ in where the
+    /// numbers came from.
     /// </summary>
     internal sealed record StatisticsSpec(
         DatasetDescription Dataset,
@@ -641,7 +703,8 @@ internal static class FeatureStatisticsEngine
         IReadOnlyList<EsriOutStatistic> Statistics,
         IReadOnlyList<StatisticInput> Inputs,
         AggregateQuery Aggregate,
-        AttributeKind[] Kinds)
+        AttributeKind[] Kinds,
+        Predicate? Having)
     {
         /// <summary>The statistic values of a returned group, without the row-count probe.</summary>
         public AttributeValue[] Values(AggregateGroup group) =>
