@@ -103,6 +103,17 @@ class FakeRepo:
                 f'  <Project Path="{p}" />\n' for p in self.LAYOUT)
             + "</Solution>\n", encoding="utf-8")
         self.git("init", "-q", "-b", "main")
+        # A throwaway repo with no identity of its own inherits one from the
+        # machine it was made on, so `git commit` succeeds on a developer box
+        # and exits 128 ("Committer identity unknown") on a CI runner that has
+        # none. `--author` sets the author, not the committer, so it does not
+        # save the commit. Name the committer in the repo instead, once, so
+        # every commit here is the same commit everywhere. The sibling fixtures
+        # (test_adr_next_number, test_migrate_tasks_to_beads) pass -c per call;
+        # this one commits from two places, so the repo-local config is the
+        # single place that covers both.
+        self.git("config", "user.email", "t@e")
+        self.git("config", "user.name", "t")
         self.git("add", "-A")
         self.git("commit", "-q", "-m", "base", "--author=t <t@e>")
         self.git("branch", "feature")
