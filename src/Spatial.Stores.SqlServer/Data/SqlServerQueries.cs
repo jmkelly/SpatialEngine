@@ -38,7 +38,9 @@ internal static class SqlServerQueries
     /// already unique); a batch has no limit because each tuple matches at
     /// most one row. Both the identity columns and the dataset identifier are
     /// discovered identifiers, never client text, and the rest of a query plan
-    /// (ADR-0074) is <c>AND</c>ed onto the same statement.
+    /// (ADR-0074) is <c>AND</c>ed onto the same statement. A text identity
+    /// states the byte order it is compared in, so the lookup cannot answer
+    /// with the row a case-folding collation folded it onto (ADR-0126).
     /// </summary>
     public static string SelectByIdentity(
         SqlServerDatasetName dataset,
@@ -57,7 +59,7 @@ internal static class SqlServerQueries
             }
 
             builder.Append('(')
-                .Append(IdentityTuple(identityColumns, feature * identityColumns.Count))
+                .Append(IdentityTuple(schema, identityColumns, feature * identityColumns.Count))
                 .Append(')');
         }
 
@@ -114,19 +116,28 @@ internal static class SqlServerQueries
     /// appended after the SET values (ADR-0037): the row is matched by the
     /// feature's pre-edit identity (<see cref="FeatureId"/>), never by the new
     /// attribute values, so re-keying an identity column cannot retarget the
-    /// update onto a different row.
+    /// update onto a different row. The <c>SET</c> list is the
+    /// <em>batch's</em> schema and the predicate resolves the identity against
+    /// the <em>dataset's</em>, because a batch need not carry the identity
+    /// column at all (ADR-0126).
     /// </summary>
     public static string Update(
-        SqlServerDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
+        SqlServerDatasetName dataset,
+        IFeatureSchema batchSchema,
+        int srid,
+        IReadOnlyList<string> identityColumns,
+        IFeatureSchema identitySchema)
     {
-        var sets = string.Join(", ", schema.Fields.Select((field, i) =>
+        var sets = string.Join(", ", batchSchema.Fields.Select((field, i) =>
             $"{SqlServerIdentifier.Quote(field.Name)} = {Value(field, i, srid)}"));
-        return $"UPDATE {dataset.QuoteQualified()} SET {sets} WHERE {IdentityTuple(identityColumns, schema.Count)}";
+        return $"UPDATE {dataset.QuoteQualified()} SET {sets} "
+            + $"WHERE {SqlServerIdentity.Tuple(identitySchema, identityColumns, batchSchema.Count)}";
     }
 
-    /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037).</summary>
-    public static string Delete(SqlServerDatasetName dataset, IReadOnlyList<string> identityColumns) =>
-        $"DELETE FROM {dataset.QuoteQualified()} WHERE {IdentityTuple(identityColumns, 0)}";
+    /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037, ADR-0126).</summary>
+    public static string Delete(
+        SqlServerDatasetName dataset, IFeatureSchema schema, IReadOnlyList<string> identityColumns) =>
+        $"DELETE FROM {dataset.QuoteQualified()} WHERE {SqlServerIdentity.Tuple(schema, identityColumns, 0)}";
 
     /// <summary>
     /// Probes whether a feature exists by its identity tuple (T-088): one
@@ -134,8 +145,9 @@ internal static class SqlServerQueries
     /// the table and the identity columns are discovered identifiers, never
     /// client text.
     /// </summary>
-    public static string FeatureExists(SqlServerDatasetName dataset, IReadOnlyList<string> identityColumns) =>
-        $"SELECT TOP 1 1 FROM {dataset.QuoteQualified()} WHERE {IdentityTuple(identityColumns, 0)}";
+    public static string FeatureExists(
+        SqlServerDatasetName dataset, IFeatureSchema schema, IReadOnlyList<string> identityColumns) =>
+        $"SELECT TOP 1 1 FROM {dataset.QuoteQualified()} WHERE {SqlServerIdentity.Tuple(schema, identityColumns, 0)}";
 
     /// <summary>
     /// Creates the result table from a defining batch's schema. SQL Server
@@ -356,8 +368,8 @@ internal static class SqlServerQueries
             : Quoted(field.Name)));
 
     /// <summary>The identity columns as one bound predicate, numbering its parameters from <paramref name="from"/>.</summary>
-    private static string IdentityTuple(IReadOnlyList<string> identityColumns, int from) =>
-        string.Join(" AND ", identityColumns.Select((column, i) => $"{Quoted(column)} = @p{from + i}"));
+    private static string IdentityTuple(IFeatureSchema schema, IReadOnlyList<string> identityColumns, int from) =>
+        SqlServerIdentity.Tuple(schema, identityColumns, from);
 
     private static string Inserted(IReadOnlyList<string> identityColumns) =>
         string.Join(", ", identityColumns.Select(column => $"INSERTED.{Quoted(column)}"));

@@ -50,11 +50,12 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
             }
 
             var identityParameters = PostgisIdentity.Parameters(description, query.Ids);
+            var byteOrderText = await ByteOrderTextAsync(description, query, cancellationToken);
             var identityPredicate = PostgisPredicateSql.Build(
-                description, query.BoundingBox, query.Where, await ByteOrderTextAsync(description, query, cancellationToken), identityParameters);
+                description, query.BoundingBox, query.Where, byteOrderText, identityParameters);
             return await ReadBatchesAsync(
                 PostgisQueries.SelectByIdentity(
-                    name, description.Schema, description.IdColumns, query.Ids.Count, identityPredicate),
+                    name, description.Schema, description.IdColumns, query.Ids.Count, byteOrderText, identityPredicate),
                 identityParameters,
                 description,
                 cancellationToken);
@@ -69,14 +70,21 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
 
     /// <summary>
     /// Whether this database already compares text by bytes, read only when the
-    /// plan's predicate compares a text column — the one part of a
-    /// <c>WHERE</c> the collation can change (ADR-0123).
+    /// plan's restriction compares a text column at all — the attribute
+    /// predicate's own (ADR-0123) and the identity restriction's (ADR-0126).
+    /// Both are the one part of a <c>WHERE</c> a collation can change, and a
+    /// plan over a number and a bounding box cannot use the answer.
     /// </summary>
     private Task<bool> ByteOrderTextAsync(
         DatasetDescription description, FeatureQuery query, CancellationToken cancellationToken) =>
-        query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema)
+        ComparesText(description, query)
             ? storage.ByteOrderTextAsync(cancellationToken)
             : Task.FromResult(false);
+
+    /// <summary>Whether the plan's restriction compares a text column, in either half of it.</summary>
+    private static bool ComparesText(DatasetDescription description, FeatureQuery query) =>
+        (query.Ids is { Count: > 0 } && PostgisIdentity.ComparesText(description))
+        || (query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema));
 
     /// <summary>The features the dataset's identity columns name, or nothing when it has no identity.</summary>
     public async Task<IReadOnlyList<Feature>> ByIdentityAsync(
@@ -89,7 +97,17 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
         }
 
         var batches = await ReadBatchesAsync(
-            PostgisQueries.SelectByIdentity(name, description.Schema, description.IdColumns, ids.Count),
+            PostgisQueries.SelectByIdentity(
+                name,
+                description.Schema,
+                description.IdColumns,
+                ids.Count,
+                // A lookup is a comparison against the identity, so it states
+                // the byte order too (ADR-0126) — and reads the answer only when
+                // the identity has a text column that can be changed by it.
+                PostgisIdentity.ComparesText(description)
+                    ? await storage.ByteOrderTextAsync(cancellationToken)
+                    : false),
             PostgisIdentity.Parameters(description, ids),
             description,
             cancellationToken);

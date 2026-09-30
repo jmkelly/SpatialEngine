@@ -233,7 +233,11 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         var values = PostgisIdentity.Values(description, featureId);
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         var rows = await PostgisDataStore.ReadRowsAsync(
-            connection, PostgisQueries.FeatureExists(name, description.IdColumns), values, cancellationToken);
+            connection,
+            PostgisQueries.FeatureExists(
+                name, description.Schema, description.IdColumns, await _store.ByteOrderTextAsync(description, cancellationToken)),
+            values,
+            cancellationToken);
         if (rows.Count == 0)
         {
             throw SpatialException.Missing($"No feature with identity '{featureId}' exists in dataset '{name}'.");

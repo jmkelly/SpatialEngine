@@ -24,21 +24,32 @@ internal static class PostgisWriteOperations
     /// Stateless, so it lives with the write
     /// leaves rather than on the editing face (ADR-0040).
     /// </summary>
+    /// <para>
+    /// An update's identity predicate states the byte order a text identity is
+    /// compared in, so a case-folding collation cannot retarget the write onto
+    /// a row that differs only in case (ADR-0126) — which is the one
+    /// comparison the row it writes to cannot be allowed to get wrong.
+    /// </para>
     public static (string Sql, object?[] Values) PlanFeature(
-        PostgisDatasetName name, DatasetDescription description, Feature feature, bool update) =>
+        PostgisDatasetName name,
+        DatasetDescription description,
+        Feature feature,
+        bool update,
+        bool byteOrderText) =>
         update
-            ? PlanUpdate(name, description, feature)
+            ? PlanUpdate(name, description, feature, byteOrderText)
             : PlanAdd(name, description, feature);
 
     private static (string Sql, object?[] Values) PlanUpdate(
-        PostgisDatasetName name, DatasetDescription description, Feature feature)
+        PostgisDatasetName name, DatasetDescription description, Feature feature, bool byteOrderText)
     {
         var kinds = PostgisIdentity.Kinds(description);
         var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid)
             .Concat(PostgisDiagnostics.ParseFeatureIdentity(kinds, feature.Id))
             .ToArray();
         return (
-            PostgisQueries.Update(name, description.Schema, description.Srid, description.IdColumns),
+            PostgisQueries.Update(
+                name, feature.Schema, description.Srid, description.IdColumns, description.Schema, byteOrderText),
             values);
     }
 

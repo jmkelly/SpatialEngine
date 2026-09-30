@@ -187,9 +187,11 @@ internal static class PostgisPlanQueries
     /// <para>
     /// <paramref name="byteOrderText"/> is the database's own answer to whether
     /// it already compares text by bytes (ADR-0121), and it decides the
-    /// collation every string comparison in the attribute clause states
-    /// (ADR-0123). The caller reads it from the database — once per store,
-    /// cached — and only when the clause actually compares text.
+    /// collation every string comparison in the restriction states — the
+    /// attribute clause's (ADR-0123) and the identity restriction's
+    /// (ADR-0126), which is the same question asked of the same property. The
+    /// caller reads it from the database — once per store, cached — and only
+    /// when the restriction actually compares text.
     /// </para>
     /// <para>
     /// Returns <c>null</c> when the restriction cannot be expressed without
@@ -215,7 +217,7 @@ internal static class PostgisPlanQueries
             return null;
         }
 
-        var identity = Identity(description, query.Ids, parameters);
+        var identity = Identity(description, query.Ids, byteOrderText, parameters);
         var box = BoundingBox(description, query.BoundingBox, parameters);
         var clause = query.Where is { } where
             ? PostgisPredicateSql.Where(where, description.Schema, byteOrderText, parameters)
@@ -227,7 +229,8 @@ internal static class PostgisPlanQueries
     public static bool Restricts(FeatureQuery query) =>
         query.Ids is not null || query.BoundingBox is not null || query.Where is not null;
 
-    private static string? Identity(DatasetDescription description, IReadOnlyList<FeatureId>? ids, List<object?> parameters)
+    private static string? Identity(
+        DatasetDescription description, IReadOnlyList<FeatureId>? ids, bool byteOrderText, List<object?> parameters)
     {
         if (ids is null)
         {
@@ -244,12 +247,16 @@ internal static class PostgisPlanQueries
             return null;
         }
 
-        var groups = ids
-            .Select(id => string.Join(
-                " AND ",
-                description.IdColumns.Select((column, position) => $"{Quote(column)} = {Parameter(parameters, PostgisIdentity.Values(description, id)[position])}")))
-            .ToArray();
-        return groups.Length == 1 ? groups[0] : "(" + string.Join(" OR ", groups) + ")";
+        var groups = new List<string>(ids.Count);
+        foreach (var id in ids)
+        {
+            var values = PostgisIdentity.Values(description, id);
+            var terms = description.IdColumns.Select((column, position) =>
+                $"{PostgisIdentity.Operand(description.Schema, column, byteOrderText)} = {Parameter(parameters, values[position])}");
+            groups.Add(string.Join(" AND ", terms));
+        }
+
+        return groups.Count == 1 ? groups[0] : "(" + string.Join(" OR ", groups) + ")";
     }
 
     /// <summary>

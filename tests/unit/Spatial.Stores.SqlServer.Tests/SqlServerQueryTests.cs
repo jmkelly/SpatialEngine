@@ -84,14 +84,14 @@ public sealed class SqlServerQueryTests
         Assert.Equal(
             "UPDATE [dbo].[places] SET [id] = @p0, [name] = @p1, [geom] = geometry::STGeomFromWKB(@p2, 4326) "
             + "WHERE [id] = @p3",
-            SqlServerQueries.Update(Dataset, Schema, 4326, ["id"]));
+            SqlServerQueries.Update(Dataset, Schema, 4326, ["id"], Schema));
     }
 
     [Fact]
     public void A_delete_and_an_existence_probe_agree_on_the_identity_tuple()
     {
-        Assert.Equal("DELETE FROM [dbo].[places] WHERE [id] = @p0", SqlServerQueries.Delete(Dataset, ["id"]));
-        Assert.Equal("SELECT TOP 1 1 FROM [dbo].[places] WHERE [id] = @p0", SqlServerQueries.FeatureExists(Dataset, ["id"]));
+        Assert.Equal("DELETE FROM [dbo].[places] WHERE [id] = @p0", SqlServerQueries.Delete(Dataset, Schema, ["id"]));
+        Assert.Equal("SELECT TOP 1 1 FROM [dbo].[places] WHERE [id] = @p0", SqlServerQueries.FeatureExists(Dataset, Schema, ["id"]));
     }
 
     [Fact]

@@ -150,7 +150,7 @@ public sealed class PostgisQueriesTests
 
         Assert.Equal(
             "UPDATE \"public\".\"places\" SET \"id\" = @p0, \"name\" = @p1, \"geom\" = ST_SetSRID(ST_GeomFromEWKB(@p2), 4326) WHERE \"id\" = @p3",
-            PostgisQueries.Update(dataset, Schema, 4326, ["id"]));
+            PostgisQueries.Update(dataset, Schema, 4326, ["id"], Schema, byteOrderText: true));
     }
 
     [Fact]
@@ -159,8 +159,8 @@ public sealed class PostgisQueriesTests
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
 
         Assert.Equal(
-            "DELETE FROM \"public\".\"places\" WHERE \"tenant\" = @p0 AND \"id\" = @p1",
-            PostgisQueries.Delete(dataset, ["tenant", "id"]));
+            "DELETE FROM \"public\".\"places\" WHERE \"name\" = @p0 AND \"id\" = @p1",
+            PostgisQueries.Delete(dataset, Schema, ["name", "id"], byteOrderText: true));
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public sealed class PostgisQueriesTests
 
         Assert.Equal(
             "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" WHERE (\"id\" = @p0) LIMIT 1",
-            PostgisQueries.SelectByIdentity(dataset, Schema, ["id"], 1));
+            PostgisQueries.SelectByIdentity(dataset, Schema, ["id"], 1, byteOrderText: true));
     }
 
     [Fact]
@@ -178,11 +178,11 @@ public sealed class PostgisQueriesTests
     {
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
 
-        var sql = PostgisQueries.SelectByIdentity(dataset, Schema, ["tenant", "id"], 2);
+        var sql = PostgisQueries.SelectByIdentity(dataset, Schema, ["name", "id"], 2, byteOrderText: true);
 
         Assert.Equal(
             "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" "
-            + "WHERE (\"tenant\" = @p0 AND \"id\" = @p1) OR (\"tenant\" = @p2 AND \"id\" = @p3)",
+            + "WHERE (\"name\" = @p0 AND \"id\" = @p1) OR (\"name\" = @p2 AND \"id\" = @p3)",
             sql);
         Assert.DoesNotContain("LIMIT", sql);
     }

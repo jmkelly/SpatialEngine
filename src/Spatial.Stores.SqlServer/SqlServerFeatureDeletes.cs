@@ -44,7 +44,8 @@ internal static class SqlServerFeatureDeletes
         try
         {
             await using var command = session.CreateCommand(
-                SqlServerQueries.Delete(name, description.IdColumns), SqlServerIdentity.Values(description, id));
+                SqlServerQueries.Delete(name, description.Schema, description.IdColumns),
+                SqlServerIdentity.Values(description, id));
             return SqlServerEditOutcomes.Affected(id, await command.ExecuteNonQueryAsync(cancellationToken));
         }
         catch (Exception exception) when (SqlServerEditOutcomes.IsFeatureFailure(exception))

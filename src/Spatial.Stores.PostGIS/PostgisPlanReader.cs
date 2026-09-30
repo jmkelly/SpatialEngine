@@ -132,8 +132,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
 
     /// <summary>
     /// The restriction a plan pushes, with the database's collation read only
-    /// when the restriction actually compares text (ADR-0123). Every face
-    /// compiles its <c>WHERE</c> through here, so a plan read, a count, a
+    /// when the restriction actually compares text (ADR-0123, ADR-0126). Every
+    /// face compiles its <c>WHERE</c> through here, so a plan read, a count, a
     /// distinct set, a grouped reduction and a fallback selection all state
     /// the same comparison — and a plan whose predicate is a bounding box and a
     /// number never pays the catalog read that decides the term.
@@ -148,9 +148,11 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             name,
             description,
             query,
-            // A predicate that compares no text cannot be changed by the
-            // collation, so the read is skipped and the answer is unused.
-            query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema)
+            // A restriction that compares no text cannot be changed by the
+            // collation — in either half of it, the id restriction and the
+            // attribute clause — so the read is skipped and the answer unused.
+            (query.Ids is { Count: > 0 } && PostgisIdentity.ComparesText(description))
+            || (query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema))
                 ? await storage.ByteOrderTextAsync(cancellationToken)
                 : false,
             parameters);

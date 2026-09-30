@@ -1,3 +1,4 @@
+using Spatial.Core.Features;
 using Spatial.Stores.PostGIS.Core;
 using Spatial.Stores.PostGIS.Data;
 
@@ -12,6 +13,17 @@ namespace Spatial.Stores.PostGIS.Tests;
 /// </summary>
 public sealed class PostgisAttachmentQueriesTests
 {
+    /// <summary>
+    /// A schema whose identity columns are an <c>Int64</c> and a text
+    /// <c>tenant</c>: the term a text identity carries is the store's, not this
+    /// file's, subject (<c>PostgisIdentityCollationTests</c>).
+    /// </summary>
+    private static readonly FeatureSchema Schema = new(
+    [
+        new FieldDefinition("id", AttributeKind.Int64, nullable: false),
+        new FieldDefinition("tenant", AttributeKind.String, nullable: false),
+    ]);
+
     [Fact]
     public void Ensure_creates_the_sidecar_table_with_bytea_content_only_if_missing()
     {
@@ -97,7 +109,7 @@ public sealed class PostgisAttachmentQueriesTests
 
         Assert.Equal(
             "SELECT 1 FROM \"public\".\"places\" WHERE \"id\" = @p0 LIMIT 1",
-            PostgisQueries.FeatureExists(dataset, ["id"]));
+            PostgisQueries.FeatureExists(dataset, Schema, ["id"], byteOrderText: true));
     }
 
     [Fact]
@@ -107,6 +119,6 @@ public sealed class PostgisAttachmentQueriesTests
 
         Assert.Equal(
             "SELECT 1 FROM \"public\".\"places\" WHERE \"tenant\" = @p0 AND \"id\" = @p1 LIMIT 1",
-            PostgisQueries.FeatureExists(dataset, ["tenant", "id"]));
+            PostgisQueries.FeatureExists(dataset, Schema, ["tenant", "id"], byteOrderText: true));
     }
 }
