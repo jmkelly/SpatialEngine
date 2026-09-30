@@ -87,7 +87,11 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
         (query.Ids is { Count: > 0 } && PostgisIdentity.ComparesText(description))
         || (query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema));
 
-    /// <summary>The features the dataset's identity columns name, or nothing when it has no identity.</summary>
+    /// <summary>
+    /// The features the dataset's identity columns name. A dataset that
+    /// declares none has no durable key to address a row by, so the read is
+    /// refused rather than answered with nothing (ADR-0140).
+    /// </summary>
     public async Task<IReadOnlyList<Feature>> ByIdentityAsync(
         PostgisDatasetName name, IReadOnlyList<FeatureId> ids, CancellationToken cancellationToken)
     {
@@ -95,7 +99,12 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
         var description = facts.Description;
         if (description.IdColumns.Count == 0)
         {
-            return [];
+            // A table with no primary key has no durable feature identity, so
+            // there is nothing to address a row by. An empty answer would say
+            // every requested identity is absent, which is a claim about the
+            // data rather than about the request (ADR-0140).
+            throw SpatialException.BadArguments(
+                $"Cannot read features by identity from dataset '{name}': it declares no identity column.");
         }
 
         var batches = await ReadBatchesAsync(

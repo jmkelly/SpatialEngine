@@ -302,7 +302,7 @@ feature's `Feature.Id` is the identity column's value (ADR-0119).
 | `QueryAsync` | dataset id, `FeatureQuery` plan (optional `Ids`, `Where` predicate, `BoundingBox`, `Projection`, `Order`, `Limit`, `Offset`, `Cursor`) | the plan's page: a `FeatureQueryPage(Batches, NextCursor?, TotalCount?, HasMore)`. `HasMore` is the explicit "one more" signal and a page that reports more always carries the `NextCursor` that reaches it; `TotalCount` is nullable and `null` means *not computed*, never zero. `Offset` and `Cursor` are alternatives, never composed; a store appends the feature identity as a final ascending sort key, so the total order is deterministic (ADR-0098). A store reads the page whenever the page has a position — an empty restriction is a whole-table read *with* a `LIMIT` — and a store that cannot push the plan still returns one page, not the match set (ADR-0116) |
 | `WriteAsync` | dataset id, batch, optional transaction handle | single-transaction append, returns count |
 | `AddAsync` / `UpdateAsync` / `DeleteAsync` (`IFeatureEditStore`) | dataset id, batch (or feature ids), optional transaction handle | per-feature `FeatureEditOutcome` in input order; additive face, implemented by PostGIS only (ADR-0037) |
-| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); the key is the dataset's identity column's value, which is what a stored feature's `Feature.Id` is on an identity-backed dataset (ADR-0119); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038) |
+| `GetAsync` (`IFeatureLookup`) | dataset id, feature ids | features found by identity (miss = absent, not an error); the key is the dataset's identity column's value, which is what a stored feature's `Feature.Id` is on an identity-backed dataset (ADR-0119); additive read-by-identity face implemented by every writable store — memory, PostGIS and SQL Server (ADR-0038). A dataset that declares **no** identity column is a typed `invalid.arguments` naming the dataset, whatever ids are asked for — it has no durable key, and neither an empty answer nor an answer keyed by the read ordinal is one (ADR-0140) |
 | `IngestAsync` (`IDatasetIngest`) | `IngestRequest`, `FeatureBatch` pages | atomic create + load in one transaction; identity mode `None`/`Auto`/`Source`; additive face (ADR-0041). `sourceSrid` asserts the source CRS; a CRS the document declares itself wins over the caller's stamp, the decoded pages are reprojected through `ICoordinateTransforms` before load, and a contradiction between the two is `invalid.arguments` |
 | `IngestStreamAsync` (`IDatasetIngestStream`) | `IngestRequest`, `FeatureSchema`, `IAsyncEnumerable<FeatureBatch>` | the same atomic load with pages arriving as they are decoded, so a large upload is never materialised; the schema is declared up front because the table is created before the first page (ADR-0041 §4) |
 | `StartAsync` / `AppendAsync` / `DescribeAsync` / `ListAsync` / `OpenAsync` / `DiscardAsync` (`IUploadStaging`) | upload id, optional declared total + SHA-256, a chunk `Stream`, a byte offset | byte-level staging for a resumable upload (ADR-0090): a client appends chunks, reads back how many bytes landed, and names the staged upload in `POST /api/ingest?upload=`. Chunks are **bytes**, so the load stays the same one transaction; `Complete` is true only when a declared total is reached, and the staging is discarded only after the load commits. Additive optional face, implemented by the host |
@@ -363,7 +363,9 @@ and back to the per-feature `FeatureEditOutcome`; it is available only when
 the table has a primary key. Read-by-identity (ADR-0038) adds a targeted
 `SELECT … WHERE <identity> = @p…` (one bound parameter per identity value,
 `LIMIT 1` for a single lookup) so GeoServices edit merges no longer scan the
-dataset; a table without a primary key returns an empty result.
+dataset; a table without a primary key has no durable key to read by and the
+read is refused with `invalid.arguments` rather than answered with nothing
+(ADR-0140, which replaces ADR-0038 §2's empty result).
 
 **Demo specifics:** read-only procedural datasets (110-point grid + 8
 cities, EPSG:4326); bbox and attribute filtering via the in-process reference
@@ -374,10 +376,13 @@ evaluator (no SQL pushdown); writes/creation/editing rejected.
 `IDatasetIngest`, `IDatasetIngestStream`, `IFeatureEditStore` and
 `IFeatureLookup`. State is
 process-local and non-durable; an `Auto`/`Source` dataset is editable and
-lookup-able, a `None` dataset is query-only. A stored feature is keyed by the
-dataset's identity column — the assigned id, or the source column's own value
-— so a lookup by `OBJECTID` resolves on an ingested dataset as it does on a
-created one (ADR-0119). It is the **reference
+lookup-able, a `None` dataset is query-only — and so is one `CreateAsync`
+built, which declares no identity column either. A stored feature is keyed by the
+dataset's identity column — the assigned id, or the source column's own value —
+so a lookup by `OBJECTID` resolves on an `Auto`/`Source` dataset as it does on
+a database's (ADR-0119); a dataset with no declared identity column is refused
+the lookup rather than answered from whatever identity its rows carry
+(ADR-0140). It is the **reference
 evaluator** of the predicate vocabulary (ADR-0074 §4), so the SQL back ends
 and the adapters are held to its answers by the shared conformance fixture.
 

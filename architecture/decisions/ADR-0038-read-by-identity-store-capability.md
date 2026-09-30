@@ -52,7 +52,9 @@ discovered identifiers only, with one bound parameter per identity value.
 A single requested identity carries `LIMIT 1`; a batch has no limit because
 the primary-key predicate already matches at most one row per tuple. Tables
 without a primary key return an empty result (there is nothing durable to
-address).
+address). **Amended by ADR-0140:** that empty result is a typed
+`invalid.arguments` instead — an empty answer claimed every requested identity
+was absent, on a layer that cannot name its features at all.
 
 **3. The facade prefers the lookup and falls back to the scan.**
 `FeatureService.ResolveAsync` uses `IFeatureLookup` when the resolved

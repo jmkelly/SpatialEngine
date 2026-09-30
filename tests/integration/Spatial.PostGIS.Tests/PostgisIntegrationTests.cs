@@ -452,12 +452,21 @@ public sealed class PostgisIntegrationTests : IClassFixture<PostgisContainerFixt
     }
 
     [SkippableFact]
-    public async Task Lookup_by_identity_of_a_table_without_a_primary_key_is_empty()
+    public async Task Lookup_by_identity_of_a_table_without_a_primary_key_is_refused()
     {
+        // ADR-0140: a table with no primary key has no durable feature key, so
+        // the read is refused rather than answered with nothing — an empty
+        // answer would claim the feature is absent rather than that the layer
+        // cannot name its features.
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
 
-        Assert.Empty(await context.Store.GetAsync("public.roads", [new FeatureId("1")]));
+        var failure = await Assert.ThrowsAsync<SpatialException>(
+            () => context.Store.GetAsync("public.roads", [new FeatureId("1")]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("identity", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("public.roads", failure.Message, StringComparison.Ordinal);
     }
 
     [SkippableFact]
