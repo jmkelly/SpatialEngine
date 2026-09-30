@@ -92,7 +92,7 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    a bead that has barely started). For each excess `paseo stop <agent-id>`,
    then in its worktree `git add -A && git commit -m "WIP: preserve
    uncommitted work for <id> (swarm capped at 3 by coordinator tick <date>)"
-   -m "Task: <id>"`, `bd update <id> --label in-flight --append-notes "<agent>
+   -m "Task: <id>"`, `bd update <id> --add-label in-flight --append-notes "<agent>
    <branch> <worktree> <wip-commit>"`, then `bd unclaim <id>`. Leave the
    worktree in place — a later tick reuses it and resumes from the WIP commit.
    `git stash` is shared across this repo's worktrees and has clobbered a
@@ -266,7 +266,7 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    hand off.
 8. Commit with a `Task: BEAD_ID` trailer, and **push your branch to
    origin** (`git push -u origin bd/BEAD_ID`). Then
-   `bd update BEAD_ID --label needs-merge --append-notes "<commit> <branch>
+   `bd update BEAD_ID --add-label needs-merge --append-notes "<commit> <branch>
    agent <id> workspace <id>"`. Do **not** close the bead — the coordinator
    merges, publishes and closes, in that order.
 9. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
