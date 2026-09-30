@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+amended-by: ADR-0151
 summary: A discovered dataset description is held per store, keyed by dataset, so a walk of N pages costs one catalogue discovery rather than N; every write the store makes forgets what it could have changed (create, ingest, append, edit, the end of a transaction), a description that failed to be read is never remembered, and an entry expires (`PostgisOptions.DescriptionCacheTtl`, 30s, non-positive turns the cache off) so a schema changed outside the store is picked up rather than inherited.
 ---
 
@@ -136,8 +137,8 @@ needed and did not have.
   changed is that the estimate is not taken from before the caller's own write.
 - SQL Server has the same shape — `SqlServerCatalogue.DescribeAsync` runs its
   catalogue reads per read — and is deliberately untouched here: this record is
-  about one provider, its measurement and its invalidation story. Tracked as its
-  own bead.
+  about one provider, its measurement and its invalidation story. ADR-0151 took
+  it on, with this record's cache, TTL and invalidation story.
 - The description cache and the collation cache (ADR-0121) are now two
   per-store properties of the database, held in the same place, with the same
   "read once, drop on a failed probe" discipline. A future record that wants a

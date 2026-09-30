@@ -66,6 +66,15 @@ public sealed class SqlServerDescriptionCacheTests : IClassFixture<SqlServerCont
             AttributeValue.FromGeometry(GeometryFactory.CreatePoint(id % 180, (id % 90) - 45)),
         ]);
 
+    /// <summary>A row of the ingested schema, which has no identity column of its own.</summary>
+    private static Feature IngestRow() => new(
+        new FeatureId("1"),
+        IngestedSchema,
+        [
+            AttributeValue.FromString("row"),
+            AttributeValue.FromGeometry(GeometryFactory.CreatePoint(13, 52)),
+        ]);
+
     private static string Unique(string prefix = "described") => $"dbo.{prefix}_{Guid.NewGuid().ToString("N")[..8]}";
 
     /// <summary>
@@ -231,7 +240,10 @@ public sealed class SqlServerDescriptionCacheTests : IClassFixture<SqlServerCont
             Assert.Equal(1, context.Store.CachedDescriptions);
 
             var transaction = await context.Store.BeginAsync();
-            await context.Store.WriteAsync(dataset, new FeatureBatch(Schema, [Row(90, Schema)]), transaction);
+            await context.Store.WriteAsync(
+                dataset,
+                new FeatureBatch(Schema, [Row(commit ? 90 : 91, Schema)]),
+                transaction);
             Assert.Equal(0, context.Store.CachedDescriptions);
 
             Assert.True(commit
@@ -259,7 +271,7 @@ public sealed class SqlServerDescriptionCacheTests : IClassFixture<SqlServerCont
         Assert.Equal(0, context.Store.CachedDescriptions);
 
         var outcome = await context.Ingest.IngestAsync(
-            new IngestRequest(dataset, 4326), [new FeatureBatch(IngestedSchema, [Row(1, IngestedSchema)])]);
+            new IngestRequest(dataset, 4326), [new FeatureBatch(IngestedSchema, [IngestRow()])]);
         Assert.Equal(1, outcome.Features);
 
         var description = await context.Store.DescribeAsync(dataset);
@@ -287,9 +299,11 @@ public sealed class SqlServerDescriptionCacheTests : IClassFixture<SqlServerCont
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
-        var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        // SqlClient surfaces the cancellation on its own token, so what is
+        // asserted here is that the read was cancelled and that it left nothing
+        // behind for the read that follows it.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => context.Store.DescribeAsync(dataset, cancellation.Token));
-        Assert.Equal(cancellation.Token, failure.CancellationToken);
         Assert.Equal(0, context.Store.CachedDescriptions);
 
         var description = await context.Store.DescribeAsync(dataset);

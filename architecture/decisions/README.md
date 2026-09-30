@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**137 records on disk.** `status` is the record's own word;
+**138 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -125,7 +125,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0119](ADR-0119-feature-id-is-the-identity-column-value.md) | A store's `Feature.Id` is the identity column's value | accepted | 2026-09-29 | — |
 | [0120](ADR-0120-an-envelope-statistic-reduces-a-layer-extent.md) | An envelope statistic, so a layer's extent is reduced at the store | accepted | 2026-09-29 | — |
 | [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) | A pushed-down string comparison is a byte comparison — the database's collation is never inherited | accepted | 2026-09-29 | — |
-| [0122](ADR-0122-a-discovered-dataset-description-is-held-and-every-write-forgets-it.md) | A discovered dataset description is held, and every write the store makes forgets it | accepted | 2026-09-30 | — |
+| [0122](ADR-0122-a-discovered-dataset-description-is-held-and-every-write-forgets-it.md) | A discovered dataset description is held, and every write the store makes forgets it | accepted | 2026-09-30 | ADR-0151 |
 | [0123](ADR-0123-a-pushed-comparison-states-the-order-it-wants.md) | A pushed-down comparison says which order it wants — the database's collation is never inherited in a `WHERE` either | accepted | 2026-09-29 | — |
 | [0124](ADR-0124-sql-server-pushes-the-plans-order-and-page.md) | The SQL Server store pushes the plan's order and page, and writes the reference's two ordering rules into the `ORDER BY` | accepted | 2026-09-29 | ADR-0116, ADR-0121 |
 | [0125](ADR-0125-the-mapserver-layer-record-carries-the-same-declared-ordinates.md) | The MapServer layer record carries the same declared ordinates | accepted | 2026-09-30 | ADR-0084 |
@@ -153,6 +153,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md) | The repository root carries no in-flight state, and the changelog is a release artefact | accepted | 2026-10-01 | ADR-0118, ADR-0134 |
 | [0149](ADR-0149-every-ingested-dataset-is-keyed.md) | Every ingested dataset is keyed | accepted | 2026-10-01 | ADR-0041, ADR-0140 |
 | [0150](ADR-0150-a-record-is-one-decision-and-its-shape-is-a-gate.md) | A record is one decision, and its shape is a gate | accepted | 2026-10-01 | — |
+| [0151](ADR-0151-the-sql-server-store-holds-its-description-too.md) | The SQL Server store holds its description too | accepted | 2026-10-01 | ADR-0122 |
 
 ## Amended by
 
@@ -177,6 +178,7 @@ not appear.
 - **0116** is amended by 0124
 - **0118** is amended by 0141, 0148
 - **0121** is amended by 0124
+- **0122** is amended by 0151
 - **0124** is amended by 0127, 0131, 0133
 - **0126** is amended by 0130
 - **0128** is amended by 0131

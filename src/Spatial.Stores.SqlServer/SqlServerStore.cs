@@ -35,12 +35,22 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
     private int _disposed;
 
     public SqlServerStore(SqlServerOptions options)
+        : this(options, TimeProvider.System)
+    {
+    }
+
+    /// <summary>
+    /// The same store over a clock the caller moves, so what expires by time
+    /// (the description cache, ADR-0151) is testable without sleeping.
+    /// </summary>
+    internal SqlServerStore(SqlServerOptions options, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(clock);
         _configuration = string.IsNullOrWhiteSpace(options.ConnectionString)
             ? SqlServerConnectionConfiguration.FromEnvironment()
             : SqlServerConnectionConfiguration.FromConnectionString(options.ConnectionString);
-        _storage = new SqlServerStorage(_configuration, options.CreateIndexes);
+        _storage = new SqlServerStorage(_configuration, options.CreateIndexes, options.DescriptionCacheTtl, clock);
     }
 
     public async ValueTask DisposeAsync()
@@ -289,7 +299,19 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
         CancellationToken cancellationToken)
     {
         var description = await DescribeInternalAsync(name, cancellationToken);
-        return await Features.WriteAsync(name, description, batch, transaction, cancellationToken);
+        try
+        {
+            return await Features.WriteAsync(name, description, batch, transaction, cancellationToken);
+        }
+        finally
+        {
+            // The description was read before the write, so it describes the
+            // dataset as it was before it; a description carries the row
+            // estimate too, and an append is what moves it. A write that did
+            // not complete cleanly is exactly the case where the store should
+            // not claim to know (ADR-0151).
+            ForgetDescription(name);
+        }
     }
 
     /// <inheritdoc />
@@ -324,6 +346,23 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
 
     internal Task<DatasetDescription> DescribeInternalAsync(SqlServerDatasetName name, CancellationToken token) =>
         Catalogue.DescribeAsync(name, token);
+
+    /// <summary>
+    /// Drops the description this store is holding for a dataset it has just
+    /// changed (ADR-0151), so the next read discovers the dataset as it now is
+    /// rather than as it was when it was last read.
+    /// </summary>
+    internal void ForgetDescription(SqlServerDatasetName name) => _storage.Descriptions.Invalidate(name);
+
+    /// <summary>
+    /// How many catalogue description reads this store has issued — the cost a
+    /// paged walk used to pay once per page, and the claim ADR-0151 is measured
+    /// by.
+    /// </summary>
+    internal long DescriptionReads => _storage.Descriptions.Reads;
+
+    /// <summary>How many descriptions the store is holding right now; a write path drops its dataset's.</summary>
+    internal int CachedDescriptions => _storage.Descriptions.Count;
 
     /// <summary>Runs a store operation, wrapping only unexpected failures as <c>store.unavailable</c>.</summary>
     internal async Task<T> RunStoreOperationAsync<T>(Func<Task<T>> operation)

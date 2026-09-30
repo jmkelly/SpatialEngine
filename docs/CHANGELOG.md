@@ -19,6 +19,27 @@ heading that is not above `<Version>`).
 
 ### Changed
 
+- **The SQL Server store holds the dataset description it discovered**
+  (ADR-0122, ADR-0151, SpatialEngine-hj2): `SqlServerCatalogue.DescribeAsync`
+  ran its catalogue reads — column metadata, primary key, row estimate, the
+  recorded SRID and a sampled geometry value — on every describe, and every
+  read face describes its dataset before it can compile any T-SQL, so a walk of
+  N pages over a layer paid N descriptions to learn the same schema N times:
+  a round trip per page on the path a client walks to draw a layer. The store
+  now holds the description, keyed by dataset, and forgets it on every write it
+  makes — create, ingest (both faces), append, edit, and the end of a
+  transaction, commit or rollback. A description that failed to be read is never
+  remembered, so `not.found` and a cancelled read behave as they did. A schema
+  changed *outside* the store — a hand-run `ALTER TABLE`, a migration by another
+  process — is picked up when the entry expires (30 s by default,
+  `Spatial:SqlServer:DescriptionCacheTtl`; a non-positive value turns the cache
+  off). What a stale description costs here is stated in the record: a column
+  added or dropped out of band fails as `invalid.arguments` or
+  `store.unavailable`, while a geometry type or SRID re-sampled, or an identity
+  column changed out of band, is answered from the sample the store read, for
+  at most the window. A walk of N pages now issues one description read rather
+  than N.
+
 - **Every ingested dataset carries an identity column; `identity=none` is
   refused by name** (ADR-0041, ADR-0149, SpatialEngine-2cm): an ingest with
   `identity=none` built a dataset with no durable feature key, so

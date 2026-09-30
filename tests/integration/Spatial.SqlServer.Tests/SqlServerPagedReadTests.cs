@@ -20,10 +20,13 @@ namespace Spatial.SqlServer.Tests;
 /// the statement the store issues is pinned in <c>SqlServerPlanPagingTests</c>
 /// (a capped read of a plan carries an <c>ORDER BY</c> and a
 /// <c>OFFSET</c>/<c>FETCH NEXT</c>), and here the walk itself is pinned against
-/// a real database. It is deliberately not measured in bytes: every read
-/// re-reads the dataset description from the catalogue, and that fixed cost is
+/// a real database. It is deliberately not measured in bytes: every read used to
+/// re-read the dataset description from the catalogue, and that fixed cost was
 /// two orders of magnitude larger than the difference between a page and a
-/// whole table, so the instrument would measure the catalogue, not the read.
+/// whole table, so the instrument would have measured the catalogue, not the
+/// read. That per-read discovery is gone (ADR-0151), and what the walk now
+/// costs is measured as a count in
+/// <c>Spatial.SqlServer.Tests.SqlServerDescriptionCacheTests</c>.
 /// </para>
 /// </summary>
 public sealed class SqlServerPagedReadTests : IClassFixture<SqlServerContainerFixture>

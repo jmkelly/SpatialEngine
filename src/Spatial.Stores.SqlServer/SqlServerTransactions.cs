@@ -45,7 +45,23 @@ internal sealed class SqlServerTransactions(SqlServerStorage storage) : IAsyncDi
             throw SpatialException.BadArguments($"Unknown transaction '{handle}'.");
         }
 
-        return await entry.CompleteAsync(commit, cancellationToken);
+        try
+        {
+            return await entry.CompleteAsync(commit, cancellationToken);
+        }
+        finally
+        {
+            // The datasets it wrote through are forgotten either way: a commit
+            // made their writes visible and a rollback decided they never
+            // happened, and a description read before that decision cannot
+            // describe them after it (ADR-0151). A commit whose outcome is in
+            // doubt — one that threw — is the case where holding a description
+            // would be worst.
+            foreach (var dataset in entry.Written)
+            {
+                storage.Descriptions.Invalidate(dataset);
+            }
+        }
     }
 
     /// <summary>
@@ -82,13 +98,31 @@ internal sealed class SqlServerTransactions(SqlServerStorage storage) : IAsyncDi
     }
 }
 
-/// <summary>One open transaction: the connection it began on and the SqlClient handle itself.</summary>
-internal sealed record SqlServerTransactionEntry(SqlConnection Connection, SqlTransaction Transaction)
+/// <summary>
+/// One open transaction: the connection it began on and the SqlClient handle
+/// itself, plus the datasets written through it — the ones whose descriptions
+/// have to be forgotten when it ends (ADR-0151). A class rather than a record
+/// because it now carries that state, and a record's equality is not what
+/// anything here wants.
+/// </summary>
+internal sealed class SqlServerTransactionEntry(SqlConnection connection, SqlTransaction transaction)
 {
+    private readonly ConcurrentDictionary<SqlServerDatasetName, byte> _written = new();
+
+    /// <summary>The connection the transaction began on.</summary>
+    public SqlConnection Connection { get; } = connection;
+
+    /// <summary>The transaction itself.</summary>
+    public SqlTransaction Transaction { get; } = transaction;
+
+    /// <summary>The datasets a write joined this transaction to.</summary>
+    public ICollection<SqlServerDatasetName> Written => _written.Keys;
+
     /// <summary>Appends a batch inside this transaction.</summary>
     public async Task<int> WriteAsync(
         SqlServerDatasetName name, DatasetDescription description, FeatureBatch batch, CancellationToken cancellationToken)
     {
+        _written.TryAdd(name, 0);
         var count = await SqlServerWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
         if (count > 0)
         {
