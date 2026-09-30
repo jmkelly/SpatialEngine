@@ -35,6 +35,13 @@ record in the retired schema, and a citation of an ADR that does not exist.
 check in the repository and the documentation-freshness audit wants it without
 the rest (SpatialEngine-imz.1).
 
+`corpus_findings`, `register_findings` and `dangling_citations` are split out
+as the shared entry points, because `tools/doc-freshness.py` answers the same
+three questions from here rather than a second time its own way
+(SpatialEngine-imz.2): a register row, a record schema and a citation are one
+implementation, one set of findings and one gate each, and the audit reports
+them so the queue is one list.
+
 The citation rule is also enforced, in C# and over more file types, by
 `AdrNumberingTests.Every_adr_reference_resolves_to_exactly_one_record` in the
 structural guard. The two agree by construction: a number is citable when a
@@ -94,6 +101,22 @@ SKIP_DIRECTORIES = {
 #: The extension set the citation read covers: prose an agent reads and code an
 #: agent greps. A citation in a comment is the common case.
 CITED_SUFFIXES = (".md", ".cs")
+
+#: The loop's own artefacts, by name, wherever they sit. Every audit in the
+#: quality loop writes a `*-queue.md` / `*-report.json` pair at the repository
+#: root, both gitignored (SpatialEngine-imz.2). A queue is machine-generated and
+#: rewritten on every run, and a queue row quotes the line it is about — so the
+#: citation read over one reports a citation the author never wrote, and whether
+#: it does is a function of whether an untracked file happens to be on disk. The
+#: skip is the same argument as `SKIP_DIRECTORIES`: not a citation surface.
+SKIP_ARTIFACTS = frozenset({
+    "crap-queue.md", "crap-report.json",
+    "coverage-queue.md", "coverage-report.json",
+    "metrics-queue.md", "metrics-report.json",
+    "warnings-queue.md", "warnings-report.json",
+    "stryker-queue.md", "stryker-report.json",
+    "doc-queue.md", "doc-report.json",
+})
 
 
 @dataclass
@@ -387,6 +410,8 @@ def iter_cited_files(root: Path):
             continue
         if any(part in SKIP_DIRECTORIES for part in path.parts):
             continue
+        if path.name in SKIP_ARTIFACTS:
+            continue
         yield path
 
 
@@ -412,11 +437,15 @@ def dangling_citations(root: Path, corpus: list[Adr]) -> list[str]:
 # --- the gate ---------------------------------------------------------------
 
 
-def check(root: Path) -> list[str]:
-    """Every way the generated corpus can be stale, as one list of findings."""
-    findings: list[str] = []
-    corpus = load_corpus(root)
+def corpus_findings(root: Path, corpus: list[Adr]) -> list[str]:
+    """The records themselves: a bad schema, a spent number, a repeated number.
 
+    Split out of `check` so the documentation-freshness audit reads the front
+    matter question — every record on one schema, and that schema well formed —
+    from here rather than answering it a second time its own way
+    (SpatialEngine-imz.2: implement once, share it).
+    """
+    findings: list[str] = []
     for record in corpus:
         if record.error:
             findings.append(f"{record.path.relative_to(root)}: {record.error}")
@@ -433,29 +462,49 @@ def check(root: Path) -> list[str]:
     }
     for number in sorted(duplicates):
         findings.append(f"ADR-{number}: more than one record carries this number")
+    return findings
 
+
+def register_findings(root: Path, corpus: list[Adr]) -> list[str]:
+    """Whether the register block in the distilled digest is what the records say.
+
+    Shared with `tools/doc-freshness.py` for the same reason as
+    `corpus_findings` and `dangling_citations`: there is one answer to "does
+    every record have a register row, and is that row current", and the gate
+    here is where it is enforced (ADR-0141).
+    """
+    findings: list[str] = []
     register = root / "architecture" / "distilled" / "README.md"
     block = render_register(corpus)
     if not register.is_file():
         findings.append(f"{register.relative_to(root)}: no such file")
+        return findings
+    text = register.read_text(encoding="utf-8")
+    if REGISTER_BEGIN not in text or REGISTER_END not in text:
+        findings.append(
+            f"{register.relative_to(root)}: no {REGISTER_BEGIN} .. "
+            f"{REGISTER_END} block; the register is generated between those "
+            "markers and the markers are added once, by hand"
+        )
     else:
-        text = register.read_text(encoding="utf-8")
-        if REGISTER_BEGIN not in text or REGISTER_END not in text:
+        start = text.find(REGISTER_BEGIN)
+        end = text.find(REGISTER_END) + len(REGISTER_END)
+        if text[start:end].strip() != block.strip():
             findings.append(
-                f"{register.relative_to(root)}: no {REGISTER_BEGIN} .. "
-                f"{REGISTER_END} block; the register is generated between those "
-                "markers and the markers are added once, by hand"
+                f"{register.relative_to(root)}: the register does not match "
+                "architecture/decisions/*.md; run "
+                "`python3 tools/arch-index.py --write`"
             )
-        else:
-            start = text.find(REGISTER_BEGIN)
-            end = text.find(REGISTER_END) + len(REGISTER_END)
-            committed = text[start:end]
-            if committed.strip() != block.strip():
-                findings.append(
-                    f"{register.relative_to(root)}: the register does not match "
-                    "architecture/decisions/*.md; run "
-                    "`python3 tools/arch-index.py --write`"
-                )
+    return findings
+
+
+def check(root: Path) -> list[str]:
+    """Every way the generated corpus can be stale, as one list of findings."""
+    findings: list[str] = []
+    corpus = load_corpus(root)
+
+    findings.extend(corpus_findings(root, corpus))
+    findings.extend(register_findings(root, corpus))
 
     for path, rendered in (
         (root / "architecture" / "decisions" / "README.md", render_index(corpus)),
@@ -507,6 +556,12 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument(
         "--citations", action="store_true", help="read dangling ADR-NNNN citations only"
     )
+    mode.add_argument(
+        "--register",
+        action="store_true",
+        help="read the record schema and the register block only, not the "
+        "generated index, the breadcrumb or the citations",
+    )
     arguments = parser.parse_args(argv)
     root = Path(arguments.root).resolve()
 
@@ -515,6 +570,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if arguments.citations:
         findings = dangling_citations(root, load_corpus(root))
+    elif arguments.register:
+        corpus = load_corpus(root)
+        findings = corpus_findings(root, corpus) + register_findings(root, corpus)
     elif arguments.check or True:
         findings = check(root)
     if findings:

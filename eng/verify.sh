@@ -26,6 +26,10 @@
 #                            merge tool for.
 #   eng/verify.sh --plan     print the steps a lane would run, and run nothing
 #
+#   eng/quality-audit.sh --report     the documentation-freshness audit and the
+#                                     quality loop's reports, as one summary that
+#                                     cannot fail a lane
+#
 # Every lane also runs `tools/conflict_markers.py`, which reads every tracked
 # file for an unresolved merge-conflict marker — a rule that shipped as a
 # `tools/test_*.py` and therefore ran only on a change set that touched
@@ -39,6 +43,13 @@
 # the change set, and it is the only step that fails on a decision record that
 # has drifted rather than on code. It is second because the trailing-whitespace
 # check below is cheaper than it and is subject to the same argument.
+#
+# The same function then runs the documentation-freshness audit
+# (`eng/quality-audit.sh --report`, SpatialEngine-imz.2) as a REPORTING step: it
+# fills `doc-queue.md` / `doc-report.json` and prints a count, and it cannot
+# fail a lane. It is named `--report` at the call site so a reader does not have
+# to open the script to know which half of the doc gate gates and which only
+# reports.
 #
 # The split exists because the flat gate costs ~25 minutes warm on a 12-core
 # box and the swarm runs it constantly. Almost all of that is overhead rather
@@ -141,10 +152,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --plan) PLAN_ONLY=1; shift ;;
     # The whole header comment: every paragraph above `set -euo pipefail`, which
-    # on this tree is line 80. Both gates document themselves there, so a range
+    # on this tree is line 100. Both gates document themselves there, so a range
     # that stops short of the last paragraph prints a usage block that omits
     # the step a caller is about to be surprised by.
-    -h|--help) sed -n '2,80p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,100p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -370,6 +381,11 @@ conflict_marker_step() {
 doc_gate() {
   echo "== doc gate: ADR register, ADR index, ADR citations =="
   step python3 tools/arch-index.py --check
+  echo "== documentation freshness (reporting only, never fails a lane) =="
+  # `bash <script>` rather than the path: every other step names an
+  # interpreter (`python3`, `dotnet`) and this one is a repository script, whose
+  # exec bit is a checkout detail rather than a contract.
+  step bash eng/quality-audit.sh --report
 }
 
 # --- the format lane -------------------------------------------------------
