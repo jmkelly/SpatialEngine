@@ -100,12 +100,19 @@ class Harness:
     """A `run` callable over a FakeGit, plus the calls it recorded."""
 
     def __init__(self, git, module, verify_ok=True, beads=None,
-                 verify_cancels=False):
+                 verify_cancels=False, notes="", workspaces=(), agents=(),
+                 close_fails=False, paseo_missing=False, paseo_fails=()):
         self.git = git
         self.module = module
         self.verify_ok = verify_ok
         self.verify_cancels = verify_cancels
         self.beads = beads or []
+        self.notes = notes
+        self.workspaces = list(workspaces)
+        self.agents = list(agents)
+        self.close_fails = close_fails
+        self.paseo_missing = paseo_missing
+        self.paseo_fails = set(paseo_fails)
         self.lines = []
         self.cwds = []
 
@@ -173,6 +180,29 @@ class Harness:
             return self.module.Completed(
                 0 if self.verify_ok else 1, "", "tests failed" if not self.verify_ok else "")
         if head == "bd" and cmd[1] == "close":
+            if self.close_fails:
+                return self.module.Completed(1, "", "bd: cannot close")
+            return self.module.Completed(0, "", "")
+        if head == "bd" and cmd[1] == "show":
+            return self.module.Completed(
+                0, json.dumps([{"id": cmd[2], "notes": self.notes}]), "")
+        if head == "paseo":
+            if self.paseo_missing:
+                return self.module.Completed(
+                    127, "", "paseo: command not found")
+            if cmd[1] == "workspace" and cmd[2] == "ls":
+                if "workspace ls" in self.paseo_fails:
+                    return self.module.Completed(1, "", "daemon down")
+                return self.module.Completed(0, json.dumps(self.workspaces), "")
+            if cmd[1] == "ls":
+                if "ls" in self.paseo_fails:
+                    return self.module.Completed(1, "", "daemon down")
+                return self.module.Completed(0, json.dumps(self.agents), "")
+            joined = " ".join(cmd)
+            if "workspace archive" in joined and "workspace archive" in self.paseo_fails:
+                return self.module.Completed(1, "", "no such workspace")
+            if joined == "paseo archive " + cmd[2] and "archive" in self.paseo_fails:
+                return self.module.Completed(1, "", "no such agent")
             return self.module.Completed(0, "", "")
         if head == "bd" and cmd[1] == "note":
             return self.module.Completed(0, "", "")
@@ -197,6 +227,9 @@ class Harness:
 
     def closed(self):
         return [c[2] for c in self.called("bd", "close")]
+
+    def notes_written(self):
+        return [c[3] for c in self.called("bd", "note")]
 
 
 class MergeFlowTests(unittest.TestCase):
@@ -287,6 +320,167 @@ class MergeFlowTests(unittest.TestCase):
         self.assertEqual(harness.closed(), [])
         self.assertEqual(harness.called("git", "merge"), [])
         self.assertTrue(any("--publish" in line for line in harness.lines))
+
+
+class WorkspaceArchiveTests(unittest.TestCase):
+    """A merged, closed bead's workspace and agent are archived with it.
+
+    Otherwise the swarm accumulates one worktree per finished bead, and the
+    coordinator's own capacity step (the runbook's `paseo stop` sweep) has to
+    notice that after the fact. The archive is the last step of the same
+    command, and it is the last step for a reason: a bead that is still live
+    still needs its workspace.
+    """
+
+    NOTES = ("coordinator tick 2026-10-01: agent "
+             "88ccab4b-621e-462a-b9e6-f757c489c96a, branch "
+             "bd/SpatialEngine-qui, workspace wks_6345df56030cae62\n")
+
+    def setUp(self):
+        self.module = load_script()
+
+    def run_tool(self, argv, git, **kwargs):
+        harness = Harness(git, self.module, **kwargs)
+        code = self.module.main(argv, run=harness, out=harness)
+        return code, harness
+
+    def merged(self, argv=None, git=None, **kwargs):
+        git = git or FakeGit(main=["a1"], origin_main=["a1"])
+        if "bd/SpatialEngine-qui" not in git.refs:
+            git.branch("bd/SpatialEngine-qui", ["a1", "w1"])
+        return self.run_tool(argv or ["--bead", "SpatialEngine-qui"], git,
+                             **kwargs)
+
+    def test_a_published_close_archives_the_workspace_and_its_agent(self):
+        code, harness = self.merged(notes=self.NOTES)
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            harness.called("paseo", "workspace", "archive"),
+            [["paseo", "workspace", "archive", "wks_6345df56030cae62"]])
+        self.assertEqual(
+            harness.called("paseo", "archive"),
+            [["paseo", "archive", "88ccab4b-621e-462a-b9e6-f757c489c96a"]])
+
+    def test_the_archive_happens_after_the_close_and_after_the_push(self):
+        # Before the close the bead is live and the workspace is its only home.
+        code, harness = self.merged(notes=self.NOTES)
+        self.assertEqual(code, 0)
+        order = [c[:2] for c in harness.git.calls]
+        self.assertLess(order.index(["git", "push"]),
+                        order.index(["paseo", "workspace"]))
+        self.assertLess(order.index(["bd", "close"]),
+                        order.index(["paseo", "workspace"]))
+
+    def test_the_workspace_is_archived_before_the_agent(self):
+        # `paseo workspace archive` is documented as "archive a workspace and
+        # everything it owns", so it goes first; the agent archive is the
+        # best-effort half afterwards.
+        code, harness = self.merged(notes=self.NOTES)
+        self.assertEqual(code, 0)
+        archives = [c for c in harness.git.calls
+                    if c[0] == "paseo" and "archive" in c]
+        self.assertEqual([c[1] for c in archives],
+                         ["workspace", "archive"])
+
+    def test_the_ids_are_read_from_the_notes_not_guessed(self):
+        # The coordinator tick writes the ids into the bead's notes; when they
+        # are there, nothing is inferred and paseo is not even asked.
+        code, harness = self.merged(notes=self.NOTES)
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.called("paseo", "ls"), [])
+        self.assertEqual(harness.called("paseo", "workspace", "ls"), [])
+
+    def test_paseo_list_is_the_fallback_when_the_notes_name_nothing(self):
+        git = FakeGit(main=["a1"], origin_main=["a1"])
+        git.branch("bd/SpatialEngine-qui", ["a1", "w1"])
+        git.worktree("bd/SpatialEngine-qui", "/wt/bd-spatialengine-qui")
+        code, harness = self.merged(
+            git=git,
+            workspaces=[{"workspaceId": "wks_deadbeef", "name": "bd/SpatialEngine-qui",
+                         "cwd": "/wt/bd-spatialengine-qui"}],
+            agents=[{"id": "aaaa1111-2222-3333-4444-555566667777",
+                     "shortId": "aaaa111", "status": "idle",
+                     "cwd": "/wt/bd-spatialengine-qui"}])
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            harness.called("paseo", "workspace", "archive"),
+            [["paseo", "workspace", "archive", "wks_deadbeef"]])
+        self.assertEqual(
+            harness.called("paseo", "archive"),
+            [["paseo", "archive", "aaaa1111-2222-3333-4444-555566667777"]])
+
+    def test_the_bead_id_alone_never_matches_another_beads_workspace(self):
+        # `bd-spatialengine-u2x-2` is a different bead from
+        # `SpatialEngine-u2x.21`; a prefix match would archive the wrong
+        # worker's worktree.
+        code, harness = self.merged(
+            workspaces=[{"workspaceId": "wks_others", "name": "bd/SpatialEngine-u2x.2",
+                         "cwd": "/wt/bd-spatialengine-u2x-2"}])
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.called("paseo", "workspace", "archive"), [])
+
+    def test_a_failed_close_leaves_the_workspace_alone(self):
+        # The bead is still live: it still needs its worktree and its agent.
+        code, harness = self.merged(notes=self.NOTES, close_fails=True)
+        self.assertEqual(code, 1)
+        self.assertEqual(harness.closed(), ["SpatialEngine-qui"])
+        self.assertEqual(harness.called("paseo", "workspace", "archive"), [])
+        self.assertEqual(harness.called("paseo", "archive"), [])
+
+    def test_a_paseo_failure_still_exits_zero_with_the_work_published(self):
+        # The bead is on origin/main and closed by then. A missing paseo, a
+        # daemon that is down or an id that no longer resolves is a warning,
+        # not a merge that has to be re-run.
+        code, harness = self.merged(notes=self.NOTES, paseo_missing=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.closed(), ["SpatialEngine-qui"])
+        self.assertEqual(harness.git.refs["origin/main"], ["a1", "w1"])
+        self.assertTrue(any(line.startswith("warning:")
+                            for line in harness.lines))
+        # ... and the closed bead's record says so, because the close reason
+        # named an archive that then did not happen.
+        self.assertTrue(any("not archived" in note
+                            for note in harness.notes_written()))
+
+    def test_a_failing_workspace_archive_still_tries_the_agent(self):
+        code, harness = self.merged(notes=self.NOTES,
+                                    paseo_fails={"workspace archive"})
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            harness.called("paseo", "archive"),
+            [["paseo", "archive", "88ccab4b-621e-462a-b9e6-f757c489c96a"]])
+        self.assertTrue(any("warning" in line for line in harness.lines))
+
+    def test_no_archive_workspace_keeps_it(self):
+        code, harness = self.merged(
+            ["--bead", "SpatialEngine-qui", "--no-archive-workspace"],
+            notes=self.NOTES)
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.closed(), ["SpatialEngine-qui"])
+        self.assertEqual(harness.called("paseo", "workspace", "archive"), [])
+        self.assertEqual(harness.called("paseo", "archive"), [])
+
+    def test_the_close_reason_says_whether_the_workspace_was_archived(self):
+        code, harness = self.merged(notes=self.NOTES)
+        self.assertEqual(code, 0)
+        reason = " ".join(harness.called("bd", "close")[0])
+        self.assertIn("wks_6345df56030cae62", reason)
+        self.assertIn("archived", reason)
+
+    def test_the_close_reason_says_the_workspace_was_kept(self):
+        code, harness = self.merged(
+            ["--bead", "SpatialEngine-qui", "--no-archive-workspace"],
+            notes=self.NOTES)
+        self.assertEqual(code, 0)
+        reason = " ".join(harness.called("bd", "close")[0])
+        self.assertIn("kept", reason)
+
+    def test_a_bead_with_no_workspace_is_not_a_merge_failure(self):
+        code, harness = self.merged(notes="nothing recorded here")
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.closed(), ["SpatialEngine-qui"])
+        self.assertEqual(harness.called("paseo", "workspace", "archive"), [])
+        self.assertIn("no workspace", " ".join(harness.lines))
 
 
 class PublishCheckTests(unittest.TestCase):
@@ -547,6 +741,14 @@ class DocumentedGateTests(unittest.TestCase):
     def test_agents_md_close_rule_points_at_the_gate(self):
         text = self.read("AGENTS.md")
         self.assertIn("bd-merge-bead.py", text)
+
+    def test_agents_md_merge_step_says_the_workspace_is_archived(self):
+        # The merge step the coordinator reads is a sentence in AGENTS.md; if
+        # the tool grew a step, the sentence that describes it has to have it.
+        text = self.read("AGENTS.md")
+        merge_bullet = self.bullet_about(text, "- Merge and complete:")
+        self.assertIn("archive", merge_bullet)
+        self.assertIn("--no-archive-workspace", merge_bullet)
 
     def test_runbook_merge_step_uses_the_tool(self):
         text = self.read("eng/swarm-runbook.md")

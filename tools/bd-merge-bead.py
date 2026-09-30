@@ -56,6 +56,20 @@ Deliberate refusals, because a gate that can be talked past is not a gate:
     `main` for a human, which is recoverable; a closed bead on an unpushed
     branch is not.
 
+The last thing it does, after the close, is archive the workspace that held
+the bead and the agent that worked it, so the swarm does not accumulate one
+worktree per finished bead. It runs there for a reason: a bead that is still
+open still needs its worktree. The ids come from what the run already knows —
+the `agent <uuid> workspace wks_...` the coordinator tick writes into the
+bead's notes, with `paseo workspace ls` / `paseo ls` matched on the bead's
+branch and worktree as the fallback, the same way `tools/bd-safe-reclaim.py`
+resolves them — and never from a guess. The archive cannot fail a merge: the
+work is already on `origin/main` and the bead is already closed, so a missing
+`paseo`, a daemon that is down or an id that no longer resolves is a warning on
+stdout plus a note on the closed bead, never a non-zero exit.
+`--no-archive-workspace` keeps the workspace, for the merge whose bead is
+reopened.
+
 `--full` runs the exhaustive lane instead of the fast one, for a change broad
 enough to doubt the scoping. `--skip-tests <substring>` (repeatable) leaves a
 named suite to CI on this merge — the container-backed suites cost minutes each
@@ -99,6 +113,12 @@ CANCELLED = 130
 # A commit sha recorded in a bead's notes, as the hand-off rule tells a worker
 # to write it: "<sha> bd/<id>".
 NOTES_COMMIT = re.compile(r"\b(?P<sha>[0-9a-fA-F]{7,40})\b")
+
+# The ids the coordinator tick records at claim time, so the merge step never
+# has to guess which workspace and agent belonged to this bead.
+NOTES_AGENT = re.compile(r"\bagent\s+(?P<id>[0-9a-fA-F][0-9a-fA-F-]{5,35})\b")
+
+NOTES_WORKSPACE = re.compile(r"\bworkspace\s+(?P<id>wks_[0-9a-zA-Z]{4,64})\b")
 
 
 class Completed:
@@ -207,6 +227,159 @@ def _json_output(run, cmd, what):
     return json.loads(result.stdout or "[]")
 
 
+def _optional_json(run, cmd, cwd=None):
+    """`paseo`'s json listings, or None when paseo cannot answer.
+
+    Every caller here is a tidy-up step that runs after the work is published
+    and the bead is closed, so a missing binary or a daemon that is down is
+    information, not a failure.
+    """
+    result = run(cmd, cwd=cwd)
+    if result.returncode != 0:
+        return None
+    try:
+        data = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, list) else []
+
+
+def _comparable_path(value):
+    """A path comparable across `~/...` and `/home/...` spellings of it.
+
+    paseo reports an agent's cwd with a leading `~` and git reports a worktree
+    absolute; comparing the raw strings would match neither.
+    """
+    text = str(value or "").strip().rstrip("/")
+    if text.startswith("~/"):
+        text = str(Path.home()) + text[1:]
+    return text
+
+
+def _last_segment(value):
+    text = _comparable_path(value)
+    return Path(text).name if text else ""
+
+
+def worktree_slug(bead_id):
+    """`SpatialEngine-u2x.9.1` -> `bd-spatialengine-u2x-9-1`."""
+    slug = re.sub(r"[^0-9a-zA-Z]+", "-", str(bead_id).lower()).strip("-")
+    return f"bd-{slug}"
+
+
+def _agent_covers_cwd(agent, cwd, slug):
+    """Whether this agent's worktree is `cwd` (or this bead's slug)."""
+    agent_cwd = _comparable_path(agent.get("cwd"))
+    if not agent_cwd:
+        return False
+    if cwd and agent_cwd == _comparable_path(cwd):
+        return True
+    # Fallback for a worktree paseo no longer lists: compare the final path
+    # segment exactly, so `...-u2x-2` is never read as `...-u2x-21`.
+    return bool(slug) and _last_segment(agent_cwd) == slug
+
+
+def notes_agent_id(notes):
+    """The agent id this bead's notes record, in the order they appear."""
+    found = list(dict.fromkeys(match.group("id")
+                               for match in NOTES_AGENT.finditer(notes or "")))
+    return found[0] if found else None
+
+
+def notes_workspace_id(notes):
+    match = NOTES_WORKSPACE.search(notes or "")
+    return match.group("id") if match else None
+
+
+def bead_notes(run, bead_id, cwd=None):
+    """This bead's notes, or "" when they cannot be read."""
+    result = run(["bd", "show", bead_id, "--json"], cwd=cwd)
+    if result.returncode != 0:
+        return ""
+    try:
+        data = json.loads(result.stdout or "[]")
+    except json.JSONDecodeError:
+        return ""
+    if isinstance(data, dict):
+        data = [data]
+    return " ".join(str(bead.get("notes") or "") for bead in data)
+
+
+def archive_targets(run, bead_id, notes, worktree=None, cwd=None):
+    """The `(workspace id, agent id)` this bead's work ran in.
+
+    Resolved, never guessed. The bead's notes are the authority — the
+    coordinator tick writes both ids there when it claims the bead. `paseo` is
+    consulted only for what the notes do not say, matched the way
+    `tools/bd-safe-reclaim.py` matches them: the workspace by its exact branch
+    name, the agent by the worktree the branch is checked out in, with the
+    worktree directory slug as the fallback for a worktree paseo no longer
+    lists.
+    """
+    workspace_id = notes_workspace_id(notes)
+    agent_id = notes_agent_id(notes)
+
+    workspaces = []
+    if workspace_id is None:
+        workspaces = _optional_json(
+            run, ["paseo", "workspace", "ls", "--json"], cwd=cwd) or []
+    workspace = next((w for w in workspaces
+                      if str(w.get("name") or "").rstrip("/")
+                      == f"bd/{bead_id}"), None)
+    if workspace_id is None and workspace is not None:
+        workspace_id = (workspace.get("workspaceId")
+                        or workspace.get("id")) or None
+
+    if agent_id is None:
+        agents = _optional_json(run, ["paseo", "ls", "--json"], cwd=cwd) or []
+        slug = worktree_slug(bead_id)
+        cwd_hints = [h for h in (worktree,
+                                 (workspace or {}).get("cwd")) if h]
+        for hint in cwd_hints:
+            for agent in agents:
+                if _agent_covers_cwd(agent, hint, slug):
+                    agent_id = agent.get("id")
+                    break
+            if agent_id:
+                break
+    return workspace_id, agent_id
+
+
+def archive_workspace(run, emit, bead_id, workspace_id, agent_id, cwd=None):
+    """Archive the workspace and its agent. Never raises, never fails a merge.
+
+    The bead is on `origin/main` and closed by the time this runs, so the work
+    is safe either way; a paseo that is missing or a daemon that is down is a
+    warning a human can act on, not a merge to re-run. Each outcome is written
+    back onto the closed bead, because the close reason already named the
+    archive.
+    """
+    problems = []
+    archived = []
+    if not workspace_id:
+        problems.append(f"no workspace recorded for {bead_id}; nothing archived")
+    else:
+        result = run(["paseo", "workspace", "archive", workspace_id], cwd=cwd)
+        if result.returncode == 0:
+            archived.append(f"workspace {workspace_id}")
+        else:
+            problems.append(f"workspace {workspace_id} not archived: "
+                            f"{_detail(result)}")
+    if agent_id:
+        result = run(["paseo", "archive", agent_id], cwd=cwd)
+        if result.returncode == 0:
+            archived.append(f"agent {agent_id}")
+        else:
+            problems.append(f"agent {agent_id} not archived: {_detail(result)}")
+    for problem in problems:
+        emit(f"warning: {problem}")
+    if problems:
+        run(["bd", "note", bead_id,
+             f"workspace tidy-up after the merge: " + "; ".join(problems)],
+            cwd=cwd)
+    return archived, problems
+
+
 def check_published(run, emit, cwd=None):
     """`--check`: is everything merged published? The top-of-tick gate."""
     if not _ok(run, ["git", "rev-parse", "--verify", PUBLISHED_REF],
@@ -293,7 +466,8 @@ def audit(run, emit, cwd=None):
 
 
 def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=False,
-               allow_lease=False, skipped_lane=False, skip_tests=(), cwd=None):
+               allow_lease=False, skipped_lane=False, skip_tests=(),
+               archive=True, cwd=None):
     """`--bead <id>`: the whole merge step, ending in a justified close."""
     branch = branch or f"bd/{bead_id}"
     tree = worktree_for_branch(run, branch, cwd) or cwd
@@ -376,12 +550,33 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=False,
                          f"({', '.join(skip_tests)}) and caught on main instead")
     if skipped_lane:
         close_reason += " (declared green by the operator, not run here)"
+    # Resolved before the close because the close reason has to say what will
+    # happen to the workspace; executed after it, because a bead that is still
+    # open still needs its worktree.
+    workspace_id, agent_id = (None, None)
+    if archive:
+        workspace_id, agent_id = archive_targets(
+            run, bead_id, bead_notes(run, bead_id, cwd),
+            worktree_for_branch(run, branch, cwd), cwd)
+        close_reason += (f"; workspace {workspace_id} archived"
+                         if workspace_id else
+                         "; no workspace recorded for this bead, so none archived")
+    else:
+        close_reason += "; workspace kept (--no-archive-workspace)"
     close = run(["bd", "close", bead_id, "--reason", close_reason], cwd=cwd)
     if close.returncode != 0:
         emit(f"work is published but closing {bead_id} failed: "
              f"{_detail(close)}")
         return 1
     emit(f"closed {bead_id}: {merge_sha[:7]} is on {PUBLISHED_REF}")
+
+    if archive:
+        archived, _ = archive_workspace(run, emit, bead_id, workspace_id,
+                                        agent_id, cwd)
+        if archived:
+            emit(f"archived {' and '.join(archived)} for {bead_id}")
+    else:
+        emit(f"workspace kept for {bead_id} (--no-archive-workspace)")
     return 0
 
 
@@ -421,6 +616,12 @@ def main(argv=None, run=None, out=None, cwd=None):
                              "and are covered by CI on main either way. "
                              "Recorded in the close reason, so a merge that "
                              "leaned on CI says so")
+    parser.add_argument("--no-archive-workspace", dest="no_archive_workspace",
+                        action="store_true",
+                        help="keep the workspace (and its agent) after the "
+                             "close instead of archiving them; for the merge "
+                             "whose bead is reopened, say. The close reason "
+                             "records that it was kept")
     parser.add_argument("--verified", "--full-verified", dest="verified",
                         action="store_true",
                         help="skip the verify lane because it was already "
@@ -441,7 +642,8 @@ def main(argv=None, run=None, out=None, cwd=None):
                       reason=args.reason, full_lane=args.full,
                       allow_lease=args.allow_lease,
                       skipped_lane=args.verified,
-                      skip_tests=tuple(args.skip_tests), cwd=cwd)
+                      skip_tests=tuple(args.skip_tests),
+                      archive=not args.no_archive_workspace, cwd=cwd)
 
 
 if __name__ == "__main__":
