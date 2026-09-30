@@ -373,15 +373,46 @@ internal static class SqlServerQueries
     /// <see cref="SqlServerPredicateSql.ByteOrderCollation"/>. The step is
     /// guarded by each column's own recorded collation, so it is a catalog
     /// read and nothing more once the table carries the declaration.
+    /// <para>
+    /// SQL Server will not re-collate a column an index depends on, and the
+    /// sidecar's own primary key names both identity columns, so the key is
+    /// dropped and rebuilt around the two alters — under the constraint's own
+    /// name and its own key columns, read from the catalog, so the sidecar is
+    /// left with the key it had. Rebuilding is safe on the rows it re-keys: they
+    /// are already distinct under a collation at least as strict as the byte
+    /// order, so the migration can only widen the key space. The drop and the
+    /// rebuild are one transaction, so a rewrite that fails part way rolls the
+    /// key back rather than leaving a sidecar with no uniqueness on its identity.
+    /// </para>
     /// </summary>
     public static string RecollateAttachmentIdentity() =>
-        "IF OBJECT_ID(N'spatial_attachments', N'U') IS NOT NULL BEGIN "
-        + "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
-        + $"AND name = N'dataset' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}') "
+        "IF OBJECT_ID(N'spatial_attachments', N'U') IS NOT NULL AND ("
+        + "EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
+        + $"AND name = N'dataset' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}') OR "
+        + "EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
+        + $"AND name = N'feature_id' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}')) BEGIN "
+        + "DECLARE @key sysname = (SELECT k.name FROM sys.key_constraints k "
+        + "WHERE k.parent_object_id = OBJECT_ID(N'spatial_attachments') AND k.type = N'PK'); "
+        + "DECLARE @keyColumns nvarchar(400) = (SELECT string_agg(QUOTENAME(c.name), ', ') "
+        + "WITHIN GROUP (ORDER BY ic.key_ordinal) FROM sys.indexes i "
+        + "JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id "
+        + "JOIN sys.columns c ON c.object_id = i.object_id AND c.column_id = ic.column_id "
+        + "WHERE i.is_primary_key = 1 AND i.object_id = OBJECT_ID(N'spatial_attachments')); "
+        + "DECLARE @opened bit = 0; "
+        + "DECLARE @dropKey nvarchar(400) = N'ALTER TABLE spatial_attachments DROP CONSTRAINT ' + QUOTENAME(@key); "
+        + "BEGIN TRY "
+        + "IF @@TRANCOUNT = 0 BEGIN BEGIN TRANSACTION; SET @opened = 1; END; "
+        + "IF @key IS NOT NULL EXEC (@dropKey); "
         + $"ALTER TABLE spatial_attachments ALTER COLUMN dataset nvarchar(300) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL; "
-        + "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
-        + $"AND name = N'feature_id' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}') "
         + $"ALTER TABLE spatial_attachments ALTER COLUMN feature_id nvarchar(300) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL; "
+        + "DECLARE @addKey nvarchar(400) = N'ALTER TABLE spatial_attachments ADD CONSTRAINT ' + QUOTENAME(@key) "
+        + "+ N' PRIMARY KEY (' + @keyColumns + N')'; "
+        + "IF @key IS NOT NULL EXEC (@addKey); "
+        + "IF @opened = 1 COMMIT TRANSACTION; "
+        + "END TRY BEGIN CATCH "
+        + "IF @opened = 1 AND @@TRANCOUNT > 0 ROLLBACK TRANSACTION; "
+        + "THROW; "
+        + "END CATCH; "
         + "END";
 
     /// <summary>Reads the per-feature attachment high-water mark (the next id is one past it, starting at one).</summary>

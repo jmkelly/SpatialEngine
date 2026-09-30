@@ -286,6 +286,22 @@ public sealed class SqlServerAttachmentIntegrationTests : IClassFixture<SqlServe
             + "AND name IN ('dataset', 'feature_id') AND collation_name <> 'Latin1_General_100_BIN2'"));
         Assert.Empty(await context.Attachments.ListAsync(FoldTarget, new FeatureId("Delta")));
         Assert.Equal([added], await context.Attachments.ListAsync(FoldTarget, new FeatureId("delta")));
+
+        // SQL Server will not re-collate a column its key depends on, so the
+        // re-collate has to take the primary key off and put it back — the
+        // sidecar is left keyed, on the same three columns in the same order,
+        // rather than rebuilt into something without a key.
+        Assert.Equal(3, await context.CountAsync(
+            "SELECT count(*) FROM sys.index_columns ic JOIN sys.indexes i "
+            + "ON i.object_id = ic.object_id AND i.index_id = ic.index_id "
+            + "WHERE i.is_primary_key = 1 AND i.object_id = OBJECT_ID('spatial_attachments') AND ic.key_ordinal > 0"));
+        Assert.Equal(
+            "dataset,feature_id,attachment_id",
+            await context.TextAsync(
+                "SELECT string_agg(c.name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) FROM sys.index_columns ic "
+                + "JOIN sys.indexes i ON i.object_id = ic.object_id AND i.index_id = ic.index_id "
+                + "JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id "
+                + "WHERE i.is_primary_key = 1 AND i.object_id = OBJECT_ID('spatial_attachments')"));
     }
 
     /// <summary>

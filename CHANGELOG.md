@@ -63,7 +63,12 @@ this file together, then tag the release (`RELEASING.md`).
   decline to re-declare a table that is already there — guarded by each
   column's recorded collation, so it costs one catalog read once the table
   carries the declaration and rebuilds the two columns and their primary-key
-  index once, on the first statement after the upgrade. The migration cannot
+  index once, on the first statement after the upgrade. On SQL Server that
+  rebuild is a drop-and-recreate, because SQL Server refuses to re-collate a
+  column its key depends on: the primary key comes off by its own catalog name,
+  the two columns are re-declared, and the key goes back on the same columns in
+  the same order, in one transaction, so a failure rolls the key back rather
+  than leaving the sidecar unkeyed. The migration cannot
   fail on existing rows: a folding key already rejected the pairs a binary key
   would separate, so widening it is what lets `delta` and `Delta` live in one
   table. Both providers' attachment suites now measure a real folding sidecar

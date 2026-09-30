@@ -86,6 +86,28 @@ after the upgrade. This is a real migration, not a documented limitation: no
 operator step, no data loss, and the answer is idempotent, so the same version
 serving an already-migrated table pays only the read.
 
+On SQL Server the re-collate is **not** a bare `ALTER COLUMN`. SQL Server
+refuses to re-collate a column an index depends on, and the sidecar's own
+primary key names both identity columns —
+
+```
+The object 'PK__spatial___…' is dependent on column 'dataset'.
+ALTER TABLE ALTER COLUMN dataset failed because one or more objects access this column.
+```
+
+— so the migration **drops the key, re-declares the two columns, and rebuilds
+the key**, under the constraint's own name and its own key columns read from
+`sys.key_constraints` / `sys.index_columns`, so the sidecar is left with
+exactly the key it had. A keyless rebuild of the table would answer the same
+problem and is rejected here for the guarantee it gives up: the rows move
+through a second copy of the table, and the drop/rebuild never does. The two
+are **one transaction** (`BEGIN TRY` / `BEGIN CATCH` with an explicit
+`ROLLBACK` and a rethrow, and a transaction the store opens only when the
+caller has none), so a rewrite that fails part way — a row the byte order would
+duplicate, say — rolls the key back rather than leaving a sidecar with no
+uniqueness on its identity. Postgres needs none of this: a collation change is
+a per-column type change there, and the key is rebuilt with it.
+
 The re-collate **cannot fail on existing rows, and this is why it is safe to
 run it unguarded against whatever is in the table**: the rows it is re-keying
 are already unique under a collation that is at least as strict as the one
@@ -124,14 +146,23 @@ whether or not `delta` has rows.
 - `PostgisAttachmentQueriesTests` and the new
   `SqlServerAttachmentQueriesTests` / `PostgisAttachmentIdentityCollationTests`
   pin the create and re-collate statements in both T-SQL and SQL, including
-  that the re-collate names no column the identity does not; the attachment
+  that the re-collate names no column the identity does not, that the key comes
+  off before the first `ALTER COLUMN` and goes back on after the last, and
+  that the drop and the rebuild are one transaction; the attachment
   integration suites on both providers measure a folding sidecar end to end —
   an attachment of `delta` is neither listed nor deleted for `Delta`, `Delta`'s
-  next id is one, and a sidecar created by an earlier version is forward on the
-  first statement that reaches it.
+  next id is one, a sidecar created by an earlier version is forward on the
+  first statement that reaches it and still carries the same primary key.
 
 ## Not decided
 
+- **An index an operator added over the identity columns.** The re-collate
+  rebuilds the sidecar's own primary key, because that is the key the store's
+  `CREATE TABLE` declares and the only one it knows how to read back. An index
+  an operator added over the same columns is a second object blocking the
+  `ALTER`, and the statement answers by failing — the drop and the rebuild roll
+  back together, so the sidecar is untouched and the error surfaces as
+  `store.unavailable` rather than as a silently dropped constraint.
 - **A sidecar an operator has re-declared by hand.** The re-collate brings a
   sidecar *to* the byte-order collation, once; a deployer who later re-declares
   the columns under a linguistic collation of their own gets that back, and

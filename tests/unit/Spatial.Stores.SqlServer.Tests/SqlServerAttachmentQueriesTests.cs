@@ -48,6 +48,41 @@ public sealed class SqlServerAttachmentQueriesTests
     }
 
     [Fact]
+    public void The_recollate_drops_and_rebuilds_the_key_around_the_alter()
+    {
+        var sql = SqlServerQueries.RecollateAttachmentIdentity();
+
+        // SQL Server refuses to re-collate a column an index depends on — the
+        // sidecar's own primary key names both — so the key comes off first…
+        var dropped = sql.IndexOf("DROP CONSTRAINT", StringComparison.Ordinal);
+        var altered = sql.IndexOf("ALTER COLUMN dataset", StringComparison.Ordinal);
+        Assert.True(dropped >= 0, "the re-collate must drop the key it re-keys.");
+        Assert.True(altered > dropped, "the key must be dropped before the first ALTER COLUMN.");
+
+        // …and goes back on afterwards, under the name and the key columns the
+        // catalog reports, so the sidecar is left with the key it had.
+        var readded = sql.IndexOf("ADD CONSTRAINT", StringComparison.Ordinal);
+        Assert.True(readded > altered, "the key must be rebuilt after the last ALTER COLUMN.");
+        Assert.Contains("sys.key_constraints", sql, StringComparison.Ordinal);
+        Assert.Contains("key_ordinal", sql, StringComparison.Ordinal);
+        Assert.Contains("QUOTENAME", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_recollate_leaves_the_sidecar_keyed_even_when_the_alter_fails()
+    {
+        var sql = SqlServerQueries.RecollateAttachmentIdentity();
+
+        // The drop and the rebuild are one transaction: a rewrite that fails
+        // part way rolls the key back rather than leaving a sidecar with no
+        // uniqueness on its identity.
+        Assert.Contains("BEGIN TRY", sql, StringComparison.Ordinal);
+        Assert.Contains("BEGIN CATCH", sql, StringComparison.Ordinal);
+        Assert.Contains("ROLLBACK TRANSACTION", sql, StringComparison.Ordinal);
+        Assert.Contains("THROW", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_recollate_touches_no_column_the_identity_does_not_name()
     {
         var sql = SqlServerQueries.RecollateAttachmentIdentity();
