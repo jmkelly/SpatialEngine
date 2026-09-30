@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: An ADR number is reserved before the record is written: the allocator reads the base plus the working tree and takes the number in the repository's shared git dir, so a parallel branch is turned away at allocation rather than renumbered at merge.
 ---
 
 # ADR-0089: ADR numbers are reserved before the record is written

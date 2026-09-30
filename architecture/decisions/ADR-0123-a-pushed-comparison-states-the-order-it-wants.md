@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: A pushed `WHERE` states its byte order through the same `Ordered` helper the sort keys use, so a predicate and an order cannot disagree.
 ---
 
 # ADR-0123: A pushed-down comparison says which order it wants — the database's collation is never inherited in a `WHERE` either

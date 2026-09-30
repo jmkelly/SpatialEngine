@@ -1,6 +1,12 @@
-# ADR-0023: Bounded streams carry the backpressure
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Bounded backpressured streams (batch pages)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0023: Bounded streams carry the backpressure
 
 ## Context
 

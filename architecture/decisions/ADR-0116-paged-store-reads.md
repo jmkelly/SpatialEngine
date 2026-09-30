@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: A paged read is a page, a position and a “one more” — never a materialised match set — and a store reads the page whenever the page has a position.
 ---
 
 # ADR-0116: A paged read is a page, a position and a "one more" — never a materialised match set

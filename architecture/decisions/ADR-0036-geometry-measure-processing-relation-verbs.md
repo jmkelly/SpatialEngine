@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-09-13
 deciders: maintainer + agent
+summary: Geometry measurement, processing and relation verbs are separate SDK interfaces.
 ---
 
 # ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces

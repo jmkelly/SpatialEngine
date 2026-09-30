@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: Every statement that names a feature by a text identity column states the order it is compared in, on the term the pushed comparison already uses.
 ---
 
 # ADR-0126: A text identity is a byte identity — the comparison that names a feature states the order it wants

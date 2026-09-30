@@ -1,7 +1,9 @@
 ---
-status: accepted
+status: superseded
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The default `eng/verify.sh` lane is a scoped build gate and the full lane is the merge gate: `CI=true` and every document that means "the gate" name `--full` explicitly, an agent's pre-hand-off step is the default lane plus `--format` (never `--full`), the coordinator runs `--full` on the branch before a merge, and a post-merge red run is fixed forward rather than merged through (ADR-0118).
+superseded-by: ADR-0134
 ---
 
 # ADR-0118: the default verify lane is a build gate, and the full lane is enforced at the merge

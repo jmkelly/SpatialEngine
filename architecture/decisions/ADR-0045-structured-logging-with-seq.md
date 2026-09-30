@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-15
 deciders: maintainer + agent
+summary: Structured logging is Serilog to Seq; Aspire runs the Seq server in development.
 ---
 
 # ADR-0045: Structured logging to Seq (Serilog) with an Aspire-hosted Seq server

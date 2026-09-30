@@ -1,6 +1,12 @@
-# ADR-0022: Resource handles are runtime-owned with leases
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Runtime-owned resource handles (store-owned handles)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0022: Resource handles are runtime-owned with leases
 
 ## Context
 

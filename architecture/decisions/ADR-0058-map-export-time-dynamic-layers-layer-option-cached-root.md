@@ -2,7 +2,8 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
-amended by: ADR-0100
+summary: MapServer export reads time/timeRelation/layerTimeOptions, dynamicLayers and layerOption; cached-root fields follow the served scheme.
+amended-by: ADR-0100
 ---
 
 # ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty

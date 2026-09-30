@@ -1,6 +1,12 @@
-# ADR-0028: PostGIS provider contracts and data interchange
+---
+status: superseded
+date: 2026-08-31
+deciders: maintainer + agent
+summary: PostGIS provider contracts (`IDataCatalogue`/`IFeatureStore`/`ITransactionStore`)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0028: PostGIS provider contracts and data interchange
 
 ## Context
 

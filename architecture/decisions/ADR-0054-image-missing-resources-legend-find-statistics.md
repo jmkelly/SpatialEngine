@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: ImageServer missing resources: legend, find, statistics/histograms, attribute table, thumbnail/metadata.
 ---
 
 # ADR-0054: ImageServer missing resources — legend, find, statistics/histograms, attribute table, thumbnail/metadata

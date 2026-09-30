@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The group page and the `having` clause belong to the **reduction**, not the plan: `AggregateQuery` carries `Having`/`Limit`/`Offset` and `AggregatePage` carries `HasMore`, because a plan's cap would cut rows the store never grouped (ADR-0098 §7 as amended by SpatialEngine-u2x.9.2). The clause is the one predicate vocabulary over the *group row* — the group fields and the statistics' result names — so a store that implements the reduction face must answer both, with no second capability face; Postgres spells it as the dialect's own aggregate expression in the grouped statement's `HAVING`, before its `LIMIT` (amends 0098, 0115).
 amends: ADR-0098, ADR-0115
 ---
 

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-15
 deciders: maintainer + agent
+summary: Tiling schemes and the tile cache are pluggable SDK contracts; Web-Mercator + an in-memory LRU cache are the first implementations.
 ---
 
 # ADR-0046: Tiles use pluggable schemes over a pluggable cache

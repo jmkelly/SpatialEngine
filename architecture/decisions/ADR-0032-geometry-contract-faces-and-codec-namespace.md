@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-08-31
 deciders: quality-loop metrics gate (ADR-0028/0029 fan-in budget)
+summary: Geometry contract faces (`IPoint`…`IGeometryFactory`); `GeometryCodec` → `Core.Geometry.Codec`.
 consulted: core-boundary.md, geometry-model.md, AGENTS.md
 ---
 

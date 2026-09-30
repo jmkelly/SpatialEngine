@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-27
 deciders: maintainer + agent
+summary: Ingest honours a declared source CRS, reports what the decode did, and streams pages into one transaction.
 amends: ADR-0041
 ---
 

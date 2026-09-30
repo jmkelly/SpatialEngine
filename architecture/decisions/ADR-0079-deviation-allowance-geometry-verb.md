@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-09-27
 deciders: maintainer + agent
+summary: A deviation allowance is `IGeometryOperations.Generalize(geometry, maxDisplacement)`, its own verb rather than a simplify tolerance.
 ---
 
 # ADR-0079: A deviation allowance is its own geometry verb, not a simplify tolerance

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Authored metadata is XML on the publication and on the catalog item, and is served verbatim as `application/xml` at both levels.
 ---
 
 # ADR-0068: ImageServer authored metadata — service XML on the map, per-item XML on the catalog item

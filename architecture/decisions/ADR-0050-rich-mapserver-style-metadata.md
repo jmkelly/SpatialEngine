@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-16
 deciders: maintainer + agent
+summary: Rich MapServer renderers, labels and domains are an adapter projection of the persisted MapLibre style; §4.7 images are a typed `not.found`.
 ---
 
 # ADR-0050: Rich MapServer style metadata, labels and domains are an adapter projection

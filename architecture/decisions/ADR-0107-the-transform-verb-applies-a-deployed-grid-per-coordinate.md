@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: The transform verb applies a deployed NTv2 grid per coordinate — source geographic → grid → WGS 84 → target — over the classic Helmert (amends 0105).
 amends: ADR-0105
 ---
 

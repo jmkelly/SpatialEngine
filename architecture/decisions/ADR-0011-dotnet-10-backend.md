@@ -1,6 +1,11 @@
-# ADR-0011: .NET 10 is the initial backend and runtime
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: .NET 10 backend/runtime; boundaries stay core-typed.
+---
 
-Status: Accepted
+# ADR-0011: .NET 10 is the initial backend and runtime
 
 ## Context
 

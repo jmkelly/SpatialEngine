@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: `Feature.Id` is the identity column's value for every store that declares one, so a read by identity asks the key's own question.
 ---
 
 # ADR-0119: A store's `Feature.Id` is the identity column's value

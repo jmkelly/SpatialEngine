@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: A durable store's content version is a row in its own database — `spatial_dataset_version` per PostGIS schema, `spatial_dataset_versions` for SQL Server — bumped inside the write's own transaction and read fresh on every tile request, so a write invalidates the affected tiles on *every* host reading that database, not only the one that wrote; the read never issues DDL, so a dataset the engine never wrote reports the unversioned token and a read-only connection still answers.
 ---
 
 # ADR-0129: A durable store's content version is a row in its own database

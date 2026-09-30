@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-12
 deciders: maintainer + agent
+summary: Desktop (Tauri) packaging is abandoned; host + browser workbench are the product.
 ---
 
 # ADR-0039: Desktop (Tauri) packaging is abandoned

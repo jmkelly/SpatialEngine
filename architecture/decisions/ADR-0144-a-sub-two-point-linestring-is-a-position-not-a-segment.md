@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-10-01
 deciders: maintainer + agent
+summary: A **sub-2-point LineString is a position, not a segment**, so it is a valid value the render path does not reject (SpatialEngine-a74.2): the zero-coordinate one is the *empty* LineString and the one-coordinate one is neither empty nor a segment, and core states no minimum-coordinate rule because validation is a plugin verb (`IGeometryOperations.Validate`). A `line` layer strokes nothing for either (a lone `MoveTo` has no segment to cap), a `symbol` layer still labels the position the one-point one carries, the cull keeps a position in view, and the place stage **never hands one to the planar clip** — the clip bounds extent and a single position has none, so clipping it failed a whole render with an opaque `invalid.arguments` from an intersection nobody asked for. Rejecting the class at ingest stays open as its own decision (amends nothing; follows 0001, 0044, 0080).
 ---
 
 # ADR-0144: A sub-2-point LineString is a position, not a segment

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: The MapServer and per-feature read surfaces push what the store can answer and keep what it must: identify pushes only the query envelope's box, find pushes only the null test the case-insensitive search cannot be expressed as, generateRenderer asks the store for its minimum/maximum and its distinct set, the layer extent reads a geometry-only projection, and a per-feature target resolves through the identity face — keyed by the `OBJECTID` the row carries, so a store that keys `Feature.Id` differently misses and the scan decides rather than serving the wrong feature.
 ---
 
 # ADR-0112: The MapServer and per-feature read surfaces push what the store can answer, and the adapter keeps what it must

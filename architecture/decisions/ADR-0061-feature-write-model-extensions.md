@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Feature write-model extensions: service-level query, `generateRenderer` reuse, `validateSQL`, aggregation honesty, attachment store-model decision.
 ---
 
 # ADR-0061: Feature write-model extensions (service query, generateRenderer reuse, validateSQL, aggregation honesty, attachments)

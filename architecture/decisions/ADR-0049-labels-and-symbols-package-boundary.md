@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-16
 deciders: maintainer + agent
+summary: Labels/symbols shape with HarfBuzz over an embedded pinned font and draw embedded SVG sprites; deterministic collision; new Skia.HarfBuzz/Svg.Skia packages are allowlisted. Extended by 0080 (candidates, priority, line placement, the face registry and the marker set).
 ---
 
 # ADR-0049: Labels and symbols use bundled HarfBuzz shaping and an embedded SVG sprite registry

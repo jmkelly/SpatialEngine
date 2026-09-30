@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Raster rendering is a pipeline over Skia (vector) + NetVips (imagery); contracts in SDK, implementations by DI.
 ---
 
 # ADR-0044: Raster rendering is a pipeline over Skia (vector) and NetVips (imagery)

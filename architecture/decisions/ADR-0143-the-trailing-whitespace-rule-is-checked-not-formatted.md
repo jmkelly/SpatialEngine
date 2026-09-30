@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The `trim_trailing_whitespace` rule the `.editorconfig` claims for `[*]` is **checked by `tools/trailing_whitespace.py`, and every lane runs that check first** — a check and not a second formatter, because `dotnet format` enforces the rule on a line carrying code and silently ignores it on a comment-only line (measured: exit 2 against the first, exit 0 and nothing reported against the second), so the repository asserted a rule its gate enforced over a subset of the files and the rest was invisible to every lane. An analyzer is the better shape if the rule ever grows; it is not that here, because ADR-0109 measured a single project at ~25 s of formatter before it has read a file and a rule that costs two seconds belongs on the merge path. The check reads the rule's *scope* from `.editorconfig` and never the rule itself — `[*.md]` is load-bearing, since two trailing spaces in prose are a hard line break — reports `path:line: trailing whitespace (n characters)`, exits 1, changes no file and has no `--fix`.
 ---
 
 # ADR-0143: the trailing-whitespace rule is checked, not formatted

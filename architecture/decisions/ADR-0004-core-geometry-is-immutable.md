@@ -1,6 +1,11 @@
-# ADR-0004: Core geometry is immutable
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Core geometry values are immutable.
+---
 
-Status: Accepted
+# ADR-0004: Core geometry is immutable
 
 ## Context
 

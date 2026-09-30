@@ -1,6 +1,11 @@
-# ADR-0005: Third-party geometry types do not cross contracts
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Third-party types (NTS, Npgsql, EF, renderer) never cross public contracts.
+---
 
-Status: Accepted
+# ADR-0005: Third-party geometry types do not cross contracts
 
 ## Context
 

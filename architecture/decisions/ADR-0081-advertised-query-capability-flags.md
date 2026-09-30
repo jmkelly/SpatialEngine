@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: The layer metadata advertises the two remaining capability flags the served query surface earns (`supportsQuantization` and the advanced-query pair) and nothing else.
 ---
 
 # ADR-0081: Advertise the capability flags the served query surface earns

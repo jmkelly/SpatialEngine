@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: The aggregate vocabulary has an envelope: a reduction of a geometry field to the smallest rectangle over its non-null values, reported as an `AttributeKind.Envelope` value (a reduced kind no field may declare). A layer's extent and a `returnExtentOnly` query are that one store aggregate, and a reprojecting `outSR` keeps the match path, because the union of the reprojected geometries is not the reprojected union (amends 0112).
 ---
 
 # ADR-0120: An envelope statistic, so a layer's extent is reduced at the store

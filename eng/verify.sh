@@ -26,6 +26,13 @@
 #                            merge tool for.
 #   eng/verify.sh --plan     print the steps a lane would run, and run nothing
 #
+# Every lane then runs the doc gate — `tools/arch-index.py --check` over the
+# generated ADR register and index, plus a dangling `ADR-NNNN` citation read
+# (ADR-0141). It is a second or two, it is about the repository rather than
+# the change set, and it is the only step that fails on a decision record that
+# has drifted rather than on code. It is second because the trailing-whitespace
+# check below is cheaper than it and is subject to the same argument.
+#
 # The split exists because the flat gate costs ~25 minutes warm on a 12-core
 # box and the swarm runs it constantly. Almost all of that is overhead rather
 # than signal: `dotnet format` over the solution is ~30% of it, and the 22
@@ -102,7 +109,11 @@ for arg in "$@"; do
     --quick) LANE=default; LANE_NAMED=1 ;;
     --skip-tests=*) add_skip_patterns "${arg#--skip-tests=}" ;;
     --plan) PLAN_ONLY=1 ;;
-    -h|--help) sed -n '2,72p' "$0"; exit 0 ;;
+    # The whole header comment: every paragraph above `set -euo pipefail`, which
+    # on this tree is line 80. Both gates document themselves there, so a range
+    # that stops short of the last paragraph prints a usage block that omits
+    # the step a caller is about to be surprised by.
+    -h|--help) sed -n '2,80p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -301,10 +312,31 @@ whitespace_step() {
   fi
 }
 
+# --- the doc gate, on every lane -------------------------------------------
+# The ADR register and the ADR index are generated from the records themselves
+# (ADR-0141), so "is the documentation current" is a comparison rather than a
+# review: `tools/arch-index.py --check` regenerates them in memory and fails on
+# a record that is stale, a record in the retired metadata schema, or a
+# citation of an ADR that does not exist. It is seconds, it is about the
+# repository rather than the change set, and it runs in every lane — including
+# under `--plan`, which prints it and runs nothing.
+#
+# It is a function, not a block at the top of the file, so it can be the
+# SECOND step of every lane rather than the first: the trailing-whitespace
+# check above is the cheaper of the two and is first for the same reason it is
+# first at all (ADR-0143) — a violation found after an eleven-minute format
+# step is eleven minutes wasted. Both are repo checks that precede the
+# expensive part of any lane, and each lane calls them in that order.
+doc_gate() {
+  echo "== doc gate: ADR register, ADR index, ADR citations =="
+  step python3 tools/arch-index.py --check
+}
+
 # --- the format lane -------------------------------------------------------
 if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
   whitespace_step
+  doc_gate
   if [[ "$EXHAUSTIVE" == "1" ]]; then
     echo "the change set is unscoped against $BASE, so this is the whole solution"
   fi
@@ -320,6 +352,7 @@ fi
 # --- the full lane ---------------------------------------------------------
 if [[ "$LANE" == "full" ]]; then
   whitespace_step all
+  doc_gate
 
   echo "== format check =="
   # No --no-restore: a clean checkout has no project.assets.json yet, and the
@@ -344,6 +377,7 @@ fi
 # --- the default lane: the fast build gate --------------------------------
 echo "== fast build gate (base $BASE) =="
 whitespace_step
+doc_gate
 
 if [[ "$EXHAUSTIVE" == "1" ]]; then
   echo "== the change set is unscoped against $BASE: whole solution, every test =="

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-13
 deciders: maintainer + agent
+summary: An ephemeral, dictionary-backed in-memory provider keyed `memory` implements the writable engine faces, so ingest and publish need no database.
 ---
 
 # ADR-0042: An ephemeral writable in-memory provider enables database-free ingest and publish

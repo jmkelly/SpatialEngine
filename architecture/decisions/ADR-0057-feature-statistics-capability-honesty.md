@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Feature percentile statistics and capability-flag honesty (COUNT DISTINCT, percentile type, five advertised flags).
 ---
 
 # ADR-0057: Feature percentile statistics and capability-flag honesty

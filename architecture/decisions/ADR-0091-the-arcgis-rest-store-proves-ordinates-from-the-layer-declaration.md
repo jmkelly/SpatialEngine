@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: The ArcGIS REST store proves `hasZ`/`hasM` from the remote layer resource and asks the remote for exactly the ordinates the description declares.
 amends: ADR-0084
 ---
 

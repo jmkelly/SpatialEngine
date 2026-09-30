@@ -1,6 +1,12 @@
-# ADR-0026: Standard geometry operations are versioned capability contracts
+---
+status: superseded
+date: 2026-08-31
+deciders: maintainer + agent
+summary: Versioned geometry operation contracts (`IGeometryOperations`)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0026: Standard geometry operations are versioned capability contracts
 
 ## Context
 

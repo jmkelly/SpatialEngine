@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind rather than as text.
 ---
 
 # ADR-0097: A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind

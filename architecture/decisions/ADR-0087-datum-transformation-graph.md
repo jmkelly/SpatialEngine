@@ -1,6 +1,11 @@
-# ADR-0087: Datum transformations are values, and `findTransformations` is a search
+---
+status: accepted
+date: 2026-09-28
+deciders: maintainer + agent
+summary: Datum transformations are contract values with area of use, accuracy and parameters; `findTransformations` is a ranked, area-filtered search and `project` accepts the operation it applies.
+---
 
-Status: Accepted
+# ADR-0087: Datum transformations are values, and `findTransformations` is a search
 
 ## Context
 

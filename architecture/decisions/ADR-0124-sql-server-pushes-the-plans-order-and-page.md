@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: SQL Server compiles an ordered capped plan into one statement: `ORDER BY … OFFSET/FETCH NEXT`, a `COUNT(*)` for the total, and a store-issued cursor.
 amends: ADR-0116, ADR-0121
 ---
 

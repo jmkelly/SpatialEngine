@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: The adapter serves attachments on `IFeatureAttachmentStore`: `hasAttachments` is advertised only by a capable store, and the three writes sit behind the admin token.
 ---
 
 # ADR-0066: Feature attachments are served on the attachment-store capability

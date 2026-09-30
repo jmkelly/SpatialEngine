@@ -1,6 +1,11 @@
-# ADR-0014: React, TypeScript and MapLibre form the first frontend
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: React + TypeScript + MapLibre frontend; talks only to the public host API.
+---
 
-Status: Accepted
+# ADR-0014: React, TypeScript and MapLibre form the first frontend
 
 ## Context
 

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-27
 deciders: maintainer + agent
+summary: A store may report a per-dataset content version (`IVersionedFeatureStore`); every tile cache key (raster and MVT) folds it in, so a write invalidates the tiles derived from that data with no manual flush.
 ---
 
 # ADR-0083: The tile cache key carries the data version
