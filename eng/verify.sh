@@ -48,6 +48,17 @@
 #     project reaches main and is caught by CI on `main` (or by the next
 #     branch that touches it), not before this merge.
 #
+# Every lane that runs `dotnet test` also reads the per-suite skip counts back
+# out of the trx files and fails a suite that skipped most of what it was asked
+# to run (`tools/skip_gate.py`, SpatialEngine-8lj). `dotnet test` exits 0 on a
+# run in which nothing failed, and a container-backed suite turns "the Docker
+# daemon was not there" into `Skip.IfNot(_fixture.DockerAvailable, …)`, so
+# contention under parallel worktrees used to merge as a green gate with a
+# hundred skipped cases in it. The thresholds are `VERIFY_SKIP_RATIO` (0.5) and
+# `VERIFY_MIN_SKIPPED` (10), so a handful of genuinely conditional cases in a
+# large suite is still a pass, and a suite absent because `--skip-tests` dropped
+# it is out of the count rather than judged.
+#
 # Because the bare name now means the fast lane, CI=true selects --full unless
 # a lane is named on the command line: a workflow that calls a bare
 # `eng/verify.sh` must not silently become the scoped lane. The merge tool
@@ -86,7 +97,7 @@ for arg in "$@"; do
     --quick) LANE=default; LANE_NAMED=1 ;;
     --skip-tests=*) add_skip_patterns "${arg#--skip-tests=}" ;;
     --plan) PLAN_ONLY=1 ;;
-    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,61p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -195,7 +206,29 @@ fi
 # from the plan above. A stale one left in the repository root is a gate that
 # silently keeps building yesterday's change set, so it goes on the way out.
 SCOPED_SOLUTION=".verify-scoped.slnx"
-trap 'rm -f "$SCOPED_SOLUTION"' EXIT
+# The trx files `dotnet test --logger trx` writes, read afterwards by
+# tools/skip_gate.py. A suite that skipped most of what it was asked to run
+# exits 0 — a container-backed suite turns "Docker was not there" into
+# `Skip.IfNot(_fixture.DockerAvailable, …)` — and a gate that reads the exit
+# code alone merges that as green (SpatialEngine-8lj). The directory goes on the
+# way out with the scoped solution, for the same reason: a stale one is a stale
+# run's numbers being judged.
+TEST_RESULTS=".verify-test-results"
+trap 'rm -f "$SCOPED_SOLUTION"; rm -rf "$TEST_RESULTS"' EXIT
+rm -rf "$TEST_RESULTS"
+
+# The test invocation, with the results the skip gate reads. Per suite, not per
+# run: the numbers a mass-skip is read off are the ones in a suite's own trx.
+TEST_LOGGER=(--logger trx --results-directory "$TEST_RESULTS")
+
+# How many test projects a whole-solution run was asked to run, which is the
+# skip gate's `--expect`. The two CI lanes are disjoint and together are every
+# test project in the solution, so this is their sum rather than a second list
+# kept here. Called only on the lanes that run the whole solution.
+test_projects_in_the_solution() {
+  { python3 tools/verify_scope.py --list lane --lane unit
+    python3 tools/verify_scope.py --list lane --lane integration; } | grep -c .
+}
 
 # The union of what to build and what to test: `dotnet test` ignores the
 # non-test projects, so one file serves both steps and neither can drift from
@@ -253,7 +286,9 @@ if [[ "$LANE" == "full" ]]; then
   step dotnet build SpatialEngine.slnx
 
   echo "== tests =="
-  step dotnet test SpatialEngine.slnx --no-build
+  step dotnet test SpatialEngine.slnx --no-build "${TEST_LOGGER[@]}"
+  step python3 tools/skip_gate.py --results-dir "$TEST_RESULTS" \
+    --expect "$(test_projects_in_the_solution)"
 
   echo "== tooling tests =="
   # The repo also carries Python tooling (tools/). This lane runs its unit
@@ -270,7 +305,9 @@ if [[ "$EXHAUSTIVE" == "1" ]]; then
   # The build restores implicitly; a separate `dotnet restore` in front of it is
   # the 65 seconds the flat gate never spent on a second pass.
   step dotnet build SpatialEngine.slnx
-  step dotnet test SpatialEngine.slnx --no-build
+  step dotnet test SpatialEngine.slnx --no-build "${TEST_LOGGER[@]}"
+  step python3 tools/skip_gate.py --results-dir "$TEST_RESULTS" \
+    --expect "$(test_projects_in_the_solution)"
   step python3 -m unittest discover --start-directory tools --pattern 'test_*.py'
   exit 0
 fi
@@ -290,7 +327,15 @@ echo "== tests that reach the change (${#TEST_PROJECTS[@]} project(s)) =="
 # here instead of once per suite. Non-test projects in the solution are ignored
 # by `dotnet test`, so the build list doubles as the test list.
 if [[ "${#TEST_PROJECTS[@]}" != "0" ]]; then
-  step dotnet test "$SCOPED_SOLUTION" --no-build
+  step dotnet test "$SCOPED_SOLUTION" --no-build "${TEST_LOGGER[@]}"
+  # The same read on the same files the merge gate reads: a suite in this run's
+  # scope that skipped most of itself is a red lane, not a green one with
+  # caveats. `--expect` is the number of suites the run was asked to run, so a
+  # suite whose result file went missing is caught too (SpatialEngine-8lj).
+  step python3 tools/skip_gate.py --results-dir "$TEST_RESULTS" \
+    --expect "${#TEST_PROJECTS[@]}"
+else
+  echo "== no test project reached the change, so there are no skips to read =="
 fi
 
 if [[ "$RUN_TOOLING" == "1" ]]; then
