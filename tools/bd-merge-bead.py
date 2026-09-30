@@ -25,19 +25,28 @@ pass before `bd close` runs. Everything upstream of that (fetch, rebase onto
 `origin/main`, verify, merge, push) is in this tool too, so the step a
 coordinator performs is the step that is checked.
 
-The verify step names `--full`, and that is the second half of the gate
-(SpatialEngine-u2x.51). ADR-0118 made a bare `eng/verify.sh` the *build* gate
-— minutes, scoped to what the branch touched — and made `eng/verify.sh --full`
-the merge gate. Invoking the bare script here would have made the swarm's merge
-tool publish and close work on a build-gate green, which is the loss this tool
-exists to stop, reintroduced through the tool that claims to prevent it. It is
-run on the rebased branch, which is what has to be green.
+The verify step runs `eng/verify.sh --fast` — the scoped build gate: a build of
+the projects the change reaches and the tests that reach it. That is the merge
+gate under ADR-0134, which amended ADR-0118's rule that the merge runs `--full`.
+`--full` costs 15–25 minutes per merge and the swarm merges hundreds of times a
+day, so it was the price of every merge rather than a signal; CI on `main` and
+an occasional `--bead --full` still run the exhaustive gate, and `--verified`
+still lets an operator declare one they ran by hand.
+
+What this tool keeps, because it costs seconds and it is the loss this tool
+exists to prevent: the fetch before the rebase, the refusal to merge into an
+unpublished local `main`, the red-gate abort before any merge, the publish gate,
+and the ancestor check that has to pass before `bd close` runs. ADR-0118's
+warning still stands for any *other* reader of these commands: under it a bare
+`eng/verify.sh` is the build gate, so the lane is always named here — never
+bare, and `--fast` rather than `--full` because the merge gate is the scoped
+lane.
 
 Deliberate refusals, because a gate that can be talked past is not a gate:
 
-  * a **red** `eng/verify.sh --full` aborts before the merge;
-  * an **interrupted** `--full` lane aborts the same way — a cancelled 20-minute
-    run is not a gate, and the tool merges nothing on its way out;
+  * a **red** verify lane aborts before the merge;
+  * an **interrupted** lane aborts the same way — a cancelled run is not a gate
+    result, and the tool merges nothing on its way out;
   * a **rebase conflict** aborts (the runbook escalates a non-trivial one);
   * a **local `main` that `origin/main` does not have** aborts: merging into an
     unpublished `main` is how the queue drifts, so publish it first with
@@ -47,9 +56,14 @@ Deliberate refusals, because a gate that can be talked past is not a gate:
     `main` for a human, which is recoverable; a closed bead on an unpushed
     branch is not.
 
-`--full-verified` declares that the operator already ran `eng/verify.sh --full`
+`--full` runs the exhaustive lane instead of the fast one, for a change broad
+enough to doubt the scoping. `--skip-tests <substring>` (repeatable) leaves a
+named suite to CI on this merge — the container-backed suites cost minutes each
+and CI runs them on `main` regardless — and writes that into the `bd close`
+reason, so a merge that leaned on CI says so in the record. `--verified` (spelled
+`--full-verified` in older runs) declares that the operator already ran the lane
 green on this rebased commit — the re-run after a failed push, which would
-otherwise pay the full lane twice for one merge. It skips the run and nothing
+otherwise pay for the gate twice for one merge. It skips the run and nothing
 else: the publish gate, the ancestor check and the close all still apply, and
 the fact is recorded in the reason `bd close` writes.
 """
@@ -69,9 +83,13 @@ PUBLISHED_REF = "origin/main"
 
 LOCAL_REF = "main"
 
-# The merge gate's verify lane. `eng/verify.sh` with no arguments is the build
-# gate under ADR-0118, so a bare invocation here would under-run the gate this
-# tool exists to enforce.
+# The merge gate's verify lane: the scoped build gate, named so a runner's
+# CI=true cannot quietly promote a merge to the 20-minute `--full` (ADR-0134).
+# `eng/verify.sh` with no arguments is the same lane; naming it is what keeps
+# ADR-0118's CI clause from deciding what a merge costs.
+FAST_LANE = "--fast"
+
+# The exhaustive lane, for `--bead --full` and for the operator's own runs.
 FULL_LANE = "--full"
 
 # An interrupted long run is not a gate result: 130 is what a shell reports for
@@ -274,11 +292,12 @@ def audit(run, emit, cwd=None):
     return 0
 
 
-def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=True,
-               allow_lease=False, cwd=None):
+def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=False,
+               allow_lease=False, skipped_lane=False, skip_tests=(), cwd=None):
     """`--bead <id>`: the whole merge step, ending in a justified close."""
     branch = branch or f"bd/{bead_id}"
     tree = worktree_for_branch(run, branch, cwd) or cwd
+    lane = FULL_LANE if full_lane else FAST_LANE
     if tree != cwd:
         emit(f"rebasing and verifying in the bead's worktree {tree}")
     try:
@@ -300,12 +319,15 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=True,
             f"git rebase {PUBLISHED_REF} {branch} "
             f"(conflict: escalate, do not resolve silently)", tree)
 
-        if full_lane:
-            _ok(run, [str(Path(tree) / "eng" / "verify.sh"), FULL_LANE],
-               "eng/verify.sh --full (red gate: the bead stays open)", tree)
+        if skipped_lane:
+            emit(f"skipping the gate: eng/verify.sh {lane} was declared "
+                 f"green on this rebased commit (--verified)")
         else:
-            emit("skipping the full lane: eng/verify.sh --full was declared "
-                 "green on this rebased commit (--full-verified)")
+            emit(f"verifying the rebased branch: eng/verify.sh {lane}")
+            verify = [str(Path(tree) / "eng" / "verify.sh"), lane]
+            verify += [f"--skip-tests={pattern}" for pattern in skip_tests]
+            _ok(run, verify,
+               f"eng/verify.sh {lane} (red gate: the bead stays open)", tree)
 
         subject = _ok(run, ["git", "log", "-1", "--format=%s", branch],
                       "git log", cwd).stdout.strip() or bead_id
@@ -336,9 +358,9 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=True,
                  f"ancestor of {PUBLISHED_REF}. The bead stays open.")
             return 1
     except KeyboardInterrupt:
-        # A cancelled 20-minute lane is not a green one. Say so, merge nothing,
+        # A cancelled verify lane is not a green one. Say so, merge nothing,
         # close nothing, and let the branch stand for a re-run.
-        emit(f"{bead_id} not merged: eng/verify.sh {FULL_LANE} was interrupted "
+        emit(f"{bead_id} not merged: eng/verify.sh was interrupted "
              f"(Ctrl-C), which is not a gate result. The bead stays open; "
              f"re-run this command.")
         return CANCELLED
@@ -348,9 +370,12 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=True,
 
     run(["bd", "label", "remove", "needs-merge", bead_id], cwd=cwd)
     close_reason = reason or f"merged and published as {merge_sha[:7]}"
-    if not full_lane:
-        close_reason += (f"; eng/verify.sh {FULL_LANE} declared green on the "
-                         f"rebased commit by the operator")
+    close_reason += f"; eng/verify.sh {lane} green on the rebased commit"
+    if skip_tests:
+        close_reason += (f"; CI-covered suites skipped by name "
+                         f"({', '.join(skip_tests)}) and caught on main instead")
+    if skipped_lane:
+        close_reason += " (declared green by the operator, not run here)"
     close = run(["bd", "close", bead_id, "--reason", close_reason], cwd=cwd)
     if close.returncode != 0:
         emit(f"work is published but closing {bead_id} failed: "
@@ -383,11 +408,25 @@ def main(argv=None, run=None, out=None, cwd=None):
     parser.add_argument("--allow-lease", action="store_true",
                         help="permit a force-with-lease push when rebasing "
                              "a branch that was already merged")
-    parser.add_argument("--full-verified", action="store_true",
-                        help="skip the eng/verify.sh --full run because it was "
-                             "already green on this rebased commit (a re-run "
-                             "after a failed push); the publish gate and the "
-                             "close still apply")
+    parser.add_argument("--full", action="store_true",
+                        help="gate the merge on the exhaustive lane "
+                             "(eng/verify.sh --full, 15-25 min) instead of the "
+                             "fast scoped one; for a change broad enough to "
+                             "doubt the scoping")
+    parser.add_argument("--skip-tests", metavar="SUBSTRING", action="append",
+                        default=[],
+                        help="do not run the test projects whose path contains "
+                             "SUBSTRING on this merge; repeatable. For the "
+                             "container-backed suites, which cost minutes each "
+                             "and are covered by CI on main either way. "
+                             "Recorded in the close reason, so a merge that "
+                             "leaned on CI says so")
+    parser.add_argument("--verified", "--full-verified", dest="verified",
+                        action="store_true",
+                        help="skip the verify lane because it was already "
+                             "green on this rebased commit (a re-run after a "
+                             "failed push); the publish gate and the close "
+                             "still apply")
     args = parser.parse_args(argv)
 
     if args.check:
@@ -399,8 +438,10 @@ def main(argv=None, run=None, out=None, cwd=None):
     if not args.bead:
         parser.error("nothing to do: pass --bead, --check, --publish or --audit")
     return merge_bead(run, emit, args.bead, branch=args.branch,
-                      reason=args.reason, full_lane=not args.full_verified,
-                      allow_lease=args.allow_lease, cwd=cwd)
+                      reason=args.reason, full_lane=args.full,
+                      allow_lease=args.allow_lease,
+                      skipped_lane=args.verified,
+                      skip_tests=tuple(args.skip_tests), cwd=cwd)
 
 
 if __name__ == "__main__":

@@ -75,8 +75,8 @@ cat <<'GUIDE'
   ADRs win on conflict                    -> architecture/decisions/
 
 == before done ==
-  eng/verify.sh                 # build gate: build + the tests the change reaches
-  eng/verify.sh --format        # format check, scoped to the changed projects
+  eng/verify.sh                 # fast gate: build what the change reaches + its tests
+  eng/verify.sh --format        # format check, scoped — occasionally, and CI's job (ADR-0134)
   eng/verify.sh --full          # format + build + every test (what CI runs)
   eng/cli-e2e.sh                # if the HTTP surface or CLI changed
   quality-loop skill            # CRAP < 10, branch coverage >= 70%

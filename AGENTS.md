@@ -23,26 +23,30 @@ interop surface.
 
 ## Commands
 
-- `eng/verify.sh` — the **build gate**, and the default: build the solution,
-  then the test projects that reach what this branch changed over
-  `ProjectReference`, plus `Spatial.Architecture.Tests` (and the python tooling
-  tests when `tools/**` changed). Minutes rather than a quarter of an hour, and
-  what every agent runs while iterating.
-- `eng/verify.sh --format` — `dotnet format --verify-no-changes` scoped to the
-  projects owning the changed files (~45 s each, against ~700 s for the whole
-  solution). A pre-handoff step: run it before handing a bead off.
-- `eng/verify.sh --full` — the **full gate**: format over the whole solution,
-  build, every test project, the python tooling tests. This is the **merge
-  gate**, and it is not an agent's step: the coordinator runs it on the
-  rebased branch before a merge, and CI runs it on every pull request and again
-  on `main` after the merge, so a formatting violation is caught by the merge
-  rather than by an agent's inner loop. `main` has no branch protection and its
-  CI is red today, so the coordinator's run is what currently enforces it
-  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). Run it locally when a
-  change needs the whole thing before it goes near a PR.
-  `eng/verify.sh --plan` prints what a lane would run and runs nothing.
+- `eng/verify.sh` — the **fast gate**, and the default: builds the projects
+  this branch's change reaches (a generated scoped solution, not all fifty) and
+  runs the test projects that reach it over `ProjectReference`, plus
+  `Spatial.Architecture.Tests` (and the python tooling tests when `tools/**`
+  changed). Minutes rather than a quarter of an hour, and it is the lane the
+  merge tool runs (ADR-0134).
+- `eng/verify.sh --full` — the **exhaustive gate**: format over the whole
+  solution, build, every test project, the python tooling tests. Opt in per
+  merge (`bd-merge-bead.py --bead <id> --full`) when a change is broad enough to
+  doubt the scoping; CI runs it on every pull request and again on `main` after
+  the merge. It is not an agent's step and not a hand-off step
+  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4; ADR-0134).
+- `eng/verify.sh --format` — the format lane, `dotnet format
+  --verify-no-changes` scoped to the projects owning the changed files (~45 s
+  each, against ~700 s for the whole solution). Deliberately off the merge
+  path: formatting is enforced by CI and by an occasional run rather than paid
+  for hundreds of times a day (ADR-0134), so it is not a hand-off step.
+- `eng/verify.sh --fast` — the same as no arguments, named so `CI=true`
+  cannot promote a merge to the exhaustive lane. `--skip-tests <substring>`
+  (repeatable, or `VERIFY_SKIP_TESTS`) leaves a named suite to CI on one run;
+  it prints what it dropped and cannot drop `Spatial.Architecture.Tests`.
+- `eng/verify.sh --plan` prints what a lane would run and runs nothing.
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
-  bare script gets the gate rather than the build gate (ADR-0118).
+  bare script gets the exhaustive gate rather than the fast one (ADR-0118).
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
@@ -59,25 +63,29 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 - Capture: `bd create --title="…" --description="…" --priority 2 -l <area>`
 - Pick: `bd ready` then `bd update <id> --claim` — never start unclaimed work.
 - Hand off: label the bead `needs-merge` with the commit and PR in `--notes`,
-  after `eng/verify.sh` and `eng/verify.sh --format` are green on the branch.
-  That is the agent's whole step — `--full` is the merge gate, not an
-  agent's step.
+  after `eng/verify.sh` is green on the branch. Formatting is not a hand-off
+  step any more and `--full` never was; CI and an occasional
+  `--bead <id> --full` cover what a scoped run does not (ADR-0134).
 - Merge and complete: `python3 tools/bd-merge-bead.py --bead <id>` — never a
   hand-rolled `git merge` + `bd close`. It fetches, rebases onto `origin/main`,
-  runs the full lane (`eng/verify.sh --full`) on the rebased branch, merges,
+  runs the fast gate (`eng/verify.sh --fast`) on the rebased branch, merges,
   **pushes**, and only then closes, and only after
   `git merge-base --is-ancestor <merge> origin/main` passes. A green
   `eng/verify.sh` on the *branch* is not a close gate: a branch is not what the
   next worker starts from, a merge left unpushed makes `origin/main` — the
   base every worktree is branched off — miss work that is already merged, and
-  under ADR-0118 the bare `eng/verify.sh` is the build gate, so the merge gate
-  names `--full` explicitly (SpatialEngine-xbz, SpatialEngine-u2x.51).
+  the merge gate names its lane explicitly so a runner's `CI=true` cannot turn a
+  three-minute merge into a twenty-minute one (ADR-0118, as amended by
+  ADR-0134; SpatialEngine-xbz, SpatialEngine-u2x.51).
+  `--bead <id> --full` gates that one merge on the exhaustive lane instead,
+  and `--skip-tests <substring>` leaves a named suite to CI on that merge — it
+  prints what it dropped and writes it into the close reason.
   `--check` is the top-of-tick gate (is `main` published?),
   `--publish` pushes it, and `--audit` finds closed beads whose work never
   reached `origin/main`.
-- Complete: `bd close <id> --reason="…"` — only after the full lane
-  (`eng/verify.sh --full`) is green on `main`, never on the branch. The default
-  lane is never the only thing that ran.
+- Complete: `bd close <id> --reason="…"` — only after CI's run for that merge
+  is green on `main`, never on the branch. The fast gate is never the only
+  thing that ran.
 - Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
   expires — never bare `bd reclaim`. `bd reclaim` keys on lease age alone and a
   long-running worker does not heartbeat, so an expired lease only means "this

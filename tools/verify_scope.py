@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Work out what `eng/verify.sh --quick` has to run for the current branch.
+"""Work out what `eng/verify.sh --fast` has to run for the current branch.
 
     python3 tools/verify_scope.py --list format     # projects to format
+    python3 tools/verify_scope.py --list build      # projects to build
     python3 tools/verify_scope.py --list tests      # test projects to run
     python3 tools/verify_scope.py --list tooling    # 1 if the python tests run
     python3 tools/verify_scope.py --list lane --lane unit
@@ -11,13 +12,22 @@
 The full gate is one flat run: format over the whole solution, build the whole
 solution, test all 55 projects, run the python tooling tests. Measured warm on a
 12-core box that is ~25 minutes, and agents run it constantly, so almost all of
-the cost is overhead rather than signal. The quick lane keeps the same gate for
+the cost is overhead rather than signal. The fast lane keeps the same gate for
 the work a change can actually affect:
 
+* **build only what the change reaches**, not the whole solution. MSBuild's
+  cost here is loading and evaluating every project, not compiling: a warm
+  no-op `dotnet build SpatialEngine.slnx` measured 1 m 07 s on the swarm's
+  12-core host while a scoped build of three projects measured 8 s, and a single
+  leaf project 9 s. `build` is the changed projects themselves *and* the test
+  projects, so a project nothing references still compiles — a lane that only
+  ran tests would never compile it;
 * format only the projects that own a changed file — `dotnet format` on the
   whole solution is ~30% of the full gate, and almost none of it is analyzers
   (`--diagnostics IDE0055` over the solution is no faster than the default);
-  what costs is loading every project through MSBuild, which is per project;
+  what costs is loading every project through MSBuild, which is per project.
+  Formatting is not on the merge path at all (ADR-0134); this list is the
+  occasional `--format` lane;
 * run only the test projects that reference a changed project, walked over the
   `ProjectReference` graph, so a change to `Spatial.Core` still runs the tests
   that reach it through two hops and a change to `Spatial.Maps` does not run
@@ -90,6 +100,11 @@ class Project:
     name: str
     is_test: bool
     references: tuple[str, ...]
+    #: Whether the solution lists it. A project the solution omits but another
+    #: project references — `Spatial.Cli` and `Spatial.Client` under
+    #: `clients/dotnet` — is still in the graph, so a change to it is scoped,
+    #: but it is not one of the solution's projects for the CI lanes.
+    in_solution: bool = True
 
     @property
     def directory(self) -> str:
@@ -149,6 +164,10 @@ class Plan:
     base: str
     changed_files: tuple[str, ...]
     format_projects: tuple[str, ...]
+    #: What a scoped build has to compile: the changed projects themselves plus
+    #: every test project that reaches them. Testing without this would skip
+    #: the compile of a project no test references.
+    build_projects: tuple[str, ...]
     test_projects: tuple[str, ...]
     run_python_tooling: bool
     #: True when the change set could not be determined, so the caller must run
@@ -185,24 +204,46 @@ def load_repository(root: Path) -> Repository:
                          if not IGNORED_DIR_NAMES & set(p.parts)]
 
     projects: list[Project] = []
-    for project_file in sorted(project_files):
-        if not project_file.exists():
-            continue
-        tree = ET.parse(project_file)
+    seen: set[Path] = set()
+
+    def add(project_file: Path, in_solution: bool) -> None:
+        """Read one project, and follow its references to a fixpoint.
+
+        A project the solution does not list is still part of what a change can
+        reach: `Spatial.Host.Tests` references `Spatial.Cli`, so a change to the
+        CLI has to select the host suite, and without the reference closed the
+        edge points at nothing and the change scopes to no tests at all.
+        """
+        resolved = project_file.resolve()
+        if resolved in seen or not resolved.exists():
+            return
+        seen.add(resolved)
+        tree = ET.parse(resolved)
         is_test = tree.find(".//IsTestProject") is not None
         references = []
         for node in tree.iter("ProjectReference"):
             include = node.get("Include")
             if not include:
                 continue
-            target = (project_file.parent / include).resolve()
+            # MSBuild accepts either separator and every project in this
+            # repository writes Windows ones, so they are normalised here: a
+            # reference read as `..\..\src\Spatial.Core\...` on Linux is a
+            # single unresolvable filename, and the reference graph then
+            # silently contains no edges — every project reaches nothing, and
+            # the scoped lane runs no tests at all and reports success.
+            target = (resolved.parent / include.replace("\\", "/")).resolve()
             references.append(_relative(target, root))
+            add(target, False)
         projects.append(Project(
-            path=_relative(project_file, root),
-            name=project_file.stem,
+            path=_relative(resolved, root),
+            name=resolved.stem,
             is_test=is_test,
             references=tuple(sorted(references)),
+            in_solution=in_solution,
         ))
+
+    for project_file in sorted(project_files):
+        add(project_file, True)
     return Repository(root=root, projects=tuple(projects))
 
 
@@ -260,17 +301,30 @@ def plan_quick(repository: Repository, base: str) -> Plan:
     files, ok = changed_files(repository.root, base)
     if not ok:
         return Plan(base=base, changed_files=(), format_projects=(),
-                    test_projects=(), run_python_tooling=True, exhaustive=True)
+                    build_projects=(), test_projects=(), run_python_tooling=True,
+                    exhaustive=True)
+    return plan_for_files(repository, files, base)
 
+
+def plan_for_files(repository: Repository, files, base: str = "<given>") -> Plan:
+    """The plan for a known change set, with no git in the way.
+
+    Split out so the mapping is testable against a stated set of files rather
+    than against whatever a working tree happens to hold.
+    """
+    files = frozenset(files)
     if any(_is_solution_wide(f) for f in files):
         return Plan(base=base, changed_files=tuple(sorted(files)),
-                    format_projects=(), test_projects=(),
+                    format_projects=(), build_projects=(), test_projects=(),
                     run_python_tooling=True, exhaustive=True)
 
     formattable = {f for f in files
                    if Path(f).suffix in FORMATTABLE_SUFFIXES}
     format_projects = sorted(repository.owning_projects(formattable))
-    changed_projects = repository.owning_projects(formattable)
+    # Every changed file, not only the formattable ones: a `.json` fixture or a
+    # `.resx` beside a project belongs to that project and has to select its
+    # tests, or the scoped build compiles a stale copy of it.
+    changed_projects = repository.owning_projects(files)
 
     reachable = repository.dependents_of(changed_projects)
     test_projects = {p.path for p in repository.projects
@@ -283,6 +337,7 @@ def plan_quick(repository: Repository, base: str) -> Plan:
         base=base,
         changed_files=tuple(sorted(files)),
         format_projects=tuple(format_projects),
+        build_projects=tuple(sorted(changed_projects | test_projects)),
         test_projects=tuple(sorted(test_projects)),
         run_python_tooling=any(f.startswith(TOOLING_PREFIX) for f in files),
         exhaustive=False,
@@ -293,11 +348,14 @@ def lane_projects(repository: Repository, lane: str) -> tuple[str, ...]:
     """The test projects one CI lane runs.
 
     The two lanes are disjoint and together are every test project in the
-    solution, so splitting the run across jobs loses no signal.
+    solution, so splitting the run across jobs loses no signal. A project the
+    solution does not list is not in either: this is the set CI was already
+    running, and adding suites to it is a change to CI rather than to a lane.
     """
     if lane not in LANES:
         raise ValueError(f"unknown lane {lane!r}; expected one of {LANES}")
-    test_projects = sorted(p.path for p in repository.projects if p.is_test)
+    test_projects = sorted(p.path for p in repository.projects
+                           if p.is_test and p.in_solution)
     if lane == "integration":
         return tuple(p for p in test_projects
                      if p.startswith(INTEGRATION_FOLDER) or p in INTEGRATION_PROJECTS)
@@ -311,7 +369,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="repository root (default: the checkout holding this script)")
     parser.add_argument("--base", default="origin/main",
                         help="the ref the quick lane diffs against (default: origin/main)")
-    parser.add_argument("--list", choices=["format", "tests", "tooling", "plan", "lane"],
+    parser.add_argument("--list", choices=["format", "build", "tests", "tooling",
+                                           "plan", "lane"],
                         required=True, help="what to print")
     parser.add_argument("--lane", choices=LANES,
                         help="which CI lane to list (with '--list lane')")
@@ -339,6 +398,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"exhaustive:{1 if plan.exhaustive else 0}")
         for path in plan.format_projects:
             print(f"format:{path}")
+        print(f"guard:{ARCHITECTURE_PROJECT}")
+        for path in plan.build_projects:
+            print(f"build:{path}")
         for path in plan.test_projects:
             print(f"tests:{path}")
         print(f"tooling:{1 if plan.run_python_tooling else 0}")
@@ -346,6 +408,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.list == "format":
         for path in plan.format_projects:
+            print(path)
+    elif args.list == "build":
+        for path in plan.build_projects:
             print(path)
     elif args.list == "tests":
         for path in plan.test_projects:
@@ -360,6 +425,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"changed files:   {len(plan.changed_files)}")
             for path in plan.format_projects:
                 print(f"format:          {path}")
+            for path in plan.build_projects:
+                print(f"build:           {path}")
             for path in plan.test_projects:
                 print(f"test:            {path}")
             print(f"python tooling:  {'yes' if plan.run_python_tooling else 'no'}")
