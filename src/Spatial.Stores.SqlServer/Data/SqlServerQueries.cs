@@ -153,8 +153,17 @@ internal static class SqlServerQueries
     /// Creates the result table from a defining batch's schema. SQL Server
     /// spatial columns carry no typmod, so the SRID is recorded in the
     /// provider's dataset metadata rather than in the definition.
+    /// <para>
+    /// <paramref name="identityColumn"/> is the engine's own key (ADR-0147),
+    /// declared when — and only when — a spatial index is going to be built on
+    /// this table: SQL Server grids rows in clustering order, so a table it
+    /// cannot cluster cannot be gridded. A database-assigned
+    /// <c>bigint IDENTITY</c> is the cheapest thing that can be clustered on
+    /// and one nothing has to supply, and an appended batch names only the
+    /// columns it carries, so a client never sees it.
+    /// </para>
     /// </summary>
-    public static string CreateTable(SqlServerDatasetName dataset, IFeatureSchema schema)
+    public static string CreateTable(SqlServerDatasetName dataset, IFeatureSchema schema, string? identityColumn = null)
     {
         var builder = new StringBuilder($"CREATE TABLE {dataset.QuoteQualified()} (");
         for (var i = 0; i < schema.Count; i++)
@@ -168,6 +177,15 @@ internal static class SqlServerQueries
             builder.Append(SqlServerIdentifier.Quote(field.Name))
                 .Append(' ')
                 .Append(SqlServerTypeMapping.SqlType(field.Kind));
+        }
+
+        if (identityColumn is not null)
+        {
+            builder.Append(", ")
+                .Append(SqlServerIdentifier.Quote(identityColumn))
+                .Append(" bigint IDENTITY(1,1) NOT NULL CONSTRAINT ")
+                .Append(SqlServerIdentifier.Quote(EngineKeyConstraint(dataset)))
+                .Append(" PRIMARY KEY");
         }
 
         return builder.Append(')').ToString();
@@ -328,24 +346,49 @@ internal static class SqlServerQueries
             + " ORDER BY s.name, t.name";
     }
 
-    /// <summary>Column metadata for one table (name, type, nullability, ordinal).</summary>
+    /// <summary>
+    /// The name of the primary key constraint the create path declares on a
+    /// table it created, on the engine's own key (ADR-0147): derived from the
+    /// table, because a constraint name is unique per schema, and the name the
+    /// two schema reads below leave the key out by. Not a value any caller
+    /// supplies — an operator who wants to see it can ask the server for the
+    /// key constraints of a table, and the name says whose it is.
+    /// </summary>
+    public static string EngineKeyConstraint(SqlServerDatasetName dataset) =>
+        SqlServerEngineKey.Constraint(dataset);
+
+    /// <summary>
+    /// Column metadata for one table (name, type, nullability, ordinal). A
+    /// column the engine's own key is declared on is left out (ADR-0147): the
+    /// key exists to let the server grid the table, and the dataset a client
+    /// sees is the one the create call described.
+    /// </summary>
     public static string ColumnsMetadata() =>
         "SELECT c.name, TYPE_NAME(c.user_type_id), c.is_nullable, c.column_id "
         + "FROM sys.columns c "
         + "JOIN sys.tables t ON t.object_id = c.object_id "
         + "JOIN sys.schemas s ON s.schema_id = t.schema_id "
         + "WHERE s.name = @p0 AND t.name = @p1 "
+        + "AND NOT EXISTS (SELECT 1 FROM sys.key_constraints kc "
+        + "JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id "
+        + "JOIN sys.columns k ON k.object_id = ic.object_id AND k.column_id = ic.column_id "
+        + "WHERE kc.parent_object_id = c.object_id AND kc.name = @p2 AND k.column_id = c.column_id) "
         + "ORDER BY c.column_id";
 
-    /// <summary>Primary-key column names for one table, in key order.</summary>
+    /// <summary>
+    /// Primary-key column names for one table, in key order, minus a key the
+    /// engine declared for itself (ADR-0147) — which leaves a created table
+    /// with no identity, as it has always been read.
+    /// </summary>
     public static string PrimaryKeyColumns() =>
         "SELECT c.name "
         + "FROM sys.indexes i "
+        + "JOIN sys.key_constraints kc ON kc.parent_object_id = i.object_id AND kc.unique_index_id = i.index_id "
         + "JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id "
         + "JOIN sys.columns c ON c.object_id = i.object_id AND c.column_id = ic.column_id "
         + "JOIN sys.tables t ON t.object_id = i.object_id "
         + "JOIN sys.schemas s ON s.schema_id = t.schema_id "
-        + "WHERE i.is_primary_key = 1 AND s.name = @p0 AND t.name = @p1 "
+        + "WHERE i.is_primary_key = 1 AND s.name = @p0 AND t.name = @p1 AND kc.name <> @p2 "
         + "ORDER BY ic.key_ordinal";
 
     /// <summary>

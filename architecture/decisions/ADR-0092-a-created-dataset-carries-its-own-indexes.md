@@ -123,8 +123,9 @@ setting, not the absence of a step.
 - A dataset that cannot have an index the engine wants is a real, named
   limitation rather than a `CREATE INDEX` that failed at 3am: SQL Server's two
   limits (no clustered primary key, no `nvarchar(max)` key) are detected in
-  advance, and the missing clustered primary key is followed up as
-  SpatialEngine-9vg.
+  advance, and the missing clustered primary key is answered by ADR-0147 — a
+  created table is clustered on a key the engine owns and the contract never
+  sees.
 - The stores' create faces changed behaviour, so `Spatial.Contracts` did not:
   no contract type gained or lost a member, because a created dataset's
   *shape* is unchanged. Its *cost* is different.
