@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The host integration suite's clients wait **five minutes, not the framework's 100 seconds**: the host runs in process, so a client that gives up at 100 s is timing out on machine load, not on a defect — that is what made `Spatial.Host.Tests` red (10/779, then 2/786) with a `TaskCanceledException` on a response copy and no assertion failing. `SpatialHostFactory` sets `Timeout` in `ConfigureClient` (the hook `WithWebHostBuilder` forwards, and `ClientOptions` cannot be set from a derived factory in .NET 10), every fixture derives from it or from `PostgisHostFactory`, the timeout stays finite so a hung request is still a signal, and `TestHostClientTimeoutTests` fails naming any fixture that opts back out. A real-network client (`EsriLiveRefreshTests`, 20 s) is deliberately not covered.
 ---
 
 # ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds

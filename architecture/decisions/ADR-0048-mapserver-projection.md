@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-15
 deciders: maintainer + agent
+summary: A MapServer is a projection of a map over the SDK render and tile contracts.
 ---
 
 # ADR-0048: MapServer is a projection of a Map publication over the render and tile contracts

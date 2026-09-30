@@ -49,6 +49,11 @@ CORE_TESTS = "tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj"
 MAPS_TESTS = "tests/unit/Spatial.Maps.Tests/Spatial.Maps.Tests.csproj"
 HOST_TESTS = "tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj"
 ARCHITECTURE = verify_scope.ARCHITECTURE_PROJECT
+#: Every lane runs the doc gate first, before anything scoped (ADR-0141): the
+#: generated ADR register and index, and the dangling-citation read. It is in
+#: these expected plans because a lane that quietly lost it would be a gate
+#: that stopped reading the decision records.
+DOC_GATE = "python3 tools/arch-index.py --check"
 
 #: A real project in this repository, and the test suites that reach it.
 CORE_PROJECT = "src/Spatial.Core/Spatial.Core.csproj"
@@ -581,6 +586,7 @@ class ScriptLaneTests(unittest.TestCase):
         0 and this is the lane that merges (SpatialEngine-8lj).
         """
         self.assertEqual(self.plan(), [
+            DOC_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -630,6 +636,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.repo.commit("tools/seed/fetch.py", "# edited\n")
 
         self.assertEqual(self.plan(), [
+            DOC_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -640,6 +647,7 @@ class ScriptLaneTests(unittest.TestCase):
 
     def test_the_format_lane_is_scoped_to_the_changed_projects(self):
         self.assertEqual(self.plan("--format"), [
+            DOC_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -651,6 +659,7 @@ class ScriptLaneTests(unittest.TestCase):
 
     def test_the_full_lane_is_the_old_flat_gate(self):
         self.assertEqual(self.plan("--full"), [
+            DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -678,6 +687,7 @@ class ScriptLaneTests(unittest.TestCase):
         written by someone not thinking about it silently under-runs.
         """
         self.assertEqual(self.plan(ci="true"), [
+            DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -690,6 +700,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_a_named_lane_beats_ci_true(self):
         """The split CI jobs each own half of --full, so --format stays --format."""
         self.assertEqual(self.plan("--format", ci="true"), [
+            DOC_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -702,6 +713,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_an_unresolvable_base_falls_back_to_everything(self):
         """A scoping failure costs time; a silent under-run costs a defect."""
         self.assertEqual(self.plan(base="origin/does-not-exist"), [
+            DOC_GATE,
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -711,6 +723,7 @@ class ScriptLaneTests(unittest.TestCase):
         ])
     def test_an_unresolvable_base_falls_back_to_the_whole_formatter(self):
         self.assertEqual(self.plan("--format", base="origin/does-not-exist"), [
+            DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
         ])
 

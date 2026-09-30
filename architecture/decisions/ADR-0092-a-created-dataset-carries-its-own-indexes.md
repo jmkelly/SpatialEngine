@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: A dataset created or ingested by a SQL store carries its spatial and attribute indexes from the commit that creates it, so a created dataset is queryable with no out-of-band DDL; an index that cannot be created rolls the create back, and `PostgisOptions.CreateIndexes` / `SqlServerOptions.CreateIndexes` are the operator's opt-out.
 ---
 
 # ADR-0092: A created dataset carries its own indexes

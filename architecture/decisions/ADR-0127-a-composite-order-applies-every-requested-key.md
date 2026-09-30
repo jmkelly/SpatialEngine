@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: A composite order applies every requested key in turn, each one a tie-break over the keys before it, with the feature identity last.
 amends: ADR-0098, ADR-0124
 ---
 

@@ -201,6 +201,30 @@ CSPROJ = """<Project Sdk="Microsoft.NET.Sdk">
 </Project>
 """
 
+#: A one-record corpus for the lane's doc gate (ADR-0141): front matter in the
+#: one schema, which is what the generator reads.
+FIXTURE_ADR = """---
+status: accepted
+date: 2026-09-30
+deciders: maintainer + agent
+summary: The fixture carries a decision corpus so the doc gate has one to read.
+---
+
+# ADR-0001: A fixture decision
+
+## Context
+
+The lane under test is a repository, and a repository has decision records.
+"""
+
+#: The digest, with the markers the register is generated between and nothing
+#: else: the first run of `tools/arch-index.py --write` fills the block.
+FIXTURE_DIGEST = """# Distilled
+
+<!-- arch-index:register:begin -->
+<!-- arch-index:register:end -->
+"""
+
 ARCHITECTURE = ("tests/architecture/Spatial.Architecture.Tests/"
                 "Spatial.Architecture.Tests.csproj")
 MAPS = "src/Spatial.Maps/Spatial.Maps.csproj"
@@ -242,10 +266,25 @@ class LaneExitCodeTests(unittest.TestCase):
         (self.root / "SpatialEngine.slnx").write_text(
             "<Solution>\n" + "".join(f'  <Project Path="{p}" />\n' for p in paths)
             + "</Solution>\n", encoding="utf-8")
-        for name in ("eng/verify.sh", "tools/verify_scope.py", "tools/skip_gate.py"):
+        # The lane runs the doc gate before anything scoped (ADR-0141), so the
+        # repository under test carries a decision corpus and its generated
+        # register and index. A fixture without one would be measuring the doc
+        # gate rather than the skip gate, and the lane would go red for a
+        # reason that has nothing to do with skips.
+        for name in ("eng/verify.sh", "tools/verify_scope.py", "tools/skip_gate.py",
+                     "tools/arch-index.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
+
+        (self.root / "architecture/decisions").mkdir(parents=True)
+        (self.root / "architecture/decisions/ADR-0001-a-fixture-decision.md").write_text(
+            FIXTURE_ADR, encoding="utf-8")
+        (self.root / "architecture/distilled").mkdir(parents=True)
+        (self.root / "architecture/distilled/README.md").write_text(
+            FIXTURE_DIGEST, encoding="utf-8")
+        subprocess.run([sys.executable, "tools/arch-index.py", "--write"],
+                       cwd=self.root, check=True, capture_output=True)
 
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.email", "t@e")

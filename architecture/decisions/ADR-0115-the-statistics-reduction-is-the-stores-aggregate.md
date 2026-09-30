@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: A statistics reduction is the store's own aggregate, and the reference says what a group of one answers: `var` and `stddev` are null, not zero.
 ---
 
 # ADR-0115: The statistics reduction is the store's aggregate, and the reference says what a group of one answers

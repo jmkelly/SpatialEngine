@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The vocabulary has a **second, separate** pattern comparison, `ILIKE`, whose case behaviour it states rather than inherits: the same whole-value pattern test as `LIKE` with the value and the pattern folded over the **ASCII alphabet** — the one fold every back end states identically — and each dialect writes the fold out (`translate`, `TRANSLATE` under the binary collation) rather than reaching for `ILIKE` or a case-insensitive collation, which are a locale's and differ between deployments. It is a separate comparison because folding for a **search** is not folding for a **key**: `delta` and `Delta` stay two features under `=`, `<` and `LIKE`. MapServer `find` pushes its search text on it (ADR-0132 §6), a plan whose only text comparison states its own fold does not pay the collation probe, and an ArcGIS REST plan narrows to the part the Esri `where` grammar can spell rather than failing the read (amends 0074, 0098, 0112, 0123, 0126).
 ---
 
 # ADR-0132: A text search compares under a fold the store states — case folding is a comparison of its own, and it is not an identity

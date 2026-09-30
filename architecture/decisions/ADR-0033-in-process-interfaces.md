@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-10
 deciders: maintainer + agent
+summary: In-process service interfaces + DI replace worker plugins.
 ---
 
 # ADR-0033: Replace worker plugins with in-process interfaces and DI

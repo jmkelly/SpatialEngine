@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The attachment sidecar's **own** identity columns declare the byte order — `dataset` and `feature_id` are `COLLATE "C"` on PostGIS and `COLLATE Latin1_General_100_BIN2` on SQL Server, the terms ADR-0123 and ADR-0126 use, so an attachment names its feature in the order the feature names itself. ADR-0126 had to leave a text identity's collation to the *authored* table because `IngestIdentity.Source` is `Int64`-only; the store's own sidecar is the exception it names, a text key on a table the store itself declares. The declaration is **unconditional** on Postgres, unlike every other text comparison the store writes: a column *declaration* is the table's own DDL and costs no per-row comparison, so the store reads no catalog to learn it. A sidecar created by an earlier version is brought forward by an explicit re-collate guarded by each column's recorded collation — one catalog read and no rewrite once the table carries it, and a full rewrite of the two columns and their primary-key index once, in the transaction that re-declares them and rebuilds the key (amends 0126).
 amends: ADR-0126
 ---
 

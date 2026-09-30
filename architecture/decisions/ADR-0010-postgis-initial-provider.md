@@ -1,6 +1,11 @@
-# ADR-0010: Initial backing provider is PostGIS
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: PostGIS is the initial backing provider.
+---
 
-Status: Accepted
+# ADR-0010: Initial backing provider is PostGIS
 
 ## Context
 

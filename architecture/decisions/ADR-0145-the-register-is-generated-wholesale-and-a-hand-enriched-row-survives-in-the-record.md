@@ -2,7 +2,7 @@
 status: accepted
 date: 2026-10-01
 deciders: maintainer + agent
-summary: The ADR register is generated wholesale and never hand-edited, so a hand-enriched row survives generation by moving its prose into the record's own `summary`, where the generator reads it; a run that would shorten a row is a change to the record, not a loss
+summary: The ADR register is **generated wholesale** and never hand-edited (ADR-0141), so a hand-enriched row survives generation by moving its prose into that record's own `summary` — the field the generator renders — rather than by a merge policy that would make a row's wording depend on who touched the file last. A rebase-and-regenerate that shortens an existing row is a proposal to delete a routing clause and is reviewed as a change to the record that carries it; the conflict shape is mechanical (take the row each side has, regenerate), and `tools/test_arch_index.py` pins the clauses `main` had hand-enriched so a shortening fails by name (amends 0141).
 amends: ADR-0141
 ---
 

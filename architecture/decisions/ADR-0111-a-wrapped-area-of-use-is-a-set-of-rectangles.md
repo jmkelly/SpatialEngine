@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: An area of use is a set of rectangles, so an extent that crosses the antimeridian (EPSG 1175, 2157) is the two rectangles it is rather than an empty one; the graph's intersection and union are rectangle algebra over that set and never merge, and `findTransformations` publishes `areaOfUse` as a list of envelopes (amends 0086, 0087).
 amends: ADR-0086, ADR-0087
 ---
 

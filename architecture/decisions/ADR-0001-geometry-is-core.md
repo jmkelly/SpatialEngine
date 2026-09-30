@@ -1,6 +1,11 @@
-# ADR-0001: Geometry is part of the spatial core
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Geometry values are core; algorithms are never core.
+---
 
-Status: Accepted
+# ADR-0001: Geometry is part of the spatial core
 
 ## Context
 

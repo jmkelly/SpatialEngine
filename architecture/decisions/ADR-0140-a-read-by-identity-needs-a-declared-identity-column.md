@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: **A read-by-identity needs a declared identity column**: a dataset that declares none has no durable feature key, so `IFeatureLookup.GetAsync` is refused on it with `invalid.arguments` naming the dataset, by memory, PostGIS and SQL Server alike — not answered with an empty result (which claims every requested identity is absent) and not answered from the scan ordinal (ADR-0037's `OBJECTID`, which a write renumbers). A miss stays an absence; this is a typed failure, because a layer that cannot name its features and a feature that is not there are different answers. The adapter does **not** fall back to the `OBJECTID`: a restricted read would renumber it (ADR-0097), so `FeatureMatchPushdown`, `FeatureAttachmentTargets` and `FeatureEditEngine` keep declining to push and keep falling back to the scan. Giving every dataset an identity column at create/ingest is a *separate* change to ingest's contract, not a lookup fix (amends 0038).
 ---
 
 # ADR-0140: A read-by-identity needs a declared identity column

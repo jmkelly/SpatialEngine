@@ -26,6 +26,12 @@
 #                            merge tool for.
 #   eng/verify.sh --plan     print the steps a lane would run, and run nothing
 #
+# Every lane first runs the doc gate — `tools/arch-index.py --check` over the
+# generated ADR register and index, plus a dangling `ADR-NNNN` citation read
+# (ADR-0141). It is a second or two, it is about the repository rather than
+# the change set, and it is the only step that fails on a decision record that
+# has drifted rather than on code.
+#
 # The split exists because the flat gate costs ~25 minutes warm on a 12-core
 # box and the swarm runs it constantly. Almost all of that is overhead rather
 # than signal: `dotnet format` over the solution is ~30% of it, and the 22
@@ -97,7 +103,7 @@ for arg in "$@"; do
     --quick) LANE=default; LANE_NAMED=1 ;;
     --skip-tests=*) add_skip_patterns "${arg#--skip-tests=}" ;;
     --plan) PLAN_ONLY=1 ;;
-    -h|--help) sed -n '2,61p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,74p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -259,6 +265,17 @@ scoped_or_all() {
     printf '%s\n' "${FORMAT_PROJECTS[@]:-}"
   fi
 }
+
+# --- the doc gate, on every lane -------------------------------------------
+# The ADR register and the ADR index are generated from the records themselves
+# (ADR-0141), so "is the documentation current" is a comparison rather than a
+# review: `tools/arch-index.py --check` regenerates them in memory and fails on
+# a record that is stale, a record in the retired metadata schema, or a
+# citation of an ADR that does not exist. It is seconds, it is about the
+# repository rather than the change set, and it runs before the format lane
+# exits — including under `--plan`, which prints it and runs nothing.
+echo "== doc gate: ADR register, ADR index, ADR citations =="
+step python3 tools/arch-index.py --check
 
 # --- the format lane -------------------------------------------------------
 if [[ "$LANE" == "format" ]]; then

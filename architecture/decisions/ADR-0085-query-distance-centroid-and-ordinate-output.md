@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: Query `distance`/`units` band, `returnCentroid` (`IGeometryMeasures.Centroid`) and `returnZ`/`returnM` output selection are served; the Z/M loss was Esri-JSON codec depth, not the engine.
 ---
 
 # ADR-0085: The distance band, the per-feature centroid and the Z/M output selection are served

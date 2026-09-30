@@ -2,7 +2,8 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
-amended by: ADR-0107
+summary: Datum shift grids are deployed, not embedded: the registry reads NTv2 bundles and the classic Helmert stays the stated fallback.
+amended-by: ADR-0107
 ---
 
 # ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-16
 deciders: maintainer + agent
+summary: Rasters are provider-owned; contracts carry only encoded images and core-typed metadata/geometry, never raster values or third-party types. NetVips is the engine; GDAL needs measured demand.
 ---
 
 # ADR-0051: Rasters are provider-owned; only encoded images and core-typed metadata cross contracts

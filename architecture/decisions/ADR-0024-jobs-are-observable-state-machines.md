@@ -1,6 +1,12 @@
-# ADR-0024: Jobs are observable state machines with events and timeouts
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Observable job state machines
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0024: Jobs are observable state machines with events and timeouts
 
 ## Context
 

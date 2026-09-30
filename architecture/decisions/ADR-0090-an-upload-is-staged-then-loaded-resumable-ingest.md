@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: An upload is staged and then loaded, so a large ingest is resumable: the staged part survives a dropped connection and the chunk cap is measured from the chunk's own offset.
 amends: ADR-0041
 ---
 

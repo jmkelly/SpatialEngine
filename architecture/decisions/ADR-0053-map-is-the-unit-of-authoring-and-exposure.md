@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-17
 deciders: maintainer + agent
+summary: A Map is the unit of authoring and exposure; its FeatureServer/MapServer/Tiles/WMS/WFS/ImageServer services are projections of one map.
 ---
 
 # ADR-0053: A Map is the unit of authoring and exposure; services are projections

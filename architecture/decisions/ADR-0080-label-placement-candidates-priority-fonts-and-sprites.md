@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: Label placement generates ordered candidates (point offsets, or repeated positions along a line) and selects them by `symbol-sort-key` in a pass of its own; the text face is a digest-pinned registry with a documented fallback chain, so an unknown `text-font` is never an error.
 ---
 
 # ADR-0080: Label placement is candidate-based, priority-ordered, and draws from a multi-face font registry

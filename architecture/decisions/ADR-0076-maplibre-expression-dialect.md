@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-27
 deciders: maintainer + agent
+summary: The MapLibre style dialect compiles colour/opacity/size properties as an expression tree evaluated once per feature over a shared scope; a number is not a colour, and unsupported input is a typed `invalid.arguments`.
 ---
 
 # ADR-0076: The MapLibre style dialect is a compiled expression tree with a per-feature scope

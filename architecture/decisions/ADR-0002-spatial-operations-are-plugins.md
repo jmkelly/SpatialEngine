@@ -1,6 +1,12 @@
-# ADR-0002: Spatial operations are capability plugins
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Spatial operations are capability plugins
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0002: Spatial operations are capability plugins
 
 ## Context
 

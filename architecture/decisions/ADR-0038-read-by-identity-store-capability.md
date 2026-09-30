@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-09-13
 deciders: maintainer + agent
+summary: Read-by-identity is an additive store face (`IFeatureLookup`).
 ---
 
 # ADR-0038: Read-by-identity is an additive store capability

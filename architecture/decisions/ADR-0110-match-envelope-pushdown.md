@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: The feature-match envelope (`objectIds`, `where`, `time`, the query geometry's envelope) is compiled onto the store's query plan instead of a full-dataset scan, all-or-nothing and decided before the store is asked; the in-memory matcher stays the verification path, and a layer whose `OBJECTID` is the scan ordinal, a `uniqueIds` request and an unsupported `spatialRel` are still refused rather than answered from a narrower read.
 ---
 
 # ADR-0110: The feature-match envelope is compiled onto the store's plan, and the in-memory matcher is what verifies it

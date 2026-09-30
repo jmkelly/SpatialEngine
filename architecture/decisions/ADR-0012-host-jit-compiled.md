@@ -1,6 +1,11 @@
-# ADR-0012: The initial .NET host is JIT-compiled
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Host is JIT-compiled initially.
+---
 
-Status: Accepted
+# ADR-0012: The initial .NET host is JIT-compiled
 
 ## Context
 

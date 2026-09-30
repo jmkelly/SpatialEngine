@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Feature attachments are an additive `IFeatureAttachmentStore` capability — per-feature blobs, provider-owned bytes, core-typed descriptors.
 ---
 
 # ADR-0065: Feature attachments are an additive SDK capability with provider-owned bytes

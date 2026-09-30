@@ -1,6 +1,12 @@
-# ADR-0013: Worker boundaries are language-neutral
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Language-neutral worker boundaries
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0013: Worker boundaries are language-neutral
 
 ## Context
 

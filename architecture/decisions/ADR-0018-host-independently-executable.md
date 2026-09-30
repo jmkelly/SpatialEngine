@@ -1,6 +1,11 @@
-# ADR-0018: Spatial.Host remains independently executable
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: `Spatial.Host` is independently executable; API identical for every client.
+---
 
-Status: Accepted
+# ADR-0018: Spatial.Host remains independently executable
 
 ## Context
 

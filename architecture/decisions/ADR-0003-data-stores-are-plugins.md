@@ -1,6 +1,12 @@
-# ADR-0003: Data stores are capability plugins
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Data stores are provider plugins
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0003: Data stores are capability plugins
 
 ## Context
 

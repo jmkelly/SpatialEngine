@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: A dataset whose only identity column is a Guid serves `uniqueIds` in canonical lowercase `D` form; anything else keeps the honest reject by name.
 ---
 
 # ADR-0067: Guid identity columns serve uniqueIds in canonical form

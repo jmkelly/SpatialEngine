@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-15
 deciders: maintainer + agent
+summary: Layer style is persisted on the publication as a per-layer MapLibre fragment (ADR-0044 dialect).
 ---
 
 # ADR-0047: Layer style is persisted on the publication

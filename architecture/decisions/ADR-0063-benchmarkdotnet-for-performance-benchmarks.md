@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: BenchmarkDotNet in a pinned `Spatial.Performance` console project is the performance suite; `eng/verify.sh` builds it and never runs it.
 ---
 
 # ADR-0063: BenchmarkDotNet for the performance benchmark suite

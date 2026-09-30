@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-27
 deciders: maintainer + agent
+summary: A relationship is a declaration on the map's layer, traversed by the ordinary query path; relate and unrelate are edits behind the edit gate.
 ---
 
 # ADR-0077: Relationships are declared on the map, traversed with the query engine

@@ -1,6 +1,12 @@
-# ADR-0007: Capability contracts are versioned independently
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Versioned capability contracts (typed interfaces)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0007: Capability contracts are versioned independently
 
 ## Context
 

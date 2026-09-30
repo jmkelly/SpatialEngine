@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-13
 deciders: maintainer + agent
+summary: `FeatureId.Unassigned` is a reserved sentinel, so a store may assign an upload's identity on insert.
 ---
 
 # ADR-0043: An unassigned identity lets uploads be created with a store-assigned key

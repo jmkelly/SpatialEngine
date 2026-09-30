@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: A tile is renderable only when its bounds have extent on both axes; a degenerate tile is a typed rejection, not a narrowed one.
 amends: ADR-0070
 ---
 

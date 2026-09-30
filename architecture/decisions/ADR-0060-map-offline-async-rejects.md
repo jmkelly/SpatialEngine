@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Map/Image offline and async surface (exportTiles, WMTS, KML, jobs) is rejected by name; T-048 builds on that scope.
 ---
 
 # ADR-0060: Map/Image offline and async surface is rejected by name, not served

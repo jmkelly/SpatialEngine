@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: WFS GetFeature ids are qualified per typeName as `<typeName>.<id>`, because a store's identity is per-dataset.
 ---
 
 # ADR-0064: WFS GetFeature ids are scoped per typeName

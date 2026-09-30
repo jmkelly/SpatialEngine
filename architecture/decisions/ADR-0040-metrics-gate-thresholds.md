@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-12
 deciders: maintainer + agent
+summary: Metrics gate thresholds are evidence-based; raw LCOM4 gates through guarded diagnoses.
 ---
 
 # ADR-0040: Metrics gate thresholds are evidence-based, and LCOM4 gates through guarded diagnoses

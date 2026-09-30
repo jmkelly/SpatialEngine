@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: MapServer legend, queryDomains/queryLegends and per-layer generateRenderer are adapter projections of the persisted MapLibre style.
 ---
 
 # ADR-0055: MapServer legend, queryDomains/queryLegends and generateRenderer are adapter projections

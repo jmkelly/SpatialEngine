@@ -1,6 +1,12 @@
-# ADR-0019: Tauri may bundle Spatial.Host as an optional sidecar
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Tauri may bundle Spatial.Host as an optional sidecar
+superseded-by: ADR-0039
+---
 
-Status: Superseded by ADR-0039 (desktop packaging abandoned).
+# ADR-0019: Tauri may bundle Spatial.Host as an optional sidecar
 
 ## Context
 
