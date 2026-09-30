@@ -63,8 +63,9 @@ interop surface.
   `VERIFY_MIN_SKIPPED` (10) are the thresholds, and a suite dropped by
   `--skip-tests` is out of the count rather than judged.
   Every lane then runs the bead-protocol gate (`tools/beads_gate.py`,
-  ADR-0152): a closed bead's merge commit carries a `Task: <id>` trailer
-  naming that same bead, and a commit touching `src/Spatial.Contracts/**` or
+  ADR-0152): a closed bead's merge records the bead it merged — a `Task: <id>`
+  trailer naming that same bead, on the merge commit or on the work it brought
+  in — and a commit touching `src/Spatial.Contracts/**` or
   `src/Spatial.Core/**` changes an ADR or cites `ADR-NNNN` in its body. It is
   the prose in this file turned into a comparison — it had already failed
   in-tree (SpatialEngine-imz.4). The ADR citation and register checks are read

@@ -76,8 +76,9 @@ DOC_SURFACE_GATE = "python3 tools/doc_surface.py"
 def beads_gate_gate(base="main"):
     """The bead-protocol gate every lane runs, after the doc gate (ADR-0152).
 
-    A closed bead's merge commit must carry a `Task: <id>` trailer naming that
-    bead, and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**`
+    A closed bead's merge must record the bead it merged: a `Task: <id>`
+    trailer naming that bead, on the merge commit or on the work it brought
+    in, and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**`
     must land a decision record with it. It follows the doc gate because it is
     the same kind of step — a repository check, not a change-set check — and it
     reads the change set's own base, so the plan names the base it was given.
