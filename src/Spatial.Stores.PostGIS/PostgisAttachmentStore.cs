@@ -54,8 +54,8 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
-            var description = await RequireAttachmentDatasetAsync(name, cancellationToken);
-            await RequireFeatureAsync(name, description, featureId, cancellationToken);
+            var facts = await RequireAttachmentDatasetAsync(name, cancellationToken);
+            await RequireFeatureAsync(name, facts, featureId, cancellationToken);
             await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
             var rows = await PostgisDataStore.ReadRowsAsync(
                 connection, PostgisQueries.ListAttachments(), [name.Qualified, featureId.Value], cancellationToken);
@@ -74,8 +74,8 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
-            var description = await RequireAttachmentDatasetAsync(parsed, cancellationToken);
-            await RequireFeatureAsync(parsed, description, featureId, cancellationToken);
+            var facts = await RequireAttachmentDatasetAsync(parsed, cancellationToken);
+            await RequireFeatureAsync(parsed, facts, featureId, cancellationToken);
             return await InsertWithRetryAsync(AttachmentWrite.For(parsed, featureId, write), 1, cancellationToken);
         });
     }
@@ -90,8 +90,8 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
-            var description = await RequireAttachmentDatasetAsync(name, cancellationToken);
-            await RequireFeatureAsync(name, description, featureId, cancellationToken);
+            var facts = await RequireAttachmentDatasetAsync(name, cancellationToken);
+            await RequireFeatureAsync(name, facts, featureId, cancellationToken);
             await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
             var rows = await PostgisDataStore.ReadRowsAsync(
                 connection, PostgisQueries.GetAttachment(), [name.Qualified, featureId.Value, attachmentId], cancellationToken);
@@ -116,8 +116,8 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
-            var description = await RequireAttachmentDatasetAsync(parsed, cancellationToken);
-            await RequireFeatureAsync(parsed, description, featureId, cancellationToken);
+            var facts = await RequireAttachmentDatasetAsync(parsed, cancellationToken);
+            await RequireFeatureAsync(parsed, facts, featureId, cancellationToken);
             await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
             var resolved = OrDefaultContentType(write.ContentType);
             var affected = await PostgisDataStore.ExecuteNonQueryAsync(
@@ -146,8 +146,8 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
         return _store.RunStoreOperationAsync(async () =>
         {
             await EnsureAttachmentTableAsync(cancellationToken);
-            var description = await RequireAttachmentDatasetAsync(name, cancellationToken);
-            await RequireFeatureAsync(name, description, featureId, cancellationToken);
+            var facts = await RequireAttachmentDatasetAsync(name, cancellationToken);
+            await RequireFeatureAsync(name, facts, featureId, cancellationToken);
             await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
             var outcomes = new List<FeatureAttachmentOutcome>(attachmentIds.Count);
             foreach (var attachmentId in attachmentIds)
@@ -219,28 +219,28 @@ public sealed class PostgisAttachmentStore : IFeatureAttachmentStore
             connection, PostgisQueries.RecollateAttachmentIdentity(), [], cancellationToken);
     }
 
-    private async Task<DatasetDescription> RequireAttachmentDatasetAsync(
+    private async Task<PostgisDatasetFacts> RequireAttachmentDatasetAsync(
         PostgisDatasetName name, CancellationToken cancellationToken)
     {
-        var description = await _store.DescribeInternalAsync(name, cancellationToken);
-        if (description.IdColumns.Count == 0)
+        var facts = await _store.DescribeInternalAsync(name, cancellationToken);
+        if (facts.Description.IdColumns.Count == 0)
         {
             throw SpatialException.BadArguments(
                 $"The dataset '{name}' has no primary key, so attachments are unsupported.");
         }
 
-        return description;
+        return facts;
     }
 
     private async Task RequireFeatureAsync(
-        PostgisDatasetName name, DatasetDescription description, FeatureId featureId, CancellationToken cancellationToken)
+        PostgisDatasetName name, PostgisDatasetFacts facts, FeatureId featureId, CancellationToken cancellationToken)
     {
-        var values = PostgisIdentity.Values(description, featureId);
+        var values = PostgisIdentity.Values(facts.Description, featureId);
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         var rows = await PostgisDataStore.ReadRowsAsync(
             connection,
             PostgisQueries.FeatureExists(
-                name, description.Schema, description.IdColumns, await _store.ByteOrderTextAsync(description, cancellationToken)),
+                name, facts.Description.Schema, facts.Description.IdColumns, await _store.TextOrderAsync(facts, cancellationToken)),
             values,
             cancellationToken);
         if (rows.Count == 0)

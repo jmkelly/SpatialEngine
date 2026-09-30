@@ -48,31 +48,31 @@ internal sealed class PostgisDescriptionCache(TimeSpan ttl, TimeProvider clock)
     /// An expired entry is dropped on the way past, so the caller that misses
     /// here is the one that re-reads it and the entry is not looked at twice.
     /// </summary>
-    public bool TryGet(PostgisDatasetName name, out DatasetDescription description)
+    public bool TryGet(PostgisDatasetName name, out PostgisDatasetFacts facts)
     {
         if (!Enabled)
         {
-            description = null!;
+            facts = default;
             return false;
         }
 
         if (_entries.TryGetValue(name, out var entry) && !entry.Expired(clock.GetUtcNow(), ttl))
         {
-            description = entry.Description;
+            facts = entry.Facts;
             return true;
         }
 
         _entries.TryRemove(name, out _);
-        description = null!;
+        facts = default;
         return false;
     }
 
     /// <summary>Holds a freshly discovered description, stamped for the expiry.</summary>
-    public void Set(PostgisDatasetName name, DatasetDescription description)
+    public void Set(PostgisDatasetName name, PostgisDatasetFacts facts)
     {
         if (Enabled)
         {
-            _entries[name] = new Entry(description, clock.GetUtcNow());
+            _entries[name] = new Entry(facts, clock.GetUtcNow());
         }
     }
 
@@ -86,7 +86,7 @@ internal sealed class PostgisDescriptionCache(TimeSpan ttl, TimeProvider clock)
     public long NoteRead() => Interlocked.Increment(ref _reads);
 
     /// <summary>One held description and when it was discovered.</summary>
-    private readonly record struct Entry(DatasetDescription Description, DateTimeOffset ReadAt)
+    private readonly record struct Entry(PostgisDatasetFacts Facts, DateTimeOffset ReadAt)
     {
         public bool Expired(DateTimeOffset now, TimeSpan ttl) => now - ReadAt >= ttl;
     }

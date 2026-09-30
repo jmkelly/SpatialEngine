@@ -108,6 +108,20 @@ public sealed class PostgisQueriesTests
     }
 
     [Fact]
+    public void The_declared_column_collation_comes_from_the_catalog_not_from_the_data()
+    {
+        // A column that declares a collation of its own carries it in the
+        // catalogue and nowhere else (ADR-0136), so it has to be read there:
+        // a query that touched the rows would make the pushed-down order depend
+        // on which values happened to be there.
+        var sql = PostgisQueries.ColumnsMetadata();
+
+        Assert.Contains("collation_name", sql);
+        Assert.Contains("information_schema.columns", sql);
+        Assert.DoesNotContain("ST_", sql);
+    }
+
+    [Fact]
     public void The_declared_type_modifier_comes_from_the_catalog_not_from_the_data()
     {
         // A typmod is the store's proof of a column's Z/M (ADR-0084), so it
@@ -150,7 +164,7 @@ public sealed class PostgisQueriesTests
 
         Assert.Equal(
             "UPDATE \"public\".\"places\" SET \"id\" = @p0, \"name\" = @p1, \"geom\" = ST_SetSRID(ST_GeomFromEWKB(@p2), 4326) WHERE \"id\" = @p3",
-            PostgisQueries.Update(dataset, Schema, 4326, ["id"], Schema, byteOrderText: true));
+            PostgisQueries.Update(dataset, Schema, 4326, ["id"], Schema, text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -160,7 +174,7 @@ public sealed class PostgisQueriesTests
 
         Assert.Equal(
             "DELETE FROM \"public\".\"places\" WHERE \"name\" = @p0 AND \"id\" = @p1",
-            PostgisQueries.Delete(dataset, Schema, ["name", "id"], byteOrderText: true));
+            PostgisQueries.Delete(dataset, Schema, ["name", "id"], text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -170,7 +184,7 @@ public sealed class PostgisQueriesTests
 
         Assert.Equal(
             "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" WHERE (\"id\" = @p0) LIMIT 1",
-            PostgisQueries.SelectByIdentity(dataset, Schema, ["id"], 1, byteOrderText: true));
+            PostgisQueries.SelectByIdentity(dataset, Schema, ["id"], 1, text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -178,7 +192,7 @@ public sealed class PostgisQueriesTests
     {
         Assert.True(PostgisDatasetName.TryParse("public.places", out var dataset, out _));
 
-        var sql = PostgisQueries.SelectByIdentity(dataset, Schema, ["name", "id"], 2, byteOrderText: true);
+        var sql = PostgisQueries.SelectByIdentity(dataset, Schema, ["name", "id"], 2, text: PostgisTextOrder.ByteOrder);
 
         Assert.Equal(
             "SELECT \"id\", \"name\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\" "

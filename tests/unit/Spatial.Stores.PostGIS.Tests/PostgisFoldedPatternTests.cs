@@ -41,10 +41,10 @@ public sealed class PostgisFoldedPatternTests
         new FieldDefinition("active", AttributeKind.Boolean, nullable: true),
     ]);
 
-    private static string Where(string filter, bool byteOrderText)
+    private static string Where(string filter, PostgisTextOrder text)
     {
         Assert.True(FeatureFilterText.TryParse(filter, out var predicate, out var error), error);
-        return PostgisPredicateSql.Where(predicate!, Schema, byteOrderText, []);
+        return PostgisPredicateSql.Where(predicate!, Schema, text, []);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class PostgisFoldedPatternTests
         // `LIKE` is case-sensitive whatever the database's collation is, so the
         // folded operand is all the case behaviour there is — and a plain
         // `LIKE` on an unfolded column would answer the byte comparison.
-        Assert.Equal($"{Fold} LIKE @p0", Where("code ILIKE 'ALPH%'", byteOrderText: false));
+        Assert.Equal($"{Fold} LIKE @p0", Where("code ILIKE 'ALPH%'", text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -64,8 +64,8 @@ public sealed class PostgisFoldedPatternTests
         // own fold, so it takes no term either way and the plan is the same SQL
         // on a locale database and on a `C` one.
         Assert.Equal(
-            Where("code ILIKE 'ALPH%'", byteOrderText: false),
-            Where("code ILIKE 'ALPH%'", byteOrderText: true));
+            Where("code ILIKE 'ALPH%'", text: PostgisTextOrder.Locale),
+            Where("code ILIKE 'ALPH%'", text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class PostgisFoldedPatternTests
         var parameters = new List<object?>();
         Assert.True(FeatureFilterText.TryParse("code ILIKE 'ALP%'", out var predicate, out var error), error);
 
-        PostgisPredicateSql.Where(predicate!, Schema, byteOrderText: false, parameters);
+        PostgisPredicateSql.Where(predicate!, Schema, text: PostgisTextOrder.Locale, parameters);
 
         Assert.Equal(["alp%"], parameters);
     }
@@ -100,7 +100,7 @@ public sealed class PostgisFoldedPatternTests
     public void A_folded_pattern_over_a_column_that_is_not_text_matches_nothing() =>
         // The reference evaluator's answer for a comparison with no meaning,
         // written as the constant every backend can answer it with.
-        Assert.Equal("FALSE", Where("population ILIKE '3%'", byteOrderText: false));
+        Assert.Equal("FALSE", Where("population ILIKE '3%'", text: PostgisTextOrder.Locale));
 
     [Fact]
     public void A_folded_pattern_beside_a_byte_ordered_comparison_states_both_orders()
@@ -111,7 +111,7 @@ public sealed class PostgisFoldedPatternTests
         // different row set from the reference for the same tree.
         Assert.Equal(
             $"{Fold} LIKE @p0 AND \"code\" COLLATE \"C\" < @p1",
-            Where("code ILIKE 'ALPH%' AND code < 'delta'", byteOrderText: false));
+            Where("code ILIKE 'ALPH%' AND code < 'delta'", text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class PostgisFoldedPatternTests
     {
         Assert.Equal(
             "translate(\"label\", 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') LIKE @p0",
-            Where("label ILIKE 'URBAN%'", byteOrderText: false));
+            Where("label ILIKE 'URBAN%'", text: PostgisTextOrder.Locale));
     }
 
     private static Predicate Parse(string filter)

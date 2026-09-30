@@ -54,7 +54,8 @@ public sealed class PostgisEditStore : IFeatureEditStore
     {
         try
         {
-            var description = await _store.DescribeInternalAsync(name, cancellationToken);
+            var facts = await _store.DescribeInternalAsync(name, cancellationToken);
+            var description = facts.Description;
             if (description.IdColumns.Count == 0)
             {
                 return WithoutPrimaryKey(featureIds.Select(id => id), "deleted");
@@ -62,7 +63,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
 
             await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
             var outcomes = await PostgisFeatureDeletes.DeleteAsync(
-                session, name, description, featureIds, await _store.ByteOrderTextAsync(description, cancellationToken), cancellationToken);
+                session, name, description, featureIds, await _store.TextOrderAsync(facts, cancellationToken), cancellationToken);
             await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
             return outcomes;
         }
@@ -99,7 +100,8 @@ public sealed class PostgisEditStore : IFeatureEditStore
     {
         try
         {
-            var description = await _store.DescribeInternalAsync(name, cancellationToken);
+            var facts = await _store.DescribeInternalAsync(name, cancellationToken);
+            var description = facts.Description;
             PostgisWriteOperations.CheckWritable(description, batch);
             if (description.IdColumns.Count == 0)
             {
@@ -117,7 +119,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
                     // A text identity is compared by bytes, so the update's
                     // target cannot be a row a case-folding collation folded
                     // it onto (ADR-0126).
-                    await _store.ByteOrderTextAsync(description, cancellationToken)),
+                    await _store.TextOrderAsync(facts, cancellationToken)),
                 apply,
                 cancellationToken);
             await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
@@ -150,14 +152,14 @@ public sealed class PostgisEditStore : IFeatureEditStore
             : Task.CompletedTask;
 
     /// <summary>One edit batch: the target dataset, its description, the features,
-    /// whether they are updated, and whether this database already compares
-    /// text by bytes (ADR-0126).</summary>
+    /// whether they are updated, and the order its text columns are compared
+    /// in (ADR-0126).</summary>
     private sealed record BatchEdit(
         PostgisDatasetName Name,
         DatasetDescription Description,
         FeatureBatch Batch,
         bool Update,
-        bool ByteOrderText);
+        PostgisTextOrder Text);
 
     private static async Task<IReadOnlyList<FeatureEditOutcome>> EditEachAsync(
         PostgisEditSession session,
@@ -192,7 +194,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
         try
         {
             var (sql, values) = PostgisWriteOperations.PlanFeature(
-                edit.Name, edit.Description, feature, edit.Update, edit.ByteOrderText);
+                edit.Name, edit.Description, feature, edit.Update, edit.Text);
             await using var command = session.CreateCommand(sql, values);
             return await apply(feature, command, cancellationToken);
         }

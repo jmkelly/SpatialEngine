@@ -2,8 +2,10 @@ namespace Spatial.Stores.PostGIS.Core;
 
 /// <summary>
 /// Whether a text sort key pushed into this database's <c>ORDER BY</c> is
-/// compared by bytes or by the database's own locale collation (ADR-0098 §3,
-/// ADR-0121).
+/// compared by bytes or by the locale collation it names (ADR-0098 §3,
+/// ADR-0121). The name it is given is whichever collation is in question: the
+/// database's for a column that declares none, the column's own otherwise
+/// (ADR-0136).
 ///
 /// <para>
 /// The contract compares strings <em>ordinally</em>, which is a byte

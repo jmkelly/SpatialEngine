@@ -38,7 +38,17 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
     /// cancelled, are both answered from the database every time.
     /// </para>
     /// </summary>
-    public async Task<DatasetDescription> DescribeAsync(PostgisDatasetName name, CancellationToken cancellationToken)
+    public async Task<DatasetDescription> DescribeAsync(PostgisDatasetName name, CancellationToken cancellationToken) =>
+        (await DescribeFactsAsync(name, cancellationToken)).Description;
+
+    /// <summary>
+    /// The description as the read faces need it: the schema the SQL is written
+    /// against, and the collations the dataset's columns declare themselves
+    /// (ADR-0136). They are discovered together and held together, because a
+    /// collation read for a table whose schema has since changed is an answer to
+    /// a question nobody asked.
+    /// </summary>
+    public async Task<PostgisDatasetFacts> DescribeFactsAsync(PostgisDatasetName name, CancellationToken cancellationToken)
     {
         if (storage.Descriptions.TryGet(name, out var held))
         {
@@ -50,8 +60,9 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
         var facts = await ReadSchemaFactsAsync(connection, name, cancellationToken);
         if (PostgisSchemaDiscovery.TryBuild(name, facts, out var description, out var reason))
         {
-            storage.Descriptions.Set(name, description);
-            return description;
+            var discovered = new PostgisDatasetFacts(name, description, PostgisSchemaDiscovery.TextCollations(facts));
+            storage.Descriptions.Set(name, discovered);
+            return discovered;
         }
 
         throw SpatialException.Missing($"Cannot read dataset '{name}': {reason}");
@@ -139,7 +150,8 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
             (string)row[0]!,
             (string)row[1]!,
             string.Equals((string)row[2]!, "YES", StringComparison.Ordinal),
-            (int)row[3]!);
+            (int)row[3]!,
+            row[5] is DBNull ? null : (string?)row[5]);
 
     private static long RowEstimate(IReadOnlyList<IReadOnlyList<object?>> rows) =>
         rows.Count > 0

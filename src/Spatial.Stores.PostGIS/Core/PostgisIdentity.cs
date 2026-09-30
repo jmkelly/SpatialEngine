@@ -55,8 +55,8 @@ internal static class PostgisIdentity
     /// for, and an edit would write to that one too (ADR-0126). A column of any
     /// other kind carries no collation: <c>COLLATE</c> is a string operator.
     /// </summary>
-    internal static string Operand(IFeatureSchema schema, string column, bool byteOrderText) =>
-        PostgisPlanQueries.Ordered(column, schema, byteOrderText);
+    internal static string Operand(IFeatureSchema schema, string column, PostgisTextOrder text) =>
+        PostgisPlanQueries.Ordered(column, schema, text);
 
     /// <summary>
     /// The identity columns as one bound predicate, numbering its parameters
@@ -67,9 +67,9 @@ internal static class PostgisIdentity
     /// named (ADR-0126).
     /// </summary>
     internal static string Tuple(
-        FeatureSchema schema, IReadOnlyList<string> identityColumns, int from, bool byteOrderText) =>
+        FeatureSchema schema, IReadOnlyList<string> identityColumns, int from, PostgisTextOrder text) =>
         string.Join(" AND ", identityColumns.Select(
-            (column, i) => $"{Operand(schema, column, byteOrderText)} = @p{from + i}"));
+            (column, i) => $"{Operand(schema, column, text)} = @p{from + i}"));
 
     private static bool IsText(FeatureSchema schema, string column)
     {
