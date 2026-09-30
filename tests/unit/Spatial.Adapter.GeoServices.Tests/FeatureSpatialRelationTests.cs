@@ -73,53 +73,18 @@ public sealed class FeatureSpatialRelationTests
     private static readonly FeatureSchema Schema = new(
         [new FieldDefinition("shape", AttributeKind.Geometry, nullable: true)]);
 
+    /// <summary>
+    /// Every served verb against every hand-computed row of the DE-9IM
+    /// matrix above, read from <see cref="SpatialRelationMatrix"/> — the one
+    /// verdict table the Geometry Service <c>relation</c> operation is
+    /// measured against as well, so a value is written down once and both
+    /// surfaces are held to it (SpatialEngine-dih).
+    /// </summary>
     [Theory]
-    // A feature polygon containing a query polygon, a point or a line.
-    [InlineData("square-equal", "esriSpatialRelContains", true)]
-    [InlineData("square-equal", "esriSpatialRelWithin", true)]
-    [InlineData("square-inner", "esriSpatialRelContains", true)]
-    [InlineData("square-inner", "esriSpatialRelWithin", false)]
-    [InlineData("square-overlap", "esriSpatialRelContains", false)]
-    [InlineData("square-overlap", "esriSpatialRelWithin", false)]
-    [InlineData("square-corner", "esriSpatialRelContains", true)]
-    [InlineData("square-corner", "esriSpatialRelWithin", false)]
-    [InlineData("square-above", "esriSpatialRelContains", false)]
-    [InlineData("square-above", "esriSpatialRelWithin", false)]
-    [InlineData("line-crossing", "esriSpatialRelContains", false)]
-    [InlineData("line-crossing", "esriSpatialRelWithin", false)]
-    [InlineData("line-inside", "esriSpatialRelContains", true)]
-    [InlineData("line-inside", "esriSpatialRelWithin", false)]
-    [InlineData("line-on-boundary", "esriSpatialRelContains", false)]
-    [InlineData("line-on-boundary", "esriSpatialRelWithin", false)]
-    [InlineData("point-inside", "esriSpatialRelContains", true)]
-    [InlineData("point-inside", "esriSpatialRelWithin", false)]
-    [InlineData("point-on-boundary", "esriSpatialRelContains", false)]
-    [InlineData("point-on-boundary", "esriSpatialRelWithin", false)]
-    [InlineData("point-outside", "esriSpatialRelContains", false)]
-    [InlineData("point-outside", "esriSpatialRelWithin", false)]
-    [InlineData("square-outside", "esriSpatialRelContains", false)]
-    [InlineData("square-outside", "esriSpatialRelWithin", false)]
-    public async Task Contains_and_within_follow_the_de9im_patterns(string query, string spatialRel, bool expected)
+    [MemberData(nameof(SpatialRelationMatrix.MatrixCases), MemberType = typeof(SpatialRelationMatrix))]
+    public async Task Named_relations_follow_the_de9im_patterns(string query, string spatialRel, bool expected)
     {
-        Assert.Equal(expected, await MatchesAsync(query, spatialRel));
-    }
-
-    [Theory]
-    [InlineData("square-equal", false)]
-    [InlineData("square-inner", false)]
-    [InlineData("square-overlap", false)]
-    [InlineData("square-corner", false)]
-    [InlineData("square-above", true)]
-    [InlineData("line-crossing", false)]
-    [InlineData("line-inside", false)]
-    [InlineData("line-on-boundary", true)]
-    [InlineData("point-inside", false)]
-    [InlineData("point-on-boundary", true)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Touches_needs_disjoint_interiors_and_meeting_boundaries(string query, bool expected)
-    {
-        Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Touches));
+        Assert.Equal(expected, await MatchesAsync(SpatialRelationMatrix.Feature, query, spatialRel));
     }
 
     /// <summary>
@@ -177,65 +142,13 @@ public sealed class FeatureSpatialRelationTests
     /// </summary>
     private static readonly string[] OgcTouchesMasks = ["FT*******", "F**T*****", "F***T****"];
 
-    /// <summary>Every ordered pair of the polygon, line and point fixtures.</summary>
-    public static TheoryData<string, string> GeometryPairs()
-    {
-        var names = new[]
-        {
-            "square-equal", "square-inner", "square-overlap", "square-corner", "square-above", "square-outside",
-            "line-crossing", "line-inside", "line-on-boundary", "line-collinear", "line-edge",
-            "line-shifted-collinear",
-            "point-inside", "point-on-boundary", "point-vertex", "point-outside",
-        };
-        var pairs = new TheoryData<string, string>();
-        foreach (var feature in names)
-        {
-            foreach (var query in names)
-            {
-                pairs.Add(feature, query);
-            }
-        }
-
-        return pairs;
-    }
-
-    [Theory]
-    [InlineData("square-equal", false)]
-    [InlineData("square-inner", false)]
-    [InlineData("square-overlap", true)]
-    [InlineData("square-corner", false)]
-    [InlineData("square-above", false)]
-    [InlineData("line-crossing", false)]
-    [InlineData("line-inside", false)]
-    [InlineData("line-on-boundary", false)]
-    [InlineData("line-shifted-collinear", false)]
-    [InlineData("point-inside", false)]
-    [InlineData("point-on-boundary", false)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Overlaps_needs_equal_dimensions_and_a_partial_overlap(string query, bool expected)
-    {
-        Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Overlaps));
-    }
-
-    [Theory]
-    [InlineData("square-equal", false)]
-    [InlineData("square-inner", false)]
-    [InlineData("square-overlap", false)]
-    [InlineData("square-corner", false)]
-    [InlineData("square-above", false)]
-    [InlineData("line-crossing", true)]
-    [InlineData("line-inside", false)]
-    [InlineData("line-on-boundary", false)]
-    [InlineData("line-shifted-collinear", false)]
-    [InlineData("point-inside", false)]
-    [InlineData("point-on-boundary", false)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Crosses_needs_a_partial_overlap_or_a_crossing(string query, bool expected)
-    {
-        Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Crosses));
-    }
+    /// <summary>
+    /// Every ordered pair of the polygon, line and point fixtures, from the
+    /// one fixture list <see cref="SpatialRelationMatrix"/> holds, so the
+    /// query path and the Geometry Service <c>relation</c> operation are
+    /// measured over the same pairs in both operand orders.
+    /// </summary>
+    public static TheoryData<string, string> GeometryPairs() => SpatialRelationMatrix.Pairs();
 
     /// <summary>
     /// The reproduction for SpatialEngine-u2x.56, <c>Overlaps</c> half: the
@@ -356,24 +269,6 @@ public sealed class FeatureSpatialRelationTests
         _ => 2,
     };
 
-    [Theory]
-    [InlineData("square-equal", true)]
-    [InlineData("square-inner", true)]
-    [InlineData("square-overlap", true)]
-    [InlineData("square-corner", true)]
-    [InlineData("square-above", true)]
-    [InlineData("line-crossing", true)]
-    [InlineData("line-inside", true)]
-    [InlineData("line-on-boundary", true)]
-    [InlineData("point-inside", true)]
-    [InlineData("point-on-boundary", true)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Intersects_is_a_non_empty_intersection(string query, bool expected)
-    {
-        Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Intersects));
-    }
-
     /// <summary>
     /// The reproduction for SpatialEngine-51k: <c>Intersects</c> is the
     /// intersection <em>test</em>, not the intersection <em>geometry</em>.
@@ -401,7 +296,7 @@ public sealed class FeatureSpatialRelationTests
         var parsed = await QueryAsync(query, EsriFeatureQuery.Intersects);
         var relations = new RecordsPatterns(Relations);
         var candidate = new FeatureSpatialMatcher.MatchCandidate(
-            parsed, Feature(Square(0, 0, 10, 10)), 1, parsed.Geometry, relations);
+            parsed, Feature(UnitSquare()), 1, parsed.Geometry, relations);
 
         Assert.Equal(expected, FeatureSpatialMatcher.Matches(candidate, CancellationToken.None));
         Assert.All(relations.Patterns, pattern => Assert.Contains(pattern, IntersectsPatterns));
@@ -457,7 +352,7 @@ public sealed class FeatureSpatialRelationTests
     public async Task Intersects_the_pattern_union_agrees_with_the_intersection_test(string query)
     {
         var parsed = await QueryAsync(query, EsriFeatureQuery.Intersects);
-        var built = !Operations.Intersection(Square(0, 0, 10, 10), QueryGeometry(query), CancellationToken.None).IsEmpty;
+        var built = !Operations.Intersection(UnitSquare(), QueryGeometry(query), CancellationToken.None).IsEmpty;
 
         Assert.Equal(built, await MatchesAsync(query, EsriFeatureQuery.Intersects));
     }
@@ -471,7 +366,7 @@ public sealed class FeatureSpatialRelationTests
 
         Assert.Throws<OperationCanceledException>(() => FeatureSpatialMatcher.Matches(
             new FeatureSpatialMatcher.MatchCandidate(
-                parsed, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Relations),
+                parsed, Feature(UnitSquare()), 1, Square(0, 0, 5, 5), Relations),
             cancelled.Token));
     }
 
@@ -501,7 +396,7 @@ public sealed class FeatureSpatialRelationTests
         var query = await QueryAsync("square-equal", EsriFeatureQuery.Contains);
         var feature = new Feature(new FeatureId("empty"), Schema, [AttributeValue.Null]);
         Assert.False(FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, Square(0, 0, 10, 10), Services.Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, feature, 1, UnitSquare(), Services.Relations),
             CancellationToken.None));
     }
 
@@ -513,7 +408,7 @@ public sealed class FeatureSpatialRelationTests
         await cancelled.CancelAsync();
 
         Assert.Throws<OperationCanceledException>(() => FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, Feature(Square(0, 0, 10, 10)), 1, Square(0, 0, 5, 5), Services.Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, Feature(UnitSquare()), 1, Square(0, 0, 5, 5), Services.Relations),
             cancelled.Token));
     }
 
@@ -527,9 +422,12 @@ public sealed class FeatureSpatialRelationTests
     /// The match with the feature geometry named separately from the query
     /// geometry, so a fixture can put the polygon, the line or the point in
     /// either operand position: the matrix is read with the feature on the
-    /// left, and the defect was only visible in one of the two orders.
+    /// left, and the defect was only visible in one of the two orders. The
+    /// Geometry Service's own cross-surface test asks this, so one surface
+    /// answering a named verb differently from the other fails with the pair
+    /// and the verb in the test name (SpatialEngine-dih).
     /// </summary>
-    private static async Task<bool> MatchesAsync(string feature, string query, string spatialRel)
+    internal static async Task<bool> MatchesAsync(string feature, string query, string spatialRel)
     {
         var parsed = await QueryAsync(query, spatialRel);
         var candidate = new FeatureSpatialMatcher.MatchCandidate(
@@ -538,7 +436,7 @@ public sealed class FeatureSpatialRelationTests
     }
 
     private static FeatureSpatialMatcher.MatchCandidate Candidate(EsriFeatureQuery query) =>
-        new(query, Feature(Square(0, 0, 10, 10)), 1, query.Geometry, Services.Relations);
+        new(query, Feature(UnitSquare()), 1, query.Geometry, Services.Relations);
 
     private static async Task<EsriFeatureQuery> QueryAsync(string geometry, string spatialRel)
     {
@@ -577,28 +475,20 @@ public sealed class FeatureSpatialRelationTests
         }
     }
 
-    /// <summary>The fixture's query geometries, keyed by the name the matrix table uses.</summary>
-    private static IGeometry QueryGeometry(string name) => name switch
-    {
-        "square-equal" => Square(0, 0, 10, 10),
-        "square-inner" => Square(2, 2, 4, 4),
-        "square-overlap" => Square(5, 5, 15, 15),
-        "square-corner" => Square(0, 0, 4, 4),
-        "square-above" => Square(0, 10, 10, 20),
-        "line-crossing" => Line(0, 5, 20, 5),
-        "line-inside" => Line(2, 2, 8, 8),
-        "line-on-boundary" => Line(0, 0, 0, 10),
-        "line-collinear" => Line(-5, 0, 15, 0),
-        "line-edge" => Line(0, 0, 10, 0),
-        "line-shifted-collinear" => Line(5, 0, 20, 0),
-        "point-inside" => GeometryFactory.CreatePoint(5, 5),
-        "point-on-boundary" => GeometryFactory.CreatePoint(0, 5),
-        "point-vertex" => GeometryFactory.CreatePoint(0, 0),
-        "point-outside" => GeometryFactory.CreatePoint(20, 20),
-        "square-outside" => Square(20, 20, 30, 30),
-        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown fixture geometry"),
-    };
+    /// <summary>
+    /// The fixture's query geometries, keyed by the name the matrix table
+    /// uses: the one fixture definition <see cref="SpatialRelationMatrix"/>
+    /// holds, projected into the engine's own geometry values (SpatialEngine-dih).
+    /// </summary>
+    private static IGeometry QueryGeometry(string name) => SpatialRelationMatrix.Of(name).Geometry;
 
+    /// <summary>
+    /// The feature geometry the matrix is read against — the unit square,
+    /// from the same fixture table the query geometries come from.
+    /// </summary>
+    private static IGeometry UnitSquare() => QueryGeometry(SpatialRelationMatrix.Feature);
+
+    /// <summary>A square named by its extent, for the shapes the matrix does not carry.</summary>
     private static Polygon Square(double minX, double minY, double maxX, double maxY) =>
         GeometryFactory.CreatePolygon(
         [
