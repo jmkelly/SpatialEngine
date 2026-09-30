@@ -300,7 +300,64 @@ public sealed class MemoryStoreTests
         Assert.Equal(2, appended);
         var batches = await store.ScanAsync("memory.places");
         Assert.Equal(["1", "2"], batches.SelectMany(batch => batch.Features).Select(feature => feature.Id.Value).ToArray());
-        Assert.Single(await store.GetAsync("memory.places", [new FeatureId("1")]));
+    }
+
+    // ADR-0140: a create-built dataset declares no identity column, so it has
+    // no durable key to read a feature by. The lookup face says so rather than
+    // answering from whatever identity the rows happen to carry — the refusal
+    // is pinned by A_lookup_on_a_dataset_with_no_identity_column_is_refused.
+    [Fact]
+    public async Task A_create_built_dataset_declares_no_identity_column()
+    {
+        var store = new MemoryStore();
+
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
+
+        Assert.Empty((await store.DescribeAsync("memory.places")).IdColumns);
+    }
+
+    [Fact]
+    public async Task A_lookup_on_a_dataset_with_no_identity_column_is_refused()
+    {
+        var store = await IngestedAsync(IngestIdentity.None);
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(
+            () => store.GetAsync("memory.cities", [new FeatureId("1")]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("identity", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("memory.cities", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_lookup_on_a_created_dataset_with_no_identity_column_is_refused()
+    {
+        var store = new MemoryStore();
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
+        await store.WriteAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)));
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(
+            () => store.GetAsync("memory.places", [new FeatureId("1")]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    [Fact]
+    public async Task A_refused_lookup_still_refuses_an_empty_id_list()
+    {
+        // The refusal is about the dataset, not about the identities asked
+        // for: an empty request on an unkeyed dataset is still unanswerable.
+        var store = await IngestedAsync(IngestIdentity.None);
+
+        await Assert.ThrowsAsync<SpatialException>(() => store.GetAsync("memory.cities", []));
+    }
+
+    [Fact]
+    public async Task A_lookup_on_an_identity_backed_dataset_is_answered()
+    {
+        var store = await IngestedAsync();
+
+        Assert.Equal("Berlin", Assert.Single(await store.GetAsync("memory.cities", [new FeatureId("1")]))["name"].StringValue);
     }
 
     [Fact]

@@ -191,6 +191,14 @@ public sealed class MemoryStore
         return ValueTask.FromResult(_catalog.WithLock(() => _catalog.Version(dataset)));
     }
 
+    /// <summary>
+    /// The features the dataset's identity column names. A dataset that
+    /// declares none is refused rather than answered: its stored features
+    /// carry whatever identity the caller or the decoder gave them — the read
+    /// order of a no-identity ingest, whose numbers any write moves — and
+    /// answering from that would be answering about a feature that may not be
+    /// the one asked for (ADR-0140).
+    /// </summary>
     public Task<IReadOnlyList<Feature>> GetAsync(
         string dataset, IReadOnlyList<FeatureId> ids, CancellationToken cancellationToken = default)
     {
@@ -199,6 +207,12 @@ public sealed class MemoryStore
         return Task.FromResult(_catalog.WithLock<IReadOnlyList<Feature>>(() =>
         {
             var found = _catalog.Find(dataset);
+            if (found.IdColumns.Count == 0)
+            {
+                throw SpatialException.BadArguments(
+                    $"Cannot read features by identity from dataset '{dataset}': it declares no identity column.");
+            }
+
             var wanted = new HashSet<FeatureId>(ids);
             return found.Features.Where(feature => wanted.Contains(feature.Id)).ToArray();
         }));

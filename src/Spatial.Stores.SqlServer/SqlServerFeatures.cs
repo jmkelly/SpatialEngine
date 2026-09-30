@@ -71,14 +71,19 @@ internal sealed class SqlServerFeatures(SqlServerStorage storage, SqlServerCatal
         SqlServerDatasetName name, CancellationToken cancellationToken) =>
         catalogue.DescribeAsync(name, cancellationToken);
 
-    /// <summary>The features the dataset's identity columns name, or nothing when it has no identity.</summary>
+    /// <summary>
+    /// The features the dataset's identity columns name. A dataset that
+    /// declares none has no durable key to address a row by, so the read is
+    /// refused rather than answered with nothing (ADR-0140).
+    /// </summary>
     public async Task<IReadOnlyList<Feature>> ByIdentityAsync(
         SqlServerDatasetName name, IReadOnlyList<FeatureId> ids, CancellationToken cancellationToken)
     {
         var description = await catalogue.DescribeAsync(name, cancellationToken);
         if (description.IdColumns.Count == 0)
         {
-            return [];
+            throw SpatialException.BadArguments(
+                $"Cannot read features by identity from dataset '{name}': it declares no identity column.");
         }
 
         var batches = await ReadBatchesAsync(

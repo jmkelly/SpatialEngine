@@ -495,15 +495,24 @@ public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainer
     }
 
     [SkippableFact]
-    public async Task Lookup_by_identity_of_a_table_without_a_primary_key_is_empty()
+    public async Task Lookup_by_identity_of_a_table_without_a_primary_key_is_refused()
     {
+        // ADR-0140: a table with no primary key has no durable feature key, so
+        // the read is refused rather than answered with nothing — an empty
+        // answer would claim the feature is absent rather than that the layer
+        // cannot name its features.
         Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         await context.ExecuteAsync(
             "IF OBJECT_ID('dbo.unkeyed', 'U') IS NOT NULL DROP TABLE dbo.unkeyed; "
             + "CREATE TABLE dbo.unkeyed (kind nvarchar(20) NULL, geom geometry NOT NULL);");
 
-        Assert.Empty(await context.Store.GetAsync("dbo.unkeyed", [new FeatureId("1")]));
+        var failure = await Assert.ThrowsAsync<SpatialException>(
+            () => context.Store.GetAsync("dbo.unkeyed", [new FeatureId("1")]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("identity", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("dbo.unkeyed", failure.Message, StringComparison.Ordinal);
     }
 
     [SkippableFact]
