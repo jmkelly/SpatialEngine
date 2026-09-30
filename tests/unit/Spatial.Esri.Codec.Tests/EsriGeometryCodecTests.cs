@@ -7,6 +7,9 @@ public sealed class EsriGeometryCodecTests
 {
     private static IGeometry Decode(string json) => EsriGeometryCodec.Decode(JsonDocument.Parse(json).RootElement);
 
+    private static IGeometry Decode(string json, CoordinateLayout declared) =>
+        EsriGeometryCodec.Decode(JsonDocument.Parse(json).RootElement, fallback: null, declared);
+
     private static IGeometry RoundTrip(IGeometry geometry) => Decode(EsriGeometryCodec.Encode(geometry));
 
     [Fact]
@@ -49,6 +52,65 @@ public sealed class EsriGeometryCodecTests
         Assert.Null(decoded.Z);
         Assert.Equal(3, decoded.M);
         Assert.Equal(CoordinateLayout.Xym, decoded.Layout);
+    }
+
+    [Fact]
+    public void A_point_keeps_its_z_without_a_per_geometry_flag()
+    {
+        // A real FeatureServer answers a hasZ layer with {"x","y","z"} and no
+        // flag of its own — the captured corpus has no flagged response
+        // geometry anywhere. The point form names its ordinates, so the
+        // property is the flag and dropping it loses a remote's elevation.
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"z":3}"""));
+
+        Assert.Equal(3, decoded.Z);
+        Assert.Null(decoded.M);
+        Assert.Equal(CoordinateLayout.Xyz, decoded.Layout);
+    }
+
+    [Fact]
+    public void A_point_keeps_its_m_without_a_per_geometry_flag()
+    {
+        var decoded = Assert.IsAssignableFrom<Point>(Decode("""{"x":1,"y":2,"m":3}"""));
+
+        Assert.Null(decoded.Z);
+        Assert.Equal(3, decoded.M);
+        Assert.Equal(CoordinateLayout.Xym, decoded.Layout);
+    }
+
+    [Fact]
+    public void A_three_element_coordinate_array_falls_back_to_the_declared_layout_for_m()
+    {
+        // The array form is ambiguous on its own, so the dataset's declared
+        // layout decides (ADR-0142).
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode(
+            """{"points":[[1,2,3]]}""", CoordinateLayout.Xym));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Null(point.Z);
+        Assert.Equal(3, point.M);
+    }
+
+    [Fact]
+    public void A_three_element_coordinate_array_falls_back_to_the_declared_layout_for_z()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode(
+            """{"points":[[1,2,3]]}""", CoordinateLayout.Xyz));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Equal(3, point.Z);
+        Assert.Null(point.M);
+    }
+
+    [Fact]
+    public void A_stated_flag_outranks_the_declared_layout()
+    {
+        var decoded = Assert.IsAssignableFrom<MultiPoint>(Decode(
+            """{"points":[[1,2,3]],"hasZ":true}""", CoordinateLayout.Xym));
+
+        var point = Assert.Single(decoded.Points);
+        Assert.Equal(3, point.Z);
+        Assert.Null(point.M);
     }
 
     [Fact]

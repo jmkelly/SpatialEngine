@@ -435,7 +435,14 @@ is rejected by name (never silently ignored) and named here with its reason:
   trip while under-advertising is only a client that asks for less. The ArcGIS
   REST store proves the same thing from the remote layer's own `hasZ`/`hasM`
   declaration (ADR-0091) and asks the remote for exactly the ordinates it
-  advertises. The **MapServer** layer record carries the same keys under the
+  advertises. The **read** side needed the same declaration and did not have
+  it: the recorded corpus (`tests/fixtures/arcgis/captured/`) has 18 layers
+  declaring `hasZ: true` and **no flagged response geometry among them** — a
+  remote states its layout once, on the layer resource. So a response geometry
+  that flags nothing is read by the layout its dataset declares, and an Esri
+  point's `z`/`m` property is read as the ordinate it names, flag or no flag
+  (ADR-0142). Without that, a hasZ layer's elevation was asked for by
+  ADR-0091 and then dropped on the way in. The **MapServer** layer record carries the same keys under the
   same rule (ADR-0125), off the same `DatasetDescription` — a MapServer layer
   resource is the FeatureServer document with a `drawingInfo` attached, and a
   3D dataset described as 2D by the map surface while the FeatureServer

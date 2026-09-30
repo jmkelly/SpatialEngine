@@ -14,14 +14,27 @@ namespace Spatial.Esri.Codec;
 public static class EsriGeometryCodec
 {
     /// <summary>Decodes an Esri geometry object using its own spatial reference.</summary>
-    public static IGeometry Decode(JsonElement element) => Decode(element, fallback: null);
+    public static IGeometry Decode(JsonElement element) => Decode(element, fallback: null, declared: null);
 
     /// <summary>
     /// Decodes an Esri geometry object; the element's own spatial reference
     /// wins, otherwise <paramref name="fallback"/> applies (for example a
     /// layer's SRID or an <c>inSR</c> request parameter).
     /// </summary>
-    public static IGeometry Decode(JsonElement element, CoordinateReference? fallback)
+    public static IGeometry Decode(JsonElement element, CoordinateReference? fallback) =>
+        Decode(element, fallback, declared: null);
+
+    /// <summary>
+    /// Decodes an Esri geometry object with the dataset's <em>declared</em>
+    /// coordinate layout as the fallback for the geometry's own
+    /// <c>hasZ</c>/<c>hasM</c> flags (ADR-0142). A geometry that states a
+    /// flag is taken at its word; a geometry that states neither falls back to
+    /// the dataset, because a real FeatureServer does not repeat the flags on
+    /// its response geometry and a three-ordinate array is otherwise
+    /// ambiguous. The declared layout is a <see cref="Spatial.Core.Geometry.CoordinateLayout"/>
+    /// and not a store type, so no provider shape crosses the codec.
+    /// </summary>
+    public static IGeometry Decode(JsonElement element, CoordinateReference? fallback, CoordinateLayout? declared)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
@@ -35,10 +48,10 @@ public static class EsriGeometryCodec
         }
 
         var crs = EsriSpatialReference.DecodeFrom(element) ?? fallback;
-        var flags = GeometryFlags.From(element);
+        var flags = GeometryFlags.From(element).OrDeclared(declared);
         if (IsPoint(element))
         {
-            return DecodePoint(element, crs, flags);
+            return DecodePoint(element, crs);
         }
 
         if (element.TryGetProperty("points", out var points))
@@ -165,13 +178,13 @@ public static class EsriGeometryCodec
     private static bool IsPoint(JsonElement element) =>
         element.TryGetProperty("x", out _) && element.TryGetProperty("y", out _);
 
-    private static Point DecodePoint(JsonElement element, CoordinateReference? crs, GeometryFlags flags)
+    private static Point DecodePoint(JsonElement element, CoordinateReference? crs)
     {
         var coordinate = new Coordinate(
             Number(element.GetProperty("x")),
             Number(element.GetProperty("y")),
-            ReadOrdinate(element, "z", flags.HasZ),
-            ReadOrdinate(element, "m", flags.HasM));
+            ReadOrdinate(element, "z"),
+            ReadOrdinate(element, "m"));
         return GeometryFactory.CreatePoint(coordinate, crs);
     }
 
@@ -391,9 +404,18 @@ public static class EsriGeometryCodec
             : new Coordinate(values[0], values[1], values[2], null);
     }
 
-    private static double? ReadOrdinate(JsonElement element, string property, bool present)
+    /// <summary>
+    /// Reads a point's named <c>z</c>/<c>m</c> property (spec §10). The point
+    /// form is the one shape where the ordinate is named rather than
+    /// positional, so the property's own presence says which ordinate it is —
+    /// no <c>hasZ</c>/<c>hasM</c> flag is needed, and a remote that omits the
+    /// flag (which a real FeatureServer does) does not lose its elevation by
+    /// sending one. The flags are for the array forms, where a third element
+    /// is a Z or an M and nothing in the payload says which (ADR-0142).
+    /// </summary>
+    private static double? ReadOrdinate(JsonElement element, string property)
     {
-        if (!present || !element.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.Number)
+        if (!element.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.Number)
         {
             return null;
         }
@@ -459,6 +481,19 @@ public static class EsriGeometryCodec
     {
         public static GeometryFlags From(JsonElement element) =>
             new(Flag(element, "hasZ"), Flag(element, "hasM"));
+
+        /// <summary>
+        /// The flags as the dataset declares them, for a geometry that states
+        /// neither: a remote's response geometry carries no flag of its own,
+        /// so the layer resource is the only statement of what its
+        /// three-ordinate arrays hold (ADR-0142). A geometry that states
+        /// either flag keeps its own answer — the per-geometry statement is
+        /// the more specific one.
+        /// </summary>
+        public GeometryFlags OrDeclared(CoordinateLayout? declared) =>
+            HasZ || HasM || declared is not { } layout
+                ? this
+                : new GeometryFlags(layout.HasZ(), layout.HasM());
 
         private static bool Flag(JsonElement element, string name) =>
             element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;

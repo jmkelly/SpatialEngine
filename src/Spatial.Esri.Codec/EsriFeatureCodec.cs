@@ -66,13 +66,18 @@ public static class EsriFeatureCodec
     /// Reads one feature under the layer schema. <paramref name="objectIdField"/>
     /// supplies the feature identity; the geometry field (by name, or the first
     /// <c>Geometry</c> field) receives the decoded geometry.
+    /// <paramref name="declared"/> is the dataset's declared coordinate layout
+    /// (ADR-0084), used as the fallback for a response geometry that states no
+    /// <c>hasZ</c>/<c>hasM</c> flag of its own (ADR-0142) — a real
+    /// FeatureServer's shape.
     /// </summary>
     public static Feature Decode(
         JsonElement element,
         FeatureSchema schema,
         string objectIdField,
         string? geometryField,
-        CoordinateReference? fallback)
+        CoordinateReference? fallback,
+        CoordinateLayout? declared = null)
     {
         ArgumentNullException.ThrowIfNull(schema);
         if (element.ValueKind != JsonValueKind.Object)
@@ -90,7 +95,7 @@ public static class EsriFeatureCodec
         {
             var field = schema[i];
             values[i] = field.Name == geometryName
-                ? ReadGeometry(geometryElement, fallback)
+                ? ReadGeometry(geometryElement, fallback, declared)
                 : EsriAttributeCodec.Read(attributes, field);
         }
 
@@ -236,13 +241,13 @@ public static class EsriFeatureCodec
         return null;
     }
 
-    private static AttributeValue ReadGeometry(JsonElement geometry, CoordinateReference? fallback)
+    private static AttributeValue ReadGeometry(JsonElement geometry, CoordinateReference? fallback, CoordinateLayout? declared)
     {
         if (geometry.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
         {
             return AttributeValue.Null;
         }
 
-        return AttributeValue.FromGeometry(EsriGeometryCodec.Decode(geometry, fallback));
+        return AttributeValue.FromGeometry(EsriGeometryCodec.Decode(geometry, fallback, declared));
     }
 }

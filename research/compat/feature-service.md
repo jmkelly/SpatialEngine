@@ -58,10 +58,10 @@ Our surface: `src/Spatial.Adapter.GeoServices/GeoServicesEndpoints.cs`
 | `datumTransformation`, `defaultSR`-style WKT2 spatial references | honestly rejected | **Partial** | `datumTransformation` rejected by name; WKT2 SR input not accepted — `EsriValueParser.ParseSpatialReference` takes a WKID or `{wkid}` and nothing else. The internal WKT catalogue and datum-transformation graph (ADR-0086, ADR-0087) are engine-internal and are not a wire format for `inSR`/`outSR` |
 | `distance`+`units` (query-with-distance) | served | **Have** | buffered band in the layer CRS, shared curated unit table (ADR-0085) |
 | `returnCentroid` | served | **Have** | `IGeometryMeasures.Centroid` written beside the geometry (ADR-0085) |
-| `returnZ`/`returnM` | served | **Have** | ordinate selection + the `hasZ`/`hasM` flags the Esri arrays need (ADR-0085) |
+| `returnZ`/`returnM` | served | **Have** | ordinate selection + the `hasZ`/`hasM` flags the Esri arrays need (ADR-0085). Read side too: a response geometry that states no flag is read by the layout its dataset declares, and a point's `z`/`m` property is its own flag — a real FeatureServer omits the flag (ADR-0142) |
 | `quantizationParameters` | served | **Have** | view-grid quantization of x/y/z/m plus a bounded generalization (ADR-0079); an unservable `mode`/`originPosition` is rejected by name; the layer advertises `supportsQuantization` so the REST JS gate opens (ADR-0081) |
 | `multipatchOption`, `returnTrueCurves`, `resultType`, `sqlFormat`, `relationParam` | honestly rejected | **Non-goal** | each rejected by name (`EsriFeatureQuery.cs:RejectUnsupported`); pinned by §7.1 non-goals |
-| `hasZ`/`hasM` on the layer resource | served | **Have** | `EsriLayerModel.cs` (ADR-0084); derived from `DatasetDescription.GeometryLayout`, which PostGIS fills from the geometry column's declared type modifier and the ArcGIS REST store from the remote layer's own `hasZ`/`hasM` (ADR-0091) — proved true by the Z/M/ZM column tests, and proved *absent* for a 2D and an unconstrained column |
+| `hasZ`/`hasM` on the layer resource | served | **Have** | `EsriLayerModel.cs` (ADR-0084); derived from `DatasetDescription.GeometryLayout`, which PostGIS fills from the geometry column's declared type modifier and the ArcGIS REST store from the remote layer's own `hasZ`/`hasM` (ADR-0091) — proved true by the Z/M/ZM column tests, and proved *absent* for a 2D and an unconstrained column. The same declaration is the codec's read-side fallback, because a remote's *response* geometry carries no flag of its own (ADR-0142) |
 
 ## 2. Response-shape deltas vs ground truth (same-data proof)
 
@@ -88,6 +88,18 @@ branches on (`advancedQueryCapabilities`, `supportsStatistics`,
 `uniqueIdField`, `hasZ`/`hasM` on a dataset that carries them) is
 present and replay-tested. A flag the facade does not earn is omitted rather
 than emitted as `false` (ADR-0081).
+
+### 2a. The consume side: a response geometry carries no flags
+
+The layer resource is the only place a Feature Server states its layout, and
+the recorded corpus shows it is the only place: of the 316 captured layers, 18
+declare `hasZ: true` and **not one answers a query with a `hasZ`/`hasM` flag on
+the response geometry**. A codec that treats the per-geometry flag as the only
+statement of an ordinate therefore drops a real remote's elevation, and reads
+an M-declaring layer's measures as elevations. Both are fixed by reading the
+named `z`/`m` property of a point and falling back to the dataset's declared
+layout for an unflagged three-ordinate array (ADR-0142). A geometry that states
+a flag is still taken at its word.
 
 ## 3. Follow-ups (filed)
 
