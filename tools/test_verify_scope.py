@@ -66,6 +66,11 @@ DOC_GATE = "python3 tools/arch-index.py --check"
 # The conflict-marker check: every lane calls it directly rather than finding
 # it through the tools/**-only tooling suite, which is the hole ADR-0146 closes.
 CONFLICT_MARKER_GATE = "python3 tools/conflict_markers.py"
+# The repository-root check: the root carries no document answering "what is
+# happening now" and the changelog is at `docs/CHANGELOG.md` (ADR-0148). It
+# follows the conflict-marker check, for the same reason it is not in the
+# tools/**-only tooling suite.
+DOC_SURFACE_GATE = "python3 tools/doc_surface.py"
 
 #: A real project in this repository, and the test suites that reach it.
 CORE_PROJECT = "src/Spatial.Core/Spatial.Core.csproj"
@@ -707,6 +712,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan(), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
@@ -760,6 +766,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs "
             "tools/seed/fetch.py",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
@@ -773,6 +780,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan("--format"), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
@@ -787,6 +795,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan("--full"), [
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
@@ -817,6 +826,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan(ci="true"), [
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
@@ -832,6 +842,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan("--format", ci="true"), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
@@ -847,6 +858,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan(base="origin/does-not-exist"), [
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -859,6 +871,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan("--format", base="origin/does-not-exist"), [
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
+            DOC_SURFACE_GATE,
             DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
         ])

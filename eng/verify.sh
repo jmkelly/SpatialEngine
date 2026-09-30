@@ -37,6 +37,14 @@
 # docs merge the fast gate passed. It costs 2.5 s and changes nothing
 # (ADR-0146).
 #
+# Every lane also runs `tools/doc_surface.py`, which reads the repository root
+# for a document that answers "what is happening now" and for a second
+# changelog: a `HANDOFF.md` and a root `CHANGELOG.md` sat there for a month and
+# a half, and the in-flight question has exactly one answer in the bead queue
+# (ADR-0148). It is milliseconds, it needs no SDK, and it is a check the lanes
+# call directly rather than a `tools/test_*.py`, because reintroducing a root
+# session note is a docs or `src` change.
+#
 # Every lane then runs the doc gate — `tools/arch-index.py --check` over the
 # generated ADR register and index, plus a dangling `ADR-NNNN` citation read
 # (ADR-0141). It is a second or two, it is about the repository rather than
@@ -363,6 +371,31 @@ conflict_marker_step() {
   step python3 tools/conflict_markers.py
 }
 
+# --- the repository-root check ----------------------------------------------
+# The root of this repository is the first thing every agent's file listing has
+# to reason past, and for a month and a half two of its entries were documents
+# that go stale between sessions: a 142-line `HANDOFF.md` whose opening claim
+# was already false against `bd ready`, and a 1384-line `CHANGELOG.md` of which
+# 1038 lines were an `## [Unreleased]` section hand-merged by a rule no gate
+# touched (ADR-0148). In-flight state is the bead queue and a release history
+# is a release artefact, so the changelog lives at `docs/CHANGELOG.md` and the
+# root carries neither.
+#
+# Deleting the two files does not hold on its own — nothing stopped them
+# landing — so the rule is a check the lanes call directly, the shape ADR-0143
+# and ADR-0146 give the other two repository checks, and not a
+# `tools/test_*.py` the tooling suite only runs when the change set touches
+# `tools/**`. Reintroducing a root session note is a docs or `src` change,
+# which is the change set the tooling gate does not see. It reads a directory
+# and two files, so it is milliseconds and it needs no .NET SDK.
+#
+# It is a repo check rather than one over the change, so it is not scoped and
+# has no fallback case: there is nothing to narrow.
+doc_surface_step() {
+  echo "== doc surface: the root carries no agent-context sediment =="
+  step python3 tools/doc_surface.py
+}
+
 # --- the doc gate, on every lane -------------------------------------------
 # The ADR register and the ADR index are generated from the records themselves
 # (ADR-0141), so "is the documentation current" is a comparison rather than a
@@ -393,6 +426,7 @@ if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
   whitespace_step
   conflict_marker_step
+  doc_surface_step
   doc_gate
   if [[ "$EXHAUSTIVE" == "1" ]]; then
     echo "the change set is unscoped against $BASE, so this is the whole solution"
@@ -410,6 +444,7 @@ fi
 if [[ "$LANE" == "full" ]]; then
   whitespace_step all
   conflict_marker_step
+  doc_surface_step
   doc_gate
 
   echo "== format check =="
@@ -436,6 +471,7 @@ fi
 echo "== fast build gate (base $BASE) =="
 whitespace_step
 conflict_marker_step
+doc_surface_step
 doc_gate
 
 if [[ "$EXHAUSTIVE" == "1" ]]; then

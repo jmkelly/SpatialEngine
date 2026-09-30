@@ -51,7 +51,10 @@ interop surface.
   `tools/conflict_markers.py`, which reads every tracked file for an
   unresolved merge-conflict marker — a rule that was a `tools/test_*.py` and so
   ran only on a change set that touched `tools/**`, which is how a marker
-  reached `CHANGELOG.md` on main through a docs merge (ADR-0146).
+  reached `CHANGELOG.md` on main through a docs merge (ADR-0146). It also runs
+  `tools/doc_surface.py`: the repository root carries no document answering
+  "what is happening now", and the changelog is at `docs/CHANGELOG.md`
+  (ADR-0148).
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
   Every lane that runs `dotnet test` also fails a suite that skipped most of
@@ -153,3 +156,7 @@ only as the record of that mapping.
   record with its status, date and cross-references — both generated from the
   records by `python3 tools/arch-index.py --write`, and every lane of
   `eng/verify.sh` fails if the committed copy is stale (ADR-0141).
+- In-flight state is `bd`, not a document in the repository root: no root file
+  answers "what is happening now" (`tools/doc_surface.py`, every lane,
+  ADR-0148). `docs/CHANGELOG.md` is a release artefact rather than a context
+  source — for what changed on a path, read `git log -- <path>` and the bead.

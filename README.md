@@ -229,7 +229,7 @@ Point QGIS, the ArcGIS Maps SDK, or the workbench at `:8080` and the same
 catalog/feature/map/image/OGC routes serve your data. The demo store and the
 GeoServices FeatureServer are always available; the PostGIS and SQL Server
 stores are advertised once their connection strings are configured. See `RELEASING.md` for
-the version/tag checklist and `CHANGELOG.md` for what shipped.
+the version/tag checklist and `docs/CHANGELOG.md` for what shipped.
 
 ### Auth today, auth next
 

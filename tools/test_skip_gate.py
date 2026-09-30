@@ -298,21 +298,31 @@ class LaneExitCodeTests(unittest.TestCase):
             + "</Solution>\n", encoding="utf-8")
         # The lane runs repo-wide checks before anything scoped: the
         # trailing-whitespace check (ADR-0143), the conflict-marker check
-        # (ADR-0146) and the doc gate (ADR-0141), then the reporting-only
-        # documentation-freshness audit (`eng/quality-audit.sh --report`,
-        # SpatialEngine-imz.2). The fixture therefore carries all of those
-        # tools, and — because the doc gate regenerates the ADR register and
-        # index and fails on a stale one — a decision corpus and its generated
-        # register. A fixture without any of them would be measuring the gates
-        # rather than the skip gate, and the lane would go red for a reason that
-        # has nothing to do with skips.
+        # (ADR-0146), the repository-root check (ADR-0148) and the doc gate
+        # (ADR-0141), then the reporting-only documentation-freshness audit
+        # (`eng/quality-audit.sh --report`, SpatialEngine-imz.2). The fixture
+        # therefore carries all of those tools, and — because the doc gate
+        # regenerates the ADR register and index and fails on a stale one — a
+        # decision corpus and its generated register. A fixture without any of
+        # them would be measuring the gates rather than the skip gate, and the
+        # lane would go red for a reason that has nothing to do with skips.
         for name in ("eng/verify.sh", "eng/quality-audit.sh", "tools/verify_scope.py",
                      "tools/skip_gate.py", "tools/trailing_whitespace.py",
-                     "tools/conflict_markers.py", "tools/arch-index.py",
-                     "tools/doc-freshness.py"):
+                     "tools/conflict_markers.py", "tools/doc_surface.py",
+                     "tools/arch-index.py", "tools/doc-freshness.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
+        # The root check reads the version and the changelog, so the fixture
+        # carries a root that passes it: a product version and the one
+        # changelog at the documented path (ADR-0148).
+        (self.root / "Directory.Build.props").write_text(
+            "<Project>\n  <PropertyGroup>\n    <Version>0.1.0</Version>\n"
+            "  </PropertyGroup>\n</Project>\n", encoding="utf-8")
+        (self.root / "docs").mkdir()
+        (self.root / "docs" / "CHANGELOG.md").write_text(
+            "# Changelog\n\n## [0.1.0] - 2026-09-12\n\n- **Fixture release**\n",
+            encoding="utf-8")
         # The repository's own `trim_trailing_whitespace` rule, so the lane's
         # first step is a real check over the fixture's own file rather than a
         # missing tool.

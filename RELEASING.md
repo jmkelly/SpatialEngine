@@ -1,7 +1,11 @@
 # Releasing
 
 The product version is single-sourced in `Directory.Build.props` (`<Version>`),
-mirrored in `CHANGELOG.md`, and never declared in individual projects.
+mirrored in `docs/CHANGELOG.md`, and never declared in individual projects.
+The changelog is a release artefact rather than agent context, which is why it
+lives under `docs/` rather than at the repository root (ADR-0148); a gate
+(`tools/doc_surface.py`) fails on a second changelog and on a release heading
+above `<Version>`.
 
 ## Checklist
 
@@ -12,7 +16,7 @@ mirrored in `CHANGELOG.md`, and never declared in individual projects.
    JavaScript suites on every push and pull request.
 2. **Update the version.** Bump `<Version>` in `Directory.Build.props`.
 3. **Update the changelog.** Move `Unreleased` entries under a new
-   `## [x.y.z] - YYYY-MM-DD` heading in `CHANGELOG.md`.
+   `## [x.y.z] - YYYY-MM-DD` heading in `docs/CHANGELOG.md`.
 4. **Refresh the SDK snapshot.** `eng/e2e-web.sh` regenerates the OpenAPI
    snapshot and the TypeScript wire types; it must leave `clients/typescript`
    clean.

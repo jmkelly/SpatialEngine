@@ -6,7 +6,8 @@ namespace Spatial.Architecture.Tests;
 /// (ADR-0041/ADR-0053) and the pre-rename project buckets must not return.
 /// <c>capability</c> stays reserved for protocol wire vocabulary (Esri layer
 /// strings, OGC <c>GetCapabilities</c>, neutral <c>/capabilities</c> routes);
-/// store interfaces are <c>faces</c>. ADRs, CHANGELOG and the distilled
+/// store interfaces are <c>faces</c>. ADRs, the release changelog
+/// (<c>docs/CHANGELOG.md</c>, ADR-0148) and the distilled
 /// superseded-register keep history.
 /// </summary>
 public sealed class NamingTests
@@ -186,7 +187,7 @@ public sealed class NamingTests
         var relative = Path.GetRelativePath(Root.Value, path);
         var segments = relative.Split(Path.DirectorySeparatorChar);
 
-        if (string.Equals(relative, "CHANGELOG.md", StringComparison.Ordinal)
+        if (string.Equals(relative, Path.Combine("docs", "CHANGELOG.md"), StringComparison.Ordinal)
             || relative.EndsWith("-queue.md", StringComparison.Ordinal)
             || relative.EndsWith("-report.json", StringComparison.Ordinal)
             || string.Equals(relative, Path.Combine("architecture", "distilled", "README.md"), StringComparison.Ordinal))
