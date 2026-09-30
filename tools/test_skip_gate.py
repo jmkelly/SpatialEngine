@@ -350,12 +350,65 @@ class LaneExitCodeTests(unittest.TestCase):
         """`--skip-tests` is the opt-out, and it drops the suite from the run —
         so a lane that dropped the suite must not then fail for the suite it no
         longer ran."""
-        result = self.lane("--skip-tests=SqlServer",
-                           skip_counts=f"{MAPS_TESTS_NAME}=56:0 "
-                                       f"{ARCHITECTURE_NAME}=84:0")
+        for form in (("--skip-tests=SqlServer",), ("--skip-tests", "SqlServer")):
+            with self.subTest(form=form):
+                result = self.lane(*form,
+                                   skip_counts=f"{MAPS_TESTS_NAME}=56:0 "
+                                               f"{ARCHITECTURE_NAME}=84:0")
+
+                self.assertEqual(
+                    0, result.returncode,
+                    f"a dropped suite still failed the lane:\n{result.stdout}")
+
+    def test_the_space_separated_form_the_help_documents_is_accepted(self):
+        """The spelling the help, the runbook and ADR-0134 §3 all print.
+
+        `--skip-tests <substring>` is what a reader copies out of
+        `eng/verify.sh --help`, and the first pass over `$@` matched only
+        `--skip-tests=*`, so its `*)` case fired on the bare flag: exit 2,
+        `unknown argument: --skip-tests`, before the second pass that did
+        handle the two-argument form ever ran (SpatialEngine-0v9). The merge
+        tool passes the `=` form, which is why this survived.
+        """
+        result = self.lane("--skip-tests", "SqlServer", "--plan",
+                           skip_counts="")
 
         self.assertEqual(0, result.returncode,
-                         f"a dropped suite still failed the lane:\n{result.stdout}")
+                         f"the documented form was rejected:\n{result.stderr}")
+        self.assertNotIn("unknown argument", result.stderr)
+
+    def test_a_valueless_skip_tests_is_rejected(self):
+        """A flag that swallowed the next argument, or arrived with nothing at
+        all, would be a parameter accepted and ignored — and swallowing
+        `--plan` would silently turn the exhaustive question off."""
+        for form in (("--skip-tests",), ("--skip-tests", "--plan"),
+                     ("--skip-tests=",)):
+            with self.subTest(form=form):
+                result = self.lane(*form, skip_counts="")
+
+                self.assertEqual(
+                    2, result.returncode,
+                    f"a valueless --skip-tests was accepted:\n{result.stdout}")
+                self.assertIn("--skip-tests needs a substring", result.stderr)
+
+    def test_both_spellings_can_be_combined_and_mixed_with_a_lane(self):
+        """One pass, both forms, and the lane flag in between — the arguments
+        have to be read wherever they appear, not as a leading pair only.
+
+        This asserts that both spellings are *accepted* and that neither one
+        swallows what follows it. That the pattern was then *honoured* is not
+        observable here: the fixture's `ProjectReference` edges are written
+        repo-root-relative where `tools/verify_scope.py` resolves them relative
+        to the referring project, so the fixture's test projects fall out of
+        the plan and the lane has nothing to drop. Filed as its own bead rather
+        than fixed inside a parsing fix.
+        """
+        result = self.lane("--skip-tests", "SqlServer", "--fast",
+                           "--skip-tests=Maps", "--plan", skip_counts="")
+
+        self.assertEqual(0, result.returncode,
+                         f"a mixed invocation was rejected:\n{result.stderr}")
+        self.assertNotIn("unknown argument", result.stderr)
 
 
 if __name__ == "__main__":

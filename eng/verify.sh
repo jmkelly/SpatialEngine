@@ -108,33 +108,44 @@ add_skip_patterns() {
   done
 }
 add_skip_patterns "${VERIFY_SKIP_TESTS:-}"
-for arg in "$@"; do
-  case "$arg" in
-    --full) LANE=full; LANE_NAMED=1 ;;
-    --format) LANE=format; LANE_NAMED=1 ;;
-    --fast) LANE=default; LANE_NAMED=1 ;;
-    --quick) LANE=default; LANE_NAMED=1 ;;
-    --skip-tests=*) add_skip_patterns "${arg#--skip-tests=}" ;;
-    --plan) PLAN_ONLY=1 ;;
-    # The whole header comment: every paragraph above `set -euo pipefail`, which
-    # on this tree is line 80. Both gates document themselves there, so a range
-    # that stops short of the last paragraph prints a usage block that omits
-    # the step a caller is about to be surprised by.
-    -h|--help) sed -n '2,80p' "$0"; exit 0 ;;
-    *) echo "unknown argument: $arg" >&2; exit 2 ;;
-  esac
-done
+# One pass, both spellings. `--skip-tests <substring>` is the form the header
+# help, AGENTS.md, the runbook and ADR-0134 §3 all print, and
+# `--skip-tests=<substring>` is the form tools/bd-merge-bead.py passes; a
+# reader who copies the documented one out of the help used to be met with
+# `unknown argument: --skip-tests` and exit 2, because the loop that handled
+# the two-argument case sat behind the one that rejected it (SpatialEngine-0v9).
+# So the value is taken here, in the same pass, whether it is attached or
+# separate — and a value that is missing, empty, or is the next flag is
+# rejected by name rather than swallowed.
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --full) LANE=full; LANE_NAMED=1; shift ;;
+    --format) LANE=format; LANE_NAMED=1; shift ;;
+    --fast) LANE=default; LANE_NAMED=1; shift ;;
+    --quick) LANE=default; LANE_NAMED=1; shift ;;
+    --skip-tests=*)
+      [[ -n "${1#--skip-tests=}" ]] || {
+        echo "--skip-tests needs a substring" >&2
+        exit 2
+      }
+      add_skip_patterns "${1#--skip-tests=}"
+      shift
+      ;;
     --skip-tests)
-      if [[ $# -lt 2 ]]; then
+      if [[ $# -lt 2 || "$2" == -* ]]; then
         echo "--skip-tests needs a substring" >&2
         exit 2
       fi
       add_skip_patterns "$2"
       shift 2
       ;;
-    *) shift ;;
+    --plan) PLAN_ONLY=1; shift ;;
+    # The whole header comment: every paragraph above `set -euo pipefail`, which
+    # on this tree is line 80. Both gates document themselves there, so a range
+    # that stops short of the last paragraph prints a usage block that omits
+    # the step a caller is about to be surprised by.
+    -h|--help) sed -n '2,80p' "$0"; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
