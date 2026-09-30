@@ -188,8 +188,13 @@ class DocFreshnessTest(unittest.TestCase):
             self.root / "AGENTS.md",
             "# AGENTS\n\n" + "\n".join(f"line {n}" for n in range(260)) + "\n",
         )
-        # 8: a hand-written doc with a single commit.
-        write(self.root / "HANDOFF.md", "# handoff\n\nNothing has happened.\n")
+        # 8: a hand-written doc with a single commit — the shape the check names
+        # is a nested AGENTS.md a generation bead adds once and never touches.
+        # (The fixture's example used to be a root-level `HANDOFF.md`, which
+        # this bead deletes: the root carries no in-flight state, and the audit
+        # no longer walks a document named `HANDOFF.md` there, ADR-0148.)
+        write(self.root / "src" / "Spatial.Contracts" / "AGENTS.md",
+              "# contracts\n\nTwo layers, one direction.\n")
         # 9: two docs naming the gate with different commands, and a doc
         # restating a wall the architecture tests already fail on.
         write(
@@ -206,7 +211,7 @@ class DocFreshnessTest(unittest.TestCase):
                 "architecture/distilled/core.md": 100,
                 "architecture/decisions/ADR-0002-b.md": 200,
             },
-            commit_counts={"HANDOFF.md": 1, "AGENTS.md": 9},
+            commit_counts={"src/Spatial.Contracts/AGENTS.md": 1, "AGENTS.md": 9},
         )
         fired = {finding["check"] for finding in report["findings"]}
         self.assertEqual(set(CHECK_IDS), fired, json.dumps(report["findings"], indent=2))

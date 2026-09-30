@@ -328,6 +328,24 @@ heading that is not above `<Version>`).
 
 ### Changed
 
+- **The repository root carried a stale handoff and a release artefact**
+  (ADR-0148, SpatialEngine-imz.3): `HANDOFF.md` was 142 lines answering "what
+  is happening now", which `bd ready` answers and versions, and its opening
+  claim — that the GeoServices REST track is the active work — was already false
+  against the queue; `CHANGELOG.md` was 1384 lines at the root, 1038 of them an
+  `## [Unreleased]` section that no gate touched. Both are gone from the root:
+  the changelog is at `docs/CHANGELOG.md` and the in-flight question has one
+  answer. The deletion is held rather than asked for by a review: every lane of
+  `eng/verify.sh` and the CI `verify` job now run `tools/doc_surface.py`, which
+  fails on a document at the root that answers "what is happening now", on a
+  second changelog, and on a released heading above the version in
+  `Directory.Build.props` — a check the lanes call directly rather than one
+  buried in the tooling suite that only runs when `tools/**` changes, because
+  reintroducing one is a docs or `src` change. The knowledge the handoff held
+  that had no other home moved to the beads and the code comments that already
+  carried most of it (`quality-waivers.json` for the CRAP waiver, ADR-0044 for
+  the raster gotchas).
+
 - **The group page and `having` belong to the reduction, and a store that
   implements the reduction face answers both** (ADR-0128, SpatialEngine-u2x.44):
   a statistics query with `resultRecordCount=1` asked the store for *every*

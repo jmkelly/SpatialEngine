@@ -96,10 +96,14 @@ BLOAT_CEILING = 200
 SKIP_DIRECTORIES = arch_index.SKIP_DIRECTORIES | {".agents"}
 
 #: Where the docs an agent is pointed at live. Everything walked is under one of
-#: these, or is a root-level document.
-DOC_ROOTS = ("architecture", "eng", "tools", "clients", "src", "tests", "research")
+#: these, or is a root-level document. `docs` is here because the release
+#: changelog moved there (ADR-0148): a `DOC_ROOTS` that stops naming the tree a
+#: document is in stops reading that document, and the largest document in the
+#: repository is the one to stop reading last.
+DOC_ROOTS = ("architecture", "eng", "tools", "clients", "src", "tests", "research",
+             "docs")
 ROOT_DOCS = (
-    "AGENTS.md", "README.md", "RELEASING.md", "HANDOFF.md", "CHANGELOG.md",
+    "AGENTS.md", "README.md", "RELEASING.md",
 )
 
 #: Files the generators own: a single commit is a generator run, not a
