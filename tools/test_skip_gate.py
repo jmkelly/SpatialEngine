@@ -143,6 +143,29 @@ class SkipGateTests(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("2 of 3", result.stdout)
 
+    def test_a_green_run_with_a_missing_suite_still_fails_the_gate(self):
+        """Two green suites and a third that left no file is the uncovered case.
+
+        The test above (`test_a_suite_with_no_result_file_is_not_a_pass`) does
+        name an unmet `--expect`, but it puts the mass-skipped
+        `Spatial.SqlServer.Tests` in the directory alongside the green one — so
+        it passes on the mass-skip rule and would pass with the `--expect` check
+        deleted outright. Here every suite that *did* report is green, so the
+        only thing wrong with the run is the suite whose numbers were lost, and
+        a hard ERROR printed over exit 0 is exactly how a missing suite reaches
+        `tools/bd-merge-bead.py` and merges (SpatialEngine-huv).
+        """
+        for project, total, skipped in (POSTGIS, HOST):
+            self.write(project, trx(project, total, skipped))
+
+        result = self.run_gate("--expect", "3")
+
+        self.assertNotEqual(
+            0, result.returncode,
+            f"a missing suite was reported and the gate still exited 0:\n"
+            f"{result.stdout}")
+        self.assertIn("2 of 3", result.stdout)
+
     def test_the_expected_count_is_not_invented_when_no_run_happened(self):
         """`--expect 0` is a run with no suites in scope, and a directory with
         no trx in it is the same thing: nothing to judge, nothing to fail."""

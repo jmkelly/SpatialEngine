@@ -136,8 +136,15 @@ def over_threshold(result: SuiteResult, ratio: float, minimum: int) -> bool:
 
 
 def report(results_dir: Path, expect: int, ratio: float,
-           minimum: int) -> list[SuiteResult]:
-    """Print what the run skipped, and return the suites that are over the line."""
+           minimum: int) -> tuple[list[SuiteResult], bool]:
+    """Print what the run skipped; return the suites over the line, and
+    whether fewer suites reported than the run was told to run.
+
+    The second half of the return is a failure in its own right (ADR-0139 §2):
+    the ERROR line below is only worth printing if it is also *returned*, or a
+    missing suite is a note in a log on a run whose exit code is 0 — and the
+    exit code is what merges (SpatialEngine-huv).
+    """
     suites = sorted(
         (read_suite(path) for path in sorted(results_dir.glob("*.trx"))
          if path.is_file()),
@@ -157,12 +164,13 @@ def report(results_dir: Path, expect: int, ratio: float,
         print(f"   {result.name}: {result.total} test(s), {result.passed} passed, "
               f"{result.failed} failed, {result.skipped} skipped ({share})"
               + ("   OVER THRESHOLD" if result in over else ""))
-    if expect and len(suites) < expect:
+    missing = bool(expect) and len(suites) < expect
+    if missing:
         print(f"   ERROR: {len(suites)} of {expect} suite(s) in this run left a "
               f"result file. A trx file is stamped to the second, so a suite's "
               f"numbers can be overwritten by another project's; a suite that is "
               f"missing is not a suite that passed.")
-    return over
+    return over, missing
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -197,8 +205,8 @@ def main(argv: list[str] | None = None) -> int:
               f"in scope ==")
         return 0
 
-    over = report(args.results_dir, args.expect, args.max_skip_ratio,
-                  args.min_skipped)
+    over, missing = report(args.results_dir, args.expect, args.max_skip_ratio,
+                           args.min_skipped)
     for result in over:
         if result.unreadable:
             print(f"   ERROR: {result.name} left a result file this gate cannot "
@@ -210,7 +218,10 @@ def main(argv: list[str] | None = None) -> int:
               f"suite is not a green suite: re-run the affected class standalone "
               f"on an idle box, or leave the suite to CI with "
               f"`--skip-tests {result.name}` and say so in the close reason.")
-    return 1 if over else 0
+    # Either half is a red lane. A run of green suites with one that left no
+    # result file was the case the gate reported and then merged on anyway
+    # (SpatialEngine-huv).
+    return 1 if (over or missing) else 0
 
 
 if __name__ == "__main__":
