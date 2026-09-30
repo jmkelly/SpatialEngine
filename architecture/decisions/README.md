@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**136 records on disk.** `status` is the record's own word;
+**137 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -152,6 +152,39 @@ front matter, so a record's reach is a row rather than a search.
 | [0147](ADR-0147-a-created-dataset-is-clustered-on-a-key-the-engine-owns.md) | A created dataset is clustered on a key the engine owns | accepted | 2026-10-01 | ADR-0092 |
 | [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md) | The repository root carries no in-flight state, and the changelog is a release artefact | accepted | 2026-10-01 | ADR-0118, ADR-0134 |
 | [0149](ADR-0149-every-ingested-dataset-is-keyed.md) | Every ingested dataset is keyed | accepted | 2026-10-01 | ADR-0041, ADR-0140 |
+| [0150](ADR-0150-a-record-is-one-decision-and-its-shape-is-a-gate.md) | A record is one decision, and its shape is a gate | accepted | 2026-10-01 | — |
+
+## Amended by
+
+The refiners of each record, **derived from their own `amends:` fields**
+rather than maintained by hand. A record that refines another says so
+once, in its own front matter, and this list is the other end of it — so
+a family over one topic is a row here rather than a reading order the
+reader has to assemble across eleven files. A record nobody amends does
+not appear.
+
+- **0041** is amended by 0082, 0090, 0149
+- **0058** is amended by 0100
+- **0070** is amended by 0101
+- **0084** is amended by 0091, 0125
+- **0086** is amended by 0111
+- **0087** is amended by 0111
+- **0092** is amended by 0147
+- **0098** is amended by 0127, 0128, 0131, 0133
+- **0105** is amended by 0107
+- **0109** is amended by 0141
+- **0115** is amended by 0128, 0133
+- **0116** is amended by 0124
+- **0118** is amended by 0141, 0148
+- **0121** is amended by 0124
+- **0124** is amended by 0127, 0131, 0133
+- **0126** is amended by 0130
+- **0128** is amended by 0131
+- **0133** is amended by 0137
+- **0134** is amended by 0146, 0148
+- **0140** is amended by 0149
+- **0141** is amended by 0145
+- **0143** is amended by 0146
 
 ## Superseded, by superseder
 

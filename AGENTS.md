@@ -132,7 +132,11 @@ branch, and re-runs `--check NNNN` immediately before writing — the number is
 read from `origin/main` and the reservation is held in the repository's shared
 git dir, so a parallel branch that takes the same number is turned away at
 allocation instead of at merge (ADR-0090). `--list` shows who holds what,
-`--release NNNN` gives a number back after a renumber.
+`--release NNNN` gives a number back after a renumber. Copy
+`architecture/decisions/TEMPLATE.md` to write one: a record is one decision,
+`amends:` names the record it refines, and the section set, the reading order
+and the narrative word budget are the gate's to enforce rather than the writer's
+to remember (ADR-0150).
 
 Areas are labels and route through `architecture/distilled/README.md`. The
 database lives in the **git common dir** (`.beads/` beside the shared `.git`),
