@@ -86,6 +86,23 @@ public sealed class EsriFeatureCodecTests
     }
 
     [Fact]
+    public void A_feature_geometry_keeps_the_ordinates_the_dataset_declares()
+    {
+        // A remote that omits the per-geometry flag still has the layer
+        // resource, so the decode is told what the dataset declared and a
+        // three-ordinate array is read as M rather than as Z (ADR-0142).
+        var element = JsonDocument.Parse(
+            """{"attributes":{"OBJECTID":7,"name":"Spring","population":10},"geometry":{"points":[[1,2,3]]}}""").RootElement;
+
+        var feature = EsriFeatureCodec.Decode(
+            element, Schema, "OBJECTID", "geometry", CoordinateReference.Epsg(4326), CoordinateLayout.Xym);
+
+        var point = Assert.IsAssignableFrom<Point>(Assert.IsType<MultiPoint>(feature["geometry"].GeometryValue).Points[0]);
+        Assert.Null(point.Z);
+        Assert.Equal(3, point.M);
+    }
+
+    [Fact]
     public void A_feature_without_its_object_id_is_rejected()
     {
         var element = JsonDocument.Parse("""{"attributes":{"name":"x"},"geometry":{"x":1,"y":2}}""").RootElement;

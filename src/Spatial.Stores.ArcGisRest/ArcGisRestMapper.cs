@@ -90,6 +90,15 @@ internal static class ArcGisRestMapper
     private static bool HasOrdinate(JsonElement metadata, string property) =>
         metadata.TryGetProperty(property, out var flag) && flag.ValueKind == JsonValueKind.True;
 
+    /// <summary>
+    /// Decodes a page of Esri features under the layer's schema, telling the
+    /// codec what the layer resource <em>declared</em> about its ordinates
+    /// (ADR-0142). A remote's response geometry does not repeat the
+    /// <c>hasZ</c>/<c>hasM</c> flags its layer resource carries, so without
+    /// this the elevation a hasZ layer was asked for — and did return — would
+    /// be read back as absent, and a three-ordinate array read as Z by
+    /// default rather than as the M an M-declaring layer sent.
+    /// </summary>
     public static List<Feature> ReadFeatures(JsonElement root, DatasetDescription description)
     {
         if (!root.TryGetProperty("features", out var featureElements) || featureElements.ValueKind != JsonValueKind.Array)
@@ -102,7 +111,8 @@ internal static class ArcGisRestMapper
         var features = new List<Feature>(featureElements.GetArrayLength());
         foreach (var element in featureElements.EnumerateArray())
         {
-            features.Add(EsriFeatureCodec.Decode(element, description.Schema, objectIdField, GeometryFieldName, crs));
+            features.Add(EsriFeatureCodec.Decode(
+                element, description.Schema, objectIdField, GeometryFieldName, crs, description.GeometryLayout));
         }
 
         return features;

@@ -40,6 +40,19 @@ public sealed class ArcGisRestStoreTests
         }
         """;
 
+    private const string MLayerMetadata = """
+        {
+          "id": 0,
+          "name": "Stations",
+          "type": "Feature Layer",
+          "geometryType": "esriGeometryMultipoint",
+          "objectIdField": "OBJECTID",
+          "spatialReference": { "wkid": 4326 },
+          "hasZ": false,
+          "hasM": true
+        }
+        """;
+
     private const string ServiceRoot = """
         { "layers": [ { "id": 0, "name": "Cities" } ], "tables": [] }
         """;
@@ -197,8 +210,9 @@ public sealed class ArcGisRestStoreTests
     {
         // The end of the claim: a hasZ layer is asked for Z and the scan hands
         // the elevation on, so advertising hasZ is backed all the way through.
-        // The response geometry states its own hasZ, the reader's rule for a
-        // three-ordinate Esri point.
+        // The geometry states its own hasZ — which a real FeatureServer does
+        // not; the two tests either side of this one are the real shape
+        // (ADR-0142), and this one pins that a stated flag still wins.
         var handler = Handler(Route(ServiceRoot, ZLayerMetadata, QueryPage(
             """{"attributes":{"OBJECTID":7},"geometry":{"x":13.405,"y":52.52,"z":34.5,"hasZ":true}}""")));
         var store = Store(handler);
@@ -207,6 +221,59 @@ public sealed class ArcGisRestStoreTests
 
         var point = Assert.IsType<Point>(Assert.Single(Assert.Single(batches).Features)["geometry"].GeometryValue);
         Assert.Equal(34.5, point.Coordinate!.Value.Z);
+    }
+
+    [Fact]
+    public async Task Scan_keeps_the_ordinates_a_remote_reports_without_a_per_geometry_flag()
+    {
+        // A real FeatureServer does not repeat hasZ on the response geometry:
+        // the captured corpus shows a hasZ:true layer answering a query with
+        // {"points": [[x, y]]} and no flag of its own. The layer resource is
+        // the only place the layout is stated, so the declared ordinates are
+        // what the read path has to fall back on (ADR-0142).
+        var handler = Handler(Route(ServiceRoot, ZLayerMetadata, QueryPage(
+            """{"attributes":{"OBJECTID":7},"geometry":{"x":13.405,"y":52.52,"z":34.5}}""")));
+        var store = Store(handler);
+
+        var batches = await store.ScanAsync("arcgis.l0");
+
+        var point = Assert.IsType<Point>(Assert.Single(Assert.Single(batches).Features)["geometry"].GeometryValue);
+        Assert.Equal(34.5, point.Coordinate!.Value.Z);
+    }
+
+    [Fact]
+    public async Task Scan_reads_a_three_ordinate_array_by_the_layout_the_layer_declares()
+    {
+        // The array form is the ambiguous one: a third element is a Z or an M
+        // and nothing in the payload says which. An M-declaring remote that
+        // omits the per-geometry flag must not have its measures read as
+        // elevations (ADR-0142).
+        var handler = Handler(Route(ServiceRoot, MLayerMetadata, QueryPage(
+            """{"attributes":{"OBJECTID":7},"geometry":{"points":[[1,2,3]]}}""")));
+        var store = Store(handler);
+
+        var batches = await store.ScanAsync("arcgis.l0");
+
+        var point = Point(Geometry(batches));
+        Assert.Null(point.Z);
+        Assert.Equal(3, point.M);
+    }
+
+    [Fact]
+    public async Task Scan_ignores_the_declared_layout_when_the_geometry_states_its_own_flag()
+    {
+        // An explicit per-geometry flag is the more specific statement, so it
+        // still wins over the declared layout — the rule ADR-0085 made the
+        // writer and the reader agree on.
+        var handler = Handler(Route(ServiceRoot, MLayerMetadata, QueryPage(
+            """{"attributes":{"OBJECTID":7},"geometry":{"points":[[1,2,3]],"hasZ":true}}""")));
+        var store = Store(handler);
+
+        var batches = await store.ScanAsync("arcgis.l0");
+
+        var point = Point(Geometry(batches));
+        Assert.Equal(3, point.Z);
+        Assert.Null(point.M);
     }
 
     [Fact]
@@ -462,6 +529,13 @@ public sealed class ArcGisRestStoreTests
         CoordinateLayout.Xyzm => "xyzm",
         _ => throw new ArgumentOutOfRangeException(nameof(layout), layout, "Unknown coordinate layout."),
     };
+
+    /// <summary>The single point of a scanned multipoint feature.</summary>
+    private static Point Point(IGeometry geometry) =>
+        Assert.IsAssignableFrom<Point>(Assert.IsType<MultiPoint>(geometry).Points[0]);
+
+    private static IGeometry Geometry(IReadOnlyList<FeatureBatch> batches) =>
+        Assert.Single(Assert.Single(batches).Features)["geometry"].GeometryValue!;
 
     private static ArcGisRestStore Store(HttpMessageHandler handler) =>
         new(new HttpClient(handler), new ArcGisRestServiceOptions { Name = "remote", Url = BaseUrl });
