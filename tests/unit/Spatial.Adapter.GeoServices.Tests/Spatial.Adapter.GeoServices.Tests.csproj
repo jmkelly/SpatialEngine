@@ -13,6 +13,10 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- The cross-checks against the reference implementation's own named
+         DE-9IM predicates (SpatialEngine-61g) call them directly, so the
+         package is named here rather than borrowed transitively. -->
+    <PackageReference Include="NetTopologySuite" />
   </ItemGroup>
 
   <ItemGroup>

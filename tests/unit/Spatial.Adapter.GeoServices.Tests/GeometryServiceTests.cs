@@ -1,10 +1,18 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Spatial.Contracts;
 using Spatial.Core.Geometry;
 using Spatial.Esri.Codec;
 using Spatial.Operations.NetTopologySuite;
 using Spatial.Transformations.ProjNet;
+
+// The reference implementation is named only where the cross-check below
+// compares the served answer with its OWN named predicates; the alias keeps
+// its value types out of this file's unqualified vocabulary, which is
+// Spatial.Core's (Spatial.Core.Geometry also has Geometry, Point, LineString,
+// Polygon, Coordinate and GeometryFactory).
+using Nts = NetTopologySuite.Geometries;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 
@@ -232,6 +240,119 @@ public sealed class GeometryServiceTests
     public async Task Relation_intersects_is_the_ogc_pattern_union(string query, bool expected) =>
         Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelIntersects"));
 
+    /// <summary>
+    /// Every ordered pair of the same sixteen polygon, line and point
+    /// fixtures <see cref="FeatureSpatialRelationTests"/> uses, so the two
+    /// surfaces of <c>Overlaps</c> and <c>Crosses</c> are measured over one
+    /// fixture set in both operand orders.
+    /// </summary>
+    public static TheoryData<string, string> RelationGeometryPairs()
+    {
+        var names = new[]
+        {
+            "square-equal", "square-inner", "square-overlap", "square-corner", "square-above", "square-outside",
+            "line-crossing", "line-inside", "line-on-boundary", "line-collinear", "line-edge",
+            "line-shifted-collinear",
+            "point-inside", "point-on-boundary", "point-vertex", "point-outside",
+        };
+        var pairs = new TheoryData<string, string>();
+        foreach (var feature in names)
+        {
+            foreach (var query in names)
+            {
+                pairs.Add(feature, query);
+            }
+        }
+
+        return pairs;
+    }
+
+    /// <summary>
+    /// The served <c>Overlaps</c> against the reference implementation's own
+    /// named <c>Overlaps</c> predicate, over all 256 ordered pairs of the
+    /// fixtures and with any fixture in either operand position — the
+    /// measurement SpatialEngine-61g names. A fix to the one surface of a verb
+    /// can leave the other surface of the same verb holding the old reading
+    /// with no test saying which is right, so this asks the served Geometry
+    /// Service the question the reference answers, rather than comparing a
+    /// served pattern constant with itself.
+    ///
+    /// The dimension-dependent line/line pair is the case that has to be
+    /// included: two crossing lines share a point and not a span, so the
+    /// reference reads them <c>Crosses</c> and not <c>Overlaps</c>, while a
+    /// single pattern for every same-dimension pair reads them both ways
+    /// (SpatialEngine-u2x.56).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(RelationGeometryPairs))]
+    public async Task Relation_overlaps_agrees_with_the_reference_over_every_ordered_pair(
+        string feature, string query)
+    {
+        var expected = ReferenceGeometry(feature).Overlaps(ReferenceGeometry(query));
+
+        Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelOverlaps", Capabilities.Relations));
+    }
+
+    /// <summary>
+    /// The <c>Crosses</c> half of the same measurement: the served Geometry
+    /// Service against the reference implementation's own named
+    /// <c>Crosses</c> predicate. A collinear pair that shares a span
+    /// <c>Overlaps</c> and does not cross, and a crossing pair is the other
+    /// way round, so the two verbs have to be right together.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(RelationGeometryPairs))]
+    public async Task Relation_crosses_agrees_with_the_reference_over_every_ordered_pair(
+        string feature, string query)
+    {
+        var expected = ReferenceGeometry(feature).Crosses(ReferenceGeometry(query));
+
+        Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelCrosses", Capabilities.Relations));
+    }
+
+    /// <summary>
+    /// The served Geometry Service reaches its <c>Overlaps</c> and
+    /// <c>Crosses</c> answers through the one predicate table the feature
+    /// query path tests with, and asks it the pattern that pair's dimensions
+    /// call for. The cross-checks above say the two surfaces give the same
+    /// answer; this says why they cannot drift apart unnoticed — a second
+    /// copy of a pattern string in the Geometry Service's own branches is
+    /// exactly the failure SpatialEngine-61g was opened for, and it is only
+    /// invisible while the answers happen to coincide.
+    ///
+    /// The relation face handed to the dispatcher records the patterns it is
+    /// asked, so a line/line pair is seen to ask for <c>1*T***T**</c> and
+    /// <c>0********</c> — the two readings u2x.56 added to the table — rather
+    /// than the single surface pattern that used to serve every
+    /// same-dimension pair.
+    /// </summary>
+    [Theory]
+    [InlineData("line-edge", "line-shifted-collinear", "1*T***T**", true)]
+    [InlineData("square-equal", "square-overlap", "T*T***T**", true)]
+    public async Task Relation_overlaps_asks_the_table_for_the_pairs_dimension_pair(
+        string feature, string query, string pattern, bool expected)
+    {
+        var relations = new RecordsPatterns(new NtsGeometryRelations());
+
+        Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelOverlaps", relations));
+        Assert.Equal([pattern], relations.Patterns);
+    }
+
+    /// <summary>The <c>Crosses</c> half: the line/line row is the one a
+    /// same-dimension gate could not answer at all, so it asks the table
+    /// rather than declining the pair.</summary>
+    [Theory]
+    [InlineData("line-crossing", "line-inside", "0********", true)]
+    [InlineData("square-overlap", "line-crossing", "T**T*****", false)]
+    public async Task Relation_crosses_asks_the_table_for_the_pairs_dimension_pair(
+        string feature, string query, string pattern, bool expected)
+    {
+        var relations = new RecordsPatterns(new NtsGeometryRelations());
+
+        Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelCrosses", relations));
+        Assert.Equal([pattern], relations.Patterns);
+    }
+
     [Fact]
     public async Task Relation_rejects_a_relation_name_it_does_not_serve()
     {
@@ -245,14 +366,45 @@ public sealed class GeometryServiceTests
     }
 
     /// <summary>The unit square against the fixture query geometry, under the named relation.</summary>
-    private static async Task<bool> RelatesAsync(string query, string relation)
+    private static async Task<bool> RelatesAsync(string query, string relation) =>
+        await RelatesAsync("square-equal", query, relation, Capabilities.Relations);
+
+    /// <summary>
+    /// The fixture pair under the named relation, with the first geometry on
+    /// the left of the DE-9IM matrix — the role the query path gives the
+    /// feature, and the direction the reference predicate is asked in.
+    /// </summary>
+    private static async Task<bool> RelatesAsync(
+        string feature, string query, string relation, IGeometryRelations relations)
     {
-        var result = await DispatchAsync("relation",
-            ("geometries1", """[{"rings":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}]"""),
-            ("geometries2", $"[{QueryGeometry(query)}]"),
-            ("relation", relation));
+        var capabilities = Capabilities with { Relations = relations };
+        var result = await ExecuteAsync(GeometryService.Dispatch(
+            "relation",
+            await ParamsAsync(
+                ("geometries1", $"[{QueryGeometry(feature)}]"),
+                ("geometries2", $"[{QueryGeometry(query)}]"),
+                ("relation", relation)),
+            capabilities,
+            CancellationToken.None));
 
         return result.GetProperty("relations")[0].GetInt32() == 1;
+    }
+
+    /// <summary>
+    /// The relation face that remembers which patterns it was asked, so a
+    /// test can see the Geometry Service answer <c>Overlaps</c> and
+    /// <c>Crosses</c> out of the one shared table rather than out of a
+    /// pattern of its own.
+    /// </summary>
+    private sealed class RecordsPatterns(IGeometryRelations inner) : IGeometryRelations
+    {
+        internal List<string> Patterns { get; } = [];
+
+        public bool Relate(IGeometry left, IGeometry right, string intersectionPattern, CancellationToken cancellationToken = default)
+        {
+            Patterns.Add(intersectionPattern);
+            return inner.Relate(left, right, intersectionPattern, cancellationToken);
+        }
     }
 
     /// <summary>
@@ -270,7 +422,11 @@ public sealed class GeometryServiceTests
         "line-crossing" => Line(0, 5, 20, 5),
         "line-inside" => Line(2, 2, 8, 8),
         "line-on-boundary" => Line(0, 0, 0, 10),
+        "line-collinear" => Line(-5, 0, 15, 0),
+        "line-edge" => Line(0, 0, 10, 0),
+        "line-shifted-collinear" => Line(5, 0, 20, 0),
         "point-inside" => Point(5, 5),
+        "point-vertex" => Point(0, 0),
         "point-on-boundary" => Point(0, 5),
         "point-outside" => Point(20, 20),
         "square-outside" => Square(20, 20, 30, 30),
@@ -284,6 +440,51 @@ public sealed class GeometryServiceTests
         $$"""{"paths":[[[{{x1}},{{y1}}],[{{x2}},{{y2}}]]]}""";
 
     private static string Point(double x, double y) => $$"""{"x":{{x}},"y":{{y}}}""";
+
+    /// <summary>
+    /// The same fixtures built as the reference implementation's own geometry
+    /// values, so the cross-check asks its named <c>Overlaps</c> and
+    /// <c>Crosses</c> predicates rather than a spelled-out copy of the
+    /// patterns the engine serves: the fixture set is shared, the question is
+    /// the reference's.
+    /// </summary>
+    private static Nts.Geometry ReferenceGeometry(string name) => name switch
+    {
+        "square-equal" => ReferenceSquare(0, 0, 10, 10),
+        "square-inner" => ReferenceSquare(2, 2, 4, 4),
+        "square-overlap" => ReferenceSquare(5, 5, 15, 15),
+        "square-corner" => ReferenceSquare(0, 0, 4, 4),
+        "square-above" => ReferenceSquare(0, 10, 10, 20),
+        "square-outside" => ReferenceSquare(20, 20, 30, 30),
+        "line-crossing" => ReferenceLine(0, 5, 20, 5),
+        "line-inside" => ReferenceLine(2, 2, 8, 8),
+        "line-on-boundary" => ReferenceLine(0, 0, 0, 10),
+        "line-collinear" => ReferenceLine(-5, 0, 15, 0),
+        "line-edge" => ReferenceLine(0, 0, 10, 0),
+        "line-shifted-collinear" => ReferenceLine(5, 0, 20, 0),
+        "point-inside" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(5, 5)),
+        "point-on-boundary" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(0, 5)),
+        "point-vertex" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(0, 0)),
+        "point-outside" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(20, 20)),
+        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown fixture geometry"),
+    };
+
+    private static Nts.Polygon ReferenceSquare(double minX, double minY, double maxX, double maxY) =>
+        Nts.GeometryFactory.Default.CreatePolygon(
+        [
+            new Nts.Coordinate(minX, minY),
+            new Nts.Coordinate(maxX, minY),
+            new Nts.Coordinate(maxX, maxY),
+            new Nts.Coordinate(minX, maxY),
+            new Nts.Coordinate(minX, minY),
+        ]);
+
+    private static Nts.LineString ReferenceLine(double x1, double y1, double x2, double y2) =>
+        Nts.GeometryFactory.Default.CreateLineString(
+        [
+            new Nts.Coordinate(x1, y1),
+            new Nts.Coordinate(x2, y2),
+        ]);
 
     [Fact]
     public async Task Project_requires_out_sr()
