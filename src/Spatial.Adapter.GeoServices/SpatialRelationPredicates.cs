@@ -22,14 +22,21 @@ namespace Spatial.Adapter.GeoServices;
 /// | <c>Contains</c> | <c>T*****FF*</c> | the interiors meet and the query's exterior reaches neither the feature's interior nor its boundary — so a containee lying *on* the container's boundary is not contained, and a containee sharing part of the boundary still is. |
 /// | <c>Within</c> | <c>T*F**F***</c> | the mirror, evaluated with the feature in the query's frame. |
 /// | <c>Touches</c> | <c>FT*******</c> \| <c>F**T*****</c> \| <c>F***T****</c> | interiors disjoint, and the contact in position 2, 4 or 5: the OGC touches masks, unioned into one dimension-free predicate, so a point or line on the other geometry's boundary touches it whichever side of the matrix the boundary lands on. The union is not one nine-character pattern — <c>FT*******</c> alone drops the edge-sharing and boundary-meeting cases — so it costs up to three <see cref="IGeometryRelations.Relate"/> calls, as <c>Intersects</c> does for its four. |
-/// | <c>Overlaps</c> | <c>T*T***T**</c> | interiors meet, each boundary reaches the other interior, and the exteriors meet — a genuine partial overlap, never containment. |
-/// | <c>Crosses</c> | <c>T**T*****</c> / <c>T*T******</c> | interiors meet and the lower-dimensional geometry's interior reaches the higher-dimensional one's boundary; the pattern is selected by which side is lower-dimensional (position 4 or position 2). |
+/// | <c>Overlaps</c> | <c>T*T***T**</c> (A/A), <c>1*T***T**</c> (L/L) | interiors meet, each boundary reaches the other interior, and the exteriors meet — a genuine partial overlap, never containment. The line/line reading asks the interiors to meet in dimension one, so a shared span overlaps and a crossing does not. |
+/// | <c>Crosses</c> | <c>T**T*****</c> (A/L), <c>T*T******</c> (L/A), <c>0********</c> (L/L) | interiors meet and the lower-dimensional geometry's interior reaches the higher-dimensional one's boundary; the mixed-dimension pattern is selected by which side is lower-dimensional (position 4 or position 2), and the line/line pattern asks for a dimension-zero meeting. |
 /// | <c>Intersects</c> | <c>T********</c> or <c>*T*******</c> or <c>***T*****</c> or <c>****T****</c> | the OGC intersect union: the geometries meet if the interiors meet, or either interior reaches the other's boundary, or the boundaries meet. A pair shares nothing exactly when all four positions are <c>F</c>.
 ///
-/// <c>Overlaps</c> and <c>Crosses</c> are equal- and mixed-dimension
-/// constrained, so both are gated on the geometry dimensions: the patterns
-/// alone would let a line crossing a polygon read as both <c>Overlaps</c>
-/// and <c>Crosses</c> (OGC splits them by dimension).
+/// <c>Overlaps</c> and <c>Crosses</c> are dimension-dependent, so both are
+/// gated on the geometry dimensions: the patterns alone would let a line
+/// crossing a polygon read as both <c>Overlaps</c> and <c>Crosses</c> (OGC
+/// splits them by dimension). Their patterns are keyed by the pair's
+/// dimension pair rather than chosen by "which side is higher", because the
+/// line/line reading is not a mirror of the mixed-dimension one — it asks
+/// for a dimension-zero interior intersection, which is what separates two
+/// crossing lines (cross, not overlap) from two collinear lines sharing a
+/// span (overlap, not cross). A pair whose dimensions the reference does not
+/// relate at all reads false, which is how a point pair is never an overlap
+/// or a cross.
 ///
 /// <c>Intersects</c> is the one verb whose definition is a disjunction, so it
 /// costs four <see cref="IGeometryRelations.Relate"/> calls rather than one:
@@ -42,9 +49,11 @@ internal static class SpatialRelationPredicates
 {
     private const string ContainsPattern = "T*****FF*";
     private const string WithinPattern = "T*F**F***";
-    private const string OverlapsPattern = "T*T***T**";
-    private const string CrossesFeatureHigherPattern = "T**T*****";
-    private const string CrossesFeatureLowerPattern = "T*T******";
+    private const string OverlapsSurfacePattern = "T*T***T**";
+    private const string OverlapsCurvePattern = "1*T***T**";
+    private const string CrossesFeatureSurfacePattern = "T**T*****";
+    private const string CrossesFeatureCurvePattern = "T*T******";
+    private const string CrossesCurvePattern = "0********";
 
     /// <summary>
     /// The OGC touches masks, in the order they are tried: the feature's
@@ -110,21 +119,55 @@ internal static class SpatialRelationPredicates
         pair.EnvelopesIntersect()
         && IntersectsPatterns.Any(pattern => relations.Relate(pair.Feature, pair.Query, pattern, cancellationToken));
 
-    /// <summary>Same-dimension partial overlap: interiors meet, neither geometry contains the other.</summary>
+    /// <summary>Same-dimension partial overlap: interiors meet in the pair's own dimension, neither geometry contains the other.</summary>
     internal static bool Overlaps(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
         pair.EnvelopesIntersect()
-        && SameDimension(pair)
-        && relations.Relate(pair.Feature, pair.Query, OverlapsPattern, cancellationToken);
+        && OverlapsPattern(pair) is { } pattern
+        && relations.Relate(pair.Feature, pair.Query, pattern, cancellationToken);
 
-    /// <summary>Mixed-dimension partial overlap: interiors meet at the lower dimension, neither contains the other.</summary>
+    /// <summary>
+    /// Crosses: the interiors meet and, where one geometry is
+    /// lower-dimensional, its interior reaches the other's boundary.
+    /// </summary>
     internal static bool Crosses(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
         CrossesPattern(pair) is { } pattern
         && relations.Relate(pair.Feature, pair.Query, pattern, cancellationToken);
 
     /// <summary>
-    /// The crosses pattern for the pair, or <c>null</c> when the pair is
-    /// disjoint, same-dimension (crosses is a mixed-dimension relation) or
-    /// carries a geometry type with no topological dimension.
+    /// The <c>Overlaps</c> pattern for the pair's dimension pair, or
+    /// <c>null</c> when the reference states none — a mixed-dimension pair
+    /// never overlaps, and neither does a pair of points.
+    ///
+    /// Both readings ask the exteriors to meet and neither geometry to
+    /// contain the other, and they differ only in how far the interiors have
+    /// to agree. A surface/surface pair needs the interiors to meet
+    /// (<c>T</c>); a line/line pair needs them to meet *in dimension one*
+    /// (<c>1</c>), because two lines crossing at a point share a point and
+    /// not a span. Reading the line/line pair with the surface pattern is
+    /// what let a crossing pair answer true (SpatialEngine-u2x.56).
+    /// </summary>
+    private static string? OverlapsPattern(GeometryPair pair) =>
+        (Dimension(pair.Feature), Dimension(pair.Query)) switch
+        {
+            (2, 2) => OverlapsSurfacePattern,
+            (1, 1) => OverlapsCurvePattern,
+            _ => null,
+        };
+
+    /// <summary>
+    /// The <c>Crosses</c> pattern for the pair's dimension pair, or
+    /// <c>null</c> when the reference states none: a pair of equal
+    /// surfaces, a pair involving a point, and a disjoint pair's envelope
+    /// never cross.
+    ///
+    /// The two mixed-dimension readings are the mirror images of one
+    /// another — the lower-dimensional geometry's interior has to reach the
+    /// higher-dimensional one's boundary, which is position 4 when the
+    /// feature is the surface and position 2 when it is the curve. The
+    /// line/line reading is not a mirror of either: two lines cross when
+    /// their interiors meet in a point (<c>0********</c>), and a collinear
+    /// pair that shares a span does not, because its interiors meet in
+    /// dimension one (SpatialEngine-u2x.56).
     /// </summary>
     private static string? CrossesPattern(GeometryPair pair)
     {
@@ -133,15 +176,14 @@ internal static class SpatialRelationPredicates
             return null;
         }
 
-        var feature = Dimension(pair.Feature);
-        var query = Dimension(pair.Query);
-        return feature > query ? CrossesFeatureHigherPattern
-            : query > feature ? CrossesFeatureLowerPattern
-            : null;
+        return (Dimension(pair.Feature), Dimension(pair.Query)) switch
+        {
+            (2, 1) => CrossesFeatureSurfacePattern,
+            (1, 2) => CrossesFeatureCurvePattern,
+            (1, 1) => CrossesCurvePattern,
+            _ => null,
+        };
     }
-
-    private static bool SameDimension(GeometryPair pair) =>
-        Dimension(pair.Feature) == Dimension(pair.Query);
 
     /// <summary>The topological dimension of a geometry: points 0, lines 1, areas 2, anything else -1.</summary>
     private static readonly Dictionary<GeometryType, int> Dimensions = new()

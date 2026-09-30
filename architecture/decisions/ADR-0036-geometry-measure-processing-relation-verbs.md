@@ -85,6 +85,16 @@ carry both without the two being swapped at a call site.
   dropped position 2, so a point or line feature on a query polygon's
   boundary read as not touching. The three OGC touches masks are the
   dimension-free union, and the union is not one nine-character pattern.)
+- The dimension-dependent verbs are keyed on the **dimension pair**, not on
+  which side is higher. `Overlaps` is `T*T***T**` for A/A and `1*T***T**`
+  for L/L — the interiors must meet in dimension one, so two lines sharing a
+  span overlap and two crossing lines do not — and `Crosses` is `T**T*****`
+  (A/L), `T*T******` (L/A) and `0********` (L/L), where the interiors must
+  meet in dimension zero. A pair the reference does not relate at those
+  dimensions reads false rather than asking a pattern. (SpatialEngine-u2x.56
+  corrects both rows: one `Overlaps` pattern over both same-dimension cases
+  read a crossing line pair as an overlap, and the equal-dimension gate on
+  `Crosses` meant a crossing line pair never crossed.)
 
 ## References
 

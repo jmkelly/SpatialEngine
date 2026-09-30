@@ -36,6 +36,7 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// | point (0,5), on the boundary | <c>FFTTFTFFT</c> | F | F | T | F | F | T |
 /// | point (20,20), outside | <c>FFTFFTTFT</c> | F | F | F | F | F | F |
 /// | square (20,20)-(30,30), disjoint | <c>FFTFFTTTT</c> | F | F | F | F | F | F |
+/// | line (5,0)-(20,0), along the edge and past it | <c>FF2101102</c> | F | F | T | F | F | T |
 ///
 /// The three reproduction cases the envelope approximation failed are the
 /// ones with a geometry on the boundary: <c>Contains</c> and <c>Within</c>
@@ -43,6 +44,11 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// envelope test passes and the intersection covers the containee), and
 /// <c>Touches</c> rejects a point on the boundary (the intersection
 /// degenerates to a point, which the old code then read as a containment).
+///
+/// <c>Overlaps</c> and <c>Crosses</c> are the two dimension-dependent verbs,
+/// and both are read off a per-dimension-pair table rather than one pattern:
+/// a line/line pair is the case a single pattern gets wrong in both
+/// directions (SpatialEngine-u2x.56).
 ///
 /// <c>Intersects</c> reads true wherever any of the four matrix positions is
 /// <c>T</c> — interior∩interior, either interior against the other's
@@ -178,6 +184,7 @@ public sealed class FeatureSpatialRelationTests
         {
             "square-equal", "square-inner", "square-overlap", "square-corner", "square-above", "square-outside",
             "line-crossing", "line-inside", "line-on-boundary", "line-collinear", "line-edge",
+            "line-shifted-collinear",
             "point-inside", "point-on-boundary", "point-vertex", "point-outside",
         };
         var pairs = new TheoryData<string, string>();
@@ -201,6 +208,7 @@ public sealed class FeatureSpatialRelationTests
     [InlineData("line-crossing", false)]
     [InlineData("line-inside", false)]
     [InlineData("line-on-boundary", false)]
+    [InlineData("line-shifted-collinear", false)]
     [InlineData("point-inside", false)]
     [InlineData("point-on-boundary", false)]
     [InlineData("point-outside", false)]
@@ -219,14 +227,134 @@ public sealed class FeatureSpatialRelationTests
     [InlineData("line-crossing", true)]
     [InlineData("line-inside", false)]
     [InlineData("line-on-boundary", false)]
+    [InlineData("line-shifted-collinear", false)]
     [InlineData("point-inside", false)]
     [InlineData("point-on-boundary", false)]
     [InlineData("point-outside", false)]
     [InlineData("square-outside", false)]
-    public async Task Crosses_needs_a_mixed_dimension_meeting(string query, bool expected)
+    public async Task Crosses_needs_a_partial_overlap_or_a_crossing(string query, bool expected)
     {
         Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Crosses));
     }
+
+    /// <summary>
+    /// The reproduction for SpatialEngine-u2x.56, <c>Overlaps</c> half: the
+    /// served predicate carried one pattern, <c>T*T***T**</c>, for every
+    /// same-dimension pair. That pattern asks only that the interiors meet,
+    /// and two crossing lines meet in a single point — matrix
+    /// <c>0F1FF0102</c> — so the pair read as a partial overlap and the
+    /// same-dimension gate let it through. The line/line reading is the
+    /// OGC <c>1*T***T**</c>, where the interiors must meet in dimension one:
+    /// a shared span overlaps, a crossing does not. The crossing pair is
+    /// read in both operand orders, because the matrix is not symmetric.
+    /// </summary>
+    [Theory]
+    [InlineData("line-crossing", "line-inside", false)]
+    [InlineData("line-inside", "line-crossing", false)]
+    [InlineData("line-edge", "line-shifted-collinear", true)]
+    [InlineData("line-shifted-collinear", "line-edge", true)]
+    public async Task Overlaps_separates_a_line_pair_that_shares_a_span_from_one_that_crosses(
+        string feature, string query, bool expected)
+    {
+        Assert.Equal(expected, await MatchesAsync(feature, query, EsriFeatureQuery.Overlaps));
+    }
+
+    /// <summary>
+    /// The reproduction for SpatialEngine-u2x.56, <c>Crosses</c> half: the
+    /// dimension gate returned <c>null</c> for equal dimensions, on the
+    /// reading that crosses is only a mixed-dimension relation. Two crossing
+    /// lines do cross — JTS reads the line/line case as <c>0********</c> —
+    /// so the gate answered "never" for a pair the reference answers true.
+    /// A collinear pair that shares a span is the other half of the row: it
+    /// <c>Overlaps</c> and is not <c>Crosses</c>, which is exactly why the
+    /// line/line pattern asks for a dimension-zero interior intersection.
+    /// </summary>
+    [Theory]
+    [InlineData("line-crossing", "line-inside", true)]
+    [InlineData("line-inside", "line-crossing", true)]
+    [InlineData("line-edge", "line-shifted-collinear", false)]
+    [InlineData("line-shifted-collinear", "line-edge", false)]
+    public async Task Crosses_reads_two_crossing_lines_in_both_orders(
+        string feature, string query, bool expected)
+    {
+        Assert.Equal(expected, await MatchesAsync(feature, query, EsriFeatureQuery.Crosses));
+    }
+
+    /// <summary>
+    /// The served <c>Overlaps</c> and <c>Crosses</c> against the reference's
+    /// own per-dimension patterns over every ordered pair of the fixtures.
+    /// Both verbs are dimension-keyed, so a single pattern cannot serve them:
+    /// JTS selects one of several by the pair's dimensions, which is how a
+    /// crossing line pair came to read as an overlap and a crossing line
+    /// pair as no relation at all (SpatialEngine-u2x.56).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(GeometryPairs))]
+    public async Task Overlaps_agrees_with_the_reference_pattern_on_every_pair(string feature, string query)
+    {
+        var expected = ReferenceMasks(OgcOverlapsMasks, Dimension(feature), Dimension(query))
+            .Any(pattern => Relations.Relate(
+                QueryGeometry(feature), QueryGeometry(query), pattern, CancellationToken.None));
+
+        Assert.Equal(expected, await MatchesAsync(feature, query, EsriFeatureQuery.Overlaps));
+    }
+
+    /// <summary>The <c>Crosses</c> half of the cross-check over every ordered pair.</summary>
+    [Theory]
+    [MemberData(nameof(GeometryPairs))]
+    public async Task Crosses_agrees_with_the_reference_pattern_on_every_pair(string feature, string query)
+    {
+        var expected = ReferenceMasks(OgcCrossesMasks, Dimension(feature), Dimension(query))
+            .Any(pattern => Relations.Relate(
+                QueryGeometry(feature), QueryGeometry(query), pattern, CancellationToken.None));
+
+        Assert.Equal(expected, await MatchesAsync(feature, query, EsriFeatureQuery.Crosses));
+    }
+
+    /// <summary>
+    /// The reference's dimension-keyed <c>Overlaps</c> patterns, spelled out
+    /// here as the reference states them so the cross-check is not the served
+    /// table compared with itself: a surface/surface partial overlap, and the
+    /// line/line case, where the interiors must meet in dimension one. There
+    /// is no point/point or mixed-dimension reading — two points either
+    /// coincide or share nothing, so the pair is never an overlap.
+    /// </summary>
+    private static readonly (int Feature, int Query, string Pattern)[] OgcOverlapsMasks =
+    [
+        (2, 2, "T*T***T**"),
+        (1, 1, "1*T***T**"),
+    ];
+
+    /// <summary>
+    /// The reference's dimension-keyed <c>Crosses</c> patterns: the two
+    /// mixed-dimension cases, where the lower-dimensional geometry's interior
+    /// reaches the higher-dimensional one's boundary, and the line/line case,
+    /// where the interiors meet in a point. Nothing that involves a point
+    /// crosses — a point in an interior is within it and a point on a
+    /// boundary touches it — so there is no reading at dimension zero.
+    /// </summary>
+    private static readonly (int Feature, int Query, string Pattern)[] OgcCrossesMasks =
+    [
+        (2, 1, "T**T*****"),
+        (1, 2, "T*T******"),
+        (1, 1, "0********"),
+    ];
+
+    /// <summary>
+    /// The patterns the reference states for a dimension pair, or none when it
+    /// states none: an empty answer is how a verb reads false for a pair
+    /// whose dimensions the reference does not relate at all.
+    /// </summary>
+    private static string[] ReferenceMasks((int Feature, int Query, string Pattern)[] masks, int feature, int query) =>
+        masks.Where(mask => mask.Feature == feature && mask.Query == query).Select(mask => mask.Pattern).ToArray();
+
+    /// <summary>The topological dimension of a fixture: points 0, lines 1, areas 2.</summary>
+    private static int Dimension(string name) => QueryGeometry(name).Type switch
+    {
+        GeometryType.Point or GeometryType.MultiPoint => 0,
+        GeometryType.LineString or GeometryType.MultiLineString => 1,
+        _ => 2,
+    };
 
     [Theory]
     [InlineData("square-equal", true)]
@@ -462,6 +590,7 @@ public sealed class FeatureSpatialRelationTests
         "line-on-boundary" => Line(0, 0, 0, 10),
         "line-collinear" => Line(-5, 0, 15, 0),
         "line-edge" => Line(0, 0, 10, 0),
+        "line-shifted-collinear" => Line(5, 0, 20, 0),
         "point-inside" => GeometryFactory.CreatePoint(5, 5),
         "point-on-boundary" => GeometryFactory.CreatePoint(0, 5),
         "point-vertex" => GeometryFactory.CreatePoint(0, 0),

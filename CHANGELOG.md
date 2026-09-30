@@ -11,6 +11,32 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **`spatialRel` `Overlaps` reads two crossing lines as a partial overlap,
+  and `Crosses` never answers for a line/line pair** (ADR-0036,
+  SpatialEngine-u2x.56): both verbs are dimension-dependent, and the served
+  table carried one pattern between them where the reference keys on the
+  pair's dimension pair. `Overlaps` read every same-dimension pair with the
+  surface pattern `T*T***T**`, which asks only that the interiors meet — two
+  lines crossing at a point report `0F1FF0102`, whose interiors meet in
+  dimension zero, and the same-dimension gate let the pair through, so two
+  crossing lines read as `Overlaps`. `Crosses` gated equal dimensions out
+  entirely, on the reading that crosses is only a mixed-dimension relation,
+  so a line/line pair could never cross even though the reference answers
+  true for the same `0F1FF0102`. Both verbs are now keyed on the pair's
+  dimension pair: `Overlaps` reads `T*T***T**` for A/A and `1*T***T**` for
+  L/L, where the interiors must meet in dimension *one*, and `Crosses` reads
+  `T**T*****` (A/L), `T*T******` (L/A) and `0********` (L/L), where the
+  interiors must meet in dimension *zero*. A pair whose dimensions the
+  reference does not relate at all — two points, two surfaces, or anything
+  involving a point under `Crosses` — reads false, so the same-dimension
+  gate is gone and the dimension lookup is now a single pattern-per-row
+  table. The line/line readings are not mirrors of the mixed-dimension ones:
+  a shared span is `Overlaps` and not `Crosses`, a crossing is `Crosses` and
+  not `Overlaps`. The served answer matches the reference implementation's
+  own `Overlaps` and `Crosses` on all 256 ordered pairs of the polygon, line
+  and point fixtures. `Contains`, `Within`, `Touches` and `Intersects` are
+  unchanged.
+
 - **The merge tool ran the build gate where the merge gate belongs**
   (ADR-0118, ADR-0109, SpatialEngine-u2x.51): `tools/bd-merge-bead.py`
   invoked `eng/verify.sh` with no lane argument, and since the lanes were
@@ -27,7 +53,6 @@ this file together, then tag the release (`RELEASING.md`).
   `--publish`, `--audit` and the `git merge-base --is-ancestor` push check all
   still stand. `AGENTS.md` and `eng/swarm-runbook.md` now carry the lane
   contract and the tooling together instead of one replacing the other.
-
 - **The committed TypeScript SDK did not carry the host's relationship
   endpoints** (SpatialEngine-tte): `clients/typescript`'s OpenAPI snapshot and
   its generated wire types were regenerated from the live host, and the
