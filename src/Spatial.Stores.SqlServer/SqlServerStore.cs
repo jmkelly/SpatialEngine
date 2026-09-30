@@ -134,12 +134,30 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
         return ReduceAsync(dataset, query, selected => FeatureReduction.Distinct(selected.Schema, selected.Features, distinct), cancellationToken);
     }
 
-    /// <summary>The grouped reduction a plan selects.</summary>
+    /// <summary>
+    /// The grouped reduction a plan selects.
+    ///
+    /// <para>
+    /// The plan's order is handed to the reduction, not applied to the rows
+    /// this store reads: a group order is a total order over the <em>groups</em>,
+    /// and only the reduction knows which rows a group has. It matters here
+    /// because the read is a reduction face's read — it arrives in whatever
+    /// order T-SQL gave the rows, which under the container's collation is
+    /// neither the plan's order nor the order the rows were written in, so a
+    /// group sequence taken from the read is a page of an undefined order
+    /// (ADR-0128 §8, the same obligation
+    /// <see cref="FeaturePlanFallback.AggregateAsync"/> has).
+    /// </para>
+    /// </summary>
     public Task<AggregatePage> AggregateAsync(
         string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(aggregate);
-        return ReduceAsync(dataset, query, selected => FeatureReduction.Aggregate(selected.Schema, selected.Features, aggregate), cancellationToken);
+        return ReduceAsync(
+            dataset,
+            query,
+            selected => FeatureReduction.Aggregate(selected.Schema, selected.Features, aggregate, query.Order),
+            cancellationToken);
     }
 
     /// <summary>
