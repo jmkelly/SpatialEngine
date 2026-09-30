@@ -581,6 +581,7 @@ class ScriptLaneTests(unittest.TestCase):
         0 and this is the lane that merges (SpatialEngine-8lj).
         """
         self.assertEqual(self.plan(), [
+            "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -630,6 +631,8 @@ class ScriptLaneTests(unittest.TestCase):
         self.repo.commit("tools/seed/fetch.py", "# edited\n")
 
         self.assertEqual(self.plan(), [
+            "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs "
+            "tools/seed/fetch.py",
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -640,6 +643,7 @@ class ScriptLaneTests(unittest.TestCase):
 
     def test_the_format_lane_is_scoped_to_the_changed_projects(self):
         self.assertEqual(self.plan("--format"), [
+            "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -651,6 +655,7 @@ class ScriptLaneTests(unittest.TestCase):
 
     def test_the_full_lane_is_the_old_flat_gate(self):
         self.assertEqual(self.plan("--full"), [
+            "python3 tools/trailing_whitespace.py",
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -678,6 +683,7 @@ class ScriptLaneTests(unittest.TestCase):
         written by someone not thinking about it silently under-runs.
         """
         self.assertEqual(self.plan(ci="true"), [
+            "python3 tools/trailing_whitespace.py",
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -690,6 +696,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_a_named_lane_beats_ci_true(self):
         """The split CI jobs each own half of --full, so --format stays --format."""
         self.assertEqual(self.plan("--format", ci="true"), [
+            "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -702,6 +709,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_an_unresolvable_base_falls_back_to_everything(self):
         """A scoping failure costs time; a silent under-run costs a defect."""
         self.assertEqual(self.plan(base="origin/does-not-exist"), [
+            "python3 tools/trailing_whitespace.py",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -711,6 +719,7 @@ class ScriptLaneTests(unittest.TestCase):
         ])
     def test_an_unresolvable_base_falls_back_to_the_whole_formatter(self):
         self.assertEqual(self.plan("--format", base="origin/does-not-exist"), [
+            "python3 tools/trailing_whitespace.py",
             "dotnet format SpatialEngine.slnx --verify-no-changes",
         ])
 

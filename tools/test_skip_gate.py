@@ -242,10 +242,16 @@ class LaneExitCodeTests(unittest.TestCase):
         (self.root / "SpatialEngine.slnx").write_text(
             "<Solution>\n" + "".join(f'  <Project Path="{p}" />\n' for p in paths)
             + "</Solution>\n", encoding="utf-8")
-        for name in ("eng/verify.sh", "tools/verify_scope.py", "tools/skip_gate.py"):
+        for name in ("eng/verify.sh", "tools/verify_scope.py", "tools/skip_gate.py",
+                     "tools/trailing_whitespace.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
+        # The repository's own `trim_trailing_whitespace` rule, so the lane's
+        # first step is a real check over the fixture's own file rather than a
+        # missing tool.
+        (self.root / ".editorconfig").write_text(
+            "root = true\n\n[*]\ntrim_trailing_whitespace = true\n", encoding="utf-8")
 
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.email", "t@e")

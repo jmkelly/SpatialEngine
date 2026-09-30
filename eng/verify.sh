@@ -67,6 +67,11 @@
 #
 # `--quick` is accepted as a synonym for the fast lane, from the draft of this
 # script that had it as a flag.
+#
+# Every lane also runs `tools/trailing_whitespace.py` first, which is a check
+# rather than a formatter: `dotnet format` does not enforce the
+# `trim_trailing_whitespace` the .editorconfig claims for `[*]` on a
+# comment-only line, so the lanes check the rule themselves (ADR-0143).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -97,7 +102,7 @@ for arg in "$@"; do
     --quick) LANE=default; LANE_NAMED=1 ;;
     --skip-tests=*) add_skip_patterns "${arg#--skip-tests=}" ;;
     --plan) PLAN_ONLY=1 ;;
-    -h|--help) sed -n '2,61p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,72p' "$0"; exit 0 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
@@ -156,8 +161,11 @@ TEST_PROJECTS=()
 #: repository rather than the change.
 GUARD_PROJECTS=()
 RUN_TOOLING=0
+# The change set itself, for the trailing-whitespace check (ADR-0143).
+CHANGED_FILES=()
 while IFS= read -r line; do
   case "$line" in
+    files:*) CHANGED_FILES+=("${line#files:}") ;;
     format:*) FORMAT_PROJECTS+=("${line#format:}") ;;
     build:*) BUILD_PROJECTS+=("${line#build:}") ;;
     guard:*) GUARD_PROJECTS+=("${line#guard:}") ;;
@@ -260,9 +268,43 @@ scoped_or_all() {
   fi
 }
 
+# --- the trailing-whitespace check -----------------------------------------
+# `dotnet format` enforces `trim_trailing_whitespace` on a line carrying code
+# and not on a comment-only line (measured on SDK 10.0.400: exit 2 with an
+# IDE0055 against the first, exit 0 and nothing reported against the second),
+# so the rule the .editorconfig claims for `[*]` was enforced over part of the
+# files that break it and no lane could see the rest (SpatialEngine-emo,
+# ADR-0143). This reads the rule straight out of the file instead of through
+# the formatter. It is first in every lane because it costs a second and a
+# violation found after an eleven-minute format step is eleven minutes wasted.
+#
+# Scoped lanes read the change set; the exhaustive lane reads the whole
+# repository, because it is the detector rather than a check on a branch. An
+# unreadable change set falls back to the whole repository too — the same
+# fallback the rest of a lane makes, and the same ~2 s either way. A deleted
+# file is dropped rather than reported: the change set names it, and there is
+# nothing in it to read.
+whitespace_step() {
+  local scope="${1:-changed}"
+  local files=()
+  if [[ "$scope" != "all" && "$EXHAUSTIVE" != "1" ]]; then
+    for file in "${CHANGED_FILES[@]}"; do
+      [[ -e "$file" ]] && files+=("$file")
+    done
+  fi
+  if [[ "${#files[@]}" == "0" ]]; then
+    echo "== trailing whitespace: every file the repository ships =="
+    step python3 tools/trailing_whitespace.py
+  else
+    echo "== trailing whitespace: the ${#files[@]} changed file(s) =="
+    step python3 tools/trailing_whitespace.py "${files[@]}"
+  fi
+}
+
 # --- the format lane -------------------------------------------------------
 if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
+  whitespace_step
   if [[ "$EXHAUSTIVE" == "1" ]]; then
     echo "the change set is unscoped against $BASE, so this is the whole solution"
   fi
@@ -277,6 +319,8 @@ fi
 
 # --- the full lane ---------------------------------------------------------
 if [[ "$LANE" == "full" ]]; then
+  whitespace_step all
+
   echo "== format check =="
   # No --no-restore: a clean checkout has no project.assets.json yet, and the
   # format check loads every project through MSBuild before the build step runs.
@@ -299,6 +343,7 @@ fi
 
 # --- the default lane: the fast build gate --------------------------------
 echo "== fast build gate (base $BASE) =="
+whitespace_step
 
 if [[ "$EXHAUSTIVE" == "1" ]]; then
   echo "== the change set is unscoped against $BASE: whole solution, every test =="

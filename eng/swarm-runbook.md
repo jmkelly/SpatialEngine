@@ -280,6 +280,10 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    `Directory.Packages.props`, `.editorconfig`), or a change set the lane
    cannot read at all, makes every lane fall back to the whole solution rather
    than guess (ADR-0109). `eng/verify.sh --plan` prints what a lane would run.
+   Every lane starts with `tools/trailing_whitespace.py` — a check, not a
+   formatter, and there because `dotnet format` does not enforce the
+   `trim_trailing_whitespace` the `.editorconfig` claims for `[*]` on a
+   comment-only line (ADR-0143).
    `CI=true` with no lane named runs `--full`, so a workflow that calls the
    bare script gets the gate rather than the scoped lane.
 7. A suite that fails for a reason unrelated to your change: prove it was
