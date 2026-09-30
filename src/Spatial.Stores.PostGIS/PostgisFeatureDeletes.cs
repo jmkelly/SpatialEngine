@@ -23,13 +23,13 @@ internal static class PostgisFeatureDeletes
         PostgisDatasetName name,
         DatasetDescription description,
         IReadOnlyList<FeatureId> featureIds,
-        bool byteOrderText,
+        PostgisTextOrder text,
         CancellationToken cancellationToken)
     {
         var outcomes = new List<FeatureEditOutcome>(featureIds.Count);
         foreach (var id in featureIds)
         {
-            outcomes.Add(await DeleteFeatureAsync(session, name, description, id, byteOrderText, cancellationToken));
+            outcomes.Add(await DeleteFeatureAsync(session, name, description, id, text, cancellationToken));
         }
 
         return outcomes;
@@ -40,13 +40,13 @@ internal static class PostgisFeatureDeletes
         PostgisDatasetName name,
         DatasetDescription description,
         FeatureId id,
-        bool byteOrderText,
+        PostgisTextOrder text,
         CancellationToken cancellationToken)
     {
         try
         {
             await using var command = session.CreateCommand(
-                PostgisQueries.Delete(name, description.Schema, description.IdColumns, byteOrderText),
+                PostgisQueries.Delete(name, description.Schema, description.IdColumns, text),
                 PostgisIdentity.Values(description, id));
             return PostgisEditOutcomes.Affected(id, await command.ExecuteNonQueryAsync(cancellationToken));
         }

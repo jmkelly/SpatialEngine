@@ -111,7 +111,7 @@ public sealed class PostgisAttachmentQueriesTests
 
         Assert.Equal(
             "SELECT 1 FROM \"public\".\"places\" WHERE \"id\" = @p0 LIMIT 1",
-            PostgisQueries.FeatureExists(dataset, Schema, ["id"], byteOrderText: true));
+            PostgisQueries.FeatureExists(dataset, Schema, ["id"], text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -121,6 +121,6 @@ public sealed class PostgisAttachmentQueriesTests
 
         Assert.Equal(
             "SELECT 1 FROM \"public\".\"places\" WHERE \"tenant\" = @p0 AND \"id\" = @p1 LIMIT 1",
-            PostgisQueries.FeatureExists(dataset, Schema, ["tenant", "id"], byteOrderText: true));
+            PostgisQueries.FeatureExists(dataset, Schema, ["tenant", "id"], text: PostgisTextOrder.ByteOrder));
     }
 }

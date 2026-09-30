@@ -239,7 +239,7 @@ public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisContaine
         Assert.True(
             FeatureFilterText.TryParse(filter, out var parsed, out var error), error);
         var parameters = new List<object?>();
-        var predicate = PostgisPredicateSql.Build(description, bbox, parsed, byteOrderText: false, parameters);
+        var predicate = PostgisPredicateSql.Build(description, bbox, parsed, text: PostgisTextOrder.Locale, parameters);
         var statement = PostgisQueries.Query(Parse(dataset), description.Schema, predicate);
         await using var dataSource = NpgsqlDataSource.Create(context.ConnectionString);
         await using var connection = await dataSource.OpenConnectionAsync();

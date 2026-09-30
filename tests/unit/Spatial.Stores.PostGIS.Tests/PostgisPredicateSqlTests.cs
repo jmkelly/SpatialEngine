@@ -122,8 +122,8 @@ public sealed class PostgisPredicateSqlTests
     {
         // The constant is the plan's own truth value (the Esri `1=1` idiom,
         // ADR-0074 §7), not a client value, so it is not bound.
-        Assert.Equal("TRUE", PostgisPredicateSql.Where(Predicate.All, Schema, byteOrderText: false, []));
-        Assert.Equal("FALSE", PostgisPredicateSql.Where(Predicate.None, Schema, byteOrderText: false, []));
+        Assert.Equal("TRUE", PostgisPredicateSql.Where(Predicate.All, Schema, text: PostgisTextOrder.Locale, []));
+        Assert.Equal("FALSE", PostgisPredicateSql.Where(Predicate.None, Schema, text: PostgisTextOrder.Locale, []));
     }
 
     [Theory]
@@ -211,7 +211,7 @@ public sealed class PostgisPredicateSqlTests
         var sql = PostgisPredicateSql.Where(
             new Predicate.IsIn(new FieldRef("city"), [Literal.FromText("a"), Literal.Null], false),
             Schema,
-            byteOrderText: false,
+            text: PostgisTextOrder.Locale,
             []);
 
         Assert.Equal("FALSE", sql);
@@ -384,7 +384,7 @@ public sealed class PostgisPredicateSqlTests
     {
         var parameters = new List<object?>();
 
-        var sql = PostgisPredicateSql.Build(Description(), new BoundingBox(13.0, 52.0, 14.0, 53.0), Where("city = 'x'"), byteOrderText: false, parameters);
+        var sql = PostgisPredicateSql.Build(Description(), new BoundingBox(13.0, 52.0, 14.0, 53.0), Where("city = 'x'"), text: PostgisTextOrder.Locale, parameters);
 
         Assert.Equal("(\"geom\" && ST_MakeEnvelope(@p0, @p1, @p2, @p3, 4326)) AND (\"city\" COLLATE \"C\" = @p4)", sql);
         Assert.Equal(5, parameters.Count);
@@ -393,7 +393,7 @@ public sealed class PostgisPredicateSqlTests
     [Fact]
     public void A_plan_with_no_predicate_selects_everything()
     {
-        Assert.Null(PostgisPredicateSql.Build(Description(), null, null, byteOrderText: false, []));
+        Assert.Null(PostgisPredicateSql.Build(Description(), null, null, text: PostgisTextOrder.Locale, []));
     }
 
     [Fact]
@@ -423,7 +423,7 @@ public sealed class PostgisPredicateSqlTests
     private static BuiltSql Build(string filter, FeatureSchema schema)
     {
         var parameters = new List<object?>();
-        return new BuiltSql(PostgisPredicateSql.Where(Where(filter), schema, byteOrderText: false, parameters), parameters);
+        return new BuiltSql(PostgisPredicateSql.Where(Where(filter), schema, text: PostgisTextOrder.Locale, parameters), parameters);
     }
 
     private static DatasetDescription Description() =>

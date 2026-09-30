@@ -42,7 +42,7 @@ internal static class PostgisQueries
         FeatureSchema schema,
         IReadOnlyList<string> identityColumns,
         int count,
-        bool byteOrderText,
+        PostgisTextOrder text,
         string? predicate = null)
     {
         var builder = new StringBuilder($"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE ");
@@ -54,7 +54,7 @@ internal static class PostgisQueries
             }
 
             builder.Append('(')
-                .Append(PostgisIdentity.Tuple(schema, identityColumns, feature * identityColumns.Count, byteOrderText))
+                .Append(PostgisIdentity.Tuple(schema, identityColumns, feature * identityColumns.Count, text))
                 .Append(')');
         }
 
@@ -117,20 +117,20 @@ internal static class PostgisQueries
         int srid,
         IReadOnlyList<string> identityColumns,
         FeatureSchema identitySchema,
-        bool byteOrderText)
+        PostgisTextOrder text)
     {
         var sets = string.Join(", ", batchSchema.Fields.Select((field, i) =>
             field.Kind == AttributeKind.Geometry
                 ? $"\"{field.Name}\" = ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})"
                 : $"\"{field.Name}\" = @p{i}"));
         return $"UPDATE {dataset.QuoteQualified()} SET {sets} "
-            + $"WHERE {PostgisIdentity.Tuple(identitySchema, identityColumns, batchSchema.Count, byteOrderText)}";
+            + $"WHERE {PostgisIdentity.Tuple(identitySchema, identityColumns, batchSchema.Count, text)}";
     }
 
     /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037, ADR-0126).</summary>
     public static string Delete(
-        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<string> identityColumns, bool byteOrderText) =>
-        $"DELETE FROM {dataset.QuoteQualified()} WHERE {PostgisIdentity.Tuple(schema, identityColumns, 0, byteOrderText)}";
+        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<string> identityColumns, PostgisTextOrder text) =>
+        $"DELETE FROM {dataset.QuoteQualified()} WHERE {PostgisIdentity.Tuple(schema, identityColumns, 0, text)}";
 
     /// <summary>
     /// Creates the feature-attachment sidecar table (T-088, ADR-0065 §2):
@@ -204,9 +204,9 @@ internal static class PostgisQueries
     /// never client text.
     /// </summary>
     public static string FeatureExists(
-        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<string> identityColumns, bool byteOrderText) =>
+        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<string> identityColumns, PostgisTextOrder text) =>
         $"SELECT 1 FROM {dataset.QuoteQualified()} "
-        + $"WHERE {PostgisIdentity.Tuple(schema, identityColumns, 0, byteOrderText)} LIMIT 1";
+        + $"WHERE {PostgisIdentity.Tuple(schema, identityColumns, 0, text)} LIMIT 1";
 
     /// <summary>Creates the result table from a defining batch's schema and per-field geometry typmods.</summary>
     public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> geometryTypes)
@@ -265,9 +265,14 @@ internal static class PostgisQueries
             + " ORDER BY n.nspname, c.relname";
     }
 
-    /// <summary>Column metadata for one table (name, udt, nullability, ordinal, data type).</summary>
+    /// <summary>
+    /// Column metadata for one table (name, udt, nullability, ordinal, data
+    /// type, declared collation). The last is <c>null</c> for a column that
+    /// inherits the database's, which is the fact a pushed-down sort key turns
+    /// on (ADR-0136).
+    /// </summary>
     public static string ColumnsMetadata() =>
-        "SELECT column_name, udt_name, is_nullable, ordinal_position, data_type "
+        "SELECT column_name, udt_name, is_nullable, ordinal_position, data_type, collation_name "
         + "FROM information_schema.columns "
         + "WHERE table_schema = @p0 AND table_name = @p1 "
         + "ORDER BY ordinal_position";

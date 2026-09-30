@@ -25,10 +25,11 @@ namespace Spatial.Stores.PostGIS.Core;
 /// grouped reduction is only pushed down when the plan asks for an order over
 /// the group key itself (a group order SQL can return) — otherwise the rows are
 /// reduced here, where first-seen order is knowable; a text sort key
-/// inherits the <em>database's</em> collation, which is a locale comparison
+/// inherits the <em>column's</em> collation, which is a locale comparison
 /// where the contract's is a byte one, so a term over a text column carries
-/// <c>COLLATE "C"</c> unless the database already compares by bytes
-/// (ADR-0121); and <c>ST_Extent</c>
+/// <c>COLLATE "C"</c> unless that column already compares by bytes — its own
+/// collation where it declares one, the database's where it declares none
+/// (ADR-0121, ADR-0136); and <c>ST_Extent</c>
 /// answers a <c>box2d</c>, so the rectangle is cast back to a geometry and read
 /// through the one geometry reader this provider has (ADR-0120).
 /// </para>
@@ -105,7 +106,7 @@ internal static class PostgisPlanQueries
         IReadOnlyList<AggregateSpec> specs,
         IReadOnlyList<OrderTerm> order,
         IFeatureSchema schema,
-        bool byteOrderText,
+        PostgisTextOrder text,
         List<object?> parameters,
         Predicate? having = null,
         Paging? paging = null)
@@ -115,10 +116,10 @@ internal static class PostgisPlanQueries
             return null;
         }
 
-        var terms = order.Select(term => Term(term, schema, byteOrderText)).ToList();
-        terms.AddRange(groupColumns.Select(column => Ascending(column, schema, byteOrderText)));
+        var terms = order.Select(term => Term(term, schema, text)).ToList();
+        terms.AddRange(groupColumns.Select(column => Ascending(column, schema, text)));
         var selects = groupColumns.Select(Quote).ToList();
-        var statistics = specs.Select(spec => new Statistic(spec, schema, byteOrderText)).ToArray();
+        var statistics = specs.Select(spec => new Statistic(spec, schema, text)).ToArray();
         selects.AddRange(statistics.Select(statistic => statistic.Expression(parameters)));
         var builder = new StringBuilder("SELECT ")
             .Append(string.Join(", ", selects))
@@ -132,7 +133,7 @@ internal static class PostgisPlanQueries
 
         if (having is not null)
         {
-            var clause = Having(having, groupColumns, specs, schema, byteOrderText, parameters);
+            var clause = Having(having, groupColumns, specs, schema, text, parameters);
             if (clause is null)
             {
                 return null;
@@ -171,18 +172,18 @@ internal static class PostgisPlanQueries
         IReadOnlyList<string> groupColumns,
         IReadOnlyList<AggregateSpec> specs,
         IFeatureSchema schema,
-        bool byteOrderText,
+        PostgisTextOrder text,
         List<object?> parameters)
     {
         var expressions = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var column in groupColumns)
         {
-            expressions[column] = Ordered(column, schema, byteOrderText);
+            expressions[column] = Ordered(column, schema, text);
         }
 
         for (var i = 0; i < specs.Count; i++)
         {
-            expressions[specs[i].Name] = new Statistic(specs[i], schema, byteOrderText).Expression(parameters);
+            expressions[specs[i].Name] = new Statistic(specs[i], schema, text).Expression(parameters);
         }
 
         return PostgisPredicateSql.Having(
@@ -246,7 +247,7 @@ internal static class PostgisPlanQueries
     /// </para>
     /// </summary>
     public static IReadOnlyList<string>? Order(
-        IReadOnlyList<OrderTerm> order, IReadOnlyList<string> identityColumns, IFeatureSchema schema, bool byteOrderText)
+        IReadOnlyList<OrderTerm> order, IReadOnlyList<string> identityColumns, IFeatureSchema schema, PostgisTextOrder text)
     {
         if (order.Count == 0)
         {
@@ -261,10 +262,10 @@ internal static class PostgisPlanQueries
         var terms = new List<string>();
         foreach (var term in order)
         {
-            terms.Add(Term(term, schema, byteOrderText));
+            terms.Add(Term(term, schema, text));
         }
 
-        terms.AddRange(identityColumns.Select(column => Ascending(column, schema, byteOrderText)));
+        terms.AddRange(identityColumns.Select(column => Ascending(column, schema, text)));
         return terms;
     }
 
@@ -277,13 +278,14 @@ internal static class PostgisPlanQueries
     /// so a plan and a filter cannot drift into two different answers.
     ///
     /// <para>
-    /// <paramref name="byteOrderText"/> is the database's own answer to whether
-    /// it already compares text by bytes (ADR-0121), and it decides the
-    /// collation every string comparison in the restriction states — the
-    /// attribute clause's (ADR-0123) and the identity restriction's
-    /// (ADR-0126), which is the same question asked of the same property. The
-    /// caller reads it from the database — once per store, cached — and only
-    /// when the restriction actually compares text.
+    /// <paramref name="text"/> is the store's own answer to whether the
+    /// columns this restriction names already compare text by bytes
+    /// (ADR-0121, ADR-0136), and it decides the collation every string
+    /// comparison in the restriction states — the attribute clause's
+    /// (ADR-0123) and the identity restriction's (ADR-0126), which is the same
+    /// question asked of the same property. The caller reads it from the
+    /// database — once per store, cached — and only when the restriction
+    /// actually compares text.
     /// </para>
     /// <para>
     /// Returns <c>null</c> when the restriction cannot be expressed without
@@ -301,7 +303,7 @@ internal static class PostgisPlanQueries
         PostgisDatasetName dataset,
         DatasetDescription description,
         FeatureQuery query,
-        bool byteOrderText,
+        PostgisTextOrder text,
         List<object?> parameters)
     {
         if (description.IdColumns.Count == 0 && Restricts(query))
@@ -309,10 +311,10 @@ internal static class PostgisPlanQueries
             return null;
         }
 
-        var identity = Identity(description, query.Ids, byteOrderText, parameters);
+        var identity = Identity(description, query.Ids, text, parameters);
         var box = BoundingBox(description, query.BoundingBox, parameters);
         var clause = query.Where is { } where
-            ? PostgisPredicateSql.Where(where, description.Schema, byteOrderText, parameters)
+            ? PostgisPredicateSql.Where(where, description.Schema, text, parameters)
             : null;
         return Join(identity, Join(box, clause));
     }
@@ -322,7 +324,7 @@ internal static class PostgisPlanQueries
         query.Ids is not null || query.BoundingBox is not null || query.Where is not null;
 
     private static string? Identity(
-        DatasetDescription description, IReadOnlyList<FeatureId>? ids, bool byteOrderText, List<object?> parameters)
+        DatasetDescription description, IReadOnlyList<FeatureId>? ids, PostgisTextOrder text, List<object?> parameters)
     {
         if (ids is null)
         {
@@ -344,7 +346,7 @@ internal static class PostgisPlanQueries
         {
             var values = PostgisIdentity.Values(description, id);
             var terms = description.IdColumns.Select((column, position) =>
-                $"{PostgisIdentity.Operand(description.Schema, column, byteOrderText)} = {Parameter(parameters, values[position])}");
+                $"{PostgisIdentity.Operand(description.Schema, column, text)} = {Parameter(parameters, values[position])}");
             groups.Add(string.Join(" AND ", terms));
         }
 
@@ -408,7 +410,7 @@ internal static class PostgisPlanQueries
         IReadOnlyList<string> fields,
         IReadOnlyList<OrderTerm> order,
         IFeatureSchema schema,
-        bool byteOrderText,
+        PostgisTextOrder text,
         string? where,
         List<object?> parameters)
     {
@@ -424,12 +426,12 @@ internal static class PostgisPlanQueries
         }
 
         var builder = new StringBuilder("SELECT * FROM (SELECT DISTINCT ")
-            .Append(string.Join(", ", fields.Select(field => Alias(Ordered(field, schema, byteOrderText), field))))
+            .Append(string.Join(", ", fields.Select(field => Alias(Ordered(field, schema, text), field))))
             .Append(" FROM ")
             .Append(dataset.QuoteQualified());
         AppendWhere(builder, where);
         return builder.Append(") AS d ORDER BY ")
-            .Append(string.Join(", ", order.Select(term => Term(term, schema, byteOrderText, "d"))))
+            .Append(string.Join(", ", order.Select(term => Term(term, schema, text, "d"))))
             .ToString();
     }
 
@@ -453,7 +455,7 @@ internal static class PostgisPlanQueries
         expression == Quote(field) ? expression : $"{expression} AS {Quote(field)}";
 
     /// <summary>One aggregate expression, with its bound parameters, in the plan's result order.</summary>
-    private sealed class Statistic(AggregateSpec spec, IFeatureSchema schema, bool byteOrderText)
+    private sealed class Statistic(AggregateSpec spec, IFeatureSchema schema, PostgisTextOrder text)
     {
         public string Expression(List<object?> parameters) => spec.Statistic switch
         {
@@ -463,8 +465,8 @@ internal static class PostgisPlanQueries
             AggregateStatistic.Average => $"AVG({Quote(spec.Field)})",
             AggregateStatistic.Variance => $"VAR_SAMP({Quote(spec.Field)})",
             AggregateStatistic.StdDev => $"STDDEV_SAMP({Quote(spec.Field)})",
-            AggregateStatistic.Minimum => $"MIN({Ordered(spec.Field, schema, byteOrderText)})",
-            AggregateStatistic.Maximum => $"MAX({Ordered(spec.Field, schema, byteOrderText)})",
+            AggregateStatistic.Minimum => $"MIN({Ordered(spec.Field, schema, text)})",
+            AggregateStatistic.Maximum => $"MAX({Ordered(spec.Field, schema, text)})",
             AggregateStatistic.Envelope => Extent(),
             _ => Percentile(spec, parameters),
         };
@@ -491,7 +493,7 @@ internal static class PostgisPlanQueries
         {
             var name = spec.Statistic == AggregateStatistic.PercentileContinuous ? "PERCENTILE_CONT" : "PERCENTILE_DISC";
             var direction = spec.PercentileDescending ? "DESC" : "ASC";
-            var key = SortKey(spec.Field, direction, schema, byteOrderText);
+            var key = SortKey(spec.Field, direction, schema, text);
             return $"{name}({Parameter(parameters, spec.PercentileFraction)}) WITHIN GROUP (ORDER BY {key})";
         }
     }
@@ -514,23 +516,23 @@ internal static class PostgisPlanQueries
         builder.Append(" ORDER BY ").Append(string.Join(", ", order));
     }
 
-    private static string Ascending(string column, IFeatureSchema schema, bool byteOrderText) =>
-        SortKey(column, "ASC NULLS LAST", schema, byteOrderText);
+    private static string Ascending(string column, IFeatureSchema schema, PostgisTextOrder text) =>
+        SortKey(column, "ASC NULLS LAST", schema, text);
 
     /// <summary>One requested sort key as SQL, with its explicit null placement.</summary>
-    private static string Term(OrderTerm term, IFeatureSchema schema, bool byteOrderText, string qualifier = "") =>
+    private static string Term(OrderTerm term, IFeatureSchema schema, PostgisTextOrder text, string qualifier = "") =>
         term.IsDescending
-            ? SortKey(term.Field, "DESC NULLS FIRST", schema, byteOrderText, qualifier)
-            : SortKey(term.Field, "ASC NULLS LAST", schema, byteOrderText, qualifier);
+            ? SortKey(term.Field, "DESC NULLS FIRST", schema, text, qualifier)
+            : SortKey(term.Field, "ASC NULLS LAST", schema, text, qualifier);
 
     /// <summary>One sort key as SQL: the ordered column, then the direction and
     /// the explicit null placement.</summary>
-    private static string SortKey(string column, string direction, IFeatureSchema schema, bool byteOrderText, string qualifier = "") =>
-        $"{Ordered(column, schema, byteOrderText, qualifier)} {direction}";
+    private static string SortKey(string column, string direction, IFeatureSchema schema, PostgisTextOrder text, string qualifier = "") =>
+        $"{Ordered(column, schema, text, qualifier)} {direction}";
 
     /// <summary>
     /// A column as an expression that compares text by bytes: the quoted column,
-    /// and — for a <em>text</em> column in a database that does not already
+    /// and — for a <em>text</em> column whose own collation does not already
     /// compare by bytes — <c>COLLATE "C"</c>.
     ///
     /// <para>
@@ -538,19 +540,23 @@ internal static class PostgisPlanQueries
     /// they are one question: an <c>ORDER BY</c> over a text sort key, the
     /// tie-break a page boundary is cut on, a <c>GROUP BY</c>'s group order, a
     /// <c>MIN</c>/<c>MAX</c> over a text column and a pushed <c>WHERE</c>'s own
-    /// comparison all inherit the database's collation, and the contract's
-    /// answer is a byte comparison (ADR-0098 §3, ADR-0121, ADR-0123). A
-    /// numeric, date-time or boolean column takes no collation: <c>COLLATE</c>
-    /// is a string operator, and applying it to a column of another kind is a
-    /// statement Postgres refuses.
+    /// comparison all inherit the column's collation, and the contract's answer
+    /// is a byte comparison (ADR-0098 §3, ADR-0121, ADR-0123). The term follows
+    /// the collation <em>that column actually carries</em> — its own where it
+    /// declares one, the database's where it declares none (ADR-0136) — so it
+    /// is written on a byte-order database over a column that declares a locale
+    /// collation and skipped on a locale database over a column that declares
+    /// <c>"C"</c>. A numeric, date-time or boolean column takes no collation:
+    /// <c>COLLATE</c> is a string operator, and applying it to a column of
+    /// another kind is a statement Postgres refuses.
     /// </para>
     /// </summary>
-    internal static string Ordered(string column, IFeatureSchema schema, bool byteOrderText, string qualifier = "")
+    internal static string Ordered(string column, IFeatureSchema schema, PostgisTextOrder text, string qualifier = "")
     {
         var quoted = qualifier.Length == 0 ? Quote(column) : $"{Quote(qualifier)}.{Quote(column)}";
         var index = schema.IndexOf(column);
-        var text = index >= 0 && schema[index].Kind == AttributeKind.String;
-        return !text || byteOrderText ? quoted : $"{quoted} COLLATE {PostgisTextCollation.ByteOrder}";
+        var isText = index >= 0 && schema[index].Kind == AttributeKind.String;
+        return !isText || !text.NeedsByteOrder(column) ? quoted : $"{quoted} COLLATE {PostgisTextCollation.ByteOrder}";
     }
 
     /// <summary>One field as a select column: geometry is read as canonical EWKB, everything else by name.</summary>

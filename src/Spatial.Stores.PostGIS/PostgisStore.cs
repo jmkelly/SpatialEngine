@@ -188,10 +188,10 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
         string? transaction,
         CancellationToken cancellationToken)
     {
-        var description = await DescribeInternalAsync(name, cancellationToken);
+        var facts = await DescribeInternalAsync(name, cancellationToken);
         try
         {
-            return await Features.WriteAsync(name, description, batch, transaction, cancellationToken);
+            return await Features.WriteAsync(name, facts.Description, batch, transaction, cancellationToken);
         }
         finally
         {
@@ -244,22 +244,22 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
         await _storage.DisposeAsync();
     }
 
-    internal Task<DatasetDescription> DescribeInternalAsync(PostgisDatasetName name, CancellationToken token) =>
-        Catalogue.DescribeAsync(name, token);
+    internal Task<PostgisDatasetFacts> DescribeInternalAsync(PostgisDatasetName name, CancellationToken token) =>
+        Catalogue.DescribeFactsAsync(name, token);
 
     /// <summary>
-    /// Whether this database already compares text by bytes, which is what
-    /// decides whether a statement comparing a <em>text</em> column carries an
+    /// The order a statement comparing one of this dataset's <em>text</em>
+    /// columns is written in, which is what decides whether it carries an
     /// explicit <c>COLLATE "C"</c> — a sort key (ADR-0121), a predicate
     /// (ADR-0123) or an identity comparison (ADR-0126). Read only when the
     /// dataset's identity has a text column, which is the only identity
     /// comparison a collation can change; a dataset keyed on a number asks for
     /// nothing and pays nothing.
     /// </summary>
-    internal Task<bool> ByteOrderTextAsync(DatasetDescription description, CancellationToken token) =>
-        PostgisIdentity.ComparesText(description)
-            ? _storage.ByteOrderTextAsync(token)
-            : Task.FromResult(false);
+    internal Task<PostgisTextOrder> TextOrderAsync(PostgisDatasetFacts facts, CancellationToken token) =>
+        PostgisIdentity.ComparesText(facts.Description)
+            ? _storage.TextOrderAsync(facts, token)
+            : Task.FromResult(PostgisTextOrder.Locale);
 
     /// <summary>
     /// Drops the description this store is holding for a dataset it has just

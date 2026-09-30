@@ -6,24 +6,27 @@ namespace Spatial.Stores.PostGIS.Tests;
 
 /// <summary>
 /// A pushed-down sort key over a <em>text</em> column, measured as SQL
-/// (ADR-0098 §3, ADR-0121).
+/// (ADR-0098 §3, ADR-0121, ADR-0136).
 ///
 /// <para>
 /// The contract compares strings ordinally — by bytes, never by a locale
 /// collation — and the reference executor honours that. Postgres does not say
-/// so: a <c>text</c> column carries the database's default collation, so an
-/// <c>ORDER BY</c> that inherits it answers a different order for the same
-/// plan (<c>en_US.utf8</c> puts <c>"a"</c> before <c>"A"</c> and sorts the
+/// so: a <c>text</c> column carries a collation, so an <c>ORDER BY</c> that
+/// inherits it answers a different order for the same plan
+/// (<c>en_US.utf8</c> puts <c>"a"</c> before <c>"A"</c> and sorts the
 /// punctuated names to where their letters sort). The conformance suite proves
 /// the answer; this pins the statement that answers it, in both of the two
-/// shapes it can take: the term is there when the database compares by locale
-/// and absent when the database already compares by bytes, because a term on a
-/// sort that is already the reference's only costs the planner an index.
+/// shapes it can take: the term is there when the column does not already
+/// compare by bytes and absent when it does, because a term on a sort that is
+/// already the reference's only costs the planner an index. "Does this column
+/// already compare by bytes" is the <em>column's</em> question rather than the
+/// database's: its own collation where it declares one, the database's where
+/// it declares none (ADR-0136).
 /// </para>
 ///
 /// <para>
 /// Every case here is free of Npgsql and of a container: the shape is decided
-/// by the database's collation and the field's kind, and those are the two
+/// by the collation of the column and the field's kind, and those are the two
 /// inputs this file varies.</para>
 /// </summary>
 public sealed class PostgisTextOrderTests
@@ -47,8 +50,15 @@ public sealed class PostgisTextOrderTests
     ]);
 
     /// <summary>A sort key over a text column, as the order terms the plan read carries.</summary>
-    private static IReadOnlyList<string>? Order(bool byteOrderText, string field = "city", SortDirection direction = SortDirection.Ascending) =>
-        PostgisPlanQueries.Order([new OrderTerm(field, direction)], ["id"], Schema, byteOrderText);
+    private static IReadOnlyList<string>? Order(
+        PostgisTextOrder text,
+        string field = "city",
+        SortDirection direction = SortDirection.Ascending) =>
+        PostgisPlanQueries.Order([new OrderTerm(field, direction)], ["id"], Schema, text);
+
+    /// <summary>A dataset whose columns declare collations of their own, over a database (ADR-0136).</summary>
+    private static PostgisTextOrder Declaring(string? database, params (string Column, string Collation)[] columns) =>
+        new(database, columns.ToDictionary(column => column.Column, column => column.Collation, StringComparer.Ordinal));
 
     [Fact]
     public void A_text_sort_key_in_a_locale_collation_is_compared_by_bytes()
@@ -57,7 +67,7 @@ public sealed class PostgisTextOrderTests
         // which order it wants rather than inherit one.
         Assert.Equal(
             ["\"city\" COLLATE \"C\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
-            Order(byteOrderText: false));
+            Order(text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -66,7 +76,7 @@ public sealed class PostgisTextOrderTests
         // The database already sorts these rows the way the reference does, so
         // `COLLATE "C"` would be a no-op that still stops the planner using the
         // column's own index.
-        Assert.Equal(["\"city\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"], Order(byteOrderText: true));
+        Assert.Equal(["\"city\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"], Order(text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -74,7 +84,60 @@ public sealed class PostgisTextOrderTests
     {
         Assert.Equal(
             ["\"city\" COLLATE \"C\" DESC NULLS FIRST", "\"id\" ASC NULLS LAST"],
-            Order(byteOrderText: false, direction: SortDirection.Descending));
+            Order(text: PostgisTextOrder.Locale, direction: SortDirection.Descending));
+    }
+
+    [Fact]
+    public void A_text_column_that_declares_a_locale_collation_states_the_order_on_a_byte_order_database()
+    {
+        // The database already compares by bytes, so every column that inherits
+        // its collation needs no term — and this column does not inherit it.
+        // `"label" text COLLATE "de-x-icu"` sorts by the column's own collation
+        // whatever the database's, so the term is what makes this order the
+        // reference's (ADR-0136).
+        Assert.Equal(
+            ["\"city\" COLLATE \"C\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
+            Order(Declaring("C", ("city", "de-x-icu"))));
+    }
+
+    [Fact]
+    public void A_text_column_that_declares_the_byte_order_needs_no_term_on_a_locale_database()
+    {
+        // The other direction of the same rule, and the one that costs nothing
+        // to get right: the column's own collation is already the reference's,
+        // so a term over it is the no-op that stops the planner using the
+        // column's index.
+        Assert.Equal(
+            ["\"city\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
+            Order(Declaring("en_US.utf8", ("city", "C"))));
+    }
+
+    [Fact]
+    public void Each_column_is_ordered_by_the_collation_it_declares_itself()
+    {
+        // Two text columns over one dataset and the answer is per column rather
+        // than per database: one declares the byte order and one does not, and
+        // the plan's key and its tie-break are asked separately.
+        Assert.Equal(
+            ["\"city\" COLLATE \"C\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
+            Order(Declaring("C", ("city", "en-GB-x-icu"), ("population", "C")), "city"));
+        Assert.Equal(
+            ["\"population\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
+            Order(Declaring("C", ("city", "en-GB-x-icu"), ("population", "C")), "population"));
+    }
+
+    [Fact]
+    public void A_column_that_declares_no_collation_is_the_databases_own()
+    {
+        // The map holds only the columns that declare one, so a column it does
+        // not name is answered by the database — the case for every table this
+        // store creates.
+        Assert.Equal(
+            ["\"city\" COLLATE \"C\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
+            Order(Declaring("en_US.utf8", ("other", "de-x-icu"))));
+        Assert.Equal(
+            ["\"city\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
+            Order(Declaring("C", ("other", "de-x-icu"))));
     }
 
     [Fact]
@@ -85,7 +148,7 @@ public sealed class PostgisTextOrderTests
         // not the database's collation.
         Assert.Equal(
             ["\"population\" ASC NULLS LAST", "\"id\" ASC NULLS LAST"],
-            Order(byteOrderText: false, "population"));
+            Order(text: PostgisTextOrder.Locale, "population"));
     }
 
     [Fact]
@@ -96,7 +159,7 @@ public sealed class PostgisTextOrderTests
         // make the total order the store returns a different total order.
         Assert.Equal(
             ["\"id\" ASC NULLS LAST", "\"city\" COLLATE \"C\" ASC NULLS LAST"],
-            PostgisPlanQueries.Order([new OrderTerm("id")], ["city"], Schema, byteOrderText: false));
+            PostgisPlanQueries.Order([new OrderTerm("id")], ["city"], Schema, text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -113,7 +176,7 @@ public sealed class PostgisTextOrderTests
             [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
             [new OrderTerm("city")],
             Schema,
-            byteOrderText: false,
+            text: PostgisTextOrder.Locale,
             parameters: []);
 
         Assert.NotNull(sql);
@@ -134,7 +197,7 @@ public sealed class PostgisTextOrderTests
             [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
             [new OrderTerm("city")],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             parameters: []);
 
         Assert.NotNull(sql);
@@ -155,7 +218,7 @@ public sealed class PostgisTextOrderTests
             [new AggregateSpec(AggregateStatistic.PercentileDiscrete, "city", "p50", 0.5)],
             [],
             Schema,
-            byteOrderText: false,
+            text: PostgisTextOrder.Locale,
             parameters: []);
 
         Assert.NotNull(sql);
@@ -194,7 +257,7 @@ public sealed class PostgisTextOrderTests
              new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
             [],
             Schema,
-            byteOrderText: false,
+            text: PostgisTextOrder.Locale,
             parameters: []);
 
         Assert.NotNull(sql);

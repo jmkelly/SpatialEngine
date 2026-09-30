@@ -49,7 +49,7 @@ public sealed class PostgisDistinctPushdownTests
             ["city", "population"],
             [new OrderTerm("city"), new OrderTerm("population", SortDirection.Descending)],
             Schema,
-            byteOrderText: false,
+            text: PostgisTextOrder.Locale,
             where: null,
             parameters);
 
@@ -69,7 +69,7 @@ public sealed class PostgisDistinctPushdownTests
             ["city"],
             [new OrderTerm("city")],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             where: null,
             parameters: new List<object?>());
 
@@ -88,7 +88,7 @@ public sealed class PostgisDistinctPushdownTests
             ["population"],
             [new OrderTerm("population")],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             where: "\"population\" > @p0",
             parameters);
 
@@ -105,7 +105,7 @@ public sealed class PostgisDistinctPushdownTests
             ["city"],
             order: [],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             where: null,
             parameters: new List<object?>()));
     }
@@ -124,7 +124,7 @@ public sealed class PostgisDistinctPushdownTests
             ["city", "population"],
             [new OrderTerm("city")],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             where: null,
             parameters: new List<object?>()));
 
@@ -133,7 +133,7 @@ public sealed class PostgisDistinctPushdownTests
             ["city"],
             [new OrderTerm("population")],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             where: null,
             parameters: new List<object?>()));
     }
@@ -146,7 +146,7 @@ public sealed class PostgisDistinctPushdownTests
             ["geom"],
             [new OrderTerm("geom")],
             Schema,
-            byteOrderText: true,
+            text: PostgisTextOrder.ByteOrder,
             where: null,
             parameters: new List<object?>()));
     }

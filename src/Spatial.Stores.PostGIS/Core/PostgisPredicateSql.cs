@@ -91,18 +91,18 @@ internal static class PostgisPredicateSql
         DatasetDescription description,
         BoundingBox? bbox,
         Predicate? where,
-        bool byteOrderText,
+        PostgisTextOrder text,
         List<object?> parameters)
     {
         var prefilter = BoundingBox(bbox, description, parameters);
-        var filter = where is null ? null : Where(where, description.Schema, byteOrderText, parameters);
+        var filter = where is null ? null : Where(where, description.Schema, text, parameters);
         return Combine(prefilter, filter);
     }
 
     /// <summary>Builds the attribute fragment, or fails with an actionable error for an unknown or geometry field.</summary>
-    public static string Where(Predicate where, IFeatureSchema schema, bool byteOrderText, List<object?> parameters)
+    public static string Where(Predicate where, IFeatureSchema schema, PostgisTextOrder text, List<object?> parameters)
     {
-        var builder = new SqlBuilder(schema, byteOrderText, parameters);
+        var builder = new SqlBuilder(schema, text, parameters);
         builder.Visit(where);
         return builder.Error is { } error ? throw SpatialException.BadArguments(error) : builder.ToString();
     }
@@ -178,7 +178,7 @@ internal static class PostgisPredicateSql
             return null;
         }
 
-        var builder = new SqlBuilder(null!, false, parameters);
+        var builder = new SqlBuilder(null!, PostgisTextOrder.ByteOrder, parameters);
         return builder.AppendBoundingBox(
             description.GeometryColumn,
             description.Srid,
@@ -200,15 +200,15 @@ internal static class PostgisPredicateSql
     {
         private readonly IFeatureSchema? _schema;
         private readonly Func<FieldRef, GroupColumn?>? _resolve;
-        private readonly bool _byteOrderText;
+        private readonly PostgisTextOrder _text;
         private readonly List<object?> _parameters;
         private readonly StringBuilder _sql = new();
         private int _parameterIndex;
 
-        public SqlBuilder(IFeatureSchema? schema, bool byteOrderText, List<object?> parameters)
+        public SqlBuilder(IFeatureSchema? schema, PostgisTextOrder text, List<object?> parameters)
         {
             _schema = schema;
-            _byteOrderText = byteOrderText;
+            _text = text;
             _parameters = parameters;
             // Continue placeholder numbering from already-bound values so a
             // bbox predicate combined with an attribute filter never reuses
@@ -218,7 +218,7 @@ internal static class PostgisPredicateSql
 
         /// <summary>A builder over a group row rather than a dataset's columns (a <c>HAVING</c> clause).</summary>
         public SqlBuilder(Func<FieldRef, GroupColumn?> resolve, List<object?> parameters)
-            : this(schema: null, byteOrderText: true, parameters)
+            : this(schema: null, text: PostgisTextOrder.Locale, parameters)
         {
             _resolve = resolve;
         }
@@ -565,7 +565,7 @@ internal static class PostgisPredicateSql
         /// by bytes (ADR-0121).
         /// </summary>
         private string Column(string name) =>
-            _schema is null ? Quote(name) : PostgisPlanQueries.Ordered(name, _schema, _byteOrderText);
+            _schema is null ? Quote(name) : PostgisPlanQueries.Ordered(name, _schema, _text);
 
         /// <summary>
         /// The operand a clause compares: the group row's own SQL where the

@@ -32,6 +32,12 @@ Microsoft DI — keyed services where two stores serve one contract:
   re-collates a sidecar an earlier version created, because the sidecar is the
   store's own table — the one place the declaration, rather than the per-row
   term, is the way to say what an identity is compared by (ADR-0130).
+- A PostGIS column that declares a collation of its own is discovered with the
+  schema (`information_schema.columns.collation_name`) and held with it, so a
+  pushed-down string comparison is written under the collation *that column*
+  carries and not the database's — an authored `COLLATE "de-x-icu"` column on
+  a `C` database still states `COLLATE "C"`, and an authored `COLLATE "C"`
+  column on a locale database takes no term (ADR-0136).
 - `IGeometryOperations`, `IGeometryMeasures`, `IGeometryProcessing`,
   `IGeometryRelations`, `ICrsDirectory`, `ICoordinateTransforms`,
   `IDemoWork`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and

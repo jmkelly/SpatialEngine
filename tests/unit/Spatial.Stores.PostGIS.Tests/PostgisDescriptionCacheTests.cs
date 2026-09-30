@@ -35,6 +35,13 @@ public sealed class PostgisDescriptionCacheTests
             new FieldDefinition("geom", AttributeKind.Geometry),
         ]));
 
+    /// <summary>
+    /// The facts one discovery run holds: the description the contract carries
+    /// and the collations the columns declare themselves (ADR-0136).
+    /// </summary>
+    private static PostgisDatasetFacts Facts(string id, IReadOnlyDictionary<string, string>? collations = null, long estimatedRows = 0) =>
+        new(Dataset("places"), Description(id, estimatedRows), collations ?? new Dictionary<string, string>());
+
     private static MovableClock Clock() => new(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
     /// <summary>A description read once is served again without going anywhere.</summary>
@@ -44,11 +51,31 @@ public sealed class PostgisDescriptionCacheTests
         var clock = Clock();
         var cache = new PostgisDescriptionCache(TimeSpan.FromMinutes(1), clock);
         var name = Dataset("places");
-        cache.Set(name, Description("public.places"));
+        cache.Set(name, Facts("public.places"));
 
         Assert.True(cache.TryGet(name, out var served));
-        Assert.Equal("public.places", served.Id);
+        Assert.Equal("public.places", served.Description.Id);
         Assert.Equal(1, cache.Count);
+    }
+
+    /// <summary>
+    /// The collations the columns declare are held with the description and
+    /// dropped with it (ADR-0136): a collation that outlived the schema it was
+    /// read for would answer for a table that is no longer there.
+    /// </summary>
+    [Fact]
+    public void The_column_collations_are_held_with_the_description_they_were_read_for()
+    {
+        var cache = new PostgisDescriptionCache(TimeSpan.FromMinutes(1), Clock());
+        var name = Dataset("places");
+        cache.Set(name, Facts("public.places", new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = "de-x-icu" }));
+
+        Assert.True(cache.TryGet(name, out var served));
+        Assert.Equal("de-x-icu", served.TextCollations["name"]);
+
+        cache.Invalidate(name);
+
+        Assert.False(cache.TryGet(name, out _));
     }
 
     /// <summary>A dataset the store has not described is a miss, not a guess.</summary>
@@ -71,7 +98,7 @@ public sealed class PostgisDescriptionCacheTests
         var clock = Clock();
         var cache = new PostgisDescriptionCache(TimeSpan.FromMinutes(1), clock);
         var name = Dataset("places");
-        cache.Set(name, Description("public.places"));
+        cache.Set(name, Facts("public.places"));
 
         clock.Advance(TimeSpan.FromSeconds(59));
         Assert.True(cache.TryGet(name, out _));
@@ -86,8 +113,8 @@ public sealed class PostgisDescriptionCacheTests
     public void Invalidating_a_dataset_drops_only_that_description()
     {
         var cache = new PostgisDescriptionCache(TimeSpan.FromMinutes(1), Clock());
-        cache.Set(Dataset("places"), Description("public.places"));
-        cache.Set(Dataset("roads"), Description("public.roads"));
+        cache.Set(Dataset("places"), Facts("public.places"));
+        cache.Set(Dataset("roads"), Facts("public.roads"));
 
         cache.Invalidate(Dataset("places"));
 
@@ -101,7 +128,7 @@ public sealed class PostgisDescriptionCacheTests
     public void Invalidating_a_dataset_the_store_never_described_does_nothing()
     {
         var cache = new PostgisDescriptionCache(TimeSpan.FromMinutes(1), Clock());
-        cache.Set(Dataset("places"), Description("public.places"));
+        cache.Set(Dataset("places"), Facts("public.places"));
 
         cache.Invalidate(Dataset("never_seen"));
         cache.InvalidateAll();
@@ -122,7 +149,7 @@ public sealed class PostgisDescriptionCacheTests
     {
         var cache = new PostgisDescriptionCache(TimeSpan.FromSeconds(seconds), Clock());
         var name = Dataset("places");
-        cache.Set(name, Description("public.places"));
+        cache.Set(name, Facts("public.places"));
 
         Assert.False(cache.Enabled);
         Assert.False(cache.TryGet(name, out _));
@@ -140,7 +167,7 @@ public sealed class PostgisDescriptionCacheTests
         var name = Dataset("places");
 
         cache.NoteRead();
-        cache.Set(name, Description("public.places"));
+        cache.Set(name, Facts("public.places"));
         cache.TryGet(name, out _);
         cache.Invalidate(name);
         cache.TryGet(name, out _);

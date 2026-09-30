@@ -35,13 +35,13 @@ internal static class PostgisWriteOperations
         DatasetDescription description,
         Feature feature,
         bool update,
-        bool byteOrderText) =>
+        PostgisTextOrder text) =>
         update
-            ? PlanUpdate(name, description, feature, byteOrderText)
+            ? PlanUpdate(name, description, feature, text)
             : PlanAdd(name, description, feature);
 
     private static (string Sql, object?[] Values) PlanUpdate(
-        PostgisDatasetName name, DatasetDescription description, Feature feature, bool byteOrderText)
+        PostgisDatasetName name, DatasetDescription description, Feature feature, PostgisTextOrder text)
     {
         var kinds = PostgisIdentity.Kinds(description);
         var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid)
@@ -49,7 +49,7 @@ internal static class PostgisWriteOperations
             .ToArray();
         return (
             PostgisQueries.Update(
-                name, feature.Schema, description.Srid, description.IdColumns, description.Schema, byteOrderText),
+                name, feature.Schema, description.Srid, description.IdColumns, description.Schema, text),
             values);
     }
 

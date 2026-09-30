@@ -146,6 +146,55 @@ public sealed class PostgisSchemaDiscoveryTests
     private static PostgisSchemaDiscovery.TypeModifierRow Modifier(string column, string modifier) =>
         new(column, modifier);
 
+    /// <summary>
+    /// The collations a dataset's columns declare themselves (ADR-0136): only
+    /// the columns that declare one appear, because every other column carries
+    /// the database's and the store reads that separately.
+    /// </summary>
+    [Fact]
+    public void Only_the_columns_that_declare_a_collation_are_carried()
+    {
+        var facts = SchemaFacts(
+        [
+            Column("id", "int8", ordinal: 1),
+            new PostgisSchemaDiscovery.ColumnRow("name", "text", true, 2, "de-x-icu"),
+            Column("region", "text", ordinal: 3),
+            new PostgisSchemaDiscovery.ColumnRow("country", "text", true, 4, "C"),
+        ],
+            ["geom"]);
+
+        Assert.Equal(
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["name"] = "de-x-icu", ["country"] = "C" },
+            PostgisSchemaDiscovery.TextCollations(facts));
+    }
+
+    /// <summary>
+    /// A dataset whose columns declare no collation at all — the case for every
+    /// table this store creates — carries nothing, and the statement written
+    /// over it follows the database alone.
+    /// </summary>
+    [Fact]
+    public void A_dataset_whose_columns_declare_nothing_declares_nothing()
+    {
+        var facts = SchemaFacts(
+            [Column("id", "int8", ordinal: 1), Column("name", "text", ordinal: 2)],
+            ["geom"]);
+
+        Assert.Empty(PostgisSchemaDiscovery.TextCollations(facts));
+    }
+
+    private static PostgisSchemaDiscovery.SchemaFacts SchemaFacts(
+        IReadOnlyList<PostgisSchemaDiscovery.ColumnRow> columns,
+        IReadOnlyList<string> geometryColumns) =>
+        new(
+            columns,
+            geometryColumns
+                .Select((column, index) => new PostgisSchemaDiscovery.GeometryRow(column, 4326, "POINT"))
+                .ToArray(),
+            [],
+            ["id"],
+            10);
+
     private static DatasetDescription Build(
         IReadOnlyList<PostgisSchemaDiscovery.ColumnRow> columns,
         IReadOnlyList<string> geometryColumns,

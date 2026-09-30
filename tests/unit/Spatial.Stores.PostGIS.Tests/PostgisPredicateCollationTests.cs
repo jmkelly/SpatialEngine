@@ -39,10 +39,10 @@ public sealed class PostgisPredicateCollationTests
         new FieldDefinition("active", AttributeKind.Boolean, nullable: true),
     ]);
 
-    private static string Where(string filter, bool byteOrderText)
+    private static string Where(string filter, PostgisTextOrder text)
     {
         Assert.True(FeatureFilterText.TryParse(filter, out var predicate, out var error), error);
-        return PostgisPredicateSql.Where(predicate!, Schema, byteOrderText, []);
+        return PostgisPredicateSql.Where(predicate!, Schema, text, []);
     }
 
     [Theory]
@@ -57,7 +57,7 @@ public sealed class PostgisPredicateCollationTests
         // Every ordering operator is the same question — "is this row's code
         // below the one in the filter" — and the collation decides which rows
         // that is, so every one of them states the byte order.
-        Assert.Equal(expected, Where(filter, byteOrderText: false));
+        Assert.Equal(expected, Where(filter, text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class PostgisPredicateCollationTests
         // The database already compares these rows the way the reference does,
         // so `COLLATE "C"` is a no-op that still stops the planner using the
         // column's own index (ADR-0121).
-        Assert.Equal("\"code\" < @p0", Where("code < 'delta'", byteOrderText: true));
+        Assert.Equal("\"code\" < @p0", Where("code < 'delta'", text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -75,8 +75,8 @@ public sealed class PostgisPredicateCollationTests
         // `IN` is a list of equalities, and a case-insensitive collation folds
         // `Delta` onto `delta` — so the list matches a row the reference says
         // it does not.
-        Assert.Equal("\"code\" COLLATE \"C\" IN (@p0, @p1)", Where("code IN ('a', 'b')", byteOrderText: false));
-        Assert.Equal("\"code\" COLLATE \"C\" NOT IN (@p0)", Where("code NOT IN ('a')", byteOrderText: false));
+        Assert.Equal("\"code\" COLLATE \"C\" IN (@p0, @p1)", Where("code IN ('a', 'b')", text: PostgisTextOrder.Locale));
+        Assert.Equal("\"code\" COLLATE \"C\" NOT IN (@p0)", Where("code NOT IN ('a')", text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -86,8 +86,8 @@ public sealed class PostgisPredicateCollationTests
         // matches it as an ordinal pattern: under a case-folding collation
         // (`en_US-x-icu`, and SQL Server's own default) it would match a set
         // the reference never produced.
-        Assert.Equal("\"code\" COLLATE \"C\" LIKE @p0", Where("code LIKE 'a%'", byteOrderText: false));
-        Assert.Equal("\"code\" LIKE @p0", Where("code LIKE 'a%'", byteOrderText: true));
+        Assert.Equal("\"code\" COLLATE \"C\" LIKE @p0", Where("code LIKE 'a%'", text: PostgisTextOrder.Locale));
+        Assert.Equal("\"code\" LIKE @p0", Where("code LIKE 'a%'", text: PostgisTextOrder.ByteOrder));
     }
 
     [Theory]
@@ -102,7 +102,7 @@ public sealed class PostgisPredicateCollationTests
         // a boolean is a statement Postgres refuses, so the term follows the
         // field's kind and not the database's collation. A null test is not a
         // comparison of values and has no collation to choose.
-        Assert.Equal(expected, Where(filter, byteOrderText: false));
+        Assert.Equal(expected, Where(filter, text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class PostgisPredicateCollationTests
     {
         Assert.Equal(
             "\"population\" > @p0 AND \"code\" COLLATE \"C\" < @p1",
-            Where("population > 1000 AND code < 'delta'", byteOrderText: false));
+            Where("population > 1000 AND code < 'delta'", text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public sealed class PostgisPredicateCollationTests
         // The `FALSE` a non-comparable literal compiles to is the whole
         // fragment, so there is no column left to collate — and the answer is
         // still the reference's.
-        Assert.Equal("FALSE", Where("code = 5", byteOrderText: false));
+        Assert.Equal("FALSE", Where("code = 5", text: PostgisTextOrder.Locale));
     }
 
     [Fact]

@@ -101,15 +101,20 @@ internal sealed class PostgisStorage : IAsyncDisposable
     }
 
     /// <summary>
-    /// Whether this database already compares text by bytes, which is what
-    /// decides whether a pushed-down statement that compares a text column
-    /// carries an explicit <c>COLLATE "C"</c> — a sort key (ADR-0121) or a
-    /// predicate (ADR-0123). The answer is the cached catalog read above, so
-    /// both faces ask the same question of the same property and neither keeps
-    /// its own copy of it.
+    /// The order a statement comparing this dataset's text columns is written
+    /// in: the collation each column actually carries — its own where it
+    /// declares one, the database's where it declares none (ADR-0136) — and
+    /// with it whether the statement has to state <c>COLLATE "C"</c> over each
+    /// one. The database's half is the cached catalog read above, so both faces
+    /// ask the same question of the same property and neither keeps its own
+    /// copy of it; the columns' half is the discovered description's, so it
+    /// costs nothing per statement and is dropped with the description it was
+    /// read for (ADR-0122).
     /// </summary>
-    public async Task<bool> ByteOrderTextAsync(CancellationToken cancellationToken) =>
-        PostgisTextCollation.IsByteOrder(await DatabaseCollationAsync(cancellationToken).ConfigureAwait(false));
+    public async Task<PostgisTextOrder> TextOrderAsync(PostgisDatasetFacts facts, CancellationToken cancellationToken) =>
+        new(
+            await DatabaseCollationAsync(cancellationToken).ConfigureAwait(false),
+            facts.TextCollations);
 
     public async ValueTask DisposeAsync()
     {

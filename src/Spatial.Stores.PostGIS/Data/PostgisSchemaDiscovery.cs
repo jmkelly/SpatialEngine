@@ -18,8 +18,17 @@ namespace Spatial.Stores.PostGIS.Data;
 /// </summary>
 internal static class PostgisSchemaDiscovery
 {
-    /// <summary>One <c>information_schema.columns</c> row, in column order.</summary>
-    internal readonly record struct ColumnRow(string Name, string UdtName, bool Nullable, int Ordinal);
+    /// <summary>
+    /// One <c>information_schema.columns</c> row, in column order.
+    /// <c>Collation</c> is the collation the column declares for itself, and is
+    /// <c>null</c> for the columns that declare none and inherit the
+    /// database's — the distinction a pushed-down sort key turns on
+    /// (ADR-0136). It is read from this row rather than from the type modifier
+    /// because <c>format_type</c> does not carry it: a
+    /// <c>text COLLATE "de-x-icu"</c> column's modifier is the plain
+    /// <c>text</c>.
+    /// </summary>
+    internal readonly record struct ColumnRow(string Name, string UdtName, bool Nullable, int Ordinal, string? Collation = null);
 
     /// <summary>One <c>geometry_columns</c> row.</summary>
     internal readonly record struct GeometryRow(string Column, int Srid, string Type);
@@ -111,6 +120,16 @@ internal static class PostgisSchemaDiscovery
             candidate => string.Equals(candidate.Column, column, StringComparison.Ordinal)).TypeModifier;
         return PostgisCoordinateLayout.FromTypeModifier(modifier);
     }
+
+    /// <summary>
+    /// The collations a dataset's columns declare themselves, keyed by column
+    /// name (ADR-0136). The columns that declare none are absent: those are the
+    /// database's, and the store holds the database's answer separately.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> TextCollations(SchemaFacts facts) =>
+        facts.Columns
+            .Where(column => !string.IsNullOrEmpty(column.Collation))
+            .ToDictionary(column => column.Name, column => column.Collation!, StringComparer.Ordinal);
 
     /// <summary>Builds a catalogue entry from one materialised catalogue row (pure).</summary>
     public static DatasetSummary SummaryFromRow(IReadOnlyList<object?> row) =>

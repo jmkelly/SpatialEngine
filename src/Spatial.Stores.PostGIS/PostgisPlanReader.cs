@@ -44,12 +44,13 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     public async Task<FeatureQueryPage> ReadAsync(
         PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
     {
-        var description = await catalogue.DescribeAsync(name, cancellationToken);
+        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        var description = facts.Description;
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
+        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
         var order = PostgisPlanQueries.Order(
-            query.Order ?? [], description.IdColumns, description.Schema, await ByteOrderTextAsync(cancellationToken));
+            query.Order ?? [], description.IdColumns, description.Schema, await TextOrderAsync(facts, cancellationToken));
         if (!Pushed(where, query, order))
         {
             // The restriction is not expressible without renumbering this
@@ -59,14 +60,14 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             // executor, which selects over the whole read.
             return FeaturePlanExecutor.Finish(
                 description.Schema,
-                await SelectedAsync(name, description, query, where, parameters, cancellationToken),
+                await SelectedAsync(facts, query, where, parameters, cancellationToken),
                 query,
                 cancellationToken);
         }
 
         var start = FeaturePageCursor.StartOffset(query);
         var total = await TotalAsync(storage, name, where, parameters, cancellationToken);
-        var shape = Columns(description, query.Projection);
+        var shape = Columns(facts, query.Projection);
         var sql = PostgisPlanQueries.Read(
             name, shape.Columns, where, order, new PostgisPlanQueries.Paging(query.Limit, start), parameters);
         var page = await BatchesAsync(sql, parameters, shape, cancellationToken);
@@ -105,12 +106,13 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// <summary>The count of the rows a plan selects, counted by the database.</summary>
     public async Task<int> CountAsync(PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
     {
-        var description = await catalogue.DescribeAsync(name, cancellationToken);
+        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        var description = facts.Description;
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
+        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
         return where is null
-            ? FeatureReduction.CountFeatures(await SelectedAsync(name, description, query, null, cancellationToken))
+            ? FeatureReduction.CountFeatures(await SelectedAsync(facts, query, null, cancellationToken))
             : (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
     }
 
@@ -126,18 +128,19 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     public async Task<DistinctPage> DistinctAsync(
         PostgisDatasetName name, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken)
     {
-        var description = await catalogue.DescribeAsync(name, cancellationToken);
+        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        var description = facts.Description;
         var schema = (FeatureSchema)description.Schema;
         FeatureQueryValidation.ValidateDistinct(schema, distinct);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
+        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
         var order = query.Order ?? [];
         var sql = PostgisPlanQueries.Distinct(
             name,
             distinct.Fields,
             order,
             schema,
-            await ByteOrderTextAsync(schema, distinct.Fields, order, cancellationToken),
+            await TextOrderAsync(facts, schema, distinct.Fields, order, cancellationToken),
             where,
             parameters);
         // A restriction this table cannot carry (a dataset with no identity
@@ -150,7 +153,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         {
             return FeatureReduction.Distinct(
                 schema,
-                await SelectedAsync(name, description, query, where, parameters, cancellationToken),
+                await SelectedAsync(facts, query, where, parameters, cancellationToken),
                 distinct,
                 query.Order);
         }
@@ -179,12 +182,16 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// or orders a text column: the probe is a round trip, and a set of numbers
     /// cannot be changed by the collation.
     /// </summary>
-    private async Task<bool> ByteOrderTextAsync(
-        FeatureSchema schema, IReadOnlyList<string> fields, IReadOnlyList<OrderTerm> order, CancellationToken cancellationToken) =>
+    private async Task<PostgisTextOrder> TextOrderAsync(
+        PostgisDatasetFacts facts,
+        FeatureSchema schema,
+        IReadOnlyList<string> fields,
+        IReadOnlyList<OrderTerm> order,
+        CancellationToken cancellationToken) =>
         fields.Concat(order.Select(term => term.Field)).Any(field =>
             schema.IndexOf(field) >= 0 && schema[schema.IndexOf(field)].Kind == AttributeKind.String)
-            ? await storage.ByteOrderTextAsync(cancellationToken)
-            : false;
+            ? await storage.TextOrderAsync(facts, cancellationToken)
+            : PostgisTextOrder.Locale;
 
     /// <summary>
     /// The restriction a plan pushes, with the database's collation read only
@@ -195,34 +202,37 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// number never pays the catalog read that decides the term.
     /// </summary>
     private async Task<string?> RestrictionAsync(
-        PostgisDatasetName name,
-        DatasetDescription description,
+        PostgisDatasetFacts facts,
         FeatureQuery query,
         List<object?> parameters,
         CancellationToken cancellationToken) =>
         PostgisPlanQueries.Predicate(
-            name,
-            description,
+            facts.Dataset,
+            facts.Description,
             query,
             // A restriction that compares no text cannot be changed by the
             // collation — in either half of it, the id restriction and the
             // attribute clause — so the read is skipped and the answer unused.
-            (query.Ids is { Count: > 0 } && PostgisIdentity.ComparesText(description))
-            || (query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema))
-                ? await storage.ByteOrderTextAsync(cancellationToken)
-                : false,
+            ComparesText(facts.Description, query)
+                ? await storage.TextOrderAsync(facts, cancellationToken)
+                : PostgisTextOrder.Locale,
             parameters);
 
+    /// <summary>Whether the plan's restriction compares a text column, in either half of it.</summary>
+    private static bool ComparesText(DatasetDescription description, FeatureQuery query) =>
+        (query.Ids is { Count: > 0 } && PostgisIdentity.ComparesText(description))
+        || (query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema));
+
     /// <summary>
-    /// Whether this database already compares text by bytes, which is what
-    /// decides whether a pushed-down sort key over a text column carries an
-    /// explicit <c>COLLATE "C"</c> (ADR-0121). Read once per store and cached;
-    /// a database the probe cannot answer for is treated as a locale collation,
-    /// because the term is the only thing standing between the pushdown and the
-    /// contract's answer.
+    /// The order a pushed-down sort key over this dataset's text columns is
+    /// written in, which is each column's own collation where it declares one
+    /// and the database's where it declares none (ADR-0121, ADR-0136). The
+    /// database's half is read once per store and cached; a database the probe
+    /// cannot answer for is treated as a locale collation, because the term is
+    /// the only thing standing between the pushdown and the contract's answer.
     /// </summary>
-    private Task<bool> ByteOrderTextAsync(CancellationToken cancellationToken) =>
-        storage.ByteOrderTextAsync(cancellationToken);
+    private Task<PostgisTextOrder> TextOrderAsync(PostgisDatasetFacts facts, CancellationToken cancellationToken) =>
+        storage.TextOrderAsync(facts, cancellationToken);
 
     /// <summary>
     /// The reduction a plan selects, pushed down when the dialect can return its
@@ -235,11 +245,12 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     public async Task<AggregatePage> AggregateAsync(
         PostgisDatasetName name, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken)
     {
-        var description = await catalogue.DescribeAsync(name, cancellationToken);
+        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        var description = facts.Description;
         var schema = (FeatureSchema)description.Schema;
         FeatureQueryValidation.ValidateAggregate(schema, aggregate);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
+        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
         // An ungrouped reduction is one row, so the plan's order has nothing to
         // order: it is not written into the SQL at all (an `ORDER BY` over an
         // ungrouped aggregate's column is a query Postgres refuses).
@@ -252,23 +263,23 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // instead. An unrestricted plan's null really is "every row".
         var pushed = where is not null || !PostgisPlanQueries.Restricts(query)
             ? await PushedGroupsAsync(
-                name, description, aggregate, where, order, await ByteOrderTextAsync(cancellationToken), parameters, cancellationToken)
+                name, facts, aggregate, where, order, await TextOrderAsync(facts, cancellationToken), parameters, cancellationToken)
                 .ConfigureAwait(false)
             : null;
         return pushed ?? FeatureReduction.Aggregate(
             schema,
-            await SelectedAsync(name, description, query, where, parameters, cancellationToken),
+            await SelectedAsync(facts, query, where, parameters, cancellationToken),
             aggregate,
             query.Order);
     }
 
     private async Task<AggregatePage?> PushedGroupsAsync(
         PostgisDatasetName name,
-        DatasetDescription description,
+        PostgisDatasetFacts facts,
         AggregateQuery aggregate,
         string? where,
         IReadOnlyList<OrderTerm> order,
-        bool byteOrderText,
+        PostgisTextOrder text,
         List<object?> parameters,
         CancellationToken cancellationToken)
     {
@@ -284,8 +295,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             aggregate.GroupBy?.ToArray() ?? [],
             aggregate.Specs,
             order,
-            description.Schema,
-            byteOrderText,
+            facts.Description.Schema,
+            text,
             parameters,
             aggregate.Having,
             page);
@@ -299,7 +310,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
 
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
         var rows = await PostgisDataStore.ReadRowsAsync(connection, sql, parameters, cancellationToken);
-        return Groups((FeatureSchema)description.Schema, aggregate, rows);
+        return Groups((FeatureSchema)facts.Description.Schema, aggregate, rows);
     }
 
     /// <summary>
@@ -426,16 +437,14 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// row cap, the order and the projection are not applied to it.
     /// </summary>
     private Task<List<Feature>> SelectedAsync(
-        PostgisDatasetName name,
-        DatasetDescription description,
+        PostgisDatasetFacts facts,
         FeatureQuery query,
         string? where,
         CancellationToken cancellationToken) =>
-        SelectedAsync(name, description, query, where, new List<object?>(), cancellationToken);
+        SelectedAsync(facts, query, where, new List<object?>(), cancellationToken);
 
     private async Task<List<Feature>> SelectedAsync(
-        PostgisDatasetName name,
-        DatasetDescription description,
+        PostgisDatasetFacts facts,
         FeatureQuery query,
         string? where,
         List<object?> parameters,
@@ -444,13 +453,13 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var pushed = where is not null;
         if (!pushed)
         {
-            where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
+            where = await RestrictionAsync(facts, query, parameters, cancellationToken);
         }
 
         // The store's own row order, never a SQL order of this store's choosing:
         // a reduction's row order is the plan's, and a plan that asked for no
         // order takes the order its scan would have returned.
-        var rows = await WholeAsync(name, description, where, parameters, cancellationToken);
+        var rows = await WholeAsync(facts, where, parameters, cancellationToken);
 
         // A restriction the dialect could not express is applied here, over the
         // whole read, so a feature keeps the identity the full scan gave it
@@ -458,15 +467,15 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // which is the same rows.
         return pushed
             ? rows
-            : FeaturePlanExecutor.Select((FeatureSchema)description.Schema, rows, query, cancellationToken);
+            : FeaturePlanExecutor.Select((FeatureSchema)facts.Description.Schema, rows, query, cancellationToken);
     }
 
     private async Task<List<Feature>> WholeAsync(
-        PostgisDatasetName name, DatasetDescription description, string? where, List<object?> parameters, CancellationToken cancellationToken)
+        PostgisDatasetFacts facts, string? where, List<object?> parameters, CancellationToken cancellationToken)
     {
-        var shape = Columns(description, projection: null);
+        var shape = Columns(facts, projection: null);
         var sql = PostgisPlanQueries.Read(
-            name, shape.Columns, where, null, new PostgisPlanQueries.Paging(null, 0), parameters);
+            facts.Dataset, shape.Columns, where, null, new PostgisPlanQueries.Paging(null, 0), parameters);
         var page = await BatchesAsync(sql, parameters, shape, cancellationToken);
         return page.SelectMany(batch => batch.Features).ToList();
     }
@@ -478,8 +487,9 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// dropped again before the page is returned, so a projection returns
     /// exactly the fields it asked for.
     /// </summary>
-    private static Shape Columns(DatasetDescription description, IReadOnlyList<string>? projection)
+    private static Shape Columns(PostgisDatasetFacts facts, IReadOnlyList<string>? projection)
     {
+        var description = facts.Description;
         var fields = (projection is null or { Count: 0 }
             ? description.Schema.Fields
             : projection

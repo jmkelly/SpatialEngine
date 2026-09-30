@@ -57,13 +57,13 @@ public sealed class PostgisIdentityCollationTests
         // identity is limited to one row, so it is the wrong one.
         Assert.Equal(
             $"SELECT {string.Join(", ", Projection)} FROM \"public\".\"places\" WHERE (\"code\" COLLATE \"C\" = @p0) LIMIT 1",
-            PostgisQueries.SelectByIdentity(Dataset(), Schema, ["code"], 1, byteOrderText: false));
+            PostgisQueries.SelectByIdentity(Dataset(), Schema, ["code"], 1, text: PostgisTextOrder.Locale));
     }
 
     [Fact]
     public void A_text_identity_states_the_byte_order_of_every_row_of_a_batch()
     {
-        var sql = PostgisQueries.SelectByIdentity(Dataset(), Schema, ["code"], 2, byteOrderText: false);
+        var sql = PostgisQueries.SelectByIdentity(Dataset(), Schema, ["code"], 2, text: PostgisTextOrder.Locale);
 
         Assert.Equal(
             $"SELECT {string.Join(", ", Projection)} FROM \"public\".\"places\" "
@@ -79,7 +79,7 @@ public sealed class PostgisIdentityCollationTests
         // own index (ADR-0121) — and the key index is the one lookup there is.
         Assert.Equal(
             $"SELECT {string.Join(", ", Projection)} FROM \"public\".\"places\" WHERE (\"code\" = @p0) LIMIT 1",
-            PostgisQueries.SelectByIdentity(Dataset(), Schema, ["code"], 1, byteOrderText: true));
+            PostgisQueries.SelectByIdentity(Dataset(), Schema, ["code"], 1, text: PostgisTextOrder.ByteOrder));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public sealed class PostgisIdentityCollationTests
         // as a number whatever the database's collation is.
         Assert.Equal(
             $"SELECT {string.Join(", ", Projection)} FROM \"public\".\"places\" WHERE (\"id\" = @p0) LIMIT 1",
-            PostgisQueries.SelectByIdentity(Dataset(), Schema, ["id"], 1, byteOrderText: false));
+            PostgisQueries.SelectByIdentity(Dataset(), Schema, ["id"], 1, text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -107,14 +107,14 @@ public sealed class PostgisIdentityCollationTests
                 4326,
                 ["code"],
                 Schema,
-                byteOrderText: false));
+                text: PostgisTextOrder.Locale));
     }
 
     [Fact]
     public void A_delete_targets_a_text_identity_by_bytes() =>
         Assert.Equal(
             "DELETE FROM \"public\".\"places\" WHERE \"code\" COLLATE \"C\" = @p0",
-            PostgisQueries.Delete(Dataset(), Schema, ["code"], byteOrderText: false));
+            PostgisQueries.Delete(Dataset(), Schema, ["code"], text: PostgisTextOrder.Locale));
 
     [Fact]
     public void The_attachment_probe_matches_a_text_identity_by_bytes()
@@ -123,7 +123,7 @@ public sealed class PostgisIdentityCollationTests
         // attachment stored against a feature nobody asked for.
         Assert.Equal(
             "SELECT 1 FROM \"public\".\"places\" WHERE \"code\" COLLATE \"C\" = @p0 LIMIT 1",
-            PostgisQueries.FeatureExists(Dataset(), Schema, ["code"], byteOrderText: false));
+            PostgisQueries.FeatureExists(Dataset(), Schema, ["code"], text: PostgisTextOrder.Locale));
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class PostgisIdentityCollationTests
             Dataset(),
             Description("code"),
             new FeatureQuery(Ids: [new FeatureId("delta")]),
-            byteOrderText: false,
+            text: PostgisTextOrder.Locale,
             parameters);
 
         Assert.Equal("\"code\" COLLATE \"C\" = @p0", where);
