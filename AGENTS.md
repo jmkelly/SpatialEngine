@@ -62,6 +62,15 @@ interop surface.
   (`tools/skip_gate.py`, ADR-0139): `VERIFY_SKIP_RATIO` (0.5) and
   `VERIFY_MIN_SKIPPED` (10) are the thresholds, and a suite dropped by
   `--skip-tests` is out of the count rather than judged.
+  Every lane then runs the bead-protocol gate (`tools/beads_gate.py`,
+  ADR-0152): a closed bead's merge commit carries a `Task: <id>` trailer
+  naming that same bead, and a commit touching `src/Spatial.Contracts/**` or
+  `src/Spatial.Core/**` changes an ADR or cites `ADR-NNNN` in its body. It is
+  the prose in this file turned into a comparison — it had already failed
+  in-tree (SpatialEngine-imz.4). The ADR citation and register checks are read
+  through `tools/arch-index.py` rather than gated twice. The bead queue is
+  local coordination state, so a run that cannot read it (CI) reports check 1
+  as *not judged* and judges the rest; `--strict` fails instead.
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.

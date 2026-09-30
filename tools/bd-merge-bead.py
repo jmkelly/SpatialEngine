@@ -158,6 +158,21 @@ def commits_ahead(run, local= LOCAL_REF, remote=PUBLISHED_REF, cwd=None):
             if line.strip()]
 
 
+def merge_message(bead_id, subject):
+    """The merge commit's message: the bead, and the bead as a `Task:` trailer.
+
+    The subject names the bead, which is what a reader (and
+    `git log --grep`) finds. The trailer is the other half of
+    `tools/beads_gate.py`'s first check, and it is written here rather than
+    asked for: the merge commit is this tool's to write, so a protocol that
+    only an agent remembers to follow is exactly the protocol that was already
+    broken — a mis-dispatch reached three worktrees at once (the runbook's
+    substitution rule), and a commit whose bead and whose trailer disagree is
+    the mechanical shape of one (SpatialEngine-imz.4, ADR-0152).
+    """
+    return f"Merge {bead_id}: {subject}\n\nTask: {bead_id}"
+
+
 def _known_commit(run, sha, cwd=None):
     """Whether this repository has that commit at all."""
     return _fail(run, ["git", "rev-parse", "--verify", "--quiet",
@@ -507,7 +522,7 @@ def merge_bead(run, emit, bead_id, branch=None, reason=None, full_lane=False,
                       "git log", cwd).stdout.strip() or bead_id
         _ok(run, ["git", "checkout", LOCAL_REF], "git checkout main", cwd)
         _ok(run, ["git", "merge", "--no-ff", "-m",
-                  f"Merge {bead_id}: {subject}", branch],
+                  merge_message(bead_id, subject), branch],
             f"git merge {branch}", cwd)
         merge_sha = _ok(run, ["git", "rev-parse", LOCAL_REF],
                         "git rev-parse main", cwd).stdout.strip()
