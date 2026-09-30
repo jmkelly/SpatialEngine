@@ -43,7 +43,7 @@ internal static class SqlServerWriteOperations
             .Concat(SqlServerDiagnostics.ParseFeatureIdentity(kinds, feature.Id))
             .ToArray();
         return (
-            SqlServerQueries.Update(name, feature.Schema, description.Srid, description.IdColumns),
+            SqlServerQueries.Update(name, feature.Schema, description.Srid, description.IdColumns, description.Schema),
             values);
     }
 

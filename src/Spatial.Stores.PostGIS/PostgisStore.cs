@@ -236,6 +236,20 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
         Catalogue.DescribeAsync(name, token);
 
     /// <summary>
+    /// Whether this database already compares text by bytes, which is what
+    /// decides whether a statement comparing a <em>text</em> column carries an
+    /// explicit <c>COLLATE "C"</c> — a sort key (ADR-0121), a predicate
+    /// (ADR-0123) or an identity comparison (ADR-0126). Read only when the
+    /// dataset's identity has a text column, which is the only identity
+    /// comparison a collation can change; a dataset keyed on a number asks for
+    /// nothing and pays nothing.
+    /// </summary>
+    internal Task<bool> ByteOrderTextAsync(DatasetDescription description, CancellationToken token) =>
+        PostgisIdentity.ComparesText(description)
+            ? _storage.ByteOrderTextAsync(token)
+            : Task.FromResult(false);
+
+    /// <summary>
     /// Drops the description this store is holding for a dataset it has just
     /// changed (ADR-0122), so the next read discovers the dataset as it now is
     /// rather than as it was when it was last read.

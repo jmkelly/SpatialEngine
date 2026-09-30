@@ -234,7 +234,7 @@ public sealed class SqlServerAttachmentStore : IFeatureAttachmentStore
         var values = SqlServerIdentity.Values(description, featureId);
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         var rows = await SqlServerDataStore.ReadRowsAsync(
-            connection, SqlServerQueries.FeatureExists(name, description.IdColumns), values, cancellationToken);
+            connection, SqlServerQueries.FeatureExists(name, description.Schema, description.IdColumns), values, cancellationToken);
         if (rows.Count == 0)
         {
             throw SpatialException.Missing($"No feature with identity '{featureId}' exists in dataset '{name}'.");

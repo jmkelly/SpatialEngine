@@ -61,7 +61,8 @@ public sealed class PostgisEditStore : IFeatureEditStore
             }
 
             await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-            return await PostgisFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
+            return await PostgisFeatureDeletes.DeleteAsync(
+                session, name, description, featureIds, await _store.ByteOrderTextAsync(description, cancellationToken), cancellationToken);
         }
         finally
         {
@@ -104,7 +105,19 @@ public sealed class PostgisEditStore : IFeatureEditStore
             }
 
             await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-            return await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
+            return await EditEachAsync(
+                session,
+                new BatchEdit(
+                    name,
+                    description,
+                    batch,
+                    update,
+                    // A text identity is compared by bytes, so the update's
+                    // target cannot be a row a case-folding collation folded
+                    // it onto (ADR-0126).
+                    await _store.ByteOrderTextAsync(description, cancellationToken)),
+                apply,
+                cancellationToken);
         }
         finally
         {
@@ -115,12 +128,15 @@ public sealed class PostgisEditStore : IFeatureEditStore
         }
     }
 
-    /// <summary>One edit batch: the target dataset, its description, the features and whether they are updated.</summary>
+    /// <summary>One edit batch: the target dataset, its description, the features,
+    /// whether they are updated, and whether this database already compares
+    /// text by bytes (ADR-0126).</summary>
     private sealed record BatchEdit(
         PostgisDatasetName Name,
         DatasetDescription Description,
         FeatureBatch Batch,
-        bool Update);
+        bool Update,
+        bool ByteOrderText);
 
     private static async Task<IReadOnlyList<FeatureEditOutcome>> EditEachAsync(
         PostgisEditSession session,
@@ -154,7 +170,8 @@ public sealed class PostgisEditStore : IFeatureEditStore
     {
         try
         {
-            var (sql, values) = PostgisWriteOperations.PlanFeature(edit.Name, edit.Description, feature, edit.Update);
+            var (sql, values) = PostgisWriteOperations.PlanFeature(
+                edit.Name, edit.Description, feature, edit.Update, edit.ByteOrderText);
             await using var command = session.CreateCommand(sql, values);
             return await apply(feature, command, cancellationToken);
         }

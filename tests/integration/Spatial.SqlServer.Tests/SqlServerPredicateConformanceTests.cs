@@ -1,5 +1,6 @@
 using Spatial.Core.Features;
 using Spatial.PredicateConformance;
+using Spatial.Stores.SqlServer.Core;
 
 namespace Spatial.SqlServer.Tests;
 
@@ -48,7 +49,11 @@ public sealed class SqlServerPredicateConformanceTests : IClassFixture<SqlServer
     /// a <em>case-insensitive</em> one by default — is never measured, which is
     /// why this case is the one that catches a store whose <c>WHERE</c> compares
     /// strings by the database's collation instead of by the contract's bytes
-    /// (ADR-0123).
+    /// (ADR-0123). The key is the fixture's own <c>code</c> column, so the
+    /// identity this case compares by is a <em>text</em> identity (ADR-0126) —
+    /// which is why it is declared under a binary collation, and why it is a
+    /// <c>nvarchar(64)</c>: the store's own string type is <c>nvarchar(max)</c>,
+    /// and SQL Server refuses that as a key.
     /// </summary>
     [SkippableFact]
     public async Task Every_conformance_case_answers_the_same_through_a_pushed_where()
@@ -56,16 +61,10 @@ public sealed class SqlServerPredicateConformanceTests : IClassFixture<SqlServer
         Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         const string dataset = "dbo.predicates_pushed";
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
-        // The key is an integer surrogate rather than the `code` column itself:
-        // a text key under the database's case-insensitive collation cannot hold
-        // `Delta` and `delta` at all, which would be a statement about keying
-        // rather than about the comparison. `code` is left as the store's own
-        // `nvarchar(max)` under the database's own collation, which is the
-        // column a pushed `WHERE` compares and the collation it must correct.
         await context.ExecuteAsync(
             "IF OBJECT_ID(N'dbo.predicates_pushed', N'U') IS NOT NULL DROP TABLE dbo.predicates_pushed; "
             + "CREATE TABLE dbo.predicates_pushed ("
-            + "[gid] int IDENTITY(1,1) NOT NULL PRIMARY KEY, [code] nvarchar(max) NULL, "
+            + $"[code] nvarchar(64) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL PRIMARY KEY, "
             + "[population] bigint NULL, [score] float NULL, [active] bit NULL, "
             + "[reference] uniqueidentifier NULL, [seen] datetimeoffset NULL, [geometry] geometry NULL)");
         await context.Store.WriteAsync(

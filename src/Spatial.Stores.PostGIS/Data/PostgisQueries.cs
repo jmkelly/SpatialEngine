@@ -33,12 +33,16 @@ internal static class PostgisQueries
     /// discovered identifiers, never client text, and the rest of a query
     /// plan (ADR-0074) is <c>AND</c>ed onto the same statement — the identity
     /// values come first, so the plan's own parameters continue after them.
+    /// A text identity states the byte order it is compared in, so the lookup
+    /// cannot answer with the row a case-folding collation folded it onto
+    /// (ADR-0126).
     /// </summary>
     public static string SelectByIdentity(
         PostgisDatasetName dataset,
-        IFeatureSchema schema,
+        FeatureSchema schema,
         IReadOnlyList<string> identityColumns,
         int count,
+        bool byteOrderText,
         string? predicate = null)
     {
         var builder = new StringBuilder($"SELECT {SelectColumns(schema)} FROM {dataset.QuoteQualified()} WHERE ");
@@ -49,18 +53,9 @@ internal static class PostgisQueries
                 builder.Append(" OR ");
             }
 
-            builder.Append('(');
-            for (var column = 0; column < identityColumns.Count; column++)
-            {
-                if (column > 0)
-                {
-                    builder.Append(" AND ");
-                }
-
-                builder.Append('"').Append(identityColumns[column]).Append("\" = @p").Append((feature * identityColumns.Count) + column);
-            }
-
-            builder.Append(')');
+            builder.Append('(')
+                .Append(PostgisIdentity.Tuple(schema, identityColumns, feature * identityColumns.Count, byteOrderText))
+                .Append(')');
         }
 
         var statement = builder.ToString();
@@ -111,24 +106,31 @@ internal static class PostgisQueries
     /// appended after the SET values (ADR-0037): the row is matched by the
     /// feature's pre-edit identity (<see cref="FeatureId"/>), never by the new
     /// attribute values, so re-keying an identity column cannot retarget the
-    /// update onto a different row.
+    /// update onto a different row. The <c>SET</c> list is the <em>batch's</em>
+    /// schema and the predicate resolves the identity against the
+    /// <em>dataset's</em>, because a batch need not carry the identity column
+    /// at all (ADR-0126).
     /// </summary>
-    public static string Update(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> identityColumns)
+    public static string Update(
+        PostgisDatasetName dataset,
+        FeatureSchema batchSchema,
+        int srid,
+        IReadOnlyList<string> identityColumns,
+        FeatureSchema identitySchema,
+        bool byteOrderText)
     {
-        var sets = string.Join(", ", schema.Fields.Select((field, i) =>
+        var sets = string.Join(", ", batchSchema.Fields.Select((field, i) =>
             field.Kind == AttributeKind.Geometry
                 ? $"\"{field.Name}\" = ST_SetSRID(ST_GeomFromEWKB(@p{i}), {srid})"
                 : $"\"{field.Name}\" = @p{i}"));
-        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{schema.Count + i}"));
-        return $"UPDATE {dataset.QuoteQualified()} SET {sets} WHERE {predicate}";
+        return $"UPDATE {dataset.QuoteQualified()} SET {sets} "
+            + $"WHERE {PostgisIdentity.Tuple(identitySchema, identityColumns, batchSchema.Count, byteOrderText)}";
     }
 
-    /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037).</summary>
-    public static string Delete(PostgisDatasetName dataset, IReadOnlyList<string> identityColumns)
-    {
-        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{i}"));
-        return $"DELETE FROM {dataset.QuoteQualified()} WHERE {predicate}";
-    }
+    /// <summary>Deletes one feature by identity; one bound parameter per identity column, in order (ADR-0037, ADR-0126).</summary>
+    public static string Delete(
+        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<string> identityColumns, bool byteOrderText) =>
+        $"DELETE FROM {dataset.QuoteQualified()} WHERE {PostgisIdentity.Tuple(schema, identityColumns, 0, byteOrderText)}";
 
     /// <summary>
     /// Creates the feature-attachment sidecar table (T-088, ADR-0065 §2):
@@ -178,11 +180,10 @@ internal static class PostgisQueries
     /// Both the table and the identity columns are discovered identifiers,
     /// never client text.
     /// </summary>
-    public static string FeatureExists(PostgisDatasetName dataset, IReadOnlyList<string> identityColumns)
-    {
-        var predicate = string.Join(" AND ", identityColumns.Select((column, i) => $"\"{column}\" = @p{i}"));
-        return $"SELECT 1 FROM {dataset.QuoteQualified()} WHERE {predicate} LIMIT 1";
-    }
+    public static string FeatureExists(
+        PostgisDatasetName dataset, FeatureSchema schema, IReadOnlyList<string> identityColumns, bool byteOrderText) =>
+        $"SELECT 1 FROM {dataset.QuoteQualified()} "
+        + $"WHERE {PostgisIdentity.Tuple(schema, identityColumns, 0, byteOrderText)} LIMIT 1";
 
     /// <summary>Creates the result table from a defining batch's schema and per-field geometry typmods.</summary>
     public static string CreateTable(PostgisDatasetName dataset, IFeatureSchema schema, int srid, IReadOnlyList<string> geometryTypes)
