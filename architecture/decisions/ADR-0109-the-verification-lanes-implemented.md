@@ -114,18 +114,53 @@ whole solution. A scoping failure costs time; a silent under-run costs a defect
 in `main`.
 
 **CI splits the heavy half onto its own runner.** `.github/workflows/ci.yml`
-runs the formatter, the build, the 22 non-container test projects and the
+runs the formatter, the build, the non-container test projects and the
 python tooling tests in `verify`, and `Spatial.Host.Tests`,
-`Spatial.PostGIS.Tests`, `Spatial.SqlServer.Tests` and
-`Spatial.Ingest.Codec.Tests` in a new `integration` job on its own box. The two
-lanes partition the test projects exactly — `LaneTests` proves that against the
-real solution rather than trusting the YAML — and `e2e` waits on both. Together
+`Spatial.PostGIS.Tests` and `Spatial.SqlServer.Tests` in a new `integration`
+job on its own box. The two lanes partition the test projects exactly —
+`LaneTests` proves that against the real solution rather than trusting the
+YAML — and `e2e` waits on both. Together
 they are what `eng/verify.sh --full` runs, so a pull request gets the full
 signal and `main` gets it again after the merge. What CI is *not*, today, is a
 gate: `main` has no branch protection and its verify job is red on every push
 (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). Until those two hold, the
 full lane is enforced by the coordinator's pre-merge `--full` run and CI is a
 detector.
+
+### The split is read off what a suite needs, not off how long it ran (2026-09-30)
+
+The lane split above was originally a hand-kept list, and the fourth entry in
+it was `Spatial.Ingest.Codec.Tests` — a project under `tests/unit/` that was
+measured at 2m27 while this record was written and put in the container lane
+because of it (SpatialEngine-lyz, SpatialEngine-0dx). It is a unit suite.
+Measured on the 12-core host on 2026-09-30: 103 cases in 8 classes, 3–6 s warm
+across three runs and 17 s from a cold `obj/` including the build, against 77 s
+for the other 18 unit projects combined. It takes no `Testcontainers` package
+and no `ProjectReference` beyond `Spatial.Ingest.Codec` and `Spatial.Core`,
+and there is not one `File.`, `Directory.`, `HttpClient`, `Socket`,
+`Process.Start` or `Testcontainers` in its 1,424 lines: it opens nothing
+outside the process.
+
+The cost was a per-test fixture, not I/O. `A_large_geojson_upload_streams_instead_of_materialising`
+ran a `Task.Run` sampler that spun on `GC.GetTotalMemory` once a millisecond
+for the length of two 40,000-feature decodes, and the byte ceiling it read was
+a statement about the machine — 77 MB streamed against 96 MB buffered on the
+CI runner, green everywhere else — because the sampler counted every byte
+another test in the assembly was allocating. SpatialEngine-ivp replaced it with
+a reachability bound, which needs no sampler and no machine, and the suite has
+run in seconds since.
+
+So the list is gone. `verify_scope.lane_projects` classifies a test project by
+its own `PackageReference`s and its folder: a suite is in the integration lane
+if it lives under `tests/integration/` or takes a `Testcontainers*` package.
+The dependency is the thing that puts a Docker daemon on the runner, so it is
+the thing that decides the lane; a wall-clock measurement is a property of the
+host and of this week's fixtures, and a list built from one re-derives itself
+after every unrelated change to a suite. `LaneTests` now holds the codec suite
+in the unit lane, holds every integration-lane project to a `Testcontainers*`
+dependency, and holds a container-backed suite under `tests/unit/` in the
+integration lane — so the rule cuts both ways rather than only loosening the
+one entry this bead was about.
 
 `eng/verify.sh --plan` prints the steps a lane would run and runs nothing,
 which is how the contract is tested (`ScriptLaneTests` runs the real script
