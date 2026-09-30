@@ -136,6 +136,74 @@ public static class EsriWhereText
         _ => throw EsriInteropException.Invalid($"Unknown comparison operator {comparison}."),
     };
 
+    /// <summary>
+    /// Whether the Esri <c>where</c> grammar has an operator for this
+    /// comparison. It is the same table <see cref="OperatorText"/> writes, read
+    /// as a question: a vocabulary comparison with no Esri spelling is not an
+    /// error in a plan, it is a term the remote service cannot be asked about.
+    /// </summary>
+    public static bool Spells(ComparisonOperator comparison) => comparison
+        is ComparisonOperator.Equals
+        or ComparisonOperator.NotEquals
+        or ComparisonOperator.LessThan
+        or ComparisonOperator.LessOrEqual
+        or ComparisonOperator.GreaterThan
+        or ComparisonOperator.GreaterOrEqual
+        or ComparisonOperator.Like;
+
+    /// <summary>
+    /// The part of a plan a remote service can be asked to restrict by, or
+    /// <c>null</c> when none of it can.
+    /// <para>
+    /// A comparison the Esri <c>where</c> grammar has no operator for is
+    /// dropped, rather than refused or spelled approximately: the folded text
+    /// comparison (ADR-0132) is one, because ArcGIS has no <c>ILIKE</c> and its
+    /// <c>LIKE</c> folds case by whatever collation the service was published
+    /// with. The consuming store finishes the plan with the reference executor
+    /// over the rows the remote returned, so a dropped term admits more rows and
+    /// never fewer, and the answer is still the engine's. What it must not do
+    /// is turn a readable remote layer into a failure for a clause the caller
+    /// never sent.
+    /// </para>
+    /// </summary>
+    public static Predicate? Statable(Predicate predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        return predicate switch
+        {
+            Predicate.Every every => Group(every, every.Terms),
+            Predicate.Some some => Group(some, some.Terms),
+            Predicate.Compare compare => Spells(compare.Operator) ? compare : null,
+            _ => predicate,
+        };
+    }
+
+    /// <summary>
+    /// The group's terms with the unstatable comparisons dropped, or null when
+    /// the group has nothing left to say — an <c>AND</c> and an <c>OR</c> of
+    /// nothing are both "no restriction", never "match nothing" and never
+    /// "match everything". A group that narrowed to one term is that term: a
+    /// remote <c>where</c> needs no brackets around a single clause.
+    /// </summary>
+    private static Predicate? Group(Predicate group, IReadOnlyList<Predicate> terms)
+    {
+        var statable = new List<Predicate>(terms.Count);
+        foreach (var term in terms)
+        {
+            if (Statable(term) is { } narrowed)
+            {
+                statable.Add(narrowed);
+            }
+        }
+
+        return statable.Count switch
+        {
+            0 => null,
+            1 when statable[0] is not (Predicate.Every or Predicate.Some) => statable[0],
+            _ => group is Predicate.Every ? new Predicate.Every(statable) : new Predicate.Some(statable),
+        };
+    }
+
     /// <summary>The Esri where-clause rendering of a literal.</summary>
     public static string Render(Literal literal) => literal.Kind switch
     {

@@ -31,6 +31,15 @@ namespace Spatial.Stores.SqlServer.Core;
 /// case-insensitive — and nothing in the store's own metadata says which, so
 /// the one comparison that is always the contract's is the one always written.
 /// </para>
+///
+/// <para>
+/// The folded pattern states its own case behaviour instead of inheriting one
+/// (ADR-0132): T-SQL has no ASCII fold of its own — <c>LOWER</c> is the
+/// server's linguistic case, and a case-insensitive collation folds
+/// <c>Épsilon</c> onto <c>epsilon</c>, which the reference evaluator does not do
+/// — so it writes the fold itself and carries the same binary collation the
+/// comparison then matches bytes in.
+/// </para>
 /// </summary>
 internal static class SqlServerPredicateSql
 {
@@ -43,6 +52,45 @@ internal static class SqlServerPredicateSql
     /// the <c>ORDER BY</c> pushdown's own argument (ADR-0121).
     /// </summary>
     public const string ByteOrderCollation = "Latin1_General_100_BIN2";
+
+    /// <summary>The alphabet a folded pattern folds: <c>A</c>–<c>Z</c>.</summary>
+    private const string Upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    /// <summary>The alphabet a folded pattern folds to: <c>a</c>–<c>z</c>.</summary>
+    private const string Lower = "abcdefghijklmnopqrstuvwxyz";
+
+    /// <summary>
+    /// The expression that folds an operand over the ASCII alphabet (ADR-0132),
+    /// which is the fold the reference evaluator applies to a value and a
+    /// pattern before the same whole-value test runs, and which is the one fold
+    /// every provider states identically. It is written out rather than reached
+    /// for through <c>LOWER</c> or a case-insensitive collation because both of
+    /// those are the database's: <c>LOWER</c> under a Turkish collation folds
+    /// <c>I</c> to a dotless <c>ı</c>, and <c>Latin1_General_100_CI_AS</c> folds
+    /// case pairs outside the ASCII alphabet, so a plan would answer differently
+    /// on two deployments of the same store. The two alphabets are engine text,
+    /// not client text, and every literal still binds as a parameter (ADR-0028).
+    /// </summary>
+    public static string Fold(string expression) => $"TRANSLATE({expression}, N'{Upper}', N'{Lower}')";
+
+    /// <summary>
+    /// The literal a folded pattern binds as: the pattern with the same ASCII
+    /// fold the column expression applies, which is the value the reference
+    /// evaluator compares against. It is the re-encoding of a literal to its
+    /// column's kind that this compiler already does for a guid and an instant,
+    /// for the same reason — the server has no operator for the unfolded pair
+    /// that means the same thing.
+    /// </summary>
+    internal static string FoldedPattern(string pattern)
+    {
+        var builder = new StringBuilder(pattern.Length);
+        foreach (var character in pattern)
+        {
+            builder.Append(character is >= 'A' and <= 'Z' ? (char)(character + ('a' - 'A')) : character);
+        }
+
+        return builder.ToString();
+    }
 
     /// <summary>
     /// Builds the <c>WHERE</c> fragment (without the keyword) for a plan's
@@ -219,6 +267,21 @@ internal static class SqlServerPredicateSql
             if (!TryBind(compare.Operator, compare.Value, kind, out var comparable))
             {
                 _sql.Append("(1 = 0)");
+                return;
+            }
+
+            // The folded pattern states its own case behaviour: the column under
+            // the ASCII fold, matched as bytes. Both halves are needed — the
+            // fold alone would leave the comparison under the database's
+            // case-insensitive default, and the collation alone would leave the
+            // fold to the database.
+            if (PredicateCompatibility.FoldsCase(compare.Operator))
+            {
+                _sql.Append(Fold(SqlServerIdentifier.Quote(_schema![index].Name)))
+                    .Append(" COLLATE ")
+                    .Append(ByteOrderCollation)
+                    .Append(" LIKE ")
+                    .Append(Parameter(FoldedPattern((string)comparable!)));
                 return;
             }
 

@@ -28,12 +28,60 @@ namespace Spatial.Stores.PostGIS.Core;
 /// <c>ORDER BY</c> terms go through, so a <c>WHERE</c> cannot inherit the
 /// database's collation where the order already refuses to (ADR-0098 §3,
 /// ADR-0121, ADR-0123). <see cref="ComparesText"/> is what a caller asks
-/// before reading that collation, so a plan that compares no text never pays
-/// for the catalog read.
+/// before reading that collation, so a plan that compares no text by bytes never
+/// pays for the catalog read.
+/// </para>
+///
+/// <para>
+/// The one exception is the folded pattern (ADR-0132), which states its own
+/// case behaviour with <see cref="Fold"/> rather than inheriting one: Postgres's
+/// <c>ILIKE</c> folds under the database's collation, so it is
+/// <c>Épsilon</c> for <c>epsilon</c> on a stock container and byte-exact on a
+/// <c>C</c> one, and neither is the reference evaluator's answer. A folded
+/// comparison therefore takes no <c>COLLATE</c> term — it takes the fold, which
+/// is the same on every database.
 /// </para>
 /// </summary>
 internal static class PostgisPredicateSql
 {
+    /// <summary>The alphabet a folded pattern folds: <c>A</c>–<c>Z</c>.</summary>
+    private const string Upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    /// <summary>The alphabet a folded pattern folds to: <c>a</c>–<c>z</c>.</summary>
+    private const string Lower = "abcdefghijklmnopqrstuvwxyz";
+
+    /// <summary>
+    /// The expression that folds an operand over the ASCII alphabet (ADR-0132),
+    /// which is the fold the reference evaluator applies to a value and a
+    /// pattern before the same whole-value test runs. It is written out rather
+    /// than reached for through <c>lower()</c> or <c>ILIKE</c> because both of
+    /// those are the database's locale: <c>lower()</c> under a Turkish collation
+    /// folds <c>I</c> to a dotless <c>ı</c>, and <c>ILIKE</c> under <c>C</c>
+    /// folds nothing at all, so a plan would answer differently on two
+    /// deployments of the same store. The two alphabets are engine text, not
+    /// client text, and every literal still binds as a parameter (ADR-0028).
+    /// </summary>
+    public static string Fold(string expression) => $"translate({expression}, '{Upper}', '{Lower}')";
+
+    /// <summary>
+    /// The literal a folded pattern binds as: the pattern with the same ASCII
+    /// fold the column expression applies, which is the value the reference
+    /// evaluator compares against. It is the re-encoding of a literal to its
+    /// column's kind that this compiler already does for a guid and an instant,
+    /// for the same reason — the server has no operator for the unfolded pair
+    /// that means the same thing.
+    /// </summary>
+    internal static string FoldedPattern(string pattern)
+    {
+        var builder = new StringBuilder(pattern.Length);
+        foreach (var character in pattern)
+        {
+            builder.Append(character is >= 'A' and <= 'Z' ? (char)(character + ('a' - 'A')) : character);
+        }
+
+        return builder.ToString();
+    }
+
     /// <summary>
     /// Builds the <c>WHERE</c> fragment (without the keyword) for a plan's
     /// predicate: the bounding-box pre-filter and the attribute predicate
@@ -104,7 +152,11 @@ internal static class PostgisPredicateSql
 
     private static bool Text(Predicate predicate, IFeatureSchema schema) => predicate switch
     {
-        Predicate.Compare compare => IsText(compare.Field, schema),
+        // A folded pattern states its own fold, so it is not a comparison the
+        // database's collation can change and a plan carrying only one cannot
+        // use the byte-order answer. A byte-ordered comparison beside it still
+        // can, so the walk asks about the rest of the tree.
+        Predicate.Compare compare => IsText(compare.Field, schema) && !PredicateCompatibility.FoldsCase(compare.Operator),
         Predicate.IsIn isIn => IsText(isIn.Field, schema),
         Predicate.Every every => every.Terms.Any(term => Text(term, schema)),
         Predicate.Some some => some.Terms.Any(term => Text(term, schema)),
@@ -282,6 +334,18 @@ internal static class PostgisPredicateSql
             if (!TryBind(compare.Operator, compare.Value, kind, out var comparable))
             {
                 _sql.Append("FALSE");
+                return;
+            }
+
+            // The folded pattern states its own case behaviour, so its operand is
+            // the column under the ASCII fold and takes no `COLLATE` term: the
+            // fold is the same on every database, and a term would be a second,
+            // conflicting statement of the same comparison's case.
+            if (PredicateCompatibility.FoldsCase(compare.Operator))
+            {
+                _sql.Append(Fold(FoldedOperand(index)))
+                    .Append(" LIKE ")
+                    .Append(Parameter(FoldedPattern((string)comparable!)));
                 return;
             }
 
@@ -510,6 +574,15 @@ internal static class PostgisPredicateSql
         /// </summary>
         private string Operand(int index) =>
             _resolve is not null && _group is { } group ? group.Sql : Column(_schema![index].Name);
+
+        /// <summary>
+        /// The operand of a folded comparison: the group row's own SQL where the
+        /// clause is over reduced groups, and the quoted column where the clause
+        /// is over a dataset's rows — the column <em>without</em> the byte-order
+        /// term, because this comparison states its own fold instead.
+        /// </summary>
+        private string FoldedOperand(int index) =>
+            _resolve is not null && _group is { } group ? group.Sql : Quote(_schema![index].Name);
 
         /// <summary>The identifier quoting of the PostGIS dialect (a discovered or schema-validated name).</summary>
         private static string Quote(string name) => $"\"{name}\"";

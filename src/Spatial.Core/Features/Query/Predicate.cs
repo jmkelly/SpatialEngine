@@ -111,6 +111,26 @@ public enum ComparisonOperator
 
     /// <summary><c>LIKE</c> — the pattern wildcards are <c>%</c> and <c>_</c>.</summary>
     Like,
+
+    /// <summary>
+    /// <c>ILIKE</c> — the same whole-value pattern test as <see cref="Like"/>,
+    /// with both the value and the pattern folded over the ASCII alphabet
+    /// (<c>A</c>–<c>Z</c> to <c>a</c>–<c>z</c>) first, and nothing else.
+    /// <para>
+    /// It is a <em>separate</em> comparison rather than a flag on
+    /// <see cref="Like"/> on purpose. <see cref="Like"/> states the byte order
+    /// it compares in, and a byte order is what an identity, an ordering and an
+    /// exact match are (ADR-0098 §3, ADR-0121, ADR-0126): under this
+    /// comparison <c>delta</c> and <c>Delta</c> are one value, which is what a
+    /// text <em>search</em> asks for and is never what naming a feature asks
+    /// for. The fold is ASCII because that is the one fold every back end states
+    /// identically — a server's own case folding is a locale's, a locale differs
+    /// between deployments, and a pushdown whose answer depends on the
+    /// deployment's collation is the defect this comparison exists to end
+    /// (ADR-0132).
+    /// </para>
+    /// </summary>
+    LikeFolded,
 }
 
 /// <summary>The literal kinds the vocabulary supports.</summary>

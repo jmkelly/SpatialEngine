@@ -60,7 +60,7 @@ public static class PredicateCompatibility
             return Equality(comparison) && literal.Kind == LiteralKind.Boolean;
         }
 
-        if (comparison == ComparisonOperator.Like)
+        if (comparison is ComparisonOperator.Like or ComparisonOperator.LikeFolded)
         {
             return kind == AttributeKind.String && literal.Kind == LiteralKind.String;
         }
@@ -77,7 +77,17 @@ public static class PredicateCompatibility
         };
     }
 
-    /// <summary>Whether the operator is one the vocabulary answers for a total-ordered or unordered value alike.</summary>
+    /// <summary>
+    /// Whether the operator is one the vocabulary answers for a total-ordered or unordered value alike.
+    /// </summary>
     private static bool Equality(ComparisonOperator comparison) =>
         comparison is ComparisonOperator.Equals or ComparisonOperator.NotEquals;
+
+    /// <summary>
+    /// Whether the comparison folds case before it compares — the one text
+    /// comparison that does, and the one a pushdown has to compile rather than
+    /// inherit (ADR-0132).
+    /// </summary>
+    public static bool FoldsCase(ComparisonOperator comparison) =>
+        comparison == ComparisonOperator.LikeFolded;
 }

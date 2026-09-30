@@ -51,6 +51,31 @@ this file together, then tag the release (`RELEASING.md`).
   groups — the clause and the cap already rode on the reduction, and the cap
   now cuts the ordered groups. Pinned by name over a case-varying text group
   key that also has a null, in both directions and across a page.
+- **A text filter could not be pushed to a store, and MapServer `find` read the
+  whole layer to search it** (ADR-0132, SpatialEngine-u2x.39): the predicate
+  vocabulary's only pattern comparison was `LIKE`, which ADR-0123 had made state
+  the **byte** order — right for an identity, an ordering and an exact match, and
+  wrong for a search, because `find(searchText=ALP)` has to match a feature named
+  `alpha` on every store and no pushed plan could say so. A pushed `LIKE` is
+  case-sensitive on Postgres and case-insensitive on SQL Server's shipped
+  default collation, so it is a *subset* of the served match on one and a
+  superset on the other: on the fully pushed path the SQL row set is the answer,
+  so one is a lost match and the other a wrong one. The vocabulary now carries a
+  second pattern comparison, `ILIKE`, which folds the value and the pattern over
+  the **ASCII alphabet** — the one fold every back end states identically — and
+  each dialect writes it out rather than inheriting a locale's (`translate` on
+  PostGIS, `TRANSLATE` with the binary collation on SQL Server; `ILIKE` and a
+  case-insensitive collation were both rejected for exactly the drift ADR-0121
+  and ADR-0123 removed). `MapMatchPushdown.Search` therefore pushes the search
+  text itself — one pattern per searched field, `%text%` for contains and
+  `text%` for startsWith — with the adapter's own case-insensitive match still
+  deciding each row. A search text outside ASCII, or one carrying a backslash
+  (Postgres's `LIKE` escape character and nothing at all in T-SQL), keeps the
+  older "a searched field is not null" restriction, and an ArcGIS REST plan
+  carrying a comparison the Esri `where` grammar cannot spell now narrows to the
+  part the remote can be asked about instead of failing the read.
+  `delta` and `Delta` are still two features under `=`, `<` and `LIKE`; folding
+  is a separate comparison for a separate reason (ADR-0126).
 - **A pushed PostGIS read of a keyed table named every feature by its row
   ordinal** (ADR-0131, SpatialEngine-u2x.55): `objectIds`, an `Ids`
   restriction, the edit round-trip and a paged walk all answered `0, 1, 2, …`

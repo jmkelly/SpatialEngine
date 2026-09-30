@@ -23,6 +23,12 @@ public sealed class PredicateCompatibilityTests
     // A text column is a text column, and the only thing a LIKE takes.
     [InlineData(AttributeKind.String, "text", ComparisonOperator.Equals, true)]
     [InlineData(AttributeKind.String, "text", ComparisonOperator.Like, true)]
+    // The folded pattern is a pattern: it takes a text column and a text
+    // literal, and nothing else, exactly as `LIKE` does.
+    [InlineData(AttributeKind.String, "text", ComparisonOperator.LikeFolded, true)]
+    [InlineData(AttributeKind.String, "whole", ComparisonOperator.LikeFolded, false)]
+    [InlineData(AttributeKind.Int64, "whole", ComparisonOperator.LikeFolded, false)]
+    [InlineData(AttributeKind.Guid, "text", ComparisonOperator.LikeFolded, false)]
     // A numeric column takes any number, and a date-time because both are
     // instants on one axis.
     [InlineData(AttributeKind.Int64, "whole", ComparisonOperator.GreaterOrEqual, true)]
