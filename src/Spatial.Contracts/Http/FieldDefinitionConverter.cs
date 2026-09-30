@@ -5,9 +5,22 @@ using Spatial.Core.Features;
 namespace Spatial.Contracts;
 
 /// <summary>
-/// JSON converter for <see cref="FieldDefinition"/> (ADR-0033): the core
-/// field type is an immutable struct with validation, so the typed API
-/// converts it explicitly rather than relying on constructor binding.
+/// JSON converter for <see cref="FieldDefinition"/> (ADR-0033).
+///
+/// <para>
+/// This converter is load-bearing, and the failure without it is the quiet one.
+/// <see cref="FieldDefinition"/> is an immutable struct with validation, so
+/// System.Text.Json falls back to <c>default(FieldDefinition)</c> rather than
+/// calling its constructor: a wire document decodes to a schema whose fields
+/// are unnamed, kindless and undescribed, with no exception anywhere. An empty
+/// or all-default schema is the visible symptom.
+/// </para>
+///
+/// <para>
+/// Guarded by <c>Spatial.Architecture.Tests.SchemaBindingGuardTests</c>
+/// (registration) and by the catalogue round trip in
+/// <c>tests/unit/Spatial.Client.Tests</c> (behaviour).
+/// </para>
 /// </summary>
 public sealed class FieldDefinitionConverter : JsonConverter<FieldDefinition>
 {

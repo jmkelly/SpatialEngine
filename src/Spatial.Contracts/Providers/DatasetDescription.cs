@@ -13,6 +13,14 @@ namespace Spatial.Contracts.Providers;
 /// only core field vocabulary (<see cref="FieldDefinition"/>), so clients
 /// never see provider-specific types.
 /// </summary>
+/// <param name="Schema">
+/// The concrete <see cref="FeatureSchema"/>, never <see cref="IFeatureSchema"/>:
+/// System.Text.Json cannot deserialize an interface-typed property, so the
+/// interface-typed version broke the catalogue round trip with
+/// <c>NotSupportedException</c> at every read. An interface may be accepted
+/// where a value is never deserialized, not here. Guarded by
+/// <c>Spatial.Architecture.Tests.SchemaBindingGuardTests</c>.
+/// </param>
 /// <param name="GeometryLayout">
 /// The ordinates the store <em>declares</em> for the geometry column
 /// (ADR-0084). A store that can prove the column carries Z or M reports it;

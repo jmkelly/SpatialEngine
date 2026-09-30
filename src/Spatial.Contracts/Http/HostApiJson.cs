@@ -8,6 +8,13 @@ namespace Spatial.Contracts.Http;
 /// everywhere so host, OpenAPI and clients stay in lockstep. Lives with the
 /// SDK contracts it serialises rather than with the wire DTOs.
 /// </summary>
+/// <remarks>
+/// The <see cref="FeatureSchemaConverter"/> and
+/// <see cref="FieldDefinitionConverter"/> registrations are load-bearing:
+/// System.Text.Json binds neither core schema type, and without them
+/// <see cref="Core.Features.FieldDefinition"/> deserializes to defaults in
+/// silence. See <c>Spatial.Architecture.Tests.SchemaBindingGuardTests</c>.
+/// </remarks>
 public static class HostApiJson
 {
     public static readonly JsonSerializerOptions Options = new()
