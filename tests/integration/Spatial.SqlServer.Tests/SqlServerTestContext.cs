@@ -54,5 +54,14 @@ internal sealed class SqlServerTestContext : IAsyncDisposable
             await command.ExecuteScalarAsync(cancellationToken), System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    public async Task<string?> TextAsync(string sql, CancellationToken cancellationToken = default)
+    {
+        await using var connection = new SqlConnection(ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return await command.ExecuteScalarAsync(cancellationToken) as string;
+    }
+
     public async ValueTask DisposeAsync() => await Store.DisposeAsync();
 }

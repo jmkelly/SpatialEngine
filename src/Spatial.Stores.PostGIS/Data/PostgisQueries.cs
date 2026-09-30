@@ -137,13 +137,36 @@ internal static class PostgisQueries
     /// one row per attachment with <c>bytea</c> content, keyed by dataset,
     /// feature identity and the per-feature attachment id. The table is a
     /// fixed provider-owned identifier, so every value the caller supplies
-    /// stays a bound parameter.
+    /// stays a bound parameter. Its two identity columns declare the byte
+    /// order the contract compares them in, because this is the store's own
+    /// table and this is the one place that declaration has a consumer
+    /// (ADR-0130). The declaration is unconditional: it costs nothing and
+    /// needs no catalog read, unlike the term a statement over an
+    /// <em>authored</em> table must decide from the database (ADR-0123).
     /// </summary>
     public static string EnsureAttachmentTable() =>
-        "CREATE TABLE IF NOT EXISTS \"public\".\"spatial_attachments\" (\"dataset\" text NOT NULL, \"feature_id\" text NOT NULL, "
-        + "\"attachment_id\" bigint NOT NULL, \"name\" text NOT NULL, \"content_type\" text NOT NULL, "
-        + "\"size_bytes\" bigint NOT NULL, \"keywords\" text NULL, \"content\" bytea NOT NULL, "
-        + "PRIMARY KEY (\"dataset\", \"feature_id\", \"attachment_id\"))";
+        "CREATE TABLE IF NOT EXISTS \"public\".\"spatial_attachments\" (\"dataset\" text COLLATE \"C\" NOT NULL, "
+        + "\"feature_id\" text COLLATE \"C\" NOT NULL, \"attachment_id\" bigint NOT NULL, \"name\" text NOT NULL, "
+        + "\"content_type\" text NOT NULL, \"size_bytes\" bigint NOT NULL, \"keywords\" text NULL, "
+        + "\"content\" bytea NOT NULL, PRIMARY KEY (\"dataset\", \"feature_id\", \"attachment_id\"))";
+
+    /// <summary>
+    /// Brings a sidecar created by an earlier version forward (ADR-0130):
+    /// <c>CREATE TABLE IF NOT EXISTS</c> will not re-declare a table that
+    /// already exists, so a sidecar whose identity columns carry a
+    /// case-folding collation is re-declared here under <c>COLLATE "C"</c>.
+    /// The step is guarded by each column's own recorded collation, so it is
+    /// one catalog read and no rewrite once the table carries the declaration.
+    /// </summary>
+    public static string RecollateAttachmentIdentity() =>
+        "DO $sidecar$ BEGIN "
+        + "IF EXISTS (SELECT 1 FROM pg_attribute a JOIN pg_collation c ON c.oid = a.attcollation "
+        + "WHERE a.attrelid = to_regclass('public.spatial_attachments') AND a.attname = 'dataset' AND c.collname <> 'C') THEN "
+        + "ALTER TABLE \"public\".\"spatial_attachments\" ALTER COLUMN \"dataset\" TYPE text COLLATE \"C\"; END IF; "
+        + "IF EXISTS (SELECT 1 FROM pg_attribute a JOIN pg_collation c ON c.oid = a.attcollation "
+        + "WHERE a.attrelid = to_regclass('public.spatial_attachments') AND a.attname = 'feature_id' AND c.collname <> 'C') THEN "
+        + "ALTER TABLE \"public\".\"spatial_attachments\" ALTER COLUMN \"feature_id\" TYPE text COLLATE \"C\"; END IF; "
+        + "END $sidecar$";
 
     /// <summary>Reads the per-feature attachment high-water mark (the next id is one past it, starting at one).</summary>
     public static string MaxAttachmentId() =>

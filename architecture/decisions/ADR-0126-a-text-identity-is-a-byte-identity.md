@@ -147,7 +147,10 @@ is being careful.
   sidecar declared under a binary collation, which is the one place that
   option has a consumer, against the per-statement term this record uses, and
   against what a sidecar created by an earlier version keeps. Tracked as its
-  own bead.
+  own bead, and decided in ADR-0130: the sidecar declares the order (it is the
+  store's own table, so this is the exception §3's authored-column rule could
+  not reach) and a sidecar created by an earlier version is re-collated on the
+  way in.
 
 ## Alternatives
 

@@ -353,14 +353,67 @@ internal static class SqlServerQueries
     /// row per attachment with <c>varbinary(max)</c> content, keyed by dataset,
     /// feature identity and the per-feature attachment id. The table is a fixed
     /// provider-owned identifier, so every value the caller supplies stays a
-    /// bound parameter.
+    /// bound parameter. Its two identity columns declare the byte order the
+    /// contract compares them in, because this is the store's own table and
+    /// this is the one place that declaration has a consumer (ADR-0130).
     /// </summary>
     public static string EnsureAttachmentTable() =>
         "IF OBJECT_ID(N'spatial_attachments', N'U') IS NULL CREATE TABLE spatial_attachments "
-        + "(dataset nvarchar(300) NOT NULL, feature_id nvarchar(300) NOT NULL, attachment_id bigint NOT NULL, "
+        + "(dataset nvarchar(300) COLLATE Latin1_General_100_BIN2 NOT NULL, "
+        + "feature_id nvarchar(300) COLLATE Latin1_General_100_BIN2 NOT NULL, attachment_id bigint NOT NULL, "
         + "name nvarchar(200) NOT NULL, content_type nvarchar(100) NOT NULL, size_bytes bigint NOT NULL, "
         + "keywords nvarchar(400) NULL, content varbinary(max) NOT NULL, "
         + "PRIMARY KEY (dataset, feature_id, attachment_id))";
+
+    /// <summary>
+    /// Brings a sidecar created by an earlier version forward (ADR-0130):
+    /// <c>IF OBJECT_ID ... IS NULL CREATE TABLE</c> will not re-declare a table
+    /// that already exists, so a sidecar whose identity columns carry the
+    /// database's case-insensitive collation is re-declared here under
+    /// <see cref="SqlServerPredicateSql.ByteOrderCollation"/>. The step is
+    /// guarded by each column's own recorded collation, so it is a catalog
+    /// read and nothing more once the table carries the declaration.
+    /// <para>
+    /// SQL Server will not re-collate a column an index depends on, and the
+    /// sidecar's own primary key names both identity columns, so the key is
+    /// dropped and rebuilt around the two alters — under the constraint's own
+    /// name and its own key columns, read from the catalog, so the sidecar is
+    /// left with the key it had. Rebuilding is safe on the rows it re-keys: they
+    /// are already distinct under a collation at least as strict as the byte
+    /// order, so the migration can only widen the key space. The drop and the
+    /// rebuild are one transaction, so a rewrite that fails part way rolls the
+    /// key back rather than leaving a sidecar with no uniqueness on its identity.
+    /// </para>
+    /// </summary>
+    public static string RecollateAttachmentIdentity() =>
+        "IF OBJECT_ID(N'spatial_attachments', N'U') IS NOT NULL AND ("
+        + "EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
+        + $"AND name = N'dataset' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}') OR "
+        + "EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
+        + $"AND name = N'feature_id' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}')) BEGIN "
+        + "DECLARE @key sysname = (SELECT k.name FROM sys.key_constraints k "
+        + "WHERE k.parent_object_id = OBJECT_ID(N'spatial_attachments') AND k.type = N'PK'); "
+        + "DECLARE @keyColumns nvarchar(400) = (SELECT string_agg(QUOTENAME(c.name), ', ') "
+        + "WITHIN GROUP (ORDER BY ic.key_ordinal) FROM sys.indexes i "
+        + "JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id "
+        + "JOIN sys.columns c ON c.object_id = i.object_id AND c.column_id = ic.column_id "
+        + "WHERE i.is_primary_key = 1 AND i.object_id = OBJECT_ID(N'spatial_attachments')); "
+        + "DECLARE @opened bit = 0; "
+        + "DECLARE @dropKey nvarchar(400) = N'ALTER TABLE spatial_attachments DROP CONSTRAINT ' + QUOTENAME(@key); "
+        + "BEGIN TRY "
+        + "IF @@TRANCOUNT = 0 BEGIN BEGIN TRANSACTION; SET @opened = 1; END; "
+        + "IF @key IS NOT NULL EXEC (@dropKey); "
+        + $"ALTER TABLE spatial_attachments ALTER COLUMN dataset nvarchar(300) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL; "
+        + $"ALTER TABLE spatial_attachments ALTER COLUMN feature_id nvarchar(300) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL; "
+        + "DECLARE @addKey nvarchar(400) = N'ALTER TABLE spatial_attachments ADD CONSTRAINT ' + QUOTENAME(@key) "
+        + "+ N' PRIMARY KEY (' + @keyColumns + N')'; "
+        + "IF @key IS NOT NULL EXEC (@addKey); "
+        + "IF @opened = 1 COMMIT TRANSACTION; "
+        + "END TRY BEGIN CATCH "
+        + "IF @opened = 1 AND @@TRANCOUNT > 0 ROLLBACK TRANSACTION; "
+        + "THROW; "
+        + "END CATCH; "
+        + "END";
 
     /// <summary>Reads the per-feature attachment high-water mark (the next id is one past it, starting at one).</summary>
     public static string MaxAttachmentId() =>

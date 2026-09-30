@@ -1,6 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Stores.PostGIS;
 
 namespace Spatial.PostGIS.Tests;
@@ -14,6 +15,8 @@ namespace Spatial.PostGIS.Tests;
 /// </summary>
 public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisContainerFixture>
 {
+    private const string FoldDataset = "public.attach_fold";
+
     private readonly PostgisContainerFixture _fixture;
 
     public PostgisAttachmentIntegrationTests(PostgisContainerFixture fixture)
@@ -249,6 +252,118 @@ public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisCon
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             context.Attachments.DeleteAsync("public.attach_target", new FeatureId("1"), [1], canceled));
     }
+
+    [SkippableFact]
+    public async Task A_sidecar_this_version_creates_declares_the_byte_order()
+    {
+        // The sidecar is the store's own table, so it declares the order its
+        // identity columns are compared in rather than leaving it to whatever
+        // collation the database carries (ADR-0130). This database's default is
+        // a deterministic one that happens not to fold, so the case assertions
+        // below are the red: they read the column's own collation.
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = await FoldSeededAsync();
+        await context.Attachments.AddAsync(
+            FoldDataset, new FeatureId("delta"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
+
+        Assert.Equal(0, await context.CountAsync(
+            "SELECT count(*) FROM pg_attribute a JOIN pg_collation c ON c.oid = a.attcollation "
+            + "WHERE a.attrelid = 'public.spatial_attachments'::regclass AND a.attname IN ('dataset', 'feature_id') "
+            + "AND c.collname <> 'C'"));
+        Assert.Equal(2, await context.CountAsync(
+            "SELECT count(*) FROM pg_attribute a JOIN pg_collation c ON c.oid = a.attcollation "
+            + "WHERE a.attrelid = 'public.spatial_attachments'::regclass AND a.attname IN ('dataset', 'feature_id') "
+            + "AND c.collname = 'C'"));
+    }
+
+    [SkippableFact]
+    public async Task A_sidecar_created_by_an_earlier_version_is_brought_forward()
+    {
+        // A sidecar that already exists is the half of the problem: CREATE TABLE
+        // IF NOT EXISTS will not re-declare it, so a store that only fixed its
+        // create statement would leave a case-folding sidecar folding, and the
+        // attachment of `delta` would be listed, read and deleted for `Delta`
+        // (ADR-0130). The fold here is a real one — a non-deterministic
+        // collation — and every statement that names the sidecar sees it until
+        // the columns are re-declared.
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = await FoldSeededAsync();
+        await context.ExecuteAsync(
+            "DROP TABLE IF EXISTS public.spatial_attachments; "
+            + "CREATE TABLE public.spatial_attachments (\"dataset\" text COLLATE attachment_fold NOT NULL, "
+            + "\"feature_id\" text COLLATE attachment_fold NOT NULL, \"attachment_id\" bigint NOT NULL, "
+            + "\"name\" text NOT NULL, \"content_type\" text NOT NULL, \"size_bytes\" bigint NOT NULL, "
+            + "\"keywords\" text NULL, \"content\" bytea NOT NULL, PRIMARY KEY (\"dataset\", \"feature_id\", \"attachment_id\"))");
+        var added = await context.Attachments.AddAsync(
+            FoldDataset, new FeatureId("delta"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
+
+        // The fold is gone from the table itself, not just from this statement.
+        Assert.Equal(0, await context.CountAsync(
+            "SELECT count(*) FROM pg_attribute a JOIN pg_collation c ON c.oid = a.attcollation "
+            + "WHERE a.attrelid = 'public.spatial_attachments'::regclass AND a.attname IN ('dataset', 'feature_id') "
+            + "AND c.collname <> 'C'"));
+
+        Assert.Empty(await context.Attachments.ListAsync(FoldDataset, new FeatureId("Delta")));
+
+        var fetched = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Attachments.GetAsync(FoldDataset, new FeatureId("Delta"), added.Id));
+        Assert.Equal(SpatialException.NotFound, fetched.Code);
+
+        var outcomes = await context.Attachments.DeleteAsync(FoldDataset, new FeatureId("Delta"), [added.Id]);
+        Assert.False(Assert.Single(outcomes).Succeeded);
+
+        // The attachment of `delta` is untouched, and `Delta` starts from one:
+        // the next-id probe answered for the feature it was asked about.
+        Assert.Equal([added], await context.Attachments.ListAsync(FoldDataset, new FeatureId("delta")));
+        Assert.Equal(
+            1,
+            (await context.Attachments.AddAsync(
+                FoldDataset,
+                new FeatureId("Delta"),
+                new FeatureAttachmentWrite("b.bin", "application/octet-stream", [2]))).Id);
+    }
+
+    /// <summary>
+    /// A dataset whose key column holds both cases — the escape hatch ADR-0126
+    /// §3 named — alongside the rows and a folding collation the sidecar is
+    /// measured over. It drops the sidecar, so attachment ids begin at one.
+    /// </summary>
+    private async Task<PostgisTestContext> FoldSeededAsync()
+    {
+        var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        try
+        {
+            await context.ExecuteAsync($"DROP TABLE IF EXISTS {FoldDataset}; DROP COLLATION IF EXISTS attachment_fold; ");
+            // A non-deterministic collation is what makes a text key fold.
+            await context.ExecuteAsync(
+                "CREATE COLLATION attachment_fold (provider = icu, locale = 'und-u-ks-level2', deterministic = false)");
+            await context.ExecuteAsync(
+                $"CREATE TABLE {FoldDataset} (\"code\" text COLLATE \"C\" PRIMARY KEY, \"geometry\" geometry(Point, 4326))");
+            await context.Store.WriteAsync(FoldDataset, new FeatureBatch(FoldSchema, [FoldFeature("delta"), FoldFeature("Delta")]));
+            await context.ExecuteAsync("DROP TABLE IF EXISTS public.spatial_attachments");
+            return context;
+        }
+        catch
+        {
+            await context.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static readonly FeatureSchema FoldSchema = new(
+    [
+        new FieldDefinition("code", AttributeKind.String, nullable: false),
+        new FieldDefinition("geometry", AttributeKind.Geometry, nullable: true),
+    ]);
+
+    private static Feature FoldFeature(string code) =>
+        new(
+            new FeatureId(code),
+            FoldSchema,
+            [
+                AttributeValue.FromString(code),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
+            ]);
 
     private async Task<PostgisTestContext> SeededAsync()
     {

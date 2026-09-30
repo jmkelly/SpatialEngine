@@ -9,7 +9,9 @@ namespace Spatial.Stores.PostGIS.Tests;
 /// statements are built from fixed identifiers with every dataset, feature
 /// and attachment value as a bound parameter — never client text — so the
 /// red-first contract pins deterministic text exactly like the feature
-/// statements in <see cref="PostgisQueriesTests"/>.
+/// statements in <see cref="PostgisQueriesTests"/>. The sidecar's own
+/// identity comparison is <see cref="PostgisAttachmentIdentityCollationTests"/>'s
+/// subject.
 /// </summary>
 public sealed class PostgisAttachmentQueriesTests
 {
@@ -30,10 +32,10 @@ public sealed class PostgisAttachmentQueriesTests
         var sql = PostgisQueries.EnsureAttachmentTable();
 
         Assert.Equal(
-            "CREATE TABLE IF NOT EXISTS \"public\".\"spatial_attachments\" (\"dataset\" text NOT NULL, \"feature_id\" text NOT NULL, "
-            + "\"attachment_id\" bigint NOT NULL, \"name\" text NOT NULL, \"content_type\" text NOT NULL, "
-            + "\"size_bytes\" bigint NOT NULL, \"keywords\" text NULL, \"content\" bytea NOT NULL, "
-            + "PRIMARY KEY (\"dataset\", \"feature_id\", \"attachment_id\"))",
+            "CREATE TABLE IF NOT EXISTS \"public\".\"spatial_attachments\" (\"dataset\" text COLLATE \"C\" NOT NULL, "
+            + "\"feature_id\" text COLLATE \"C\" NOT NULL, \"attachment_id\" bigint NOT NULL, \"name\" text NOT NULL, "
+            + "\"content_type\" text NOT NULL, \"size_bytes\" bigint NOT NULL, \"keywords\" text NULL, "
+            + "\"content\" bytea NOT NULL, PRIMARY KEY (\"dataset\", \"feature_id\", \"attachment_id\"))",
             sql);
     }
 

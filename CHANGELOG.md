@@ -42,6 +42,38 @@ this file together, then tag the release (`RELEASING.md`).
   the reference for the first time — the conformance fixture is created without
   a primary key, and without one the pushed path is never taken.
 
+- **An attachment is not another feature's attachment** (ADR-0130,
+  SpatialEngine-u2x.57): the `spatial_attachments` sidecar is the store's own
+  table, keyed on a text `dataset` and a text `feature_id`, and both columns
+  declared no collation — so all six statements that name the table (the
+  next-id probe, list, get, update, delete and insert) compared them with the
+  database's. On SQL Server's shipped case-insensitive collation, and on any
+  Postgres database with a non-deterministic one, the attachment that belongs
+  to `delta` was listed, read, rewritten **and deleted** when the store was
+  asked for `Delta`, and `Delta` inherited `delta`'s attachment ids. The
+  dataset-level probe those statements make first was already fixed by
+  ADR-0126; the sidecar's own columns were not. The two key columns now
+  *declare* the byte order — `COLLATE "C"` on PostGIS,
+  `Latin1_General_100_BIN2` on SQL Server — which is what the store's own table
+  can do and an authored dataset column cannot: the case-folding primary key
+  also could not *hold* both codes, so a per-statement term would have left
+  `AddAsync("Delta")` failing on a key violation once its retries were spent.
+  A sidecar created by an earlier version is re-collated on the way in —
+  `CREATE TABLE IF NOT EXISTS` and `IF OBJECT_ID … IS NULL CREATE TABLE` both
+  decline to re-declare a table that is already there — guarded by each
+  column's recorded collation, so it costs one catalog read once the table
+  carries the declaration and rebuilds the two columns and their primary-key
+  index once, on the first statement after the upgrade. On SQL Server that
+  rebuild is a drop-and-recreate, because SQL Server refuses to re-collate a
+  column its key depends on: the primary key comes off by its own catalog name,
+  the two columns are re-declared, and the key goes back on the same columns in
+  the same order, in one transaction, so a failure rolls the key back rather
+  than leaving the sidecar unkeyed. The migration cannot
+  fail on existing rows: a folding key already rejected the pairs a binary key
+  would separate, so widening it is what lets `delta` and `Delta` live in one
+  table. Both providers' attachment suites now measure a real folding sidecar
+  end to end, and `Delta`'s first attachment is id one.
+
 - **`spatialRel` `Touches` reads a point or line feature on a query
   polygon's boundary** (ADR-0036, SpatialEngine-u2x.35): the served table
   asked for `F***T****` (interiors disjoint, the feature's interior reaching

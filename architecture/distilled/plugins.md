@@ -26,7 +26,12 @@ Microsoft DI — keyed services where two stores serve one contract:
   demo and ArcGIS stores are read-only.
 - `IDatasetIngest` and `IFeatureAttachmentStore` keyed `"memory"`,
   `"postgis"` and `"sqlserver"` (ADR-0041/0065); the SQL Server provider owns
-  the same `spatial_attachments` sidecar shape as PostGIS.
+  the same `spatial_attachments` sidecar shape as PostGIS. Both providers'
+  sidecar declares its text `dataset`/`feature_id` key columns under a
+  byte-order collation (`COLLATE "C"` / `Latin1_General_100_BIN2`) and
+  re-collates a sidecar an earlier version created, because the sidecar is the
+  store's own table — the one place the declaration, rather than the per-row
+  term, is the way to say what an identity is compared by (ADR-0130).
 - `IGeometryOperations`, `IGeometryMeasures`, `IGeometryProcessing`,
   `IGeometryRelations`, `ICrsDirectory`, `ICoordinateTransforms`,
   `IDemoWork`, `IMapRenderer`, `IRasterOperations`, `ITileScheme` and
