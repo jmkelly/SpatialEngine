@@ -183,9 +183,14 @@ and an ungrouped reduction of an empty set is **one group of nulls** where a
 dialect returns no row at all. One statistic is not a number: `Envelope`
 reduces a geometry field to the smallest rectangle over its non-null
 geometries, reported as an `AttributeKind.Envelope` value (a reduced kind no
-field may declare, ADR-0120). The page over groups and `having` remain
-adapter-side over the groups the store returned, because a cap the plan asked
-for would cut rows the store never grouped. The one definition of that
+field may declare, ADR-0120). The page over groups and `having` are the
+**reduction's** own members — `AggregateQuery.Having`/`Limit`/`Offset` and
+`AggregatePage.HasMore` (ADR-0128) — because a cap the plan carried would cut
+rows the store never grouped. `Having` is the same `Predicate` vocabulary as the
+plan's `where`, over the *group row* (the group fields and the statistics'
+result names), and a store that implements the reduction face must answer both;
+Postgres writes the clause as its own aggregate expression in the grouped
+statement's `HAVING`, before the `LIMIT`. The one definition of that
 evaluation is `Spatial.Querying`: `FeaturePlanExecutor` selects, orders, pages
 and projects, `FeaturePlanExecutor.Finish` is the shaping half for a store that
 already applied the restriction, and `ReferencePredicate` is the one predicate

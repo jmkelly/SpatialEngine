@@ -75,7 +75,11 @@ public static class FeatureQueryValidation
         ValidateFields(schema, query.Fields, "distinct");
     }
 
-    /// <summary>Validates a grouped reduction against the dataset's schema.</summary>
+    /// <summary>
+    /// Validates a grouped reduction against the dataset's schema: the group
+    /// fields, the statistics, the <c>having</c> clause's vocabulary and the
+    /// page over the groups.
+    /// </summary>
     public static void ValidateAggregate(IFeatureSchema schema, AggregateQuery query)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -89,6 +93,50 @@ public static class FeatureQueryValidation
         for (var i = 0; i < query.Specs.Count; i++)
         {
             ValidateSpec(schema, query.Specs[i], i);
+        }
+
+        ValidateHaving(query);
+        ValidateGroupPaging(query);
+    }
+
+    /// <summary>
+    /// Every field a <c>having</c> clause names, resolved against the group row
+    /// — the group fields and the statistics' result names, and nothing else
+    /// (ADR-0128). The clause is over the <em>reduced</em> group, so a name that
+    /// is neither a key nor a result is a clause over a value no group row
+    /// carries, and it is rejected here rather than left to a store to answer
+    /// as "no group matches".
+    /// </summary>
+    private static void ValidateHaving(AggregateQuery query)
+    {
+        var names = query.GroupRowFields;
+        foreach (var field in query.Having?.Fields() ?? [])
+        {
+            if (!names.Contains(field.Name, StringComparer.Ordinal))
+            {
+                throw SpatialException.BadArguments(
+                    $"The 'having' column '{field.Name}' is neither a group field nor a statistic of this reduction; "
+                    + $"available: {string.Join(", ", names.Select(name => $"'{name}'"))}.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The page over the groups: a non-negative start and a positive cap. A
+    /// cap of zero is not a page that returns nothing — it is a cap no store
+    /// can distinguish from "no cap", so it is a bad argument rather than an
+    /// empty answer, exactly as a plan's cap is.
+    /// </summary>
+    private static void ValidateGroupPaging(AggregateQuery query)
+    {
+        if (query.Limit is <= 0)
+        {
+            throw SpatialException.BadArguments($"An aggregate query's group limit must be positive, got {query.Limit}.");
+        }
+
+        if (query.Offset is < 0)
+        {
+            throw SpatialException.BadArguments($"An aggregate query's group offset must not be negative, got {query.Offset}.");
         }
     }
 

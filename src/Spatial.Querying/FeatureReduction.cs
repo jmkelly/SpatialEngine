@@ -23,7 +23,12 @@ namespace Spatial.Querying;
 /// different answer, not a faster one.</item>
 /// <item>Distinct rows keep first-seen order, and a group order is the order
 /// the groups were first met — a store that sorts them differently has the
-/// same set and a different answer, so the suite compares the sequence.</item>
+/// same set and a different answer, so the suite compares the sequence. When
+/// the caller hands the reduction the <em>plan's</em> order and every one of
+/// its terms names a group field, the group key is a total order over the
+/// groups and the groups are reported in it — the order a <c>GROUP BY</c> can
+/// return (ADR-0115 §4). An order naming anything the group row does not carry
+/// is not a group order at all, and the first-seen order stands.</item>
 /// <item>Variance and standard deviation are the sample forms (dividing by
 /// n − 1), and are <em>null</em> for fewer than two values: the sample form of
 /// a single observation is undefined, and a store's <c>VAR_SAMP</c> answers
@@ -71,21 +76,141 @@ public static class FeatureReduction
         return new DistinctPage(query.Fields, rows, rows.Count);
     }
 
-    /// <summary>The grouped reduction of the selected features.</summary>
+    /// <summary>
+    /// The grouped reduction of the selected features.
+    /// </summary>
+    /// <param name="schema">The dataset's schema, which the group key and the clause resolve against.</param>
+    /// <param name="selected">The features the plan selects, in the order it selected them.</param>
+    /// <param name="query">The reduction: the statistics, the grouping, the clause and the group page.</param>
+    /// <param name="order">
+    /// The <em>plan's</em> order, or <c>null</c> when the plan asked for none.
+    /// It is applied when every term names a group field, because then the group
+    /// key is a total order over the groups and this reduction can return the
+    /// order a <c>GROUP BY</c> returns (ADR-0098 §3, ADR-0115 §4); a term the
+    /// group row does not carry is not a group order at all, and the groups keep
+    /// the first-seen order the scan gave them.
+    /// </param>
     public static AggregatePage Aggregate(
-        IFeatureSchema schema, IReadOnlyList<Feature> selected, AggregateQuery query)
+        IFeatureSchema schema,
+        IReadOnlyList<Feature> selected,
+        AggregateQuery query,
+        IReadOnlyList<OrderTerm>? order = null)
     {
         ArgumentNullException.ThrowIfNull(selected);
         FeatureQueryValidation.ValidateAggregate(schema, query);
 
         var buckets = Group(selected, query.GroupBy?.Select(schema.IndexOf).ToArray() ?? []);
-        var reduced = Buckets(buckets, query).Select(bucket => Reduce(schema, bucket, query.Specs)).ToArray();
+        var reduced = Buckets(buckets, query)
+            .Select(bucket => Reduce(schema, bucket, query.Specs))
+            .ToArray();
+        // The `having` clause and the page are two steps in that order, and both
+        // are over the *group row* (ADR-0128): the cap cuts the groups the
+        // clause kept, never the rows the groups were reduced from, which is
+        // why neither is a member of the plan.
+        var kept = Order(schema, query, reduced, order);
+        kept = query.Having is { } having
+            ? kept.Where(group => MatchesGroup(schema, query, having, group)).ToArray()
+            : kept;
+        var offset = Math.Min(query.Offset ?? 0, kept.Length);
+        var page = query.Limit is { } cap ? kept.Skip(offset).Take(cap).ToArray() : kept.Skip(offset).ToArray();
         return new AggregatePage(
             query.GroupBy ?? (IReadOnlyList<string>)[],
             query.Specs.Select(spec => spec.Name).ToArray(),
-            reduced,
-            query.GroupBy is { Count: > 0 } ? reduced.Length : null);
+            page,
+            query.IsGrouped ? kept.Length : null,
+            offset + page.Length < kept.Length);
     }
+
+    /// <summary>
+    /// The reduced groups in the order they are reported: the plan's order when
+    /// every one of its terms names a group field, and the first-seen order
+    /// otherwise. The clause and the page are applied after this, so a cap cuts
+    /// the ordered group set — which is what a pushed <c>GROUP BY</c> with a
+    /// <c>LIMIT</c> does, and what makes a store that reduces in managed code
+    /// answer the same sequence as one that pushed the order down.
+    /// </summary>
+    private static AggregateGroup[] Order(
+        IFeatureSchema schema, AggregateQuery query, AggregateGroup[] groups, IReadOnlyList<OrderTerm>? order)
+    {
+        if (order is not { Count: > 0 } terms || query.GroupBy is not { Count: > 0 } groupBy)
+        {
+            return groups;
+        }
+
+        var keys = new List<SortKey>(terms.Count);
+        foreach (var term in terms)
+        {
+            var index = groupBy.ToList().FindIndex(field => string.Equals(field, term.Field, StringComparison.Ordinal));
+            if (index < 0)
+            {
+                return groups;
+            }
+
+            keys.Add(new SortKey(index, term));
+        }
+
+        var ordered = groups.OrderBy(group => group, Comparer<AggregateGroup>.Create((left, right) => Compare(left, right, keys)));
+        return [.. ordered];
+    }
+
+    /// <summary>The comparison of two group rows by the plan's terms, under the reference's value ordering.</summary>
+    private static int Compare(AggregateGroup left, AggregateGroup right, List<SortKey> keys)
+    {
+        foreach (var key in keys)
+        {
+            var comparison = AttributeValueComparer.Instance.Compare(left.Key[key.Index], right.Key[key.Index]);
+            if (comparison != 0)
+            {
+                return key.Term.IsDescending ? -comparison : comparison;
+            }
+        }
+
+        return 0;
+    }
+
+    private readonly record struct SortKey(int Index, OrderTerm Term);
+
+    /// <summary>
+    /// Whether the reduced group satisfies a <c>having</c> clause. The group row
+    /// is the key's values followed by one value per statistic, under the name
+    /// each result is reported under, and it is answered by
+    /// <see cref="ReferencePredicate"/> over a feature built from that row — the
+    /// one predicate evaluation in the engine, so a clause the SQL providers
+    /// push into a <c>HAVING</c> is measured against exactly these semantics.
+    /// </summary>
+    private static bool MatchesGroup(
+        IFeatureSchema schema, AggregateQuery query, Predicate having, AggregateGroup group)
+    {
+        var fields = new List<FieldDefinition>(query.GroupRowFields.Count);
+        var values = new AttributeValue[group.Key.Count + query.Specs.Count];
+        for (var i = 0; i < query.GroupBy?.Count; i++)
+        {
+            var key = schema[schema.IndexOf(query.GroupBy![i])];
+            fields.Add(new FieldDefinition(key.Name, ComparesAs(key.Kind), nullable: true));
+            values[i] = group.Key[i];
+        }
+
+        for (var i = 0; i < query.Specs.Count; i++)
+        {
+            var spec = query.Specs[i];
+            fields.Add(new FieldDefinition(spec.Name, ComparesAs(ResultKind(spec, FieldKind(schema, spec))), nullable: true));
+            values[group.Key.Count + i] = group.Values[i];
+        }
+
+        return ReferencePredicate.Matches(having, new Feature(new FeatureId("group"), new FeatureSchema(fields), values));
+    }
+
+    /// <summary>The schema field a statistic reduces, for the result kind the reference reports it as.</summary>
+    private static AttributeKind FieldKind(IFeatureSchema schema, AggregateSpec spec) =>
+        spec.IsRowCount || schema.IndexOf(spec.Field) < 0 ? AttributeKind.Int64 : schema[schema.IndexOf(spec.Field)].Kind;
+
+    /// <summary>
+    /// The kind a reduced value is <em>compared</em> as: a value with nothing
+    /// to reduce is a null, and a null has no kind to compare under, so it is
+    /// read as the numeric the statistic would have produced. A comparison
+    /// against it is false either way — a null satisfies nothing.
+    /// </summary>
+    private static AttributeKind ComparesAs(AttributeKind kind) => kind == AttributeKind.Null ? AttributeKind.Double : kind;
 
     /// <summary>
     /// The reduction of <em>no</em> rows, for an ungrouped request: one group

@@ -3,6 +3,7 @@ using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Stores.PostGIS.Core;
 
@@ -67,8 +68,20 @@ internal static class PostgisPlanQueries
 
     /// <summary>
     /// The grouped reduction: the group key, one aggregate expression per
-    /// statistic, grouped over the key, and ordered by the plan's order with
-    /// the group key appended so the row order is total.
+    /// statistic, grouped over the key, filtered by the clause over the reduced
+    /// groups, ordered by the plan's order with the group key appended so the
+    /// row order is total, and cut to the page (ADR-0128).
+    ///
+    /// <para>
+    /// The clause and the page are the grouped statement's own <c>HAVING</c> and
+    /// <c>LIMIT</c>, not a wrap of it: <c>GROUP BY</c>, <c>HAVING</c>,
+    /// <c>ORDER BY</c> and <c>LIMIT</c> compose in that order, so the cap cuts
+    /// the groups the clause kept and the server assembles no group past the
+    /// page. A name the clause uses is a group column (the key's own column, so
+    /// the filter is a comparison under the byte order, ADR-0123) or a result
+    /// name, which is not a column at all and is written as the dialect's own
+    /// aggregate spelling — the expression the select list already carries.
+    /// </para>
     ///
     /// <para>
     /// Returns <c>null</c> when a <em>grouped</em> reduction has no order the
@@ -78,8 +91,9 @@ internal static class PostgisPlanQueries
     /// naming a column the group key does not carry is a different question
     /// again — grouping by it too would return more groups than the reference
     /// does, and ordering a group by one of its own aggregates is not a
-    /// <c>GROUP BY</c> order at all. The caller then reduces the rows it read
-    /// instead, where first-seen order is knowable. An <em>ungrouped</em>
+    /// <c>GROUP BY</c> order at all. A clause naming a value the group row does
+    /// not carry is declined the same way. The caller then reduces the rows it
+    /// read instead, where first-seen order is knowable. An <em>ungrouped</em>
     /// reduction is one group whatever the order, so it is always one aggregate
     /// row.
     /// </para>
@@ -92,7 +106,9 @@ internal static class PostgisPlanQueries
         IReadOnlyList<OrderTerm> order,
         IFeatureSchema schema,
         bool byteOrderText,
-        List<object?> parameters)
+        List<object?> parameters,
+        Predicate? having = null,
+        Paging? paging = null)
     {
         if (groupColumns.Count > 0 && (order.Count == 0 || order.Any(term => !groupColumns.Contains(term.Field, StringComparer.Ordinal))))
         {
@@ -102,7 +118,8 @@ internal static class PostgisPlanQueries
         var terms = order.Select(term => Term(term, schema, byteOrderText)).ToList();
         terms.AddRange(groupColumns.Select(column => Ascending(column, schema, byteOrderText)));
         var selects = groupColumns.Select(Quote).ToList();
-        selects.AddRange(specs.Select(spec => new Statistic(spec, schema, byteOrderText).Expression(parameters)));
+        var statistics = specs.Select(spec => new Statistic(spec, schema, byteOrderText)).ToArray();
+        selects.AddRange(statistics.Select(statistic => statistic.Expression(parameters)));
         var builder = new StringBuilder("SELECT ")
             .Append(string.Join(", ", selects))
             .Append(" FROM ")
@@ -113,12 +130,87 @@ internal static class PostgisPlanQueries
             builder.Append(" GROUP BY ").Append(string.Join(", ", groupColumns.Select(Quote)));
         }
 
+        if (having is not null)
+        {
+            var clause = Having(having, groupColumns, specs, schema, byteOrderText, parameters);
+            if (clause is null)
+            {
+                return null;
+            }
+
+            builder.Append(" HAVING ").Append(clause);
+        }
+
         if (terms.Count > 0)
         {
             builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
         }
 
+        (paging ?? new Paging(null, 0)).AppendTo(builder, parameters);
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// The <c>HAVING</c> fragment for a clause over the reduced groups, or
+    /// <c>null</c> when it names a value the group row does not carry — a name
+    /// that is neither a group key nor a requested statistic, which the caller
+    /// then answers with the reference over the rows it read.
+    ///
+    /// <para>
+    /// It is the predicate compiler over a different resolution: a group column
+    /// resolves to the column (under the byte order every string comparison in
+    /// this store states) and a result name to the statistic's own aggregate
+    /// expression, rebuilt here exactly as the select list builds it. The tree,
+    /// the operators, the literal binding and the three-valued reading of a
+    /// null are the compiler's, so a pushed <c>HAVING</c> cannot be a second
+    /// definition of what a comparison means.
+    /// </para>
+    /// </summary>
+    private static string? Having(
+        Predicate having,
+        IReadOnlyList<string> groupColumns,
+        IReadOnlyList<AggregateSpec> specs,
+        IFeatureSchema schema,
+        bool byteOrderText,
+        List<object?> parameters)
+    {
+        var expressions = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var column in groupColumns)
+        {
+            expressions[column] = Ordered(column, schema, byteOrderText);
+        }
+
+        for (var i = 0; i < specs.Count; i++)
+        {
+            expressions[specs[i].Name] = new Statistic(specs[i], schema, byteOrderText).Expression(parameters);
+        }
+
+        return PostgisPredicateSql.Having(
+            having,
+            field => expressions.TryGetValue(field.Name, out var expression)
+                ? new PostgisPredicateSql.GroupColumn(expression, GroupKind(specs, groupColumns, field.Name, schema))
+                : null,
+            parameters);
+    }
+
+    /// <summary>
+    /// The kind a group row's value compares as: a group column keeps the
+    /// column's own kind, and a result is the kind the reference reports it as
+    /// (<see cref="FeatureReduction.ResultKind"/>) — the same rule the row
+    /// mapper applies, so a pushed clause binds a literal the same way the
+    /// reduction's own values are read back.
+    /// </summary>
+    private static AttributeKind GroupKind(
+        IReadOnlyList<AggregateSpec> specs, IReadOnlyList<string> groupColumns, string name, IFeatureSchema schema)
+    {
+        var group = groupColumns.ToList().FindIndex(column => string.Equals(column, name, StringComparison.Ordinal));
+        if (group >= 0)
+        {
+            return schema[schema.IndexOf(groupColumns[group])].Kind;
+        }
+
+        var spec = specs.First(candidate => string.Equals(candidate.Name, name, StringComparison.Ordinal));
+        return FeatureReduction.ResultKind(spec, spec.IsRowCount ? AttributeKind.Int64 : schema[schema.IndexOf(spec.Field)].Kind);
     }
 
     /// <summary>

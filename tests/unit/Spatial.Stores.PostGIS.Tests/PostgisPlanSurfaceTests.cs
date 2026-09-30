@@ -205,6 +205,129 @@ public sealed class PostgisPlanSurfaceTests
     }
 
     /// <summary>
+    /// The <c>having</c> clause and the page over groups are the grouped
+    /// statement's own <c>HAVING</c> and <c>LIMIT</c> (ADR-0128), and they are
+    /// one statement rather than a wrap of it: <c>GROUP BY</c>,
+    /// <c>HAVING</c>, <c>ORDER BY</c> and <c>LIMIT</c> compose in that order,
+    /// so the cap cuts the groups the clause kept and the server never groups
+    /// more of them than the page reports.
+    ///
+    /// <para>
+    /// A clause over a statistic is the one name that is not a column, and it is
+    /// written as the dialect's own aggregate spelling — the same expression the
+    /// select list carries — because <c>HAVING</c> is evaluated per group and an
+    /// aggregate is legal there. That is the only dialect-specific half of the
+    /// clause; the shape of the tree, the operator and the bound literal are the
+    /// predicate compiler's.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_group_filter_and_a_page_are_the_grouped_statements_having_and_limit()
+    {
+        var parameters = new List<object?>();
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: ["city"],
+            [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
+            [new OrderTerm("city")],
+            Schema,
+            byteOrderText: true,
+            parameters,
+            new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromInteger("150")),
+            new PostgisPlanQueries.Paging(10, 20));
+
+        Assert.Equal(
+            "SELECT \"city\", SUM(\"population\") FROM \"public\".\"places\" GROUP BY \"city\""
+            + " HAVING SUM(\"population\") > @p0 ORDER BY \"city\" ASC NULLS LAST, \"city\" ASC NULLS LAST"
+            + " LIMIT @p1 OFFSET @p2",
+            sql);
+        Assert.Equal([150L, 10, 20], parameters);
+    }
+
+    /// <summary>
+    /// A clause over the group key is the column itself, and it states the byte
+    /// order the contract compares strings in for the same reason the
+    /// <c>ORDER BY</c> and the <c>WHERE</c> do (ADR-0121, ADR-0123): a locale
+    /// collation would make a pushed filter a different question from the
+    /// reference's.
+    /// </summary>
+    [Fact]
+    public void A_group_filter_over_the_group_key_is_the_column_under_the_byte_order()
+    {
+        var parameters = new List<object?>();
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: ["city"],
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")],
+            [new OrderTerm("city")],
+            Schema,
+            byteOrderText: false,
+            parameters,
+            new Predicate.IsIn(new FieldRef("city"), [Literal.FromText("Aachen"), Literal.FromText("Berlin")], Negated: false));
+
+        Assert.Equal(
+            "SELECT \"city\", COUNT(*) FROM \"public\".\"places\" GROUP BY \"city\""
+            + " HAVING \"city\" COLLATE \"C\" IN (@p0, @p1)"
+            + " ORDER BY \"city\" COLLATE \"C\" ASC NULLS LAST, \"city\" COLLATE \"C\" ASC NULLS LAST",
+            sql);
+        Assert.Equal(["Aachen", "Berlin"], parameters);
+    }
+
+    /// <summary>
+    /// An ungrouped reduction is one row, so a clause over it is a <c>HAVING</c>
+    /// on an aggregate with no <c>GROUP BY</c> and a page that cannot cut
+    /// anything: both are written, because both are what the request asked and
+    /// the reference answers the same two ways — a group that does not satisfy
+    /// the clause is no group, and a page past the only group is no groups.
+    /// </summary>
+    [Fact]
+    public void An_ungrouped_reduction_carries_its_clause_and_its_page_too()
+    {
+        var parameters = new List<object?>();
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: [],
+            [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
+            order: [],
+            schema: Schema,
+            byteOrderText: true,
+            parameters,
+            new Predicate.Compare(new FieldRef("total"), ComparisonOperator.GreaterThan, Literal.FromInteger("150")),
+            new PostgisPlanQueries.Paging(5, 0));
+
+        Assert.Equal(
+            "SELECT SUM(\"population\") FROM \"public\".\"places\""
+            + " HAVING SUM(\"population\") > @p0 LIMIT @p1",
+            sql);
+        Assert.Equal([150L, 5], parameters);
+    }
+
+    /// <summary>
+    /// A clause over a name the group row does not carry is a question about
+    /// nothing, and the store declines it rather than writing a fragment that
+    /// names a column or alias that is not there.
+    /// </summary>
+    [Fact]
+    public void A_group_filter_over_an_unknown_name_is_declined()
+    {
+        var sql = PostgisPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: ["city"],
+            [new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
+            [new OrderTerm("city")],
+            Schema,
+            byteOrderText: true,
+            parameters: [],
+            having: new Predicate.Compare(new FieldRef("population"), ComparisonOperator.GreaterThan, Literal.FromInteger("1")));
+
+        Assert.Null(sql);
+    }
+
+    /// <summary>
     /// An order a group row does not carry cannot be a group order: grouping by
     /// it as well would answer a different question (more groups), and ordering
     /// by an aggregate of the group is not a <c>GROUP BY</c> order at all. The

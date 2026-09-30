@@ -83,15 +83,52 @@ public sealed record AggregateSpec(
 
 /// <summary>
 /// A grouped reduction of the features a plan selects (ADR-0074 §6): the
-/// statistics to compute over each group, and the fields the groups are keyed
-/// by (no grouping is one group over the whole match set).
+/// statistics to compute over each group, the fields the groups are keyed
+/// by (no grouping is one group over the whole match set), the <c>having</c>
+/// clause over the reduced groups and the page over the groups that survive it
+/// (ADR-0128).
 /// </summary>
 /// <param name="Specs">The statistics to compute, in the order they are reported.</param>
 /// <param name="GroupBy">The schema fields to group by, or <c>null</c> for no grouping.</param>
-public sealed record AggregateQuery(IReadOnlyList<AggregateSpec> Specs, IReadOnlyList<string>? GroupBy = null)
+/// <param name="Having">
+/// The clause the reduced groups must satisfy, or <c>null</c> for all of them.
+/// A filter over the <em>group row</em> — the group key's values followed by
+/// one value per statistic, under the name each result is reported under — and
+/// not over the features the groups were reduced from: it runs <em>after</em>
+/// the reduction, which is what makes <c>SUM(population) &gt; 150</c> a
+/// question about a group rather than a filter the rows must pass. The clause
+/// is the one predicate vocabulary, so every name in it is validated against
+/// this query's group fields and result names before a store is asked.
+/// </param>
+/// <param name="Limit">
+/// The maximum number of groups to return, or <c>null</c> for every group that
+/// satisfies <paramref name="Having"/>. This is a page over <em>groups</em>,
+/// and it is a member of the reduction rather than of the plan for the same
+/// reason the statistic is: a cap the plan carried would cut rows the store
+/// never grouped (ADR-0098 §7 as amended by SpatialEngine-u2x.9.2, ADR-0128).
+/// </param>
+/// <param name="Offset">The number of surviving groups to skip, or <c>null</c> for the first.</param>
+public sealed record AggregateQuery(
+    IReadOnlyList<AggregateSpec> Specs,
+    IReadOnlyList<string>? GroupBy = null,
+    Predicate? Having = null,
+    int? Limit = null,
+    int? Offset = null)
 {
     /// <summary>Whether the reduction groups at all.</summary>
     public bool IsGrouped => GroupBy is { Count: > 0 };
+
+    /// <summary>Whether the request asks for a page of the groups rather than all of them.</summary>
+    public bool IsPaged => Limit is not null || Offset is not null;
+
+    /// <summary>
+    /// The names a <see cref="Having"/> clause may use, ordinal: the group
+    /// fields and then the result names, in the order the group row carries
+    /// them. The clause is a predicate over the reduced group, so this is the
+    /// only vocabulary it has.
+    /// </summary>
+    public IReadOnlyList<string> GroupRowFields =>
+        [.. (GroupBy ?? (IReadOnlyList<string>)[]), .. Specs.Select(spec => spec.Name)];
 }
 
 /// <summary>
@@ -106,17 +143,35 @@ public sealed record AggregateGroup(IReadOnlyList<AttributeValue> Key, IReadOnly
 /// <summary>
 /// The result of an <see cref="AggregateQuery"/>: the group field names, the
 /// result names of the statistics, the reduced groups in the order the plan
-/// asked for, and the total group count when it is known.
+/// asked for, the total group count when it is computed and whether more
+/// groups remain beyond this page (ADR-0128).
 /// </summary>
 /// <param name="GroupFields">The group key field names, or empty when the query does not group.</param>
 /// <param name="ValueNames">The result name of each statistic, in specification order.</param>
-/// <param name="Groups">The reduced groups.</param>
-/// <param name="TotalCount">The number of groups the query produces, or <c>null</c> when not computed.</param>
+/// <param name="Groups">
+/// The reduced groups — the page of them, when the query asked for one. A
+/// group set cut by <see cref="AggregateQuery.Limit"/> and
+/// <see cref="AggregateQuery.Offset"/> is reported here, and a store that
+/// pushed the page down is answering the same question as one that cut the
+/// page over every group it returned.
+/// </param>
+/// <param name="TotalCount">
+/// The number of groups the query produces, before the page, or <c>null</c>
+/// when not computed. It is the <em>whole</em> group set, so a paged
+/// reduction reports the groups it did not return too; paging itself is
+/// reported by <paramref name="HasMore"/>, which a store can answer from the
+/// one row past the page it asked for.
+/// </param>
+/// <param name="HasMore">
+/// Whether groups remain beyond the ones returned. An unpaged reduction is
+/// never paged and so is never <c>true</c>, whatever it does not report.
+/// </param>
 public sealed record AggregatePage(
     IReadOnlyList<string> GroupFields,
     IReadOnlyList<string> ValueNames,
     IReadOnlyList<AggregateGroup> Groups,
-    int? TotalCount = null);
+    int? TotalCount = null,
+    bool HasMore = false);
 
 /// <summary>
 /// The deduplicated field combinations a plan selects (ADR-0074 §6): which

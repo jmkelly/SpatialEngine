@@ -202,7 +202,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         return pushed ?? FeatureReduction.Aggregate(
             schema,
             await SelectedAsync(name, description, query, where, parameters, cancellationToken),
-            aggregate);
+            aggregate,
+            query.Order);
     }
 
     private async Task<AggregatePage?> PushedGroupsAsync(
@@ -215,8 +216,23 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         List<object?> parameters,
         CancellationToken cancellationToken)
     {
+        // One row past the page is how a store answers "are there more groups?"
+        // without counting them: the server groups, sorts and stops, and the
+        // extra row is the only question a page needs answered (ADR-0128).
+        var page = new PostgisPlanQueries.Paging(
+            aggregate.Limit is { } limit ? limit + 1 : null,
+            aggregate.Offset ?? 0);
         var sql = PostgisPlanQueries.Aggregate(
-            name, where, aggregate.GroupBy?.ToArray() ?? [], aggregate.Specs, order, description.Schema, byteOrderText, parameters);
+            name,
+            where,
+            aggregate.GroupBy?.ToArray() ?? [],
+            aggregate.Specs,
+            order,
+            description.Schema,
+            byteOrderText,
+            parameters,
+            aggregate.Having,
+            page);
         if (sql is null)
         {
             // A group order the dialect cannot return is not an error and not a
@@ -255,11 +271,14 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var names = aggregate.Specs.Select(spec => spec.Name).ToArray();
         if (rows.Count == 0)
         {
+            // A paged reduction that returned nothing is past the last group, and
+            // how many groups there were is a count the cap just cut, so the
+            // total is the store's to leave uncomputed (ADR-0128).
             return new AggregatePage(
                 aggregate.GroupBy ?? (IReadOnlyList<string>)[],
                 names,
                 groupCount == 0 ? [FeatureReduction.EmptyGroup(aggregate.Specs)] : [],
-                groupCount == 0 ? null : 0);
+                groupCount == 0 || aggregate.Limit is not null ? null : 0);
         }
 
         if (groupCount == 0 && MatchedNothing(aggregate, rows[0]))
@@ -267,9 +286,15 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             return new AggregatePage(aggregate.GroupBy ?? (IReadOnlyList<string>)[]!, names, [FeatureReduction.EmptyGroup(aggregate.Specs)], null);
         }
 
-        var groups = new List<AggregateGroup>(rows.Count);
-        foreach (var row in rows)
+        // The row past the page is the store's "one more group" answer, not a
+        // group of the page (ADR-0128): the page is what the query asked for and
+        // the flag is what the caller cannot compute without the rows the cap
+        // just cut.
+        var hasMore = aggregate.Limit is { } limit && rows.Count > limit;
+        var groups = new List<AggregateGroup>(Math.Min(rows.Count, aggregate.Limit ?? int.MaxValue));
+        for (var at = 0; at < rows.Count && (aggregate.Limit is not { } cap || at < cap); at++)
         {
+            var row = rows[at];
             var key = new AttributeValue[groupCount];
             for (var i = 0; i < groupCount; i++)
             {
@@ -296,7 +321,8 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             aggregate.GroupBy ?? (IReadOnlyList<string>)[],
             aggregate.Specs.Select(spec => spec.Name).ToArray(),
             groups,
-            aggregate.IsGrouped ? groups.Count : null);
+            aggregate.IsGrouped && aggregate.Limit is null ? groups.Count : null,
+            hasMore);
     }
 
     /// <summary>
