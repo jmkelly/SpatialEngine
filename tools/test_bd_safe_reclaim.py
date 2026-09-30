@@ -10,6 +10,8 @@ that can destroy in-flight state, so the safe wrapper has to prove that a
 lease which is expired but whose paseo agent is alive is left in place.
 """
 import importlib.util
+import io
+import json
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -174,20 +176,26 @@ class ReclaimCommandTests(unittest.TestCase):
         self.calls = []
 
     def run_main(self, argv, beads, agents, workspaces):
+        # The report goes to a buffer, not to the gate's stdout: a fixture
+        # recovery that prints 'reclaimed 1, kept 1' into a verify run is
+        # indistinguishable from a real one, and a coordinator read exactly
+        # that line as a live recovery on 2026-09-28 (SpatialEngine-k0p).
+        self.out = io.StringIO()
+
         def fake_run(cmd, **kwargs):
             self.calls.append(cmd)
             if cmd[0] == "bd" and cmd[1] == "list":
-                return self.module.Completed(0, __import__("json").dumps(beads), "")
+                return self.module.Completed(0, json.dumps(beads), "")
             if cmd[0] == "paseo" and cmd[1] == "ls":
-                return self.module.Completed(0, __import__("json").dumps(agents), "")
+                return self.module.Completed(0, json.dumps(agents), "")
             if cmd[0] == "paseo" and cmd[1] == "workspace":
                 return self.module.Completed(
-                    0, __import__("json").dumps(workspaces), "")
+                    0, json.dumps(workspaces), "")
             return self.module.Completed(0, "ok", "")
 
         return self.module.main(
             argv, run=fake_run, now=NOW,
-            older_than=timedelta(minutes=10))
+            older_than=timedelta(minutes=10), out=self.out)
 
     def test_eight_live_workers_release_nothing(self):
         agents = [agent(f"{i:06x}aaaa", cwd=f"~/.paseo/worktrees/t/"
@@ -244,8 +252,83 @@ class ReclaimCommandTests(unittest.TestCase):
             return module.Completed(0, "", "")
 
         code = module.main(
-            [], run=Failing(base_run), now=NOW, older_than=timedelta(minutes=0))
+            [], run=Failing(base_run), now=NOW,
+            older_than=timedelta(minutes=0), out=io.StringIO())
         self.assertEqual(code, 1)
+
+
+class QueueOverrideTests(unittest.TestCase):
+    """`--db` names the queue, so no run of this tool has to be the real one.
+
+    The wrapper reclaims leases in whatever queue `bd` resolves from the cwd,
+    which for this repository is the shared `.beads` database every worktree
+    sees. A test that forgot to stub the CLI, or a human rehearsing a recovery,
+    would then be writing to the live queue. `--db` gives both a scratch queue
+    to point at, and the property is checkable: every `bd` call the tool makes
+    carries the override, including the reclaim itself (SpatialEngine-k0p).
+    """
+
+    def setUp(self):
+        self.module = load_script()
+        self.calls = []
+
+    def run_main(self, argv, beads, agents=(), workspaces=()):
+        module = self.module
+
+        def fake_run(cmd, **kwargs):
+            self.calls.append(cmd)
+            if cmd[1] == "list":
+                return module.Completed(
+                    0, json.dumps(list(beads)), "")
+            if cmd[1] == "ls":
+                return module.Completed(0, json.dumps(list(agents)), "")
+            if cmd[1] == "workspace":
+                return module.Completed(
+                    0, json.dumps(list(workspaces)), "")
+            return module.Completed(0, "", "")
+
+        out = io.StringIO()
+        return module.main(argv, run=fake_run, now=NOW,
+                           older_than=timedelta(minutes=10), out=out), out
+
+    def test_every_bd_call_carries_the_queue_override(self):
+        scratch = "/tmp/fixture-queue/beads.db"
+        code, _ = self.run_main(
+            ["--db", scratch], [bead("SpatialEngine-fhf", lease_minutes_ago=30)])
+        self.assertEqual(code, 0)
+        bd_calls = [c for c in self.calls if c[0] == "bd"]
+        self.assertTrue(bd_calls)
+        for call in bd_calls:
+            self.assertIn("--db", call, call)
+            self.assertEqual(call[call.index("--db") + 1], scratch, call)
+
+    def test_the_reclaim_itself_is_against_the_override_queue(self):
+        scratch = "/tmp/fixture-queue/beads.db"
+        self.run_main(["--db", scratch],
+                      [bead("SpatialEngine-fhf", lease_minutes_ago=30)])
+        reclaim = [c for c in self.calls if c[1] == "reclaim"]
+        self.assertEqual(len(reclaim), 1)
+        self.assertEqual(reclaim[0], ["bd", "reclaim", "--id",
+                                      "SpatialEngine-fhf", "--db", scratch])
+
+    def test_the_heartbeat_turn_is_against_the_override_queue_too(self):
+        code = self.module.main(
+            ["--db", "/tmp/fixture-queue/beads.db",
+             "--heartbeat", "SpatialEngine-k0p"],
+            run=lambda cmd, **kwargs: (self.calls.append(cmd),
+                                       self.module.Completed(0, "", ""))[1])
+        self.assertEqual(code, 0)
+        self.assertEqual(self.calls, [["bd", "heartbeat", "SpatialEngine-k0p",
+                                       "--db", "/tmp/fixture-queue/beads.db"]])
+
+    def test_without_the_override_the_commands_are_unchanged(self):
+        # The runbook's command must keep meaning what it says: no flag added,
+        # so the queue is whatever `bd` resolves, which is the real one.
+        code, _ = self.run_main(
+            [], [bead("SpatialEngine-fhf", lease_minutes_ago=30)])
+        self.assertEqual(code, 0)
+        for call in [c for c in self.calls if c[0] == "bd"]:
+            self.assertNotIn("--db", call)
 
 
 class HeartbeatTests(unittest.TestCase):

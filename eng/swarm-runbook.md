@@ -102,7 +102,12 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    KEEP/RECLAIM verdicts against `paseo ls`, then run it without `--dry-run`.
    It reclaims only leases no live agent holds; bare `bd reclaim` does not, and
    on 2026-09-28 it released 8 leases that were all still being worked
-   (SpatialEngine-u2x.30). Any bead left `in_progress` for more than 90 minutes
+   (SpatialEngine-u2x.30). The run reads the queue `bd` resolves from the
+   current directory — the shared `.beads` database — so rehearse it with
+   `--db <path>` against a scratch queue, never against the live one, and
+   never from a test: `tools/test_no_real_queue.py` runs the whole tooling
+   suite with `bd` and `paseo` shadowed and fails it if anything reaches for
+   either. Any bead left `in_progress` for more than 90 minutes
    with no running paseo agent working its branch is stale: reclaim it, note
    why, and let it re-enter `bd ready`. Reclaim is for dead workers only —
    never a bead you stopped in TRIM, and never a bead labelled `human` waiting

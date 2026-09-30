@@ -5,6 +5,7 @@
     python3 tools/bd-safe-reclaim.py --dry-run          # report only
     python3 tools/bd-safe-reclaim.py --older-than 90m   # wider grace window
     python3 tools/bd-safe-reclaim.py --heartbeat <id>   # worker: renew my lease
+    python3 tools/bd-safe-reclaim.py --db <path>        # another queue entirely
 
 `bd reclaim` is the right primitive and the wrong tool for a swarm. It keys on
 lease age alone: a lease goes stale when its holder stops heartbeating, and a
@@ -33,6 +34,11 @@ Liveness is matched two ways, both of which the runbook already produces:
 
 Anything else is reported, not guessed: the beads side is the authority on
 staleness, and this tool never extends a lease it did not read as expired.
+
+Every `bd` call goes through one place, `bd_args`, so `--db` can point the
+whole run — reads and the reclaim alike — at a queue that is not the
+repository's shared `.beads` database. That is how a test or a rehearsal runs
+this tool without touching in-flight work (SpatialEngine-k0p).
 """
 from __future__ import annotations
 
@@ -235,14 +241,27 @@ def _format_duration(delta):
     return f"{minutes}m"
 
 
-def _reclaim(run, ids, verbose):
+def _bd_args(args, command):
+    """The `bd` command line, with the queue override on it when asked for.
+
+    The override is appended rather than inserted so the subcommand stays
+    first: `bd` takes `--db` as a global flag, and every call this tool makes
+    names the same queue, including the reclaim that writes.
+    """
+    command = ["bd"] + list(command)
+    if args.db:
+        command += ["--db", args.db]
+    return command
+
+
+def _reclaim(run, args, ids, verbose):
     """Hand the verified-dead ids to `bd reclaim`, one call."""
-    args = ["bd", "reclaim"]
+    command = ["reclaim"]
     for bead_id in ids:
-        args += ["--id", bead_id]
+        command += ["--id", bead_id]
     if verbose:
-        args.append("-v")
-    return run(args)
+        command.append("-v")
+    return run(_bd_args(args, command))
 
 
 def main(argv=None, run=None, now=None, older_than=None, out=None):
@@ -263,10 +282,14 @@ def main(argv=None, run=None, now=None, older_than=None, out=None):
                         help="renew this bead's lease and exit (a worker turn)")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="ask bd for per-lease detail")
+    parser.add_argument("--db", metavar="PATH", default=None,
+                        help="run against this beads database, not the one "
+                             "`bd` resolves from the current directory "
+                             "(rehearsals and tests)")
     args = parser.parse_args(argv)
 
     if args.heartbeat:
-        return run(["bd", "heartbeat", args.heartbeat]).returncode
+        return run(_bd_args(args, ["heartbeat", args.heartbeat])).returncode
 
     if args.older_than is not None:
         try:
@@ -277,7 +300,8 @@ def main(argv=None, run=None, now=None, older_than=None, out=None):
 
     try:
         beads = _json_output(
-            run(["bd", "list", "--status", "in_progress", "--json", "-n", "0"]),
+            run(_bd_args(args, ["list", "--status", "in_progress",
+                                "--json", "-n", "0"])),
             "bd list")
         agents = _json_output(run(["paseo", "ls", "--json"]), "paseo ls")
         workspaces = _json_output(
@@ -308,7 +332,7 @@ def main(argv=None, run=None, now=None, older_than=None, out=None):
         emit(f"reclaimed 0; kept {len(kept)} lease(s) held by live agents")
         return 0
 
-    result = _reclaim(run, [d.bead_id for d in to_reclaim], args.verbose)
+    result = _reclaim(run, args, [d.bead_id for d in to_reclaim], args.verbose)
     if result.returncode != 0:
         emit("bd-safe-reclaim: bd reclaim failed: "
              f"{result.stderr.strip() or result.stdout.strip()}")
