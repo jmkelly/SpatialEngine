@@ -42,14 +42,22 @@ namespace Spatial.Stores.SqlServer.Core;
 /// two rows the next page would re-order.</para>
 ///
 /// <para>
-/// The reductions are here for the same reason (ADR-0133): a <c>COUNT</c>, a
-/// <c>DISTINCT</c> and a <c>GROUP BY</c> are all things T-SQL has, and each one
-/// that inherits a default this contract states the other way round is written
-/// out — the null-placement key and the code-point collation again, over a
-/// group key and over a deduplicated text value this time.</para>
+/// The reductions are here for the same reason (ADR-0133, ADR-0137): a
+/// <c>COUNT</c>, a <c>DISTINCT</c> and a <c>GROUP BY</c> are all things T-SQL
+/// has, and each one that inherits a default this contract states the other way
+/// round is written out — the null-placement key and the code-point collation
+/// again, over a group key and over a deduplicated text value this time. The
+/// last statistic T-SQL has no aggregate spelling for, a percentile, is the one
+/// written as a window function over the partition a group is.</para>
 /// </summary>
 internal static class SqlServerPlanQueries
 {
+    /// <summary>
+    /// The alias of the derived table a percentile is ranked over, and the
+    /// qualifier every expression above it carries (ADR-0137 §2).
+    /// </summary>
+    private const char Derived = 'd';
+
     /// <summary>
     /// The plan read: the projected columns of the rows the plan selects, in
     /// the plan's order, capped.
@@ -119,7 +127,7 @@ internal static class SqlServerPlanQueries
     /// <summary>
     /// The grouped reduction: the group key, one aggregate expression per
     /// statistic, grouped over the key, ordered by the plan's order, and cut to
-    /// the page (ADR-0128, ADR-0133 §4). The <c>ORDER BY</c> is written before
+    /// the page (ADR-0128, ADR-0133 §4, ADR-0137 §2). The <c>ORDER BY</c> is written before
     /// the page clause and never after it: <c>OFFSET</c>/<c>FETCH NEXT</c> is
     /// legal only over an order, and a reduction that lost the plan's order on
     /// the way to the server would answer the groups in the order the scan
@@ -134,11 +142,22 @@ internal static class SqlServerPlanQueries
     /// ordering a group by one of its own columns is a different question); a
     /// group key or a statistic whose kind T-SQL groups or reduces the way the
     /// reference does not (a geometry, which groups by its stored bytes here and
-    /// by its value in the reference); a statistic with no T-SQL aggregate at
-    /// all — a percentile, because T-SQL has no ordered-set aggregate, or an
-    /// envelope, because a rectangle is four reduced coordinates and a polygon
-    /// rather than one aggregate expression; and a clause over the reduced
-    /// groups, which this store does not compile for this dialect.
+    /// by its value in the reference); a statistic T-SQL cannot state at all —
+    /// a percentile over a field it cannot rank against another, or an envelope,
+    /// because a rectangle is four reduced coordinates and a polygon rather than
+    /// one aggregate expression; and a clause over the reduced groups, which
+    /// this store does not compile for this dialect.
+    /// </para>
+    ///
+    /// <para>
+    /// A percentile is the one statistic T-SQL has no <em>aggregate</em> for —
+    /// it is a window function, and a window's ordering column has to be a
+    /// grouped one, which the ranked field is not (error 8120). So a reduction
+    /// that asks for one is written as a derived table the ranks are taken over,
+    /// <c>PARTITION BY</c> the group key, and the grouped statement reduces the
+    /// one value each partition ranked: a partition is a group, so the value it
+    /// ranked is the value that group reports (ADR-0137 §2). A reduction that
+    /// asks for no percentile is the single statement it was.
     /// </para>
     /// </summary>
     public static string? Aggregate(
@@ -165,6 +184,14 @@ internal static class SqlServerPlanQueries
             return null;
         }
 
+        if (groupColumns.Count == 0 && order.Count > 0)
+        {
+            // An ungrouped reduction is one group, so a plan's order over it
+            // has nothing to order and there is no term this statement could
+            // write; a reduction that carries one is finished here.
+            return null;
+        }
+
         if (groupColumns.Count > 0
             && (order.Count == 0 || order.Any(term => !groupColumns.Contains(term.Field, StringComparer.Ordinal))))
         {
@@ -185,24 +212,118 @@ internal static class SqlServerPlanQueries
             return null;
         }
 
-        var expressions = new List<string>(specs.Count);
-        foreach (var spec in specs)
+        var keys = groupColumns.Select(column => Key(column, schema, byteOrderText)).ToArray();
+        var statistics = specs.Select(spec => new Statistic(spec, schema, byteOrderText)).ToArray();
+        var windowed = statistics.Any(statistic => statistic.IsWindowed);
+
+        // A reduction with no percentile reads the table it reduces; one with a
+        // percentile reads a derived table, because a window function cannot be
+        // written over the grouped statement it is a statistic of. Every
+        // expression that survives the derived table therefore names the derived
+        // columns, and a flat one names the table's.
+        var qualifier = windowed ? Derived.ToString() : string.Empty;
+        var windows = new List<string>();
+        var values = new List<string>(specs.Count);
+        foreach (var statistic in statistics)
         {
-            if (new Statistic(spec, schema, byteOrderText).Expression() is not { } expression)
+            if (statistic.IsWindowed)
+            {
+                // The fraction is bound rather than written, so no client text
+                // reaches the statement (ADR-0028), and the alias is the
+                // window's own position — a result name is a client's text and
+                // never becomes an identifier here.
+                if (statistic.Window($"w{windows.Count}", keys, parameters) is not { } window)
+                {
+                    return null;
+                }
+
+                windows.Add(window);
+                // The grouped statement reduces the one value the partition
+                // ranked, and reports it where the request asked for this
+                // statistic: the row is read in the request's order, not in the
+                // order the statement happens to group the two kinds of
+                // statistic into.
+                values.Add($"MAX([{qualifier}].[w{windows.Count - 1}])");
+                continue;
+            }
+
+            if (statistic.Expression(qualifier) is not { } expression)
             {
                 return null;
             }
 
-            expressions.Add(expression);
+            values.Add(expression);
         }
 
-        var keys = groupColumns.Select(column => Key(column, schema, byteOrderText)).ToArray();
-        var selects = keys
-            .Select((key, i) => Alias(key, groupColumns[i]))
-            .Concat(expressions)
-            .ToArray();
+        var source = windowed
+            ? Windowed(dataset, where, groupColumns, keys, statistics, windows)
+            : dataset.QuoteQualified();
+        // The group key as each statement names it: a windowed statement reads
+        // the derived column, which already carries the key expression's
+        // code-point collation, and a flat one reads the expression itself.
+        var projected = windowed
+            ? groupColumns.Select(Quote).ToArray()
+            : keys.Select((key, i) => Alias(key, groupColumns[i])).ToArray();
+        var grouped = windowed ? projected : keys;
         var builder = new StringBuilder("SELECT ")
-            .Append(string.Join(", ", selects))
+            .Append(string.Join(", ", projected.Concat(values)))
+            .Append(" FROM ")
+            .Append(source);
+        if (!windowed && where is not null)
+        {
+            builder.Append(" WHERE ").Append(where);
+        }
+
+        if (groupColumns.Count > 0)
+        {
+            builder.Append(" GROUP BY ").Append(string.Join(", ", grouped));
+            if (order.Count > 0)
+            {
+                // A grouped statement's `ORDER BY` may only name what the `GROUP BY`
+                // groups: a term over the bare column of a text key is a column the
+                // grouping does not contain, and T-SQL refuses the statement. So the
+                // term is written over the group key expression itself.
+                var terms = order.Select(term =>
+                    GroupedTerm(grouped[groupColumns.ToList().IndexOf(term.Field)], term.IsDescending));
+                builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
+            }
+        }
+
+        page.AppendTo(builder, parameters);
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// The derived table a percentile is ranked over: the group key and the
+    /// columns the other statistics reduce, then one window column per
+    /// percentile, each partitioned by the group key. The partition is written
+    /// over the base columns and the <c>GROUP BY</c> over the derived ones,
+    /// because they are the same value read on the two sides of the subquery —
+    /// and it has to be the key expression with its collation, not the bare
+    /// column, or the partition folds <c>"Alpha"</c> onto <c>"alpha"</c> and the
+    /// group is not the reference's group (ADR-0121).
+    /// </summary>
+    private static string Windowed(
+        SqlServerDatasetName dataset,
+        string? where,
+        IReadOnlyList<string> groupColumns,
+        IReadOnlyList<string> keys,
+        IReadOnlyList<Statistic> statistics,
+        IReadOnlyList<string> windows)
+    {
+        // Every field the grouped statement reduces has to be a column of the
+        // derived table, and a field that is both a group key and a reduced one
+        // is carried once, under the key's own expression.
+        var reduced = statistics
+            .Where(statistic => !statistic.IsWindowed && !statistic.IsRowCount)
+            .Select(statistic => statistic.Field!)
+            .Where(field => !groupColumns.Contains(field, StringComparer.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .Select(field => Alias(Quote(field), field));
+        var builder = new StringBuilder("(SELECT ")
+            .Append(string.Join(
+                ", ",
+                keys.Select((key, i) => Alias(key, groupColumns[i])).Concat(reduced).Concat(windows)))
             .Append(" FROM ")
             .Append(dataset.QuoteQualified());
         if (where is not null)
@@ -210,24 +331,7 @@ internal static class SqlServerPlanQueries
             builder.Append(" WHERE ").Append(where);
         }
 
-        if (keys.Length > 0)
-        {
-            builder.Append(" GROUP BY ").Append(string.Join(", ", keys));
-        }
-
-        if (order.Count > 0)
-        {
-            // A grouped statement's `ORDER BY` may only name what the `GROUP BY`
-            // groups: a term over the bare column of a text key is a column the
-            // grouping does not contain, and T-SQL refuses the statement. So the
-            // term is written over the group key expression itself.
-            var terms = order.Select(term =>
-                GroupedTerm(keys[groupColumns.ToList().IndexOf(term.Field)], term.IsDescending));
-            builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
-        }
-
-        page.AppendTo(builder, parameters);
-        return builder.ToString();
+        return builder.Append(") AS ").Append(Derived).ToString();
     }
 
     /// <summary>
@@ -347,12 +451,29 @@ internal static class SqlServerPlanQueries
     /// <summary>
     /// One aggregate expression in the dialect's own spelling, or <c>null</c>
     /// when T-SQL has no aggregate that answers this statistic (ADR-0133 §3).
+    /// <paramref name="qualifier"/> names the table the expression reads
+    /// <em>from</em>, which is the derived table when a percentile is in the
+    /// request and the dataset's own table when none is.
     /// </summary>
     private sealed class Statistic(AggregateSpec spec, IFeatureSchema schema, bool byteOrderText)
     {
-        public string? Expression()
+        /// <summary>The field this statistic reduces, for a fielded statistic.</summary>
+        public string? Field => spec.IsRowCount ? null : spec.Field;
+
+        /// <summary>Whether this statistic reduces every row rather than one field's values.</summary>
+        public bool IsRowCount => spec.IsRowCount;
+
+        /// <summary>
+        /// Whether this statistic is a window function rather than an aggregate:
+        /// T-SQL's percentile is the one statistic with no aggregate spelling
+        /// (ADR-0137 §2).
+        /// </summary>
+        public bool IsWindowed => spec.Statistic
+            is AggregateStatistic.PercentileContinuous or AggregateStatistic.PercentileDiscrete;
+
+        public string? Expression(string qualifier)
         {
-            if (spec.IsRowCount)
+            if (IsRowCount)
             {
                 return "COUNT(*)";
             }
@@ -364,7 +485,7 @@ internal static class SqlServerPlanQueries
             }
 
             var kind = schema[index].Kind;
-            var quoted = Quote(spec.Field);
+            var quoted = Qualified(spec.Field, qualifier);
             return spec.Statistic switch
             {
                 // `COUNT` and `SUM` skip the nulls, and report a null for a
@@ -389,15 +510,49 @@ internal static class SqlServerPlanQueries
                 AggregateStatistic.StdDev => Numeric(kind, quoted) is { } numeric ? $"STDEV({numeric})" : null,
                 // An extreme is the smallest/largest value under the same
                 // comparison every other string here states. A `bit` has no
-                // `MIN`/`MAX` in T-SQL at all.
-                AggregateStatistic.Minimum => Extreme(kind, spec.Field, schema, byteOrderText, "MIN"),
-                AggregateStatistic.Maximum => Extreme(kind, spec.Field, schema, byteOrderText, "MAX"),
-                // T-SQL has no ordered-set aggregate, so a percentile is a
-                // window function over a whole result set and cannot be an
-                // aggregate over one group; the envelope is four reduced
-                // coordinates and a polygon rather than an expression.
+                // `MIN`/`MAX` in T-SQL at all, but it is two integers and the
+                // contract's order over a boolean is false before true — so the
+                // extreme is taken over `0`/`1` and read back as the boolean the
+                // reference reports it as (ADR-0137 §4). A geometry has neither a
+                // comparison T-SQL and .NET share nor a sort key this contract
+                // could state.
+                AggregateStatistic.Minimum => Extreme(kind, spec.Field, schema, byteOrderText, "MIN", qualifier),
+                AggregateStatistic.Maximum => Extreme(kind, spec.Field, schema, byteOrderText, "MAX", qualifier),
+                // The envelope is four reduced coordinates and a polygon rather
+                // than an expression, and the percentiles are written as windows
+                // over the derived table instead.
                 _ => null,
             };
+        }
+
+        /// <summary>
+        /// A percentile as T-SQL spells it — a window function over a partition,
+        /// which is a group — ranked ascending or descending as the statistic
+        /// asked, with the fraction bound rather than written (ADR-0028) and the
+        /// partition written over the group key (ADR-0137 §2).
+        ///
+        /// <para>
+        /// It is a cost and never a different answer for the two cases it is
+        /// refused: a field the dataset does not have, and a field this dialect
+        /// cannot rank against another — T-SQL refuses a percentile whose ordering
+        /// column and its value are of different types (error 402), which every
+        /// text, boolean, geometry, date and GUID field is.
+        /// </para>
+        /// </summary>
+        public string? Window(string alias, string[] partition, List<object?> parameters)
+        {
+            var index = schema.IndexOf(spec.Field);
+            if (index < 0 || Numeric(schema[index].Kind, Quote(spec.Field)) is null)
+            {
+                return null;
+            }
+
+            parameters.Add(spec.PercentileFraction);
+            var name = spec.Statistic == AggregateStatistic.PercentileContinuous ? "PERCENTILE_CONT" : "PERCENTILE_DISC";
+            var fraction = $"@p{parameters.Count - 1}";
+            var direction = spec.PercentileDescending ? "DESC" : "ASC";
+            var window = partition.Length == 0 ? "OVER ()" : $"OVER (PARTITION BY {string.Join(", ", partition)})";
+            return $"{name}({fraction}) WITHIN GROUP (ORDER BY {Quote(spec.Field)} {direction}) {window} AS {Quote(alias)}";
         }
 
         private static string? Numeric(AttributeKind kind, string quoted) => kind switch
@@ -415,10 +570,21 @@ internal static class SqlServerPlanQueries
         /// state.
         /// </summary>
         private static string? Extreme(
-            AttributeKind kind, string column, IFeatureSchema schema, bool byteOrderText, string function) =>
-            kind is AttributeKind.Boolean or AttributeKind.Geometry
-                ? null
-                : $"{function}({Ordered(column, schema, byteOrderText)})";
+            AttributeKind kind,
+            string column,
+            IFeatureSchema schema,
+            bool byteOrderText,
+            string function,
+            string qualifier)
+        {
+            var quoted = Qualified(column, qualifier);
+            return kind switch
+            {
+                AttributeKind.Boolean => $"{function}(CONVERT(int, {quoted}))",
+                AttributeKind.Geometry => null,
+                _ => $"{function}({Ordered(column, schema, byteOrderText, qualifier)})",
+            };
+        }
     }
 
     /// <summary>

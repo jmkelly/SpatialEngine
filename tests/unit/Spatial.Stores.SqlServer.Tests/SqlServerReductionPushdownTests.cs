@@ -54,6 +54,14 @@ public sealed class SqlServerReductionPushdownTests
 
     private const string CityDescending = $"CASE WHEN {CityKey} IS NULL THEN 0 ELSE 1 END, {CityKey} DESC";
 
+    /// <summary>
+    /// The same order written over the <em>derived</em> key of a windowed
+    /// statement: the derived column is the key expression itself, so it
+    /// already carries the code-point collation the partition was taken under,
+    /// and the group, the partition and the order are one value.
+    /// </summary>
+    private const string CityDerivedAscending = "CASE WHEN [city] IS NULL THEN 1 ELSE 0 END, [city] ASC";
+
     [Fact]
     public void A_count_is_the_database_counting_the_restriction_it_pushed()
     {
@@ -170,20 +178,135 @@ public sealed class SqlServerReductionPushdownTests
     }
 
     /// <summary>
-    /// T-SQL has no ordered-set aggregate, so a percentile is a window function
-    /// over a whole result set and not an aggregate over a group: the reduction
-    /// that asks for one is finished here (ADR-0133 §5).
+    /// The one statistic T-SQL has no <em>aggregate</em> for is a percentile: it
+    /// is a window function, so it cannot be written over the statement the
+    /// <c>GROUP BY</c> is about to build (a window's ordering column has to be
+    /// a grouped one, and the ranked field is not grouped — error 8120). It is
+    /// pushed anyway, by ranking the rows in a derived table <c>PARTITION BY</c>
+    /// the group key and reducing the one value each partition produced: a
+    /// partition is a group, so the value a partition ranked is the value that
+    /// group reports. The rest of the reduction is the grouped statement as
+    /// before, over the derived table's columns (ADR-0137 §2).
+    ///
+    /// <para>
+    /// The derived table carries the group key and the columns the other
+    /// statistics reduce, so the <c>GROUP BY</c> and the outer order are written
+    /// over the derived key and the partition is written over the base one —
+    /// they are the same value, the key expression with its code-point
+    /// collation, and a partition that folded <c>"Alpha"</c> onto <c>"alpha"</c>
+    /// would be a group the reference does not have (ADR-0121).
+    /// </para>
     /// </summary>
-    [Theory]
-    [InlineData(AggregateStatistic.PercentileContinuous, "p90")]
-    [InlineData(AggregateStatistic.PercentileDiscrete, "p50")]
-    public void A_percentile_is_reduced_here(AggregateStatistic statistic, string name)
+    [Fact]
+    public void A_percentile_is_a_window_function_over_the_partition_a_group_is()
+    {
+        var parameters = new List<object?> { 1000L };
+        var sql = SqlServerPlanQueries.Aggregate(
+            Dataset,
+            where: "[population] > @p0",
+            ["city"],
+            [new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
+             new AggregateSpec(AggregateStatistic.PercentileContinuous, "population", "p90", 0.9)],
+            [new OrderTerm("city")],
+            Schema,
+            byteOrderText: false,
+            parameters,
+            having: null,
+            paging: new SqlServerPlanQueries.Paging(5, 10));
+
+        Assert.NotNull(sql);
+        Assert.Equal(
+            "SELECT [city], COUNT(*), MAX([d].[w0])"
+            + $" FROM (SELECT {CityKey} AS [city],"
+            + " PERCENTILE_CONT(@p1) WITHIN GROUP (ORDER BY [population] ASC)"
+            + $" OVER (PARTITION BY {CityKey}) AS [w0]"
+            + " FROM [dbo].[places] WHERE [population] > @p0) AS d"
+            + " GROUP BY [city]"
+            + $" ORDER BY {CityDerivedAscending}"
+            + " OFFSET @p2 ROWS FETCH NEXT @p3 ROWS ONLY",
+            sql);
+
+        // The fraction is a bound value, not text, and it is numbered after the
+        // restriction the plan had already bound and before the page's two.
+        Assert.Equal([1000L, 0.9, 10, 5], parameters);
+    }
+
+    /// <summary>
+    /// An ungrouped reduction is one group, so its percentile is ranked over
+    /// the whole selection — <c>OVER ()</c>, with no partition — and the grouped
+    /// statement over it has no <c>GROUP BY</c> at all. The discrete form is the
+    /// dataset value at the rank <c>ceil(f × n)</c>, which is what
+    /// <c>PERCENTILE_DISC</c> answers, and a descending rank is a descending
+    /// <c>WITHIN GROUP</c> — the same shape the PostGIS statement writes.
+    /// </summary>
+    [Fact]
+    public void An_ungrouped_percentile_is_ranked_over_the_whole_selection()
+    {
+        var parameters = new List<object?>();
+        var sql = SqlServerPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            groupColumns: [],
+            [new AggregateSpec(AggregateStatistic.Average, "population", "mean"),
+             new AggregateSpec(AggregateStatistic.PercentileDiscrete, "population", "p50", 0.5, PercentileDescending: true)],
+            order: [],
+            Schema,
+            byteOrderText: false,
+            parameters);
+
+        Assert.NotNull(sql);
+        Assert.Equal(
+            "SELECT SUM(CONVERT(float, [d].[population])) / COUNT([d].[population]), MAX([d].[w0])"
+            + " FROM (SELECT [population],"
+            + " PERCENTILE_DISC(@p0) WITHIN GROUP (ORDER BY [population] DESC) OVER () AS [w0]"
+            + " FROM [dbo].[places]) AS d",
+            sql);
+        Assert.Equal([0.5], parameters);
+    }
+
+    /// <summary>
+    /// The group row is read in the order the request asked its statistics in,
+    /// not in the order the statement happens to group the two kinds of
+    /// statistic into — so a percentile asked for <em>before</em> an aggregate
+    /// is reported where the request put it, and the pushed value is the value
+    /// at that position. It is the one shape here a wrong answer hides: the row
+    /// is read positionally, so a percentile reported under a neighbour's name
+    /// is a plausible-looking number in the wrong column.
+    /// </summary>
+    [Fact]
+    public void A_percentile_is_reported_where_the_request_asked_for_it()
+    {
+        var sql = SqlServerPlanQueries.Aggregate(
+            Dataset,
+            where: null,
+            ["population"],
+            [new AggregateSpec(AggregateStatistic.PercentileContinuous, "population", "p90", 0.9),
+             new AggregateSpec(AggregateStatistic.Sum, "population", "total")],
+            [new OrderTerm("population")],
+            Schema,
+            byteOrderText: false,
+            new List<object?>());
+
+        Assert.NotNull(sql);
+        Assert.Contains(
+            "SELECT [population], MAX([d].[w0]), SUM(CONVERT(bigint, [d].[population])) FROM",
+            sql);
+    }
+
+    /// <summary>
+    /// A percentile ranks one column against another, and T-SQL refuses the two
+    /// unless they are numbers (error 402), so a percentile over a text field
+    /// is a cost and not a statement: the reduction is finished here with the
+    /// reference (ADR-0137 §3).
+    /// </summary>
+    [Fact]
+    public void A_percentile_of_a_field_T_SQL_cannot_rank_is_reduced_here()
     {
         Assert.Null(SqlServerPlanQueries.Aggregate(
             Dataset,
             where: null,
             ["city"],
-            [new AggregateSpec(statistic, "population", name, 0.9)],
+            [new AggregateSpec(AggregateStatistic.PercentileContinuous, "city", "p90", 0.9)],
             [new OrderTerm("city")],
             Schema,
             byteOrderText: false,
@@ -267,19 +390,30 @@ public sealed class SqlServerReductionPushdownTests
         Assert.Contains("MAX(CONVERT(nvarchar(max), [city]) COLLATE Latin1_General_100_BIN2)", sql);
     }
 
-    /// <summary>T-SQL has no <c>MIN</c>/<c>MAX</c> over a <c>bit</c>.</summary>
+    /// <summary>
+    /// T-SQL has no <c>MIN</c>/<c>MAX</c> over a <c>bit</c> — the type is not
+    /// orderable there — but it is two integers, and the contract's order over a
+    /// boolean is false before true, which is <c>0</c> before <c>1</c>. So the
+    /// extreme is a minimum over the column's own integers and the value is
+    /// mapped back to the boolean the reference reports it as (ADR-0137 §4).
+    /// </summary>
     [Fact]
-    public void A_boolean_extreme_is_reduced_here()
+    public void A_boolean_extreme_is_a_minimum_over_the_bits_own_integers()
     {
-        Assert.Null(SqlServerPlanQueries.Aggregate(
+        var sql = SqlServerPlanQueries.Aggregate(
             Dataset,
             where: null,
             ["city"],
-            [new AggregateSpec(AggregateStatistic.Minimum, "flag", "lo")],
+            [new AggregateSpec(AggregateStatistic.Minimum, "flag", "lo"),
+             new AggregateSpec(AggregateStatistic.Maximum, "flag", "hi")],
             [new OrderTerm("city")],
             Schema,
             byteOrderText: false,
-            new List<object?>()));
+            new List<object?>());
+
+        Assert.NotNull(sql);
+        Assert.Contains("MIN(CONVERT(int, [flag]))", sql);
+        Assert.Contains("MAX(CONVERT(int, [flag]))", sql);
     }
 
     /// <summary>
