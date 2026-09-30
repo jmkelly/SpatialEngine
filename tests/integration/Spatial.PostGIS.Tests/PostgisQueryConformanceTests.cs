@@ -3,6 +3,7 @@ using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.QueryConformance;
+using Spatial.Querying;
 using Spatial.Stores.PostGIS;
 using Spatial.Stores.PostGIS.Configuration;
 
@@ -33,6 +34,59 @@ public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisContaine
 
         await QueryConformanceSuite.RunAsync(context.Store, dataset);
     }
+
+    /// <summary>
+    /// A composite order over a table that <em>has</em> a primary key, which
+    /// is the one shape where this store's <c>ORDER BY</c> reaches SQL at all: a
+    /// dataset with no identity has no tie-break to append, so the plan is
+    /// ordered by the reference over the rows the read returned (ADR-0097).
+    /// Every requested key is written into the statement, each a tie-break over
+    /// the one before it, so the pushed sequence is the reference's composite
+    /// order (ADR-0127) — the case the shared suite cannot reach here, because
+    /// it compares feature <em>identities</em> and this reader names a pushed
+    /// row by its ordinal whenever the identity column is one the plan already
+    /// reads (SpatialEngine-u2x.55, a separate defect). The rows are therefore
+    /// compared by their own values.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_pushed_composite_order_answers_the_reference_row_for_row()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        const string dataset = "public.keyed";
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        // `CreateAsync` makes a table without a primary key, so the table is
+        // made by hand: a key is the one thing a pushed order needs and the
+        // sample-based create does not add.
+        await context.ExecuteAsync(
+            $"DROP TABLE IF EXISTS {dataset}; CREATE TABLE {dataset} ("
+            + "\"fid\" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, "
+            + "\"id\" bigint, \"category\" text NULL, \"score\" bigint NULL, "
+            + "\"ratio\" double precision NULL, \"name\" text NULL, \"shape\" geometry(Geometry, 4326))");
+        await context.Store.WriteAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features));
+
+        var scan = await context.Store.ScanAsync(dataset);
+        var rows = scan.SelectMany(batch => batch.Features).ToList();
+        var plan = new FeatureQuery(Order: [new OrderTerm("category"), new OrderTerm("score", SortDirection.Descending)]);
+
+        // Category first (ordinal, nulls last) and the score only within a
+        // category: the two keys order the answer against each other, so a
+        // statement that applied only the second would return a different one.
+        Assert.Equal(["3", "4", "6", "2", "1", "5"], Ids(FeaturePlanExecutor.Execute(scan[0].Schema, rows, plan)));
+        Assert.Equal(
+            ["3", "4", "6", "2", "1", "5"],
+            Ids(await context.Store.QueryAsync(dataset, plan)));
+
+        // And the same composite order cut into a page, which is the shape a
+        // large layer is read in: the page is a prefix of the same sequence.
+        var paged = await context.Store.QueryAsync(dataset, plan with { Limit = 3, Offset = 1 });
+        Assert.Equal(["4", "6", "2"], Ids(paged));
+        Assert.Equal(6, paged.TotalCount);
+
+        await context.ExecuteAsync($"DROP TABLE IF EXISTS {dataset}");
+    }
+
+    private static string[] Ids(FeatureQueryPage page) =>
+        [.. page.Features.Select(feature => feature["id"].Int64Value.ToString(System.Globalization.CultureInfo.InvariantCulture))];
 
     [SkippableFact]
     public async Task A_paged_read_returns_the_page_the_store_was_asked_for_and_the_rest_as_a_cursor()

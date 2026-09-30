@@ -99,21 +99,17 @@ internal sealed class SqlServerPlanReader(SqlServerStorage storage, SqlServerCat
     /// </para>
     ///
     /// <para>
-    /// A plan that asked for <em>several</em> keys is finished in process too,
-    /// and this one is a gap rather than a dialect rule: the shared reference
-    /// applies each requested key with a fresh <c>OrderBy</c>, so the order it
-    /// computes over a composite plan is the <em>last</em> key's, and a pushed
-    /// composite order — which is what the contract's own pipeline describes,
-    /// and what every other dialect writes — would be a different answer from
-    /// the one this store returns today. So the page is pushed for the orders
-    /// the two agree on and the rest is finished by the reference until the
-    /// reference's composite order is fixed (SpatialEngine-u2x.54, the bead this
-    /// one found). The two agree on every single-key order, which is the case
-    /// every paged read in practice uses.
+    /// A plan that asked for <em>several</em> keys is pushed, and each key is a
+    /// tie-break over the ones before it: that is the order the reference
+    /// computes (ADR-0127) and the order this dialect writes, so the two agree
+    /// on a composite plan as they always agreed on a single-key one. It was
+    /// finished in process while the reference applied each key with a fresh
+    /// <c>OrderBy</c> and so computed the <em>last</em> key's order
+    /// (SpatialEngine-u2x.54, which fixed the reference); the temporary
+    /// accommodation is gone.
     /// </para>
     /// </summary>
-    internal static bool Pushed(FeatureQuery query, IReadOnlyList<string>? order) =>
-        order is not null && query.Order is { Count: 1 };
+    internal static bool Pushed(FeatureQuery query, IReadOnlyList<string>? order) => order is not null;
 
     /// <summary>
     /// The restriction a plan pushes into the <c>WHERE</c>: the identity

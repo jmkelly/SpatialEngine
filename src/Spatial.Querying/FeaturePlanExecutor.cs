@@ -156,7 +156,8 @@ public static class FeaturePlanExecutor
     }
 
     /// <summary>
-    /// Applies the plan's sort keys, then the mandatory feature-identity
+    /// Applies the plan's sort keys in the order the plan names them, each one
+    /// a tie-break over the keys before it, then the mandatory feature-identity
     /// tie-break, so the total order is deterministic: two features whose
     /// requested keys tie are always separated, and a page boundary can never
     /// fall between two rows the next page would re-order. With no requested
@@ -170,17 +171,14 @@ public static class FeaturePlanExecutor
         }
 
         var keys = order.Select(term => Key(schema, term)).ToArray();
-        IOrderedEnumerable<Feature>? ordered = null;
-        foreach (var key in keys)
+        IOrderedEnumerable<Feature> ordered = Sort(features, feature => feature[keys[0].Index], keys[0].Term);
+        for (var i = 1; i < keys.Length; i++)
         {
-            var index = key.Index;
-            var selector = new Func<Feature, AttributeValue>(feature => feature[index]);
-            ordered = ordered is null
-                ? Sort(features, selector, key.Term)
-                : Sort(ordered, selector, key.Term);
+            var index = keys[i].Index;
+            ordered = ThenSort(ordered, feature => feature[index], keys[i].Term.IsDescending);
         }
 
-        return ThenSort(ordered!, Identity, descending: false).ToList();
+        return ThenSort(ordered, Identity, descending: false).ToList();
     }
 
     private static Func<Feature, AttributeValue> Identity => feature => AttributeValue.FromString(feature.Id.Value);
@@ -192,9 +190,10 @@ public static class FeaturePlanExecutor
             : features.OrderBy(selector, AttributeValueComparer.Instance);
 
     /// <summary>
-    /// Appends one key to an existing order. It has to be a <em>then</em>-key:
-    /// an <c>OrderBy</c> here would discard the keys already applied and the
-    /// tie-break would become the only order.
+    /// Appends one key to an existing order, descending when the term says so.
+    /// It has to be a <em>then</em>-key: an <c>OrderBy</c> here would discard the
+    /// keys already applied, and a composite order would collapse to whichever
+    /// key was applied last (ADR-0127).
     /// </summary>
     private static IOrderedEnumerable<Feature> ThenSort(
         IOrderedEnumerable<Feature> ordered, Func<Feature, AttributeValue> selector, bool descending) =>
