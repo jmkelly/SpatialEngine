@@ -61,8 +61,10 @@ public sealed class PostgisEditStore : IFeatureEditStore
             }
 
             await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-            return await PostgisFeatureDeletes.DeleteAsync(
+            var outcomes = await PostgisFeatureDeletes.DeleteAsync(
                 session, name, description, featureIds, await _store.ByteOrderTextAsync(description, cancellationToken), cancellationToken);
+            await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
+            return outcomes;
         }
         finally
         {
@@ -105,7 +107,7 @@ public sealed class PostgisEditStore : IFeatureEditStore
             }
 
             await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-            return await EditEachAsync(
+            var outcomes = await EditEachAsync(
                 session,
                 new BatchEdit(
                     name,
@@ -118,6 +120,8 @@ public sealed class PostgisEditStore : IFeatureEditStore
                     await _store.ByteOrderTextAsync(description, cancellationToken)),
                 apply,
                 cancellationToken);
+            await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
+            return outcomes;
         }
         finally
         {
@@ -127,6 +131,23 @@ public sealed class PostgisEditStore : IFeatureEditStore
             _store.ForgetDescription(name);
         }
     }
+
+    /// <summary>
+    /// Moves the dataset's content version when the batch changed at least one
+    /// feature (ADR-0129): a partially applied batch still changed something,
+    /// a batch where every feature failed changed nothing and leaves the cached
+    /// tiles valid. The bump runs on the session's own connection and
+    /// transaction, so inside a transaction handle a rollback restores the
+    /// features and the version together.
+    /// </summary>
+    private static Task BumpWhenChangedAsync(
+        PostgisEditSession session,
+        PostgisDatasetName name,
+        IReadOnlyList<FeatureEditOutcome> outcomes,
+        CancellationToken cancellationToken) =>
+        outcomes.Any(outcome => outcome.Succeeded)
+            ? PostgisContentVersions.BumpAsync(session.Connection, session.Transaction, name, cancellationToken)
+            : Task.CompletedTask;
 
     /// <summary>One edit batch: the target dataset, its description, the features,
     /// whether they are updated, and whether this database already compares

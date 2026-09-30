@@ -70,6 +70,10 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
             connection, transaction, SqlServerQueries.CreateTable(name, sample.Schema), [], cancellationToken);
         await CreateIndexesAsync(connection, transaction, name, sample.Schema, cancellationToken);
         await RecordSridAsync(connection, transaction, name, srid, cancellationToken);
+        // In the same transaction as the table: a dataset that was created
+        // carries a version of its own, so a cache never serves a tile drawn
+        // before the dataset existed (ADR-0129).
+        await SqlServerContentVersions.BumpAsync(connection, transaction, name, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return name.Qualified;
     }

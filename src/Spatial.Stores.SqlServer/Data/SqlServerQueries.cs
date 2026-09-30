@@ -217,6 +217,36 @@ internal static class SqlServerQueries
     public static string DatasetSrid() =>
         "IF OBJECT_ID(N'spatial_datasets', N'U') IS NOT NULL SELECT TOP 1 srid FROM spatial_datasets WHERE dataset = @p0";
 
+    /// <summary>
+    /// The provider-owned content-version sidecar (ADR-0129): a counter per
+    /// dataset, bumped in the transaction of the write that changed the data,
+    /// so a derived cache such as the tile cache can key on it. Created
+    /// idempotently rather than behind a process-local flag, because the read
+    /// path and the write paths are separate singletons and a second process
+    /// would not share the flag.
+    /// </summary>
+    public static string EnsureVersionTable() =>
+        "IF OBJECT_ID(N'spatial_dataset_versions', N'U') IS NULL CREATE TABLE spatial_dataset_versions "
+        + "(dataset nvarchar(300) NOT NULL PRIMARY KEY, version bigint NOT NULL)";
+
+    /// <summary>
+    /// Moves one dataset's version: increment the row, or insert the first one.
+    /// <c>MERGE</c> would say this in one statement, and is avoided because it
+    /// has known correctness bugs; update-then-insert under the write's own
+    /// transaction is the same answer without them.
+    /// </summary>
+    public static string BumpVersion() =>
+        "UPDATE spatial_dataset_versions SET version = version + 1 WHERE dataset = @p0; "
+        + "IF @@ROWCOUNT = 0 INSERT INTO spatial_dataset_versions (dataset, version) VALUES (@p0, 1);";
+
+    /// <summary>
+    /// Reads one dataset's version; no row (and no sidecar) means the engine
+    /// has never written it, which the caller reports as the unversioned token.
+    /// </summary>
+    public static string SelectVersion() =>
+        "IF OBJECT_ID(N'spatial_dataset_versions', N'U') IS NOT NULL "
+        + "SELECT TOP 1 version FROM spatial_dataset_versions WHERE dataset = @p0";
+
     /// <summary>The planner's row-count estimate for one table, from the partition statistics.</summary>
     public static string RowEstimate() =>
         "SELECT ISNULL(SUM(ps.row_count), 0) "

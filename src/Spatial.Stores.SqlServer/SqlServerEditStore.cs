@@ -59,7 +59,9 @@ public sealed class SqlServerEditStore : IFeatureEditStore
         }
 
         await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-        return await SqlServerFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
+        var outcomes = await SqlServerFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
+        await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
+        return outcomes;
     }
 
     private Task<IReadOnlyList<FeatureEditOutcome>> EditBatchAsync(
@@ -93,8 +95,27 @@ public sealed class SqlServerEditStore : IFeatureEditStore
         }
 
         await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-        return await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
+        var outcomes = await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
+        await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
+        return outcomes;
     }
+
+    /// <summary>
+    /// Moves the dataset's content version when the batch changed at least one
+    /// feature (ADR-0129): a partially applied batch still changed something,
+    /// a batch where every feature failed changed nothing and leaves the cached
+    /// tiles valid. The bump runs on the session's own connection and
+    /// transaction, so inside a transaction handle a rollback restores the
+    /// features and the version together.
+    /// </summary>
+    private static Task BumpWhenChangedAsync(
+        SqlServerEditSession session,
+        SqlServerDatasetName name,
+        IReadOnlyList<FeatureEditOutcome> outcomes,
+        CancellationToken cancellationToken) =>
+        outcomes.Any(outcome => outcome.Succeeded)
+            ? SqlServerContentVersions.BumpAsync(session.Connection, session.Transaction, name, cancellationToken)
+            : Task.CompletedTask;
 
     /// <summary>One edit batch: the target dataset, its description, the features and whether they are updated.</summary>
     private sealed record BatchEdit(

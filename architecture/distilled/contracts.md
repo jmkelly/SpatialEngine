@@ -145,6 +145,14 @@ render's datasets into the one token the tile cache key carries. The version
 is not an existence check (an unknown dataset reports the unversioned token
 and still fails at read time) and callers never parse it.
 
+A durable store keeps the token in the database, not in process: the
+PostGIS and SQL Server stores report a counter row bumped inside the
+write's own transaction, so every host reading that database sees the
+same version (ADR-0129). A dataset the engine has never written has no
+row and reports the unversioned token — as does a read that cannot see
+the counter at all, so a locked-down reader degrades to the old
+behaviour rather than failing a render.
+
 **Spelling and ladder.** `Catalogue` = datasets in one store
 (`IDataCatalogue`, `IRasterCatalogue`, `GET /api/catalogue`); `Registry` =
 stores and maps across the engine (`IStoreRegistry`, `IMapRegistry`).

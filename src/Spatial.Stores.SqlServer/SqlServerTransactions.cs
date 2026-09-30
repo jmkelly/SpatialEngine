@@ -86,9 +86,19 @@ internal sealed class SqlServerTransactions(SqlServerStorage storage) : IAsyncDi
 internal sealed record SqlServerTransactionEntry(SqlConnection Connection, SqlTransaction Transaction)
 {
     /// <summary>Appends a batch inside this transaction.</summary>
-    public Task<int> WriteAsync(
-        SqlServerDatasetName name, DatasetDescription description, FeatureBatch batch, CancellationToken cancellationToken) =>
-        SqlServerWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
+    public async Task<int> WriteAsync(
+        SqlServerDatasetName name, DatasetDescription description, FeatureBatch batch, CancellationToken cancellationToken)
+    {
+        var count = await SqlServerWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
+        if (count > 0)
+        {
+            // On this transaction's connection and transaction, so a rollback
+            // restores the data and the version together (ADR-0129).
+            await SqlServerContentVersions.BumpAsync(Connection, Transaction, name, cancellationToken);
+        }
+
+        return count;
+    }
 
     /// <summary>Commits or rolls back, then always releases the connection.</summary>
     public async Task<bool> CompleteAsync(bool commit, CancellationToken cancellationToken)

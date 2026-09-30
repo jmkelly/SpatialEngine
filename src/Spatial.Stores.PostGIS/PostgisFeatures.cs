@@ -139,6 +139,13 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
         await using var txn = await connection.BeginTransactionAsync(cancellationToken);
         var count = await PostgisWriteOperations.WriteOnAsync(
             connection, txn, name, description, batch, cancellationToken);
+        if (count > 0)
+        {
+            // In this transaction, so the version moves with the rows or not at
+            // all (ADR-0129).
+            await PostgisContentVersions.BumpAsync(connection, txn, name, cancellationToken);
+        }
+
         await txn.CommitAsync(cancellationToken);
         return count;
     }

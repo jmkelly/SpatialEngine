@@ -77,6 +77,10 @@ internal sealed class PostgisCatalogue(PostgisStorage storage)
         await PostgisDataStore.ExecuteNonQueryAsync(
             connection, transaction, PostgisQueries.CreateTable(name, sample.Schema, srid, geometryTypes), [], cancellationToken);
         await CreateIndexesAsync(connection, transaction, name, sample.Schema, cancellationToken);
+        // In the same transaction as the table: a dataset that was created
+        // carries a version of its own, so a cache never serves a tile drawn
+        // before the dataset existed (ADR-0129).
+        await PostgisContentVersions.BumpAsync(connection, transaction, name, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         // A table this store just created is a table it has never described:
         // whatever the store held for this name was a different table (ADR-0122).

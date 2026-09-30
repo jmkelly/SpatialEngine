@@ -128,6 +128,9 @@ public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
             throw SpatialException.BadArguments("An ingest requires at least one feature.");
         }
 
+        // Inside the load's own transaction, so a load that rolls back leaves
+        // the version where it was (ADR-0129).
+        await SqlServerContentVersions.BumpAsync(connection, transaction, plan.Dataset, cancellationToken).ConfigureAwait(false);
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return loaded;
     }
@@ -146,6 +149,9 @@ public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
             await LoadPageAsync(connection, transaction, insert, plan, page, cancellationToken);
         }
 
+        // Inside the load's own transaction, so a load that rolls back leaves
+        // the version where it was (ADR-0129).
+        await SqlServerContentVersions.BumpAsync(connection, transaction, plan.Dataset, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
