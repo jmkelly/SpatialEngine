@@ -61,6 +61,54 @@ public sealed class EsriUnitsTests
         Assert.False(EsriUnits.TryGetAngular(code, out _, out _));
     }
 
+    [Theory]
+    // The REST JS client allowlist research (conformance-sources.md T9)
+    // records `units=esriSRUnit_Meter`, so the symbolic spelling a real
+    // client sends resolves onto the same curated codes as the numbers.
+    [InlineData("esriSRUnit_Meter", 9001)]
+    [InlineData("esriSRUnit_Foot", 9002)]
+    [InlineData("esriSRUnit_Foot_US", 9003)]
+    [InlineData("esriSRUnit_Fathom", 9014)]
+    [InlineData("esriSRUnit_NauticalMile", 9030)]
+    [InlineData("esriSRUnit_Kilometer", 9036)]
+    [InlineData("esriSRUnit_Mile", 9093)]
+    [InlineData("esriSRUnit_Yard", 9096)]
+    [InlineData("esriSRUnit_Chain", 9097)]
+    [InlineData("esriSRUnit_Degree", 9102)]
+    [InlineData("esriSRUnit_Radian", 9101)]
+    public void A_symbolic_esri_name_resolves_to_its_curated_code(string symbolicName, int expected)
+    {
+        Assert.True(EsriUnits.TryGetBySymbolicName(symbolicName, out var code));
+        Assert.Equal(expected, code);
+    }
+
+    [Fact]
+    public void A_symbolic_name_is_matched_case_insensitively()
+    {
+        Assert.True(EsriUnits.TryGetBySymbolicName("esrisrunit_meter", out var code));
+
+        Assert.Equal(9001, code);
+    }
+
+    [Theory]
+    [InlineData("esriSRUnit_Furlong")]
+    [InlineData("esriSRUnit_")]
+    [InlineData("Meter")]
+    [InlineData("9001")]
+    public void A_name_outside_the_curated_table_misses(string symbolicName)
+    {
+        Assert.False(EsriUnits.TryGetBySymbolicName(symbolicName, out _));
+    }
+
+    [Fact]
+    public void A_curated_code_reports_its_symbolic_name()
+    {
+        Assert.True(EsriUnits.TryGetSymbolicName(9001, out var symbolicName));
+        Assert.Equal("esriSRUnit_Meter", symbolicName);
+
+        Assert.False(EsriUnits.TryGetSymbolicName(424242, out _));
+    }
+
     [Fact]
     public void The_supported_list_names_the_anchor_codes()
     {
@@ -68,5 +116,9 @@ public sealed class EsriUnitsTests
 
         Assert.Contains("9001", supported, StringComparison.Ordinal);
         Assert.Contains("9102", supported, StringComparison.Ordinal);
+
+        // Both spellings are named, so a client that sent the wrong one is
+        // told the right one rather than left guessing.
+        Assert.Contains("esriSRUnit_Meter", supported, StringComparison.Ordinal);
     }
 }

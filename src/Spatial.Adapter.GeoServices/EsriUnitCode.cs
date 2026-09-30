@@ -16,13 +16,25 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class EsriUnitCode
 {
-    /// <summary>Parses a numeric <c>esriSRUnitType</c> code against the curated table.</summary>
+    /// <summary>
+    /// Parses a <c>esriSRUnitType</c> unit code against the curated table in
+    /// either spelling: the numeric code, or the <c>esriSRUnit_*</c> symbolic
+    /// name a real client sends (SpatialEngine-m3q; conformance-sources.md
+    /// T9 records <c>units=esriSRUnit_Meter</c>). Both land on the same code,
+    /// so the Geometry Service's <c>unit</c> and the query's <c>units</c>
+    /// stay one surface.
+    /// </summary>
     internal static int Parse(string raw, string parameterName)
     {
         if (!int.TryParse(raw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var code))
         {
+            if (EsriUnits.TryGetBySymbolicName(raw, out code))
+            {
+                return code;
+            }
+
             throw GeoServicesErrors.Invalid(
-                $"'{parameterName}' must be a numeric Esri unit code, got '{raw}'. Supported: {EsriUnits.DescribeSupported()}.");
+                $"'{parameterName}' must be a numeric esriSRUnitType code or an esriSRUnit_* name, got '{raw}'. Supported: {EsriUnits.DescribeSupported()}.");
         }
 
         if (!EsriUnits.IsAngular(code) && !EsriUnits.TryGetLinear(code, out _, out _)

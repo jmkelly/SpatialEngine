@@ -519,6 +519,39 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
+    public async Task Buffer_measures_a_symbolic_unit_name_like_its_code()
+    {
+        // The same two spellings the query's `units` takes: the shared
+        // parse means the Geometry Service cannot drift from it
+        // (ADR-0035 §4, ADR-0085).
+        var named = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":3857}}]"""),
+            ("distances", "1000"),
+            ("unit", "esriSRUnit_Meter"));
+        var numeric = await DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0,"spatialReference":{"wkid":3857}}]"""),
+            ("distances", "1000"),
+            ("unit", "9001"));
+
+        var radius = named.GetProperty("geometries")[0].GetProperty("rings")[0];
+        Assert.Equal(numeric.GetProperty("geometries")[0].GetProperty("rings")[0].ToString(), radius.ToString());
+        Assert.Contains("1000", radius.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Buffer_names_the_two_spellings_for_an_unknown_unit()
+    {
+        var exception = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("buffer",
+            ("geometries", """[{"x":0,"y":0}]"""),
+            ("distances", "1"),
+            ("unit", "esriSRUnit_Furlong")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, exception.Code);
+        Assert.Contains("numeric esriSRUnitType code or an esriSRUnit_* name", exception.Message);
+        Assert.Contains("esriSRUnit_Meter", exception.Message);
+    }
+
+    [Fact]
     public async Task Buffer_serves_a_linear_unit_against_a_geographic_crs()
     {
         // The shape of the request clients actually send: metres against a
