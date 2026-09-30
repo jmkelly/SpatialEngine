@@ -340,6 +340,16 @@ Ordered by dependency:
   is now `Touches`, and a line crossing a feature is no longer `Touches`
   (the envelope approximation called a crossing line's intersection
   "degenerate" and rejected it only as a containment).
+- Serving status update: `Overlaps` and `Crosses` are keyed on the pair's
+  *dimension pair*, not on which side is higher (SpatialEngine-u2x.56):
+  `Overlaps` is `T*T***T**` (A/A) and `1*T***T**` (L/L) — the line/line
+  interiors have to meet in dimension one — and `Crosses` is `T**T*****`
+  (A/L), `T*T******` (L/A) and `0********` (L/L) — meeting in dimension
+  zero. One pattern across both same-dimension cases read two crossing lines
+  (`0F1FF0102`) as an overlap, and gating equal dimensions out of `Crosses`
+  meant that same pair never crossed. A pair the reference does not relate
+  at those dimensions reads false. `Contains`, `Within`, `Touches` and
+  `Intersects` are unchanged.
 - Serving status update: `Touches` is the three OGC touches masks as one
   dimension-free union (`FT*******`/`F**T*****`/`F***T****`,
   SpatialEngine-u2x.35), so a point or line on the other's boundary is
