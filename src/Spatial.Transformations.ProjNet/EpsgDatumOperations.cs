@@ -103,6 +103,16 @@ internal static class EpsgDatumOperations
         // transformation graph entirely - and clipping the east bound at 180
         // would keep the node but leave registered ground west of the
         // antimeridian uncovered, which is where the Chatham Islands are.
+        // The parameters of 1565 are worth stating too, because they are the
+        // answer to "why does this datum serve no transformation": the method
+        // is EPSG:9603 "Geocentric translations (geog2D domain)" and
+        // tx = ty = tz = 0, with no rotations and no scale difference. The
+        // registry registers NZGD2000 against WGS 84 as a shift that moves
+        // nothing, at the 1.0 m its accuracy states, so the vendored WKT
+        // carries no TOWGS84 node and there are no parameters to transcribe
+        // into one. The pair is the identity, and ADR-0087 §2 says a pair
+        // whose composed shift is the identity has no operation to publish -
+        // the same answer ETRS89 and NAD83 get, and for the same reason.
         new(6167, "NZGD2000", "New Zealand Geodetic Datum 2000", 1.0, "New Zealand",
             [[160.6, -55.95, 180.0, -25.88], [-180.0, -55.95, -171.2, -25.88]], 1565, 1175, "New Zealand"),
     ];
