@@ -19,17 +19,18 @@ Nine checks, all deterministic:
 
   1. `adr-register`          every record has a current register row  (shared)
   2. `front-matter`          one metadata schema, well formed, on all (shared)
-  3. `adr-citation`          every `ADR-NNNN` cited resolves         (shared)
-  4. `digest-staleness`      a `distilled/*.md` older than a record it cites
-  5. `dead-doc-link`         every relative link in a doc resolves
-  6. `skill-reference`       every path a SKILL.md cites resolves
-  7. `context-bloat`         >200 lines in an AGENTS.md or a SKILL.md
-  8. `init-fossil`           a hand-written doc with a single commit
-  9. `instruction-conflict`  one gate noun with two referents; lint leakage
+  3. `adr-shape`             a record is one decision, in shape and in budget (shared)
+  4. `adr-citation`          every `ADR-NNNN` cited resolves         (shared)
+  5. `digest-staleness`      a `distilled/*.md` older than a record it cites
+  6. `dead-doc-link`         every relative link in a doc resolves
+  7. `skill-reference`       every path a SKILL.md cites resolves
+  8. `context-bloat`         >200 lines in an AGENTS.md or a SKILL.md
+  9. `init-fossil`           a hand-written doc with a single commit
+ 10. `instruction-conflict`  one gate noun with two referents; lint leakage
 
-Checks 1-3 are **read out of `tools/arch-index.py`**, not reimplemented: the
-register row, the record schema and the dangling citation already have one
-implementation, one set of findings and a gate — every lane of
+Checks 1-4 are **read out of `tools/arch-index.py`**, not reimplemented: the
+register row, the record schema, the record's shape (ADR-0150) and the dangling
+citation already have one implementation, one set of findings and a gate — every lane of
 `eng/verify.sh` runs `arch-index.py --check` (ADR-0141). This audit reports them
 so the queue is one list, and says on each finding that the gate already fails
 on it. Two implementations of "is the register current" would be two answers
@@ -217,6 +218,11 @@ def shared_findings(root: Path) -> list[dict]:
     for message in arch_index.corpus_findings(root, corpus):
         findings.append(finding(
             "front-matter", _first_path(root, message), 0, message, "high",
+            shared=True, gate=gate,
+        ))
+    for message in arch_index.shape_findings(root, corpus):
+        findings.append(finding(
+            "adr-shape", _first_path(root, message), 0, message, "high",
             shared=True, gate=gate,
         ))
     for message in arch_index.dangling_citations(root, corpus):
@@ -748,6 +754,7 @@ def _command_of(line: str, name: str) -> str:
 CHECKS = (
     ("adr-register", "every decision record has a current register row", "high", True),
     ("front-matter", "one metadata schema, well formed, on every record", "high", True),
+    ("adr-shape", "a record is one decision: closed sections, in order, in budget", "high", True),
     ("adr-citation", "every `ADR-NNNN` cited resolves to a record", "high", True),
     ("digest-staleness", "a distilled digest is not older than a record it cites", "medium", False),
     ("dead-doc-link", "every relative link between docs resolves", "medium", False),
@@ -760,7 +767,7 @@ CHECKS = (
 
 NOTES = (
     "Reporting-only: no lane fails on this report. The cheap exact checks "
-    "(adr-register, front-matter, adr-citation) are read from "
+    "(adr-register, front-matter, adr-shape, adr-citation) are read from "
     "tools/arch-index.py and are already gates — `python3 tools/arch-index.py "
     "--check` runs in every lane of eng/verify.sh (ADR-0141).",
     "instruction-conflict and lint-leakage are reporting-only by construction, "

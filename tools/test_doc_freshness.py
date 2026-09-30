@@ -12,12 +12,12 @@ at two files that do not exist, and nothing failed.
 The tool under test is `tools/doc-freshness.py`, which writes the same two
 artefacts every other audit writes (`doc-report.json`, `doc-queue.md`, both
 gitignored) and aggregates into whatever aggregates the other `*-report.json`
-files. It is **reporting-only** on every lane: the nine checks land as a queue
+files. It is **reporting-only** on every lane: the checks land as a queue
 that drains, and only then are the cheap exact ones promoted (SpatialEngine-imz.2
-§implementation notes). Two of them — the register row and the dangling
-`ADR-NNNN` citation — are not implemented here at all: they are read out of
-`tools/arch-index.py`, which every lane of `eng/verify.sh` already gates on
-(ADR-0141), so there is one implementation and one answer.
+§implementation notes). Three of them — the register row, the record's shape and
+the dangling `ADR-NNNN` citation — are not implemented here at all: they are
+read out of `tools/arch-index.py`, which every lane of `eng/verify.sh` already
+gates on (ADR-0141), so there is one implementation and one answer.
 
 A note on what this suite is *not* claiming: a green `doc-report.json` is not a
 correctness improvement. The evidence is that context strategy does not move
@@ -54,12 +54,13 @@ if TOOL.is_file():
 else:  # the tool is written after this suite, so the failure is legible
     doc_freshness = None
 
-#: The nine checks, by the id the report uses. `shared` names the check
+#: The checks, by the id the report uses. `shared` names the check
 #: `tools/arch-index.py` already owns and gates on, so it is read rather than
 #: reimplemented (SpatialEngine-imz.2 acceptance).
 CHECK_IDS = (
     "adr-register",
     "front-matter",
+    "adr-shape",
     "adr-citation",
     "digest-staleness",
     "dead-doc-link",
@@ -70,7 +71,12 @@ CHECK_IDS = (
     "lint-leakage",
 )
 
-SHARED_IDS = ("adr-register", "front-matter", "adr-citation")
+SHARED_IDS = ("adr-register", "front-matter", "adr-shape", "adr-citation")
+
+#: A number at or above `SHAPE_FROM`, so a synthetic tree carries a record the
+#: shape rule binds. Assembled from parts: a literal `ADR-NNNN` here would be a
+#: citation the structural guard (`AdrNumberingTests`) reads.
+SHAPE_NUMBER = "0" + "151"
 
 
 # --- a synthetic tree ------------------------------------------------------
@@ -105,6 +111,15 @@ def clean_tree(root: Path) -> None:
     happened in the first place.
     """
     write(root / "architecture" / "decisions" / "ADR-0001-a.md", adr("0001", "A thing"))
+    # Written into every synthetic tree, at or above the shape boundary, so a
+    # fixture that is not *about* the shape rule is inside it: a record with
+    # the required sections, in order, and a narrative inside the budget.
+    write(
+        root / "architecture" / "decisions" / f"ADR-{SHAPE_NUMBER}-in-shape.md",
+        adr(SHAPE_NUMBER, "In shape")
+        + "## Context\n\nWhy.\n\n## Decision\n\n**The thing.**\n\n"
+        + "## Consequences\n\nWhat follows.\n",
+    )
     write(
         root / "architecture" / "decisions" / "ADR-0002-b.md", adr("0002", "B thing")
     )
@@ -157,7 +172,7 @@ class DocFreshnessTest(unittest.TestCase):
     # --- each check fires on the defect it is named for --------------------
 
     def _dirty_tree(self) -> None:
-        """A tree that trips every one of the nine checks at once."""
+        """A tree that trips every one of the checks at once."""
         clean_tree(self.root)
         # 1 + 2: a record with no register row and the retired `Status:` schema.
         write(
@@ -201,6 +216,19 @@ class DocFreshnessTest(unittest.TestCase):
             self.root / "RELEASING.md",
             "The gate before done is eng/verify.sh --full, and no third-party "
             "type crosses a public contract.\n",
+        )
+        # 10: a record outside the shape rule (ADR-0150) — a number at or above
+        # `SHAPE_FROM`, a free-form heading, and a narrative over the budget.
+        # Numbered last so the steps above keep the numbering they had before
+        # the shape rule existed. This *replaces* the in-shape record
+        # `clean_tree` wrote rather than adding a second record at that number:
+        # two records claiming one number is a different defect, and the shape
+        # rule is the one under test here.
+        write(
+            self.root / "architecture" / "decisions" / f"ADR-{SHAPE_NUMBER}-in-shape.md",
+            adr(SHAPE_NUMBER, "Out of shape")
+            + "\n## Merged from another branch\n\nProse.\n"
+            + "\n## Alternatives\n\n" + ("word " * arch_index.NARRATIVE_BUDGET) + "\n",
         )
 
     def test_a_dirty_tree_reports_every_check(self):

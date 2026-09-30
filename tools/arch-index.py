@@ -28,9 +28,25 @@ The retired schema — a `Status:` line (or a `- **Status:**` bullet) after the
 H1 — is rejected by name, because a record that states its status two ways
 states it wrongly in one of them.
 
+It also carries the **shape rule** (ADR-0150): the section set of a record is
+closed, the three sections that state a decision are required and in order, and
+a record's narrative — every section except the evidence it carries — is inside
+a word budget. A length gate alone would be a bad proxy, because the long
+records are long for load-bearing reasons (ADR-0105, ADR-0134), so the budget is
+measured over Context + Decision + Consequences + Alternatives + Not decided and
+`References` and `Measurements` are exempt; a record over the budget that has
+one decision to say declares `over-budget:` in its front matter, and a
+declaration nobody needed is rejected rather than accepted and ignored.
+
+The rule applies from the number of the record that decided it
+(`SHAPE_FROM`), so it is not a 135-record diff: a corpus written under no rule
+is grandfathered rather than rewritten, which is what makes it adoptable
+(SpatialEngine-6l6).
+
 `--check` is the gate `eng/verify.sh` runs on every lane, and it is what fails
 on a deleted or renamed ADR, a register row that no longer matches its file, a
-record in the retired schema, and a citation of an ADR that does not exist.
+record in the retired schema, a record outside the shape rule, and a citation
+of an ADR that does not exist.
 `--citations` is the same citation read on its own, because it is the cheapest
 check in the repository and the documentation-freshness audit wants it without
 the rest (SpatialEngine-imz.1).
@@ -75,7 +91,40 @@ LIST_FIELDS = (
     "supersedes", "superseded-by", "amends", "amended-by", "related", "consulted",
 )
 REQUIRED_FIELDS = ("status", "date", "deciders", "summary")
-FIELDS = REQUIRED_FIELDS + LIST_FIELDS
+#: `over-budget` is not a list: it is a sentence saying why one decision does not
+#: fit the budget, and it is honoured only on a record that is actually over it
+#: (ADR-0150). A field nobody can act on is a parameter accepted and ignored.
+OVER_BUDGET_FIELD = "over-budget"
+FIELDS = REQUIRED_FIELDS + LIST_FIELDS + (OVER_BUDGET_FIELD,)
+
+#: The number of the record that decided the shape rule. Records below it were
+#: written under no rule and are not judged by it — a policy that arrives as a
+#: 135-file diff will not be applied, so the rule binds what is written next
+#: (ADR-0150, SpatialEngine-6l6).
+SHAPE_FROM = "0150"
+
+#: The sections a record must carry, in the order a reader takes them.
+REQUIRED_SECTIONS = ("Context", "Decision", "Consequences")
+
+#: The sections a record may carry beyond those. The set is closed: a heading
+#: outside it is retired by name rather than tolerated, because "Alternatives in
+#: 48 of 122" and "Rejected in 5" and "§applied in 1" is a vocabulary nobody
+#: chose (ADR-0150).
+ALLOWED_SECTIONS = REQUIRED_SECTIONS + (
+    "Alternatives", "Not decided", "References", "Measurements",
+)
+
+#: Sections that carry evidence rather than the decision, and so are not
+#: counted against the narrative budget. A record is long because it measured
+#: something, and the measurement may be load-bearing (ADR-0105, ADR-0134).
+EVIDENCE_SECTIONS = ("References", "Measurements")
+
+#: The narrative budget, in words, over the sections that are not evidence.
+#: Measured over the corpus as it stood: median 826, p75 1342, p90 1724 — so
+#: this binds the tail rather than the middle, which is the intent.
+NARRATIVE_BUDGET = 1500
+
+SECTION_HEADING = re.compile(r"^##\s+(.+?)\s*$", re.M)
 
 #: The prose this generator is retiring, matched by name rather than tolerated.
 RETIRED_STATUS_PATTERNS = (
@@ -208,6 +257,12 @@ def parse_adr(path: Path) -> Adr:
     if missing:
         record.error = "front matter is missing " + ", ".join(missing)
         return record
+    if OVER_BUDGET_FIELD in fields and not fields[OVER_BUDGET_FIELD].strip():
+        record.error = (
+            f"`{OVER_BUDGET_FIELD}:` is present and empty; it is a reason, so a "
+            "blank one is a field that says nothing — remove it, or say why"
+        )
+        return record
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", fields["date"]):
         record.error = f"date {fields['date']!r} is not YYYY-MM-DD"
         return record
@@ -312,10 +367,13 @@ def render_index(corpus: list[Adr]) -> str:
     """`architecture/decisions/README.md` in full."""
     burned = ", ".join(BURNED_NUMBERS)
     superseders: dict[str, list[str]] = {}
+    amenders: dict[str, list[str]] = {}
     for record in corpus:
         superseder = record.superseded_by
         if superseder:
             superseders.setdefault(superseder, []).append(record.number)
+        for number in re.findall(r"\d{4}", record.get("amends")):
+            amenders.setdefault(number, []).append(record.number)
 
     lines = [
         "# Architecture decision records",
@@ -342,6 +400,25 @@ def render_index(corpus: list[Adr]) -> str:
             f"| [{record.number}]({record.path.name}) | {record.title} "
             f"| {record.get('status')} | {record.get('date')} | {_crosses(record)} |"
         )
+    lines += [
+        "",
+        "## Amended by",
+        "",
+        "The refiners of each record, **derived from their own `amends:` fields**",
+        "rather than maintained by hand. A record that refines another says so",
+        "once, in its own front matter, and this list is the other end of it — so",
+        "a family over one topic is a row here rather than a reading order the",
+        "reader has to assemble across eleven files. A record nobody amends does",
+        "not appear.",
+        "",
+    ]
+    if amenders:
+        for target in sorted(amenders):
+            lines.append(
+                f"- **{target}** is amended by " + ", ".join(sorted(amenders[target]))
+            )
+    else:
+        lines.append("- none")
     lines += [
         "",
         "## Superseded, by superseder",
@@ -465,6 +542,92 @@ def corpus_findings(root: Path, corpus: list[Adr]) -> list[str]:
     return findings
 
 
+def in_shape(record: Adr) -> bool:
+    """Whether the shape rule binds this record, by its number (ADR-0150)."""
+    return record.number >= SHAPE_FROM
+
+
+def sections_of(text: str) -> list[str]:
+    """The `##` headings of a record's body, in order, as written."""
+    return [match.group(1).strip() for match in SECTION_HEADING.finditer(text)]
+
+
+def narrative_words(text: str) -> int:
+    """A record's words, less the sections that carry evidence rather than decision."""
+    total = 0
+    for part in re.split(r"^##\s+", text, flags=re.M)[1:]:
+        heading = part.split("\n", 1)[0].strip().lower()
+        if heading in {name.lower() for name in EVIDENCE_SECTIONS}:
+            continue
+        total += len(part.split())
+    return total
+
+
+def shape_findings(root: Path, corpus: list[Adr]) -> list[str]:
+    """The shape rule: a closed section set, a reading order, a word budget.
+
+    Split out of `check` and read by `tools/doc-freshness.py` for the reason
+    `corpus_findings` and `register_findings` are (ADR-0141, SpatialEngine-imz.2):
+    one answer to "is this record shaped like a decision record", one
+    implementation, and one gate. A length gate on its own is a bad proxy —
+    the long records are long for load-bearing reasons — so the budget is
+    measured over the sections that state the decision and exempts the two that
+    carry the evidence, and a record with one decision too many for the budget
+    says so in `over-budget` rather than being cut to fit.
+    """
+    findings: list[str] = []
+    for record in corpus:
+        if not in_shape(record) or record.error:
+            continue
+        where = record.path.relative_to(root)
+        try:
+            text = record.path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):  # pragma: no cover - unreadable
+            continue
+        body = text.split("---", 2)[-1]
+        headings = sections_of(body)
+
+        retired = [name for name in headings if name not in ALLOWED_SECTIONS]
+        for name in retired:
+            findings.append(
+                f"{where}: `## {name}` is not a section a decision record carries; "
+                f"the set is {', '.join(ALLOWED_SECTIONS)}. Fold it into the section "
+                "it belongs to, or move the evidence to `## Measurements`."
+            )
+        missing = [name for name in REQUIRED_SECTIONS if name not in headings]
+        if missing:
+            findings.append(
+                f"{where}: no {' or '.join(f'## {name}' for name in missing)}; a "
+                "record states the decision in Context, Decision and Consequences."
+            )
+        present = [name for name in headings if name in REQUIRED_SECTIONS]
+        if present != [name for name in REQUIRED_SECTIONS if name in present]:
+            findings.append(
+                f"{where}: the sections are out of reading order ({', '.join(present)}); "
+                f"they are read as {', '.join(REQUIRED_SECTIONS)}."
+            )
+
+        words = narrative_words(body)
+        if words > NARRATIVE_BUDGET:
+            if record.get(OVER_BUDGET_FIELD):
+                continue
+            findings.append(
+                f"{where}: {words} words of narrative, over the {NARRATIVE_BUDGET}-"
+                f"word budget (References and Measurements are exempt). Split it — "
+                "a second decision is a second record, with `amends:` naming this "
+                f"one — or state why one record cannot be shorter, in `{OVER_BUDGET_FIELD}: "
+                "<reason>`."
+            )
+        elif record.get(OVER_BUDGET_FIELD):
+            findings.append(
+                f"{where}: carries `{OVER_BUDGET_FIELD}: "
+                f"{record.get(OVER_BUDGET_FIELD)}` at {words} words, inside the "
+                f"{NARRATIVE_BUDGET}-word budget. An exemption nobody needs is a "
+                "parameter accepted and ignored; delete it."
+            )
+    return findings
+
+
 def register_findings(root: Path, corpus: list[Adr]) -> list[str]:
     """Whether the register block in the distilled digest is what the records say.
 
@@ -504,6 +667,7 @@ def check(root: Path) -> list[str]:
     corpus = load_corpus(root)
 
     findings.extend(corpus_findings(root, corpus))
+    findings.extend(shape_findings(root, corpus))
     findings.extend(register_findings(root, corpus))
 
     for path, rendered in (
@@ -572,7 +736,11 @@ def main(argv: list[str] | None = None) -> int:
         findings = dangling_citations(root, load_corpus(root))
     elif arguments.register:
         corpus = load_corpus(root)
-        findings = corpus_findings(root, corpus) + register_findings(root, corpus)
+        findings = (
+            corpus_findings(root, corpus)
+            + register_findings(root, corpus)
+            + shape_findings(root, corpus)
+        )
     elif arguments.check or True:
         findings = check(root)
     if findings:

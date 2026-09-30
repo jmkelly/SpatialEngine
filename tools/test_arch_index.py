@@ -38,6 +38,13 @@ arch_index = importlib.util.module_from_spec(_spec)
 sys.modules["arch_index"] = arch_index
 _spec.loader.exec_module(arch_index)
 
+_doc_spec = importlib.util.spec_from_file_location(
+    "doc_freshness", REPO_ROOT / "tools" / "doc-freshness.py"
+)
+doc_freshness = importlib.util.module_from_spec(_doc_spec)
+sys.modules["doc_freshness"] = doc_freshness
+_doc_spec.loader.exec_module(doc_freshness)
+
 REGISTER = REPO_ROOT / "architecture" / "distilled" / "README.md"
 INDEX = REPO_ROOT / "architecture" / "decisions" / "README.md"
 BREADCRUMB = REPO_ROOT / "arch-index.md"
@@ -287,6 +294,289 @@ class GateTests(unittest.TestCase):
             )
             result = run_tool("--check", root=root)
             self.assertNotEqual(result.returncode, 0, result.stdout)
+
+
+class ShapeTests(unittest.TestCase):
+    """A record is one decision, with a fixed section set and a word budget.
+
+    The reproduction for SpatialEngine-6l6: the corpus had grown to 135 records
+    with a median of 882 words and a maximum of 2,549, a section vocabulary
+    that was whatever each writer reached for (36 records carried a heading
+    outside the five the rest of the corpus agreed on, including free-form
+    numbered subsections), and no way to tell an amendment from a fresh
+    decision except by reading it — 27 of the 39 `amends` links had no
+    reciprocal `amended-by`, so a family of eleven records over one topic was
+    only discoverable by grepping. Nothing failed on any of it: the gate
+    checked that a number identifies one record and that the allocator agrees
+    with the tree, and said nothing about a record's size, section set or shape.
+    """
+
+    #: A well-formed record at or above the shape boundary, in miniature.
+    RECORD = (
+        "---\nstatus: accepted\ndate: 2026-10-01\ndeciders: nobody\n"
+        "summary: A shape test record.\n---\n\n"
+        "# ADR-{number}: {title}\n\n"
+        "## Context\n\nOne paragraph of why.\n\n"
+        "## Decision\n\n**The thing.**\n\n"
+        "## Consequences\n\nOne paragraph of what follows.\n"
+    )
+
+    #: A number above `SHAPE_FROM`, so a fixture is inside the rule it tests.
+    #: Assembled from parts for the reason the citation fixtures are: a literal
+    #: `ADR-NNNN` in a tracked file is a citation the structural guard
+    #: (`AdrNumberingTests`) reads, and this fixture record does not exist in
+    #: the real tree.
+    IN_SHAPE = "0" + "151"
+
+    def write(self, root: Path, number: str, body: str, title: str = "a-record"):
+        path = root / "architecture" / "decisions" / f"ADR-{number}-{title}.md"
+        path.write_text(
+            self.RECORD.format(number=number, title=title) + body, encoding="utf-8"
+        )
+        return path
+
+    def shape(self, root: Path) -> list[str]:
+        return arch_index.shape_findings(root, arch_index.load_corpus(root))
+
+    # --- the corpus ---------------------------------------------------------
+
+    def test_the_repository_is_inside_the_shape_rule(self):
+        findings = arch_index.shape_findings(REPO_ROOT, arch_index.load_corpus(REPO_ROOT))
+        self.assertEqual(
+            findings,
+            [],
+            "a decision record is outside the shape rule (ADR-0150):\n  "
+            + "\n  ".join(findings),
+        )
+
+    def test_the_record_that_decided_the_shape_obeys_it(self):
+        """The boundary is this record's own number, so it is gated by its own rule."""
+        self.assertEqual(
+            arch_index.SHAPE_FROM,
+            "0150",
+            "the shape rule applies from the number of the record that decided "
+            "it; a different boundary is a decision this record has not made",
+        )
+        self.assertIn(
+            f"ADR-{arch_index.SHAPE_FROM}",
+            [f"ADR-{r.number}" for r in arch_index.load_corpus(REPO_ROOT)],
+            "the record that fixed the shape boundary is not on disk",
+        )
+
+    # --- the section set ----------------------------------------------------
+
+    def test_a_record_missing_a_required_section_fails(self):
+        for missing in ("Context", "Decision", "Consequences"):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as raw:
+                root = copy_repo(Path(raw) / "repo")
+                path = self.write(root, self.IN_SHAPE, "")
+                text = path.read_text(encoding="utf-8")
+                start = text.index(f"## {missing}")
+                end = text.find("\n## ", start + 1)
+                path.write_text(
+                    text[:start] + (text[end + 1:] if end != -1 else ""),
+                    encoding="utf-8",
+                )
+                findings = self.shape(root)
+                self.assertTrue(
+                    any(missing in finding for finding in findings),
+                    f"a record with no ## {missing} passed: {findings}",
+                )
+
+    def test_a_retired_free_form_section_fails(self):
+        """The vocabulary is closed, so `## §applied` and `## Rejected` are gone."""
+        for heading in ("§applied", "Rejected", "Implementation status",
+                        "Merge note (SpatialEngine-u2x.8)"):
+            with self.subTest(heading=heading), tempfile.TemporaryDirectory() as raw:
+                root = copy_repo(Path(raw) / "repo")
+                self.write(root, self.IN_SHAPE, f"\n## {heading}\n\nProse.\n")
+                findings = self.shape(root)
+                self.assertTrue(
+                    any(heading in finding for finding in findings),
+                    f"a free-form `## {heading}` passed: {findings}",
+                )
+
+    def test_the_sections_come_in_the_reading_order(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            self.write(
+                root, self.IN_SHAPE,
+                "\n## Consequences\n\nLater.\n\n## Decision\n\nEarlier.\n",
+            )
+            findings = self.shape(root)
+            self.assertTrue(
+                any("order" in finding for finding in findings),
+                f"a record whose sections are out of order passed: {findings}",
+            )
+
+    # --- the word budget ----------------------------------------------------
+
+    def test_an_over_budget_record_fails(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            self.write(
+                root, self.IN_SHAPE,
+                "\n## Alternatives\n\n" + ("word " * arch_index.NARRATIVE_BUDGET) + "\n",
+            )
+            findings = self.shape(root)
+            self.assertTrue(
+                any("budget" in finding for finding in findings),
+                f"a {arch_index.NARRATIVE_BUDGET}-word record passed: {findings}",
+            )
+
+    def test_measurements_and_references_do_not_count_against_the_budget(self):
+        """A long gate is long because it carries measurements, which may be load-bearing."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            self.write(
+                root, self.IN_SHAPE,
+                "\n## Measurements\n\n" + ("measured " * arch_index.NARRATIVE_BUDGET)
+                + "\n\n## References\n\n" + ("cited " * arch_index.NARRATIVE_BUDGET) + "\n",
+            )
+            self.assertEqual(
+                [f for f in self.shape(root) if "budget" in f],
+                [],
+                "evidence counted against the narrative budget: "
+                + "; ".join(self.shape(root)),
+            )
+
+    def test_an_over_budget_record_may_declare_why(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            path = self.write(
+                root, self.IN_SHAPE,
+                "\n## Alternatives\n\n" + ("word " * arch_index.NARRATIVE_BUDGET) + "\n",
+            )
+            self.assertTrue([f for f in self.shape(root) if "budget" in f])
+            text = path.read_text(encoding="utf-8")
+            path.write_text(
+                text.replace(
+                    "summary: A shape test record.",
+                    "summary: A shape test record.\n"
+                    "over-budget: the one decision does not fit a shorter record",
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                [f for f in self.shape(root) if "budget" in f], [],
+                "a declared over-budget record still failed",
+            )
+
+    def test_an_exemption_nobody_needed_is_rejected(self):
+        """A parameter is honoured or rejected by name, never accepted and ignored."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            path = self.write(root, self.IN_SHAPE, "")
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "summary: A shape test record.",
+                    "summary: A shape test record.\nover-budget: no reason to give",
+                ),
+                encoding="utf-8",
+            )
+            findings = self.shape(root)
+            self.assertTrue(
+                any("over-budget" in finding for finding in findings),
+                f"an over-budget exemption on a record inside the budget passed: {findings}",
+            )
+
+    def test_an_empty_exemption_is_rejected(self):
+        """Present and blank is a different case from absent, and both are read."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            path = self.write(root, self.IN_SHAPE, "")
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "summary: A shape test record.", "summary: A shape test record.\nover-budget:"
+                ),
+                encoding="utf-8",
+            )
+            result = run_tool("--check", root=root)
+            self.assertNotEqual(result.returncode, 0, "a blank exemption passed the gate")
+            self.assertIn(
+                arch_index.OVER_BUDGET_FIELD,
+                result.stdout + result.stderr,
+                "a blank exemption failed for some other reason",
+            )
+
+    # --- the boundary -------------------------------------------------------
+
+    def test_a_record_written_before_the_boundary_is_not_judged(self):
+        """The rule is not a 122-file diff: what predates it is grandfathered."""
+        grandfathered = "0098"  # 2,549 words, three free-form amendment sections
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            victim = next(
+                (root / "architecture" / "decisions").glob(f"ADR-{grandfathered}-*.md")
+            )
+            path = victim
+            text = path.read_text(encoding="utf-8")
+            path.write_text(
+                text + "\n## A section nobody agreed on\n\n"
+                + ("prose " * arch_index.NARRATIVE_BUDGET) + "\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                [f for f in self.shape(root) if grandfathered in f],
+                [],
+                f"ADR-{grandfathered} predates the shape rule and is not judged by it",
+            )
+
+    # --- the gate and the template -----------------------------------------
+
+    def test_the_gate_fails_on_a_record_outside_the_shape_rule(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            self.write(root, self.IN_SHAPE, "\n## §licence\n\nProse.\n")
+            result = run_tool("--check", root=root)
+            self.assertNotEqual(result.returncode, 0, "an out-of-shape record passed the gate")
+            self.assertIn(
+                "§licence",
+                result.stdout + result.stderr,
+                "the gate failed for some other reason, so the shape rule is not "
+                "what it read: " + result.stdout + result.stderr,
+            )
+
+    def test_the_template_satisfies_the_rule_it_states(self):
+        """The template is the shape in prose; a gate nothing can satisfy is a trap."""
+        template = (REPO_ROOT / "architecture" / "decisions" / "TEMPLATE.md").read_text(
+            encoding="utf-8"
+        )
+        headings = re.findall(r"^##\s+(.+?)\s*$", template, re.M)
+        self.assertEqual(
+            sorted(set(headings) - set(arch_index.ALLOWED_SECTIONS)),
+            [],
+            f"TEMPLATE.md carries a heading outside the allowed set: {headings}",
+        )
+        for required in arch_index.REQUIRED_SECTIONS:
+            self.assertIn(required, headings, f"TEMPLATE.md has no `## {required}`")
+        self.assertLess(
+            len(template.split()),
+            arch_index.NARRATIVE_BUDGET,
+            "TEMPLATE.md is itself over the budget it states",
+        )
+        for field in arch_index.FIELDS:
+            self.assertIn(
+                f"{field}:", template, f"TEMPLATE.md does not show the `{field}` field"
+            )
+
+    def test_the_documentation_audit_reports_the_shape_rule(self):
+        """One implementation, one set of findings, one gate each (ADR-0141)."""
+        findings = doc_freshness.shared_findings(REPO_ROOT)
+        self.assertTrue(
+            any(item["check"] == "adr-shape" for item in findings) is False
+            and any(
+                item["check"] == "adr-shape" for item in doc_freshness.audit(REPO_ROOT)["findings"]
+            ) is False,
+            "the audit does not read the shape rule at all",
+        )
+        report = doc_freshness.audit(REPO_ROOT)
+        shape_check = [c for c in report["checks"] if c["id"] == "adr-shape"]
+        self.assertEqual(len(shape_check), 1, "the audit has no `adr-shape` check")
+        self.assertTrue(
+            shape_check[0]["shared"] and shape_check[0]["sharedWith"] == "tools/arch-index.py",
+            "the shape rule is read from arch-index.py, so the audit says so",
+        )
 
 
 class VerifyWiringTests(unittest.TestCase):
