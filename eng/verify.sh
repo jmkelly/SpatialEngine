@@ -26,6 +26,13 @@
 #                            merge tool for.
 #   eng/verify.sh --plan     print the steps a lane would run, and run nothing
 #
+# Every lane also runs `tools/conflict_markers.py`, which reads every tracked
+# file for an unresolved merge-conflict marker — a rule that shipped as a
+# `tools/test_*.py` and therefore ran only on a change set that touched
+# `tools/**`, which is why a marker reached `CHANGELOG.md` on main through a
+# docs merge the fast gate passed. It costs 2.5 s and changes nothing
+# (ADR-0146).
+#
 # Every lane then runs the doc gate — `tools/arch-index.py --check` over the
 # generated ADR register and index, plus a dangling `ADR-NNNN` citation read
 # (ADR-0141). It is a second or two, it is about the repository rather than
@@ -312,6 +319,28 @@ whitespace_step() {
   fi
 }
 
+# --- the conflict-marker check ---------------------------------------------
+# An unresolved merge-conflict marker is not a merge failure the tooling
+# notices: git reports a clean tree, the build compiles (a marker in a
+# markdown file is prose, not syntax), and the conflict body ships as content.
+# That is how a `<<<<<<< HEAD` line reached `CHANGELOG.md` on main
+# (SpatialEngine-u2x.37's `9429422`, judged in SpatialEngine-aot).
+#
+# The rule was a `tools/test_*.py`, so it ran only when the change set touched
+# `tools/**` — and the marker arrived on a merge whose change set was docs and
+# `src`, so the merge gate read nothing that could see it. A test the tooling
+# lane happens to discover is not a gate, which is why this is a check called
+# directly, the shape ADR-0143 gives the trailing-whitespace rule. It scans
+# every tracked file rather than the change set: the marker is a property of a
+# merge, not of the files it resolved, and 2.5 s is what the whole sweep costs.
+#
+# It is a repo check rather than one over the change, so it is not scoped and
+# has no fallback case: there is nothing to narrow.
+conflict_marker_step() {
+  echo "== conflict markers: every tracked file =="
+  step python3 tools/conflict_markers.py
+}
+
 # --- the doc gate, on every lane -------------------------------------------
 # The ADR register and the ADR index are generated from the records themselves
 # (ADR-0141), so "is the documentation current" is a comparison rather than a
@@ -336,6 +365,7 @@ doc_gate() {
 if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
   whitespace_step
+  conflict_marker_step
   doc_gate
   if [[ "$EXHAUSTIVE" == "1" ]]; then
     echo "the change set is unscoped against $BASE, so this is the whole solution"
@@ -352,6 +382,7 @@ fi
 # --- the full lane ---------------------------------------------------------
 if [[ "$LANE" == "full" ]]; then
   whitespace_step all
+  conflict_marker_step
   doc_gate
 
   echo "== format check =="
@@ -377,6 +408,7 @@ fi
 # --- the default lane: the fast build gate --------------------------------
 echo "== fast build gate (base $BASE) =="
 whitespace_step
+conflict_marker_step
 doc_gate
 
 if [[ "$EXHAUSTIVE" == "1" ]]; then

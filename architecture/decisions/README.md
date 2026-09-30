@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**132 records on disk.** `status` is the record's own word;
+**133 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -148,6 +148,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0143](ADR-0143-the-trailing-whitespace-rule-is-checked-not-formatted.md) | the trailing-whitespace rule is checked, not formatted | accepted | 2026-09-30 | — |
 | [0144](ADR-0144-a-sub-two-point-linestring-is-a-position-not-a-segment.md) | A sub-2-point LineString is a position, not a segment | accepted | 2026-10-01 | — |
 | [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md) | The register is generated wholesale, and a hand-enriched row survives in the record | accepted | 2026-10-01 | ADR-0141 |
+| [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md) | the conflict-marker rule is a check every lane runs, not a test `tools/**` happens to run | accepted | 2026-09-30 | ADR-0134, ADR-0143 |
 
 ## Superseded, by superseder
 

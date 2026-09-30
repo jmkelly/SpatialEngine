@@ -266,15 +266,17 @@ class LaneExitCodeTests(unittest.TestCase):
         (self.root / "SpatialEngine.slnx").write_text(
             "<Solution>\n" + "".join(f'  <Project Path="{p}" />\n' for p in paths)
             + "</Solution>\n", encoding="utf-8")
-        # The lane runs two repo-wide checks before anything scoped: the
-        # trailing-whitespace check (ADR-0143) and the doc gate (ADR-0141). The
-        # fixture therefore carries both tools, and — because the doc gate
+        # The lane runs repo-wide checks before anything scoped: the
+        # trailing-whitespace check (ADR-0143), the conflict-marker check
+        # (ADR-0146) and the doc gate (ADR-0141). The fixture therefore carries
+        # all three tools, and — because the doc gate
         # regenerates the ADR register and index and fails on a stale one — a
-        # decision corpus and its generated register. A fixture without either
-        # would be measuring the gates rather than the skip gate, and the lane
-        # would go red for a reason that has nothing to do with skips.
+        # decision corpus and its generated register. A fixture without any of
+        # them would be measuring the gates rather than the skip gate, and the
+        # lane would go red for a reason that has nothing to do with skips.
         for name in ("eng/verify.sh", "tools/verify_scope.py", "tools/skip_gate.py",
-                     "tools/trailing_whitespace.py", "tools/arch-index.py"):
+                     "tools/trailing_whitespace.py", "tools/conflict_markers.py",
+                     "tools/arch-index.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")

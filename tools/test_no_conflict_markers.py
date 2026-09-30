@@ -33,38 +33,34 @@ is scanned, not just the files a merge touched. The markers are assembled from
 character runs rather than written literally, so that this file — which is
 itself tracked, and which must describe the markers it forbids — does not trip
 its own rule.
+
+That answer was carried by *this* test, and that was the defect: the tooling
+suite runs only when the change set touches `tools/**`, so the merge gate never
+read the rule on a change that did not — and the marker arrived on exactly such
+a change, a `CHANGELOG.md` merge whose change set was docs and `src`. The check
+is now `tools/conflict_markers.py`, which every lane calls directly
+(ADR-0146); this file keeps the matching's unit tests and the wiring tests that
+hold it there.
 """
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
+# The matching itself lives in `tools/conflict_markers.py`, which is what the
+# lanes call (LaneWiringTests below). One rule, one implementation: a test that
+# carries a second copy of it can pass while the check every merge runs fails.
+from tools.conflict_markers import (  # noqa: E402  (path is set by the runner)
+    SEPARATOR,
+    SIDE,
+    findings_in_tracked,
+    markers_in,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
-
-#: Built by repetition rather than written out: a literal marker at the start
-#: of a line in this source would be the very thing the test hunts for.
-#: Git writes the two sides as a seven-character run followed by a space and
-#: the branch name, so those are matched as prefixes; the separator is matched
-#: whole, because a longer run of `=` is an underline in reStructuredText and
-#: underlining something is not a merge conflict.
-SIDE = ("<", ">")
-SEPARATOR = "=" * 7
-
-
-def tracked_files(root):
-    """Every file git tracks, relative to the repository root.
-
-    Tracked rather than on-disk: the question is what the repository ships, so
-    a build artefact or an editor's swap file is not a finding. Untracked files
-    are also what `git diff --name-only` in the scoping lane never sees, and
-    the marker that reached main was committed, not left loose.
-    """
-    listing = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"],
-        check=True,
-        capture_output=True,
-    )
-    return [name for name in listing.stdout.decode("utf-8").split("\0") if name]
+SCRIPT = REPO_ROOT / "tools" / "conflict_markers.py"
+VERIFY_SH = REPO_ROOT / "eng" / "verify.sh"
 
 
 #: The line as `CHANGELOG.md` carried it at `9429422`, with no `=======` or
@@ -82,34 +78,6 @@ BLOCK = (
     "theirs\n"
     + SIDE[1] * 7 + " branch\n"
 )
-
-
-def markers_in(path):
-    """The (line number, line) pairs in `path` that look like conflict markers.
-
-    Undecodable bytes are read leniently: this is a text-hygiene sweep, not a
-    validity check, and a PNG's bytes are not a merge conflict however they fall.
-    """
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (UnicodeDecodeError, OSError):
-        return []
-    found = []
-    for number, line in enumerate(text.splitlines(), start=1):
-        if line == SEPARATOR or any(line.startswith(c * 7 + " ") for c in SIDE):
-            found.append((number, line))
-    return found
-
-
-def findings_in_tracked(root):
-    """The `name:line: text` findings over every tracked file under `root`."""
-    findings = []
-    for name in tracked_files(root):
-        path = root / name
-        if not path.is_file():
-            continue
-        findings.extend(f"{name}:{number}: {line}" for number, line in markers_in(path))
-    return findings
 
 
 class MarkerTests(unittest.TestCase):
@@ -168,6 +136,88 @@ class MarkerTests(unittest.TestCase):
             path = Path(root) / "logo.png"
             path.write_bytes(b"\x89PNG\r\n\x1a\n\xff\xfe" + SIDE[0].encode() * 7)
             self.assertEqual(markers_in(path), [])
+
+
+class LaneWiringTests(unittest.TestCase):
+    """The rule has to be read by the lanes that gate a merge.
+
+    This gate shipped as a `tools/test_*.py`, and both `eng/verify.sh` and
+    `tools/verify_scope.py` run the tooling suite only when the change set
+    touches `tools/**` (`run_python_tooling`, tools/verify_scope.py:355). So it
+    did not run on the fast lane for a change that touches no tool — which is
+    exactly the kind of change the marker arrived on, a `CHANGELOG.md` merge
+    (SpatialEngine-u2x.37's `9429422`, checked in SpatialEngine-aot). The
+    detector is `tools/conflict_markers.py` and every lane calls it, the shape
+    ADR-0143 gives the trailing-whitespace rule.
+    """
+
+    def lanes(self):
+        """`eng/verify.sh` split into the text of each lane's block."""
+        text = VERIFY_SH.read_text(encoding="utf-8")
+        markers = ["# --- the format lane",
+                   "# --- the full lane",
+                   "# --- the default lane"]
+        self.assertTrue(all(m in text for m in markers),
+                        "eng/verify.sh no longer carries the lane markers these tests split on")
+        blocks = {}
+        for index, marker in enumerate(markers):
+            end = markers[index + 1] if index + 1 < len(markers) else len(text)
+            blocks[marker] = text[text.index(marker):text.index(end) if end != len(text) else len(text)]
+        return blocks
+
+    def test_every_verify_lane_runs_the_check(self):
+        for marker, block in self.lanes().items():
+            self.assertIn("conflict_marker_step", block,
+                          f"the lane at {marker!r} does not run the conflict-marker check")
+
+    def test_the_helper_runs_the_check(self):
+        text = VERIFY_SH.read_text(encoding="utf-8")
+        start = text.index("conflict_marker_step() {")
+        body = text[start:text.index("\n}", start)]
+        self.assertIn("tools/conflict_markers.py", body)
+
+    def test_the_fast_lane_does_not_gate_it_on_tools_changing(self):
+        # The regression itself: the tooling tests are conditional on the change
+        # set touching `tools/**`, so a step inside that block would not run on
+        # the merge gate for a docs or src change. The call is therefore
+        # asserted to stand before the conditional, not inside it.
+        text = VERIFY_SH.read_text(encoding="utf-8")
+        default = self.lanes()["# --- the default lane"]
+        conditional = default.index('if [[ "$RUN_TOOLING" == "1" ]]')
+        self.assertIn("conflict_marker_step", default[:conditional],
+                      "the conflict-marker check has fallen inside the tools/**-only tooling gate")
+        self.assertNotIn("conflict_marker_step", default[conditional:])
+
+    def test_the_repository_is_clean(self):
+        # The detector as a command, which is how the lanes call it: a rule
+        # only the test exercises is the same invisible hole one level up.
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--repo", str(REPO_ROOT)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_an_orphan_marker_fails_the_check(self):
+        # The finding is the exit code and the `path:line` report, because a
+        # lane reads nothing else.
+        with tempfile.TemporaryDirectory() as root:
+            subprocess.run(["git", "-C", root, "init", "-q"], check=True)
+            (Path(root) / "CHANGELOG.md").write_text(ORPHAN, encoding="utf-8")
+            subprocess.run(["git", "-C", root, "add", "CHANGELOG.md"], check=True)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--repo", root],
+                capture_output=True, text=True,
+            )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("CHANGELOG.md:1", result.stdout)
+
+
+def test_ci_runs_the_check(self):
+        # The CI `verify` job spells its steps out rather than calling the
+        # script, so wiring the lanes alone would leave the detector that
+        # follows every merge with the same hole.
+        self.assertIn("tools/conflict_markers.py",
+                      (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
 
 
 class ConflictMarkerTests(unittest.TestCase):
