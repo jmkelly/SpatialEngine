@@ -20,11 +20,12 @@ namespace Spatial.Stores.PostGIS;
 /// <para>
 /// Three cases finish here rather than in SQL, each because a pushed version
 /// would be a <em>different</em> answer and principle 15 forbids that: an
-/// order the dataset's identity cannot make total, a distinct request
-/// (SQL's <c>DISTINCT</c> returns rows in no defined order, and the contract's
-/// order for them is the plan's), and a grouped reduction whose plan asks for
-/// no order (the same reason). A reduction this store cannot push down is not a
-/// failure and not a refusal: it is the same value, computed here.
+/// order the dataset's identity cannot make total, a distinct request whose
+/// plan order is not total over the distinct rows (SQL's <c>DISTINCT</c> returns
+/// rows in no defined order, and the contract's order for them is the plan's),
+/// and a grouped reduction whose plan asks for no order (the same reason). A
+/// reduction this store cannot push down is not a failure and not a refusal: it
+/// is the same value, computed here.
 /// </para>
 ///
 /// <para>
@@ -114,21 +115,76 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     }
 
     /// <summary>
-    /// The deduplicated field combinations a plan selects, reduced over the rows
-    /// the pushed-down read returned rather than as a SQL <c>DISTINCT</c>: the
-    /// dialect returns distinct rows in no defined order, and the contract's
-    /// order for them is the order the plan asked for.
+    /// The deduplicated field combinations a plan selects: a
+    /// <c>SELECT DISTINCT</c> under the plan's order when that order is total
+    /// over the distinct rows, and reduced over the rows the pushed-down read
+    /// returned for every other plan. The dialect returns distinct rows in no
+    /// defined order, and the contract's order for them is the order the plan
+    /// asked for — so the plan that cannot hand that order to the server keeps
+    /// the first-seen order, which only the rows know (ADR-0133 §6).
     /// </summary>
     public async Task<DistinctPage> DistinctAsync(
         PostgisDatasetName name, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken)
     {
         var description = await catalogue.DescribeAsync(name, cancellationToken);
-        FeatureQueryValidation.ValidateDistinct(description.Schema, distinct);
+        var schema = (FeatureSchema)description.Schema;
+        FeatureQueryValidation.ValidateDistinct(schema, distinct);
         var parameters = new List<object?>();
         var where = await RestrictionAsync(name, description, query, parameters, cancellationToken);
-        var selected = await SelectedAsync(name, description, query, where, parameters, cancellationToken);
-        return FeatureReduction.Distinct((FeatureSchema)description.Schema, selected, distinct);
+        var order = query.Order ?? [];
+        var sql = PostgisPlanQueries.Distinct(
+            name,
+            distinct.Fields,
+            order,
+            schema,
+            await ByteOrderTextAsync(schema, distinct.Fields, order, cancellationToken),
+            where,
+            parameters);
+        // A restriction this table cannot carry (a dataset with no identity
+        // column names its features by the read's ordinal, so a `WHERE` would
+        // renumber them — ADR-0097) leaves `where` null for a plan that *does*
+        // restrict. Deduplicating on that null would answer with the whole
+        // table's set for a restricted plan, so the set is reduced over the
+        // rows the reference selected instead.
+        if (sql is null || (where is null && PostgisPlanQueries.Restricts(query)))
+        {
+            return FeatureReduction.Distinct(
+                schema,
+                await SelectedAsync(name, description, query, where, parameters, cancellationToken),
+                distinct,
+                query.Order);
+        }
+
+        await using var connection = await storage.OpenConnectionAsync(cancellationToken);
+        var rows = await PostgisDataStore.ReadRowsAsync(connection, sql, parameters, cancellationToken);
+        var reduced = new List<IReadOnlyList<AttributeValue>>(rows.Count);
+        foreach (var row in rows)
+        {
+            var values = new AttributeValue[distinct.Fields.Count];
+            for (var i = 0; i < values.Length; i++)
+            {
+                values[i] = PostgisRowMapper.MapValue(schema[schema.IndexOf(distinct.Fields[i])].Kind, row[i]);
+            }
+
+            reduced.Add(values);
+        }
+
+        return new DistinctPage(distinct.Fields, reduced, reduced.Count);
     }
+
+    /// <summary>
+    /// Whether this database already compares text by bytes, which is what
+    /// decides whether a pushed-down text term carries an explicit
+    /// <c>COLLATE "C"</c> (ADR-0121). Read only when the reduction deduplicates
+    /// or orders a text column: the probe is a round trip, and a set of numbers
+    /// cannot be changed by the collation.
+    /// </summary>
+    private async Task<bool> ByteOrderTextAsync(
+        FeatureSchema schema, IReadOnlyList<string> fields, IReadOnlyList<OrderTerm> order, CancellationToken cancellationToken) =>
+        fields.Concat(order.Select(term => term.Field)).Any(field =>
+            schema.IndexOf(field) >= 0 && schema[schema.IndexOf(field)].Kind == AttributeKind.String)
+            ? await storage.ByteOrderTextAsync(cancellationToken)
+            : false;
 
     /// <summary>
     /// The restriction a plan pushes, with the database's collation read only

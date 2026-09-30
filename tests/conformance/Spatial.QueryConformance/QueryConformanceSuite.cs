@@ -302,22 +302,30 @@ public static class QueryConformanceSuite
         IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, CancellationToken token)
     {
         var fields = Fields.Of(schema);
-        var distinct = new DistinctQuery(
-            string.Equals(fields.Group, fields.Orderable, StringComparison.Ordinal)
-                ? [fields.Group]
-                : [fields.Group, fields.Orderable]);
+        var distinct = DistinctOf(fields);
         foreach (var query in Plans(Fields.Of(schema)))
         {
             var actual = await FeatureReductionFallback
                 .DistinctAsync(store, dataset, query, distinct, token)
                 .ConfigureAwait(false);
             var expected = FeatureReduction.Distinct(
-                schema, FeaturePlanExecutor.Select(schema, fixture, query, token), distinct);
+                schema, FeaturePlanExecutor.Select(schema, fixture, query, token), distinct, query.Order);
             Assert.Equal(expected.Fields, actual.Fields);
             Assert.Equal(expected.TotalCount, actual.TotalCount);
             Assert.Equal(Rows(expected.Rows), Rows(actual.Rows));
         }
     }
+
+    /// <summary>
+    /// The distinct set every store is asked for over every plan: the group key
+    /// on its own where it is also the plan's key, and the group key with the
+    /// numeric one — so a store that deduplicates one column and a store that
+    /// deduplicates a combination are both measured (ADR-0133 §6).
+    /// </summary>
+    private static DistinctQuery DistinctOf(Fields fields) =>
+        new(string.Equals(fields.Group, fields.Orderable, StringComparison.Ordinal)
+            ? [fields.Group]
+            : [fields.Group, fields.Orderable]);
 
     private static async Task SameAggregateAsync(
         IFeatureStore store, string dataset, FeatureSchema schema, IReadOnlyList<Feature> fixture, CancellationToken token)
@@ -498,7 +506,25 @@ public static class QueryConformanceSuite
         yield return new FeatureQuery(Where: Matching(fields), BoundingBox: QueryFixture.EmptyBox);
         yield return new FeatureQuery(Where: Absent(fields));
         yield return new FeatureQuery(Where: Nulls(fields));
+        // The plan whose order is *total over the distinct fields* — the one plan
+        // a store may hand to SQL as a `DISTINCT` and report in the server's
+        // own order (ADR-0133 §6). It is here for the distinct set; the count and
+        // the reduction are measured over it too, since a restriction and the
+        // plan's order compose (ADR-0074 §4, §6).
+        yield return new FeatureQuery(
+            Where: Matching(fields),
+            Order: [.. DistinctOrder(DistinctOf(fields))],
+            Limit: 10);
     }
+
+    /// <summary>
+    /// The plan's order over the deduplicated fields, one term per field in the
+    /// order the fields are requested in, each descending when the direction is
+    /// the harder one: nulls first, and the byte-order comparison of a text key.
+    /// </summary>
+    private static IEnumerable<OrderTerm> DistinctOrder(DistinctQuery distinct) =>
+        distinct.Fields.Select((field, at) =>
+            new OrderTerm(field, at % 2 == 0 ? SortDirection.Ascending : SortDirection.Descending));
 
     /// <summary>
     /// A predicate that matches: the numeric field at or above zero, so the

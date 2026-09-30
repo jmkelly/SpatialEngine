@@ -565,7 +565,7 @@ public sealed class FeatureStatisticsPushdownTests
 
         public Task<DistinctPage> DistinctAsync(
             string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default) =>
-            Task.FromResult(FeatureReduction.Distinct(Schema, FeaturePlanExecutor.Select(Schema, features, query, cancellationToken), distinct));
+            Task.FromResult(FeatureReduction.Distinct(Schema, FeaturePlanExecutor.Select(Schema, features, query, cancellationToken), distinct, query.Order));
 
         public Task<AggregatePage> AggregateAsync(
             string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)

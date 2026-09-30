@@ -893,7 +893,7 @@ public sealed class MapResourcePushdownTests
             Distincts++;
             LastPlan = query;
             LastDistinct = distinct;
-            return Task.FromResult(FeatureReduction.Distinct(_schema, FeaturePlanExecutor.Select(_schema, features, query, cancellationToken), distinct));
+            return Task.FromResult(FeatureReduction.Distinct(_schema, FeaturePlanExecutor.Select(_schema, features, query, cancellationToken), distinct, query.Order));
         }
 
         public Task<AggregatePage> AggregateAsync(

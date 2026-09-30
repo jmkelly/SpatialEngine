@@ -23,12 +23,14 @@ namespace Spatial.Querying;
 /// different answer, not a faster one.</item>
 /// <item>Distinct rows keep first-seen order, and a group order is the order
 /// the groups were first met — a store that sorts them differently has the
-/// same set and a different answer, so the suite compares the sequence. When
-/// the caller hands the reduction the <em>plan's</em> order and every one of
-/// its terms names a group field, the group key is a total order over the
-/// groups and the groups are reported in it — the order a <c>GROUP BY</c> can
-/// return (ADR-0115 §4). An order naming anything the group row does not carry
-/// is not a group order at all, and the first-seen order stands.</item>
+/// same set and a different answer, so the suite compares the sequence. Both
+/// are the plan's order where the plan states one it can be applied to: the
+/// groups when every one of its terms names a group field, and the distinct
+/// rows when its terms name the requested fields and cover them between them
+/// (ADR-0115 §4, ADR-0133 §6) — the orders a <c>GROUP BY</c> and a
+/// <c>DISTINCT</c> can be told to return. An order naming anything the group or
+/// the distinct row does not carry is not an order of that kind at all, and the
+/// first-seen order stands.</item>
 /// <item>Variance and standard deviation are the sample forms (dividing by
 /// n − 1), and are <em>null</em> for fewer than two values: the sample form of
 /// a single observation is undefined, and a store's <c>VAR_SAMP</c> answers
@@ -49,9 +51,25 @@ public static class FeatureReduction
         return selected.Count;
     }
 
-    /// <summary>The deduplicated combinations of the requested fields, in first-seen order.</summary>
+    /// <summary>
+    /// The deduplicated combinations of the requested fields.
+    /// </summary>
+    /// <param name="schema">The dataset's schema, which the requested fields resolve against.</param>
+    /// <param name="selected">The features the plan selects, in the order it selected them.</param>
+    /// <param name="query">The fields to deduplicate combinations of.</param>
+    /// <param name="order">
+    /// The <em>plan's</em> order, or <c>null</c> when the plan asked for none.
+    /// It is applied when every term names a requested field <em>and</em> the
+    /// terms between them cover every requested field: then the order is total
+    /// over the distinct rows — they are unique per combination — and the rows
+    /// are reported in it, which is the order a <c>DISTINCT</c> can be told to
+    /// return (ADR-0133 §6, the same rule
+    /// <see cref="Aggregate"/> applies to the groups). Any other plan leaves
+    /// the rows in the order they were first seen, which is the store's own row
+    /// order and the only one it states.
+    /// </param>
     public static DistinctPage Distinct(
-        IFeatureSchema schema, IReadOnlyList<Feature> selected, DistinctQuery query)
+        IFeatureSchema schema, IReadOnlyList<Feature> selected, DistinctQuery query, IReadOnlyList<OrderTerm>? order = null)
     {
         ArgumentNullException.ThrowIfNull(selected);
         FeatureQueryValidation.ValidateDistinct(schema, query);
@@ -73,7 +91,63 @@ public static class FeatureReduction
             }
         }
 
-        return new DistinctPage(query.Fields, rows, rows.Count);
+        return new DistinctPage(query.Fields, DistinctOrder(query, order, rows), rows.Count);
+    }
+
+    /// <summary>
+    /// The distinct rows in the plan's order when that order is total over them,
+    /// and in first-seen order otherwise (ADR-0133 §6).
+    /// </summary>
+    private static List<IReadOnlyList<AttributeValue>> DistinctOrder(
+        DistinctQuery query, IReadOnlyList<OrderTerm>? order, List<IReadOnlyList<AttributeValue>> rows)
+    {
+        if (order is not { Count: > 0 } terms)
+        {
+            return rows;
+        }
+
+        var keys = new List<SortKey>(terms.Count);
+        foreach (var term in terms)
+        {
+            var index = query.Fields.ToList().FindIndex(field => string.Equals(field, term.Field, StringComparison.Ordinal));
+            if (index < 0)
+            {
+                return rows;
+            }
+
+            keys.Add(new SortKey(index, term));
+        }
+
+        // A distinct row is unique per combination of the requested fields, so
+        // an order that covers them all is a total order over the rows and two
+        // callers cannot both be right about which of two ties comes first.
+        if (keys.Select(key => key.Index).Distinct().Count() != query.Fields.Count)
+        {
+            return rows;
+        }
+
+        return
+        [
+            .. rows.OrderBy(
+                row => row,
+                Comparer<IReadOnlyList<AttributeValue>>.Create((left, right) => CompareRows(left, right, keys)))
+        ];
+    }
+
+    /// <summary>The comparison of two distinct rows by the plan's terms, under the reference's value ordering.</summary>
+    private static int CompareRows(
+        IReadOnlyList<AttributeValue> left, IReadOnlyList<AttributeValue> right, List<SortKey> keys)
+    {
+        foreach (var key in keys)
+        {
+            var comparison = AttributeValueComparer.Instance.Compare(left[key.Index], right[key.Index]);
+            if (comparison != 0)
+            {
+                return key.Term.IsDescending ? -comparison : comparison;
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>

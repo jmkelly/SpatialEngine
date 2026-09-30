@@ -130,7 +130,7 @@ public sealed class MemoryStore
         {
             var found = _catalog.Find(dataset);
             return FeatureReduction.Distinct(
-                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), distinct);
+                found.Schema, FeaturePlanExecutor.Select(found.Schema, found.Features, query, cancellationToken), distinct, query.Order);
         }));
     }
 

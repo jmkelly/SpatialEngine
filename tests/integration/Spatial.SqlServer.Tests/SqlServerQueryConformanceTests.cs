@@ -2,6 +2,7 @@ using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.QueryConformance;
+using Spatial.Querying;
 using Spatial.Stores.SqlServer;
 
 namespace Spatial.SqlServer.Tests;
@@ -132,6 +133,93 @@ public sealed class SqlServerQueryConformanceTests : IClassFixture<SqlServerCont
     }
 
     /// <summary>
+    /// Every statistic T-SQL has a plain aggregate for, reduced by the server
+    /// over the plan's group order, compared with the reference over the same
+    /// rows (ADR-0133 §3). These are the values whose T-SQL spelling is not the
+    /// field's own type — a sum is a <c>bigint</c>, a mean is a division
+    /// because <c>AVG</c> over an integer column is integer division, a variance
+    /// is the sample form — so a store that pushed them down without stating
+    /// that returns a different number here, and one that never pushed them
+    /// passes it for the wrong reason.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_pushed_statistics_are_the_reference_statistics()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"dbo.stats_{Guid.NewGuid().ToString("N")[..8]}";
+        await context.ExecuteAsync(
+            $"CREATE TABLE {dataset} (id int NOT NULL PRIMARY KEY, category nvarchar(100) NULL, "
+            + "score int NULL, ratio float NULL, name nvarchar(200) NULL, shape geometry NULL)");
+        await context.Store.WriteAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features));
+
+        var aggregate = new AggregateQuery(
+            [
+                new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
+                new AggregateSpec(AggregateStatistic.Count, "score", "scored"),
+                new AggregateSpec(AggregateStatistic.Sum, "score", "total"),
+                new AggregateSpec(AggregateStatistic.Average, "score", "mean"),
+                new AggregateSpec(AggregateStatistic.Minimum, "score", "lo"),
+                new AggregateSpec(AggregateStatistic.Maximum, "score", "hi"),
+                new AggregateSpec(AggregateStatistic.Minimum, "name", "first"),
+                new AggregateSpec(AggregateStatistic.Maximum, "name", "last"),
+                new AggregateSpec(AggregateStatistic.Variance, "ratio", "var"),
+                new AggregateSpec(AggregateStatistic.StdDev, "ratio", "sd"),
+            ],
+            ["category"]);
+
+        var query = new FeatureQuery(Where: new Predicate.Compare(
+            new FieldRef("score"), ComparisonOperator.GreaterOrEqual, Literal.FromInteger("0")),
+            Order: [new OrderTerm("category")]);
+
+        var scan = await context.Store.ScanAsync(dataset);
+        var schema = (FeatureSchema)scan[0].Schema;
+        var expected = FeatureReduction.Aggregate(
+            schema, FeaturePlanExecutor.Select(schema, scan.SelectMany(batch => batch.Features).ToList(), query, default), aggregate, query.Order);
+        var actual = await context.Store.AggregateAsync(dataset, query, aggregate);
+
+        Assert.Equal(expected.GroupFields, actual.GroupFields);
+        Assert.Equal(expected.ValueNames, actual.ValueNames);
+        Assert.Equal(Rows(expected.Groups), Rows(actual.Groups));
+    }
+
+    /// <summary>
+    /// An ungrouped reduction that selects nothing is <em>one group of nulls</em>
+    /// (ADR-0098 §3), which SQL does not say: an ungrouped aggregate always
+    /// returns a row, and its <c>COUNT(*)</c> of that row is a zero where the
+    /// contract's answer is a null (ADR-0133 §4).
+    /// </summary>
+    [SkippableFact]
+    public async Task An_ungrouped_reduction_of_nothing_is_one_group_of_nulls()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"dbo.empty_{Guid.NewGuid().ToString("N")[..8]}";
+        await context.ExecuteAsync(
+            $"CREATE TABLE {dataset} (id int NOT NULL PRIMARY KEY, category nvarchar(100) NULL, "
+            + "score int NULL, ratio float NULL, name nvarchar(200) NULL, shape geometry NULL)");
+        await context.Store.WriteAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features));
+
+        var aggregate = new AggregateQuery(
+            [
+                new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
+                new AggregateSpec(AggregateStatistic.Count, "score", "scored"),
+                new AggregateSpec(AggregateStatistic.Sum, "score", "total"),
+                new AggregateSpec(AggregateStatistic.Average, "ratio", "mean"),
+            ]);
+        var query = new FeatureQuery(Where: new Predicate.Compare(
+            new FieldRef("score"), ComparisonOperator.GreaterThan, Literal.FromNumber(double.MaxValue)));
+
+        var page = await context.Store.AggregateAsync(dataset, query, aggregate);
+
+        var group = Assert.Single(page.Groups);
+        Assert.Equal(AttributeValue.FromInt64(0), group.Values[0]);
+        Assert.Equal(AttributeValue.Null, group.Values[1]);
+        Assert.Equal(AttributeValue.Null, group.Values[2]);
+        Assert.Equal(AttributeValue.Null, group.Values[3]);
+    }
+
+    /// <summary>
     /// The group order the plan asks for over a text key, with the null last
     /// ascending and first descending, and every string compared by its bytes
     /// (ADR-0098 §3, ADR-0121): <c>"A"</c> and <c>"_c"</c> are below
@@ -148,4 +236,19 @@ public sealed class SqlServerQueryConformanceTests : IClassFixture<SqlServerCont
 
     private static AttributeValue[] Keys(AggregatePage page) =>
         [.. page.Groups.Select(group => group.Key[0])];
+
+    /// <summary>
+    /// The groups as text, for the whole-answer comparison: a
+    /// <em>double</em> reduction is rendered to twelve significant digits,
+    /// because a pushed-down statistic is a decimal engine and a binary one
+    /// agreeing to the precision a JSON client can tell. Everything else — a
+    /// count, a sum, an extreme, a null, a key — is compared exactly, because
+    /// those have no such slack.
+    /// </summary>
+    private static string[] Rows(IEnumerable<AggregateGroup> groups) =>
+        [.. groups.Select(group => string.Join(
+            "|",
+            group.Key.Concat(group.Values).Select(value => value.Kind == AttributeKind.Double
+                ? value.DoubleValue.ToString("G12", System.Globalization.CultureInfo.InvariantCulture)
+                : value.IsNull ? "-" : value.ToString())))];
 }
