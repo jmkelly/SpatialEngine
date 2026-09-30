@@ -47,6 +47,11 @@ interop surface.
 - `eng/verify.sh --plan` prints what a lane would run and runs nothing.
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
+  Every lane that runs `dotnet test` also fails a suite that skipped most of
+  what it was asked to run, read back out of the trx files
+  (`tools/skip_gate.py`, ADR-0139): `VERIFY_SKIP_RATIO` (0.5) and
+  `VERIFY_MIN_SKIPPED` (10) are the thresholds, and a suite dropped by
+  `--skip-tests` is out of the count rather than judged.
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.

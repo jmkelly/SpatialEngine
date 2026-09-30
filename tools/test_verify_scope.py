@@ -575,11 +575,17 @@ class ScriptLaneTests(unittest.TestCase):
         """Build what the change reaches, and run the tests that reach it.
 
         One scoped solution, built and then tested: a whole-solution build is
-        1 m 07 s of MSBuild loading fifty projects where this is seconds.
+        1 m 07 s of MSBuild loading fifty projects where this is seconds. The
+        test step asks for trx and reads the skips back through
+        `tools/skip_gate.py`, because a suite that skipped most of itself exits
+        0 and this is the lane that merges (SpatialEngine-8lj).
         """
         self.assertEqual(self.plan(), [
             "dotnet build .verify-scoped.slnx",
-            "dotnet test .verify-scoped.slnx --no-build",
+            "dotnet test .verify-scoped.slnx --no-build --logger trx "
+            "--results-directory .verify-test-results",
+            "python3 tools/skip_gate.py --results-dir .verify-test-results "
+            "--expect 2",
         ])
 
     def test_the_scoped_solution_holds_the_changed_project_and_its_tests(self):
@@ -625,7 +631,10 @@ class ScriptLaneTests(unittest.TestCase):
 
         self.assertEqual(self.plan(), [
             "dotnet build .verify-scoped.slnx",
-            "dotnet test .verify-scoped.slnx --no-build",
+            "dotnet test .verify-scoped.slnx --no-build --logger trx "
+            "--results-directory .verify-test-results",
+            "python3 tools/skip_gate.py --results-dir .verify-test-results "
+            "--expect 2",
             "python3 -m unittest discover --start-directory tools --pattern test_*.py",
         ])
 
@@ -644,7 +653,10 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan("--full"), [
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
-            "dotnet test SpatialEngine.slnx --no-build",
+            "dotnet test SpatialEngine.slnx --no-build --logger trx "
+            "--results-directory .verify-test-results",
+            "python3 tools/skip_gate.py --results-dir .verify-test-results "
+            "--expect 4",
             "python3 -m unittest discover --start-directory tools --pattern test_*.py",
         ])
 
@@ -668,7 +680,10 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan(ci="true"), [
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
-            "dotnet test SpatialEngine.slnx --no-build",
+            "dotnet test SpatialEngine.slnx --no-build --logger trx "
+            "--results-directory .verify-test-results",
+            "python3 tools/skip_gate.py --results-dir .verify-test-results "
+            "--expect 4",
             "python3 -m unittest discover --start-directory tools --pattern test_*.py",
         ])
 
@@ -688,7 +703,10 @@ class ScriptLaneTests(unittest.TestCase):
         """A scoping failure costs time; a silent under-run costs a defect."""
         self.assertEqual(self.plan(base="origin/does-not-exist"), [
             "dotnet build SpatialEngine.slnx",
-            "dotnet test SpatialEngine.slnx --no-build",
+            "dotnet test SpatialEngine.slnx --no-build --logger trx "
+            "--results-directory .verify-test-results",
+            "python3 tools/skip_gate.py --results-dir .verify-test-results "
+            "--expect 4",
             "python3 -m unittest discover --start-directory tools --pattern test_*.py",
         ])
     def test_an_unresolvable_base_falls_back_to_the_whole_formatter(self):

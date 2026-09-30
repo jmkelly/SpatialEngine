@@ -147,14 +147,19 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    `pull_request`, and with no pull requests that job never fires, so the
    exhaustive lane arrives only on the post-merge push to `main` and the
    pre-merge signal is the fast lane alone (ADR-0134).
-   A skip-heavy suite is not a green suite. `eng/verify.sh` has exited 0 while
-   `Spatial.SqlServer.Tests` reported 10 passed / 104 skipped under parallel
-   load — the very tests the bead existed to fix were among the skipped
-   (SpatialEngine-u2x.58 lost a tick to exactly that). When the change reaches a
-   container-backed suite and that suite reports mass skips, re-run the affected
-   class standalone before treating the green as one. `Spatial.Host.Tests` and
-   `Spatial.PostGIS.Tests` running green is the check that Docker is reachable
-   and the skips are contention, not a missing socket.
+   A skip-heavy suite is not a green suite, and the gate now says so rather
+   than leaving it to the person reading the log. `eng/verify.sh` used to exit 0
+   while `Spatial.SqlServer.Tests` reported 10 passed / 104 skipped under
+   parallel load — the very tests the bead existed to fix were among the skipped
+   (SpatialEngine-u2x.58 lost a tick to exactly that). Every lane that runs
+   `dotnet test` reads the per-suite skip counts back out of the trx files and
+   fails a suite that skipped more than half of itself (`tools/skip_gate.py`,
+   ADR-0139), so that run is now a red gate rather than a merge. A red gate on
+   skips is not a broken build: re-run the affected class standalone on an idle
+   box, or leave the suite to CI with `--skip-tests=<substring>` and say so in
+   the close reason. `Spatial.Host.Tests` and `Spatial.PostGIS.Tests` running
+   green is the check that Docker is reachable and the skips are contention, not
+   a missing socket.
    Formatting is not a hand-off step and not a merge step (ADR-0134): CI and an
    occasional `--format` own it.
 
@@ -283,11 +288,12 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    scoping working as designed, not a green light — CI on `main` covers what a
    merge did not run. Keep Docker reachable so the PostGIS and SQL Server
    integration suites actually run when the change reaches them. A suite that
-   ran but *skipped most of its cases* is the other false green: under parallel
-   worktrees `Spatial.SqlServer.Tests` has reported 10 passed / 104 skipped and
-   exited 0 (SpatialEngine-u2x.58). If your change reaches a container-backed
-   suite and it comes back skip-heavy, run that class on its own before you
-   hand off.
+   ran but *skipped most of its cases* is the other false green, and the gate
+   fails it rather than trusting the exit code: under parallel worktrees
+   `Spatial.SqlServer.Tests` has reported 10 passed / 104 skipped and exited 0
+   (SpatialEngine-u2x.58), so a lane whose suite comes back skip-heavy is a red
+   lane — run that class on its own before you hand off, or drop the suite with
+   `--skip-tests=<substring>` and let CI on `main` have it.
 8. Commit with a `Task: BEAD_ID` trailer, and **push your branch to
    origin** (`git push -u origin bd/BEAD_ID`). Then
    `bd update BEAD_ID --add-label needs-merge --append-notes "<commit> <branch>
