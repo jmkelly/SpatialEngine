@@ -3,6 +3,7 @@ status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
 amends: ADR-0098, ADR-0115, ADR-0124
+amended by: ADR-0137
 ---
 
 # ADR-0133: The SQL Server store pushes its reductions, and a distinct set is pushed only where the plan's order is total over it
@@ -99,6 +100,13 @@ is not, in the code as it stood — that is the order of the rows themselves.
    compiler a second question it does not yet answer. Each is a cost, never a
    different answer.
 
+   > **Amended by ADR-0137** on two of these. A percentile *is* pushed now — as
+   > a window function over a derived table partitioned by the group key, which
+   > the grouped statement then reduces, so "T-SQL has no ordered-set
+   > aggregate" was true of the aggregate and not of the statistic. A boolean
+   > `MIN`/`MAX` is pushed too: it is an extreme over the `bit`'s own integers.
+   > The envelope and the `having` clause are unchanged.
+
 4. **A page over a reduction is the group order and the cap in one statement,
    in that order.** The pushed statement carries the plan's group order and its
    `OFFSET`/`FETCH NEXT` together, the order first — ADR-0128 §8, and the
@@ -168,10 +176,11 @@ is not, in the code as it stood — that is the order of the rows themselves.
   pass the plan's order through with it, and ADR-0128 §8's obligation — that a
   reduction is handed the plan's order rather than reading it off the rows — now
   covers the distinct set too.
-- A SQL Server reduction that asks for a percentile, an envelope, a `having`
-  clause or a geometry key is still read whole and reduced in process, and a
-  boolean `MIN`/`MAX` with it. Each is a named gap rather than a silent one, and
-  each is the cost of the contract's answer rather than a different answer.
+- A SQL Server reduction that asks for an envelope, a `having` clause or a
+  geometry key is still read whole and reduced in process. Each is a named gap
+  rather than a silent one, and each is the cost of the contract's answer rather
+  than a different answer. A percentile and a boolean `MIN`/`MAX` were named
+  here too and are no longer gaps: **see the amendment below**.
 - The collation probe is read only when the reduction actually reduces or
   deduplicates a text column, so a count over numbers is one round trip and not
   two.
@@ -186,6 +195,16 @@ is not, in the code as it stood — that is the order of the rows themselves.
   the grouped statement with a `PARTITION BY` over the group key — and a
   `having` clause cannot reference a windowed expression, so the two members
   cannot both be pushed by one statement. Both are declined together instead.
+
+  > **Superseded by ADR-0137.** The first half of this refusal was right about
+  > the statement and wrong about the statistic: a window function cannot be
+  > written over the *grouped* statement, because its ordering column has to be
+  > a grouped one, and it is written one statement below instead — over a
+  > derived table partitioned by the group key, which the grouped statement then
+  > reduces. The second half was moot: this store does not compile a `having`
+  > clause for this dialect at all (§3), so a `having` clause never had to share
+  > a statement with a percentile. The bullet's `having` obstruction is
+  > withdrawn with it.
 - **The envelope as `MIN`/`MAX` over `.STXMin()`/`.STYMin()` in a derived
   table.** It is expressible — four reduced coordinates and a polygon built
   from them — but the polygon has to be assembled as text, and the coordinates
