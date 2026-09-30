@@ -116,6 +116,82 @@ public sealed class FeatureSpatialRelationTests
         Assert.Equal(expected, await MatchesAsync(query, EsriFeatureQuery.Touches));
     }
 
+    /// <summary>
+    /// The reproduction for SpatialEngine-u2x.35: the two-mask
+    /// <c>Touches</c> asked for <c>F***T****</c> (boundaries meet) or, when a
+    /// point was involved, <c>F**T*****</c> (the point sits on the other's
+    /// boundary). Both read the matrix with the feature on the left, so a
+    /// point or line FEATURE lying on a query polygon's boundary was missed
+    /// twice over: the contact shows up in position 2 (the point's or line's
+    /// interior against the query's boundary) — a point's own boundary is
+    /// empty, and a line along the edge has its interior on the query's
+    /// boundary — and neither mask covers position 2. The reverse operand
+    /// order was already served by <c>F**T*****</c>, which is why the
+    /// envelope-driven rows above never saw it.
+    /// </summary>
+
+
+    [Theory]
+    [InlineData("point-on-boundary", "square-equal", true)]
+    [InlineData("line-collinear", "square-equal", true)]
+    [InlineData("line-edge", "square-equal", true)]
+    [InlineData("square-equal", "point-on-boundary", true)]
+    [InlineData("square-equal", "line-collinear", true)]
+    [InlineData("point-on-boundary", "square-outside", false)]
+    [InlineData("line-collinear", "square-outside", false)]
+    public async Task Touches_reads_a_point_or_line_feature_on_a_query_polygon_boundary(
+        string feature, string query, bool expected)
+    {
+        Assert.Equal(expected, await MatchesAsync(feature, query, EsriFeatureQuery.Touches));
+    }
+
+    /// <summary>
+    /// The served <c>Touches</c> against the OGC touches masks, which are
+    /// three patterns and one union: interiors disjoint, and the contact
+    /// showing up in position 2, 4 or 5. JTS selects one of the three by
+    /// dimension; the served predicate is the dimension-free union of all
+    /// three, so every polygon/line/point pair in both operand orders has to
+    /// agree with the union the spec states.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(GeometryPairs))]
+    public async Task Touches_agrees_with_the_ogc_touches_masks_on_every_pair(string feature, string query)
+    {
+        var expected = OgcTouchesMasks.Any(mask => Relations.Relate(
+            QueryGeometry(feature), QueryGeometry(query), mask, CancellationToken.None));
+
+        Assert.Equal(expected, await MatchesAsync(feature, query, EsriFeatureQuery.Touches));
+    }
+
+    /// <summary>
+    /// The three OGC touches masks, spelled out here as the spec states them
+    /// so the cross-check is not the served constant compared with itself:
+    /// the feature's boundary reaching the query's interior (position 2), the
+    /// mirror (position 4), and the two boundaries meeting (position 5).
+    /// </summary>
+    private static readonly string[] OgcTouchesMasks = ["FT*******", "F**T*****", "F***T****"];
+
+    /// <summary>Every ordered pair of the polygon, line and point fixtures.</summary>
+    public static TheoryData<string, string> GeometryPairs()
+    {
+        var names = new[]
+        {
+            "square-equal", "square-inner", "square-overlap", "square-corner", "square-above", "square-outside",
+            "line-crossing", "line-inside", "line-on-boundary", "line-collinear", "line-edge",
+            "point-inside", "point-on-boundary", "point-vertex", "point-outside",
+        };
+        var pairs = new TheoryData<string, string>();
+        foreach (var feature in names)
+        {
+            foreach (var query in names)
+            {
+                pairs.Add(feature, query);
+            }
+        }
+
+        return pairs;
+    }
+
     [Theory]
     [InlineData("square-equal", false)]
     [InlineData("square-inner", false)]
@@ -319,6 +395,20 @@ public sealed class FeatureSpatialRelationTests
         return FeatureSpatialMatcher.Matches(Candidate(parsed), CancellationToken.None);
     }
 
+    /// <summary>
+    /// The match with the feature geometry named separately from the query
+    /// geometry, so a fixture can put the polygon, the line or the point in
+    /// either operand position: the matrix is read with the feature on the
+    /// left, and the defect was only visible in one of the two orders.
+    /// </summary>
+    private static async Task<bool> MatchesAsync(string feature, string query, string spatialRel)
+    {
+        var parsed = await QueryAsync(query, spatialRel);
+        var candidate = new FeatureSpatialMatcher.MatchCandidate(
+            parsed, Feature(QueryGeometry(feature)), 1, parsed.Geometry, Services.Relations);
+        return FeatureSpatialMatcher.Matches(candidate, CancellationToken.None);
+    }
+
     private static FeatureSpatialMatcher.MatchCandidate Candidate(EsriFeatureQuery query) =>
         new(query, Feature(Square(0, 0, 10, 10)), 1, query.Geometry, Services.Relations);
 
@@ -370,8 +460,11 @@ public sealed class FeatureSpatialRelationTests
         "line-crossing" => Line(0, 5, 20, 5),
         "line-inside" => Line(2, 2, 8, 8),
         "line-on-boundary" => Line(0, 0, 0, 10),
+        "line-collinear" => Line(-5, 0, 15, 0),
+        "line-edge" => Line(0, 0, 10, 0),
         "point-inside" => GeometryFactory.CreatePoint(5, 5),
         "point-on-boundary" => GeometryFactory.CreatePoint(0, 5),
+        "point-vertex" => GeometryFactory.CreatePoint(0, 0),
         "point-outside" => GeometryFactory.CreatePoint(20, 20),
         "square-outside" => Square(20, 20, 30, 30),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown fixture geometry"),

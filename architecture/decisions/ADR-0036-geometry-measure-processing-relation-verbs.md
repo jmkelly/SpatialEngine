@@ -75,11 +75,16 @@ carry both without the two being swapped at a call site.
   cancellable request (ADR-0033).
 - `Relate` is the one face the query path uses as well as the geometry
   service: the Feature Service `spatialRel` verbs are its DE-9IM patterns
-  (`T*****FF*` contains, `T*F**F***` within, `F***T****` touches, and the
-  point, overlaps and crosses variants selected by geometry dimension),
+  (`T*****FF*` contains, `T*F**F***` within, `FT*******` / `F**T*****` /
+  `F***T****` touches, and the overlaps and crosses variants selected by
+  geometry dimension),
   with the envelope tests kept as the pre-filter so the exact predicate runs
   only on candidates. No contract change — the interface was already
   registered; only the adapter's dependency set grew.
+  (SpatialEngine-u2x.35 corrects the touches row: the dimension-keyed pick
+  dropped position 2, so a point or line feature on a query polygon's
+  boundary read as not touching. The three OGC touches masks are the
+  dimension-free union, and the union is not one nine-character pattern.)
 
 ## References
 
