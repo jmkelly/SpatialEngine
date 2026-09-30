@@ -96,14 +96,16 @@ public sealed class MemoryStoreTests
     }
 
     [Fact]
-    public async Task None_ingest_creates_a_data_only_dataset()
+    public async Task Every_ingest_creates_a_keyed_dataset()
     {
-        var store = await IngestedAsync(IngestIdentity.None);
+        // ADR-0149: there is no keyless ingest any more, so the default
+        // request is the keyed one — it declares an identity column and is
+        // therefore editable (ADR-0037) as well as lookup-able.
+        var store = await IngestedAsync();
 
-        Assert.Empty((await store.DescribeAsync("memory.cities")).IdColumns);
+        Assert.Equal(["id"], (await store.DescribeAsync("memory.cities")).IdColumns);
         var outcome = await new MemoryEditor(store).AddAsync("memory.cities", Batch(Point("9", "Rome", 12.5, 41.9)));
-        Assert.False(outcome[0].Succeeded);
-        Assert.Equal(SpatialException.InvalidArguments, outcome[0].ErrorCode);
+        Assert.True(outcome[0].Succeeded);
     }
 
     [Fact]
@@ -317,21 +319,11 @@ public sealed class MemoryStoreTests
     }
 
     [Fact]
-    public async Task A_lookup_on_a_dataset_with_no_identity_column_is_refused()
-    {
-        var store = await IngestedAsync(IngestIdentity.None);
-
-        var failure = await Assert.ThrowsAsync<SpatialException>(
-            () => store.GetAsync("memory.cities", [new FeatureId("1")]));
-
-        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
-        Assert.Contains("identity", failure.Message, StringComparison.Ordinal);
-        Assert.Contains("memory.cities", failure.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task A_lookup_on_a_created_dataset_with_no_identity_column_is_refused()
     {
+        // ADR-0149 ended the keyless *ingest*, and ADR-0147 keeps a
+        // `CreateAsync`-built dataset keyless in the contract's view, so this
+        // is the shape the ADR-0140 refusal now answers on.
         var store = new MemoryStore();
         await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
         await store.WriteAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)));
@@ -340,6 +332,8 @@ public sealed class MemoryStoreTests
             () => store.GetAsync("memory.places", [new FeatureId("1")]));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("identity", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("memory.places", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -347,9 +341,10 @@ public sealed class MemoryStoreTests
     {
         // The refusal is about the dataset, not about the identities asked
         // for: an empty request on an unkeyed dataset is still unanswerable.
-        var store = await IngestedAsync(IngestIdentity.None);
+        var store = new MemoryStore();
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
 
-        await Assert.ThrowsAsync<SpatialException>(() => store.GetAsync("memory.cities", []));
+        await Assert.ThrowsAsync<SpatialException>(() => store.GetAsync("memory.places", []));
     }
 
     [Fact]

@@ -87,7 +87,7 @@ public sealed class PolarRenderTests : IDisposable
         var client = factory.CreateClient();
         var ingest = await client.SendAsync(Authorized(
             HttpMethod.Post,
-            "/api/ingest?store=memory&dataset=test.polar&srid=4326&format=geojson&identity=none",
+            "/api/ingest?store=memory&dataset=test.polar&srid=4326&format=geojson",
             new StringContent(PolarGeoJson, Encoding.UTF8, "application/geo+json")));
         Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
 

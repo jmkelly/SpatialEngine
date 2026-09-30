@@ -56,7 +56,9 @@ GET|POST /ogc/{name}/wfs                 # OGC WFS 2.0.0 (Wfs service): GetCapab
 POST   /api/ingest?store=&dataset=&srid=&format=&identity=&identityField=&publish=&sourceSrid=&upload=
                                        # raw/multipart upload, or a staged upload by id -> IngestResult;
                                        # sourceSrid reprojects via ICoordinateTransforms; `upload`
-                                       # loads only a complete staged upload (ADR-0090)
+                                       # loads only a complete staged upload (ADR-0090); `identity` is
+                                       # auto|source (identityField with source) — the keyless `none`
+                                       # is refused by name, every ingest is keyed (ADR-0149)
 POST   /api/uploads?id=&total=&sha256=  # open/reopen a staged upload -> UploadState (admin)
 GET    /api/uploads                     # every staged upload -> UploadState[] (admin)
 GET    /api/uploads/{id}                # how far an upload got: the offset to resume from (admin)

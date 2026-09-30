@@ -125,7 +125,6 @@ internal static class EsriAdminUploads
     private static readonly Dictionary<string, IngestIdentity> Identities = new(StringComparer.OrdinalIgnoreCase)
     {
         ["auto"] = IngestIdentity.Auto,
-        ["none"] = IngestIdentity.None,
         ["source"] = IngestIdentity.Source,
     };
 
@@ -144,7 +143,9 @@ internal static class EsriAdminUploads
             ? IngestIdentity.Auto
             : Identities.TryGetValue(name, out var identity)
                 ? identity
-                : throw GeoServicesErrors.Invalid($"Unknown identity mode '{name}'.");
+                : throw GeoServicesErrors.Invalid(string.Equals(name, "none", StringComparison.OrdinalIgnoreCase)
+                    ? "Identity 'none' is not supported: every ingested dataset carries an identity column, so it is editable and lookup-able. Use 'auto' for a store-assigned key or 'source' with an identityField."
+                    : $"Unknown identity mode '{name}'; expected auto or source.");
 
 
 }

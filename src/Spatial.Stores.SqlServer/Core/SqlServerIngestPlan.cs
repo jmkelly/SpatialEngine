@@ -18,7 +18,7 @@ internal sealed record SqlServerIngestPlan(
     SqlServerDatasetName Dataset,
     int Srid,
     IngestIdentity Identity,
-    string? IdentityColumn,
+    string IdentityColumn,
     FeatureSchema Schema,
     IReadOnlyList<FeatureBatch> Pages)
 {
@@ -30,12 +30,10 @@ internal sealed record SqlServerIngestPlan(
 
     /// <summary>
     /// The columns the create statement already carries a primary key on —
-    /// none for <see cref="IngestIdentity.None"/>, the identity column for
-    /// <see cref="IngestIdentity.Auto"/> and <see cref="IngestIdentity.Source"/>.
-    /// A column that already has one is not indexed a second time (ADR-0092).
+    /// the identity column, for every ingest (ADR-0149). A column that already
+    /// has one is not indexed a second time (ADR-0092).
     /// </summary>
-    public IReadOnlyList<string> KeyColumns =>
-        Identity is IngestIdentity.None ? [] : [IdentityColumn!];
+    public IReadOnlyList<string> KeyColumns => [IdentityColumn];
 
     /// <summary>
     /// The index statements this dataset is created with (ADR-0092): the spatial
@@ -89,17 +87,15 @@ internal sealed record SqlServerIngestPlan(
 
         if (Identity == IngestIdentity.Auto)
         {
-            builder.Append(", ").Append(IdentityColumnSql()).Append(" bigint IDENTITY(1,1) PRIMARY KEY");
+            builder.Append(", ").Append(SqlServerIdentifier.Quote(IdentityColumn)).Append(" bigint IDENTITY(1,1) PRIMARY KEY");
         }
-        else if (Identity == IngestIdentity.Source)
+        else
         {
-            builder.Append(", PRIMARY KEY (").Append(SqlServerIdentifier.Quote(IdentityColumn!)).Append(')');
+            builder.Append(", PRIMARY KEY (").Append(SqlServerIdentifier.Quote(IdentityColumn)).Append(')');
         }
 
         return builder.Append(')').ToString();
     }
-
-    private static string IdentityColumnSql() => SqlServerIdentifier.Quote(AutoIdentityColumn);
 
     /// <summary>
     /// Validates a request against a schema alone, for a streaming load whose
@@ -185,22 +181,15 @@ internal sealed record SqlServerIngestPlan(
         }
     }
 
-    private static string? ResolveIdentity(IngestRequest request, FeatureSchema schema, SqlServerDatasetName dataset) =>
+    private static string ResolveIdentity(IngestRequest request, FeatureSchema schema, SqlServerDatasetName dataset) =>
         request.Identity switch
         {
-            IngestIdentity.None => NoneIdentity(request),
             IngestIdentity.Auto => AutoIdentity(request, schema, dataset),
             IngestIdentity.Source => SourceIdentity(request, schema),
             _ => throw SpatialException.BadArguments($"Unsupported ingest identity '{request.Identity}'."),
         };
 
-    private static string? NoneIdentity(IngestRequest request)
-    {
-        RejectIdentityField(request);
-        return null;
-    }
-
-    private static string? AutoIdentity(IngestRequest request, FeatureSchema schema, SqlServerDatasetName dataset)
+    private static string AutoIdentity(IngestRequest request, FeatureSchema schema, SqlServerDatasetName dataset)
     {
         RejectIdentityField(request);
         if (schema.IndexOf(AutoIdentityColumn) >= 0)
@@ -212,7 +201,7 @@ internal sealed record SqlServerIngestPlan(
         return AutoIdentityColumn;
     }
 
-    private static string? SourceIdentity(IngestRequest request, FeatureSchema schema)
+    private static string SourceIdentity(IngestRequest request, FeatureSchema schema)
     {
         if (string.IsNullOrWhiteSpace(request.IdentityField))
         {

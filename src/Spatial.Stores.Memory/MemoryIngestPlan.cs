@@ -9,13 +9,12 @@ namespace Spatial.Stores.Memory;
 /// identity mode and the stored schema (with the appended auto-identity
 /// column), plus the pages to load. Pure and top-level so the identity rules
 /// are unit-testable without the catalog (the same factoring as PostGIS's
-/// <c>PostgisIngestPlan</c>). A stored feature is keyed by the identity
-/// column's value: an auto ingest's assigned id, a source ingest's own column
-/// (ADR-0038), and the caller's identity only when the dataset has no
-/// identity column at all.
+/// <c>PostgisIngestPlan</c>). Every plan has an identity column (ADR-0149),
+/// so a stored feature is keyed by it: an auto ingest's assigned id or a
+/// source ingest's own column (ADR-0038, ADR-0119).
 /// </summary>
 internal sealed record MemoryIngestPlan(
-    string Dataset, int Srid, IngestIdentity Identity, string? IdentityColumn,
+    string Dataset, int Srid, IngestIdentity Identity, string IdentityColumn,
     FeatureSchema SourceSchema, FeatureSchema StoredSchema, IReadOnlyList<FeatureBatch> Pages)
 {
     /// <summary>Validates a request and its pages, or throws <c>invalid.arguments</c>.</summary>
@@ -60,7 +59,7 @@ internal sealed record MemoryIngestPlan(
         var features = new List<Feature>(Pages.Sum(page => (int)page.Count));
         long nextId = 1;
         var template = MemoryDataset.Create(Dataset, Srid, StoredSchema, idColumns: [], features: [], nextId: 1);
-        var identityIndex = IdentityColumn is null ? -1 : StoredSchema.IndexOf(IdentityColumn);
+        var identityIndex = StoredSchema.IndexOf(IdentityColumn);
         foreach (var page in Pages)
         {
             foreach (var feature in page.Features)
@@ -71,7 +70,7 @@ internal sealed record MemoryIngestPlan(
             }
         }
 
-        return MemoryDataset.Create(Dataset, Srid, StoredSchema, IdentityColumn is null ? [] : [IdentityColumn], features, nextId);
+        return MemoryDataset.Create(Dataset, Srid, StoredSchema, [IdentityColumn], features, nextId);
     }
 
     private static void ValidateRequest(IngestRequest request)
@@ -120,22 +119,15 @@ internal sealed record MemoryIngestPlan(
         }
     }
 
-    private static (IngestIdentity Identity, string? Column, FeatureSchema Schema) IdentityOf(
+    private static (IngestIdentity Identity, string Column, FeatureSchema Schema) IdentityOf(
         IngestRequest request, FeatureSchema source) => request.Identity switch
         {
-            IngestIdentity.None => None(request, source),
             IngestIdentity.Auto => Auto(request, source),
             IngestIdentity.Source => Source(request, source),
             _ => throw SpatialException.BadArguments($"Unsupported ingest identity '{request.Identity}'."),
         };
 
-    private static (IngestIdentity, string?, FeatureSchema) None(IngestRequest request, FeatureSchema source)
-    {
-        RejectIdentityField(request);
-        return (IngestIdentity.None, null, source);
-    }
-
-    private static (IngestIdentity, string?, FeatureSchema) Auto(IngestRequest request, FeatureSchema source)
+    private static (IngestIdentity, string, FeatureSchema) Auto(IngestRequest request, FeatureSchema source)
     {
         RejectIdentityField(request);
         if (source.IndexOf(MemorySchema.AutoIdentityColumn) >= 0)
@@ -149,7 +141,7 @@ internal sealed record MemoryIngestPlan(
         return (IngestIdentity.Auto, MemorySchema.AutoIdentityColumn, withId);
     }
 
-    private static (IngestIdentity, string?, FeatureSchema) Source(IngestRequest request, FeatureSchema source)
+    private static (IngestIdentity, string, FeatureSchema) Source(IngestRequest request, FeatureSchema source)
     {
         if (string.IsNullOrWhiteSpace(request.IdentityField))
         {

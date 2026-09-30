@@ -78,7 +78,7 @@ public sealed class SeedEndpointTests : IDisposable
         sources = new[]
         {
             new { id = "public.cities", url = "https://example.test/cities.geojson", format = "geojson", srid = 4326, identity = "auto" },
-            new { id = "public.rivers", url = "https://example.test/rivers.geojson", format = "geojson", srid = 4326, identity = "none" },
+            new { id = "public.rivers", url = "https://example.test/rivers.geojson", format = "geojson", srid = 4326, identity = "auto" },
         },
         maps = new[]
         {

@@ -103,25 +103,17 @@ public sealed class PostgisIngestPlanTests
     }
 
     [Fact]
-    public void None_creates_a_data_only_table()
+    public void Every_ingest_creates_a_keyed_table()
     {
+        // ADR-0149: the keyless mode is gone, so the default request is the
+        // keyed one — a dataset ingest builds can name its features.
         var plan = PostgisIngestPlan.Create(
-            new IngestRequest("public.upload", 4326, IngestIdentity.None),
+            new IngestRequest("public.upload", 4326),
             [Batch(GeometryOnly, Point(GeometryOnly, "1", "a", 1, 2))]);
 
-        Assert.Null(plan.IdentityColumn);
-        Assert.DoesNotContain("PRIMARY KEY", plan.CreateTableSql());
-    }
-
-    [Fact]
-    public void None_rejects_an_identity_field()
-    {
-        var failure = Assert.Throws<SpatialException>(() =>
-            PostgisIngestPlan.Create(
-                new IngestRequest("public.upload", 4326, IngestIdentity.None, "name"),
-                [Batch(GeometryOnly, Point(GeometryOnly, "1", "a", 1, 2))]));
-
-        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Equal("id", plan.IdentityColumn);
+        Assert.Contains("PRIMARY KEY", plan.CreateTableSql());
+        Assert.Equal(["id"], plan.KeyColumns);
     }
 
     [Fact]

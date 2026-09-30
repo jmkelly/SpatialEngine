@@ -194,12 +194,15 @@ public sealed class SqlServerQueryTests
     }
 
     [Fact]
-    public void An_identity_free_ingest_creates_no_key_at_all()
+    public void Every_ingest_creates_a_keyed_table()
     {
-        var plan = Plan(new IngestRequest("dbo.places", 4326, IngestIdentity.None), 1);
+        // ADR-0149: there is no keyless ingest any more, so the default
+        // request is the keyed one.
+        var plan = Plan(new IngestRequest("dbo.places", 4326), 1);
 
-        Assert.Null(plan.IdentityColumn);
-        Assert.EndsWith("[geom] geometry)", plan.CreateTableSql());
+        Assert.Equal(SqlServerIngestPlan.AutoIdentityColumn, plan.IdentityColumn);
+        Assert.Contains("PRIMARY KEY", plan.CreateTableSql());
+        Assert.Equal([SqlServerIngestPlan.AutoIdentityColumn], plan.KeyColumns);
     }
 
     [Fact]
@@ -267,7 +270,7 @@ public sealed class SqlServerQueryTests
         };
 
         var failure = Assert.Throws<SpatialException>(() =>
-            SqlServerIngestPlan.Create(new IngestRequest("dbo.places", 4326, IngestIdentity.None), pages));
+            SqlServerIngestPlan.Create(new IngestRequest("dbo.places", 4326), pages));
 
         Assert.Contains("XYZ", failure.Message);
         Assert.Contains("XY coordinates only", failure.Message);
@@ -285,7 +288,7 @@ public sealed class SqlServerQueryTests
         var pages = new[] { Page(schema, "1"), new FeatureBatch(other, []) };
 
         var failure = Assert.Throws<SpatialException>(() => SqlServerIngestPlan.Create(
-            new IngestRequest("dbo.places", 4326, IngestIdentity.None), pages));
+            new IngestRequest("dbo.places", 4326), pages));
 
         Assert.Contains("does not share the first page's schema", failure.Message);
     }

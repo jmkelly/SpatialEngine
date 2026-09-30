@@ -67,7 +67,7 @@ public sealed class ParityCensusTests : IDisposable
 
         var ingest = await client.SendAsync(Authorized(
             HttpMethod.Post,
-            "/api/ingest?store=memory&dataset=census.states&srid=4326&format=geojson&identity=none",
+            "/api/ingest?store=memory&dataset=census.states&srid=4326&format=geojson",
             new StringContent(geojson, Encoding.UTF8, "application/json")));
         Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
         Assert.Equal(2, (await BodyAsync(ingest)).GetProperty("features").GetInt64());

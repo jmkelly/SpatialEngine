@@ -9,7 +9,7 @@ namespace Spatial.Stores.Memory;
 /// upload into a <see cref="MemoryIngestPlan"/>, then build and register the
 /// dataset in one in-memory operation, so a partial dataset is never
 /// observable. Identity follows the same
-/// <see cref="IngestIdentity.None|Auto|Source"/> rules as the PostGIS ingest
+/// <see cref="IngestIdentity.Auto|Source"/> rules as the PostGIS ingest
 /// store, differing only in durability. It also implements
 /// <see cref="IDatasetIngestStream"/>, which the dataset must keep anyway; what
 /// streaming saves is the decoded document, not the stored features.

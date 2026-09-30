@@ -4,16 +4,14 @@ using Spatial.Core.Features.Ingest;
 namespace Spatial.Contracts.Providers;
 
 /// <summary>
-/// How an ingested dataset keys its features (ADR-0041).
+/// How an ingested dataset keys its features (ADR-0041). Every ingested
+/// dataset carries an identity column, so every ingested dataset is editable
+/// and lookup-able; the keyless mode ADR-0041 listed as <c>None</c> was
+/// removed by ADR-0149 rather than left as a request that builds a dataset
+/// which cannot name its features (ADR-0140).
 /// </summary>
 public enum IngestIdentity
 {
-    /// <summary>
-    /// No identity column: the dataset is load-only/query-only and cannot be
-    /// edited (ADR-0037) or read by identity (ADR-0038).
-    /// </summary>
-    None,
-
     /// <summary>
     /// The store assigns an integer identity for every loaded feature, so the
     /// dataset is editable and lookup-able without the source supplying a key.
@@ -42,8 +40,9 @@ public sealed record IngestRequest(
 
 /// <summary>
 /// The result of a successful ingest: the created dataset, how many features
-/// landed, and the identity column when one exists.
-/// </summary>
+/// landed, and the identity column it is keyed by (ADR-0149 — an ingest
+/// always keys its dataset, so this is always reported).
+/// </newText>
 public sealed record IngestOutcome(
     string Dataset,
     long Features,

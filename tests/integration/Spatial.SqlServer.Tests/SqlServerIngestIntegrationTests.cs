@@ -154,21 +154,21 @@ public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerCon
     }
 
     [SkippableFact]
-    public async Task An_ingest_without_identity_creates_a_dataset_with_no_key()
+    public async Task Every_ingest_creates_a_dataset_with_a_key()
     {
         Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
-        var dataset = Unique("ingest_none");
+        var dataset = Unique("ingest_keyed");
         var schema = Schema(("name", AttributeKind.String), ("geom", AttributeKind.Geometry));
         var pages = new[]
         {
             new FeatureBatch(schema, [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, CoordinateReference.Epsg(4326)))]),
         };
 
-        var outcome = await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+        var outcome = await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages);
 
-        Assert.Null(outcome.IdentityField);
-        Assert.Empty((await context.Store.DescribeAsync(dataset)).IdColumns);
+        Assert.Equal("id", outcome.IdentityField);
+        Assert.Equal(["id"], (await context.Store.DescribeAsync(dataset)).IdColumns);
     }
 
     [SkippableFact]
@@ -230,7 +230,7 @@ public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerCon
             new FeatureBatch(schema, [Feature(schema, "1", 1.5d, GeometryFactory.CreatePoint(13.4, 52.5, CoordinateReference.Epsg(4326)))]),
         };
 
-        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages);
 
         var filtered = (await context.Store.QueryAsync(dataset, new FeatureQuery(Where: FeatureFilter.Parse("LABELRANK = 1.5")))).Batches;
         Assert.Single(filtered.SelectMany(batch => batch.Features));
@@ -251,7 +251,7 @@ public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerCon
         };
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() =>
-            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages));
+            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages));
 
         Assert.Equal(SpatialException.InvalidArguments, failure.Code);
         Assert.Contains("XYZ", failure.Message);
@@ -276,7 +276,7 @@ public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerCon
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages, cancellation.Token));
+            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages, cancellation.Token));
     }
 
     /// <summary>

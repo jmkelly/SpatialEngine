@@ -23,7 +23,7 @@ public static class DatasetCommands
             new("dataset", "schema.table", "Destination dataset id", Required: true),
             new("srid", "EPSG", "SRID of the stored geometry", Required: true),
             new("format", "geojson|ndjson|csv", "Upload format (default geojson)"),
-            new("identity", "none|auto|source", "Identity mode (default auto)"),
+            new("identity", "auto|source", "Identity mode (default auto)"),
             new("identity-field", "FIELD", "Integer identity field when --identity source"),
             new("source-srid", "EPSG", "SRID of the file; the engine reprojects it (ADR-0041)"),
             new("publish", "NAME", "Also register a feature map for the dataset"),
@@ -139,9 +139,15 @@ public static class DatasetCommands
 
     private static void ValidateIdentity(string identity, string? identityField)
     {
-        if (identity is not ("none" or "auto" or "source"))
+        if (identity == "none")
         {
-            throw new CliUsageException($"Unknown identity '{identity}'. Use none, auto or source.");
+            // ADR-0149: every ingested dataset carries an identity column.
+            throw new CliUsageException("Identity 'none' is not supported: every ingested dataset is keyed. Use auto or source.");
+        }
+
+        if (identity is not ("auto" or "source"))
+        {
+            throw new CliUsageException($"Unknown identity '{identity}'. Use auto or source.");
         }
 
         if (identity == "source" && string.IsNullOrEmpty(identityField))

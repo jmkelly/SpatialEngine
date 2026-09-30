@@ -6,7 +6,8 @@
 // Sources are ingested through the neutral admin API (ADR-0041). `sourceSrid`
 // exercises the engine's server-side reprojection: the file is decoded in
 // that CRS and transformed to `srid` by the ProjNet service before it is
-// stored. `identity: "auto"` makes the dataset editable/lookup-able.
+// stored. Every source is keyed (`identity: "auto"`), so every seeded
+// dataset is editable and lookup-able (ADR-0149).
 //
 // Services are maps (ADR-0053). A map exposing `map` is served as a
 // MapServer (ADR-0048); one exposing `feature` is a queryable/editable
@@ -33,7 +34,7 @@ export const sources = [
     url: naturalEarth("ne_110m_populated_places.geojson"),
     format: "geojson",
     srid: 4326,
-    identity: "none",
+    identity: "auto",
     note: "Natural Earth 1:110m populated places",
   },
   {
@@ -41,7 +42,7 @@ export const sources = [
     url: naturalEarth("ne_110m_rivers_lake_centerlines.geojson"),
     format: "geojson",
     srid: 4326,
-    identity: "none",
+    identity: "auto",
     note: "Natural Earth 1:110m river centrelines",
   },
   {
@@ -49,7 +50,7 @@ export const sources = [
     url: naturalEarth("ne_110m_lakes.geojson"),
     format: "geojson",
     srid: 4326,
-    identity: "none",
+    identity: "auto",
     note: "Natural Earth 1:110m lakes",
   },
   {
@@ -57,7 +58,7 @@ export const sources = [
     url: naturalEarth("ne_50m_admin_1_states_provinces.geojson"),
     format: "geojson",
     srid: 4326,
-    identity: "none",
+    identity: "auto",
     note: "Natural Earth 1:50m admin-1 states and provinces",
   },
   {
@@ -65,7 +66,7 @@ export const sources = [
     url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson",
     format: "geojson",
     srid: 4326,
-    identity: "none",
+    identity: "auto",
     note: "USGS magnitude 2.5+ earthquakes, past 7 days",
   },
   {
@@ -74,7 +75,7 @@ export const sources = [
     format: "geojson",
     srid: 3857,
     sourceSrid: 4326,
-    identity: "none",
+    identity: "auto",
     note: "Populated places reprojected 4326 -> 3857 on ingest",
   },
 ];

@@ -133,7 +133,6 @@ export function DataScreen() {
             <span>Identity</span>
             <select data-testid="identity" value={identity} onChange={(event) => setIdentity(event.target.value)}>
               <option value="auto">auto (assigned)</option>
-              <option value="none">none (query only)</option>
               <option value="source">source field</option>
             </select>
           </label>

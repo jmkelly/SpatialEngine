@@ -9,6 +9,32 @@ this file together, then tag the release (`RELEASING.md`).
 
 ## [Unreleased]
 
+### Changed
+
+- **Every ingested dataset carries an identity column; `identity=none` is
+  refused by name** (ADR-0041, ADR-0149, SpatialEngine-2cm): an ingest with
+  `identity=none` built a dataset with no durable feature key, so
+  `IFeatureLookup.GetAsync` was refused on it (ADR-0140), its Esri `OBJECTID`
+  was the 1-based scan ordinal (ADR-0037) — a number a write renumbers — and
+  the layer was therefore neither editable nor pushable-down. A client-visible
+  per-feature read existed only for identity-backed layers, which is the gap
+  the measurement spike could not measure across. `IngestIdentity.None` is
+  removed from the contract: `Auto` (a store-assigned `id`) and `Source` (a
+  named integer field of the upload) are the only modes, and every ingested
+  dataset is consequently keyed, editable and lookup-able. The wire value is
+  refused rather than ignored — `POST /api/ingest?identity=none`,
+  `POST /arcgis/admin/uploads?identity=none` and `spatial dataset add
+  --identity none` all fail with a message naming the mode and offering
+  `auto`/`source`. What it costs is a field the source did not send: an
+  ingested dataset's description carries an `id`, and an upload that already
+  has one must name it (`--identity source --identity-field id`), which the
+  plan already required. `IDataCatalogue.CreateAsync` is deliberately
+  unchanged and keeps building keyless datasets (ADR-0147), so ADR-0140's
+  refusal still has a home — on a created dataset, which is what the PostGIS
+  and SQL Server lookup tests exercise. The seeded datasets, the .NET CLI's
+  starter project and the workbench ingest form follow: every one of them is
+  keyed now.
+
 ### Fixed
 
 - **A SQL Server dataset created by `IDataCatalogue.CreateAsync` had no

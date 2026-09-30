@@ -132,9 +132,18 @@ internal static class IngestPipeline
             return IngestIdentity.Auto;
         }
 
+        if (string.Equals(name.Trim(), "none", StringComparison.OrdinalIgnoreCase))
+        {
+            // ADR-0149: every ingested dataset is keyed, so the keyless mode is
+            // refused by name rather than accepted into a dataset that cannot
+            // name its features (ADR-0140).
+            throw SpatialException.BadArguments(
+                "Identity 'none' is not supported: every ingested dataset carries an identity column, so it is editable and lookup-able. Use 'auto' for a store-assigned key or 'source' with an identityField.");
+        }
+
         return Enum.TryParse<IngestIdentity>(name, ignoreCase: true, out var identity)
             ? identity
-            : throw SpatialException.BadArguments($"Unknown identity mode '{name}'; expected none, auto or source.");
+            : throw SpatialException.BadArguments($"Unknown identity mode '{name}'; expected auto or source.");
     }
 
     public static int ParseSrid(string value) =>

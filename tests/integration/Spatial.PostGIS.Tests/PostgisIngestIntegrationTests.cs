@@ -142,7 +142,7 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
                 [Feature(schema, "1", "5", "ml", GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326)))]),
         };
 
-        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages);
 
         var description = await context.Store.DescribeAsync(dataset);
         Assert.Contains(description.Schema.Fields, field => field.Name == "LABELRANK");
@@ -170,7 +170,7 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
                 [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, 34.5, CoordinateReference.Epsg(4326)))]),
         };
 
-        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages);
 
         var feature = (await context.Store.ScanAsync(dataset)).SelectMany(batch => batch.Features).Single();
         var point = Assert.IsType<Point>(feature["geom"].GeometryValue);
@@ -193,7 +193,7 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
                 [Feature(schema, "1", "Berlin", GeometryFactory.CreatePoint(13.4, 52.5, 34.5, CoordinateReference.Epsg(4326)))]),
         };
 
-        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages);
+        await context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages);
 
         // The typmod the batch's own coordinate layout resolved to is the one the
         // description reads back, so a 3D load is not advertised as 2D.
@@ -245,7 +245,7 @@ public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContain
         cancellation.Cancel();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326, IngestIdentity.None), pages, cancellation.Token));
+            context.Ingest.IngestAsync(new IngestRequest(dataset, 4326), pages, cancellation.Token));
     }
 
     /// <summary>
