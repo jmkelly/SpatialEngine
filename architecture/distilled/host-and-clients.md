@@ -297,6 +297,17 @@ host independently executable; browser tests run against the host directly.
   exists. `PostgisOptions.CreateIndexes` / `SqlServerOptions.CreateIndexes`
   (default `true`) turn it off for a bulk load that will build them itself; the
   default is on because a silently unindexed table is the expensive failure.
+- **A SQL Server dataset the catalogue created is clustered on a key the engine
+  owns, and the contract never sees it** (ADR-0147): SQL Server builds a spatial
+  index in clustering order and refuses one on a table with no clustered
+  primary key, so `CreateAsync` declares a `bigint IDENTITY(1,1)` primary key
+  under a constraint name derived from the table. The two schema reads leave a
+  column keyed that way out of what they report, so a created dataset stays
+  **keyless** in the contract — no extra field, no feature identity, and the
+  same shape a created PostGIS dataset has. The key takes the first column name
+  the creating schema is free of (`id`, then `id_1`, …) and follows
+  `CreateIndexes`: with index creation off there is nothing to grid, so the
+  created table is the one ADR-0092 shipped.
 - **Redaction is a store diagnostic contract**: no secret in logs or
   `SpatialException` messages; unconfigured store fails with actionable
   `store.unavailable` naming the setting; failures describe config in

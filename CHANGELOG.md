@@ -11,6 +11,26 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A SQL Server dataset created by `IDataCatalogue.CreateAsync` had no
+  spatial index, so its bounding-box pushdown scanned the table**
+  (ADR-0092, ADR-0147, SpatialEngine-9vg): SQL Server builds a spatial index
+  in clustering order and refuses to build one on a table with no clustered
+  primary key, so ADR-0092's index plan gave a created dataset the attribute
+  btrees and nothing else — the limitation its own integration test asserted
+  rather than assumed. A created table is now clustered on a key the engine
+  owns, a `bigint IDENTITY(1,1)` primary key declared under a constraint name
+  derived from the table, so the spatial index is built and the pushdown seeks
+  it. The key never reaches the contract: the two schema reads leave a column
+  keyed that way out of the columns and primary key they report, so a created
+  dataset keeps the keyless shape it has always had — no new field, no feature
+  identity, and no difference from a created PostGIS dataset under the one
+  contract. The key column takes the first name the creating schema is free of
+  (`id`, then `id_1`, …), so no schema is refused for a name the contract
+  never reserved, and it follows `SqlServerOptions.CreateIndexes`: with index
+  creation off there is nothing to grid, so the created table is the one
+  ADR-0092 shipped. An ingested dataset is untouched — its own primary key is
+  not declared under that name, so its identity stays the identity.
+
 - **`spatialRel` `Overlaps` reads two crossing lines as a partial overlap,
   and `Crosses` never answers for a line/line pair** (ADR-0036,
   SpatialEngine-u2x.56): both verbs are dimension-dependent, and the served

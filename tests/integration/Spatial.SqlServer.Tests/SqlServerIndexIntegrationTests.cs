@@ -47,10 +47,59 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
         Assert.True(await HasIndexAsync(context, dataset, "population", spatial: false), string.Join(", ", names));
         // The two limits SQL Server puts on this plan (ADR-0092), both verified
         // against the container: a text column is created as nvarchar(max) and
-        // cannot be an index key, and a table with no clustered primary key
-        // cannot be gridded at all.
+        // cannot be an index key. The other limit — a table with no clustered
+        // primary key cannot be gridded — is the engine key ADR-0147 added to
+        // a created table, so the created dataset is gridded after all.
         Assert.False(await HasIndexAsync(context, dataset, "name", spatial: false), string.Join(", ", names));
-        Assert.False(await HasIndexAsync(context, dataset, "geom", spatial: true), string.Join(", ", names));
+        Assert.True(await HasIndexAsync(context, dataset, "geom", spatial: true), string.Join(", ", names));
+    }
+
+    /// <summary>
+    /// The engine key the created table is clustered on exists for the spatial
+    /// index alone: it is on the table, and the contract does not see it — a
+    /// created dataset is the keyless dataset ADR-0131 and ADR-0140 are written
+    /// against (ADR-0147).
+    /// </summary>
+    [SkippableFact]
+    public async Task A_created_dataset_is_clustered_on_the_engine_key_and_does_not_expose_it()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("indexed_key");
+        var schema = Schema(("population", AttributeKind.Int64), ("geom", AttributeKind.Geometry));
+
+        await context.Store.CreateAsync(dataset, new FeatureBatch(schema, []), 4326);
+
+        var names = await IndexNamesAsync(context, dataset);
+        Assert.Contains(SqlServerQueries.EngineKeyConstraint(Parse(dataset)), names);
+        var description = await context.Store.DescribeAsync(dataset);
+        Assert.Empty(description.IdColumns);
+        Assert.Equal(
+            ["population", "geom"],
+            description.Schema.Fields.Select(field => field.Name).ToArray());
+    }
+
+    /// <summary>
+    /// The whole point of the engine key: the pushdown over a created dataset
+    /// seeks the spatial index instead of reading the clustered index.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_created_dataset_pushdown_seeks_the_spatial_index()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = Unique("indexed_created_plan");
+        var schema = Schema(("population", AttributeKind.Int64), ("geom", AttributeKind.Geometry));
+
+        await context.Store.CreateAsync(dataset, new FeatureBatch(schema, []), 4326);
+        await SeedAsync(context, dataset, 20000);
+
+        var plan = Plan(await ExplainPushdownAsync(context, dataset, new CoreBoundingBox(0, 0, 1, 1), "population > 100000"));
+
+        Assert.Contains($"ix_{Parse(dataset).Table}_geom", plan, StringComparison.Ordinal);
+        Assert.Contains("Seek", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Table Scan", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Clustered Index Scan", plan, StringComparison.Ordinal);
     }
 
     [SkippableFact]
@@ -191,6 +240,33 @@ public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerCont
 
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         Assert.Empty(await IndexNamesAsync(context, dataset));
+    }
+
+    /// <summary>
+    /// The opt-out is a whole-DDL opt-out (ADR-0147): with index creation off
+    /// there is no spatial index to grid, so the engine key is not added either
+    /// and the created table is the one ADR-0092 shipped.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_created_dataset_without_index_creation_is_not_clustered_on_an_engine_key()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        var dataset = Unique("indexed_off_key");
+        var schema = Schema(("population", AttributeKind.Int64), ("geom", AttributeKind.Geometry));
+        await using (var store = new SqlServerStore(new SqlServerOptions
+        {
+            ConnectionString = _fixture.ConnectionString,
+            CreateIndexes = false,
+        }))
+        {
+            await store.CreateAsync(dataset, new FeatureBatch(schema, []), 4326);
+        }
+
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var names = await IndexNamesAsync(context, dataset);
+        Assert.DoesNotContain(names, name => name.StartsWith("spatial_key_", StringComparison.Ordinal));
+        var description = await context.Store.DescribeAsync(dataset);
+        Assert.Empty(description.IdColumns);
     }
 
     private static AttributeValue Point(double x, double y) =>

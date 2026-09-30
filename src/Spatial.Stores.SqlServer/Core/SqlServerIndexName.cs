@@ -22,7 +22,12 @@ internal static class SqlServerIndexName
     /// <summary>The index name for one column of one dataset.</summary>
     public static string For(string table, string column) => Shorten($"ix_{table}_{column}");
 
-    private static string Shorten(string name)
+    /// <summary>
+    /// The deterministic shortener, also used for the engine key's own
+    /// constraint name (ADR-0147) — the same 128-character limit, the same
+    /// digest.
+    /// </summary>
+    public static string Shorten(string name)
     {
         if (name.Length <= MaxLength)
         {

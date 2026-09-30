@@ -132,6 +132,39 @@ public sealed class SqlServerQueryTests
         Assert.DoesNotContain("@p", SqlServerQueries.EnsureAttachmentTable());
     }
 
+    /// <summary>
+    /// The two schema reads leave the engine's own key out of the dataset
+    /// (ADR-0147), which is what keeps a created dataset the keyless dataset
+    /// ADR-0131 and ADR-0140 are written against: the key exists so the server
+    /// can grid the table, and nothing a client reads should grow a field or a
+    /// feature identity for it. The name it is excluded by is a fixed
+    /// provider-owned identifier, bound as a value.
+    /// </summary>
+    [Fact]
+    public void The_schema_reads_leave_the_engine_key_out_by_its_constraint_name()
+    {
+        // A constraint name is unique per schema, so the name is derived from
+        // the table: a fixed one would fail the second created dataset.
+        Assert.Equal("spatial_key_places", SqlServerQueries.EngineKeyConstraint(Dataset));
+        Assert.NotEqual(
+            SqlServerQueries.EngineKeyConstraint(Parse("dbo.roads")),
+            SqlServerQueries.EngineKeyConstraint(Parse("dbo.rails")));
+        foreach (var sql in new[] { SqlServerQueries.ColumnsMetadata(), SqlServerQueries.PrimaryKeyColumns() })
+        {
+            Assert.Contains("key_constraints", sql, StringComparison.Ordinal);
+            Assert.Contains("@p2", sql, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void A_created_dataset_may_carry_the_engine_key_on_its_table()
+    {
+        Assert.Equal(
+            "CREATE TABLE [dbo].[places] ([id] bigint, [name] nvarchar(max), [geom] geometry, "
+                + "[key] bigint IDENTITY(1,1) NOT NULL CONSTRAINT [spatial_key_places] PRIMARY KEY)",
+            SqlServerQueries.CreateTable(Dataset, Schema, "key"));
+    }
+
     [Fact]
     public void An_auto_ingest_adds_an_identity_primary_key()
     {

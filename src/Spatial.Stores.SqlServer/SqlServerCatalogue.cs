@@ -50,25 +50,27 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
     }
 
     /// <summary>
-    /// Creates the dataset table for a sample batch — with the spatial and
-    /// attribute indexes a pushed-down query needs (ADR-0092) — records its
-    /// SRID, and returns its qualified name. The sample is rejected here when
-    /// its schema names an unsupported field or carries a geometry SQL Server
-    /// cannot store. The table, its indexes and its CRS are one transaction: a
-    /// dataset whose indexes cannot be created does not exist, and a server
-    /// that cannot create them reports <c>store.unavailable</c> rather than
-    /// leaving a table the planner scans.
+    /// Creates the dataset table for a sample batch — clustered on the engine's
+    /// own key, with the spatial and attribute indexes a pushed-down query
+    /// needs (ADR-0092, ADR-0147) — records its SRID, and returns its qualified
+    /// name. The sample is rejected here when its schema names an unsupported
+    /// field, carries a geometry SQL Server cannot store, or already names the
+    /// column the engine keys a created table on. The table, its indexes and its
+    /// CRS are one transaction: a dataset whose indexes cannot be created does
+    /// not exist, and a server that cannot create them reports
+    /// <c>store.unavailable</c> rather than leaving a table the planner scans.
     /// </summary>
     public async Task<string> CreateAsync(
         SqlServerDatasetName name, FeatureBatch sample, int srid, CancellationToken cancellationToken)
     {
         SqlServerFieldName.RequireValid(name, sample.Schema);
         SqlServerGeometryLayout.RequireStorable(sample.Schema, sample.Features);
+        var plan = SqlServerCreatePlan.Create(name, sample.Schema, storage.CreateIndexes);
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
         await SqlServerDataStore.ExecuteNonQueryAsync(
-            connection, transaction, SqlServerQueries.CreateTable(name, sample.Schema), [], cancellationToken);
-        await CreateIndexesAsync(connection, transaction, name, sample.Schema, cancellationToken);
+            connection, transaction, plan.CreateTableSql(), [], cancellationToken);
+        await CreateIndexesAsync(connection, transaction, plan, cancellationToken);
         await RecordSridAsync(connection, transaction, name, srid, cancellationToken);
         // In the same transaction as the table: a dataset that was created
         // carries a version of its own, so a cache never serves a tile drawn
@@ -79,16 +81,13 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
     }
 
     /// <summary>Runs the dataset's index statements, unless index creation is switched off (ADR-0092).</summary>
-    private async Task CreateIndexesAsync(
+    private static async Task CreateIndexesAsync(
         SqlConnection connection,
         SqlTransaction transaction,
-        SqlServerDatasetName name,
-        IFeatureSchema schema,
+        SqlServerCreatePlan plan,
         CancellationToken cancellationToken)
     {
-        foreach (var statement in storage.CreateIndexes
-            ? SqlServerIndexPlan.CreateIndexes(name, schema)
-            : [])
+        foreach (var statement in plan.CreateIndexSql())
         {
             await SqlServerDataStore.ExecuteNonQueryAsync(connection, transaction, statement, [], cancellationToken);
         }
@@ -114,7 +113,11 @@ internal sealed class SqlServerCatalogue(SqlServerStorage storage)
     private static async Task<SqlServerSchemaDiscovery.SchemaFacts> ReadSchemaFactsAsync(
         SqlConnection connection, SqlServerDatasetName name, CancellationToken cancellationToken)
     {
-        var parameters = new List<object?> { name.Schema, name.Table };
+        // The engine's own key is left out of both reads by the name its
+        // constraint carries, so a created dataset is described as the keyless
+        // dataset it has always been (ADR-0147). The name is a fixed
+        // provider-owned identifier, bound like any other value.
+        var parameters = new List<object?> { name.Schema, name.Table, SqlServerQueries.EngineKeyConstraint(name) };
         var columns = await SqlServerDataStore.ReadRowsAsync(
             connection, SqlServerQueries.ColumnsMetadata(), parameters, cancellationToken);
         var keys = await SqlServerDataStore.ReadRowsAsync(
