@@ -399,16 +399,18 @@ class AuditTests(unittest.TestCase):
 
 
 class MergeGateTests(unittest.TestCase):
-    """The verify half of the close gate is the FULL lane (ADR-0118).
+    """The verify half of the close gate is the FAST lane (ADR-0134).
 
-    `tools/bd-merge-bead.py` exists so a bead cannot be closed before its work
-    is on `origin/main`, and it runs `eng/verify.sh` before it merges. Under
-    ADR-0118 a bare `eng/verify.sh` is the *build* gate — minutes, scoped to the
-    change — while `--full` is the merge gate. So a bare invocation inside the
-    merge tool made the swarm's merge tool publish and close work on a
-    build-gate green: the loss `SpatialEngine-xbz` was written to stop,
-    reintroduced through the tool that claims to prevent it
-    (SpatialEngine-u2x.51).
+    ADR-0118 tiered the lanes and made `--full` the merge gate;
+    SpatialEngine-u2x.51 then had to name it explicitly, because a bare
+    `eng/verify.sh` under that record is the scoped build gate and merging on
+    it is the loss `SpatialEngine-xbz` was written to stop. ADR-0134 amends
+    that clause: the merge gate is the fast lane, because at hundreds of merges
+    a day the 15–25 minute lane is the price of every merge rather than signal.
+
+    What must survive the amendment is everything that costs seconds and is the
+    actual gate — the fetch, the unpublished-`main` refusal, the red-gate abort,
+    the publish, and the ancestor check before `bd close`.
     """
 
     def setUp(self):
@@ -424,23 +426,33 @@ class MergeGateTests(unittest.TestCase):
         git.branch("bd/SpatialEngine-u2x.51", ["a1", "w1"])
         return self.run_tool(["--bead", "SpatialEngine-u2x.51"], git, **kwargs)
 
-    def test_the_merge_gate_is_the_full_lane_not_the_bare_script(self):
+    def test_the_merge_gate_is_the_fast_lane(self):
         code, harness = self.a_merged_bead()
         self.assertEqual(code, 0)
         calls = harness.verify_calls()
         self.assertEqual(len(calls), 1, calls)
-        self.assertEqual(calls[0][1:], ["--full"])
+        self.assertEqual(calls[0][1:], ["--fast"])
 
-    def test_the_bare_script_is_never_the_close_gate(self):
-        # Every document and every invocation: a bare eng/verify.sh here would
-        # be the scoped build gate, and CI=true is not a substitute for saying
-        # so — a gate that changes with the environment is not a gate.
+    def test_the_lane_is_always_named_and_never_the_full_one_by_accident(self):
+        # A bare invocation is the build gate under ADR-0118 and `--full` is 20
+        # minutes; the merge names the lane it means, so neither CI=true nor a
+        # future edit to the default can decide what a merge costs.
         code, harness = self.a_merged_bead()
         self.assertEqual(code, 0)
         for call in harness.verify_calls():
-            self.assertIn("--full", call)
+            self.assertEqual(call[1:], ["--fast"])
 
-    def test_the_full_lane_runs_on_the_rebased_branch_before_the_merge(self):
+    def test_the_exhaustive_lane_is_an_opt_in(self):
+        git = FakeGit(main=["a1"], origin_main=["a1"])
+        git.branch("bd/SpatialEngine-u2x.51", ["a1", "w1"])
+        code, harness = self.run_tool(
+            ["--bead", "SpatialEngine-u2x.51", "--full"], git)
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.verify_calls()[0][1:], ["--full"])
+        close = harness.called("bd", "close")[0]
+        self.assertIn("--full", " ".join(close))
+
+    def test_the_fast_lane_runs_on_the_rebased_branch_before_the_merge(self):
         # The merge gate is a run on the rebased branch, not on the branch as
         # it was cut: origin/main moved, and that is what has to be green.
         git = FakeGit(main=["a1"], origin_main=["a1", "o9"])
@@ -454,7 +466,7 @@ class MergeGateTests(unittest.TestCase):
         self.assertLess(order.index(["git", "rebase"]), verify_at)
         self.assertLess(verify_at, order.index(["git", "merge"]))
 
-    def test_a_red_full_lane_aborts_the_merge_and_the_close(self):
+    def test_a_red_gate_aborts_the_merge_and_the_close(self):
         git = FakeGit(main=["a1"], origin_main=["a1"])
         git.branch("bd/SpatialEngine-u2x.51", ["a1", "w1"])
         code, harness = self.run_tool(
@@ -462,20 +474,49 @@ class MergeGateTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(harness.closed(), [])
         self.assertEqual(harness.called("git", "merge"), [])
-        self.assertEqual(harness.verify_calls()[0][1:], ["--full"])
-        self.assertIn("--full", " ".join(harness.lines))
+        self.assertEqual(harness.verify_calls()[0][1:], ["--fast"])
+        self.assertIn("--fast", " ".join(harness.lines))
 
-    def test_cancelling_the_full_lane_leaves_the_bead_open(self):
-        # A 20-minute lane gets interrupted. The tool must not treat that as a
-        # gate, and must not merge or close on the way out.
+    def test_a_named_skip_reaches_the_lane_and_the_close_reason(self):
+        # A merge that leaned on CI for a suite has to say so twice: in the
+        # command that ran, and in the record `bd close` writes.
+        git = FakeGit(main=["a1"], origin_main=["a1"])
+        git.branch("bd/SpatialEngine-6g7", ["a1", "w1"])
+        code, harness = self.run_tool(
+            ["--bead", "SpatialEngine-6g7", "--skip-tests", "Host.Tests"],
+            git)
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.verify_calls()[0][1:],
+                         ["--fast", "--skip-tests=Host.Tests"])
+        close = " ".join(harness.called("bd", "close")[0])
+        self.assertIn("Host.Tests", close)
+        self.assertIn("CI", close)
+
+    def test_cancelling_the_gate_leaves_the_bead_open(self):
+        # A long lane gets interrupted. The tool must not treat that as a gate,
+        # and must not merge or close on the way out.
         code, harness = self.a_merged_bead(verify_cancels=True)
         self.assertNotEqual(code, 0)
         self.assertEqual(harness.closed(), [])
         self.assertEqual(harness.called("git", "merge"), [])
 
-    def test_a_declared_full_lane_run_still_needs_the_publish_gate(self):
-        # --full-verified is an escape hatch for re-running after a failed
-        # push, not a way to close without publishing.
+    def test_a_declared_gate_run_still_needs_the_publish_gate(self):
+        # --verified is an escape hatch for re-running after a failed push, not
+        # a way to close without publishing.
+        git = FakeGit(main=["a1"], origin_main=["a1"])
+        git.branch("bd/SpatialEngine-u2x.51", ["a1", "w1"])
+        code, harness = self.run_tool(
+            ["--bead", "SpatialEngine-u2x.51", "--verified"], git)
+        self.assertEqual(code, 0)
+        self.assertEqual(harness.verify_calls(), [])
+        self.assertEqual(harness.closed(), ["SpatialEngine-u2x.51"])
+        close = harness.called("bd", "close")[0]
+        self.assertIn("--fast", " ".join(close))
+        self.assertIn("declared green", " ".join(close))
+
+    def test_the_old_full_verified_spelling_still_works(self):
+        # Runbooks and muscle memory both say --full-verified; renaming the
+        # flag out from under them would fail a re-run mid-incident.
         git = FakeGit(main=["a1"], origin_main=["a1"])
         git.branch("bd/SpatialEngine-u2x.51", ["a1", "w1"])
         code, harness = self.run_tool(
@@ -483,14 +524,12 @@ class MergeGateTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(harness.verify_calls(), [])
         self.assertEqual(harness.closed(), ["SpatialEngine-u2x.51"])
-        close = harness.called("bd", "close")[0]
-        self.assertIn("--full", " ".join(close))
 
-    def test_a_declared_full_lane_run_still_fails_on_an_unpushed_merge(self):
+    def test_a_declared_gate_run_still_fails_on_an_unpushed_merge(self):
         git = FakeGit(main=["a1"], origin_main=["a1"], push_fails=True)
         git.branch("bd/SpatialEngine-u2x.51", ["a1", "w1"])
         code, harness = self.run_tool(
-            ["--bead", "SpatialEngine-u2x.51", "--full-verified"], git)
+            ["--bead", "SpatialEngine-u2x.51", "--verified"], git)
         self.assertEqual(code, 1)
         self.assertEqual(harness.closed(), [])
 
@@ -512,17 +551,19 @@ class DocumentedGateTests(unittest.TestCase):
         text = self.read("eng/swarm-runbook.md")
         self.assertIn("bd-merge-bead.py", text)
 
-    def test_agents_md_merge_rule_names_the_full_lane(self):
-        # ADR-0118: a document that says "the gate" over a bare invocation is a
-        # defect in that document. The close rule names --full.
+    def test_agents_md_merge_rule_names_the_merge_gate(self):
+        # ADR-0134 moved the merge gate off --full; a document that still says
+        # the coordinator runs --full before a merge is sending the next
+        # coordinator back to 20 minutes.
         text = self.read("AGENTS.md")
         merge_bullet = self.bullet_about(text, "bd-merge-bead.py --bead")
-        self.assertIn("eng/verify.sh --full", merge_bullet)
+        self.assertNotIn("runs `eng/verify.sh --full`", merge_bullet)
+        self.assertIn("bd-merge-bead.py --bead", merge_bullet)
 
-    def test_runbook_merge_step_names_the_full_lane(self):
+    def test_runbook_merge_step_names_the_tool_not_a_manual_lane(self):
         text = self.read("eng/swarm-runbook.md")
         merge_step = self.bullet_about(text, "bd-merge-bead.py --bead")
-        self.assertIn("eng/verify.sh --full", merge_step)
+        self.assertIn("bd-merge-bead.py --bead", merge_step)
 
     def test_runbook_keeps_the_lane_contract_the_merge_tool_runs(self):
         # The two bullets extend each other now rather than replacing: the
@@ -530,16 +571,17 @@ class DocumentedGateTests(unittest.TestCase):
         text = self.read("eng/swarm-runbook.md")
         lanes = self.bullet_about(text, "5. Lanes.")
         self.assertIn("--full", lanes)
-        self.assertIn("merge gate", lanes)
-        self.assertIn("build gate", lanes)
+        self.assertIn("--fast", lanes)
 
-    def test_agents_md_hands_off_on_the_build_and_format_lanes_only(self):
+    def test_agents_md_hands_off_on_the_fast_lane(self):
         text = self.read("AGENTS.md")
         hand_off = self.bullet_about(text, "- Hand off:")
-        self.assertIn("eng/verify.sh --format", hand_off)
-        # The agent's step is the build gate plus the format lane. It may say
-        # that `--full` is somebody else's, but it never invokes it.
+        self.assertIn("eng/verify.sh", hand_off)
+        # An agent's step is the fast gate. It may say `--full` is somebody
+        # else's, but it never runs it before a hand-off, and formatting is not
+        # a per-hand-off cost either (ADR-0134).
         self.assertNotIn("eng/verify.sh --full", hand_off)
+        self.assertNotIn("eng/verify.sh --format", hand_off)
 
     def bullet_about(self, text, marker):
         """The line naming `marker` plus every continuation line below it."""

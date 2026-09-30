@@ -4,23 +4,23 @@ name: ci
 # across two jobs: `verify` carries the formatter, the build, the unit and
 # architecture suites and the python tooling tests; `integration` carries the
 # Testcontainers suites (PostGIS, SQL Server, the host, the ingest codec).
-# Together they are what `eng/verify.sh --full` runs, so this workflow is the
-# merge gate: it runs on every pull request and again on main after the merge,
-# and a formatting violation turns it red rather than reaching main. The local
-# default lane (`eng/verify.sh`) is a build gate and does not stand in for it
-# (ADR-0118; the lanes are implemented in ADR-0109). The contract is decided in
-# ADR-0118, which also says what CI is not *yet*: `main` has no branch
-# protection and this job is red on every push, so today the full lane is
-# enforced by the coordinator's pre-merge `eng/verify.sh --full` and this
-# workflow is the detector. A bare `eng/verify.sh` under `CI=true` runs the full
-# lane anyway, so the next workflow that calls the script without a lane does
-# not silently get the scoped one; the split below is the deliberate exception
-# and spells out the steps each job owns.
+# Together they are what `eng/verify.sh --full` runs, and since ADR-0134 that
+# is where the exhaustive gate lives: the merge gate itself is the scoped fast
+# lane (`eng/verify.sh --fast`), because at hundreds of merges a day a
+# 15–25 minute gate is the price of every merge rather than signal. So this
+# workflow is the detector that follows every merge — the formatter, every test
+# project, and a red run on `main` — rather than the thing standing in front of
+# it. The lanes are implemented in ADR-0109 and the contract is ADR-0118 as
+# amended by ADR-0134. `main` has no branch protection and this job is red on
+# every push, so nothing here blocks anything yet. A bare `eng/verify.sh` under
+# `CI=true` runs the full lane anyway, so the next workflow that calls the
+# script without a lane does not silently get the scoped one; the split below
+# is the deliberate exception and spells out the steps each job owns.
 # PostGIS integration runs here because GitHub's Linux runners provide Docker
 # (Testcontainers) and the same boxes are not contended by eight agents.
-# `eng/verify.sh --full` is still runnable locally, for when a change needs the
-# whole thing before it goes near a PR; these jobs spell its steps out because
-# one job cannot run half a script.
+# `eng/verify.sh --full` is still runnable locally — `--bead <id> --full` asks
+# the merge tool for it — and these jobs spell its steps out because one job
+# cannot run half a script.
 on:
   push:
     branches: [main]

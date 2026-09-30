@@ -5,6 +5,7 @@ artifacts/
 *.user
 *.suo
 TestResults/
+.verify-scoped.slnx
 
 # --- Node ---
 node_modules/

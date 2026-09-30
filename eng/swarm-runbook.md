@@ -88,28 +88,32 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
 2. MERGE. For every bead labelled `needs-merge`, run
    `python3 tools/bd-merge-bead.py --bead <id>`. Do not do the steps by hand
    and do not call `bd close` yourself: the tool fetches, rebases the branch
-   onto `origin/main`, runs the full lane (`eng/verify.sh --full`) on that
+   onto `origin/main`, runs the fast gate (`eng/verify.sh --fast`) on that
    rebased branch, merges to `main`, pushes, and closes only once
    `git merge-base --is-ancestor <merge> origin/main` passes. Both halves are
    the gate. The ancestor check is the publish half (SpatialEngine-xbz):
    closing on the strength of a green gate on the *branch* stranded three
    completed beads, and a merge that was never pushed made `origin/main` miss
-   work that was already in `main`. The full lane is the verify half
-   (ADR-0118): the tool names `--full` explicitly, never the bare
-   `eng/verify.sh`, because the bare script is the build gate and using it here
-   would make the scoped lane the merge gate. The tool refuses rather than
+   work that was already in `main`. The fast lane is the verify half
+   (ADR-0134): the tool names `--fast` explicitly, never the bare
+   `eng/verify.sh`, and it builds and tests what the branch changed rather than
+   all fifty projects — a merge that must also run the exhaustive lane passes
+   `--full`, which costs 15–25 minutes and is the right call for a change broad
+   enough to doubt the scoping; `--skip-tests <substring>` leaves a named suite
+   to CI on that merge, and prints and records what it dropped. The tool refuses
+   rather than
    guesses — red verify, a rebase conflict, a failed push, or a `main` that is
    not published all leave the bead open with its work intact. If it exits
    non-zero, `bd note` the output on the bead and move on. Never close a bead
-   whose gate is red. A red `--full` is re-run once on the same commit: green
+   whose gate is red. A red gate is re-run once on the same commit: green
    merges, red twice for the same reason is a stop condition.
    `python3 tools/bd-merge-bead.py --audit` reports closed beads whose
    recorded commit is not on `origin/main`; run it when a merge looks lost,
    before creating a recovery bead. It is a triage list, not proof of loss — a
    commit whose content was amended on the way in (an ADR renumbered) has a
    different patch-id and reads as stranded too. A re-run after a failed push
-   passes `--full-verified`, which skips the (unchanged) full lane because it
-   was already green on that rebased commit; it skips nothing else, and the fact
+   passes `--verified`, which skips the gate because it was already green on
+   that rebased commit; it skips nothing else, and the fact
    is written into the `bd close` reason.
 
 3. DRAIN. Count running workers with `paseo ls`. While workers < 8:
@@ -176,17 +180,24 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    the right reason. Only then fix.
 4. Implement, staying inside the bead's scope. If you find a second problem, do
    not fix it — `bd create` a new bead with the evidence and carry on.
-5. Lanes. `eng/verify.sh` with no arguments is the **build gate** — build, plus
-   the test projects that reach what the branch changed over
-   `ProjectReference`, plus `Spatial.Architecture.Tests` — and it is what you
-   run on every iteration. `eng/verify.sh --format` is the format lane
-   (`dotnet format --verify-no-changes` over the changed projects, ~45 s each)
-   and belongs with the handoff. `eng/verify.sh --full` is everything, and it
-   is the **merge gate**: the coordinator runs it on the rebased branch — the
-   merge tool above invokes it as `--full`, never bare — and CI runs it on the
-   pull request and again after the merge to `main`. You do not run `--full`
-   before a hand-off; the default lane plus `--format` are your step, and
-   nothing else (ADR-0118).
+5. Lanes. `eng/verify.sh --fast` (the same as no arguments) is the **fast
+   gate** — a build of the projects your change reaches and the test projects
+   that reach it over `ProjectReference`, plus `Spatial.Architecture.Tests` —
+   and it is what you run on every iteration *and* what the merge runs. It
+   builds a scoped solution rather than all fifty projects and runs
+   `dotnet test` once over it, which is most of why it is minutes rather than a
+   quarter of an hour. Measured on this host: about a minute for a tooling or
+   docs change, 2 m 40 s for a leaf `src/**` change, 7 m 32 s for a change
+   under `Spatial.Core` — all green, nothing skipped.
+   `eng/verify.sh --format` is the format lane
+   is the format lane (`dotnet format --verify-no-changes` over the changed
+   projects, ~45 s each) and is **not** a hand-off step any more: formatting is
+   enforced by CI and by an occasional run, not paid for hundreds of times a
+   day (ADR-0134). `eng/verify.sh --full` is everything — format over the whole
+   solution, build, every test project — for a change broad enough to doubt the
+   scoping, and for CI, which runs it on the pull request and again after the
+   merge to `main`. You do not run `--full` before a hand-off; the fast gate is
+   your step, and nothing else (ADR-0118, as amended by ADR-0134).
    A change to a solution-wide file (a root `.props`,
    `Directory.Packages.props`, `.editorconfig`), or a change set the lane
    cannot read at all, makes every lane fall back to the whole solution rather
@@ -195,10 +206,10 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    bare script gets the gate rather than the scoped lane.
 6. A suite that fails for a reason unrelated to your change: prove it was
    already failing (name the bead and the failure) rather than editing the test
-   to make it pass. A default-lane run that skips a suite you expected is
-   scoping working as designed, not a green light — the full lane and CI cover
-   it. Keep Docker reachable so the PostGIS and SQL Server integration suites
-   actually run.
+   to make it pass. A fast-gate run that skips a suite you expected is
+   scoping working as designed, not a green light — CI on `main` covers what a
+   merge did not run. Keep Docker reachable so the PostGIS and SQL Server
+   integration suites actually run when the change reaches them.
 7. Commit with a `Task: BEAD_ID` trailer, and **push your branch to
    origin** (`git push -u origin bd/BEAD_ID`). Then
    `bd update BEAD_ID --label needs-merge --append-notes "<commit> <branch>
@@ -216,13 +227,14 @@ accepted and ignored.
 
 ## Notes
 
-- `eng/verify.sh` (default) is the build gate; `eng/verify.sh --format` is the
-  format lane; `eng/verify.sh --full` is the flat gate, and it is the one that
-  decides whether a merge is allowed — the coordinator's pre-merge run on the
-  rebased branch today, and CI on every pull request and after every merge to
-  `main` once `main`'s CI is green and those jobs are required status checks
-  (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 8 concurrent workers
-  this host (12 cores /
+- `eng/verify.sh` (default, or `--fast`) is the fast gate, and it is the one that
+  decides whether a merge is allowed — the merge tool runs it on the rebased
+  branch before merging (ADR-0134). `eng/verify.sh --format` is the format
+  lane, off the merge path; `eng/verify.sh --full` is the flat gate, opt-in per
+  merge with `--bead --full` and run by CI on every pull request and after
+  every merge to `main` once `main`'s CI is green and those jobs are required
+  status checks (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 8
+  concurrent workers this host (12 cores /
   15 GB) will be busy; if a tick finds the machine saturated, prefer merging
   (step 2) over spawning (step 3).
 - The container-backed suites also run in their own CI job
