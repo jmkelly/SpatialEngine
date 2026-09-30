@@ -58,4 +58,30 @@ public sealed class SqlServerQueryConformanceTests : IClassFixture<SqlServerCont
         Assert.NotEmpty(expected);
         Assert.Equal(expected, restricted.Features.Select(feature => feature.Id.Value).ToArray());
     }
+
+    /// <summary>
+    /// The same suite over a table that <em>has</em> an identity, which is the
+    /// one shape where this store pushes the order and the page rather than
+    /// finishing the plan in process (ADR-0124 §2). The fixture is built for
+    /// exactly this: two rows tie on the sort key, so the page boundary can
+    /// only be cut in one place if the pushed tie-break is the reference's, and
+    /// the text columns order differently under the container's collation than
+    /// under the contract's.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_pushed_page_matches_the_reference_over_an_identity_carrying_table()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"dbo.keyed_{Guid.NewGuid().ToString("N")[..8]}";
+        // `CreateAsync` creates a table without a primary key, so the table is
+        // made by hand — a key is the one thing a pushed page needs and the
+        // sample-based create does not add.
+        await context.ExecuteAsync(
+            $"CREATE TABLE {dataset} (id int NOT NULL PRIMARY KEY, category nvarchar(100) NULL, "
+            + "score int NULL, ratio float NULL, name nvarchar(200) NULL, shape geometry NULL)");
+        await context.Store.WriteAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features));
+
+        await QueryConformanceSuite.RunAsync(context.Store, dataset);
+    }
 }

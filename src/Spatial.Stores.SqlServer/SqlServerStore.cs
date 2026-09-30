@@ -88,13 +88,19 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
     }
 
     /// <summary>
-    /// The plan read: the restriction — the identity restriction, the
-    /// attribute predicate and the bounding-box pre-filter, all as bound T-SQL
-    /// (ADR-0074) — is pushed to the database, and the shared reference
-    /// executor finishes the plan over the rows it returned, so the answers
-    /// are the contract's answers and not T-SQL's (ADR-0074 §4). Pushing the
-    /// shaping members down is a follow-up that has to reproduce the
-    /// reference's null ordering, collation and total order exactly.
+    /// The plan read: the restriction, the order and the page are compiled to
+    /// T-SQL and read by the database, and the page is finished with the total
+    /// the count statement answered (ADR-0074 §4-5, ADR-0116 §1, ADR-0124).
+    ///
+    /// <para>
+    /// A plan whose order T-SQL cannot reproduce the reference's is finished
+    /// here instead, with the shared reference executor over the rows the
+    /// pushed restriction selected — the arrangement this store had before the
+    /// page was pushed, and the right answer in every case; only the number of
+    /// rows that crossed the wire differs. So a plan with an order the table
+    /// can make total is a capped read with <c>OFFSET</c>/<c>FETCH NEXT</c>, and
+    /// a plan without one is a whole read paged in process.
+    /// </para>
     /// </summary>
     public async Task<FeatureQueryPage> QueryAsync(
         string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
@@ -105,6 +111,12 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
         ValidateBoundingBox(query.BoundingBox);
         return await RunStoreOperationAsync(async () =>
         {
+            var pushed = await new SqlServerPlanReader(_storage, Catalogue).ReadAsync(name, query, cancellationToken);
+            if (pushed is not null)
+            {
+                return pushed;
+            }
+
             var (schema, selected) = await SelectAsync(name, query, cancellationToken);
             return FeaturePlanExecutor.Finish(schema, selected, query, cancellationToken);
         });
