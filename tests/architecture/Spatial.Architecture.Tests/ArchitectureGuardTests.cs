@@ -251,6 +251,28 @@ public sealed class ArchitectureGuardTests
         Assert.Empty(orphans.Concat(strays));
     }
 
+    /// <summary>
+    /// Every project under /src is named by a rule above, so no implementation
+    /// can be added to the solution outside the guard's reach: a project on
+    /// neither list is a project whose references and packages nothing checks.
+    /// ADR-0098's <c>Spatial.Querying</c> was such a project — it was a
+    /// permitted <em>reference</em> without being itself governed, so Npgsql
+    /// or NetTopologySuite could have appeared in the shared reference
+    /// semantics of a query plan with every rule still green.
+    /// </summary>
+    [Fact]
+    public void Every_src_project_is_named_by_a_guard_rule()
+    {
+        var named = PlatformProjectNames.Concat(ImplementationProjectNames).ToHashSet(StringComparer.Ordinal);
+        var violations = Repository.Value.Projects
+            .Where(project => project.RelativePath.Replace('\\', '/').StartsWith("src/", StringComparison.Ordinal))
+            .Where(project => !named.Contains(project.Name))
+            .Select(project => $"{project.RelativePath} is in the solution but no guard rule names it.")
+            .ToList();
+
+        Assert.Empty(violations);
+    }
+
     private static IEnumerable<ProjectInfo> PlatformProjects() =>
         PlatformProjectNames.Select(name => Repository.Value.Projects.Single(p => p.Name == name));
 
@@ -282,10 +304,12 @@ public sealed class ArchitectureGuardTests
         "Spatial.Tiling.WebMercator",
         "Spatial.Tiling.Mvt",
         "Spatial.Host",
+        "Spatial.Querying",
     ];
 
     private static readonly string[] ImplementationProjectNames =
     [
+        "Spatial.Querying",
         "Spatial.Operations.NetTopologySuite",
         "Spatial.Transformations.ProjNet",
         "Spatial.Stores.Demo",
