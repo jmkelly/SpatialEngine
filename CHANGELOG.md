@@ -11,6 +11,24 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A pushed PostGIS read of a keyed table named every feature by its row
+  ordinal** (ADR-0131, SpatialEngine-u2x.55): `objectIds`, an `Ids`
+  restriction, the edit round-trip and a paged walk all answered `0, 1, 2, …`
+  instead of the primary key, because the pushed read's shape handed the row
+  mapper the identity columns it had *appended* — and an ordinary read, which
+  projects nothing, already carries the key, so nothing was appended and the
+  identity was empty. The identity is now the key's position in what was read,
+  the rule ADR-0124 §8 wrote for the SQL Server reader. Two answers the same
+  measurement then found in this store's pushed reduction are fixed with it: a
+  reduction of a selection with no rows reported its **row count** as a null
+  where a count of no rows is a zero (ADR-0098 §3), and a page of an ungrouped
+  reduction that landed past its one group answered that group instead of none.
+  The shared pushdown-equals-reference suite now also runs over a hand-made
+  keyed table on this provider, so the pushed order, page, projection, count,
+  distinct set, grouped aggregate, `having` and group page are measured against
+  the reference for the first time — the conformance fixture is created without
+  a primary key, and without one the pushed path is never taken.
+
 - **`spatialRel` `Touches` reads a point or line feature on a query
   polygon's boundary** (ADR-0036, SpatialEngine-u2x.35): the served table
   asked for `F***T****` (interiors disjoint, the feature's interior reaching

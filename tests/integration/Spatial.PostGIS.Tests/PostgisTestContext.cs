@@ -55,6 +55,16 @@ internal sealed class PostgisTestContext : IAsyncDisposable
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>Reads one scalar out of the container, for a seed or an assertion over the database's own rows.</summary>
+    public async Task<T?> ScalarAsync<T>(string sql, CancellationToken cancellationToken = default)
+    {
+        await using var dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return (T?)await command.ExecuteScalarAsync(cancellationToken);
+    }
+
     public async Task<int> CountAsync(string sql, CancellationToken cancellationToken = default)
     {
         await using var dataSource = NpgsqlDataSource.Create(ConnectionString);

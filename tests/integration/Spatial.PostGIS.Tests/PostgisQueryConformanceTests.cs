@@ -42,11 +42,13 @@ public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisContaine
     /// ordered by the reference over the rows the read returned (ADR-0097).
     /// Every requested key is written into the statement, each a tie-break over
     /// the one before it, so the pushed sequence is the reference's composite
-    /// order (ADR-0127) — the case the shared suite cannot reach here, because
-    /// it compares feature <em>identities</em> and this reader names a pushed
-    /// row by its ordinal whenever the identity column is one the plan already
-    /// reads (SpatialEngine-u2x.55, a separate defect). The rows are therefore
-    /// compared by their own values.
+    /// order (ADR-0127) — the case the shared suite reaches now that a pushed
+    /// row keeps the identity the key gave it, on a table whose key is a column
+    /// of its own (`A_pushed_composite_order_answers_the_reference_row_for_row`)
+    /// rather than one of the plan's own fields
+    /// (`The_pushed_page_matches_the_reference_over_an_identity_carrying_table`,
+    /// SpatialEngine-u2x.55). The rows are therefore compared by their own
+    /// values, and the identities are pinned by that other case.
     /// </summary>
     [SkippableFact]
     public async Task A_pushed_composite_order_answers_the_reference_row_for_row()
@@ -83,6 +85,136 @@ public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisContaine
         Assert.Equal(6, paged.TotalCount);
 
         await context.ExecuteAsync($"DROP TABLE IF EXISTS {dataset}");
+    }
+
+    /// <summary>
+    /// A pushed read of a keyed table names each feature by its key, not by the
+    /// row it happened to be returned in. The ordinary read projects nothing,
+    /// so the identity column is already among the columns the read carries and
+    /// nothing is appended: the identity is the primary key's position in what
+    /// was read, not the set of columns that were appended to it
+    /// (SpatialEngine-u2x.55, ADR-0124 §8 — the rule the SQL Server reader
+    /// already follows). Taking the appended set would answer every pushed read
+    /// of a keyed table with <c>0,1,2,…</c>, and a read that renumbers its rows
+    /// is the store's own page contract answering a different question
+    /// (ADR-0097).
+    /// </summary>
+    [SkippableFact]
+    public async Task A_pushed_read_of_a_keyed_table_names_each_feature_by_its_key()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        const string dataset = "public.keyedids";
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await KeyedTableAsync(context, dataset);
+        try
+        {
+            var keys = await context.ScalarAsync<long[]>($"SELECT array_agg(id ORDER BY id) FROM {dataset}");
+            Assert.NotNull(keys);
+            var named = keys.Select(key => key.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+
+            var page = await context.Store.QueryAsync(dataset, FeatureQuery.All);
+            Assert.Equal(
+                named,
+                page.Features.Select(feature => feature.Id.Value).ToArray());
+
+            // The same answer through a projected read, where the identity
+            // column is not in the projection at all and is appended for the
+            // mapper.
+            var projected = await context.Store.QueryAsync(dataset, FeatureQuery.All with { Projection = ["id", "category"] });
+            Assert.Equal(named, projected.Features.Select(feature => feature.Id.Value).ToArray());
+            Assert.Equal(["id", "category"], projected.Features.First().Schema.Fields.Select(field => field.Name).ToArray());
+        }
+        finally
+        {
+            await context.ExecuteAsync($"DROP TABLE IF EXISTS {dataset}");
+        }
+    }
+
+    /// <summary>
+    /// The same shared suite over a table that <em>has</em> a primary key, which
+    /// is the one shape where this store pushes the order and the page rather
+    /// than finishing the plan in process (ADR-0124 §2, ADR-0131). The suite
+    /// compares feature <em>identities</em>, so over a table with no key the
+    /// pushed path is never taken and never measured (SpatialEngine-u2x.55).
+    /// </summary>
+    [SkippableFact]
+    public async Task The_pushed_page_matches_the_reference_over_an_identity_carrying_table()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        const string dataset = "public.keyedconformance";
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await KeyedTableAsync(context, dataset);
+        try
+        {
+            await QueryConformanceSuite.RunAsync(context.Store, dataset);
+        }
+        finally
+        {
+            await context.ExecuteAsync($"DROP TABLE IF EXISTS {dataset}");
+        }
+    }
+
+    /// <summary>
+    /// The two answers a pushed reduction gives for a selection with no rows in
+    /// it, which is the one case the dialect and the reference state differently
+    /// and the identity-carrying suite above is what found (ADR-0098 §3,
+    /// ADR-0128). A count of no rows is a <em>zero</em> — SQL's ungrouped
+    /// <c>COUNT(*)</c> already says zero and reading it as a null made the
+    /// pushed answer differ from the reference's for every plan that selects
+    /// nothing — and a page of an ungrouped reduction that lands past its one
+    /// group is past the last group, so it is <em>no groups</em> rather than the
+    /// one group of nulls.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_pushed_reduction_of_an_empty_selection_answers_a_zero_row_count_and_pages_to_nothing()
+    {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+        const string dataset = "public.keyedempty";
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        await KeyedTableAsync(context, dataset);
+        try
+        {
+            var empty = new FeatureQuery(BoundingBox: QueryFixture.EmptyBox);
+            var specs = new[]
+            {
+                new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows"),
+                new AggregateSpec(AggregateStatistic.Sum, "score", "total"),
+            };
+
+            var reduced = await context.Store.AggregateAsync(dataset, empty, new AggregateQuery(specs));
+            var group = Assert.Single(reduced.Groups);
+            Assert.Equal(AttributeValue.FromInt64(0), group.Values[0]);
+            Assert.True(group.Values[1].IsNull);
+
+            // The same reduction paged past its only group: the reference pages
+            // the one group and hands back nothing, so the store must too.
+            var paged = await context.Store.AggregateAsync(
+                dataset, empty, new AggregateQuery(specs, Limit: 1, Offset: 1));
+            Assert.Empty(paged.Groups);
+            Assert.False(paged.HasMore);
+        }
+        finally
+        {
+            await context.ExecuteAsync($"DROP TABLE IF EXISTS {dataset}");
+        }
+    }
+
+    /// <summary>
+    /// A table with a primary key, made by hand because <c>CreateAsync</c> makes
+    /// one without: a key is the one thing a pushed page needs and the
+    /// sample-based create does not add.
+    /// </summary>
+    private static async Task KeyedTableAsync(PostgisTestContext context, string dataset)
+    {
+        // The key is the fixture's own first field, so the discovered schema is
+        // the fixture's schema and the identity column is one the plan's
+        // ordinary (unprojected) read already carries.
+        await context.ExecuteAsync(
+            $"DROP TABLE IF EXISTS {dataset}; CREATE TABLE {dataset} ("
+            + "\"id\" bigint NOT NULL PRIMARY KEY, "
+            + "\"category\" text NULL, \"score\" bigint NULL, "
+            + "\"ratio\" double precision NULL, \"name\" text NULL, \"shape\" geometry(Geometry, 4326))");
+        await context.Store.WriteAsync(dataset, new FeatureBatch(QueryFixture.Schema, QueryFixture.Features));
     }
 
     private static string[] Ids(FeatureQueryPage page) =>

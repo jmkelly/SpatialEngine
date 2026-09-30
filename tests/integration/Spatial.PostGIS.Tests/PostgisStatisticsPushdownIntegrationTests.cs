@@ -286,7 +286,17 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
 
         var ungrouped = await counting.AggregateAsync(dataset, none, new AggregateQuery(Specs));
         var group = Assert.Single(ungrouped.Groups);
-        Assert.All(group.Values, value => Assert.Equal(AttributeValue.Null, value));
+        // Every statistic of an empty set is a null, and the row count is the
+        // one member that is not: it counts rows rather than their values, and
+        // a count of no rows is a zero (ADR-0098 §3, ADR-0131). SQL's
+        // ungrouped COUNT(*) already said zero, and reading it as a null made
+        // the pushed answer differ from the reference's.
+        Assert.Equal(AttributeValue.FromInt64(0), group.Values[0]);
+        Assert.All(group.Values.Skip(1), value => Assert.Equal(AttributeValue.Null, value));
+
+        // And the reference says the same, value for value.
+        var reference = await ReferenceAsync(context.Store, dataset, none, new AggregateQuery(Specs));
+        Assert.Equal(Render(reference.Groups), Render(ungrouped.Groups));
 
         var grouped = await counting.AggregateAsync(
             dataset,
