@@ -11,6 +11,19 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **A SQL Server grouped reduction ignored the plan's group order**
+  (ADR-0128 §8, SpatialEngine-u2x.58): the store reduces in managed code over
+  the rows it read, and it was not handed the plan's order, so the groups came
+  back in the order T-SQL returned the rows — which under the container's
+  case-insensitive collation puts `a` before `A` and sorts a null-keyed group
+  where the plan did not, so an `outStatistics` response over an `orderByFields`
+  group order was a page of an order the plan never asked for, and the shared
+  pushdown-equals-reference suite failed on it over both the plain and the keyed
+  fixture. The reduction is now handed the plan's order and applies it to the
+  groups — the clause and the cap already rode on the reduction, and the cap
+  now cuts the ordered groups. Pinned by name over a case-varying text group
+  key that also has a null, in both directions and across a page.
+
 - **A pushed PostGIS read of a keyed table named every feature by its row
   ordinal** (ADR-0131, SpatialEngine-u2x.55): `objectIds`, an `Ids`
   restriction, the edit round-trip and a paged walk all answered `0, 1, 2, …`

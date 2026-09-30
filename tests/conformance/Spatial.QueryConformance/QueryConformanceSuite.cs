@@ -375,12 +375,17 @@ public static class QueryConformanceSuite
     /// leaking into the <c>GROUP BY</c>, so the same key comes back twice),
     /// drops a group, or invents a row for a group that does not exist fails
     /// here. The <em>sequence</em> is compared against the orders the contract
-    /// allows — the reference's first-seen order, and, when the plan's order is
-    /// over the group key itself, the order the plan asked for, computed here
-    /// with the reference's own value ordering (nulls last ascending, first
-    /// descending) so a store's explicit <c>NULLS LAST</c> is measured against
-    /// the same rule. Everything else — a count, a sum, an extreme, a
-    /// percentile, a null, a key — is compared exactly.
+    /// allows, which are two answers to one question. A plan whose order is
+    /// over the group key itself carries the group order (ADR-0128 §8), so the
+    /// answer is that order, computed here with the reference's own value
+    /// ordering (nulls last ascending, first descending) so a store's explicit
+    /// <c>NULLS LAST</c> is measured against the same rule; <em>expected</em> is
+    /// already that sequence, so the two branches below coincide and a store
+    /// that answers with the order its read happened to arrive in fails. Any
+    /// other plan — no order, or an order over a value a group row does not
+    /// carry — leaves the group order to the store, and the first-seen order is
+    /// then the reference's answer. Everything else — a count, a sum, an
+    /// extreme, a percentile, a null, a key — is compared exactly.
     /// </summary>
     private static void SameGroups(FeatureQuery query, AggregateQuery aggregate, AggregatePage expected, AggregatePage actual)
     {
