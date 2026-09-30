@@ -167,6 +167,46 @@ public sealed class EpsgDatumOperationsTests
     }
 
     [Fact]
+    public void NZGD2000_is_registered_against_WGS84_as_a_null_translation_so_the_pair_publishes_nothing()
+    {
+        // The registry record behind this, read from the same PROJ database
+        // every other row here was read from:
+        //
+        //   EPSG:1565 "NZGD2000 to WGS 84 (1)", method EPSG:9603
+        //   "Geocentric translations (geog2D domain)", source EPSG:4167,
+        //   target EPSG:4326, accuracy 1.0 m,
+        //   tx = ty = tz = 0, no rotations, no scale difference.
+        //
+        // So the operation registered for New Zealand's datum is three zero
+        // translations, not a seven-parameter Helmert: the registry says
+        // NZGD2000 realises WGS 84 without moving, to within the metre its
+        // accuracy states. A definition that "missed" a TOWGS84 node and a row
+        // whose parameters were invented to fill it would both be fabrications
+        // of a record that is not there.
+        //
+        // What follows from that is ADR-0087 §2: a pair whose composed shift is
+        // the identity yields nothing, because there is no operation to
+        // publish. NZGD2000 is therefore served exactly as ETRS89 and NAD83
+        // are, and this pins that the difference between those rows and
+        // OSGB36's is the parameters the registry publishes, not an oversight
+        // in one definition.
+        var definition = Geodetic(4167);
+        Assert.Equal([0, 0, 0, 0, 0, 0, 0], definition.ToWgs84);
+        Assert.True(EpsgDatumOperations.TryGetNode(definition, out var node));
+        Assert.True(HelmertAlgebra.IsNull(node!.ToWgs84));
+        // The accuracy is a published figure and it is not zero: the node
+        // carries it even though the shift it stands for moves nothing.
+        Assert.Equal(1.0, node.AccuracyMetres, 9);
+        Assert.Equal(2, node.AreaOfUse.Boxes.Count);
+
+        // The service's own answer, in both directions and through the
+        // projected CRS that stands on the datum.
+        Assert.Empty(GraphInvoker.Search("EPSG:4326", "EPSG:4167"));
+        Assert.Empty(GraphInvoker.Search("EPSG:4167", "EPSG:4326"));
+        Assert.Empty(GraphInvoker.Search("EPSG:2193", "EPSG:4326"));
+    }
+
+    [Fact]
     public void Every_geodetic_definition_the_catalogue_serves_has_a_published_operation()
     {
         // The join is by name, so a definition whose datum the table does not
