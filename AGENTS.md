@@ -45,6 +45,9 @@ interop surface.
   (repeatable, or `VERIFY_SKIP_TESTS`) leaves a named suite to CI on one run;
   it prints what it dropped and cannot drop `Spatial.Architecture.Tests`.
 - `eng/verify.sh --plan` prints what a lane would run and runs nothing.
+  Every lane starts with `tools/trailing_whitespace.py`, because `dotnet
+  format` does not enforce the `trim_trailing_whitespace` the `.editorconfig`
+  claims for `[*]` on a comment-only line (ADR-0143).
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
   Every lane that runs `dotnet test` also fails a suite that skipped most of

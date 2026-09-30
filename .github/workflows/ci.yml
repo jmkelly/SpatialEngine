@@ -63,6 +63,15 @@ jobs:
       - name: Format check
         run: dotnet format SpatialEngine.slnx --verify-no-changes
 
+      # `dotnet format` does not enforce `trim_trailing_whitespace` on a
+      # comment-only line, so the rule the .editorconfig claims for `[*]` is
+      # checked here rather than through the formatter. This job spells its
+      # steps out rather than calling `eng/verify.sh`, so without the step
+      # below the detector that follows every merge keeps the hole the lanes
+      # closed (ADR-0143).
+      - name: Trailing whitespace
+        run: python3 tools/trailing_whitespace.py
+
       - name: Build
         run: dotnet build SpatialEngine.slnx
 

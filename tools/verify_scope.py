@@ -400,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base", default="origin/main",
                         help="the ref the quick lane diffs against (default: origin/main)")
     parser.add_argument("--list", choices=["format", "build", "tests", "tooling",
-                                           "plan", "lane"],
+                                           "plan", "lane", "files"],
                         required=True, help="what to print")
     parser.add_argument("--lane", choices=LANES,
                         help="which CI lane to list (with '--list lane')")
@@ -426,6 +426,12 @@ def main(argv: list[str] | None = None) -> int:
         # eng/verify.sh reads these keys; an unreadable change set is reported
         # as `exhaustive` so the caller runs the full gate.
         print(f"exhaustive:{1 if plan.exhaustive else 0}")
+        # The change set itself, not only the projects it maps onto: the
+        # trailing-whitespace check reads the files rather than the projects,
+        # because a comment line is in no project as far as the formatter is
+        # concerned (ADR-0143).
+        for path in plan.changed_files:
+            print(f"files:{path}")
         for path in plan.format_projects:
             print(f"format:{path}")
         print(f"guard:{ARCHITECTURE_PROJECT}")
@@ -436,7 +442,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"tooling:{1 if plan.run_python_tooling else 0}")
         return 0
 
-    if args.list == "format":
+    if args.list == "files":
+        for path in plan.changed_files:
+            print(path)
+    elif args.list == "format":
         for path in plan.format_projects:
             print(path)
     elif args.list == "build":

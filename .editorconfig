@@ -14,6 +14,13 @@ indent_size = 4
 [*.md]
 trim_trailing_whitespace = false
 
+# Captured tool output, not prose: `psql` pads its column headers and rules to
+# the terminal width, and the padding is the record of what the tool printed.
+# tools/trailing_whitespace.py reads this section to leave them alone
+# (ADR-0143).
+[eng/spike-*/results/*.txt]
+trim_trailing_whitespace = false
+
 [*.cs]
 dotnet_sort_system_directives_first = true
 csharp_style_namespace_declarations = file_scoped:warning
