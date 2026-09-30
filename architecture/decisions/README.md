@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**140 records on disk.** `status` is the record's own word;
+**141 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -156,6 +156,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0151](ADR-0151-the-sql-server-store-holds-its-description-too.md) | The SQL Server store holds its description too | accepted | 2026-10-01 | ADR-0122 |
 | [0152](ADR-0152-the-bead-protocol-is-a-gate.md) | The bead protocol is a gate, not prose | accepted | 2026-10-01 | ADR-0118, ADR-0141, ADR-0146, ADR-0150 |
 | [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md) | A polar stereographic's standard parallel is read as a scale factor | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
+| [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) | The two-minute in-process request is CPU starvation, not store contention | accepted | 2026-10-01 | ADR-0135 |
 
 ## Amended by
 
@@ -186,6 +187,7 @@ not appear.
 - **0128** is amended by 0131
 - **0133** is amended by 0137
 - **0134** is amended by 0146, 0148
+- **0135** is amended by 0154
 - **0140** is amended by 0149
 - **0141** is amended by 0145
 - **0143** is amended by 0146
