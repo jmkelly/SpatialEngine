@@ -138,6 +138,15 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    passes `--verified`, which skips the gate because it was already green on
    that rebased commit; it skips nothing else, and the fact
    is written into the `bd close` reason.
+   **Merges are local. There is no pull request.** The tool rebases the bead's
+   branch onto `origin/main`, merges `--no-ff` into local `main`, pushes `main`
+   and closes — that is the whole path. Do not open a GitHub pull request, do
+   not wait on one, and do not treat a review as a gate. `git push` prints
+   "Create a pull request for ... on GitHub"; that line is not an instruction.
+   The consequence for the gates: `.github/workflows/ci.yml` also triggers on
+   `pull_request`, and with no pull requests that job never fires, so the
+   exhaustive lane arrives only on the post-merge push to `main` and the
+   pre-merge signal is the fast lane alone (ADR-0134).
    A skip-heavy suite is not a green suite. `eng/verify.sh` has exited 0 while
    `Spatial.SqlServer.Tests` reported 10 passed / 104 skipped under parallel
    load — the very tests the bead existed to fix were among the skipped
@@ -246,7 +255,9 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    solution, build, every test project — for a change broad enough to doubt the
    scoping, and for CI, which runs it on the pull request and again after the
    merge to `main`. You do not run `--full` before a hand-off; the fast gate is
-   your step, and nothing else (ADR-0118, as amended by ADR-0134).
+   your step, and nothing else (ADR-0118, as amended by ADR-0134). CI runs the
+   exhaustive lane on the push to `main` that follows the merge; the swarm opens
+   no pull requests, so it does not run on a pre-merge ref either.
    A change to a solution-wide file (a root `.props`,
    `Directory.Packages.props`, `.editorconfig`), or a change set the lane
    cannot read at all, makes every lane fall back to the whole solution rather
@@ -268,7 +279,10 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    origin** (`git push -u origin bd/BEAD_ID`). Then
    `bd update BEAD_ID --add-label needs-merge --append-notes "<commit> <branch>
    agent <id> workspace <id>"`. Do **not** close the bead — the coordinator
-   merges, publishes and closes, in that order.
+   merges, publishes and closes, in that order. Do **not** open a pull request:
+   the coordinator merges locally with `tools/bd-merge-bead.py` and pushes
+   `main`. The "Create a pull request for ... on GitHub" line a push prints is
+   not an instruction.
 9. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
    `Task: BEAD_ID`, and `bd show BEAD_ID` must show *your* bead as the one
    labelled `needs-merge`. If they disagree, you worked the wrong bead — say so
@@ -285,9 +299,11 @@ accepted and ignored.
   decides whether a merge is allowed — the merge tool runs it on the rebased
   branch before merging (ADR-0134). `eng/verify.sh --format` is the format
   lane, off the merge path; `eng/verify.sh --full` is the flat gate, opt-in per
-  merge with `--bead --full` and run by CI on every pull request and after
-  every merge to `main` once `main`'s CI is green and those jobs are required
-  status checks (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 3
+  merge with `--bead --full` and run by CI on the push to `main` that follows
+  every merge, once `main`'s CI is green and those jobs are required
+  status checks (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). The swarm
+  opens no pull requests, so ci.yml's `pull_request` trigger never fires and
+  the pre-merge signal is the fast lane alone. At 3
   concurrent workers this host (12 cores / 15 GB) is already busy; if a tick
   finds the machine saturated, prefer merging (step 3) over spawning (step 4).
 - The container-backed suites also run in their own CI job
