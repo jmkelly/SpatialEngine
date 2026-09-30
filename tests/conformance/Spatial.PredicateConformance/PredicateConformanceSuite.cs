@@ -145,6 +145,40 @@ public static class PredicateConformanceSuite
         // answers too.
         new("like with a single-character wildcard", "code LIKE '_elta'", ["Delta", "delta"]),
         new("like is a whole-value test", "code LIKE 'lph'", []),
+        // The folded pattern is the one text comparison whose case behaviour
+        // every back end states the same way, so a plan can carry it and every
+        // one of these cases has the same answer on memory, PostGIS and SQL
+        // Server (ADR-0132). The byte-ordered `LIKE` beside them is the
+        // contrast that makes it measurable: `code LIKE 'ALPH%'` selects
+        // nothing, and `code ILIKE 'ALPH%'` selects `alpha`.
+        new("a byte pattern matches the case the pattern named", "code LIKE 'ALPH%'", []),
+        new("a folded pattern matches the case the pattern did not name", "code ILIKE 'ALPH%'", ["alpha"]),
+        // Folding is on both sides, so the two codes that are two features
+        // under a byte comparison (`delta` and `Delta`, ADR-0126) are one set
+        // under a folded one — which is what a text *search* asks for and is
+        // not what a text *identity* asks for.
+        new("a folded pattern is case-insensitive on the value", "code ILIKE 'delta'", ["Delta", "delta"]),
+        new("a folded pattern is case-insensitive on the pattern", "code ILIKE '%LTA'", ["delta", "Delta"]),
+        new("a folded pattern keeps the single-character wildcard", "code ILIKE '_BRAVO'", ["_bravo"]),
+        // A folded pattern is still the same whole-value pattern test: folding
+        // changes which case matches, never what counts as a whole value.
+        new("a folded pattern is a whole-value test", "code ILIKE 'lph'", []),
+        // The fold is the one every back end states identically, so a pair
+        // outside it does not fold on any of them — and a locale collation
+        // that would fold it is refused the chance to answer differently.
+        new("a folded pattern does not fold outside ASCII", "code ILIKE 'Épsilon'", []),
+        // A comparison with no meaning is a comparison that matches nothing,
+        // in every back end, rather than a coercion or a store error.
+        new("a folded pattern over a column that is not text matches nothing", "population ILIKE '3%'", []),
+        new(
+            "a folded pattern beside a byte-ordered comparison",
+            "code ILIKE 'ALPH%' AND code < 'delta'",
+            ["alpha"]),
+        new(
+            "a bounding box and a folded pattern together",
+            "code ILIKE 'ALPH%'",
+            ["alpha"],
+            new BoundingBox(12.0, 41.0, 14.0, 53.0)),
         new("conjunction", "code = 'alpha' AND population = 3664000", ["alpha"]),
         new("disjunction", "code = 'alpha' OR code = 'beta'", ["alpha", "beta"]),
         new("parenthesised precedence", "code = 'alpha' OR (population >= 2000000 AND active = FALSE)", ["alpha", "beta"]),
