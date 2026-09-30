@@ -24,11 +24,16 @@ four separate ways, all of them recorded in git rather than hypothesised
 Prose that has already failed is advice. So four *mechanical* checks live here,
 with no judgement in any of them:
 
-  1. **the trailer.** A closed bead's merge commit carries `Task: <id>`, and the
-     id it names is the bead the commit merges. This is what a mis-dispatch
-     looks like read mechanically — the bead and the trailer disagree — so both
-     halves are checked, and a merge of a bead the queue does not have is
-     reported too.
+  1. **the trailer.** A closed bead's merge records the bead it merged: the
+     `Task: <id>` trailer is on the merge commit or on the work it merged, and
+     the id it names is the bead the commit is for. This is what a
+     mis-dispatch looks like read mechanically — the bead and the trailer
+     disagree — so both halves are checked, and a merge of a bead the queue
+     does not have is reported too. The work commits count because that is
+     where the protocol's trailer is written by an agent, and a merge commit
+     written by `git merge --no-ff -m` carries only a subject: judging the
+     merge body alone failed every lane in the repository from 7014ef4 on
+     (SpatialEngine-5ak).
 
   2. **the wall.** A commit touching `src/Spatial.Contracts/**` or
      `src/Spatial.Core/**` changes an ADR, or cites `ADR-NNNN` in its body:
@@ -88,8 +93,12 @@ ADR_CITATION = re.compile(r"\bADR-(\d{4})\b")
 TASK_TRAILER = re.compile(r"^Task:[ \t]+(?P<id>\S+)[ \t]*$", re.MULTILINE)
 
 #: The merge subject `tools/bd-merge-bead.py` writes, which is what makes a
-#: commit a bead's merge commit at all.
-MERGE_SUBJECT = re.compile(r"^Merge (?P<id>[A-Za-z0-9][\w.-]*): ")
+#: commit a bead's merge commit at all. `Merge <id>: <description>` is what the
+#: tool writes and `Merge <id>` is what a hand merge of the same branch looks
+#: like, so both are read: the id ends at the colon or at the end of the
+#: subject, never at the space in `Merge branch 'x' of ...`, which is not this
+#: protocol's commit.
+MERGE_SUBJECT = re.compile(r"^Merge (?P<id>[A-Za-z0-9][\w.-]*)(?:: |$)")
 
 #: Field separator and record separator for one `git log` walk: subjects and
 #: bodies contain newlines and a NUL would appear in neither, but git will not
@@ -173,17 +182,44 @@ def merge_bead(subject: str) -> str | None:
     return match.group("id") if match else None
 
 
+def work_beads(root: Path, sha: str) -> list[str]:
+    """The bead ids the `Task:` trailers name over the commits a merge brought in.
+
+    The commits are the ones the merge's parents past the first have that the
+    first parent does not already have — `M^1..M^2`, and the same for each
+    further parent of an octopus — so the merge commit's own body is not read
+    back here and each side is judged on its own. A range git will not read is
+    reported as naming nothing rather than raising: the caller reads the merge
+    commit's trailers separately, and a merge whose history cannot be walked
+    has not thereby become a finding.
+    """
+    try:
+        parents = git(root, "rev-list", "--parents", "-n", "1", sha).split()[1:]
+    except GitError:
+        return []
+    named: list[str] = []
+    for parent in parents[1:]:
+        try:
+            out = git(root, "log", "--format=%b" + RECORD, f"{sha}^1..{parent}")
+        except GitError:
+            continue
+        named.extend(TASK_TRAILER.findall(out))
+    return list(dict.fromkeys(named))
+
+
 # --- check 1: the trailer --------------------------------------------------
 
 
 def closed_bead_findings(root: Path, beads, gate_from: str | None = None) -> list[str]:
-    """Merge commits that do not carry their own bead's `Task:` trailer.
+    """Closed beads whose merge carries no `Task:` trailer naming them.
 
-    `beads` is the queue's closed-bead list (id, status), read by the caller so
-    a test never reaches the real queue — `tools/test_no_real_queue.py` makes
-    that a property of the suite rather than a convention. `gate_from` is the
-    merge commit that brought this gate onto `main`: merge commits that are
-    ancestors of it predate the trailer and are skipped, not failed.
+    `beads` is the queue's bead list (id, status) — every bead, not only the
+    closed ones, so a merge published ahead of its close is not reported as a
+    bead the queue has never heard of — read by the caller so a test never
+    reaches the real queue (`tools/test_no_real_queue.py` makes that a property
+    of the suite rather than a convention). `gate_from` is the merge commit that
+    brought this gate onto `main`: merge commits that are ancestors of it
+    predate the trailer and are skipped, not failed.
     """
     known = {bead.get("id") for bead in beads if isinstance(bead, dict)}
     closed = {bead.get("id") for bead in beads
@@ -199,29 +235,46 @@ def closed_bead_findings(root: Path, beads, gate_from: str | None = None) -> lis
             # Not a bead merge: `Merge branch 'x' of ...` from a plain git
             # merge, which is not this protocol's commit and is not judged.
             continue
-        trailers = commit.trailers
         # A bead that is open is not this check's business: the merge is
         # published and the close is a separate, later step, and a gate that
         # failed the gap between them would fail every merge in flight. A bead
         # the queue has never heard of is a different matter — that merge is
-        # nobody's work.
+        # nobody's work — and is reported once, on its own.
         if bead_id not in known:
             findings.append(
                 f"{commit.short} merges {bead_id}, which the queue has no "
                 "record of: either the id is wrong or the bead was never "
                 "created")
-        elif bead_id not in closed:
             continue
-        if not trailers:
+        if bead_id not in closed:
+            continue
+        # Two sides, each judged on its own: the merge commit's own trailers,
+        # and the trailers on the work it merged. The protocol's trailer is
+        # written by whoever does the work, and a merge written by `git merge
+        # --no-ff -m` carries a subject and nothing else — judging the merge
+        # body alone failed every lane in the repository from 7014ef4 on
+        # (SpatialEngine-5ak). Judging them separately rather than as one set
+        # is what keeps either half of a mis-dispatch a finding: bead `.4`'s
+        # work carrying `.2`'s id is the shape the check exists for, and the
+        # merge commit naming `.4` (which `bd-merge-bead.py` composes from the
+        # id it was handed) cannot launder it.
+        sides = [(commit.trailers, "it"),
+                 (work_beads(root, commit.sha), "the work it merged")]
+        for named, where in sides:
+            if not named:
+                continue
+            if bead_id not in named:
+                findings.append(
+                    f"{commit.short} merges {bead_id} but the `Task:` trailers "
+                    f"on {where} name {', '.join(dict.fromkeys(named))}: the "
+                    "bead and the commit disagree, which is what a "
+                    "mis-dispatch looks like after the fact")
+        if not any(named for named, _ in sides):
             findings.append(
                 f"{commit.short} (Merge {bead_id}) carries no `Task: <id>` "
-                "trailer: a merge commit records the bead it merged, so "
-                "`git log --grep='Task: <id>'` finds the work")
-        elif bead_id not in trailers:
-            findings.append(
-                f"{commit.short} merges {bead_id} but its `Task:` trailer names "
-                f"{', '.join(trailers)}: the bead and the commit disagree, "
-                "which is what a mis-dispatch looks like after the fact")
+                "trailer on the merge or on the work it merged: a merge "
+                "records the bead it merged, so `git log --grep='Task: <id>'` "
+                "finds the work")
     return findings
 
 
@@ -291,14 +344,20 @@ def shared_adr_findings(root: Path) -> dict[str, list[str]]:
 
 
 def load_beads(root: Path, db: str | None = None) -> tuple[list[dict] | None, str]:
-    """The closed-bead list, or `(None, why)` when the queue cannot be read.
+    """The queue's bead list, or `(None, why)` when the queue cannot be read.
+
+    Every bead, open ones included: check 1 asks whether the queue has heard of
+    the bead a merge names, and it has — a merge is published before the close
+    is a separate, later step, so reading only the closed set reported a real,
+    in-flight bead as one the queue had "no record of" and failed every lane in
+    the repository (7014ef4, SpatialEngine-5ak).
 
     The queue is local coordination state in the shared git dir, so it is there
     on a worker's machine and absent in CI. The second element of the tuple is
     printed rather than swallowed: a check that could not run has to say so,
     because silence and a pass look the same from the outside.
     """
-    command = ["bd", "list", "--status", "closed", "--json", "-n", "0"]
+    command = ["bd", "list", "--all", "--json", "-n", "0"]
     if db:
         command += ["--db", db]
     try:
@@ -381,8 +440,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="the change set's base (default: origin/main)")
     parser.add_argument("--head", default="HEAD", help="the tip to judge")
     parser.add_argument("--beads", metavar="FILE",
-                        help="read the closed-bead list from a JSON file "
-                             "instead of the queue")
+                        help="read the bead list (id, status) from a JSON "
+                             "file instead of the queue")
     parser.add_argument("--db", metavar="PATH",
                         help="a different beads queue (a rehearsal, a test)")
     parser.add_argument("--no-queue", action="store_true",
@@ -407,7 +466,8 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.plan:
             print(f"beads-gate: would judge {arguments.base}..{arguments.head} "
                   f"for the ADR wall, and every merge commit after the gate's "
-                  f"watermark for `Task: <id>`")
+                  f"watermark for a `Task: <id>` trailer naming the bead it "
+                  "merged, on the merge or on the work it brought in")
             if arguments.adr:
                 print("beads-gate: would also gate the shared ADR citation and "
                       "register reads")

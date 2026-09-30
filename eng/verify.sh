@@ -60,7 +60,8 @@
 # reports.
 #
 # After those, every lane runs the bead-protocol gate
-# (`tools/beads_gate.py`): a closed bead's merge commit carries `Task: <id>`,
+# (`tools/beads_gate.py`): a closed bead's merge records the bead it merged —
+# a `Task: <id>` trailer naming it, on the merge or on the work it brought in —
 # and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**` lands its
 # decision record with it (ADR-0152). The rule was prose in this file and in
 # `eng/swarm-runbook.md`, and it had already failed in-tree — three workers read
@@ -451,7 +452,8 @@ doc_gate() {
 # by a coordinator without the workers' context; three commits exist purely to
 # rescue work the reclaim race orphaned (SpatialEngine-imz.4). So
 # `tools/beads_gate.py` judges the two mechanical halves of it on every lane:
-# a closed bead's merge commit carries `Task: <id>`, and a commit touching
+# a closed bead's merge records the bead it merged — a `Task: <id>` trailer
+# naming it, on the merge or on the work it brought in — and a commit touching
 # `src/Spatial.Contracts/**` or `src/Spatial.Core/**` lands a decision record
 # with it (ADR-0152). The ADR citation and register checks are G1/G2's and are
 # read through `tools/arch-index.py --check` in the doc gate above rather than

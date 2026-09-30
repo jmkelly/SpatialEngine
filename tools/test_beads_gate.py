@@ -15,8 +15,8 @@ work the reclaim race orphaned. Prose that has failed is advice.
 So the four mechanical checks the bead names are `tools/beads-gate.py`, and
 every lane of `eng/verify.sh` runs it:
 
-  1. a closed bead's merge commit carries `Task: <id>`, and the id it names is
-     the bead the commit merges;
+  1. a closed bead's merge records the bead it merged: a `Task: <id>` trailer
+     naming it, on the merge commit or on the work it brought in;
   2. a commit touching `src/Spatial.Contracts/**` or `src/Spatial.Core/**`
      changes an ADR, or cites `ADR-NNNN` in its body — the AGENTS.md rule that
      "behaviour changes land contract, SDK, test and ADR updates together";
@@ -36,9 +36,11 @@ cannot be given the trailer, and a gate that fails on all of it is a gate
 nobody runs.
 """
 import json
+import os
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -50,6 +52,8 @@ CI_YML = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.beads_gate import (  # noqa: E402
     closed_bead_findings,
+    load_beads,
+    merge_bead,
     shared_adr_findings,
     wall_findings,
 )
@@ -174,12 +178,16 @@ class WallTests(unittest.TestCase):
 
 
 class TrailerTests(unittest.TestCase):
-    """A closed bead's merge commit carries `Task: <id>`, and names that bead.
+    """A closed bead's merge records the bead it merged, and names that bead.
 
     The mis-dispatch the substitution rule was written for — three workers each
     reading a body naming bead `.2` while working `.1`, `.3` and `.4` — is
-    exactly a commit whose bead and whose `Task:` id disagree, so both halves
-    are checked: the trailer is missing, and the trailer names another bead.
+    exactly a set of commits whose bead and whose `Task:` id disagree, so both
+    halves are checked: the trailer is missing, and the trailer names another
+    bead. The trailer is read on the merge commit *and* on the work it brought
+    in, because the protocol's trailer is written by whoever does the work and
+    a merge written by `git merge --no-ff -m` carries a subject and nothing
+    else — which is what failed every lane from 7014ef4 on (SpatialEngine-5ak).
     """
 
     def setUp(self):
@@ -188,13 +196,20 @@ class TrailerTests(unittest.TestCase):
         self.addCleanup(self.raw.cleanup)
         self.gate_from = git(self.root, "rev-parse", "HEAD")
 
-    def merge_bead(self, bead_id: str, message: str) -> str:
+    def branch(self, bead_id: str, message: str | None = None) -> str:
+        """One bead's branch, with a work commit that carries its trailer."""
         git(self.root, "checkout", "-q", "-b", f"bd/{bead_id}")
         write(self.root, f"src/{bead_id}.cs", "// work\n")
-        commit(self.root, f"work for {bead_id}\n\nTask: {bead_id}")
+        commit(self.root, message or f"work for {bead_id}\n\nTask: {bead_id}")
+        return f"bd/{bead_id}"
+
+    def merge_branch(self, branch: str, message: str) -> str:
         git(self.root, "checkout", "-q", "main")
-        git(self.root, "merge", "-q", "--no-ff", "-m", message, f"bd/{bead_id}")
+        git(self.root, "merge", "-q", "--no-ff", "-m", message, branch)
         return git(self.root, "rev-parse", "HEAD")
+
+    def merge_bead(self, bead_id: str, message: str) -> str:
+        return self.merge_branch(self.branch(bead_id), message)
 
     def findings(self, beads):
         return closed_bead_findings(self.root, beads=beads, gate_from=self.gate_from)
@@ -204,14 +219,77 @@ class TrailerTests(unittest.TestCase):
                         "Merge SpatialEngine-aaa.1: work\n\nTask: SpatialEngine-aaa.1")
         self.assertEqual(self.findings([bead("SpatialEngine-aaa.1")]), [])
 
-    def test_a_merge_commit_with_no_trailer_is_a_finding(self):
-        # What every merge on `main` looks like today: `git merge --no-ff -m`
-        # writes a subject and nothing else.
-        self.merge_bead("SpatialEngine-aaa.1", "Merge SpatialEngine-aaa.1: work")
+    def test_a_merge_subject_with_no_description_after_the_id_is_read(self):
+        # `tools/bd-merge-bead.py` writes `Merge <id>: <subject>`, and the id
+        # followed by a colon is the only shape the parser had — so a hand
+        # merged `Merge <id>` read as a merge naming no bead and was skipped
+        # rather than judged.
+        self.merge_bead("SpatialEngine-aaa.1", "Merge SpatialEngine-aaa.1")
+        self.assertEqual(merge_bead("Merge SpatialEngine-aaa.1"), "SpatialEngine-aaa.1")
+        self.assertEqual(
+            self.findings([bead("SpatialEngine-aaa.1")]), [])
+
+    def test_a_plain_git_merge_is_not_a_bead_merge(self):
+        # `Merge branch 'x' of ...` is not this protocol's commit, and the
+        # looser subject read must not start calling it one.
+        for subject in ("Merge branch 'bd/x' of /tmp/other",
+                        "Merge pull request #12 from example/branch",
+                        "Revert \"Merge SpatialEngine-aaa.1: work\""):
+            self.assertIsNone(merge_bead(subject), subject)
+
+    def test_a_merge_commit_with_no_trailer_is_judged_over_the_work_commits(self):
+        # SpatialEngine-5ak: the reproduction. Every merge on `main` writes a
+        # subject and nothing else — `git merge --no-ff -m "Merge <id>: work"`
+        # — so judging the merge commit's own body failed every lane from
+        # 7014ef4 onwards, over a merge whose work commit carried the trailer.
+        # The trailer names the bead a merge records, and `git log
+        # --grep='Task: <id>'` reads it off the work; judging the merge body
+        # alone was judging a commit the protocol never asked for the trailer.
+        self.merge_bead("SpatialEngine-aaa.1",
+                        "Merge SpatialEngine-aaa.1: the work, with a description")
+        self.assertEqual(self.findings([bead("SpatialEngine-aaa.1")]), [])
+
+    def test_a_merge_of_a_bead_the_queue_has_not_closed_yet_is_not_a_missed_bead(self):
+        # The other half of 7014ef4. `bd show SpatialEngine-imz.4` exists and
+        # is IN_PROGRESS — a merge is published and the close is a separate,
+        # later step — so a gate that read only the closed list called a real
+        # bead one the queue has "no record of", and failed every lane in the
+        # repository for a merge that had not been closed yet.
+        self.merge_bead("SpatialEngine-imz.4",
+                        "Merge SpatialEngine-imz.4: keep the bead gate off the queue")
+        self.assertEqual(
+            self.findings([bead("SpatialEngine-imz.4", status="in_progress")]), [])
+
+    def test_a_merge_with_no_trailer_anywhere_is_a_finding(self):
+        # The check that survives the move to the work commits: a branch whose
+        # commits name no bead at all is work `git log --grep='Task: <id>'`
+        # cannot find, which is what the rule was written to catch.
+        self.merge_branch(self.branch("SpatialEngine-aaa.1", "work for the bead"),
+                          "Merge SpatialEngine-aaa.1: work")
         found = self.findings([bead("SpatialEngine-aaa.1")])
         self.assertTrue(
             any("Task:" in finding for finding in found),
-            f"a merge commit with no Task trailer was not a finding: {found}")
+            f"a merge with no Task trailer on it or on its work was not a finding: {found}")
+
+    def test_work_whose_trailer_names_another_bead_is_a_finding(self):
+        # The mis-dispatch, read where it actually happens: bead `.4`'s work
+        # carried bead `.2`'s id, and the merge commit named `.4` because
+        # `bd-merge-bead.py` composes the trailer from the id it was handed.
+        self.merge_branch(self.branch("SpatialEngine-aaa.4", "work\n\nTask: SpatialEngine-aaa.2"),
+                          "Merge SpatialEngine-aaa.4: work\n\nTask: SpatialEngine-aaa.4")
+        found = self.findings([bead("SpatialEngine-aaa.4")])
+        self.assertTrue(
+            any("SpatialEngine-aaa.2" in finding and "SpatialEngine-aaa.4" in finding
+                for finding in found),
+            f"work carrying another bead's trailer was not a finding: {found}")
+
+    def test_a_merge_commit_for_an_unknown_bead_is_reported_once(self):
+        # A merge the queue has no record of is one finding, not two: the
+        # unknown-bead report fell through to the trailer check and printed
+        # both halves of a complaint about the same commit.
+        self.merge_bead("SpatialEngine-aaa.1",
+                        "Merge SpatialEngine-aaa.1: work\n\nTask: SpatialEngine-aaa.1")
+        self.assertEqual(len(self.findings([])), 1)
 
     def test_a_trailer_naming_another_bead_is_a_finding(self):
         # The mis-dispatch, read mechanically: bead `.4`'s work carried bead
@@ -250,6 +328,48 @@ class TrailerTests(unittest.TestCase):
         found = self.findings([])
         self.assertTrue(any("SpatialEngine-aaa.1" in finding for finding in found),
                         f"a merge of an unknown bead was not a finding: {found}")
+
+
+class QueueReadTests(unittest.TestCase):
+    """The gate reads every bead the queue has, not only the closed ones.
+
+    `load_beads` shells out to `bd`, so this drives it against a stub `bd` on
+    PATH rather than the live queue — `tools/test_no_real_queue.py` makes
+    reaching the real database a property of the suite, and the queue is
+    coordination state whose closed set is not the set of beads that exist.
+    """
+
+    def test_an_open_bead_is_read_as_a_bead_the_queue_has(self):
+        beads, note = load_beads(self.root)
+        self.assertEqual(note, "")
+        self.assertEqual(sorted(bead["id"] for bead in beads),
+                         ["SpatialEngine-aaa.1", "SpatialEngine-aaa.2"])
+        self.assertIn("--all", self.args.read_text(encoding="utf-8"))
+
+    def setUp(self):
+        self.raw = tempfile.TemporaryDirectory()
+        self.addCleanup(self.raw.cleanup)
+        self.root = Path(self.raw.name)
+        self.args = self.root / "args"
+        # A stub that honours `--status` and `--all` the way `bd list` does, so
+        # a caller that asks for the closed set alone is not handed the rest.
+        stub = self.root / "bd"
+        stub.write_text(textwrap.dedent(f"""\
+            #!/usr/bin/env python3
+            import json, sys
+            args = sys.argv[1:]
+            open("{self.args}", "a").write(" ".join(args) + "\\n")
+            beads = [{{"id": "SpatialEngine-aaa.1", "status": "closed"}},
+                     {{"id": "SpatialEngine-aaa.2", "status": "in_progress"}}]
+            if "--all" not in args:
+                wanted = args[args.index("--status") + 1] if "--status" in args else None
+                beads = [b for b in beads if b["status"] == wanted]
+            print(json.dumps(beads))
+            """), encoding="utf-8")
+        stub.chmod(0o755)
+        previous = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{self.root}{os.pathsep}{previous}"
+        self.addCleanup(os.environ.__setitem__, "PATH", previous)
 
 
 def report_for(root: Path, beads, gate_from: str) -> str:
