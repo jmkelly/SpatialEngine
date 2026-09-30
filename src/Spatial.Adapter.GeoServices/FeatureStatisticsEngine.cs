@@ -554,6 +554,26 @@ internal static class FeatureStatisticsEngine
         return numbers.Sum(number => (number - mean) * (number - mean)) / (numbers.Length - 1);
     }
 
+    /// <summary>
+    /// Whether one reduced group satisfies the <c>having</c> clause, over a
+    /// throwaway feature whose schema is the group row.
+    ///
+    /// <para>
+    /// Every one of those fields is declared <em>nullable</em>, because the
+    /// group row can hold a null in any of them: a null group key is an
+    /// ordinary group, and a reduction of no values is an ordinary result (a
+    /// group of one row has no sample variance). A non-nullable declaration
+    /// would make the feature's own nullability check refuse the row rather
+    /// than evaluate the clause, which is an error where the rule is a
+    /// predicate's — so the reading of the null is the predicate compiler's,
+    /// three valued and the one the SQL back ends give (ADR-0128): a comparison
+    /// against a null is unknown, an unknown is not true, and an
+    /// <see cref="Predicate.IsNull"/> matches the null. The managed reduction
+    /// builds the same row the same way
+    /// (<see cref="FeatureReduction"/>), so the two paths read a null group key
+    /// alike.
+    /// </para>
+    /// </summary>
     private static bool HavingMatches(StatisticRow row, StatisticsSpec spec, EsriWhere having)
     {
         var groupFields = spec.GroupFields;
@@ -562,13 +582,13 @@ internal static class FeatureStatisticsEngine
         var values = new List<AttributeValue>(fields.Capacity);
         for (var i = 0; i < groupFields.Count; i++)
         {
-            fields.Add(new FieldDefinition(groupFields[i].Name, KindForComparison(groupFields[i].Kind)));
+            fields.Add(new FieldDefinition(groupFields[i].Name, KindForComparison(groupFields[i].Kind), nullable: true));
             values.Add(row.GroupValues[i]);
         }
 
         for (var i = 0; i < statistics.Count; i++)
         {
-            fields.Add(new FieldDefinition(statistics[i].OutStatisticFieldName, KindForComparison(row.StatKinds[i])));
+            fields.Add(new FieldDefinition(statistics[i].OutStatisticFieldName, KindForComparison(row.StatKinds[i]), nullable: true));
             values.Add(row.StatValues[i]);
         }
 

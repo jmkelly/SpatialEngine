@@ -245,20 +245,134 @@ public sealed class FeatureStatisticsPushdownTests
     /// <c>having</c> filters the <em>groups</em> the store returned, so it runs
     /// after the reduction rather than inside it, and the page the response
     /// writes is the group page — the same rows, the same token, the same
-    /// exceeded-limit flag. The null-keyed group is excluded here because a
-    /// <c>having</c> clause over a null group value is a separate defect
-    /// (SpatialEngine-u2x.9.4), not this path's business.
+    /// exceeded-limit flag, and the null-keyed group is one of the groups it
+    /// filters (SpatialEngine-u2x.9.4).
     /// </summary>
     [Fact]
     public async Task A_grouped_reduction_with_having_and_paging_is_written_the_same_way()
     {
         await AssertSameAsTheMatchPathAsync(
-            ("where", "name IS NOT NULL"),
             ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
             ("groupByFieldsForStatistics", "name"),
             ("orderByFields", "name ASC"),
             ("having", "total > 150"),
             ("resultRecordCount", "1"));
+    }
+
+    /// <summary>
+    /// A null group key is an ordinary group: the <c>having</c> row schema the
+    /// writer builds for the clause declares the group fields and the statistic
+    /// results nullable, so a clause over the null-keyed group is
+    /// <em>evaluated</em> rather than refused by the feature's own nullability
+    /// check (SpatialEngine-u2x.9.4).
+    /// </summary>
+    /// <remarks>
+    /// The request carries a <c>time</c>, which the plan cannot state, so this
+    /// is the query that keeps the match path — the one that builds the clause's
+    /// row itself rather than handing it to a reduction.
+    /// </remarks>
+    [Fact]
+    public async Task A_having_clause_over_a_null_group_key_is_evaluated_not_refused()
+    {
+        var parameters = new (string Key, string Value)[]
+        {
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("time", "1,1"),
+            ("having", "name IS NULL"),
+            ("f", "json"),
+        };
+
+        var body = await BodyAsync(Layer(), new MatchStore(Rows), await ParseAsync(parameters));
+
+        // The one null-keyed group, and the 300 it reduced.
+        Assert.Equal(1, CountOccurrences(body, "\"total\":"));
+        Assert.Contains("\"name\":null", body, StringComparison.Ordinal);
+        Assert.Contains("\"total\":300", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The reading of a null is the predicate compiler's, and it is the one the
+    /// SQL back ends give (ADR-0128): a comparison against a null group key is
+    /// <em>unknown</em>, and an unknown is not true, so the null-keyed group is
+    /// filtered out rather than kept or treated as an error. The clause still
+    /// decides the groups whose keys compare, which is what makes the null one a
+    /// filtered group and not a refused query.
+    /// </summary>
+    [Fact]
+    public async Task A_null_group_key_compares_unknown_and_is_filtered_out()
+    {
+        var body = await BodyAsync(
+            Layer(),
+            new MatchStore(Rows),
+            await ParseAsync(
+                ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+                ("groupByFieldsForStatistics", "name"),
+                ("time", "1,1"),
+                ("having", "name < 'b'"),
+                ("f", "json")));
+
+        // "a" and "A" are under 'b', "b" is not under itself, and the null key
+        // is unknown — so the null-keyed group is one of the groups dropped.
+        Assert.Equal(2, CountOccurrences(body, "\"total\":"));
+        Assert.DoesNotContain("\"name\":null", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same reading on the statistic side: a reduction with no sample
+    /// variance to report is a null, and a clause over it is evaluated rather
+    /// than refused. Every group in the fixture reduces to a single value, so
+    /// every <c>var</c> is null and the clause keeps every group.
+    /// </summary>
+    [Fact]
+    public async Task A_null_statistic_result_is_compared_under_having()
+    {
+        var body = await BodyAsync(
+            Layer(),
+            new MatchStore(Rows),
+            await ParseAsync(
+                ("outStatistics", """[{"statisticType":"var","onStatisticField":"population","outStatisticFieldName":"var"}]"""),
+                ("groupByFieldsForStatistics", "name"),
+                ("time", "1,1"),
+                ("having", "var IS NULL"),
+                ("f", "json")));
+
+        Assert.Equal(4, CountOccurrences(body, "\"var\":"));
+        Assert.Contains("\"var\":null", body, StringComparison.Ordinal);
+        Assert.Contains("\"name\":null", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same reading on the pushed path, against the match path's answer to
+    /// the same question: the clause filters the null-keyed group the same way
+    /// whether the store's reduction answered it or the writer did.
+    /// </summary>
+    [Fact]
+    public async Task A_null_group_key_reads_the_same_way_pushed_down_and_in_memory()
+    {
+        foreach (var clause in new[] { "name IS NULL", "name < 'b'", "name > 'a'" })
+        {
+            var pushed = await ParseAsync(
+                ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+                ("groupByFieldsForStatistics", "name"),
+                ("orderByFields", "name ASC"),
+                ("having", clause),
+                ("f", "json"));
+
+            // A `time` is what the plan cannot state, so the same served request
+            // against a store with no reduction face is reduced by the writer.
+            var matched = await ParseAsync(
+                ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+                ("groupByFieldsForStatistics", "name"),
+                ("orderByFields", "name ASC"),
+                ("having", clause),
+                ("time", "1,1"),
+                ("f", "json"));
+
+            Assert.Equal(
+                await BodyAsync(Layer(), new MatchStore(Rows), matched),
+                await BodyAsync(Layer(), new AggregatingStore(Rows), pushed));
+        }
     }
 
     /// <summary>
