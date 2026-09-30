@@ -94,10 +94,12 @@ without interpreting the token.
   (ADR-0117, `eng/spike-u2x-tile-cache/RESULTS.md`).
 - A store that reports no version (PostGIS, SQL Server, demo, ArcGIS REST)
   keeps its current behaviour, which means a write to a durable store from
-  *this* process also still leaves its tiles stale until a flush. Closing that
-  needs a durable version source (a trigger-maintained version table, a
-  transaction id, `xmin`), which is a store-level decision tracked as a
-  follow-up, not a change to this contract.
+  *this* process also still leaves its tiles stale until a flush. **That gap is
+  now closed for the two durable providers: ADR-0129 gives the PostGIS and SQL
+  Server stores a content version that is a row in the database, bumped in the
+  write's own transaction, so a write invalidates the affected tiles on every
+  host reading that database.** The demo and ArcGIS REST stores are still
+  unversioned, correctly — nothing writes to them through the engine.
 - The key is computed per request, so each tile request makes one extra cheap
   call per distinct layer. It is a dictionary read for the in-memory store and
   a constant for every store that does not report a version.

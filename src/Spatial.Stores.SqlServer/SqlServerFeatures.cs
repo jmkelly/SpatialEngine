@@ -117,6 +117,13 @@ internal sealed class SqlServerFeatures(SqlServerStorage storage, SqlServerCatal
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
         var count = await SqlServerWriteOperations.WriteOnAsync(
             connection, transaction, name, description, batch, cancellationToken);
+        if (count > 0)
+        {
+            // In this transaction, so the version moves with the rows or not at
+            // all (ADR-0129).
+            await SqlServerContentVersions.BumpAsync(connection, transaction, name, cancellationToken);
+        }
+
         await transaction.CommitAsync(cancellationToken);
         return count;
     }

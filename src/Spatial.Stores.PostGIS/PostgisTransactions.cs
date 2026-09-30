@@ -123,7 +123,15 @@ internal sealed class PostgisTransactionEntry(NpgsqlConnection connection, Npgsq
         PostgisDatasetName name, DatasetDescription description, FeatureBatch batch, CancellationToken cancellationToken)
     {
         _written.TryAdd(name, 0);
-        return await PostgisWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
+        var count = await PostgisWriteOperations.WriteOnAsync(Connection, Transaction, name, description, batch, cancellationToken);
+        if (count > 0)
+        {
+            // On this transaction's connection and transaction, so a rollback
+            // restores the data and the version together (ADR-0129).
+            await PostgisContentVersions.BumpAsync(Connection, Transaction, name, cancellationToken);
+        }
+
+        return count;
     }
 
     /// <summary>Commits or rolls back, then always releases the connection.</summary>

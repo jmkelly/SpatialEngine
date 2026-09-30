@@ -14,7 +14,7 @@ namespace Spatial.Stores.SqlServer;
 /// The SQL Server store (ADR-0033, ADR-0073): a direct, in-process
 /// implementation of <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
 /// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/> and
-/// <see cref="ITransactionStore"/> on
+/// <see cref="ITransactionStore"/> and <see cref="IVersionedFeatureStore"/> on
 /// Microsoft.Data.SqlClient. SqlClient types, T-SQL and WKB stay inside this
 /// assembly (ADR-0005). This type is the composition root of the store: it
 /// validates arguments, maps failures and owns the lifecycle, while the
@@ -28,7 +28,7 @@ namespace Spatial.Stores.SqlServer;
 /// identifiers/field names/filters throw <c>invalid.arguments</c>;
 /// diagnostics are redacted (database name only, never the secret).
 /// </summary>
-public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
+public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IVersionedFeatureStore, IAsyncDisposable
 {
     private readonly SqlServerConnectionConfiguration _configuration;
     private readonly SqlServerStorage _storage;
@@ -233,6 +233,18 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
     {
         var description = await DescribeInternalAsync(name, cancellationToken);
         return await Features.WriteAsync(name, description, batch, transaction, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<string> GetContentVersionAsync(string dataset, CancellationToken cancellationToken = default)
+    {
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        return await RunStoreOperationAsync(async () =>
+        {
+            await using var connection = await _storage.OpenConnectionAsync(cancellationToken);
+            return await SqlServerContentVersions.VersionAsync(connection, name, cancellationToken);
+        });
     }
 
     public Task<string> BeginAsync(CancellationToken cancellationToken = default)

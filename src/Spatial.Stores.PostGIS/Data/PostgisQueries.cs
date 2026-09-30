@@ -296,6 +296,36 @@ internal static class PostgisQueries
     public static string DatabaseCollation() =>
         "SELECT datcollate FROM pg_database WHERE datname = current_database()";
 
+    /// <summary>
+    /// The dataset's durable content-version table (ADR-0129), created in the
+    /// dataset's <em>own</em> schema so it needs no privilege the write itself
+    /// did not need, and so dropping the schema drops its versions. Idempotent,
+    /// so the write paths may issue it on every write rather than keep a
+    /// process-local "already created" flag that a second process would not
+    /// share.
+    /// </summary>
+    public static string CreateVersionTable(PostgisDatasetName dataset) =>
+        $"CREATE TABLE IF NOT EXISTS {VersionTable(dataset)} (" +
+        "\"dataset\" text PRIMARY KEY, \"version\" bigint NOT NULL)";
+
+    /// <summary>
+    /// Moves the version: insert the first row, or increment the one there is.
+    /// One statement, so a concurrent writer never reads-then-writes.
+    /// </summary>
+    public static string BumpVersion(PostgisDatasetName dataset) =>
+        $"INSERT INTO {VersionTable(dataset)} (\"dataset\", \"version\") VALUES (@p0, 1) " +
+        $"ON CONFLICT (\"dataset\") DO UPDATE SET \"version\" = {PostgisContentVersionTable}.\"version\" + 1";
+
+    /// <summary>Reads the dataset's version; no row means the engine has never written it.</summary>
+    public static string SelectVersion(PostgisDatasetName dataset) =>
+        $"SELECT \"version\" FROM {VersionTable(dataset)} WHERE \"dataset\" = @p0";
+
+    /// <summary>The version table's name, a constant so the read and the write cannot disagree on it.</summary>
+    public const string PostgisContentVersionTable = "spatial_dataset_version";
+
+    private static string VersionTable(PostgisDatasetName dataset) =>
+        $"\"{dataset.Schema}\".\"{PostgisContentVersionTable}\"";
+
     /// <summary>Whether a table exists at all (drives the 'unknown dataset' diagnostic).</summary>
     public static string TableExists() =>
         "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = @p0 AND table_name = @p1)";

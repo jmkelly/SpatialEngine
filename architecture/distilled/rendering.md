@@ -87,8 +87,10 @@ key and cache implementations. The version in `TileCacheKey` is a SHA-256 of
 the service/layer/encoding request **plus the content versions of the
 datasets it reads** (ADR-0083), so a write, edit or ingest invalidates the
 tiles derived from that data without a manual `DELETE /api/render/cache`. A
-store opts in with `IVersionedFeatureStore`; one that does not folds in the
-unversioned token. Responses report the resolved version in `X-Tile-Version`,
+store opts in with `IVersionedFeatureStore` — the memory store from a
+counter in its catalogue, PostGIS and SQL Server from a row in the
+database bumped in the write's transaction (ADR-0129) — and one that
+does not folds in the unversioned token. Responses report the resolved version in `X-Tile-Version`,
 and the SDK's `Tiles.RenderWithVersionAsync` returns it.
 
 ## Style document (documented MapLibre subset)

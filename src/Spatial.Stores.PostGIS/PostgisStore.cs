@@ -12,8 +12,8 @@ namespace Spatial.Stores.PostGIS;
 /// <summary>
 /// The PostGIS store (ADR-0033): a direct, in-process implementation of
 /// <see cref="IDataCatalogue"/>, <see cref="IFeatureStore"/>,
-/// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/> and
-/// <see cref="ITransactionStore"/> on Npgsql
+/// <see cref="IFeatureAggregateStore"/>, <see cref="IFeatureLookup"/>,
+/// <see cref="ITransactionStore"/> and <see cref="IVersionedFeatureStore"/> on Npgsql
 /// 10. Npgsql types, SQL and EWKB stay inside this assembly (ADR-0005).
 /// This type is the composition root of the store: it validates arguments,
 /// maps failures and owns the lifecycle, while the catalogue face
@@ -27,7 +27,7 @@ namespace Spatial.Stores.PostGIS;
 /// <c>invalid.arguments</c>; diagnostics are redacted (database name only,
 /// never the secret).
 /// </summary>
-public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IAsyncDisposable
+public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggregateStore, IFeatureLookup, ITransactionStore, IVersionedFeatureStore, IAsyncDisposable
 {
     private readonly PostgisConnectionConfiguration _configuration;
     private readonly PostgisStorage _storage;
@@ -202,6 +202,18 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
             // not claim to know (ADR-0122).
             ForgetDescription(name);
         }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<string> GetContentVersionAsync(string dataset, CancellationToken cancellationToken = default)
+    {
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        return await RunStoreOperationAsync(async () =>
+        {
+            await using var connection = await _storage.OpenConnectionAsync(cancellationToken);
+            return await PostgisContentVersions.VersionAsync(connection, name, cancellationToken);
+        });
     }
 
     public Task<string> BeginAsync(CancellationToken cancellationToken = default)
