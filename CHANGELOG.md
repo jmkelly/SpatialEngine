@@ -11,6 +11,29 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **`spatialRel` `Touches` reads a point or line feature on a query
+  polygon's boundary** (ADR-0036, SpatialEngine-u2x.35): the served table
+  asked for `F***T****` (interiors disjoint, the feature's interior reaching
+  the query's boundary) or, when a point was involved, `F**T*****` (the
+  mirror) — and neither mask names position 2, which is where the contact
+  lands for the geometry on the left: a point feature on a query polygon's
+  boundary reports `F0FFFF212`, and a line feature along the query's edge
+  reports its interior on that edge. A point or line lying on a query
+  polygon's boundary therefore read as *not* touching, in both operand
+  orders, while the reverse order (a point or line as the query) was already
+  served — which is why the envelope-driven feature tests never saw it.
+  `Touches` is now the OGC touches masks as one dimension-free union
+  (`FT*******`, `F**T*****`, `F***T****`), the dimension lookup and its
+  point branch gone; the three are tried as short-circuiting `Relate` calls
+  because a DE-9IM pattern is a single nine-character matrix and the union is
+  not one of them (`FT*******` alone drops the edge-sharing and
+  boundary-meeting cases). A point feature at `(0,5)` against the square
+  `(0,0)-(10,10)`, and a line along its bottom edge, now read as touches in
+  both operand orders, and the served answer matches the reference
+  implementation's own `Touches` on all 225 ordered pairs of the polygon,
+  line and point fixtures. The `Overlaps` and `Crosses` dimension gating and
+  every other row of the table are unchanged.
+
 - **A pushed-down string comparison is a byte comparison too** (ADR-0123,
   SpatialEngine-u2x.48): ADR-0121 stopped a pushed *order* from inheriting the
   database's collation and left the predicate compiler to inherit it, so

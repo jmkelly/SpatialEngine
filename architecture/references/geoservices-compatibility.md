@@ -339,7 +339,14 @@ Ordered by dependency:
   boundary is no longer read as `Contains`, a point or line on the boundary
   is now `Touches`, and a line crossing a feature is no longer `Touches`
   (the envelope approximation called a crossing line's intersection
-  "degenerate" and rejected it only as a containment). `Intersects` stays the
+  "degenerate" and rejected it only as a containment).
+- Serving status update: `Touches` is the three OGC touches masks as one
+  dimension-free union (`FT*******`/`F**T*****`/`F***T****`,
+  SpatialEngine-u2x.35), so a point or line on the other's boundary is
+  `Touches` in *either* operand order — the dimension-keyed pick that
+  replaced them missed position 2, which is where the contact lands for a
+  point or line on the left, and a point or line on a query polygon's
+  boundary read as not touching. `Intersects` stays the
   non-empty intersection and `esriSpatialRelEnvelopeIntersects` stays the
   envelope test. `esriSpatialRelIndexIntersects` stays rejected with a named
   alternative. `quantizationParameters` now snaps every ordinate (x, y, z
