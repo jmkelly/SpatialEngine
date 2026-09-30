@@ -615,8 +615,8 @@ internal static class ProjWkt
     /// <term>added by u2x.26: agrees to 1e-6 m; variant B is the no-rotation form</term>
     /// </item>
     /// <item>
-    /// <term>Polar Stereographic (variant B)</term><term>9829</term><term>EPSG:3031, EPSG:3032, EPSG:3413</term>
-    /// <term>added by g2m: the latitude of standard parallel is read as the variant A pole and scale factor, agreeing to 1e-6 m at both poles, 6,000 km offsets included</term>
+    /// <term>Polar Stereographic (variant B)</term><term>9829</term><term>EPSG:3031, EPSG:3032, EPSG:3413, EPSG:3976, EPSG:3995, EPSG:3996</term>
+    /// <term>added by g2m: the latitude of standard parallel is read as the variant A pole and scale factor, agreeing to 1e-6 m at both poles, 6,000 km offsets included; the six grids are the ones the catalogue serves (n58)</term>
     /// </item>
     /// <item>
     /// <term>Hotine Oblique Mercator (variant A)</term><term>9812</term><term>EPSG:3078, EPSG:3375</term>

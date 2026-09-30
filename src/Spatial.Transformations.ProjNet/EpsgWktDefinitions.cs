@@ -90,6 +90,42 @@ internal static class EpsgWktDefinitions
         """;
 
     /// <summary>
+    /// EPSG:3031, WGS 84 / Antarctic Polar Stereographic — Polar Stereographic
+    /// (variant B), the projection whose latitude of standard parallel the
+    /// reader turns into a pole and the scale factor at it (ADR-0153). The
+    /// standard parallel and the false offsets follow EPSG's own parameter
+    /// numbers for the method (8832, 8833, 8836, 8837).
+    /// </summary>
+    private const string AntarcticPolarStereographic = """
+        PROJCRS["WGS 84 / Antarctic Polar Stereographic",BASEGEOGCRS{base},CONVERSION["Antarctic Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",-71,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3031]]
+        """;
+
+    /// <summary>EPSG:3032: EPSG:3031's standard parallel on 70°E, with 6,000 km of false offset in each axis.</summary>
+    private const string AustralianAntarcticPolarStereographic = """
+        PROJCRS["WGS 84 / Australian Antarctic Polar Stereographic",BASEGEOGCRS{base},CONVERSION["Australian Antarctic Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",-71,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",70,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",6000000,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",6000000,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3032]]
+        """;
+
+    /// <summary>EPSG:3413, the northern NSIDC sea ice grid: a standard parallel of 70°N on 45°W.</summary>
+    private const string SeaIcePolarStereographicNorth = """
+        PROJCRS["WGS 84 / NSIDC Sea Ice Polar Stereographic North",BASEGEOGCRS{base},CONVERSION["US NSIDC Sea Ice polar stereographic north",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",70,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",-45,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3413]]
+        """;
+
+    /// <summary>EPSG:3976, EPSG:3413's southern twin: 70°S on the prime meridian, with no false offset.</summary>
+    private const string SeaIcePolarStereographicSouth = """
+        PROJCRS["WGS 84 / NSIDC Sea Ice Polar Stereographic South",BASEGEOGCRS{base},CONVERSION["US NSIDC Sea Ice polar stereographic south",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",-70,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3976]]
+        """;
+
+    /// <summary>EPSG:3995, the Arctic grid at 71°N: EPSG:3031's projection at the other pole.</summary>
+    private const string ArcticPolarStereographic = """
+        PROJCRS["WGS 84 / Arctic Polar Stereographic",BASEGEOGCRS{base},CONVERSION["Arctic Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",71,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3995]]
+        """;
+
+    /// <summary>EPSG:3996, the IBCAO hydrographic grid at 75°N — the last of the six variant B polar grids.</summary>
+    private const string IbcaoPolarStereographic = """
+        PROJCRS["WGS 84 / IBCAO Polar Stereographic",BASEGEOGCRS{base},CONVERSION["IBCAO Polar Stereographic",METHOD["Polar Stereographic (variant B)",ID["EPSG",9829]],PARAMETER["Latitude of standard parallel",75,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8832]],PARAMETER["Longitude of origin",0,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8833]],PARAMETER["False easting",0,LENGTHUNIT["metre",1],ID["EPSG",8836]],PARAMETER["False northing",0,LENGTHUNIT["metre",1],ID["EPSG",8837]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3996]]
+        """;
+
+    /// <summary>
     /// The UTM zone template: the six-degree band parameters every zone
     /// shares, with the two that follow from the zone number ({@code
     /// central_meridian} and {@code false_northing}) as tokens, so a family
@@ -113,6 +149,21 @@ internal static class EpsgWktDefinitions
     /// <summary>
     /// The projected definitions that stand on their own, by EPSG code: the
     /// template, and the geodetic definition it names as its base.
+    /// <para>
+    /// The six polar stereographic variant B grids (EPSG:3031, 3032, 3413,
+    /// 3976, 3995, 3996) are six rows rather than a family, which is the
+    /// question the vendoring bead left open. A
+    /// <see cref="Family"/> is a run of consecutively numbered codes whose
+    /// parameters follow from the zone number alone; these six are not a run
+    /// (3031 and 3995 differ by 964, not one), and no single number derives
+    /// the rest — the NSIDC and IBCAO pair differ in a standard parallel
+    /// (70° and 75°) that nothing in their codes states. A family template
+    /// would therefore have to be handed a table of per-member parameters,
+    /// which is a hand-written parameter list wearing a template's name, and
+    /// ADR-0086's whole claim is that a definition is a document. They are
+    /// all on WGS 84, so each needs no row in
+    /// <c>EpsgDatumOperations</c> beyond the one the pivot already has.
+    /// </para>
     /// </summary>
     public static IEnumerable<(int Code, string Template, string BaseWkt)> Projected =>
     [
@@ -122,6 +173,12 @@ internal static class EpsgWktDefinitions
         (27700, BritishNationalGrid, OsGb36),
         (2154, Lambert93, Rgf93V1),
         (2193, NewZealandTransverseMercator, NzGd2000),
+        (3031, AntarcticPolarStereographic, Wgs84),
+        (3032, AustralianAntarcticPolarStereographic, Wgs84),
+        (3413, SeaIcePolarStereographicNorth, Wgs84),
+        (3976, SeaIcePolarStereographicSouth, Wgs84),
+        (3995, ArcticPolarStereographic, Wgs84),
+        (3996, IbcaoPolarStereographic, Wgs84),
     ];
 
     /// <summary>
