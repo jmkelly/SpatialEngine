@@ -52,6 +52,10 @@ inspecting/transporting; construct with concrete types.
 - Composite CRS: parts without CRS are unspecified; one distinct CRS wins; two conflicting CRSs are **rejected by the factory**.
 - Empty: Point w/o coordinate; LineString w/ zero count; Polygon w/ empty exterior; composite with no (non-empty) children. Empties contribute no coordinates, no envelope.
 - Ring closure, orientation, validity are **NOT enforced** — validation is a plugin verb.
+- There is likewise **no minimum-coordinate rule**: a LineString of one
+  coordinate is neither empty nor a segment but a valid value carrying a
+  position, and a consumer's treatment of it is its own decision (ADR-0144 pins
+  the render path's: it strokes nothing and labels a position).
 - Equality is exact & structural; NaN compares equal (so equal values encode to identical bytes).
 
 ## Feature values (namespace `Spatial.Core.Features`)

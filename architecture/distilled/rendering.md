@@ -126,6 +126,21 @@ Supported layers: `background`, `fill`, `line`, `circle`, `symbol`. Per-layer ke
   points is not a segment, so it strokes nothing under any cap. A `line`
   geometry on a `fill` layer fills nothing, and a `fill` geometry on a
   `line` layer strokes nothing. `LineOrientationRenderTests` pins all of it.
+- **Sub-2-point LineStrings** (ADR-0144, SpatialEngine-a74.2): a LineString with
+  fewer than two coordinates is a valid value the render path does not reject —
+  it is a **position**, not a segment. Zero coordinates is the *empty*
+  LineString (no envelope, nothing drawn); one coordinate is a degenerate
+  LineString, neither empty nor a segment. A `line` layer strokes nothing for
+  either, under every cap; a `symbol` layer labels the position the one-point
+  one carries (`symbol-placement: point`), while `line` placement has no
+  direction to run a label along and offers nothing for either. The viewport
+  cull keeps a position that is in view. The place stage returns a geometry
+  holding one unchanged at any depth rather than clipping it: the clip bounds
+  extent and a single position has none, while the planar algorithm cannot
+  represent the value — clipping a feature the model admits and a symbol layer
+  labels used to fail the whole render with an opaque `invalid.arguments`.
+  `SubTwoPointLineRenderTests` pins every clause, including the production
+  stack (MemoryStore + reprojected viewport) where the clip actually runs.
   Nothing before it pinned a line's orientation: the `symbols.png` golden
   renders point features only, and the two lines in the `symbols-line.png`
   golden are both oblique, so a vertical-only regression reached the raster
