@@ -129,6 +129,7 @@ public sealed class DatasetAddCommandTests
     [InlineData("--format", "shapefile")]
     [InlineData("--format", "geojsonl")]
     [InlineData("--identity", "random")]
+    [InlineData("--identity", "none")] // ADR-0149: every ingested dataset is keyed
     public async Task Add_rejects_unknown_format_or_identity(string option, string value)
     {
         var gateway = new FakeSpatialGateway();

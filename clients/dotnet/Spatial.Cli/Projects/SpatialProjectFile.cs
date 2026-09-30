@@ -104,7 +104,7 @@ public static class SpatialProjectFile
                 "public.world_places",
                 4326,
                 "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_populated_places.geojson",
-                Identity: "none"),
+                Identity: "auto"),
         ],
         [
             new ProjectMap(

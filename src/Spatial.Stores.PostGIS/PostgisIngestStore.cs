@@ -11,9 +11,9 @@ namespace Spatial.Stores.PostGIS;
 /// The PostGIS ingest face (ADR-0041 §3): create a dataset from a
 /// decoded upload's schema and load every page in **one transaction**, so the
 /// table exists only if every feature lands. The identity mode decides whether
-/// the new table gets a database-generated key (<see cref="IngestIdentity.Auto"/>),
-/// a key from a named integer field (<see cref="IngestIdentity.Source"/>) or
-/// no key at all (<see cref="IngestIdentity.None"/>). The plan and every
+/// the new table gets a database-generated key (<see cref="IngestIdentity.Auto"/>)
+/// or a key from a named integer field (<see cref="IngestIdentity.Source"/>);
+/// there is no keyless mode (ADR-0149). The plan and every
 /// statement are built by <see cref="PostgisIngestPlan"/> and
 /// <see cref="PostgisQueries"/> from validated identifiers and bound
 /// parameters only. Additive like the other granular faces: a store that

@@ -72,8 +72,9 @@ spatial dataset add --url https://example.com/world.geojson --dataset public.wor
 `dataset add` uploads one local file (`--file`) or remote `http(s)` URL
 (`--url`) through `POST /api/ingest`. Exactly one source is required.
 `--format` is `geojson` (default), `ndjson` or `csv`; `--identity` is
-`none`, `auto` (default) or `source`, where `source` requires
-`--identity-field`. `--source-srid` asks the engine to reproject the file
+`auto` (default) or `source`, where `source` requires `--identity-field` —
+every ingested dataset carries an identity column (ADR-0149), so the keyless
+`none` mode is refused. `--source-srid` asks the engine to reproject the file
 (ADR-0041). `--dry-run` prints the plan without calling the host.
 
 ### `map`
@@ -116,7 +117,7 @@ spatial project export                           # serialise the host back to sp
       "srid": 4326,
       "source": "https://…/ne_110m_populated_places.geojson",
       "format": "geojson",
-      "identity": "none",
+      "identity": "auto",
       "sourceSrid": null
     }
   ],

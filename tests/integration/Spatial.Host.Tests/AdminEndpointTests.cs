@@ -181,12 +181,49 @@ public sealed class AdminEndpointTests : IDisposable
 
         var response = await client.SendAsync(Authorized(
             HttpMethod.Post,
-            "/api/ingest?store=memory&dataset=public.csv&srid=4326&format=csv&identity=none",
+            "/api/ingest?store=memory&dataset=public.csv&srid=4326&format=csv&identity=auto",
             new StringContent("name,x,y\nBerlin,13.4,52.5\n", Encoding.UTF8, "text/csv")));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = await BodyAsync(response);
-        Assert.Null(result.GetProperty("identityField").GetString());
+        Assert.Equal("id", result.GetProperty("identityField").GetString());
+    }
+
+    [Fact]
+    public async Task An_ingest_asking_for_no_identity_is_refused_by_name()
+    {
+        // ADR-0149: every ingested dataset carries an identity column, so the
+        // keyless mode is refused rather than honoured into a dataset that
+        // cannot name its features (ADR-0140).
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post,
+            "/api/ingest?store=memory&dataset=public.none&srid=4326&format=geojson&identity=none",
+            new StringContent(GeoJson, Encoding.UTF8, "application/geo+json")));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await BodyAsync(response);
+        Assert.Equal("invalid.arguments", body.GetProperty("code").GetString());
+        Assert.Contains("none", body.GetProperty("message").GetString());
+    }
+
+    [Fact]
+    public async Task The_esri_admin_upload_asking_for_no_identity_is_refused_by_name()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(GeoJson, Encoding.UTF8, "application/geo+json"), "file", "a.geojson");
+        var response = await client.SendAsync(Authorized(
+            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.none&srid=4326&format=geojson&identity=none", content));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = (await BodyAsync(response)).GetProperty("error");
+        Assert.Equal(400, error.GetProperty("code").GetInt32());
+        Assert.Contains("none", error.GetProperty("message").GetString());
     }
 
     [Theory]
@@ -444,7 +481,7 @@ public sealed class AdminEndpointTests : IDisposable
         using var csv = new MultipartFormDataContent();
         csv.Add(new StringContent("name,x,y\nA,1,2\n", Encoding.UTF8, "text/csv"), "file", "a.csv");
         var csvResponse = await client.SendAsync(Authorized(
-            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.csv2&srid=4326&format=csv&identity=none", csv));
+            HttpMethod.Post, "/arcgis/admin/uploads?store=memory&dataset=public.csv2&srid=4326&format=csv&identity=auto", csv));
         Assert.Equal(HttpStatusCode.OK, csvResponse.StatusCode);
 
         using var bad = new MultipartFormDataContent();

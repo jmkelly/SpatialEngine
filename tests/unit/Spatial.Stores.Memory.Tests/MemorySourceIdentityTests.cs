@@ -148,11 +148,13 @@ public sealed class MemorySourceIdentityTests
     }
 
     /// <summary>
-    /// A data-only dataset has no identity column, so nothing claims to key
-    /// it: the caller's identity is kept exactly as it arrived.
+    /// An auto-identity ingest keys its stored features by the identity column
+    /// the store assigned, not by the identity the decode read them at
+    /// (ADR-0119) — the same rule the source-identity path above follows, now
+    /// that every ingest has an identity column (ADR-0149).
     /// </summary>
     [Fact]
-    public async Task A_data_only_ingest_keeps_the_callers_feature_identity()
+    public async Task An_auto_identity_ingest_keys_its_features_by_the_assigned_column()
     {
         var store = new MemoryStore();
         var ingest = new MemoryIngest(store);
@@ -163,7 +165,7 @@ public sealed class MemorySourceIdentityTests
         ]);
 
         await ingest.IngestAsync(
-            new IngestRequest("memory.cities", 4326, IngestIdentity.None),
+            new IngestRequest("memory.cities", 4326),
             [new FeatureBatch(withoutId,
             [
                 new Feature(new FeatureId("7"), withoutId,
@@ -174,6 +176,7 @@ public sealed class MemorySourceIdentityTests
             ])]);
 
         var stored = Assert.Single(store.Catalog.Find("memory.cities").Features);
-        Assert.Equal("7", stored.Id.Value);
+        Assert.Equal("1", stored.Id.Value);
+        Assert.Equal(["id"], (await store.DescribeAsync("memory.cities")).IdColumns);
     }
 }

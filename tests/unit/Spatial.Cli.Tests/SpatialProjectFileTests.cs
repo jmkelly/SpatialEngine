@@ -11,7 +11,7 @@ public sealed class SpatialProjectFileTests
         var path = TempPath();
         var project = new SpatialProject(
             1,
-            [new ProjectDataset("public.world", 4326, "world.geojson", Identity: "none")],
+            [new ProjectDataset("public.world", 4326, "world.geojson", Identity: "auto")],
             [
                 new ProjectMap(
                     "World",
@@ -37,7 +37,7 @@ public sealed class SpatialProjectFileTests
         Assert.Equal(4326, dataset.Srid);
         Assert.Equal("world.geojson", dataset.Source);
         Assert.Equal("geojson", dataset.Format);
-        Assert.Equal("none", dataset.Identity);
+        Assert.Equal("auto", dataset.Identity);
         Assert.Null(dataset.SourceSrid);
         var map = Assert.Single(loaded.Maps);
         Assert.Equal("World", map.Name);
