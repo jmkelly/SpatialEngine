@@ -372,6 +372,24 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Added
 
+- **The Geometry Service's `Overlaps` and `Crosses` are measured against the
+  reference implementation's own named predicates** (ADR-0036,
+  SpatialEngine-61g): SpatialEngine-u2x.56 fixed the one served
+  `spatialRel` reading of these two verbs — the Feature Service query path —
+  and declined to audit the other surface of the same two verbs, the Geometry
+  Service's `relation=esriSpatialRelOverlaps` / `esriSpatialRelCrosses`. The
+  two surfaces read one table, so the answer is that they already agree: over
+  all 256 ordered pairs of the polygon, line and point fixtures, with any
+  fixture in either operand position, the Geometry Service's answer matches
+  the reference's `Overlaps` and `Crosses` on every pair. What was missing was
+  the test that says so, and a second copy of a pattern string in the Geometry
+  Service would have been invisible while the answers happened to coincide, so
+  two cross-checks now ask the reference implementation the question rather
+  than comparing a served constant with itself, and two more pin the served
+  answer to the pattern the pair's dimensions call for (`1*T***T**` and
+  `0********` on a line/line pair) so the two surfaces cannot drift apart
+  unnoticed. Served behaviour is unchanged.
+
 - **A store read is a page, a position and a "one more"** (ADR-0116,
   SpatialEngine-u2x.10): a large-layer query is read with a `LIMIT`/`OFFSET`
   instead of being materialised and paged on the way in, a page says outright
