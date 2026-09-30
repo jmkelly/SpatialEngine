@@ -59,6 +59,13 @@
 # to open the script to know which half of the doc gate gates and which only
 # reports.
 #
+# After those, every lane runs the bead-protocol gate
+# (`tools/beads_gate.py`): a closed bead's merge commit carries `Task: <id>`,
+# and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**` lands its
+# decision record with it (ADR-0152). The rule was prose in this file and in
+# `eng/swarm-runbook.md`, and it had already failed in-tree — three workers read
+# a body naming bead `.2` while working `.1`, `.3` and `.4` (SpatialEngine-imz.4).
+#
 # The split exists because the flat gate costs ~25 minutes warm on a 12-core
 # box and the swarm runs it constantly. Almost all of that is overhead rather
 # than signal: `dotnet format` over the solution is ~30% of it, and the 22
@@ -116,6 +123,10 @@ PLAN_ONLY=0
 # container-backed suites, which cost minutes each on a contended box and are
 # covered by CI on `main` whatever a merge does (ADR-0134 §3): a merge that
 # skips them is a merge that leaned on CI, and the close reason says so.
+#
+# VERIFY_NO_QUEUE=1 tells the bead-protocol gate below not to read the beads
+# queue. The queue is local coordination state, and a fixture that runs a lane
+# has no business reading the live one (ADR-0152, `tools/test_no_real_queue.py`).
 SKIP_PATTERNS=()
 # The `--help` output: every paragraph of the header comment above
 # `set -euo pipefail`, which is the whole of what the lanes document
@@ -431,6 +442,42 @@ doc_gate() {
   step bash eng/quality-audit.sh --report
 }
 
+# --- the bead-protocol gate, on every lane ---------------------------------
+# The geometry and contract walls are enforced in code by
+# `Spatial.Architecture.Tests`; the protocol around them was prose, and it had
+# already failed in-tree four ways — three workers each read a body naming bead
+# `.2` while working `.1`, `.3` and `.4`; one tick released eight leases whose
+# agents were still running; two merges landed with conflict resolutions written
+# by a coordinator without the workers' context; three commits exist purely to
+# rescue work the reclaim race orphaned (SpatialEngine-imz.4). So
+# `tools/beads_gate.py` judges the two mechanical halves of it on every lane:
+# a closed bead's merge commit carries `Task: <id>`, and a commit touching
+# `src/Spatial.Contracts/**` or `src/Spatial.Core/**` lands a decision record
+# with it (ADR-0152). The ADR citation and register checks are G1/G2's and are
+# read through `tools/arch-index.py --check` in the doc gate above rather than
+# implemented a second time.
+#
+# It is a repo check rather than one over the change, so it is not scoped and
+# has no fallback case: the trailer is a property of how merges are written and
+# the wall is a property of what a commit says it did, neither of which is
+# narrower on a scoped lane. The one input it cannot always have is the bead
+# queue — it is local coordination state in the shared git dir and CI has none —
+# so a run that cannot read it says so in those words and judges the rest.
+beads_gate_step() {
+  echo "== bead protocol: Task trailers on merge commits, ADR on a wall change =="
+  # `VERIFY_NO_QUEUE=1` is for a fixture or a rehearsal that must not reach the
+  # repository's real queue: `tools/test_no_real_queue.py` runs this whole
+  # suite with `bd` and `paseo` shadowed on PATH and fails it if anything calls
+  # either, and a fixture that ran the lane would be calling the live database
+  # to learn about closed beads. The lane's check 1 is then reported as not
+  # judged, which is the same answer CI gets.
+  if [[ "${VERIFY_NO_QUEUE:-}" == "1" ]]; then
+    step python3 tools/beads_gate.py --root . --base "$BASE" --no-queue
+  else
+    step python3 tools/beads_gate.py --root . --base "$BASE"
+  fi
+}
+
 # --- the format lane -------------------------------------------------------
 if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
@@ -438,6 +485,7 @@ if [[ "$LANE" == "format" ]]; then
   conflict_marker_step
   doc_surface_step
   doc_gate
+  beads_gate_step
   if [[ "$EXHAUSTIVE" == "1" ]]; then
     echo "the change set is unscoped against $BASE, so this is the whole solution"
   fi
@@ -456,6 +504,7 @@ if [[ "$LANE" == "full" ]]; then
   conflict_marker_step
   doc_surface_step
   doc_gate
+  beads_gate_step
 
   echo "== format check =="
   # No --no-restore: a clean checkout has no project.assets.json yet, and the
@@ -483,6 +532,7 @@ whitespace_step
 conflict_marker_step
 doc_surface_step
 doc_gate
+beads_gate_step
 
 if [[ "$EXHAUSTIVE" == "1" ]]; then
   echo "== the change set is unscoped against $BASE: whole solution, every test =="

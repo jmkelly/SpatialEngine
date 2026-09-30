@@ -143,6 +143,14 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    passes `--verified`, which skips the gate because it was already green on
    that rebased commit; it skips nothing else, and the fact
    is written into the `bd close` reason.
+   The merge commit the tool writes carries a `Task: <bead>` trailer, and every
+   lane of `eng/verify.sh` reads it back (`tools/beads_gate.py`, ADR-0152): a
+   closed bead's merge commit must name that bead, and a commit touching
+   `src/Spatial.Contracts/**` or `src/Spatial.Core/**` must change an ADR or
+   cite `ADR-NNNN` in its body. A hand-run `git merge --no-ff` on `main` is a
+   red lane, which is the intent — the protocol above had already failed four
+   ways in-tree (SpatialEngine-imz.4), and a rule only the merge tool follows
+   is the rule the mis-dispatch got past.
    **Merges are local. There is no pull request.** The tool rebases the bead's
    branch onto `origin/main`, merges `--no-ff` into local `main`, pushes `main`
    and closes — that is the whole path. Do not open a GitHub pull request, do

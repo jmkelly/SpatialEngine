@@ -90,6 +90,20 @@ jobs:
       - name: Doc surface
         run: python3 tools/doc_surface.py
 
+      # The bead protocol — a closed bead's merge commit carries `Task: <id>`,
+      # and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**`
+      # lands its decision record with it — was prose in AGENTS.md and the
+      # runbook, and it had already failed in-tree: three workers each read a
+      # body naming bead `.2` while working `.1`, `.3` and `.4`
+      # (SpatialEngine-imz.4, ADR-0152). The lanes call
+      # `tools/beads_gate.py` directly; this job spells out its steps rather
+      # than calling `eng/verify.sh`, so it carries the step too. The bead queue
+      # is local coordination state in the shared git dir and a runner has none,
+      # so the step passes `--no-queue`: check 1 is reported as not judged
+      # rather than read, and the wall check still runs.
+      - name: Bead protocol and ADR wall
+        run: python3 tools/beads_gate.py --root . --base origin/main --no-queue
+
       - name: Build
         run: dotnet build SpatialEngine.slnx
 

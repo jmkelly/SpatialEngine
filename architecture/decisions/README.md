@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**139 records on disk.** `status` is the record's own word;
+**140 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -154,6 +154,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0149](ADR-0149-every-ingested-dataset-is-keyed.md) | Every ingested dataset is keyed | accepted | 2026-10-01 | ADR-0041, ADR-0140 |
 | [0150](ADR-0150-a-record-is-one-decision-and-its-shape-is-a-gate.md) | A record is one decision, and its shape is a gate | accepted | 2026-10-01 | — |
 | [0151](ADR-0151-the-sql-server-store-holds-its-description-too.md) | The SQL Server store holds its description too | accepted | 2026-10-01 | ADR-0122 |
+| [0152](ADR-0152-the-bead-protocol-is-a-gate.md) | The bead protocol is a gate, not prose | accepted | 2026-10-01 | ADR-0118, ADR-0141, ADR-0146, ADR-0150 |
 | [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md) | A polar stereographic's standard parallel is read as a scale factor | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 
 ## Amended by
@@ -177,7 +178,7 @@ not appear.
 - **0109** is amended by 0141
 - **0115** is amended by 0128, 0133
 - **0116** is amended by 0124
-- **0118** is amended by 0141, 0148
+- **0118** is amended by 0141, 0148, 0152
 - **0121** is amended by 0124
 - **0122** is amended by 0151
 - **0124** is amended by 0127, 0131, 0133

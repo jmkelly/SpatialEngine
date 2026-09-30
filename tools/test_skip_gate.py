@@ -324,7 +324,8 @@ class LaneExitCodeTests(unittest.TestCase):
         # (ADR-0146), the repository-root check (ADR-0148) and the doc gate
         # (ADR-0141), then the reporting-only documentation-freshness audit
         # (`eng/quality-audit.sh --report`, SpatialEngine-imz.2). The fixture
-        # therefore carries all of those tools, and — because the doc gate
+        # therefore carries all of those tools, the bead-protocol gate among
+        # them (ADR-0152), and — because the doc gate
         # regenerates the ADR register and index and fails on a stale one — a
         # decision corpus and its generated register. A fixture without any of
         # them would be measuring the gates rather than the skip gate, and the
@@ -332,7 +333,8 @@ class LaneExitCodeTests(unittest.TestCase):
         for name in ("eng/verify.sh", "eng/quality-audit.sh", "tools/verify_scope.py",
                      "tools/skip_gate.py", "tools/trailing_whitespace.py",
                      "tools/conflict_markers.py", "tools/doc_surface.py",
-                     "tools/arch-index.py", "tools/doc-freshness.py"):
+                     "tools/arch-index.py", "tools/doc-freshness.py",
+                     "tools/beads_gate.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
@@ -400,9 +402,15 @@ class LaneExitCodeTests(unittest.TestCase):
 
     def lane(self, *arguments, skip_counts):
         env = {k: v for k, v in os.environ.items() if k != "CI"}
+        # VERIFY_NO_QUEUE: the bead-protocol gate reads the beads queue for
+        # check 1, and a fixture running a lane has no business reading the
+        # repository's real one — `tools/test_no_real_queue.py` fails the whole
+        # tooling suite if it does. The lane then reports check 1 as not
+        # judged, which is what this suite is measuring either way (ADR-0152).
         env.update({"PATH": f"{self.bin}{os.pathsep}{env['PATH']}",
                     "SKIP_COUNTS": skip_counts,
-                    "VERIFY_BASE": "main"})
+                    "VERIFY_BASE": "main",
+                    "VERIFY_NO_QUEUE": "1"})
         return subprocess.run(
             ["bash", "eng/verify.sh", *arguments], cwd=self.root, env=env,
             capture_output=True, text=True)
