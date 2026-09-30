@@ -123,6 +123,10 @@ PLAN_ONLY=0
 # container-backed suites, which cost minutes each on a contended box and are
 # covered by CI on `main` whatever a merge does (ADR-0134 §3): a merge that
 # skips them is a merge that leaned on CI, and the close reason says so.
+#
+# VERIFY_NO_QUEUE=1 tells the bead-protocol gate below not to read the beads
+# queue. The queue is local coordination state, and a fixture that runs a lane
+# has no business reading the live one (ADR-0152, `tools/test_no_real_queue.py`).
 SKIP_PATTERNS=()
 # The `--help` output: every paragraph of the header comment above
 # `set -euo pipefail`, which is the whole of what the lanes document
@@ -461,7 +465,17 @@ doc_gate() {
 # so a run that cannot read it says so in those words and judges the rest.
 beads_gate_step() {
   echo "== bead protocol: Task trailers on merge commits, ADR on a wall change =="
-  step python3 tools/beads_gate.py --root . --base "$BASE"
+  # `VERIFY_NO_QUEUE=1` is for a fixture or a rehearsal that must not reach the
+  # repository's real queue: `tools/test_no_real_queue.py` runs this whole
+  # suite with `bd` and `paseo` shadowed on PATH and fails it if anything calls
+  # either, and a fixture that ran the lane would be calling the live database
+  # to learn about closed beads. The lane's check 1 is then reported as not
+  # judged, which is the same answer CI gets.
+  if [[ "${VERIFY_NO_QUEUE:-}" == "1" ]]; then
+    step python3 tools/beads_gate.py --root . --base "$BASE" --no-queue
+  else
+    step python3 tools/beads_gate.py --root . --base "$BASE"
+  fi
 }
 
 # --- the format lane -------------------------------------------------------

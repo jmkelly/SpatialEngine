@@ -72,6 +72,23 @@ CONFLICT_MARKER_GATE = "python3 tools/conflict_markers.py"
 # tools/**-only tooling suite.
 DOC_SURFACE_GATE = "python3 tools/doc_surface.py"
 
+
+def beads_gate_gate(base="main"):
+    """The bead-protocol gate every lane runs, after the doc gate (ADR-0152).
+
+    A closed bead's merge commit must carry a `Task: <id>` trailer naming that
+    bead, and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**`
+    must land a decision record with it. It follows the doc gate because it is
+    the same kind of step — a repository check, not a change-set check — and it
+    reads the change set's own base, so the plan names the base it was given.
+
+    `--no-queue` is here because `ScriptLaneTests` sets `VERIFY_NO_QUEUE=1`:
+    the queue is local coordination state and a fixture must not read the
+    repository's real one, so these plans are what a lane runs with the queue
+    switched off (which is also what CI runs).
+    """
+    return f"python3 tools/beads_gate.py --root . --base {base} --no-queue"
+
 #: A real project in this repository, and the test suites that reach it.
 CORE_PROJECT = "src/Spatial.Core/Spatial.Core.csproj"
 
@@ -682,6 +699,11 @@ class ScriptLaneTests(unittest.TestCase):
         # it was invoked is not a suite anyone can read.
         env = {key: value for key, value in os.environ.items() if key != "CI"}
         env["CI"] = ci
+        # The bead-protocol gate reads the beads queue unless this is set, and a
+        # fixture running a lane must not reach the repository's real one
+        # (`tools/test_no_real_queue.py`); with it set the gate reports check 1
+        # as not judged, which is CI's answer anyway (ADR-0152).
+        env["VERIFY_NO_QUEUE"] = "1"
         result = subprocess.run(
             ["bash", "eng/verify.sh", "--plan", *arguments],
             cwd=str(self.repo.root), check=True, capture_output=True, text=True,
@@ -714,6 +736,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate(),
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -768,6 +791,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate(),
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -782,6 +806,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate(),
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -797,6 +822,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate(),
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -828,6 +854,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate(),
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -844,6 +871,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate(),
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -860,6 +888,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate("origin/does-not-exist"),
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -873,6 +902,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             DOC_GATE,
+            beads_gate_gate("origin/does-not-exist"),
             "dotnet format SpatialEngine.slnx --verify-no-changes",
         ])
 
