@@ -12,7 +12,7 @@ a dead coordinator, a crashed agent, or a human edit.
 | Provider / model | `pi/opencode-go/space-bunny-free` |
 | Thinking | `medium` |
 | Mode | none — the `pi` provider has no modes, and passing one fails the spawn |
-| Concurrency cap | **8** workers in flight |
+| Concurrency cap | **3** workers in flight (the coordinator is not a worktree and does not count) |
 | Cron | every 20 minutes |
 | Max runs | 200 (a runaway backstop, ~66 h of ticks — never a target) |
 | Goal | **run to exhaustion** — no wave limit, no nightly target |
@@ -59,9 +59,14 @@ Docker was restored is the go/no-go signal for the whole run — check
 
 ## Coordinator prompt (verbatim)
 
-You are the swarm coordinator for the SpatialEngine repo, running the epic
-`SpatialEngine-u2x` (23 child beads, 4 waves). Read `AGENTS.md` first, then
-`bd prime`. Work only in the beads queue — do not implement anything yourself.
+You are the swarm coordinator for the SpatialEngine repo, driving the epic
+`SpatialEngine-u2x` (68 children, 94% closed) and then the rest of the queue.
+`eng/swarm-runbook.md` is this prompt's maintained home: read it first, then
+`AGENTS.md`, then `bd prime`. Work only in the beads queue — do not implement
+anything yourself.
+
+The cap is 3 worker worktrees. You are not one of them — you run in the main
+worktree — and you never count toward the cap.
 
 Each tick, do exactly this, in order, and stop early if you hit a stop condition:
 
@@ -77,15 +82,33 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    for a whole run, and two live workers had no copy of it). `--check` after
    merging is the same check, and it is how a tick proves it published.
 
-1. RECOVER. `python3 tools/bd-safe-reclaim.py --dry-run` first, read the
+1. TRIM. Enforce the cap at the TOP of every tick, not only before spawning: a
+   cap checked only at spawn time drifts back up, because every tick re-counts
+   what the last tick left running. Count the agents you spawned — matched by
+   the bead ids in their `in-flight` notes and by a worktree under
+   `~/.paseo/worktrees/` — and not the maintainer's own sessions, which
+   `paseo ls` also shows and which are not swarm capacity. Over 3, keep the 3
+   with the most invested work (a committed hand-off, or an unmerged P1, beats
+   a bead that has barely started). For each excess `paseo stop <agent-id>`,
+   then in its worktree `git add -A && git commit -m "WIP: preserve
+   uncommitted work for <id> (swarm capped at 3 by coordinator tick <date>)"
+   -m "Task: <id>"`, `bd update <id> --label in-flight --append-notes "<agent>
+   <branch> <worktree> <wip-commit>"`, then `bd unclaim <id>`. Leave the
+   worktree in place — a later tick reuses it and resumes from the WIP commit.
+   `git stash` is shared across this repo's worktrees and has clobbered a
+   worker mid-task; never stash, and never tell a worker to.
+
+2. RECOVER. `python3 tools/bd-safe-reclaim.py --dry-run` first, read the
    KEEP/RECLAIM verdicts against `paseo ls`, then run it without `--dry-run`.
    It reclaims only leases no live agent holds; bare `bd reclaim` does not, and
    on 2026-09-28 it released 8 leases that were all still being worked
    (SpatialEngine-u2x.30). Any bead left `in_progress` for more than 90 minutes
    with no running paseo agent working its branch is stale: reclaim it, note
-   why, and let it re-enter `bd ready`.
+   why, and let it re-enter `bd ready`. Reclaim is for dead workers only —
+   never a bead you stopped in TRIM, and never a bead labelled `human` waiting
+   on a maintainer decision.
 
-2. MERGE. For every bead labelled `needs-merge`, run
+3. MERGE. For every bead labelled `needs-merge`, run
    `python3 tools/bd-merge-bead.py --bead <id>`. Do not do the steps by hand
    and do not call `bd close` yourself: the tool fetches, rebases the branch
    onto `origin/main`, runs the fast gate (`eng/verify.sh --fast`) on that
@@ -115,14 +138,31 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    passes `--verified`, which skips the gate because it was already green on
    that rebased commit; it skips nothing else, and the fact
    is written into the `bd close` reason.
+   A skip-heavy suite is not a green suite. `eng/verify.sh` has exited 0 while
+   `Spatial.SqlServer.Tests` reported 10 passed / 104 skipped under parallel
+   load — the very tests the bead existed to fix were among the skipped
+   (SpatialEngine-u2x.58 lost a tick to exactly that). When the change reaches a
+   container-backed suite and that suite reports mass skips, re-run the affected
+   class standalone before treating the green as one. `Spatial.Host.Tests` and
+   `Spatial.PostGIS.Tests` running green is the check that Docker is reachable
+   and the skips are contention, not a missing socket.
+   Formatting is not a hand-off step and not a merge step (ADR-0134): CI and an
+   occasional `--format` own it.
 
-3. DRAIN. Count running workers with `paseo ls`. While workers < 8:
+4. DRAIN. Count running workers with `paseo ls` — the agents this coordinator
+   spawned, matched by the bead ids in their `in-flight` notes and by a
+   worktree under `~/.paseo/worktrees/`; the coordinator runs in the main
+   worktree and never counts. While workers < 3:
    - take from `bd ready`, in this order: children of `SpatialEngine-u2x` first,
      then **any other ready bead in the repo**. This second clause matters:
      workers are told to `bd create` a bead rather than widen their scope, and
      those follow-ups are the real work of the run. A filter of "epic children
      only" would strand them the moment the first wave lands.
-   - skip anything labelled `in-flight` or already claimed
+   - skip anything labelled `in-flight`, `human`, or already claimed
+   - read the epic's newest note block for the set currently blocked behind the
+     DE-9IM/spatialRel reading (`SpatialEngine-onj`); that list has gone stale
+     as beads closed under it, so re-check each entry rather than trusting the
+     note, and do not treat the block as permanent
    - respect the file-overlap order in the epic's coordination note:
      **`.2` before `.16`, `.4` before `.21`**. If one of those two is claimed or
      in progress, skip its partner and pick another ready bead.
@@ -135,10 +175,12 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    - `paseo run --provider pi/opencode-go/space-bunny-free --thinking medium
      -d --workspace <workspace-id> "<worker prompt below>"`
      `-d` is mandatory: without it `paseo run` blocks until the worker goes
-     idle, so the eight spawns serialise and one tick never finishes.
-   - label the bead `in-flight` and record the agent id + branch in its notes
+     idle, so the spawns serialise and one tick never finishes.
+   - label the bead `in-flight` and record the agent id + branch + workspace in
+     its notes with `--append-notes`; a bare `--notes` has twice destroyed a
+     bead's notes on this repo
 
-4. REPORT. One short line per bead touched this tick, and the output of
+5. REPORT. One short line per bead touched this tick, and the output of
    `python3 tools/bd-merge-bead.py --check` — a tick that did not finish
    `published: main is at origin/main` did something unrecoverable, and the
    report is where a human sees it. If nothing was ready and
@@ -164,23 +206,30 @@ substituted everywhere it appears. The header and the body must carry the *same*
 id — the header used to be filled from the workspace name while the body was
 filled from the bead the coordinator intended, and three workers each read the
 body and did bead `.2` inside the `.1`, `.3` and `.4` worktrees. If you are
-copying this prompt, replace every `BEAD_ID` in one pass and check the count
-afterwards: it appears 2 times. Never put a bare `<id>` in a spawned prompt.
+copying this prompt, replace every `BEAD_ID` in one pass and re-read the result
+before you send it: no `BEAD_ID` may survive, and the id in the header and the
+id in step 1 must be the same string. Never put a bare `<id>` in a spawned
+prompt.
 
 You are working bead `BEAD_ID`. You are in a dedicated git worktree checked out
 on branch `bd/BEAD_ID`. The bead is already claimed by you.
 
 1. `bd show BEAD_ID` and read the whole thing, plus the epic's coordination note.
    The description names the exact files and lines; trust them.
-   The description names the exact files and lines; trust them.
 2. Read `AGENTS.md`, then the relevant `architecture/distilled/*.md` digest and
    the ADRs it routes to. The digests lose to the ADRs on conflict.
-3. TEST FIRST. Write the failing reproduction test the acceptance criteria name
+3. If the bead writes a decision record, **reserve its number first**:
+   `python3 tools/adr-next-number.py --reserve --bead BEAD_ID` at the start of
+   the branch, and `--check NNNN` again immediately before writing. The
+   reservation is held in the repository's shared git dir, so a parallel branch
+   that takes the same number is turned away at allocation rather than at merge
+   (ADR-0090). Release it with `--release NNNN` if you renumber.
+4. TEST FIRST. Write the failing reproduction test the acceptance criteria name
    (most beads name the exact wrong-behaviour case). Run it, watch it fail for
    the right reason. Only then fix.
-4. Implement, staying inside the bead's scope. If you find a second problem, do
+5. Implement, staying inside the bead's scope. If you find a second problem, do
    not fix it — `bd create` a new bead with the evidence and carry on.
-5. Lanes. `eng/verify.sh --fast` (the same as no arguments) is the **fast
+6. Lanes. `eng/verify.sh --fast` (the same as no arguments) is the **fast
    gate** — a build of the projects your change reaches and the test projects
    that reach it over `ProjectReference`, plus `Spatial.Architecture.Tests` —
    and it is what you run on every iteration *and* what the merge runs. It
@@ -189,8 +238,8 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    quarter of an hour. Measured on this host: about a minute for a tooling or
    docs change, 2 m 40 s for a leaf `src/**` change, 7 m 32 s for a change
    under `Spatial.Core` — all green, nothing skipped.
-   `eng/verify.sh --format` is the format lane
-   is the format lane (`dotnet format --verify-no-changes` over the changed
+   `eng/verify.sh --format` is the format lane (`dotnet format
+   --verify-no-changes` over the changed
    projects, ~45 s each) and is **not** a hand-off step any more: formatting is
    enforced by CI and by an occasional run, not paid for hundreds of times a
    day (ADR-0134). `eng/verify.sh --full` is everything — format over the whole
@@ -204,18 +253,23 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    than guess (ADR-0109). `eng/verify.sh --plan` prints what a lane would run.
    `CI=true` with no lane named runs `--full`, so a workflow that calls the
    bare script gets the gate rather than the scoped lane.
-6. A suite that fails for a reason unrelated to your change: prove it was
+7. A suite that fails for a reason unrelated to your change: prove it was
    already failing (name the bead and the failure) rather than editing the test
    to make it pass. A fast-gate run that skips a suite you expected is
    scoping working as designed, not a green light — CI on `main` covers what a
    merge did not run. Keep Docker reachable so the PostGIS and SQL Server
-   integration suites actually run when the change reaches them.
-7. Commit with a `Task: BEAD_ID` trailer, and **push your branch to
+   integration suites actually run when the change reaches them. A suite that
+   ran but *skipped most of its cases* is the other false green: under parallel
+   worktrees `Spatial.SqlServer.Tests` has reported 10 passed / 104 skipped and
+   exited 0 (SpatialEngine-u2x.58). If your change reaches a container-backed
+   suite and it comes back skip-heavy, run that class on its own before you
+   hand off.
+8. Commit with a `Task: BEAD_ID` trailer, and **push your branch to
    origin** (`git push -u origin bd/BEAD_ID`). Then
    `bd update BEAD_ID --label needs-merge --append-notes "<commit> <branch>
    agent <id> workspace <id>"`. Do **not** close the bead — the coordinator
    merges, publishes and closes, in that order.
-8. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
+9. Sanity check before you hand off: `git log -1 --format=%s%n%b` must name
    `Task: BEAD_ID`, and `bd show BEAD_ID` must show *your* bead as the one
    labelled `needs-merge`. If they disagree, you worked the wrong bead — say so
    in your summary rather than papering over it.
@@ -233,20 +287,22 @@ accepted and ignored.
   lane, off the merge path; `eng/verify.sh --full` is the flat gate, opt-in per
   merge with `--bead --full` and run by CI on every pull request and after
   every merge to `main` once `main`'s CI is green and those jobs are required
-  status checks (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 8
-  concurrent workers this host (12 cores /
-  15 GB) will be busy; if a tick finds the machine saturated, prefer merging
-  (step 2) over spawning (step 3).
+  status checks (ADR-0118 §4; SpatialEngine-ivp, SpatialEngine-bv4). At 3
+  concurrent workers this host (12 cores / 15 GB) is already busy; if a tick
+  finds the machine saturated, prefer merging (step 3) over spawning (step 4).
 - The container-backed suites also run in their own CI job
   (`.github/workflows/ci.yml`, `integration`), on a runner that is not this
   box. A branch green there has already run the PostGIS, SQL Server, host and
   ingest suites; the local re-run before merge is still the coordinator's, and
   it is the one that wants an idle box to mean anything.
 - The PostGIS and SQL Server integration suites start their own containers
-  (ADR-0072, ADR-0073). Eight workers can each start a SQL Server container
-  (~2 GB). If memory pressure shows up, drop the cap to 4 and say so in the tick
-  report. The cap is a tuning knob, not a scope limit — the run still goes to
-  exhaustion at a lower cap.
+  (ADR-0072, ADR-0073). The cap is 3 for that reason: at 8 this box was
+  measured at load average 93–113, and container contention is what turns a
+  green fast gate into a skip-laden one (`Spatial.SqlServer.Tests` reporting
+  10 passed / 104 skipped under load, on the bead that existed to fix those
+  tests). Drop the cap further if memory pressure shows up and say so in the
+  tick report. The cap is a tuning knob, not a scope limit — the run still
+  goes to exhaustion at a lower cap.
 - The tier-1 chain is four serial steps (`.7` → `.8`/`.9` → `.11` → `.12`/`.13`).
   Those four are the long pole; everything else can proceed in parallel around
   them. If the chain stalls on `.7`, the rest of the queue still drains.
