@@ -88,6 +88,33 @@ public sealed class SpatialClientTests
         Assert.Contains("store=demo", exchange.Request.RequestUri?.Query);
     }
 
+    /// <summary>
+    /// The catalogue round trip over the shared wire options: a description's
+    /// feature schema arrives with its fields, kinds, nullability and
+    /// descriptions intact. The typed API reaches this shape through the
+    /// explicit <c>FeatureSchemaConverter</c>/<c>FieldDefinitionConverter</c>,
+    /// because System.Text.Json binds neither core schema type on its own —
+    /// without them a field definition deserializes to <c>default</c> in
+    /// silence. Guarded structurally by
+    /// <c>Spatial.Architecture.Tests.SchemaBindingGuardTests</c>.
+    /// </summary>
+    [Fact]
+    public async Task Describe_dataset_decodes_the_feature_schema()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            """{"id":"demo.roads","schemaName":"demo","table":"roads","geometryColumn":"geometry","srid":4326,"geometryType":"Point","estimatedRowCount":110,"idColumns":["id"],"schema":{"fields":[{"name":"id","kind":"int64","nullable":false,"description":null},{"name":"label","kind":"string","nullable":true,"description":"display name"},{"name":"geometry","kind":"geometry","nullable":true,"description":null}]},"geometryLayout":"xy"}""")));
+
+        var description = await stub.Client.DescribeDatasetAsync("demo.roads");
+
+        Assert.Equal(3, description.Schema.Count);
+        Assert.Equal("id", description.Schema[0].Name);
+        Assert.Equal(AttributeKind.Int64, description.Schema[0].Kind);
+        Assert.False(description.Schema[0].Nullable);
+        Assert.Equal("label", description.Schema[1].Name);
+        Assert.Equal("display name", description.Schema[1].Description);
+        Assert.Equal(AttributeKind.Geometry, description.Schema[2].Kind);
+    }
+
     [Fact]
     public async Task Write_returns_the_appended_count()
     {
