@@ -192,6 +192,24 @@ record left open:
   (ADR-0097). The suite compares feature identities, not only values, so a
   renumbering is a red test rather than a surprise in production.
 
+## Amendment (SpatialEngine-lnj): the shared project is itself governed
+
+§5 named `Spatial.Querying` as a permitted *reference* for the stores and the
+adapter, which is one half of the structural choice. The other half was
+missing: the project was on neither of the guard's lists, so nothing checked
+*its* references or packages. A `Npgsql` or `NetTopologySuite` reference
+added to the shared reference semantics of a query plan — the one place whose
+whole argument is that it is provider-free — would have left every rule green.
+
+`Spatial.Querying` is now named in both the implementation list and the
+platform list, so the two existing rules cover it: it references only Core and
+the SDK, and it takes no package at all. A third rule,
+`Every_src_project_is_named_by_a_guard_rule`, holds the lists to the
+solution: a project added to `/src` without a rule is a violation, so the next
+new implementation cannot be un-guarded by omission. The alternative — a
+dedicated test asserting this one project — would have named a project instead
+of the property, and the next new project would have arrived unguarded again.
+
 ## Consequences
 
 - **`returnCountOnly`, a grouped `outStatistics` and a paged `orderByFields`
@@ -209,7 +227,8 @@ record left open:
 - **`Spatial.Querying` is a new project** in the solution and in the
   implementation allowlist — a deliberate structural choice, recorded here
   because ADR-0074 left the placement of implementation-side plan semantics
-  open.
+  open. It is named in the guard's own lists (amendment, SpatialEngine-lnj),
+  so the reference semantics cannot acquire a provider.
 - **Not decided here:** pushing `DISTINCT` and the SQL Server reductions into
   their dialects (both are follow-ups; the answers are already right, only the
   cost is not yet reduced), the match-envelope pushdown (SpatialEngine-u2x.11),
