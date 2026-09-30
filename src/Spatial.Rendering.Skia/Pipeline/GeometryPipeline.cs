@@ -56,11 +56,25 @@ internal static class GeometryPipeline
     /// Clips a geometry to <paramref name="bounds"/> when it reaches beyond
     /// them; a geometry already inside the bounds (or without an envelope) is
     /// returned unchanged, so the common case pays nothing.
+    ///
+    /// <para>
+    /// A geometry holding a sub-2-point LineString is returned unchanged as
+    /// well (ADR-0144). Such a LineString is a position rather than a segment —
+    /// the empty one carries nothing, the one-point one carries a single
+    /// position — and a position is nothing the clip has extent to bound,
+    /// while the planar algorithm behind <see cref="IGeometryOperations"/>
+    /// cannot build one at all. Clipping would therefore fail a whole render
+    /// for a value the model admits and a symbol layer labels, so the clip is
+    /// skipped rather than attempted; the rest of a compound that also holds a
+    /// degenerate line is left unbounded, which is the cheaper of the two ways
+    /// of losing a clip it did not need in every other case.
+    /// </para>
     /// </summary>
     public static IGeometry ClipToBounds(
         IGeometry geometry, Envelope bounds, IGeometryOperations operations, CancellationToken cancellationToken)
     {
-        if (bounds.IsEmpty || geometry.Envelope is not { } envelope || Contains(bounds, envelope))
+        if (bounds.IsEmpty || geometry.Envelope is not { } envelope || Contains(bounds, envelope)
+            || HoldsSubTwoPointLineString(geometry))
         {
             return geometry;
         }
@@ -75,6 +89,15 @@ internal static class GeometryPipeline
         ]);
         return operations.Intersection(geometry, clip, cancellationToken);
     }
+
+    /// <summary>Whether the geometry holds a LineString with fewer than two coordinates, at any depth.</summary>
+    private static bool HoldsSubTwoPointLineString(IGeometry geometry) => geometry switch
+    {
+        ILineString line => line.Sequence.Count < 2,
+        IMultiLineString multi => multi.LineStrings.Any(line => line.Sequence.Count < 2),
+        IGeometryParts parts => parts.Geometries.Any(HoldsSubTwoPointLineString),
+        _ => false,
+    };
 
     private static bool Contains(Envelope outer, Envelope inner) =>
         inner.MinX >= outer.MinX && inner.MaxX <= outer.MaxX
