@@ -149,10 +149,15 @@ class SkipGateTests(unittest.TestCase):
         self.assertEqual(0, self.run_gate("--expect", "0").returncode)
 
 
-#: A stub `dotnet` that answers every subcommand and, for `test`, writes the
-#: trx files of a run whose skips are stated in SKIP_COUNTS. It stands in for
-#: the real thing so the lane's own wiring — the logger, the results
-#: directory, the exit code — is what is under test.
+#: A stub `dotnet` that answers every subcommand and, for `test`, writes a trx
+#: for each project **in the solution it was handed** whose name appears in
+#: SKIP_COUNTS. It stands in for the real thing so the lane's own wiring — the
+#: logger, the results directory, the exit code — is what is under test.
+#:
+#: The solution, not SKIP_COUNTS, is what decides which suites ran. A stub that
+#: wrote a trx for every entry would make a mass-skip failure mean "the fixture
+#: mentioned this suite" rather than "the lane selected it", and a suite the
+#: lane had dropped would still leave a result file behind (SpatialEngine-0cd).
 STUB_DOTNET = """#!/usr/bin/env bash
 set -euo pipefail
 args=("$@")
@@ -164,14 +169,20 @@ for ((i = 0; i < ${#args[@]}; i++)); do
 done
 if [[ "${args[0]:-}" == "test" && -n "$results" ]]; then
   mkdir -p "$results"
-  index=0
-  for entry in ${SKIP_COUNTS:-}; do
-    name="${entry%%=*}"
+  solution="${args[1]:-}"
+  paths="$(grep -o 'Project Path="[^"]*"' "$solution" 2>/dev/null \\
+    | sed 's/.*Path="//; s/"$//' || true)"
+  for path in ${paths}; do
+    name="$(basename "$path" .csproj)"
+    entry=""
+    for candidate in ${SKIP_COUNTS:-}; do
+      [[ "${candidate%%=*}" == "$name" ]] && entry="$candidate"
+    done
+    [[ -n "$entry" ]] || continue
     counts="${entry#*=}"
     total="${counts%%:*}"
     skipped="${counts#*:}"
-    index=$((index + 1))
-    cat > "$results/run_${index}_net10.0.trx" <<TRX
+    cat > "$results/${name}_net10.0.trx" <<TRX
 <?xml version="1.0" encoding="utf-8"?>
 <TestRun id="1" name="host 2026-09-30 22:48:32"
          xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
@@ -236,6 +247,19 @@ ARCHITECTURE_NAME = "Spatial.Architecture.Tests"
 MAPS_TESTS_NAME = "Spatial.Maps.Tests"
 
 
+def reference_from(referrer, target):
+    """The `ProjectReference` include one project writes for another.
+
+    Relative to the *referring* project — which is how MSBuild reads it, and
+    how `tools/verify_scope.py` resolves it — in the Windows-separator form
+    every project in this repository uses and the scoper normalises
+    (`../..` read as a single filename resolves to nothing, so a fixture that
+    wrote the form a scoper cannot read would scope to no suite at all).
+    """
+    relative = os.path.relpath(target, os.path.dirname(referrer))
+    return relative.replace("/", "\\")
+
+
 class LaneExitCodeTests(unittest.TestCase):
     """`eng/verify.sh` with a stubbed `dotnet`: the acceptance is the exit code.
 
@@ -255,8 +279,14 @@ class LaneExitCodeTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(CSPROJ.format(
                 test="<IsTestProject>true</IsTestProject>" if is_test else "",
+                # The form this repository writes, and the one
+                # `tools/verify_scope.py` normalises: MSBuild resolves a
+                # `ProjectReference` against the *referring* project's
+                # directory, so a repo-root-relative path is a reference to
+                # nothing and the fixture's reference graph is empty (the
+                # scoped plan then selects no suite at all).
                 references="".join(
-                    f'    <ProjectReference Include="{r}" />\n'
+                    f'    <ProjectReference Include="{reference_from(relative, r)}" />\n'
                     for r in references)), encoding="utf-8")
             return relative
 
@@ -329,6 +359,31 @@ class LaneExitCodeTests(unittest.TestCase):
             ["bash", "eng/verify.sh", *arguments], cwd=self.root, env=env,
             capture_output=True, text=True)
 
+    def test_the_fixture_reaches_its_suites_through_the_reference_edges(self):
+        """The fixture has to scope, or every other assertion in this class is
+        close to vacuous.
+
+        `tools/verify_scope.py` resolves a `ProjectReference` against the
+        *referring project*'s directory, which is what MSBuild does, and
+        `../..`-style Windows separators are the form this repository writes.
+        A fixture that wrote its references repo-root-relative therefore had an
+        empty reference graph: `dependents_of` found nothing, the scoped plan
+        came back as the architecture guard alone, and the lane under test had
+        no droppable suite — so a `--skip-tests` test passed because the drop
+        was a no-op, and a mass-skip test passed because the stub wrote a trx
+        for every project it was told about rather than for the ones the lane
+        selected.
+        """
+        plan = subprocess.run(
+            [sys.executable, "tools/verify_scope.py", "--base", "main",
+             "--list", "plan", "--machine"], cwd=self.root,
+            capture_output=True, text=True, check=True).stdout
+
+        selected = {line.removeprefix("tests:")
+                    for line in plan.splitlines() if line.startswith("tests:")}
+        self.assertEqual({MAPS_TESTS, SQLSERVER_TESTS, ARCHITECTURE}, selected,
+                         f"the fixture scopes to the wrong suites:\\n{plan}")
+
     def test_the_lane_fails_when_a_suite_in_its_scope_mass_skips(self):
         result = self.lane(
             skip_counts=f"{SQLSERVER_TESTS_NAME}=114:104 "
@@ -349,16 +404,23 @@ class LaneExitCodeTests(unittest.TestCase):
     def test_a_dropped_suite_is_absent_from_the_count_rather_than_skipped(self):
         """`--skip-tests` is the opt-out, and it drops the suite from the run —
         so a lane that dropped the suite must not then fail for the suite it no
-        longer ran."""
+        longer ran.
+
+        The dropped suite is stated as mass-skipping on purpose. A drop that
+        did nothing would leave that suite in the scoped solution, and the run
+        would be red: this passes only because the lane removed the suite from
+        the build *and* the test list (SpatialEngine-0cd)."""
         for form in (("--skip-tests=SqlServer",), ("--skip-tests", "SqlServer")):
             with self.subTest(form=form):
                 result = self.lane(*form,
-                                   skip_counts=f"{MAPS_TESTS_NAME}=56:0 "
+                                   skip_counts=f"{SQLSERVER_TESTS_NAME}=114:104 "
+                                               f"{MAPS_TESTS_NAME}=56:0 "
                                                f"{ARCHITECTURE_NAME}=84:0")
 
                 self.assertEqual(
                     0, result.returncode,
                     f"a dropped suite still failed the lane:\n{result.stdout}")
+                self.assertIn(SQLSERVER_TESTS, result.stdout)
 
     def test_the_space_separated_form_the_help_documents_is_accepted(self):
         """The spelling the help, the runbook and ADR-0134 §3 all print.
@@ -395,20 +457,21 @@ class LaneExitCodeTests(unittest.TestCase):
         """One pass, both forms, and the lane flag in between — the arguments
         have to be read wherever they appear, not as a leading pair only.
 
-        This asserts that both spellings are *accepted* and that neither one
-        swallows what follows it. That the pattern was then *honoured* is not
-        observable here: the fixture's `ProjectReference` edges are written
-        repo-root-relative where `tools/verify_scope.py` resolves them relative
-        to the referring project, so the fixture's test projects fall out of
-        the plan and the lane has nothing to drop. Filed as its own bead rather
-        than fixed inside a parsing fix.
+        Both suites are stated as mass-skipping, and the architecture guard is
+        what may not be dropped, so this asserts that the patterns were
+        *honoured* rather than merely accepted: a run that left either suite in
+        the scoped solution is red. It is observable now that the fixture's
+        `ProjectReference` edges resolve and the fixture's test projects are in
+        the plan at all (SpatialEngine-0cd).
         """
         result = self.lane("--skip-tests", "SqlServer", "--fast",
-                           "--skip-tests=Maps", "--plan", skip_counts="")
+                           "--skip-tests=Maps", skip_counts=(
+                               f"{SQLSERVER_TESTS_NAME}=114:104 "
+                               f"{MAPS_TESTS_NAME}=56:0 {ARCHITECTURE_NAME}=84:0"))
 
         self.assertEqual(0, result.returncode,
-                         f"a mixed invocation was rejected:\n{result.stderr}")
-        self.assertNotIn("unknown argument", result.stderr)
+                         f"a mixed invocation was not honoured:\n{result.stdout}")
+        self.assertIn(ARCHITECTURE_NAME, result.stdout)
 
 
 if __name__ == "__main__":
