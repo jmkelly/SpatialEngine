@@ -273,17 +273,24 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         {
             // A paged reduction that returned nothing is past the last group, and
             // how many groups there were is a count the cap just cut, so the
-            // total is the store's to leave uncomputed (ADR-0128).
+            // total is the store's to leave uncomputed (ADR-0128). An *ungrouped*
+            // reduction is one group, and an offset that lands past it is past
+            // the last group too: the reference pages the one group and hands
+            // back nothing, so a store that answered the empty group here would
+            // be answering a page the plan did not ask for
+            // (SpatialEngine-u2x.55).
+            var pastTheOnlyGroup = groupCount == 0 && aggregate.Offset > 0;
             return new AggregatePage(
                 aggregate.GroupBy ?? (IReadOnlyList<string>)[],
                 names,
-                groupCount == 0 ? [FeatureReduction.EmptyGroup(aggregate.Specs)] : [],
+                groupCount == 0 && !pastTheOnlyGroup ? [EmptyGroup(aggregate.Specs)] : [],
                 groupCount == 0 || aggregate.Limit is not null ? null : 0);
         }
 
         if (groupCount == 0 && MatchedNothing(aggregate, rows[0]))
         {
-            return new AggregatePage(aggregate.GroupBy ?? (IReadOnlyList<string>)[]!, names, [FeatureReduction.EmptyGroup(aggregate.Specs)], null);
+            return new AggregatePage(
+                aggregate.GroupBy ?? (IReadOnlyList<string>)[]!, names, [EmptyGroup(aggregate.Specs)], null);
         }
 
         // The row past the page is the store's "one more group" answer, not a
@@ -324,6 +331,18 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             aggregate.IsGrouped && aggregate.Limit is null ? groups.Count : null,
             hasMore);
     }
+
+    /// <summary>
+    /// The one group an ungrouped reduction of an empty selection answers with
+    /// (ADR-0098 §3). Every statistic of an empty set is a null, and the row
+    /// count is not a statistic of the set's <em>values</em>: it counts the rows,
+    /// and a count of no rows is a zero (the same record's "a count is zero").
+    /// SQL's ungrouped <c>COUNT(*)</c> already says zero — reading it as a null
+    /// would make the pushed answer differ from the reference's for every plan
+    /// that selects nothing (SpatialEngine-u2x.55).
+    /// </summary>
+    private static AggregateGroup EmptyGroup(IReadOnlyList<AggregateSpec> specs) =>
+        new([], [.. specs.Select(spec => spec.IsRowCount ? AttributeValue.FromInt64(0) : AttributeValue.Null)]);
 
     /// <summary>
     /// Whether the single row an ungrouped reduction returned reduced no rows at
@@ -412,12 +431,17 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
                 .Select(field => description.Schema[description.Schema.IndexOf(field)])
                 .ToArray()).ToList();
         var result = new FeatureSchema(fields);
-        var identity = description.IdColumns
-            .Select(column => description.Schema[description.Schema.IndexOf(column)])
-            .Where(field => !fields.Contains(field))
-            .ToArray();
-        var read = new FeatureSchema([.. fields, .. identity]);
-        var indexes = identity.Select(field => read.IndexOf(field.Name)).ToArray();
+        var read = new FeatureSchema([
+            .. fields,
+            .. description.IdColumns
+                .Select(column => description.Schema[description.Schema.IndexOf(column)])
+                .Where(field => !fields.Contains(field))]);
+        // The identity indexes are the identity columns' positions in what was
+        // *read*, which is not the set of columns that were appended: an
+        // ordinary read carries the whole schema and therefore already carries
+        // the identity, and taking the appended ones as the identity would name
+        // every pushed row by its ordinal instead of its key (ADR-0131).
+        var indexes = description.IdColumns.Select(column => read.IndexOf(column)).Where(index => index >= 0).ToArray();
         return new Shape(PostgisPlanQueries.Columns(read, null), read, result, indexes);
     }
 

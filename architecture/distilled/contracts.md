@@ -180,7 +180,10 @@ them (ADR-0115): a statistic with no non-null input is a **null** — the count
 included, so a `COUNT(field)` of zero is a null and not a zero — the sample
 forms `var`/`stddev` are **null** for fewer than two values rather than zero,
 and an ungrouped reduction of an empty set is **one group of nulls** where a
-dialect returns no row at all. One statistic is not a number: `Envelope`
+dialect returns no row at all — except the **row count**, which counts rows
+rather than values and is a **zero** (ADR-0098 §3, ADR-0131). A page of an
+ungrouped reduction that lands past its one group is **no groups**, not that
+one group (ADR-0131). One statistic is not a number: `Envelope`
 reduces a geometry field to the smallest rectangle over its non-null
 geometries, reported as an `AttributeKind.Envelope` value (a reduced kind no
 field may declare, ADR-0120). The page over groups and `having` are the
