@@ -167,105 +167,51 @@ public sealed class GeometryServiceTests
     /// answer whichever endpoint serves it (SpatialEngine-zpz, and
     /// SpatialEngine-51k for <c>Intersects</c>).
     ///
-    /// The fixture is the same unit square feature and the same twelve query
-    /// geometries whose hand-computed DE-9IM matrix
-    /// <see cref="FeatureSpatialRelationTests"/> pins the query path against:
-    /// the matrix rows are the feature's components and the columns the
-    /// query's, in interior/boundary/exterior order. Every expected value
-    /// below is copied from that table's Touches/Overlaps/Crosses/Intersects
-    /// columns, so a second copy of a pattern string cannot drift from the
-    /// first.
+    /// The cases come from <see cref="SpatialRelationMatrix"/> — the one
+    /// fixture table and the one hand-computed verdict table the query path
+    /// is measured against in <see cref="FeatureSpatialRelationTests"/>, so
+    /// this surface and that one are pinned by the same verdicts rather than
+    /// by values copied across by hand. Every row of it under every served
+    /// verb: the corner touch (<c>square-above</c>), the edge touches
+    /// (<c>line-edge</c>, <c>line-collinear</c>, <c>line-shifted-collinear</c>,
+    /// whose matrix is <c>FF2101102</c> — a line lying along the square's edge
+    /// and reaching past it), the overlap, the crossing, the boundary point
+    /// and the disjoint pair.
     /// </summary>
     [Theory]
-    [InlineData("square-equal", false)]
-    [InlineData("square-inner", false)]
-    [InlineData("square-overlap", false)]
-    [InlineData("square-corner", false)]
-    [InlineData("square-above", true)]
-    [InlineData("line-crossing", false)]
-    [InlineData("line-inside", false)]
-    [InlineData("line-on-boundary", true)]
-    [InlineData("point-inside", false)]
-    [InlineData("point-on-boundary", true)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Relation_touches_needs_disjoint_interiors_and_meeting_boundaries(string query, bool expected) =>
-        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelTouches"));
-
-    [Theory]
-    [InlineData("square-equal", false)]
-    [InlineData("square-inner", false)]
-    [InlineData("square-overlap", true)]
-    [InlineData("square-corner", false)]
-    [InlineData("square-above", false)]
-    [InlineData("line-crossing", false)]
-    [InlineData("line-inside", false)]
-    [InlineData("line-on-boundary", false)]
-    [InlineData("point-inside", false)]
-    [InlineData("point-on-boundary", false)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Relation_overlaps_needs_equal_dimensions_and_a_partial_overlap(string query, bool expected) =>
-        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelOverlaps"));
-
-    [Theory]
-    [InlineData("square-equal", false)]
-    [InlineData("square-inner", false)]
-    [InlineData("square-overlap", false)]
-    [InlineData("square-corner", false)]
-    [InlineData("square-above", false)]
-    [InlineData("line-crossing", true)]
-    [InlineData("line-inside", false)]
-    [InlineData("line-on-boundary", false)]
-    [InlineData("point-inside", false)]
-    [InlineData("point-on-boundary", false)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Relation_crosses_needs_a_mixed_dimension_meeting(string query, bool expected) =>
-        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelCrosses"));
-
-    [Theory]
-    [InlineData("square-equal", true)]
-    [InlineData("square-inner", true)]
-    [InlineData("square-overlap", true)]
-    [InlineData("square-corner", true)]
-    [InlineData("square-above", true)]
-    [InlineData("line-crossing", true)]
-    [InlineData("line-inside", true)]
-    [InlineData("line-on-boundary", true)]
-    [InlineData("point-inside", true)]
-    [InlineData("point-on-boundary", true)]
-    [InlineData("point-outside", false)]
-    [InlineData("square-outside", false)]
-    public async Task Relation_intersects_is_the_ogc_pattern_union(string query, bool expected) =>
-        Assert.Equal(expected, await RelatesAsync(query, "esriSpatialRelIntersects"));
+    [MemberData(nameof(SpatialRelationMatrix.MatrixCases), MemberType = typeof(SpatialRelationMatrix))]
+    public async Task Relation_named_verbs_follow_the_shared_de9im_matrix(
+        string query, string relation, bool expected) =>
+        Assert.Equal(
+            expected,
+            await RelatesAsync(SpatialRelationMatrix.Feature, query, relation, Capabilities.Relations));
 
     /// <summary>
-    /// Every ordered pair of the same sixteen polygon, line and point
-    /// fixtures <see cref="FeatureSpatialRelationTests"/> uses, so the two
-    /// surfaces of <c>Overlaps</c> and <c>Crosses</c> are measured over one
-    /// fixture set in both operand orders.
+    /// The two surfaces of a named relation answering one way: this operation
+    /// and the Feature Service query path are asked the same ordered pair
+    /// under the same verb, over every pair of the fixtures in both operand
+    /// orders. The reference cross-checks below compare each surface with the
+    /// reference implementation's own named predicate, which catches a shared
+    /// mistake in the same wrong direction; this catches the case they do not
+    /// — the two Esri surfaces agreeing with the reference and disagreeing
+    /// with each other, which is what a second copy of a pattern string in
+    /// one of the branches looks like (SpatialEngine-dih).
     /// </summary>
-    public static TheoryData<string, string> RelationGeometryPairs()
-    {
-        var names = new[]
-        {
-            "square-equal", "square-inner", "square-overlap", "square-corner", "square-above", "square-outside",
-            "line-crossing", "line-inside", "line-on-boundary", "line-collinear", "line-edge",
-            "line-shifted-collinear",
-            "point-inside", "point-on-boundary", "point-vertex", "point-outside",
-        };
-        var pairs = new TheoryData<string, string>();
-        foreach (var feature in names)
-        {
-            foreach (var query in names)
-            {
-                pairs.Add(feature, query);
-            }
-        }
+    [Theory]
+    [MemberData(nameof(SpatialRelationMatrix.PairCases), MemberType = typeof(SpatialRelationMatrix))]
+    public async Task Relation_and_the_query_path_answer_a_named_relation_the_same_way(
+        string feature, string query, string relation) =>
+        Assert.Equal(
+            await RelatesAsync(feature, query, relation, Capabilities.Relations),
+            await FeatureSpatialRelationTests.MatchesAsync(feature, query, relation));
 
-        return pairs;
-    }
+    /// <summary>
+    /// Every ordered pair of the sixteen polygon, line and point fixtures the
+    /// query path is measured over, so the two surfaces of <c>Overlaps</c> and
+    /// <c>Crosses</c> are measured over one fixture set in both operand
+    /// orders. The one fixture list is <see cref="SpatialRelationMatrix"/>'s.
+    /// </summary>
+    public static TheoryData<string, string> RelationGeometryPairs() => SpatialRelationMatrix.Pairs();
 
     /// <summary>
     /// The served <c>Overlaps</c> against the reference implementation's own
@@ -284,11 +230,11 @@ public sealed class GeometryServiceTests
     /// (SpatialEngine-u2x.56).
     /// </summary>
     [Theory]
-    [MemberData(nameof(RelationGeometryPairs))]
+    [MemberData(nameof(SpatialRelationMatrix.Pairs), MemberType = typeof(SpatialRelationMatrix))]
     public async Task Relation_overlaps_agrees_with_the_reference_over_every_ordered_pair(
         string feature, string query)
     {
-        var expected = ReferenceGeometry(feature).Overlaps(ReferenceGeometry(query));
+        var expected = Fixture(feature).ReferenceGeometry.Overlaps(Fixture(query).ReferenceGeometry);
 
         Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelOverlaps", Capabilities.Relations));
     }
@@ -301,11 +247,11 @@ public sealed class GeometryServiceTests
     /// way round, so the two verbs have to be right together.
     /// </summary>
     [Theory]
-    [MemberData(nameof(RelationGeometryPairs))]
+    [MemberData(nameof(SpatialRelationMatrix.Pairs), MemberType = typeof(SpatialRelationMatrix))]
     public async Task Relation_crosses_agrees_with_the_reference_over_every_ordered_pair(
         string feature, string query)
     {
-        var expected = ReferenceGeometry(feature).Crosses(ReferenceGeometry(query));
+        var expected = Fixture(feature).ReferenceGeometry.Crosses(Fixture(query).ReferenceGeometry);
 
         Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelCrosses", Capabilities.Relations));
     }
@@ -365,10 +311,6 @@ public sealed class GeometryServiceTests
         Assert.Contains("esriSpatialRelSpans", error.Message);
     }
 
-    /// <summary>The unit square against the fixture query geometry, under the named relation.</summary>
-    private static async Task<bool> RelatesAsync(string query, string relation) =>
-        await RelatesAsync("square-equal", query, relation, Capabilities.Relations);
-
     /// <summary>
     /// The fixture pair under the named relation, with the first geometry on
     /// the left of the DE-9IM matrix — the role the query path gives the
@@ -381,8 +323,8 @@ public sealed class GeometryServiceTests
         var result = await ExecuteAsync(GeometryService.Dispatch(
             "relation",
             await ParamsAsync(
-                ("geometries1", $"[{QueryGeometry(feature)}]"),
-                ("geometries2", $"[{QueryGeometry(query)}]"),
+                ("geometries1", Fixture(feature).EsriJson),
+                ("geometries2", Fixture(query).EsriJson),
                 ("relation", relation)),
             capabilities,
             CancellationToken.None));
@@ -408,83 +350,15 @@ public sealed class GeometryServiceTests
     }
 
     /// <summary>
-    /// The fixture query geometries as Esri JSON, keyed by the names the
-    /// DE-9IM matrix table in <see cref="FeatureSpatialRelationTests"/> uses:
-    /// the same shapes, so the expected values are read across, not re-derived.
+    /// The fixture geometries as Esri JSON, as the engine's own geometry
+    /// values, and as the reference implementation's own values — one fixture
+    /// definition in <see cref="SpatialRelationMatrix"/>, projected into the
+    /// three vocabularies these tests ask in, so a fixture is defined once
+    /// and both surfaces' cross-checks measure the same shape.
     /// </summary>
-    private static string QueryGeometry(string name) => name switch
-    {
-        "square-equal" => Square(0, 0, 10, 10),
-        "square-inner" => Square(2, 2, 4, 4),
-        "square-overlap" => Square(5, 5, 15, 15),
-        "square-corner" => Square(0, 0, 4, 4),
-        "square-above" => Square(0, 10, 10, 20),
-        "line-crossing" => Line(0, 5, 20, 5),
-        "line-inside" => Line(2, 2, 8, 8),
-        "line-on-boundary" => Line(0, 0, 0, 10),
-        "line-collinear" => Line(-5, 0, 15, 0),
-        "line-edge" => Line(0, 0, 10, 0),
-        "line-shifted-collinear" => Line(5, 0, 20, 0),
-        "point-inside" => Point(5, 5),
-        "point-vertex" => Point(0, 0),
-        "point-on-boundary" => Point(0, 5),
-        "point-outside" => Point(20, 20),
-        "square-outside" => Square(20, 20, 30, 30),
-        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown fixture geometry"),
-    };
+    private static RelationFixture Fixture(string name) => SpatialRelationMatrix.Of(name);
 
-    private static string Square(double minX, double minY, double maxX, double maxY) =>
-        $$"""{"rings":[[[{{minX}},{{minY}}],[{{maxX}},{{minY}}],[{{maxX}},{{maxY}}],[{{minX}},{{maxY}}],[{{minX}},{{minY}}]]]}""";
-
-    private static string Line(double x1, double y1, double x2, double y2) =>
-        $$"""{"paths":[[[{{x1}},{{y1}}],[{{x2}},{{y2}}]]]}""";
-
-    private static string Point(double x, double y) => $$"""{"x":{{x}},"y":{{y}}}""";
-
-    /// <summary>
-    /// The same fixtures built as the reference implementation's own geometry
-    /// values, so the cross-check asks its named <c>Overlaps</c> and
-    /// <c>Crosses</c> predicates rather than a spelled-out copy of the
-    /// patterns the engine serves: the fixture set is shared, the question is
-    /// the reference's.
-    /// </summary>
-    private static Nts.Geometry ReferenceGeometry(string name) => name switch
-    {
-        "square-equal" => ReferenceSquare(0, 0, 10, 10),
-        "square-inner" => ReferenceSquare(2, 2, 4, 4),
-        "square-overlap" => ReferenceSquare(5, 5, 15, 15),
-        "square-corner" => ReferenceSquare(0, 0, 4, 4),
-        "square-above" => ReferenceSquare(0, 10, 10, 20),
-        "square-outside" => ReferenceSquare(20, 20, 30, 30),
-        "line-crossing" => ReferenceLine(0, 5, 20, 5),
-        "line-inside" => ReferenceLine(2, 2, 8, 8),
-        "line-on-boundary" => ReferenceLine(0, 0, 0, 10),
-        "line-collinear" => ReferenceLine(-5, 0, 15, 0),
-        "line-edge" => ReferenceLine(0, 0, 10, 0),
-        "line-shifted-collinear" => ReferenceLine(5, 0, 20, 0),
-        "point-inside" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(5, 5)),
-        "point-on-boundary" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(0, 5)),
-        "point-vertex" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(0, 0)),
-        "point-outside" => Nts.GeometryFactory.Default.CreatePoint(new Nts.Coordinate(20, 20)),
-        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown fixture geometry"),
-    };
-
-    private static Nts.Polygon ReferenceSquare(double minX, double minY, double maxX, double maxY) =>
-        Nts.GeometryFactory.Default.CreatePolygon(
-        [
-            new Nts.Coordinate(minX, minY),
-            new Nts.Coordinate(maxX, minY),
-            new Nts.Coordinate(maxX, maxY),
-            new Nts.Coordinate(minX, maxY),
-            new Nts.Coordinate(minX, minY),
-        ]);
-
-    private static Nts.LineString ReferenceLine(double x1, double y1, double x2, double y2) =>
-        Nts.GeometryFactory.Default.CreateLineString(
-        [
-            new Nts.Coordinate(x1, y1),
-            new Nts.Coordinate(x2, y2),
-        ]);
+    private static Nts.Geometry ReferenceGeometry(string name) => Fixture(name).ReferenceGeometry;
 
     [Fact]
     public async Task Project_requires_out_sr()

@@ -1018,6 +1018,27 @@ heading that is not above `<Version>`).
   geometry in the feature's role and the right in the query's; no pattern
   string is restated, and an unrecognised relation name is still a named
   `invalid.arguments`.
+- **Geometry Service `relation` states its dimension-dependent verbs, and
+  both Esri surfaces are pinned by one DE-9IM table** (ADR-0036,
+  SpatialEngine-dih): `Contains` and `Within` were the last two named verbs
+  still carrying their own pattern literals on the `relation` path, so the
+  claim that no pattern is restated there was not yet true; both now read the
+  one `SpatialRelationPredicates` table the feature query path reads, and
+  `Disjoint`/`Equals` — which the query path has no verb for — keep theirs.
+  The `relation` operation surface now says what "dimension-dependent" means
+  for `Overlaps` and `Crosses` on that endpoint, as the query surface already
+  did: the pattern is keyed on the pair's dimensions, with the left geometry
+  in the feature's role, so a line crossing a feature crosses, two crossing
+  lines cross rather than overlap, a collinear pair sharing a span overlaps
+  rather than crosses, and two points are neither.
+
+  The two surfaces are now measured against one fixture table and one
+  hand-computed verdict table (`SpatialRelationMatrix`) rather than two
+  copies of each, so the corner touch and the two-point touches — a line
+  lying along the feature's edge and reaching past it, matrix `FF2101102` —
+  which the Geometry Service did not pin at all, are pinned there too, and a
+  new cross-surface test asks both endpoints the same ordered pair under the
+  same verb over all 256 pairs in both operand orders.
 - **The map root advertises the time relation it actually applies**
   (ADR-0100, SpatialEngine-oas): `supportsTimeRelation` is `false`, and
   `esriTimeRelationContains`/`esriTimeRelationWithin` are typed

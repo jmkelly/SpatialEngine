@@ -625,6 +625,24 @@ internal static class GeometryService
             : throw GeoServicesErrors.Invalid($"'{name}' must be non-negative, got '{raw}'.");
     }
 
+    /// <summary>
+    /// The <c>relation</c> operation (spec §7.9): one 1/0 per
+    /// <c>geometries1</c> geometry, saying whether it relates to any
+    /// <c>geometries2</c> geometry under the named <c>relation</c>, a bare
+    /// DE-9IM <c>relationParam</c>, or the <c>RELATE(G1, G2, 'pattern')</c>
+    /// spelling of one.
+    ///
+    /// Every named verb the Feature Service query path serves is served here
+    /// out of the same pattern table — <c>Intersects</c>, <c>Contains</c>,
+    /// <c>Within</c>, <c>Touches</c>, <c>Overlaps</c>, <c>Crosses</c> — so
+    /// the same verb answers the same way on both Esri surfaces
+    /// (SpatialEngine-dih). <c>Overlaps</c> and <c>Crosses</c> are
+    /// dimension-dependent: the pattern is chosen by the pair's dimensions,
+    /// with the left geometry in the feature's role and the right in the
+    /// query's, so a line crossing a feature is <c>Crosses</c>, two crossing
+    /// lines are <c>Crosses</c> and not <c>Overlaps</c>, and a pair of points
+    /// is neither. <see cref="RelationPredicate"/> states the patterns.
+    /// </summary>
     private static IResult Relation(EsriRequestParameters parameters, IGeometryRelations relations, CancellationToken cancellationToken)
     {
         // Esri-docs verbatim (parity playground): geometries1/geometries2
@@ -682,8 +700,25 @@ internal static class GeometryService
     /// Resolves the relation test: a DE-9IM <c>relationParam</c> (plain or
     /// <c>RELATE(G1, G2, 'pattern')</c>) answers through the engine relate
     /// verb, and the named <c>relation</c> values with an exact DE-9IM
-    /// equivalent map to it (intersects via negated disjoint). Dimension-
-    /// dependent names stay an honest reject naming the supported set.
+    /// equivalent map to it (intersects via negated disjoint). A name with no
+    /// DE-9IM equivalent is an honest reject naming the supported set.
+    ///
+    /// <c>Overlaps</c> and <c>Crosses</c> are dimension-dependent, and this
+    /// operation surface says so where a caller reads it: the pattern a pair
+    /// is tested with is keyed on the pair's *dimensions*, not on which
+    /// geometry is higher-dimensional. <c>Crosses</c> is
+    /// <c>T**T*****</c> (surface feature, curve query),
+    /// <c>T*T******</c> (curve feature, surface query) and
+    /// <c>0********</c> (curve/curve — two crossing lines meet in a point), and
+    /// <c>Overlaps</c> is <c>T*T***T**</c> (surface/surface) and
+    /// <c>1*T***T**</c> (curve/curve — a shared span overlaps, a crossing does
+    /// not). A pair whose dimensions the reference does not relate at all
+    /// reads false rather than refusing: two points never cross and two
+    /// points never overlap. So a line crossing a feature is <c>Crosses</c>
+    /// and not <c>Overlaps</c>, a collinear pair sharing a span is the other
+    /// way round, and two equal surfaces never cross. The left geometry plays
+    /// the feature and the right the query, the roles the query path gives
+    /// them, so both Esri surfaces answer the same verb the same way.
     /// </summary>
     private static Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> RelationPredicate(
         EsriRequestParameters parameters)
@@ -719,24 +754,16 @@ internal static class GeometryService
             return (left, right, relations, token) => relations.Relate(left, right, "FF*FF****", token);
         }
 
-        if (string.Equals(relation, "esriSpatialRelContains", StringComparison.OrdinalIgnoreCase))
-        {
-            return (left, right, relations, token) => relations.Relate(left, right, "T*****FF*", token);
-        }
-
-        if (string.Equals(relation, "esriSpatialRelWithin", StringComparison.OrdinalIgnoreCase))
-        {
-            return (left, right, relations, token) => relations.Relate(left, right, "T*F**F***", token);
-        }
-
-        // The dimension-aware verbs are read out of the one pattern table the
+        // The named predicates are read out of the one pattern table the
         // feature query path tests with, so the same verb has one answer
-        // whichever endpoint serves it (SpatialEngine-zpz). Intersects joins
-        // them there for the same reason (SpatialEngine-51k): both endpoints
-        // answer it from the OGC intersect patterns.
-        if (TryNamedRelation(relation, out var dimensionAware))
+        // whichever endpoint serves it (SpatialEngine-dih): no pattern string
+        // is restated on this path, and none can drift from the query path's
+        // copy of it. SpatialEngine-zpz moved the dimension-aware verbs here
+        // and SpatialEngine-51k moved Intersects; Contains and Within were
+        // left with their own literals and now read the table too.
+        if (TryNamedRelation(relation, out var namedPredicate))
         {
-            return dimensionAware;
+            return namedPredicate;
         }
 
         if (string.Equals(relation, "esriSpatialRelEquals", StringComparison.OrdinalIgnoreCase))
@@ -753,18 +780,28 @@ internal static class GeometryService
     /// The named predicate for the relations read out of
     /// <see cref="SpatialRelationPredicates"/> — the one pattern table the
     /// feature query path tests with (ADR-0036), so there is no second copy of
-    /// a pattern string to drift. That covers the dimension-dependent verbs
-    /// and, since SpatialEngine-51k, <c>Intersects</c>: both endpoints answer
-    /// it from the OGC intersect patterns rather than from a built
-    /// intersection. The left geometry plays the feature and the right the
-    /// query, the roles the query path gives them (SpatialEngine-2ve owns
-    /// whether that is the direction the protocol wants for every verb).
+    /// a pattern string to drift. That covers every named verb the query path
+    /// serves (<c>Contains</c>, <c>Within</c>, <c>Touches</c>,
+    /// <c>Overlaps</c>, <c>Crosses</c>, <c>Intersects</c>) and only the ones
+    /// it serves: <c>Disjoint</c> and <c>Equals</c> name DE-9IM patterns the
+    /// query surface has no verb for, so they keep their own. The left
+    /// geometry plays the feature and the right the query, the roles the query
+    /// path gives them (SpatialEngine-2ve owns whether that is the direction
+    /// the protocol wants for every verb).
     /// </summary>
     private static bool TryNamedRelation(
         string relation, out Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> predicate)
     {
         Func<GeometryPair, IGeometryRelations, CancellationToken, bool>? matched = null;
-        if (Matches(relation, "esriSpatialRelTouches"))
+        if (Matches(relation, "esriSpatialRelContains"))
+        {
+            matched = SpatialRelationPredicates.Contains;
+        }
+        else if (Matches(relation, "esriSpatialRelWithin"))
+        {
+            matched = SpatialRelationPredicates.Within;
+        }
+        else if (Matches(relation, "esriSpatialRelTouches"))
         {
             matched = SpatialRelationPredicates.Touches;
         }
