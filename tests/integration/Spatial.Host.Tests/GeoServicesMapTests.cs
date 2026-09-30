@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Adapter.GeoServices;
 using Spatial.Contracts.Providers;
 
@@ -49,7 +48,7 @@ public sealed class GeoServicesMapTests : IDisposable
         """;
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesMapTests() => _factory = new MapFactory(Path.Combine(_directory, "publications.json"));
 
@@ -633,7 +632,7 @@ public sealed class GeoServicesMapTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    private sealed class MapFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class MapFactory(string publicationsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

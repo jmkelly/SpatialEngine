@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
@@ -46,7 +45,7 @@ public sealed class GeoServicesSourceIdentityTests : IDisposable
         """;
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-source-identity-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SourceIdentityFactory _factory;
 
     public GeoServicesSourceIdentityTests() => _factory = new SourceIdentityFactory(Path.Combine(_directory, "maps.json"));
 
@@ -256,7 +255,7 @@ public sealed class GeoServicesSourceIdentityTests : IDisposable
     }
 
     private sealed class SourceIdentityFactory(string mapsPath, bool lookup = true)
-        : WebApplicationFactory<Program>
+        : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

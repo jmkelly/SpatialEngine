@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
 namespace Spatial.Host.Tests;
@@ -34,7 +33,7 @@ public sealed class GeoServicesAttachmentAuthTests : IDisposable
     private static readonly byte[] Photo = [1, 2, 3, 4, 5, 6, 7, 8];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-attachment-auth-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesAttachmentAuthTests() => _factory = new AttachmentAuthFactory(Path.Combine(_directory, "maps.json"));
 
@@ -126,7 +125,7 @@ public sealed class GeoServicesAttachmentAuthTests : IDisposable
 
     private sealed record User(string Name);
 
-    private sealed class AttachmentAuthFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class AttachmentAuthFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

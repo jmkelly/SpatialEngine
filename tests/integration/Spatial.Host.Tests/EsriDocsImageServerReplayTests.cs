@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using NetVips;
 
 namespace Spatial.Host.Tests;
@@ -51,7 +50,7 @@ public sealed class EsriDocsImageServerReplayTests : IDisposable
     private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-esri-image-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
     private HttpClient? _client;
 
     public EsriDocsImageServerReplayTests()
@@ -290,7 +289,7 @@ public sealed class EsriDocsImageServerReplayTests : IDisposable
         return client;
     }
 
-    private sealed class ImageReplayFactory(string directory, string token) : WebApplicationFactory<Program>
+    private sealed class ImageReplayFactory(string directory, string token) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -28,19 +27,19 @@ public sealed class OgcEndpointTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory() => new OgcFactory(Path.Combine(_directory, "maps.json"));
+    private OgcFactory Factory() => new OgcFactory(Path.Combine(_directory, "maps.json"));
 
-    private static async Task<HttpClient> MapAsync(WebApplicationFactory<Program> factory, string name, params string[] services) =>
+    private static async Task<HttpClient> MapAsync(SpatialHostFactory factory, string name, params string[] services) =>
         await PutMapAsync(factory, name, services, new[] { new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style } });
 
-    private static async Task<HttpClient> Map2Async(WebApplicationFactory<Program> factory, string name, params string[] services) =>
+    private static async Task<HttpClient> Map2Async(SpatialHostFactory factory, string name, params string[] services) =>
         await PutMapAsync(factory, name, services, new[]
         {
             new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style },
             new { dataset = "demo.points", layerId = 1, name = "towns", style = Style },
         });
 
-    private static async Task<HttpClient> PutMapAsync(WebApplicationFactory<Program> factory, string name, string[] services, object layers)
+    private static async Task<HttpClient> PutMapAsync(SpatialHostFactory factory, string name, string[] services, object layers)
     {
         var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
@@ -809,7 +808,7 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class OgcFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class OgcFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

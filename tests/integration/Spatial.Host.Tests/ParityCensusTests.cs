@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -46,7 +45,7 @@ public sealed class ParityCensusTests : IDisposable
         return directory.FullName;
     }
 
-    private WebApplicationFactory<Program> Factory() =>
+    private ParityFactory Factory() =>
         new ParityFactory(Path.Combine(_directory, "maps.json"));
 
     private static HttpRequestMessage Authorized(HttpMethod method, string path, HttpContent? content = null)
@@ -60,7 +59,7 @@ public sealed class ParityCensusTests : IDisposable
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
 
     /// <summary>Ingests the census fixture and publishes it as one map exposing both servers.</summary>
-    private static async Task<HttpClient> CensusServiceAsync(WebApplicationFactory<Program> factory)
+    private static async Task<HttpClient> CensusServiceAsync(SpatialHostFactory factory)
     {
         var client = factory.CreateClient();
         var geojson = await File.ReadAllTextAsync(
@@ -135,7 +134,7 @@ public sealed class ParityCensusTests : IDisposable
         Assert.Equal(["California", "Texas"], names);
     }
 
-    private sealed class ParityFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class ParityFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

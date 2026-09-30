@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -35,7 +34,7 @@ public sealed class GeoServicesAttachmentsTests : IDisposable
     private static readonly byte[] Revised = [9, 10, 11, 12];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-attachments-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesAttachmentsTests() => _factory = new AttachmentFactory(Path.Combine(_directory, "publications.json"));
 
@@ -379,7 +378,7 @@ public sealed class GeoServicesAttachmentsTests : IDisposable
         Assert.Equal(497, invalid.GetProperty("code").GetInt32());
     }
 
-    private sealed class AttachmentFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class AttachmentFactory(string publicationsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

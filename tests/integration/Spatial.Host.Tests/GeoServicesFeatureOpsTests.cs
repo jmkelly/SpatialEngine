@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -24,7 +23,7 @@ public sealed class GeoServicesFeatureOpsTests : IDisposable
     private const string Feature = $"{Root}/demo/FeatureServer";
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-feature-ops-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesFeatureOpsTests() => _factory = new OpsFactory(Path.Combine(_directory, "publications.json"));
 
@@ -289,7 +288,7 @@ public sealed class GeoServicesFeatureOpsTests : IDisposable
         return client;
     }
 
-    private sealed class OpsFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class OpsFactory(string publicationsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

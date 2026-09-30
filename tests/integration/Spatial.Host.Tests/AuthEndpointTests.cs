@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Spatial.Contracts;
@@ -105,7 +104,7 @@ public sealed class AuthEndpointTests
             auth.LoginAsync("alice", Password, cancellation.Token));
     }
 
-    private static WebApplicationFactory<Program> Factory(string? lifetime = null)
+    private static AuthFactory Factory(string? lifetime = null)
     {
         var values = new Dictionary<string, string?>
         {
@@ -119,7 +118,7 @@ public sealed class AuthEndpointTests
 
     private sealed record User(string Name);
 
-    private sealed class AuthFactory(Dictionary<string, string?> values) : WebApplicationFactory<Program>
+    private sealed class AuthFactory(Dictionary<string, string?> values) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Client;
 
 namespace Spatial.Host.Tests;
@@ -23,7 +22,7 @@ public sealed class AdminEndpointTests : IDisposable
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-admin-").FullName;
 
-    private WebApplicationFactory<Program> Factory(long maxBytes = 100_000_000, int maxFeatures = 1_000_000) =>
+    private AdminFactory Factory(long maxBytes = 100_000_000, int maxFeatures = 1_000_000) =>
         new AdminFactory(Path.Combine(_directory, "publications.json"), maxBytes, maxFeatures);
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
@@ -50,7 +49,7 @@ public sealed class AdminEndpointTests : IDisposable
     [Fact]
     public async Task Without_a_configured_token_the_mutation_routes_are_not_mounted()
     {
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new SpatialHostFactory();
         var client = factory.CreateClient();
 
         var put = await client.PutAsync("/api/maps/x", Json("{}"));
@@ -334,7 +333,7 @@ public sealed class AdminEndpointTests : IDisposable
     [Fact]
     public async Task The_esri_admin_projection_is_unavailable_without_a_token()
     {
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new SpatialHostFactory();
         var client = factory.CreateClient();
 
         var response = await client.GetAsync("/arcgis/admin/services");
@@ -702,7 +701,7 @@ public sealed class AdminEndpointTests : IDisposable
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
     private sealed class AdminFactory(
-        string mapsPath, long maxBytes, int maxFeatures = 1_000_000, bool skipMalformed = false) : WebApplicationFactory<Program>
+        string mapsPath, long maxBytes, int maxFeatures = 1_000_000, bool skipMalformed = false) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

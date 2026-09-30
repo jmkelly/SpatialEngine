@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -19,7 +18,7 @@ public sealed class EsriVectorTileRouteTests : IDisposable
     private static readonly string[] Services = ["map"];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-esri-vector-tile-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public EsriVectorTileRouteTests() => _factory = new EsriVectorTileFactory(Path.Combine(_directory, "maps.json"));
 
@@ -76,7 +75,7 @@ public sealed class EsriVectorTileRouteTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    private sealed class EsriVectorTileFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class EsriVectorTileFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

@@ -5,7 +5,6 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -38,7 +37,7 @@ public sealed class PolarRenderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory() => new PolarFactory(Path.Combine(_directory, "maps.json"));
+    private PolarFactory Factory() => new PolarFactory(Path.Combine(_directory, "maps.json"));
 
     [Fact]
     public async Task Web_mercator_tiles_render_a_dataset_that_reaches_the_pole()
@@ -83,7 +82,7 @@ public sealed class PolarRenderTests : IDisposable
             $"the mercator bounding box must stay inside the projection's domain, got {mercator}.");
     }
 
-    private static async Task<HttpClient> PublishAsync(WebApplicationFactory<Program> factory)
+    private static async Task<HttpClient> PublishAsync(SpatialHostFactory factory)
     {
         var client = factory.CreateClient();
         var ingest = await client.SendAsync(Authorized(
@@ -112,7 +111,7 @@ public sealed class PolarRenderTests : IDisposable
     }
 
     /// <summary>A host with an admin token, a per-test map file and the ephemeral memory store.</summary>
-    private sealed class PolarFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class PolarFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

@@ -1,14 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
 public sealed class VectorTileEndpointTests : IDisposable
 {
     private readonly string _directory;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public VectorTileEndpointTests()
     {
@@ -56,7 +55,7 @@ public sealed class VectorTileEndpointTests : IDisposable
         if (Directory.Exists(_directory)) Directory.Delete(_directory, true);
     }
 
-    private sealed class VectorTileFactory(string directory) : WebApplicationFactory<Program>
+    private sealed class VectorTileFactory(string directory) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

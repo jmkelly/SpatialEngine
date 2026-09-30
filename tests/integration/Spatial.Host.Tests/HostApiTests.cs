@@ -14,16 +14,16 @@ namespace Spatial.Host.Tests;
 /// transforms, demo catalogue/features/sleep and PostGIS-unconfigured
 /// behaviour, driven through the .NET client SDK against the real host.
 /// This class deliberately keeps the plain
-/// <see cref="WebApplicationFactory{TEntryPoint}"/>: with no store
-/// configured, the PostGIS routes answer <c>store.unavailable</c> — the
+/// <see cref="SpatialHostFactory"/> with no store: the PostGIS routes then
+/// answer <c>store.unavailable</c> — the
 /// contract <see cref="PostgisHostFactory"/> and its container cannot prove
 /// (ADR-0072).
 /// </summary>
-public sealed class HostApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HostApiTests : IClassFixture<SpatialHostFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
-    public HostApiTests(WebApplicationFactory<Program> factory)
+    public HostApiTests(SpatialHostFactory factory)
     {
         _factory = factory;
     }

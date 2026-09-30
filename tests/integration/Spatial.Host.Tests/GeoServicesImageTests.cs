@@ -4,7 +4,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using NetVips;
@@ -39,7 +38,7 @@ public sealed class GeoServicesImageTests : IDisposable
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-image-").FullName;
     private readonly string _rasterPath;
     private readonly string _colorPath;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesImageTests()
     {
@@ -101,11 +100,11 @@ public sealed class GeoServicesImageTests : IDisposable
     }
 
     private static Task<HttpClient> ImageServiceAsync(
-        WebApplicationFactory<Program> factory, string service, string dataset) =>
+        SpatialHostFactory factory, string service, string dataset) =>
         PutMapAsync(factory, service, dataset, ImageServices);
 
     private static async Task<HttpClient> PutMapAsync(
-        WebApplicationFactory<Program> factory, string service, string dataset, string[] services)
+        SpatialHostFactory factory, string service, string dataset, string[] services)
     {
         var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
@@ -513,7 +512,7 @@ public sealed class GeoServicesImageTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, download.StatusCode);
     }
 
-    private sealed class ImageFactory : WebApplicationFactory<Program>
+    private sealed class ImageFactory : SpatialHostFactory
     {
         private readonly string _directory;
         private readonly string _rasterPath;

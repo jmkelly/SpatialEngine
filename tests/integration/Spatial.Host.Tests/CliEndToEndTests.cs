@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Cli;
 
 namespace Spatial.Host.Tests;
@@ -110,7 +109,7 @@ public sealed class CliEndToEndTests : IDisposable
         Assert.Contains("not.found", run.Error, StringComparison.Ordinal);
     }
 
-    private static async Task<CliRun> RunAsync(WebApplicationFactory<Program> factory, params string[] args)
+    private static async Task<CliRun> RunAsync(SpatialHostFactory factory, params string[] args)
     {
         var output = new StringWriter();
         var error = new StringWriter();
@@ -127,7 +126,7 @@ public sealed class CliEndToEndTests : IDisposable
         public TextWriter ErrorWriter { get; } = error;
     }
 
-    private sealed class CliFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class CliFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

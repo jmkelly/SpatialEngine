@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -18,7 +17,7 @@ public sealed class OgcApiTilesTests : IDisposable
     private static readonly string[] TileServices = ["tiles"];
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-ogc-tiles-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public OgcApiTilesTests() => _factory = new Factory(Path.Combine(_directory, "maps.json"));
 
@@ -147,7 +146,7 @@ public sealed class OgcApiTilesTests : IDisposable
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
     }
 
-    private sealed class Factory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class Factory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

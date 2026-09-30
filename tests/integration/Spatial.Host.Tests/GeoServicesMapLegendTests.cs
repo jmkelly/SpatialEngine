@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -34,7 +33,7 @@ public sealed class GeoServicesMapLegendTests : IDisposable
         """;
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-legend-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesMapLegendTests() => _factory = new MapFactory(Path.Combine(_directory, "publications.json"));
 
@@ -277,7 +276,7 @@ public sealed class GeoServicesMapLegendTests : IDisposable
         Assert.Equal(await LegendUrlAsync(), await LegendUrlAsync());
     }
 
-    private sealed class MapFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class MapFactory(string publicationsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

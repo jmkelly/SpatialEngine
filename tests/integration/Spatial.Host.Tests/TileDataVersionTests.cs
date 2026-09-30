@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Spatial.Contracts;
 using Spatial.Contracts.Http;
 using Spatial.Core.Features;
@@ -45,7 +44,7 @@ public sealed class TileDataVersionTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 
-    private WebApplicationFactory<Program> Factory() =>
+    private DataVersionFactory Factory() =>
         new DataVersionFactory(Path.Combine(_directory, $"maps-{Guid.NewGuid():N}.json"));
 
     private static string NewDataset() => $"public.places_{Guid.NewGuid():N}";
@@ -254,7 +253,7 @@ public sealed class TileDataVersionTests : IDisposable
     }
 
     /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class DataVersionFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class DataVersionFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

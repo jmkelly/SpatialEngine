@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -11,9 +10,11 @@ namespace Spatial.Host.Tests;
 /// reachable the store stays unconfigured, the host logs the
 /// <c>store.unavailable</c> warning and every test still passes — the
 /// containerised tests skip instead, through
-/// <see cref="PostgisTestDatabase"/>.
+/// <see cref="PostgisTestDatabase"/>. It is
+/// <see cref="SpatialHostFactory"/> with the store wired in, so it inherits
+/// the suite's client timeout.
 /// </summary>
-public class PostgisHostFactory : WebApplicationFactory<Program>
+public class PostgisHostFactory : SpatialHostFactory
 {
     /// <summary>
     /// Adds this factory's host settings on top of the containerised store.

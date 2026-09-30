@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -39,7 +38,7 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
     private readonly List<string> _tables = [Survey, Station, Track, Unconstrained];
 
     private string? _directory;
-    private WebApplicationFactory<Program>? _factory;
+    private HasZFactory? _factory;
 
     public async Task InitializeAsync()
     {
@@ -258,7 +257,7 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>A host over the containerised PostGIS with an admin token and a private map file.</summary>
-    private sealed class HasZFactory(string mapsPath) : WebApplicationFactory<Program>
+    private sealed class HasZFactory(string mapsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

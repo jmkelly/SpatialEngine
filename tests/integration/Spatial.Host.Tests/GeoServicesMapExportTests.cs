@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Spatial.Host.Tests;
 
@@ -35,7 +34,7 @@ public sealed class GeoServicesMapExportTests : IDisposable
         $"{Root}/world/MapServer/export?f=image&bbox=" + "-20,20,40,70&bboxSR=4326&imageSR=4326&size=100,75&format=png";
 
     private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-export-").FullName;
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SpatialHostFactory _factory;
 
     public GeoServicesMapExportTests() => _factory = new MapFactory(Path.Combine(_directory, "publications.json"));
 
@@ -227,7 +226,7 @@ public sealed class GeoServicesMapExportTests : IDisposable
         Assert.Equal(156543.03392800014, lods[0].GetProperty("resolution").GetDouble(), 1e-6);
     }
 
-    private sealed class MapFactory(string publicationsPath) : WebApplicationFactory<Program>
+    private sealed class MapFactory(string publicationsPath) : SpatialHostFactory
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
