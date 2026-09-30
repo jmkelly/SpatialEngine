@@ -488,6 +488,184 @@ public sealed class FeatureSpatialRelationTests
     /// </summary>
     private static IGeometry UnitSquare() => QueryGeometry(SpatialRelationMatrix.Feature);
 
+    /// <summary>
+    /// The reproduction for SpatialEngine-imj, in the query path: every
+    /// pattern the adapter serves, answered from the pair's <em>exact
+    /// intersection matrix</em> rather than by asking
+    /// <see cref="IGeometryRelations.Relate"/> the same pattern again. The
+    /// two agreement tests above ask the engine with the reference's masks
+    /// and compare the answers, which is a comparison between the served
+    /// table and a second copy of it; this one reads the matrix — nine
+    /// independent single-cell questions, so no pattern matcher is involved
+    /// in the expectation — and reads the served pattern over it, cell by
+    /// cell, with a matcher written here.
+    ///
+    /// It is deliberately kept beside <see cref="SpatialRelationMatrix"/>
+    /// rather than folded into it (ADR-0156). The matrix is where a value is
+    /// written down once so both Esri surfaces are held to it, and what it
+    /// holds is the hand-computed matrix and the verdict columns — which is
+    /// to say it is the served table's own second copy, and a table cannot
+    /// cross-check itself. This test is the other kind of check: it derives
+    /// the expected matrix from the geometry and reads the served patterns
+    /// over that derivation, so a mistake in the served table, in the
+    /// hand-written verdicts, or in the reference masks is caught here rather
+    /// than agreeing with itself. One table is not enough; two readings from
+    /// different directions is the whole of it.
+    ///
+    /// It is the check that would have caught a served pattern naming a
+    /// different cell than the one it means: the report that opened the bead
+    /// read a pattern and its exact matrix as disagreeing when the pattern
+    /// constrained a cell the matrix filled differently. The table is
+    /// therefore pinned to DE-9IM, over every ordered pair of the fixtures,
+    /// and the served pattern strings are pinned beside the answers.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(GeometryPairs))]
+    public async Task Every_served_pattern_agrees_with_the_pairs_exact_matrix(string feature, string query)
+    {
+        var matrix = ExactMatrix(feature, query);
+        var expectations = new (string SpatialRel, bool Expected)[]
+        {
+            (EsriFeatureQuery.Contains, Reads(matrix, ContainsPattern)),
+            (EsriFeatureQuery.Within, Reads(matrix, WithinPattern)),
+            (EsriFeatureQuery.Touches, OgcTouchesMasks.Any(mask => Reads(matrix, mask))),
+            (EsriFeatureQuery.Overlaps, ReferenceMasks(OgcOverlapsMasks, Dimension(feature), Dimension(query))
+                .Any(pattern => Reads(matrix, pattern))),
+            (EsriFeatureQuery.Crosses, ReferenceMasks(OgcCrossesMasks, Dimension(feature), Dimension(query))
+                .Any(pattern => Reads(matrix, pattern))),
+            (EsriFeatureQuery.Intersects, IntersectsPatterns.Any(pattern => Reads(matrix, pattern))),
+        };
+
+        foreach (var (spatialRel, expected) in expectations)
+        {
+            Assert.Equal(expected, await MatchesAsync(feature, query, spatialRel));
+        }
+    }
+
+    /// <summary>
+    /// The other half of keeping the oracle, and the half
+    /// <see cref="SpatialRelationMatrix"/> cannot do for itself: the table's
+    /// <c>De9im</c> column is written down by hand, and before this the
+    /// hand-written column was read by nothing at all — the verdict columns
+    /// are what the two surfaces are held to, so a wrong character in a
+    /// hand-computed matrix would have gone unnoticed while still being the
+    /// row every reader of that table trusts. Here the same nine single-cell
+    /// questions derive the matrix from the geometry and the hand-written
+    /// column has to agree with them, so the column is checked by something
+    /// that did not write it (ADR-0156).
+    ///
+    /// A row the matrix does not carry a verdict for — <c>point-vertex</c>,
+    /// whose matrix the reference's own named predicates answer instead — is
+    /// not walked here, so the test states only what the table states.
+    ///
+    /// The comparison reads the column the way the table documents it: a
+    /// non-empty cell is written <c>T</c> whatever its dimension, not the
+    /// dimension itself, so <c>2FFF1FFF2</c> and <c>TFFFTFFFT</c> are the
+    /// same recorded row. Comparing the strings outright would fail on
+    /// every row and say nothing about the column being right.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(MatrixQueries))]
+    public void Every_hand_computed_matrix_is_the_matrix_the_pair_derives(string query)
+    {
+        var recorded = SpatialRelationMatrix.Verdicts[query].De9im;
+        var derived = ExactMatrix(SpatialRelationMatrix.Feature, query);
+
+        Assert.True(
+            Records(recorded, derived),
+            $"the recorded row {recorded} is not the derived matrix {derived} for {query}");
+    }
+
+    /// <summary>
+    /// Whether a recorded matrix column and a derived one are the same row,
+    /// with <c>T</c> standing for a non-empty cell of any dimension — the
+    /// reading the table's own header states.
+    /// </summary>
+    private static bool Records(string recorded, string derived) =>
+        recorded.Length == derived.Length
+        && recorded.Zip(derived, (said, cell) => said == 'T' ? cell != 'F' : said == cell).All(holds => holds);
+
+    /// <summary>
+    /// The query fixtures the matrix carries a verdict row for, by name: the
+    /// rows whose hand-written matrix there is to check.
+    /// </summary>
+    public static TheoryData<string> MatrixQueries()
+    {
+        var queries = new TheoryData<string>();
+        foreach (var name in SpatialRelationMatrix.Verdicts.Keys)
+        {
+            queries.Add(name);
+        }
+
+        return queries;
+    }
+
+    /// <summary>
+    /// The served <c>Contains</c> and <c>Within</c> patterns, spelled out
+    /// here as the OGC states them so the cross-check above reads the served
+    /// constants' intent rather than importing them.
+    /// </summary>
+    private const string ContainsPattern = "T*****FF*";
+
+    /// <summary>The <c>Within</c> reading: the mirror of <see cref="ContainsPattern"/>.</summary>
+    private const string WithinPattern = "T*F**F***";
+
+    /// <summary>
+    /// The pair's exact intersection matrix, reconstructed from nine
+    /// single-cell questions — "is this cell non-empty?", and when it is,
+    /// "is it a point, a curve or an area?". Every cell is asked on its own,
+    /// so the expectation in the test above is not read through the pattern
+    /// matcher whose behaviour it is checking.
+    /// </summary>
+    private static string ExactMatrix(string feature, string query)
+    {
+        var left = QueryGeometry(feature);
+        var right = QueryGeometry(query);
+        var cells = new char[9];
+        for (var position = 0; position < cells.Length; position++)
+        {
+            cells[position] = ExactCell(left, right, position);
+        }
+
+        return new string(cells);
+    }
+
+    private static char ExactCell(IGeometry left, IGeometry right, int position)
+    {
+        if (!Relations.Relate(left, right, At(position, "T"), CancellationToken.None))
+        {
+            Assert.True(Relations.Relate(left, right, At(position, "F"), CancellationToken.None),
+                $"cell {position} is neither empty nor non-empty");
+            return 'F';
+        }
+
+        return CellDimensions.Single(dimension => Relations.Relate(
+            left, right, At(position, dimension.ToString()), CancellationToken.None));
+    }
+
+    /// <summary>
+    /// Whether a pattern holds over an exact matrix, read from the matrix
+    /// string alone: <c>T</c> asks for a non-empty cell whatever its
+    /// dimension, <c>F</c> for an empty one, a digit for that dimension and
+    /// <c>*</c> for nothing.
+    /// </summary>
+    private static bool Reads(string matrix, string pattern) =>
+        matrix.Zip(pattern, (cell, asked) => asked switch
+        {
+            '*' => true,
+            'T' => cell != 'F',
+            'F' => cell == 'F',
+            _ => cell == asked,
+        }).All(holds => holds);
+
+    /// <summary>The three cell dimensions, asked in that order.</summary>
+    private static readonly char[] CellDimensions = ['0', '1', '2'];
+
+    /// <summary>The all-wildcard pattern with one cell replaced by <paramref name="symbol"/>.</summary>
+    private static string At(int position, string symbol) =>
+        "*********"[..position] + symbol + "*********"[(position + 1)..];
+
+
     /// <summary>A square named by its extent, for the shapes the matrix does not carry.</summary>
     private static Polygon Square(double minX, double minY, double maxX, double maxY) =>
         GeometryFactory.CreatePolygon(

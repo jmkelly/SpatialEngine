@@ -46,7 +46,7 @@ holding algorithms. All verbs are pure, planar and cancellable.
 | `IGeometryProcessing` | `ConvexHull` | hull of all inputs |
 | `IGeometryProcessing` | `Repair` | topological MakeValid (NTS `GeometryFixer`); **not** Douglas-Peucker |
 | `IGeometryProcessing` | `Densify` | segment length cap |
-| `IGeometryRelations` | `Relate` | DE-9IM intersection pattern |
+| `IGeometryRelations` | `Relate` | DE-9IM intersection pattern: nine cells, each `T`/`F`/`0`/`1`/`2`/`*`; the grammar is `Spatial.Core.Geometry.De9imPattern` and anything else is `invalid.arguments` (ADR-0036, SpatialEngine-imj) |
 
 ## Ground-distance buffering (`IGeodesicBuffering`, ProjNet)
 

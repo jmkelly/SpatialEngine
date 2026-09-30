@@ -358,6 +358,16 @@ Ordered by dependency:
   meant that same pair never crossed. A pair the reference does not relate
   at those dimensions reads false. `Contains`, `Within`, `Touches` and
   `Intersects` are unchanged.
+- Serving status update: the DE-9IM pattern grammar is one type
+  (`Spatial.Core.Geometry.De9imPattern`) read on both sides of the relation
+  call, and the boundary no longer recognises only part of it: `relation`
+  used to tell a pattern from a relation *name* by whether it was spelled
+  from `T`, `F`, `*` and `0`, so a pattern naming a dimension — `1*T***T**`,
+  the line/line overlap pattern — was rejected by name as an unsupported
+  relation, and a `relationParam` reaching the engine with an unknown cell
+  was answered rather than rejected (SpatialEngine-imj, ADR-0036). A pattern
+  is nine cells; a wrong length or a cell outside `T`/`F`/`0`/`1`/`2`/`*` is
+  `invalid.arguments` naming the grammar.
 - Serving status update: `Touches` is the three OGC touches masks as one
   dimension-free union (`FT*******`/`F**T*****`/`F***T****`,
   SpatialEngine-u2x.35), so a point or line on the other's boundary is

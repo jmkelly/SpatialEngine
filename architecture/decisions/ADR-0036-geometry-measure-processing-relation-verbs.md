@@ -96,6 +96,62 @@ carry both without the two being swapped at a call site.
   corrects both rows: one `Overlaps` pattern over both same-dimension cases
   read a crossing line pair as an overlap, and the equal-dimension gate on
   `Crosses` meant a crossing line pair never crossed.)
+- The DE-9IM **grammar** is `Spatial.Core.Geometry.De9imPattern` and the one
+  place that states it: nine cells, each `T`, `F`, `0`, `1`, `2` or `*`. It
+  is checked in both directions, because both directions get it wrong
+  separately. The verb rejects a pattern it cannot answer with
+  `invalid.arguments` naming the grammar, rather than passing it to
+  NetTopologySuite, which rejects a wrong *length* with a provider message
+  about a length and reads a cell it does not recognise (`X`, `E`, a space)
+  as a constraint that quietly fails — so `T*T***T*X` answers false where the
+  caller meant `T*T***T**`: a parameter accepted and ignored. The GeoServices
+  boundary reads the same grammar to tell a client's pattern from a client's
+  relation *name*, and its own narrower reading (`T`, `F`, `*`, `0` only)
+  rejected every pattern naming a dimension — `1*T***T**`, the line/line
+  overlap pattern this record's own table serves — by name
+  (SpatialEngine-imj).
+- A pattern is answered **exactly as the intersection matrix reads**, cell by
+  cell, in every position and for every cell symbol. SpatialEngine-imj was
+  opened to reconcile a wildcard reading with the exact one and found nothing
+  to reconcile: a sweep of 1.2 million pattern evaluations over 20,449
+  geometry pairs (polygons, polygons with holes, boundary and corner points,
+  multi-geometries, collections, empties) found no case where the two
+  disagree, and the pinned cases in `NtsGeometryRelationsTests` read their
+  matrices from the matrix string, not from the matcher. The report's
+  examples were two grammar slips — `"**T**"` is not a nine-cell pattern, and
+  `"1*2F0*1*2"` constrains position 4 to `F` where the matrix reads `0` (the
+  position numbering runs interior∩interior, interior∩boundary,
+  interior∩exterior, boundary∩interior, so position 4 is the square's
+  *boundary* against the line's interior, which the crossing line does
+  reach). Every pattern the adapter serves is pinned against a hand-computed
+  matrix over all 256 ordered fixture pairs, so a pattern that means a
+  different cell than it names fails there.
+- The served patterns have **two** independent readers, not one, and the
+  reason is that neither can do the other's job. `SpatialRelationMatrix` is
+  where a fixture and its expected verdict are written down once so the
+  Feature Service query path and the Geometry Service `relation` operation
+  are held to the same row; it is the served table's own second copy, and a
+  table cannot cross-check itself. `FeatureSpatialRelationTests` derives each
+  pair's matrix from nine single-cell questions and reads the served patterns
+  over that derivation, and it is the reader that checks the *hand-written*
+  column of the table as well — which is how two of the three line-along-the
+  -edge rows were found to carry a matrix that was not the pair's. Neither
+  reader replaces the other, and the oracle is not folded into the table
+  (ADR-0156, which amends this record's reading of how the DE-9IM patterns
+  are checked).
+- The **DE-9IM vocabulary gap** for a point on a line is documented, not
+  papered over. A point's own boundary is empty, so a point sitting on a line
+  — at an endpoint or in its interior — reaches the matrix only in the
+  line's boundary against the point's interior, and no single nine-cell
+  pattern names "every point of B lies in the closed set A". `Contains` and
+  `Within` both read false for that pair; the OGC intersect union and the
+  contact mask read true, and NetTopologySuite's own `Touches` agrees with
+  the contact reading. A `covers`-style alternative is deliberately **not**
+  offered: covers is the *negation* of the disjoint pattern rather than a
+  pattern, so it is not reachable through this interface, and no relation
+  name the served protocols define asks it. Inventing a verb to answer a
+  question DE-9IM does not have would be a second, looser notion of "meets"
+  next to the exact one (SpatialEngine-imj).
 
 ## References
 
