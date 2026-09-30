@@ -52,33 +52,68 @@ gap-filling: the lowest unused number is the same hole for every branch reading
 the same base, and two of them take it.
 
 `--reserve` then *takes* the number. The reservation is a file at
-`$(git rev-parse --git-common-dir)/adr-reservations/NNNN.json`, created with
-`O_CREAT | O_EXCL`, recording the branch, the bead and the base it was taken
-against. The common dir is the one directory every worktree of the repository
-shares, which is where the swarm's branches live — a store inside a worktree's
-own git dir would be private to that worktree and would reserve nothing. The
-exclusive create is the whole mutual-exclusion mechanism: the kernel
-serialises it, so there is no lock file to keep alive, no window between the
-check and the write, and no daemon. A branch that loses the race is told which
-branch holds the number and is handed the next one.
+`$(git rev-parse --git-common-dir)/adr-reservations/NNNN.json`, recording the
+branch, the bead and the base it was taken against, and published into that
+name whole by a hard link. The common dir is the one directory every worktree
+of the repository shares, which is where the swarm's branches live — a store
+inside a worktree's own git dir would be private to that worktree and would
+reserve nothing. The exclusive take is the whole mutual-exclusion mechanism:
+the kernel serialises it, so there is no lock file to keep alive and no
+daemon. A branch that loses the race is told which branch holds the number and
+is handed the next one.
+
+The take is a hard link. The record is written to a temporary file in the
+store and linked into place under the final name, so a name a reader can see
+is only ever a name whose body is already in it, and the link — which fails
+`EEXIST` against a name that already exists — is what makes the reservation
+mutual. A rename would not do: `os.replace` overwrites a name that exists, so
+it would clobber a live claim and hand the number to two branches.
 
 `--check NNNN` is the gate a worker runs immediately before writing: it is
 non-zero when the number is claimed by a record or reserved by *another*
 branch, and zero when the branch asking already holds it, so the
 reserve-then-recheck flow is idempotent. `--list` names the holder of every
 live reservation, `--release` gives the number back, and a reservation goes
-stale — reusable — when its branch no longer exists, when the file cannot be
-read, or when it is older than `--max-age-days` (14), because a worker that
-dies mid-bead must not hold a number for ever. "No longer exists" means no ref
+stale — reusable — when its branch no longer exists, when its body carries no
+`reserved_at` to age, or when it is older than `--max-age-days` (14), because
+a worker that dies mid-bead must not hold a number for ever. Stale means the
+record was *read* and its holder judged dead. A record this tool cannot read
+is an unknown holder rather than an expired one, and is never swept: `--list`
+and `--check` name it as held by somebody the tool cannot account for, rather
+than printing a branch it does not know. "No longer exists" means no ref
 resolves the recorded holder, not that nothing is under `refs/heads`: the
 holder is a short ref name and which ref names it depends on the checkout that
 recorded it, so a hold whose branch survives as a remote-tracking ref stays
 live until it ages out. Looking only under `refs/heads` swept live holds on a
 ci runner — `actions/checkout` leaves it with no local branches of its own —
 and a sweep is the one thing that hands a number to two branches
-(SpatialEngine-ivp). A branch can only release its
-own reservation: releasing someone else's is how a collision gets manufactured
-by hand.
+(SpatialEngine-ivp). A branch can only release its own reservation: releasing
+someone else's is how a collision gets manufactured by hand.
+
+## Amendment (SpatialEngine-u2x.34, 2026-09-30)
+
+Two sentences in the decision above are amended. The decision itself is
+unchanged — a number is reserved before its record is written, the take is
+exclusive, and a hold whose holder is dead is swept — but the record used to
+state as an invariant the one property the implementation did not have.
+
+- The take was an `O_CREAT | O_EXCL` create with the body written afterwards,
+  on the reasoning that this left "no window between the check and the write".
+  There was one: it ran from the create to the *body* write, and any branch
+  reading the store in that window saw an empty file. The take is now a hard
+  link of a fully written record, which keeps the exclusivity (the link fails
+  `EEXIST`) and closes the window, because the name only ever appears with its
+  body already in it.
+- A reservation went stale — and was unlinked — also "when the file cannot be
+  read". That clause is what turned the first defect into a collision: a
+  reader walking past an in-flight claim read the empty file, judged it dead,
+  unlinked it, and handed the number to the next branch while the branch that
+  had just won it still believed it held one. An unreadable record is now an
+  unknown holder and is never swept; stale means the record was read and its
+  holder judged dead.
+
+Neither amendment is a new decision, so this record is amended in place rather
+than superseded.
 
 ## Consequences
 
@@ -113,4 +148,6 @@ by hand.
   (the numbering rule and its enforcement, SpatialEngine-u2x.24; the register
   duplicate guard, SpatialEngine-u2x.31; the allocator/tree agreement)
 - `tools/adr-next-number.py`, `tools/test_adr_next_number.py`
+- SpatialEngine-u2x.34 (the atomic publish and the no-sweep-unreadable rule
+  this record was amended to state)
 - `AGENTS.md` ("Task queue" — the reservation step a worker runs)
