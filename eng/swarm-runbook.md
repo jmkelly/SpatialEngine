@@ -158,10 +158,10 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    Formatting is not a hand-off step and not a merge step (ADR-0134): CI and an
    occasional `--format` own it.
 
-4. DRAIN. Count running workers with `paseo ls` — the agents this coordinator
-   spawned, matched by the bead ids in their `in-flight` notes and by a
-   worktree under `~/.paseo/worktrees/`; the coordinator runs in the main
-   worktree and never counts. While workers < 3:
+4. DRAIN — but only if the merge queue is empty. Count running workers with
+   `paseo ls` — the agents this coordinator spawned, matched by the bead ids in
+   their `in-flight` notes and by a worktree under `~/.paseo/worktrees/`; the
+   coordinator runs in the main worktree and never counts. While workers < 3:
    - take from `bd ready`, in this order: children of `SpatialEngine-u2x` first,
      then **any other ready bead in the repo**. This second clause matters:
      workers are told to `bd create` a bead rather than widen their scope, and
@@ -188,6 +188,19 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    - label the bead `in-flight` and record the agent id + branch + workspace in
      its notes with `--append-notes`; a bare `--notes` has twice destroyed a
      bead's notes on this repo
+
+   **BACKLOG GATE — a merge backlog blocks new spawns.** Re-read
+   `bd list --label needs-merge` immediately before spawning. If any bead is
+   still labelled `needs-merge` when DRAIN would run, spawn **nothing** this
+   tick: report the unmerged ids and stop. Work already handed off outranks
+   work not yet started, because a `needs-merge` bead is a worktree and an
+   agent's worth of capacity sitting idle on a branch nobody is advancing, and
+   because with 45 ready beads and 3 slots the queue refills the instant it
+   drains — spawning first and merging later is how the backlog grows faster
+   than it clears. The cap and the reclaim are the other reason: they are
+   counted and cross-checked from one coordinator, and a second schedule doing
+   the same arithmetic concurrently would double the effective cap and race
+   `bd-safe-reclaim` on live leases. Merges stay in this one schedule.
 
 5. REPORT. One short line per bead touched this tick, and the output of
    `python3 tools/bd-merge-bead.py --check` — a tick that did not finish
