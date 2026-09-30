@@ -17,7 +17,9 @@ Microsoft DI — keyed services where two stores serve one contract:
   implement it.
 - `IFeatureLookup` keyed `"memory"`, `"postgis"` and `"sqlserver"`
   (ADR-0038/0072); the demo and ArcGIS REST stores do not implement it and
-  callers fall back to the scan.
+  callers fall back to the scan. A dataset that declares no identity column is
+  refused with `invalid.arguments` naming the dataset, not answered with an
+  empty result and not answered from the scan's ordinal (ADR-0140).
 - `IFeatureAggregateStore` is the reduction face of the query plan
   (ADR-0074): keyed by whichever stores implement it, absent for the rest,
   and callers compute the reduction over the returned page. Not yet

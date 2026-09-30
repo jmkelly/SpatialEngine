@@ -137,7 +137,9 @@ before writing any client code.
 - `architecture/distilled/cli.md` - canonical command, option and project-file reference
 - `clients/dotnet/Spatial.Cli/README.md` - the client itself
 - `architecture/references/geoservices-compatibility.md` - the REST surface
-- `architecture/distilled/core.md`, `plugins.md`, `rendering.md` - geometry values, implementations, tiles and labels
+- `architecture/distilled/core.md` - geometry values
+- `architecture/distilled/plugins.md` - implementations, stores and capabilities
+- `architecture/distilled/rendering.md` - tiles and labels
 
 ## Changing the engine, not just driving it
 

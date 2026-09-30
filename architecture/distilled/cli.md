@@ -62,9 +62,9 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
 --dataset <schema.table> destination dataset id (required)
 --srid <int>             CRS of the stored geometry (required)
 --format <geojson|ndjson|csv>   default geojson
---identity <none|auto|source>   default auto
+--identity <auto|source>     default auto; `none` is refused by name (ADR-0149)
 --identity-field <field> identity column when --identity source
---source-srid <int>      CRS of the file; engine reprojects (ADR-0041)
+--source-srid <int>      CRS of the file; engine reprojects (ADR-0082)
 --publish <name>         also register a feature map
 ```
 
@@ -79,7 +79,7 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
       "srid": 4326,
       "source": "https://…/ne_110m_populated_places.geojson",
       "format": "geojson",
-      "identity": "none",
+      "identity": "auto",
       "sourceSrid": null
     }
   ],

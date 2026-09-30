@@ -27,6 +27,7 @@ median runtime, -16.6% output tokens).
 """
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -100,6 +101,27 @@ def adr(number: str, title: str, *, status: str = "accepted", **extra: str) -> s
         lines.append(f"{key}: {value}")
     lines += ["---", "", f"# ADR-{number}: {title}", "", f"Body about {title}.", ""]
     return "\n".join(lines)
+
+
+def git(root: Path, *arguments: str, env: dict | None = None) -> str:
+    """Run git in a synthetic tree, with an identity and no signing."""
+    completed = subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+         "-c", "commit.gpgsign=false", *arguments],
+        cwd=root, capture_output=True, text=True, check=False,
+        env={**(env or {}), "PATH": os.environ.get("PATH", "")},
+    )
+    if completed.returncode != 0:
+        raise AssertionError(f"git {arguments} failed: {completed.stderr}")
+    return completed.stdout
+
+
+def git_commit(root: Path, message: str, day: int = 1) -> None:
+    """A commit on a named day, so "after" means after and not "same second"."""
+    when = f"2026-01-{day:02d}T00:00:00+00:00"
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", message,
+        env={"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when})
 
 
 def clean_tree(root: Path) -> None:
@@ -243,6 +265,224 @@ class DocFreshnessTest(unittest.TestCase):
         )
         fired = {finding["check"] for finding in report["findings"]}
         self.assertEqual(set(CHECK_IDS), fired, json.dumps(report["findings"], indent=2))
+
+    # --- check 4: staleness is the decision changing, not the file --------
+
+    def _git_tree(self) -> None:
+        """A tree with a digest that cites ADR-0001, initialised and uncommitted."""
+        clean_tree(self.root)
+        write(
+            self.root / "architecture" / "distilled" / "core.md",
+            "# Core\n\nGeometry values are core; ADR-0001 decides it.\n",
+        )
+        git(self.root, "init", "-q", "-b", "main")
+
+    def _git_tree_with_a_cited_record(self) -> None:
+        """A committed tree whose digest cites a record it was written with."""
+        self._git_tree()
+        git_commit(self.root, "the digest and the record it cites", day=1)
+
+    def _digest_staleness(self) -> list[dict]:
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        return [f for f in report["findings"] if f["check"] == "digest-staleness"]
+
+    def test_a_cited_record_whose_metadata_changed_is_not_a_stale_digest(self):
+        # The whole of the 99 findings this bead drained: ADR-0141's generated
+        # register added a `summary:` line to 60 records in one commit, so every
+        # digest citing one read as stale while the decision it states had not
+        # moved. Staleness is the *body* of the record changing after the
+        # digest's last commit; the front matter is metadata about it.
+        self._git_tree_with_a_cited_record()
+        record = self.root / "architecture" / "decisions" / "ADR-0001-a.md"
+        write(
+            record,
+            record.read_text(encoding="utf-8").replace(
+                "summary: A thing.", "summary: A thing, in a routing clause."
+            ),
+        )
+        git_commit(self.root, "the register's summary for ADR-0001", day=2)
+        self.assertEqual(
+            [], self._digest_staleness(),
+            "a front-matter edit is not the decision changing, so it must not "
+            "make every digest that cites the record stale",
+        )
+
+    def test_a_cited_record_whose_decision_changed_is_a_stale_digest(self):
+        # The other half, so the exemption above is not the check switched off:
+        # a digest that states a decision as it stood before the record changed
+        # it is the confidently-wrong case this check exists for.
+        self._git_tree_with_a_cited_record()
+        record = self.root / "architecture" / "decisions" / "ADR-0001-a.md"
+        write(
+            record,
+            record.read_text(encoding="utf-8").replace(
+                "Body about A thing.", "Body about A thing, restated."
+            ),
+        )
+        git_commit(self.root, "ADR-0001 decides something else now", day=2)
+        stale = [f for f in self._digest_staleness() if f["file"].endswith("core.md")]
+        self.assertTrue(stale, "a body change after the digest is not reported")
+        self.assertIn("ADR-0001", stale[0]["message"])
+
+    def test_a_digest_written_after_the_decision_changed_is_not_stale(self):
+        self._git_tree_with_a_cited_record()
+        record = self.root / "architecture" / "decisions" / "ADR-0001-a.md"
+        write(
+            record,
+            record.read_text(encoding="utf-8").replace(
+                "Body about A thing.", "Body about A thing, restated."
+            ),
+        )
+        git_commit(self.root, "ADR-0001 decides something else now", day=2)
+        write(
+            self.root / "architecture" / "distilled" / "core.md",
+            "# Core\n\nGeometry values are core; ADR-0001 now says otherwise.\n",
+        )
+        git_commit(self.root, "the digest follows the record", day=3)
+        # Only `core.md` was restated, and only `core.md` is clean: the README
+        # digest still cites ADR-0001 in the words it had before the change, so
+        # it is stale for its own reason and the check says so.
+        stale = [f for f in self._digest_staleness() if f["file"].endswith("core.md")]
+        self.assertEqual(
+            [], stale, "a digest restated after the record changed is still stale"
+        )
+
+    def test_a_record_migrated_to_the_front_matter_schema_is_not_stale(self):
+        # ADR-0141 moved `Status: Accepted` out of 33 records' bodies and into
+        # front matter in one commit. The decision in each is the decision it
+        # was; a digest that cites one is not restating a superseded decision,
+        # and 33 records times the digests that cite them is most of the queue
+        # this check was reporting.
+        self._git_tree()
+        record = self.root / "architecture" / "decisions" / "ADR-0001-a.md"
+        sections = (
+            "## Context\n\nBody about A thing.\n\n## Decision\n\n"
+            "**The thing.**\n\n## Consequences\n\nWhat follows.\n"
+        )
+        write(record, "# ADR-0001: A thing\n\nStatus: Accepted\n\n" + sections)
+        git_commit(self.root, "the digest and the record as it was written", day=1)
+        write(record, adr("0001", "A thing").replace(
+            "Body about A thing.\n", "") + sections)
+        git_commit(self.root, "ADR-0141's one metadata schema", day=2)
+        stale = [f for f in self._digest_staleness() if f["file"].endswith("core.md")]
+        self.assertEqual(
+            [], stale,
+            "moving a record's status into its front matter is a schema change, "
+            "not a changed decision",
+        )
+
+    # --- check 9 reads the generated block as generated --------------------
+
+    def _register_row(self, row: str) -> None:
+        """One extra row inside the generated register block of the digest README."""
+        path = self.root / "architecture" / "distilled" / "README.md"
+        text = path.read_text(encoding="utf-8")
+        marker = arch_index.REGISTER_END
+        self.assertIn(marker, text, "the fixture has no register block to write into")
+        path.write_text(
+            text.replace(marker, row + "\n" + marker, 1), encoding="utf-8"
+        )
+
+    def test_a_generated_register_row_is_neither_a_gate_claim_nor_a_wall(self):
+        # The register is rendered from the records' own summaries, so a row
+        # that calls something the gate, or restates a gated wall, is the
+        # record's sentence and the fix is the record — not the row, and not a
+        # queue nobody can drain. The register block is the one generated
+        # surface check 9 reads.
+        clean_tree(self.root)
+        self._register_row(
+            "| 0150 | The gate is eng/verify.sh --full and third-party types "
+            "never cross a public contract. |"
+        )
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        offending = [
+            f for f in report["findings"]
+            if f["check"] in ("instruction-conflict", "lint-leakage")
+            and f["file"].endswith("distilled/README.md")
+        ]
+        self.assertEqual(
+            [], offending,
+            "a generated register row is read as authored prose: "
+            + json.dumps(offending, indent=2),
+        )
+
+    def test_a_hand_written_row_beside_the_generated_one_is_still_reported(self):
+        # ...and the exemption is the block, not the file.
+        clean_tree(self.root)
+        self._register_row("| 0150 | Nothing to see. |")
+        path = self.root / "architecture" / "distilled" / "README.md"
+        write(
+            path,
+            path.read_text(encoding="utf-8")
+            + "\nThe gate is eng/verify.sh --full.\n",
+        )
+        write(
+            self.root / "architecture" / "distilled" / "cli.md",
+            "# CLI\n\nThe gate is eng/verify.sh --fast.\n",
+        )
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        self.assertTrue(
+            [f for f in report["findings"]
+             if f["check"] == "instruction-conflict"
+             and f["file"].endswith("distilled/README.md")],
+            "the hand-written line under the register block is not read at all",
+        )
+
+    def test_a_line_that_requires_a_run_is_not_a_gate_claim(self):
+        # `Must run in a normal browser - Playwright (eng/workbench-e2e.sh)` is
+        # a requirement about where the workbench runs. The check reads it as a
+        # claim about *the gate* because the entry point is on the line, and
+        # that is the false positive: the sentence never names a gate.
+        clean_tree(self.root)
+        write(
+            self.root / "architecture" / "distilled" / "cli.md",
+            "# CLI\n\nThe gate is eng/verify.sh --full.\n",
+        )
+        write(
+            self.root / "architecture" / "distilled" / "plugins.md",
+            "# Plugins\n\nMust run in a normal browser (eng/workbench-e2e.sh).\n",
+        )
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        self.assertEqual(
+            [], [f for f in report["findings"] if f["check"] == "instruction-conflict"],
+            "a requirement about a browser is read as a claim about the gate",
+        )
+
+    def test_a_gate_claim_is_still_reported_when_the_corpus_disagrees(self):
+        clean_tree(self.root)
+        write(
+            self.root / "architecture" / "distilled" / "cli.md",
+            "# CLI\n\nThe gate is eng/verify.sh --full.\n",
+        )
+        write(
+            self.root / "architecture" / "distilled" / "plugins.md",
+            "# Plugins\n\nThe gate is eng/verify.sh --fast.\n",
+        )
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        self.assertTrue(
+            [f for f in report["findings"] if f["check"] == "instruction-conflict"]
+        )
+
+    def test_the_changelog_is_history_and_not_an_instruction(self):
+        # `docs/CHANGELOG.md` records what a release said, including the lanes
+        # ADR-0118 named before ADR-0134 renamed them. A reader does not take
+        # a command from a changelog entry, so two lanes in one file is a
+        # release note, not a conflicting instruction.
+        clean_tree(self.root)
+        write(
+            self.root / "docs" / "CHANGELOG.md",
+            "# Changelog\n\n## [0.1.0]\n\nThe gate is eng/verify.sh --full.\n",
+        )
+        write(
+            self.root / "architecture" / "distilled" / "cli.md",
+            "# CLI\n\nThe gate is eng/verify.sh --fast.\n",
+        )
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        self.assertEqual(
+            [], [f for f in report["findings"]
+                 if f["check"] == "instruction-conflict"
+                 and f["file"].startswith("docs/")],
+        )
 
     def test_the_live_skill_reference_defect_is_reported_by_check_6(self):
         # The defect the bead names: a path in a SKILL.md resolves against the
@@ -441,40 +681,51 @@ class DocFreshnessTest(unittest.TestCase):
             self.assertIn(finding["check"], CHECK_IDS)
             self.assertFalse(Path(finding["file"]).is_absolute())
 
-    def test_the_live_skill_pointer_is_named_by_id(self):
-        # SpatialEngine-imz.2's named live defect:
-        # .pi/skills/spatial-engine/SKILL.md:140 cites bare `plugins.md` and
+    def test_the_live_skill_pointer_is_drained(self):
+        # SpatialEngine-imz.2 named this defect and it stayed in the tree:
+        # `.pi/skills/spatial-engine/SKILL.md:140` cited bare `plugins.md` and
         # `rendering.md`, which resolve inside the skill directory and are not
-        # there.
+        # there. The fixture above still proves the check fires on that shape;
+        # this one says the repository's own skill no longer carries it.
+        # (SpatialEngine-7o0)
         report = doc_freshness.audit(REPO_ROOT)
         skill = [
             f
             for f in report["findings"]
             if f["check"] == "skill-reference"
             and f["file"] == ".pi/skills/spatial-engine/SKILL.md"
-            and "plugins.md" in f["message"]
         ]
-        self.assertTrue(
-            skill, "the live skill-relative pointer is not in the report"
+        self.assertEqual(
+            [], skill,
+            "a skill cites a path that resolves in neither the skill directory "
+            "nor the repository root: " + json.dumps(skill, indent=2),
         )
         # Both bare names of line 140: each resolves to a real digest, which is
         # what makes the bare form a pointer and not a concept.
-        self.assertIn("rendering.md", skill[0]["message"])
         for name in ("architecture/distilled/plugins.md",
                      "architecture/distilled/rendering.md"):
             self.assertTrue((REPO_ROOT / name).is_file(), name)
 
-    def test_the_gate_noun_conflict_is_reported_and_never_gated(self):
-        # AGENTS.md calls eng/verify.sh "the gate before done", the quality-loop
-        # skill runs its own five audits, and README.md lists four verification
-        # scripts as if equivalent. The finding is reported; the check is
-        # reporting-only, so fixing the prose is a bead, not a gate failure.
+    def test_the_gate_noun_conflict_is_drained_and_never_gated(self):
+        # The corpus said `eng/verify.sh`, `--fast` and `--full` were each "the
+        # gate", and the check is reporting-only: the drain is the prose, never
+        # a gate on it. Three of the seven findings were the generated register
+        # quoting records that are about the lanes, one was the changelog
+        # quoting the lane names as they were, one was a line about running in
+        # a browser that never said "gate", and the refactor skill told an
+        # agent to raise its safety net on `--full` (ADR-0134 took that off the
+        # hand-off path). What is left is nothing, and the fixture tests above
+        # are what keep the check itself alive.
         report = doc_freshness.audit(REPO_ROOT)
         conflict = [f for f in report["findings"] if f["check"] == "instruction-conflict"]
-        self.assertTrue(conflict, "the gate-noun conflict is not reported")
-        for finding in conflict:
-            notes = doc_freshness.audit(REPO_ROOT)["notes"]
-        self.assertTrue(any("reporting-only" in note.lower() for note in notes))
+        self.assertEqual(
+            [], conflict,
+            "one gate noun, two referents, somewhere in the corpus: "
+            + json.dumps(conflict, indent=2),
+        )
+        self.assertTrue(
+            any("reporting-only" in note.lower() for note in report["notes"])
+        )
 
     def test_vendored_skills_are_out_of_scope(self):
         # .agents/skills is a vendored copy bootstrapped once (git log over it is
