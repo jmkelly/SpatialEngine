@@ -49,6 +49,13 @@ CORE_TESTS = "tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj"
 MAPS_TESTS = "tests/unit/Spatial.Maps.Tests/Spatial.Maps.Tests.csproj"
 HOST_TESTS = "tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj"
 ARCHITECTURE = verify_scope.ARCHITECTURE_PROJECT
+#: A project under `tests/` that is not a suite. It lives in the test folder,
+#: it carries the test folder's name, and it declares
+#: `<IsTestProject>false</IsTestProject>` because it is support code the store
+#: suites run rather than a suite the runner can execute: `dotnet test` skips
+#: it and writes no trx.
+CONFORMANCE = ("tests/conformance/Spatial.QueryConformance/"
+               "Spatial.QueryConformance.csproj")
 #: Every lane runs the doc gate before anything scoped (ADR-0141): the
 #: generated ADR register and index, and the dangling-citation read. It is in
 #: these expected plans because a lane that quietly lost it would be a gate
@@ -75,16 +82,25 @@ CLI_PROJECT = "clients/dotnet/Spatial.Cli/Spatial.Cli.csproj"
 CLI_TESTS = "tests/unit/Spatial.Cli.Tests/Spatial.Cli.Tests.csproj"
 
 
-def csproj(root: Path, path: str, references, is_test: bool,
+def csproj(root: Path, path: str, references, is_test,
            packages: tuple = ()) -> str:
-    """A project file whose references point at the other projects by path."""
+    """A project file whose references point at the other projects by path.
+
+    `is_test` is `True`, `False` (no property at all), or the literal text of
+    the property — so a fixture can write `<IsTestProject>false</IsTestProject>`,
+    which is what `tests/conformance/Spatial.QueryConformance` carries and what
+    the read has to answer for.
+    """
     project_dir = (root / path).parent
     reference_items = "\n".join(
         f'    <ProjectReference Include="{os.path.relpath(root / r, project_dir)}" />'
         for r in references)
     package_items = "\n".join(f'    <PackageReference Include="{p}" />'
                               for p in packages)
-    test_property = "    <IsTestProject>true</IsTestProject>" if is_test else ""
+    if isinstance(is_test, str):
+        test_property = f"    <IsTestProject>{is_test}</IsTestProject>"
+    else:
+        test_property = "    <IsTestProject>true</IsTestProject>" if is_test else ""
     return f"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
 {test_property}
@@ -345,6 +361,69 @@ class RepositoryTests(unittest.TestCase):
         self.assertTrue(repository.by_path()[CORE_TESTS].is_test)
         self.assertFalse(repository.by_path()[CORE].is_test)
 
+    def _add_to_solution(self, *paths):
+        """Put fixture projects on the solution's own list.
+
+        `load_repository` reads the `.slnx` rather than globbing, so a fixture
+        project that nothing references is never read and every assertion about
+        it is a `KeyError` rather than a verdict.
+        """
+        solution = self.repo.root / verify_scope.SOLUTION_FILE
+        listed = solution.read_text(encoding="utf-8")
+        solution.write_text(
+            listed.replace("</Solution>", "".join(
+                f'  <Project Path="{p}" />\n' for p in paths) + "</Solution>"),
+            encoding="utf-8")
+
+    def test_a_project_that_declares_it_is_not_a_test_project_is_not_a_suite(self):
+        """`IsTestProject=false` is a suite declining to be one, and it says so.
+
+        `tests/conformance/Spatial.QueryConformance` is a library the store
+        suites run; it carries `<IsTestProject>false</IsTestProject>` with the
+        comment saying exactly that. Reading the *presence* of the element
+        instead of its value put it in the CI lanes and in `dotnet test`'s
+        scope, and `dotnet test` skips it and writes no trx — so the lanes'
+        `--expect` counted a suite whose result file could never appear and
+        every whole-solution run ended in
+        `ERROR: 25 of 26 suite(s) in this run left a result file` on a green
+        tree.
+        """
+        path = self.repo.root / CONFORMANCE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(csproj(self.repo.root, CONFORMANCE, (CORE,), "false"),
+                        encoding="utf-8")
+        self._add_to_solution(CONFORMANCE)
+
+        repository = verify_scope.load_repository(self.repo.root)
+
+        self.assertFalse(repository.by_path()[CONFORMANCE].is_test)
+
+    def test_every_msbuild_spelling_of_false_is_not_a_suite(self):
+        """MSBuild reads `false`, `False`, `0` and `off` as false; so does this.
+
+        The property is MSBuild's, so its truth test is MSBuild's: a project
+        that says `<IsTestProject>0</IsTestProject>` is not a suite either, and
+        a reader that only special-cases the exact string `false` would put it
+        back in the lanes.
+        """
+        fakes = [f"tests/conformance/Fake{index}/Fake{index}.csproj"
+                 for index in range(4)]
+        for index, value in enumerate(("false", "False", "0", "off")):
+            with self.subTest(value=value):
+                path = self.repo.root / fakes[index]
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(csproj(self.repo.root, fakes[index], (CORE,),
+                                       value), encoding="utf-8")
+        # The scoper reads the solution's own list, so a fixture has to be on
+        # it to be read at all.
+        self._add_to_solution(*fakes)
+
+        repository = verify_scope.load_repository(self.repo.root)
+
+        for path in fakes:
+            with self.subTest(project=path):
+                self.assertFalse(repository.by_path()[path].is_test)
+
     def test_every_project_owns_its_own_files(self):
         repository = verify_scope.load_repository(self.repo.root)
 
@@ -515,6 +594,41 @@ class LaneTests(unittest.TestCase):
             closure)
         self.assertIn("tests/unit/Spatial.Core.Tests/Spatial.Core.Tests.csproj",
                       closure)
+
+    def test_test_support_is_in_neither_lane(self):
+        """`--expect` is the two lane lists added up, so it must be the suites.
+
+        `eng/verify.sh` counts `--list lane --lane unit` plus
+        `--list lane --lane integration` and hands the sum to
+        `tools/skip_gate.py --expect`, and CI iterates the same two lists. A
+        project that declares `IsTestProject=false` is run by another suite's
+        tests, so it belongs in neither: listing it made the expectation
+        unreachable and cost the whole-solution lane a red run on green
+        (SpatialEngine-l2k).
+        """
+        self.assertNotIn(CONFORMANCE, self.unit)
+        self.assertNotIn(CONFORMANCE, self.integration)
+        by_path = self.repository.by_path()
+        for lane, projects in (("unit", self.unit),
+                               ("integration", self.integration)):
+            for path in projects:
+                with self.subTest(lane=lane, project=path):
+                    self.assertTrue(by_path[path].is_test)
+
+    def test_every_listed_suite_would_write_a_result_file(self):
+        """The property a suite must carry for `dotnet test` to execute it.
+
+        The lanes are read into `--expect`, and a suite `dotnet test` will not
+        execute writes no trx, so the two have to be the same set by
+        construction: one project per lane entry that a run reports on.
+        """
+        by_path = self.repository.by_path()
+        listed = set(self.unit) | set(self.integration)
+
+        self.assertEqual(
+            listed,
+            {path for path, project in by_path.items()
+             if project.is_test and project.in_solution})
 
     def test_the_unit_lane_still_runs_the_architecture_guard(self):
         self.assertIn(ARCHITECTURE, self.unit)
