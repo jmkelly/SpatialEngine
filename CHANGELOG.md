@@ -11,6 +11,18 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Fixed
 
+- **The committed TypeScript SDK did not carry the host's relationship
+  endpoints** (SpatialEngine-tte): `clients/typescript`'s OpenAPI snapshot and
+  its generated wire types were regenerated from the live host, and the
+  committed artifacts were missing three served paths — `relate`, `unrelate`
+  and `queryRelatedRecords` on a FeatureServer layer — along with the
+  `relationships` field on a declared map layer that names them. CI's e2e job
+  fails on any difference between the committed artifacts and what the host
+  actually serves, so the drift was a red on every run of that job; it went
+  unnoticed because the verify job above it was red for an unrelated reason,
+  which meant the drift step never executed. Additive only — no committed
+  contract changed shape.
+
 - **A SQL Server grouped reduction ignored the plan's group order**
   (ADR-0128 §8, SpatialEngine-u2x.58): the store reduces in managed code over
   the rows it read, and it was not handed the plan's order, so the groups came

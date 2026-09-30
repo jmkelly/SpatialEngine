@@ -1806,6 +1806,70 @@
         }
       }
     },
+    "/arcgis/rest/services/{service}/FeatureServer/{layerId}/relate": {
+      "post": {
+        "tags": [
+          "Spatial.Host"
+        ],
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "layerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/arcgis/rest/services/{service}/FeatureServer/{layerId}/unrelate": {
+      "post": {
+        "tags": [
+          "Spatial.Host"
+        ],
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "layerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/arcgis/rest/services/{service}/FeatureServer/query": {
       "get": {
         "tags": [
@@ -1911,6 +1975,68 @@
       }
     },
     "/arcgis/rest/services/{service}/FeatureServer/{layerId}/validateSQL": {
+      "get": {
+        "tags": [
+          "Spatial.Host"
+        ],
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "layerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Spatial.Host"
+        ],
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "layerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/arcgis/rest/services/{service}/FeatureServer/{layerId}/queryRelatedRecords": {
       "get": {
         "tags": [
           "Spatial.Host"
@@ -6178,6 +6304,80 @@
         }
       },
       "JsonElement": { },
+      "LayerRelationship": {
+        "required": [
+          "name",
+          "relatedLayerId",
+          "primaryKeyColumn",
+          "relatedKeyColumn"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "relatedLayerId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "primaryKeyColumn": {
+            "type": "string"
+          },
+          "relatedKeyColumn": {
+            "type": "string"
+          },
+          "cardinality": {
+            "$ref": "#/components/schemas/LayerRelationshipCardinality"
+          },
+          "titleField": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "join": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LayerRelationshipJoin"
+              }
+            ]
+          }
+        }
+      },
+      "LayerRelationshipCardinality": {
+        "enum": [
+          "oneToOne",
+          "oneToMany",
+          "manyToMany"
+        ],
+        "default": "oneToMany"
+      },
+      "LayerRelationshipJoin": {
+        "required": [
+          "dataset",
+          "primaryKeyColumn",
+          "relatedKeyColumn"
+        ],
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string"
+          },
+          "primaryKeyColumn": {
+            "type": "string"
+          },
+          "relatedKeyColumn": {
+            "type": "string"
+          }
+        }
+      },
       "LoginRequest": {
         "required": [
           "username",
@@ -6278,6 +6478,15 @@
               "null",
               "string"
             ]
+          },
+          "relationships": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/LayerRelationship"
+            }
           }
         }
       },

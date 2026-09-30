@@ -144,6 +144,24 @@ export interface IntersectionRequest {
 
 export type JsonElement = unknown;
 
+export interface LayerRelationship {
+  name: string;
+  relatedLayerId: number | string;
+  primaryKeyColumn: string;
+  relatedKeyColumn: string;
+  cardinality?: LayerRelationshipCardinality;
+  titleField?: null | string;
+  join?: LayerRelationshipJoin | null;
+}
+
+export type LayerRelationshipCardinality = "oneToOne" | "oneToMany" | "manyToMany";
+
+export interface LayerRelationshipJoin {
+  dataset: string;
+  primaryKeyColumn: string;
+  relatedKeyColumn: string;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -166,6 +184,7 @@ export interface MapLayer {
   style?: null | string;
   kind?: MapLayerKind;
   store?: null | string;
+  relationships?: null | LayerRelationship[];
 }
 
 export type MapLayerKind = "feature" | "image";
