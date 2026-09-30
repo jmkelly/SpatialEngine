@@ -52,16 +52,25 @@ public sealed class SqlServerEditStore : IFeatureEditStore
         string? transaction,
         CancellationToken cancellationToken)
     {
-        var description = await _store.DescribeInternalAsync(name, cancellationToken);
-        if (description.IdColumns.Count == 0)
+        try
         {
-            return WithoutPrimaryKey(featureIds.Select(id => id), "deleted");
-        }
+            var description = await _store.DescribeInternalAsync(name, cancellationToken);
+            if (description.IdColumns.Count == 0)
+            {
+                return WithoutPrimaryKey(featureIds.Select(id => id), "deleted");
+            }
 
-        await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-        var outcomes = await SqlServerFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
-        await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
-        return outcomes;
+            await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
+            var outcomes = await SqlServerFeatureDeletes.DeleteAsync(session, name, description, featureIds, cancellationToken);
+            await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
+            return outcomes;
+        }
+        finally
+        {
+            // An edit is a write the store made, and the description it read
+            // above predates it (ADR-0151).
+            _store.ForgetDescription(name);
+        }
     }
 
     private Task<IReadOnlyList<FeatureEditOutcome>> EditBatchAsync(
@@ -87,17 +96,27 @@ public sealed class SqlServerEditStore : IFeatureEditStore
         Func<Feature, SqlCommand, CancellationToken, Task<FeatureEditOutcome>> apply,
         CancellationToken cancellationToken)
     {
-        var description = await _store.DescribeInternalAsync(name, cancellationToken);
-        SqlServerWriteOperations.CheckWritable(description, batch);
-        if (description.IdColumns.Count == 0)
+        try
         {
-            return WithoutPrimaryKey(batch.Features.Select(feature => feature.Id), "edited");
-        }
+            var description = await _store.DescribeInternalAsync(name, cancellationToken);
+            SqlServerWriteOperations.CheckWritable(description, batch);
+            if (description.IdColumns.Count == 0)
+            {
+                return WithoutPrimaryKey(batch.Features.Select(feature => feature.Id), "edited");
+            }
 
-        await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
-        var outcomes = await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
-        await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
-        return outcomes;
+            await using var session = await _store.OpenEditSessionAsync(transaction, cancellationToken);
+            var outcomes = await EditEachAsync(session, new BatchEdit(name, description, batch, update), apply, cancellationToken);
+            await BumpWhenChangedAsync(session, name, outcomes, cancellationToken);
+            return outcomes;
+        }
+        finally
+        {
+            // As with a delete: the description was read before the edit, and a
+            // batch that applied some of its features and failed the rest is
+            // still a write (ADR-0151).
+            _store.ForgetDescription(name);
+        }
     }
 
     /// <summary>

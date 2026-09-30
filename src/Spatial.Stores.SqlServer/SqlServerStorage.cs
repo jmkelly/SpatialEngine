@@ -11,6 +11,9 @@ namespace Spatial.Stores.SqlServer;
 /// handles (<see cref="SqlServerTransactions"/>). It owns the
 /// <see cref="SqlServerDataStore"/> lifecycle — created on first use, disposed
 /// with the store — so the store itself stays the contract facade (ADR-0033).
+/// The faces are built per operation, so what outlives a call lives here: the
+/// transaction handles, the database's collation (ADR-0121) and the discovered
+/// dataset descriptions (ADR-0151).
 /// </summary>
 internal sealed class SqlServerStorage : IAsyncDisposable
 {
@@ -29,15 +32,27 @@ internal sealed class SqlServerStorage : IAsyncDisposable
     /// </summary>
     private volatile string? _databaseCollation;
 
-    public SqlServerStorage(SqlServerConnectionConfiguration configuration, bool createIndexes = true)
+    public SqlServerStorage(
+        SqlServerConnectionConfiguration configuration,
+        bool createIndexes = true,
+        TimeSpan? descriptionCacheTtl = null,
+        TimeProvider? clock = null)
     {
         _data = new Lazy<SqlServerDataStore>(() => SqlServerDataStore.Open(configuration));
         _transactions = new SqlServerTransactions(this);
         _createIndexes = createIndexes;
+        Descriptions = new SqlServerDescriptionCache(
+            descriptionCacheTtl ?? SqlServerOptions.DefaultDescriptionCacheTtl, clock ?? TimeProvider.System);
     }
 
     /// <summary>Whether a dataset created through this storage gets its indexes (ADR-0092).</summary>
     public bool CreateIndexes => _createIndexes;
+
+    /// <summary>
+    /// The descriptions discovered so far, shared by every face of this store
+    /// and dropped by the write paths (ADR-0151).
+    /// </summary>
+    public SqlServerDescriptionCache Descriptions { get; }
 
     public SqlServerCatalogue Catalogue => new(this);
 

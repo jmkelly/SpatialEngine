@@ -48,6 +48,10 @@ public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
                 throw AlreadyExists(plan.Dataset);
             }
 
+            // The table this ingest created is one the store has never
+            // described, and an ingest is also the one write large enough to
+            // move a description's row estimate (ADR-0151).
+            _store.ForgetDescription(plan.Dataset);
             return new IngestOutcome(plan.Dataset.Qualified, plan.FeatureCount, plan.Srid, plan.IdentityColumn);
         });
     }
@@ -73,6 +77,7 @@ public sealed class SqlServerIngestStore : IDatasetIngest, IDatasetIngestStream
             try
             {
                 var loaded = await LoadStreamAsync(plan, pages, cancellationToken).ConfigureAwait(false);
+                _store.ForgetDescription(plan.Dataset);
                 return new IngestOutcome(plan.Dataset.Qualified, loaded, plan.Srid, plan.IdentityColumn);
             }
             catch (SqlException exception) when (SqlServerFailureCode.IsAlreadyCreated(exception))

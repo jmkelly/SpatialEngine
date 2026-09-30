@@ -30,9 +30,20 @@ internal sealed class SqlServerTestContext : IAsyncDisposable
 
     public string ConnectionString { get; }
 
-    public static SqlServerTestContext Create(string connectionString) =>
+    /// <summary>
+    /// A context over the container, optionally with the description cache's
+    /// window and a clock the test moves (ADR-0151) — expiry without sleeping.
+    /// </summary>
+    public static SqlServerTestContext Create(
+        string connectionString, TimeSpan? descriptionCacheTtl = null, TimeProvider? clock = null) =>
         new(
-            new SqlServerStore(new SqlServerOptions { ConnectionString = connectionString }),
+            new SqlServerStore(
+                new SqlServerOptions
+                {
+                    ConnectionString = connectionString,
+                    DescriptionCacheTtl = descriptionCacheTtl ?? SqlServerOptions.DefaultDescriptionCacheTtl,
+                },
+                clock ?? TimeProvider.System),
             connectionString);
 
     public async Task ExecuteAsync(string sql, CancellationToken cancellationToken = default)
