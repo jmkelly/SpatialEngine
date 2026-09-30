@@ -35,7 +35,16 @@ internal sealed record EsriMapLayerRef(
     double MinScale,
     double MaxScale);
 
-/// <summary>One MapServer layer's metadata (spec §4.2).</summary>
+/// <summary>
+/// One MapServer layer's metadata (spec §4.2). Like the Feature Server layer
+/// resource, it carries <c>hasZ</c>/<c>hasM</c> as a description of the data
+/// (ADR-0084, ADR-0125): <c>true</c> only for the ordinates the store proves
+/// the geometry column declares, and null — omitted by the serializer —
+/// otherwise, so a two-dimensional layer advertises neither key rather than
+/// <c>false</c>.
+/// </summary>
+/// <param name="HasZ">True only when the dataset declares a Z ordinate; null (absent) otherwise.</param>
+/// <param name="HasM">True only when the dataset declares an M ordinate; null (absent) otherwise.</param>
 internal sealed record EsriMapLayer(
     double CurrentVersion,
     int Id,
@@ -54,7 +63,9 @@ internal sealed record EsriMapLayer(
     bool DefaultVisibility,
     bool HasAttachments,
     string HtmlPopupType,
-    IReadOnlyDictionary<string, EsriDomain>? Domains = null);
+    IReadOnlyDictionary<string, EsriDomain>? Domains = null,
+    bool? HasZ = null,
+    bool? HasM = null);
 
 /// <summary>The <c>layers</c> resource (spec §4.8): every layer reference.</summary>
 internal sealed record EsriMapLayersResponse(
