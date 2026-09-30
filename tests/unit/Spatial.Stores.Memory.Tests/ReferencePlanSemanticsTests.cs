@@ -67,6 +67,29 @@ public sealed class ReferencePlanSemanticsTests
             Ids(FeaturePlanExecutor.Execute(Schema, tied, new FeatureQuery(Order: [new OrderTerm("name")]))));
     }
 
+    /// <summary>
+    /// Every requested key orders the plan, term by term: the second key is a
+    /// tie-break over the first, never a replacement for it. The rows are the
+    /// reverse case for it — the requested orders disagree with each other, and
+    /// the descending score is not a total order on its own because two rows
+    /// share a score, so an executor that re-sorts per key answers the last
+    /// key's order (3, 4, 2, 1) where the contract's answer is the keys in
+    /// sequence, then the identity (1, 2, 3, 4).
+    /// </summary>
+    [Fact]
+    public void A_composite_order_applies_every_key_in_turn_and_then_the_identity()
+    {
+        var plan = new FeatureQuery(
+            Order: [new OrderTerm("name"), new OrderTerm("score", SortDirection.Descending)]);
+
+        Assert.Equal(["1", "2", "3", "4"], Ids(FeaturePlanExecutor.Execute(Schema, Rows, plan)));
+
+        // Reversing the terms reverses the answer, which a re-sort per key
+        // could not do: the last key alone would be the same order both ways.
+        var reversed = plan with { Order = [new OrderTerm("score", SortDirection.Descending), new OrderTerm("name")] };
+        Assert.Equal(["3", "4", "1", "2"], Ids(FeaturePlanExecutor.Execute(Schema, Rows, reversed)));
+    }
+
     [Fact]
     public void A_plan_with_no_order_keeps_the_store_order()
     {

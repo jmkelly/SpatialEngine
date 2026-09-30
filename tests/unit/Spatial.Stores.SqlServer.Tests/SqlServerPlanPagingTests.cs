@@ -79,16 +79,24 @@ public sealed class SqlServerPlanPagingTests
     }
 
     [Fact]
-    public void A_plan_with_several_sort_keys_is_finished_over_the_whole_read()
+    public void A_plan_with_several_sort_keys_is_pushed_as_a_page()
     {
-        // Not a dialect rule: the reference applies each requested key with a
-        // fresh OrderBy, so its order over a composite plan is the last key's
-        // (SpatialEngine-u2x.54). A pushed composite order is the contract's own
-        // order, so it would answer a different question from the one this
-        // store answers today.
-        Assert.False(SqlServerPlanReader.Pushed(
+        // A composite order is the contract's own order: each requested key a
+        // tie-break over the ones before it, then the identity. The reference
+        // applies every key that way (ADR-0127), so a pushed composite order
+        // answers exactly what the reference answers — and the whole point of
+        // pushing a page is that a composite order over a large layer is a
+        // capped read rather than a materialisation.
+        var composite = new[]
+        {
+            "CASE WHEN [city] IS NULL THEN 1 ELSE 0 END, [city] ASC",
+            "CASE WHEN [id] IS NULL THEN 0 ELSE 1 END, [id] DESC",
+            "CONVERT(nvarchar(max), [id]) COLLATE Latin1_General_100_BIN2 ASC",
+        };
+
+        Assert.True(SqlServerPlanReader.Pushed(
             new FeatureQuery(Order: [new OrderTerm("city"), new OrderTerm("id", SortDirection.Descending)]),
-            TotalOrder));
+            composite));
     }
 
     [Fact]

@@ -34,6 +34,30 @@ this file together, then tag the release (`RELEASING.md`).
   line and point fixtures. The `Overlaps` and `Crosses` dimension gating and
   every other row of the table are unchanged.
 
+- **A composite order applies every key the plan asked for** (ADR-0127,
+  SpatialEngine-u2x.54): the reference executor walked the plan's order terms
+  and re-sorted with a fresh `OrderBy` for each one, so every key after the
+  first discarded the keys already applied and only the **last** key ordered
+  the result — while the `ThenSort` helper sat right below it, documenting that
+  an `OrderBy` there would do exactly that. The reference is what every store's
+  pushdown is measured against (ADR-0098 §3), and it disagreed with the
+  contract's own pipeline ("the requested keys, then the feature identity") and
+  with every dialect that pushes the order: over the conformance fixture, a
+  plan of `[category asc, score desc]` answered `3, 4, 5, 6, 2, 1` where the
+  contract's order is `3, 4, 6, 2, 1, 5`. Each key is now a then-key over the
+  ones before it, with the identity tie-break last, which is the order PostGIS
+  and T-SQL already wrote into their `ORDER BY`s. The gap was invisible because
+  no conformance dataset carries an identity column, so no plan over one is ever
+  pushed: both providers' integration suites now measure a composite order over
+  a hand-made table with a primary key. Every store's answer for a composite
+  order changes, and the new one is the plan's.
+- **A SQL Server composite-ordered plan is pushed, not materialised**
+  (ADR-0127, SpatialEngine-u2x.54): the store finished every plan with more
+  than one sort key in process, because the reference's last-key order made a
+  pushed composite order a different answer (ADR-0124 §7). The reason is gone,
+  so a two-key order is a capped `OFFSET`/`FETCH NEXT` read like any other
+  ordered plan. An *unordered* plan is still finished in process: an `OFFSET`
+  needs an `ORDER BY` to skip over.
 - **A pushed-down string comparison is a byte comparison too** (ADR-0123,
   SpatialEngine-u2x.48): ADR-0121 stopped a pushed *order* from inheriting the
   database's collation and left the predicate compiler to inherit it, so

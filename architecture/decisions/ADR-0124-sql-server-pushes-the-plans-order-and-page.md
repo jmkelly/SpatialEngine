@@ -112,20 +112,24 @@ with `|`. That matters: two rows whose sort key ties are ordered `"10"` before
    and the only order T-SQL would accept there is one the store would be
    inventing, while an unordered plan's order is its scan order.
 
-7. **A plan with several requested sort keys is not paged yet, and the reason
-   is a defect in the reference rather than in this dialect.**
-   `FeaturePlanExecutor.Order` applies each requested key with a fresh
-   `OrderBy`, so the order the reference computes over a composite plan is its
-   *last* key's — `ThenSort` sits right below it, documenting that an `OrderBy`
-   there would discard the keys already applied, which is exactly what the loop
-   does. A pushed composite order is the contract's own order (ADR-0098 §3,
-   ADR-0074 §4), so pushing one would answer a different question from the one
-   this store answers today for every plan. The page is therefore pushed for
-   the orders the reference and the pushdown agree on — every single-key order —
-   and a composite order is finished in process until the reference is fixed
-   (SpatialEngine-u2x.54). The gap is invisible to the conformance suite today
-   because neither provider's `CreateAsync` gives the conformance table a
-   primary key, so no plan over it is ever pushed.
+7. **A plan with several requested sort keys was not paged, and the reason
+   was a defect in the reference rather than in this dialect.** *(Superseded
+   by ADR-0127, which fixed the reference and withdrew this rule; kept for the
+   reasoning.)* `FeaturePlanExecutor.Order` applied each requested key with a
+   fresh `OrderBy`, so the order the reference computes over a composite plan is
+   its *last* key's — `ThenSort` sits right below it, documenting that an
+   `OrderBy` there would discard the keys already applied, which is exactly what
+   the loop does. A pushed composite order is the contract's own order
+   (ADR-0098 §3, ADR-0074 §4), so pushing one would answer a different
+   question from the one this store answers today for every plan. The page was
+   therefore pushed for the orders the reference and the pushdown agree on —
+   every single-key order — and a composite order was finished in process until
+   the reference was fixed (SpatialEngine-u2x.54). The gap was invisible to the
+   conformance suite at the time because neither provider's `CreateAsync` gives
+   the conformance table a primary key, so no plan over it was ever pushed.
+   ADR-0127 makes every key a then-key, so the pushed order and the
+   reference's order are the same order and `Pushed` is one clause again: the
+   order must be one this table can make total, which is §6's rule.
 
 8. **The identity is read over the whole schema.** The pushed read's shape is
    the plan's projection plus the identity columns the projection did not
@@ -155,10 +159,11 @@ with `|`. That matters: two rows whose sort key ties are ordered `"10"` before
   refuses as an index key (ADR-0092), so a keyed table that a deployment wrote
   by hand pays a sort for an ordered text read. That is the price of the
   contract's answer (principle 15), exactly as ADR-0121 records for PostGIS.
-- An unordered plan, a plan over a table with no primary key, a plan whose
-  identity this dialect renders differently, and a composite-order plan are all
-  still read whole and finished in process. Each is a fallback with the same
-  answer, and each is a named gap rather than a silent one.
+- An unordered plan, a plan over a table with no primary key, and a plan whose
+  identity this dialect renders differently are all still read whole and
+  finished in process. Each is a fallback with the same answer, and each is a
+  named gap rather than a silent one. (A composite-order plan joined them while
+  §7 stood; ADR-0127 withdrew that one.)
 - A store that is asked for the same plan twice on a connection whose
   collation changed mid-flight keeps the first answer for the store's life; the
   probe is a property of the database, read once, as ADR-0121 §2 decided for
@@ -189,7 +194,8 @@ with `|`. That matters: two rows whose sort key ties are ordered `"10"` before
 - ADR-0074 §4-5 (the plan, the reference executor, the cursor), ADR-0092
   (indexes), ADR-0097 (pushdown and literal binding), ADR-0098 §3 (the ordering
   rule), ADR-0116 §1-2 (the paged read, the "one more" signal), ADR-0121 (the
-  collation argument this record answers).
+  collation argument this record answers), ADR-0127 (the composite order, which
+  withdrew §7).
 - `src/Spatial.Stores.SqlServer/Core/SqlServerPlanQueries.cs`,
   `src/Spatial.Stores.SqlServer/Core/SqlServerTextCollation.cs`,
   `src/Spatial.Stores.SqlServer/SqlServerPlanReader.cs`,
