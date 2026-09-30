@@ -45,6 +45,8 @@ warnings-queue.md
 warnings-report.json
 stryker-queue.md
 StrykerOutput/
+doc-queue.md
+doc-report.json
 
 # --- Playwright browser test artifacts ---
 test-results/

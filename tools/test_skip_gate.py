@@ -298,15 +298,18 @@ class LaneExitCodeTests(unittest.TestCase):
             + "</Solution>\n", encoding="utf-8")
         # The lane runs repo-wide checks before anything scoped: the
         # trailing-whitespace check (ADR-0143), the conflict-marker check
-        # (ADR-0146) and the doc gate (ADR-0141). The fixture therefore carries
-        # all three tools, and — because the doc gate
-        # regenerates the ADR register and index and fails on a stale one — a
-        # decision corpus and its generated register. A fixture without any of
-        # them would be measuring the gates rather than the skip gate, and the
-        # lane would go red for a reason that has nothing to do with skips.
-        for name in ("eng/verify.sh", "tools/verify_scope.py", "tools/skip_gate.py",
-                     "tools/trailing_whitespace.py", "tools/conflict_markers.py",
-                     "tools/arch-index.py"):
+        # (ADR-0146) and the doc gate (ADR-0141), then the reporting-only
+        # documentation-freshness audit (`eng/quality-audit.sh --report`,
+        # SpatialEngine-imz.2). The fixture therefore carries all of those
+        # tools, and — because the doc gate regenerates the ADR register and
+        # index and fails on a stale one — a decision corpus and its generated
+        # register. A fixture without any of them would be measuring the gates
+        # rather than the skip gate, and the lane would go red for a reason that
+        # has nothing to do with skips.
+        for name in ("eng/verify.sh", "eng/quality-audit.sh", "tools/verify_scope.py",
+                     "tools/skip_gate.py", "tools/trailing_whitespace.py",
+                     "tools/conflict_markers.py", "tools/arch-index.py",
+                     "tools/doc-freshness.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
@@ -315,6 +318,18 @@ class LaneExitCodeTests(unittest.TestCase):
         # missing tool.
         (self.root / ".editorconfig").write_text(
             "root = true\n\n[*]\ntrim_trailing_whitespace = true\n", encoding="utf-8")
+        # The loop's own artefacts and python's bytecode, gitignored as they are
+        # in this repository (`tools/test_doc_freshness.py` asserts the real
+        # `.gitignore` lists the artefacts, and it has always listed
+        # `__pycache__/`). Without this the reporting step's `doc-queue.md` /
+        # `doc-report.json` and the `.pyc` its shared-check import writes are
+        # untracked files, and a second lane run in the same fixture reads them
+        # as part of the change set — which `tools/verify_scope.py` answers
+        # with the unscoped plan, so the fast gate silently becomes the full one
+        # and the lane runs a tooling discover the fixture cannot satisfy
+        # (SpatialEngine-imz.2).
+        (self.root / ".gitignore").write_text(
+            "doc-queue.md\ndoc-report.json\n__pycache__/\n", encoding="utf-8")
 
         (self.root / "architecture/decisions").mkdir(parents=True)
         (self.root / "architecture/decisions/ADR-0001-a-fixture-decision.md").write_text(
