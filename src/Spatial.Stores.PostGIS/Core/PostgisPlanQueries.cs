@@ -376,6 +376,82 @@ internal static class PostgisPlanQueries
             _ => $"({left}) AND ({right})",
         };
 
+    /// <summary>
+    /// The deduplicated field combinations a plan selects, as a
+    /// <c>SELECT DISTINCT</c> and the order they are reported in — or
+    /// <c>null</c> when this dialect cannot state that order (ADR-0133 §6).
+    ///
+    /// <para>
+    /// A <c>DISTINCT</c> is pushed for the plan whose order is <em>total over
+    /// the distinct rows</em>: every term of the plan's order names a requested
+    /// field, and the terms between them cover every requested field. That is the
+    /// plan whose first-seen order — what the reference reports — is the order
+    /// of the rows themselves. Any other plan leaves distinct rows tying on the
+    /// order's terms, and a dialect says nothing about which of those comes
+    /// first, so the set is reduced over the read instead, where the first-seen
+    /// order is knowable.
+    /// </para>
+    ///
+    /// <para>
+    /// The order is written on an outer statement over the <c>DISTINCT</c>,
+    /// because Postgres takes an <c>ORDER BY</c> over a <c>DISTINCT</c> only
+    /// from its own select list and the reference's null-placement key is not
+    /// one of the requested fields. A text field is deduplicated and ordered
+    /// under the byte-order collation, since a locale collation folds
+    /// <c>"A"</c> onto <c>"a"</c> and the reference counts them as two values
+    /// (ADR-0121). A geometry is not pushed at all: the dialect deduplicates it
+    /// by its stored bytes and the reference by its value.
+    /// </para>
+    /// </summary>
+    public static string? Distinct(
+        PostgisDatasetName dataset,
+        IReadOnlyList<string> fields,
+        IReadOnlyList<OrderTerm> order,
+        IFeatureSchema schema,
+        bool byteOrderText,
+        string? where,
+        List<object?> parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (fields.Count == 0 || order.Count == 0 || !Total(fields, order))
+        {
+            return null;
+        }
+
+        if (fields.Any(field => schema.IndexOf(field) < 0 || schema[schema.IndexOf(field)].Kind == AttributeKind.Geometry))
+        {
+            return null;
+        }
+
+        var builder = new StringBuilder("SELECT * FROM (SELECT DISTINCT ")
+            .Append(string.Join(", ", fields.Select(field => Alias(Ordered(field, schema, byteOrderText), field))))
+            .Append(" FROM ")
+            .Append(dataset.QuoteQualified());
+        AppendWhere(builder, where);
+        return builder.Append(") AS d ORDER BY ")
+            .Append(string.Join(", ", order.Select(term => Term(term, schema, byteOrderText, "d"))))
+            .ToString();
+    }
+
+    /// <summary>
+    /// Whether the plan's order names the deduplicated fields and covers them
+    /// between its terms, which is what makes it a total order over the distinct
+    /// rows (ADR-0133 §6).
+    /// </summary>
+    private static bool Total(IReadOnlyList<string> fields, IReadOnlyList<OrderTerm> order)
+    {
+        var named = new HashSet<string>(order.Select(term => term.Field), StringComparer.Ordinal);
+        return order.All(term => fields.Contains(term.Field, StringComparer.Ordinal)) && fields.All(named.Contains);
+    }
+
+    /// <summary>
+    /// A deduplicated column named for the field it came from, so the derived row
+    /// is read by the plan's own field names — for the expression that is not
+    /// already spelled as the column.
+    /// </summary>
+    private static string Alias(string expression, string field) =>
+        expression == Quote(field) ? expression : $"{expression} AS {Quote(field)}";
+
     /// <summary>One aggregate expression, with its bound parameters, in the plan's result order.</summary>
     private sealed class Statistic(AggregateSpec spec, IFeatureSchema schema, bool byteOrderText)
     {
@@ -442,15 +518,15 @@ internal static class PostgisPlanQueries
         SortKey(column, "ASC NULLS LAST", schema, byteOrderText);
 
     /// <summary>One requested sort key as SQL, with its explicit null placement.</summary>
-    private static string Term(OrderTerm term, IFeatureSchema schema, bool byteOrderText) =>
+    private static string Term(OrderTerm term, IFeatureSchema schema, bool byteOrderText, string qualifier = "") =>
         term.IsDescending
-            ? SortKey(term.Field, "DESC NULLS FIRST", schema, byteOrderText)
-            : SortKey(term.Field, "ASC NULLS LAST", schema, byteOrderText);
+            ? SortKey(term.Field, "DESC NULLS FIRST", schema, byteOrderText, qualifier)
+            : SortKey(term.Field, "ASC NULLS LAST", schema, byteOrderText, qualifier);
 
     /// <summary>One sort key as SQL: the ordered column, then the direction and
     /// the explicit null placement.</summary>
-    private static string SortKey(string column, string direction, IFeatureSchema schema, bool byteOrderText) =>
-        $"{Ordered(column, schema, byteOrderText)} {direction}";
+    private static string SortKey(string column, string direction, IFeatureSchema schema, bool byteOrderText, string qualifier = "") =>
+        $"{Ordered(column, schema, byteOrderText, qualifier)} {direction}";
 
     /// <summary>
     /// A column as an expression that compares text by bytes: the quoted column,
@@ -469,9 +545,9 @@ internal static class PostgisPlanQueries
     /// statement Postgres refuses.
     /// </para>
     /// </summary>
-    internal static string Ordered(string column, IFeatureSchema schema, bool byteOrderText)
+    internal static string Ordered(string column, IFeatureSchema schema, bool byteOrderText, string qualifier = "")
     {
-        var quoted = Quote(column);
+        var quoted = qualifier.Length == 0 ? Quote(column) : $"{Quote(qualifier)}.{Quote(column)}";
         var index = schema.IndexOf(column);
         var text = index >= 0 && schema[index].Kind == AttributeKind.String;
         return !text || byteOrderText ? quoted : $"{quoted} COLLATE {PostgisTextCollation.ByteOrder}";

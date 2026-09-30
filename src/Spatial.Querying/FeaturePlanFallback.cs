@@ -55,7 +55,7 @@ public static class FeaturePlanFallback
         IFeatureStore store, string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
     {
         var (schema, selected) = await SelectAsync(store, dataset, query, cancellationToken).ConfigureAwait(false);
-        return FeatureReduction.Distinct(schema, selected, distinct);
+        return FeatureReduction.Distinct(schema, selected, distinct, query.Order);
     }
 
     /// <summary>The grouped reduction a plan selects, evaluated in memory.</summary>

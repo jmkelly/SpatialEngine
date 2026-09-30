@@ -442,7 +442,7 @@ public sealed class StoreQueryPathTests
             Distincts++;
             LastPlan = query;
             return Task.FromResult(
-                FeatureReduction.Distinct(_schema, FeaturePlanExecutor.Select(_schema, features, query, cancellationToken), distinct));
+                FeatureReduction.Distinct(_schema, FeaturePlanExecutor.Select(_schema, features, query, cancellationToken), distinct, query.Order));
         }
 
         public Task<AggregatePage> AggregateAsync(

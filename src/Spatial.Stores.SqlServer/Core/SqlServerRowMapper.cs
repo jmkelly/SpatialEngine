@@ -88,6 +88,19 @@ internal static class SqlServerRowMapper
             : Converters[field.Kind](value);
     }
 
+    /// <summary>
+    /// Converts one raw value to an attribute of the given kind. Visible to the
+    /// provider's plan reader (ADR-0074, ADR-0133), which reduces rows the
+    /// database aggregated and deduplicated: a <c>COUNT</c> arrives as
+    /// <c>int</c> and a <c>SUM</c> over a <c>bigint</c> column as
+    /// <c>long</c>, and both are mapped here to the kinds the shared reference
+    /// reports, so a pushed-down value and a reference value are the same value.
+    /// A geometry never reaches here: neither reduction states a geometry as a
+    /// value this provider can answer in SQL.
+    /// </summary>
+    internal static AttributeValue MapValue(AttributeKind kind, object? value) =>
+        value is null or DBNull ? AttributeValue.Null : Converters[kind](value);
+
     private static readonly Dictionary<AttributeKind, Func<object?, AttributeValue>> Converters = new()
     {
         [AttributeKind.Boolean] = value => AttributeValue.FromBoolean(Convert.ToBoolean(value, CultureInfo.InvariantCulture)),

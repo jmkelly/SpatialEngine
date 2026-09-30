@@ -40,6 +40,13 @@ namespace Spatial.Stores.SqlServer.Core;
 /// The order ends with the dataset's identity columns as ascending keys, so
 /// the total order is deterministic and a page boundary can never fall between
 /// two rows the next page would re-order.</para>
+///
+/// <para>
+/// The reductions are here for the same reason (ADR-0133): a <c>COUNT</c>, a
+/// <c>DISTINCT</c> and a <c>GROUP BY</c> are all things T-SQL has, and each one
+/// that inherits a default this contract states the other way round is written
+/// out — the null-placement key and the code-point collation again, over a
+/// group key and over a deduplicated text value this time.</para>
 /// </summary>
 internal static class SqlServerPlanQueries
 {
@@ -107,6 +114,311 @@ internal static class SqlServerPlanQueries
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// The grouped reduction: the group key, one aggregate expression per
+    /// statistic, grouped over the key, ordered by the plan's order, and cut to
+    /// the page (ADR-0128, ADR-0133 §4). The <c>ORDER BY</c> is written before
+    /// the page clause and never after it: <c>OFFSET</c>/<c>FETCH NEXT</c> is
+    /// legal only over an order, and a reduction that lost the plan's order on
+    /// the way to the server would answer the groups in the order the scan
+    /// happened to return them (ADR-0128 §8).
+    ///
+    /// <para>
+    /// Returns <c>null</c> — the caller's cue to reduce the rows it read with
+    /// the shared reference, which is a cost and never a different answer — when
+    /// the dialect cannot state the reference's answer: a grouped reduction
+    /// whose plan asked for no order, or asked for one over a value a group row
+    /// does not carry (<c>GROUP BY</c> returns rows in no defined order, and
+    /// ordering a group by one of its own columns is a different question); a
+    /// group key or a statistic whose kind T-SQL groups or reduces the way the
+    /// reference does not (a geometry, which groups by its stored bytes here and
+    /// by its value in the reference); a statistic with no T-SQL aggregate at
+    /// all — a percentile, because T-SQL has no ordered-set aggregate, or an
+    /// envelope, because a rectangle is four reduced coordinates and a polygon
+    /// rather than one aggregate expression; and a clause over the reduced
+    /// groups, which this store does not compile for this dialect.
+    /// </para>
+    /// </summary>
+    public static string? Aggregate(
+        SqlServerDatasetName dataset,
+        string? where,
+        IReadOnlyList<string> groupColumns,
+        IReadOnlyList<AggregateSpec> specs,
+        IReadOnlyList<OrderTerm> order,
+        IFeatureSchema schema,
+        bool byteOrderText,
+        List<object?> parameters,
+        Predicate? having = null,
+        Paging? paging = null)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        // A clause over the reduced groups is declined rather than compiled
+        // here: it resolves a name to the statistic's own aggregate expression,
+        // which asks this store's predicate compiler a second question it does
+        // not yet answer (ADR-0133 §5). The reduction is finished over the rows
+        // the restriction selected instead, where the clause is the reference's
+        // own.
+        if (having is not null)
+        {
+            return null;
+        }
+
+        if (groupColumns.Count > 0
+            && (order.Count == 0 || order.Any(term => !groupColumns.Contains(term.Field, StringComparer.Ordinal))))
+        {
+            return null;
+        }
+
+        // A page needs an order to skip over: T-SQL takes `OFFSET`/`FETCH NEXT`
+        // only over an `ORDER BY`, and an ungrouped reduction is one group that
+        // needs no order — so a page over one is reduced here (ADR-0124 §6).
+        var page = paging ?? new Paging(null, 0);
+        if (!page.IsWhole && order.Count == 0)
+        {
+            return null;
+        }
+
+        if (groupColumns.Any(column => !Groupable(column, schema)))
+        {
+            return null;
+        }
+
+        var expressions = new List<string>(specs.Count);
+        foreach (var spec in specs)
+        {
+            if (new Statistic(spec, schema, byteOrderText).Expression() is not { } expression)
+            {
+                return null;
+            }
+
+            expressions.Add(expression);
+        }
+
+        var keys = groupColumns.Select(column => Key(column, schema, byteOrderText)).ToArray();
+        var selects = keys
+            .Select((key, i) => Alias(key, groupColumns[i]))
+            .Concat(expressions)
+            .ToArray();
+        var builder = new StringBuilder("SELECT ")
+            .Append(string.Join(", ", selects))
+            .Append(" FROM ")
+            .Append(dataset.QuoteQualified());
+        if (where is not null)
+        {
+            builder.Append(" WHERE ").Append(where);
+        }
+
+        if (keys.Length > 0)
+        {
+            builder.Append(" GROUP BY ").Append(string.Join(", ", keys));
+        }
+
+        if (order.Count > 0)
+        {
+            // A grouped statement's `ORDER BY` may only name what the `GROUP BY`
+            // groups: a term over the bare column of a text key is a column the
+            // grouping does not contain, and T-SQL refuses the statement. So the
+            // term is written over the group key expression itself.
+            var terms = order.Select(term =>
+                GroupedTerm(keys[groupColumns.ToList().IndexOf(term.Field)], term.IsDescending));
+            builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
+        }
+
+        page.AppendTo(builder, parameters);
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// The deduplicated field combinations a plan selects, as a
+    /// <c>SELECT DISTINCT</c> and the order it is reported in — or <c>null</c>
+    /// when this dialect cannot state that order (ADR-0133 §6).
+    ///
+    /// <para>
+    /// The distinct set is pushed for the plan whose order is <em>total over
+    /// the distinct rows</em>: every term of the plan's order names a requested
+    /// field, and the terms between them cover every requested field. That is
+    /// the plan whose first-seen order — which is what the reference reports —
+    /// is the order of the rows themselves. Anything else is a set of rows that
+    /// tie on the order's terms, and a dialect says nothing about which comes
+    /// first, so the set is reduced here over the read, where the first-seen
+    /// order is knowable.
+    /// </para>
+    ///
+    /// <para>
+    /// The order is written on an outer statement over the <c>DISTINCT</c>,
+    /// because both dialects take an <c>ORDER BY</c> over a <c>DISTINCT</c>
+    /// only from its own select list, and the reference's null-placement key is
+    /// not one of the requested fields. A text field is deduplicated and ordered
+    /// under the code-point collation, since a locale collation folds
+    /// <c>"A"</c> onto <c>"a"</c> — and the reference counts them as two values
+    /// (ADR-0121).
+    /// </para>
+    /// </summary>
+    public static string? Distinct(
+        SqlServerDatasetName dataset,
+        IReadOnlyList<string> fields,
+        IReadOnlyList<OrderTerm> order,
+        IFeatureSchema schema,
+        bool byteOrderText,
+        string? where,
+        List<object?> parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (fields.Count == 0 || order.Count == 0 || !Total(fields, order))
+        {
+            return null;
+        }
+
+        if (fields.Any(field => schema.IndexOf(field) < 0 || schema[schema.IndexOf(field)].Kind == AttributeKind.Geometry))
+        {
+            return null;
+        }
+
+        var keys = fields.Select(field => Key(field, schema, byteOrderText)).ToArray();
+        var builder = new StringBuilder("SELECT * FROM (SELECT DISTINCT ")
+            .Append(string.Join(", ", keys.Select((key, i) => Alias(key, fields[i]))))
+            .Append(" FROM ")
+            .Append(dataset.QuoteQualified());
+        if (where is not null)
+        {
+            builder.Append(" WHERE ").Append(where);
+        }
+
+        return builder.Append(") AS d ORDER BY ")
+            .Append(string.Join(", ", order.Select(term => Term(term, schema, byteOrderText, "d"))))
+            .ToString();
+    }
+
+    /// <summary>
+    /// Whether the plan's order names the deduplicated fields and covers them
+    /// between its terms, which is what makes it a total order over the distinct
+    /// rows (ADR-0133 §6).
+    /// </summary>
+    private static bool Total(IReadOnlyList<string> fields, IReadOnlyList<OrderTerm> order)
+    {
+        var named = new HashSet<string>(order.Select(term => term.Field), StringComparer.Ordinal);
+        return order.All(term => fields.Contains(term.Field, StringComparer.Ordinal)) && fields.All(named.Contains);
+    }
+
+    /// <summary>
+    /// One group order as T-SQL: the null-placement key and the group key
+    /// itself, in the direction the plan asked for. The key is the expression
+    /// the <c>GROUP BY</c> groups by — a text column under the code-point
+    /// collation — because a term over anything else is not a column this
+    /// grouped statement contains.
+    /// </summary>
+    private static string GroupedTerm(string key, bool descending)
+    {
+        var nullFirst = descending;
+        return $"CASE WHEN {key} IS NULL THEN {(nullFirst ? 0 : 1)} ELSE {(nullFirst ? 1 : 0)} END"
+            + $", {key} {(descending ? "DESC" : "ASC")}";
+    }
+
+    /// <summary>
+    /// Whether a <c>GROUP BY</c> over this column groups the rows the way the
+    /// reference does. Every kind but a geometry groups by its value, and a
+    /// geometry groups by its stored bytes here and by its value there, so a
+    /// geometry key is not this statement's.
+    /// </summary>
+    private static bool Groupable(string column, IFeatureSchema schema)
+    {
+        var index = schema.IndexOf(column);
+        return index >= 0 && schema[index].Kind != AttributeKind.Geometry;
+    }
+
+    /// <summary>
+    /// One group key as an expression that groups the way the reference groups
+    /// and reads as the value it names: a text column under the code-point
+    /// collation, everything else as itself.
+    /// </summary>
+    private static string Key(string column, IFeatureSchema schema, bool byteOrderText) =>
+        Ordered(column, schema, byteOrderText);
+
+    /// <summary>
+    /// An expression named for the column it came from, so the derived row can
+    /// be read by the plan's own field names — for the expression that is not
+    /// already spelled as the column.
+    /// </summary>
+    private static string Alias(string expression, string column) =>
+        expression == Quote(column) ? expression : $"{expression} AS {Quote(column)}";
+
+    /// <summary>
+    /// One aggregate expression in the dialect's own spelling, or <c>null</c>
+    /// when T-SQL has no aggregate that answers this statistic (ADR-0133 §3).
+    /// </summary>
+    private sealed class Statistic(AggregateSpec spec, IFeatureSchema schema, bool byteOrderText)
+    {
+        public string? Expression()
+        {
+            if (spec.IsRowCount)
+            {
+                return "COUNT(*)";
+            }
+
+            var index = schema.IndexOf(spec.Field);
+            if (index < 0)
+            {
+                return null;
+            }
+
+            var kind = schema[index].Kind;
+            var quoted = Quote(spec.Field);
+            return spec.Statistic switch
+            {
+                // `COUNT` and `SUM` skip the nulls, and report a null for a
+                // group with none of them, exactly as the reference does.
+                AggregateStatistic.Count => $"COUNT({quoted})",
+                // `SUM` over an integer column is a `bigint` sum here: the
+                // column may be a hand-authored `int`, whose `SUM` overflows in
+                // the server where the reference's `long` sum does not.
+                AggregateStatistic.Sum => kind == AttributeKind.Int64
+                    ? $"SUM(CONVERT(bigint, {quoted}))"
+                    : kind == AttributeKind.Double ? $"SUM({quoted})" : null,
+                // `AVG` over an integer column is *integer* division — a
+                // truncated mean, not the reference's — and `float` is T-SQL's
+                // double, so the sum is taken in it and divided once at the end,
+                // the way the reference averages.
+                AggregateStatistic.Average => kind == AttributeKind.Int64
+                    ? $"SUM(CONVERT(float, {quoted})) / COUNT({quoted})"
+                    : kind == AttributeKind.Double ? $"SUM({quoted}) / COUNT({quoted})" : null,
+                // `VAR` and `STDEV` are the *sample* forms, which is the form
+                // the reference reports, and are null for fewer than two values.
+                AggregateStatistic.Variance => Numeric(kind, quoted) is { } numeric ? $"VAR({numeric})" : null,
+                AggregateStatistic.StdDev => Numeric(kind, quoted) is { } numeric ? $"STDEV({numeric})" : null,
+                // An extreme is the smallest/largest value under the same
+                // comparison every other string here states. A `bit` has no
+                // `MIN`/`MAX` in T-SQL at all.
+                AggregateStatistic.Minimum => Extreme(kind, spec.Field, schema, byteOrderText, "MIN"),
+                AggregateStatistic.Maximum => Extreme(kind, spec.Field, schema, byteOrderText, "MAX"),
+                // T-SQL has no ordered-set aggregate, so a percentile is a
+                // window function over a whole result set and cannot be an
+                // aggregate over one group; the envelope is four reduced
+                // coordinates and a polygon rather than an expression.
+                _ => null,
+            };
+        }
+
+        private static string? Numeric(AttributeKind kind, string quoted) => kind switch
+        {
+            AttributeKind.Int64 => $"CONVERT(float, {quoted})",
+            AttributeKind.Double => quoted,
+            _ => null,
+        };
+
+        /// <summary>
+        /// An extreme is the smallest/largest value under the same
+        /// comparison every other string here states. A <c>bit</c> has no
+        /// <c>MIN</c>/<c>MAX</c> in T-SQL at all, and a geometry has neither a
+        /// comparison T-SQL and .NET share nor a sort key this contract could
+        /// state.
+        /// </summary>
+        private static string? Extreme(
+            AttributeKind kind, string column, IFeatureSchema schema, bool byteOrderText, string function) =>
+            kind is AttributeKind.Boolean or AttributeKind.Geometry
+                ? null
+                : $"{function}({Ordered(column, schema, byteOrderText)})";
     }
 
     /// <summary>
@@ -261,14 +573,18 @@ internal static class SqlServerPlanQueries
     /// <c>CASE</c> is the mirror of the ascending one — T-SQL's own null
     /// placement is the opposite in both directions.
     /// </summary>
-    private static string Term(OrderTerm term, IFeatureSchema schema, bool byteOrderText)
+    private static string Term(OrderTerm term, IFeatureSchema schema, bool byteOrderText, string qualifier = "")
     {
-        var quoted = Quote(term.Field);
+        var quoted = Qualified(term.Field, qualifier);
         var direction = term.IsDescending ? "DESC" : "ASC";
         var nullFirst = term.IsDescending;
         return $"CASE WHEN {quoted} IS NULL THEN {(nullFirst ? 0 : 1)} ELSE {(nullFirst ? 1 : 0)} END"
-            + $", {Ordered(term.Field, schema, byteOrderText)} {direction}";
+            + $", {Ordered(term.Field, schema, byteOrderText, qualifier)} {direction}";
     }
+
+    /// <summary>The column as this statement spells it, qualified when the sort runs over a derived row.</summary>
+    private static string Qualified(string column, string qualifier) =>
+        qualifier.Length == 0 ? Quote(column) : $"{Quote(qualifier)}.{Quote(column)}";
 
     /// <summary>
     /// A column as an expression the contract's comparison can be written
@@ -287,15 +603,15 @@ internal static class SqlServerPlanQueries
     /// statement T-SQL refuses.
     /// </para>
     /// </summary>
-    private static string Ordered(string column, IFeatureSchema schema, bool byteOrderText)
+    private static string Ordered(string column, IFeatureSchema schema, bool byteOrderText, string qualifier = "")
     {
         var index = schema.IndexOf(column);
         if (index < 0 || schema[index].Kind != AttributeKind.String)
         {
-            return Quote(column);
+            return Qualified(column, qualifier);
         }
 
-        var converted = $"CONVERT(nvarchar(max), {Quote(column)})";
+        var converted = $"CONVERT(nvarchar(max), {Qualified(column, qualifier)})";
         return byteOrderText ? converted : $"{converted} COLLATE {SqlServerTextCollation.ByteOrder}";
     }
 

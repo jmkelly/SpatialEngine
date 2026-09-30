@@ -122,42 +122,92 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
         });
     }
 
-    /// <summary>The count of the features a plan selects, over the pushed-down restriction.</summary>
-    public Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default) =>
-        ReduceAsync(dataset, query, selected => FeatureReduction.CountFeatures(selected.Features), cancellationToken);
-
-    /// <summary>The deduplicated field combinations a plan selects.</summary>
-    public Task<DistinctPage> DistinctAsync(
-        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The count of the features a plan selects, counted by the database over
+    /// the restriction the plan pushed (ADR-0133 §2).
+    /// </summary>
+    public async Task<int> CountAsync(string dataset, FeatureQuery query, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(distinct);
-        return ReduceAsync(dataset, query, selected => FeatureReduction.Distinct(selected.Schema, selected.Features, distinct), cancellationToken);
+        ArgumentNullException.ThrowIfNull(query);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return await RunStoreOperationAsync(async () =>
+            await new SqlServerPlanReader(_storage, Catalogue).CountAsync(name, query, cancellationToken));
     }
 
     /// <summary>
-    /// The grouped reduction a plan selects.
+    /// The deduplicated field combinations a plan selects, as a
+    /// <c>SELECT DISTINCT</c> when the plan's order is total over them, and
+    /// reduced over the read — with the shared reference, so the set keeps the
+    /// first-seen order the contract's is — when it is not (ADR-0133 §6).
+    /// </summary>
+    public async Task<DistinctPage> DistinctAsync(
+        string dataset, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(distinct);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return await RunStoreOperationAsync(async () =>
+        {
+            var pushed = await new SqlServerPlanReader(_storage, Catalogue).DistinctAsync(name, query, distinct, cancellationToken);
+            if (pushed is not null)
+            {
+                return pushed;
+            }
+
+            var (schema, selected) = await SelectAsync(name, query, cancellationToken);
+            return FeatureReduction.Distinct(schema, selected, distinct, query.Order);
+        });
+    }
+
+    /// <summary>
+    /// The grouped reduction a plan selects, as a <c>GROUP BY</c> when this
+    /// dialect can return the reference's group order and answer every
+    /// statistic the request names, and finished with the shared reference over
+    /// the rows the restriction selected when it cannot (ADR-0133 §4).
     ///
     /// <para>
-    /// The plan's order is handed to the reduction, not applied to the rows
-    /// this store reads: a group order is a total order over the <em>groups</em>,
-    /// and only the reduction knows which rows a group has. It matters here
-    /// because the read is a reduction face's read — it arrives in whatever
-    /// order T-SQL gave the rows, which under the container's collation is
-    /// neither the plan's order nor the order the rows were written in, so a
+    /// The plan's order is handed to the reduction on both paths, never applied
+    /// to the rows this store reads: a group order is a total order over the
+    /// <em>groups</em>, and only the reduction knows which rows a group has. It
+    /// matters here because the read is a reduction face's read — it arrives in
+    /// whatever order T-SQL gave the rows, which under the container's collation
+    /// is neither the plan's order nor the order the rows were written in, so a
     /// group sequence taken from the read is a page of an undefined order
     /// (ADR-0128 §8, the same obligation
     /// <see cref="FeaturePlanFallback.AggregateAsync"/> has).
     /// </para>
+    ///
+    /// <para>
+    /// The pushed statement is the other half of that obligation: T-SQL writes
+    /// the plan's group order as an <c>ORDER BY</c> with the contract's null
+    /// placement, ahead of the <c>OFFSET</c>/<c>FETCH NEXT</c> the group page is
+    /// cut with, so the groups come back in the plan's order rather than in the
+    /// order the server grouped them.
+    /// </para>
     /// </summary>
-    public Task<AggregatePage> AggregateAsync(
+    public async Task<AggregatePage> AggregateAsync(
         string dataset, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(aggregate);
-        return ReduceAsync(
-            dataset,
-            query,
-            selected => FeatureReduction.Aggregate(selected.Schema, selected.Features, aggregate, query.Order),
-            cancellationToken);
+        var name = ParseDataset(dataset);
+        RequireConfigured();
+        ValidateBoundingBox(query.BoundingBox);
+        return await RunStoreOperationAsync(async () =>
+        {
+            var pushed = await new SqlServerPlanReader(_storage, Catalogue).AggregateAsync(name, query, aggregate, cancellationToken);
+            if (pushed is not null)
+            {
+                return pushed;
+            }
+
+            var (schema, selected) = await SelectAsync(name, query, cancellationToken);
+            return FeatureReduction.Aggregate(schema, selected, aggregate, query.Order);
+        });
     }
 
     /// <summary>
@@ -195,17 +245,6 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
         return (schema, pushed ? rows : FeaturePlanExecutor.Select(schema, rows, plan, cancellationToken));
     }
 
-    private Task<TResult> ReduceAsync<TResult>(
-        string dataset, FeatureQuery query, Func<(FeatureSchema Schema, List<Feature> Features), TResult> reduce, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(query);
-        var name = ParseDataset(dataset);
-        RequireConfigured();
-        ValidateBoundingBox(query.BoundingBox);
-        return RunStoreOperationAsync(async () => reduce(await SelectAsync(name, query, cancellationToken)));
-    }
-
-    /// <summary>A plan with only its restriction: a reduction must see every selected row.</summary>
     private static FeatureQuery Restriction(FeatureQuery query) =>
         query with { Projection = null, Order = null, Limit = null, Offset = null, Cursor = null };
 
