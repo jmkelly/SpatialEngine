@@ -106,6 +106,45 @@ heading that is not above `<Version>`).
 
 ### Fixed
 
+- **A DE-9IM pattern naming a dimension was rejected by name, and a pattern
+  with a cell outside the grammar was answered instead of rejected**
+  (ADR-0036, SpatialEngine-imj): the geometry service's `relation` operation
+  told a client's pattern apart from a client's relation *name* by its own
+  reading of the alphabet — `T`, `F`, `*` and `0` — so `1*T***T**`, the
+  line/line overlap pattern the feature query path serves every day, was
+  refused as an unsupported relation. On the engine side, `Relate` passed the
+  pattern straight to NetTopologySuite, which rejects a wrong *length* with a
+  provider message about a length and reads a cell it does not recognise
+  (`X`, `E`, a space) as a constraint that quietly fails, so `T*T***T*X`
+  answered false where the caller plainly meant `T*T***T**`. The grammar is
+  now one type (`Spatial.Core.Geometry.De9imPattern` — nine cells, each `T`,
+  `F`, `0`, `1`, `2` or `*`), read by the verb, which rejects anything else
+  with `invalid.arguments` naming the grammar, and by the boundary, which no
+  longer refuses a legal pattern. The report the bead was opened from — that
+  NetTopologySuite answers a wildcard differently from the exact matrix — did
+  not survive: a sweep of 1.2 million pattern evaluations over 20,449
+  geometry pairs found no disagreement, and a pattern is now answered exactly
+  as the matrix reads, cell by cell, with every served pattern pinned against
+  a hand-computed matrix. The DE-9IM vocabulary gap the same report found
+  beside it — a point on a line relates to nothing the matrix can name, since
+  a point's own boundary is empty — is recorded in ADR-0036 as a documented
+  limit rather than papered over with a `covers`-style verb, which is the
+  negation of the disjoint pattern and is asked by no served relation name.
+
+- **Two of the three line-along-the-edge rows in the DE-9IM fixture table
+  carried a matrix that was not the pair's** (ADR-0036, ADR-0156,
+  SpatialEngine-u2x.60): `SpatialRelationMatrix` writes each row's matrix by
+  hand, and `line-edge` and `line-collinear` both carried `FF2101102` —
+  the row that is right for `line-shifted-collinear`, which is the row it was
+  copied from, and wrong for both of them in a different cell
+  (`FF2101FF2` and `FF21F1102`: the line-edge pair has nothing of the line
+  outside the square, and the collinear pair has no point where the two
+  boundaries meet). Nothing read the column, so both went unnoticed: the
+  verdict columns are what the two Esri surfaces are held to, and every
+  verdict was right. It is read now — the oracle that derives each pair's
+  matrix from nine single-cell questions checks the hand-written column
+  against it, which is the check the table could not do for itself.
+
 - **A SQL Server dataset created by `IDataCatalogue.CreateAsync` had no
   spatial index, so its bounding-box pushdown scanned the table**
   (ADR-0092, ADR-0147, SpatialEngine-9vg): SQL Server builds a spatial index

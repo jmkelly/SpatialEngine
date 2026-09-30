@@ -828,8 +828,19 @@ internal static class GeometryService
     private static bool Matches(string relation, string name) =>
         string.Equals(relation, name, StringComparison.OrdinalIgnoreCase);
 
-    private static bool IsRelationPattern(string value) =>
-        value.Length == 9 && value.All(character => character is 'T' or 'F' or '*' or '0');
+    /// <summary>
+    /// Whether the <c>relation</c> value is a DE-9IM pattern rather than one
+    /// of the served names. The grammar is <see cref="De9imPattern"/>'s —
+    /// read there, not restated here, because a narrower reading rejects a
+    /// legal pattern by name: this used to accept only <c>T</c>, <c>F</c>,
+    /// <c>*</c> and <c>0</c>, so a pattern naming a dimension
+    /// (<c>1*T***T**</c>, the line/line overlap pattern) fell through to the
+    /// unsupported-relation reject below and a client asking the exact
+    /// question the engine can answer was told the engine had no such
+    /// relation (SpatialEngine-imj). A value that is nine characters but not
+    /// a pattern is still not a name, so it takes the same named reject.
+    /// </summary>
+    private static bool IsRelationPattern(string value) => De9imPattern.IsPattern(value);
 
     /// <summary>Unwraps the Shape Comparison Language form <c>RELATE(G1, G2, 'pattern')</c> to its pattern.</summary>
     private static string ParseRelationPattern(string value)

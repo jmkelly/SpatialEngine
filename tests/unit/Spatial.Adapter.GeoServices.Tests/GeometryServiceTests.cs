@@ -1175,6 +1175,52 @@ public sealed class GeometryServiceTests
         Assert.Equal(0, relations[1]);
     }
 
+    /// <summary>
+    /// The reproduction for SpatialEngine-imj: a DE-9IM pattern may name a
+    /// dimension, not only emptiness. The boundary told a pattern apart from
+    /// a relation name by its own narrower reading of the alphabet
+    /// (<c>T</c>, <c>F</c>, <c>*</c>, <c>0</c>), so a pattern such as
+    /// <c>1*T***T**</c> — the line/line overlap pattern the feature query
+    /// path serves — was not a pattern here, fell through to the
+    /// unsupported-relation reject, and a client asking the engine a
+    /// question it answers every day was told the engine had no such
+    /// relation. The grammar is read from one place
+    /// (<see cref="De9imPattern"/>) on both sides of the call now.
+    /// </summary>
+    [Theory]
+    [InlineData("212F11FF2", 1)]
+    [InlineData("1*2F0*1*2", 0)]
+    [InlineData("1*T***T**", 0)]
+    [InlineData("T*****FF*", 1)]
+    public async Task Relation_serves_a_pattern_that_names_a_dimension(string pattern, int expected)
+    {
+        var result = await DispatchAsync("relation",
+            ("geometries", """[{"xmin":0,"ymin":0,"xmax":2,"ymax":2}]"""),
+            ("geometry", """{"xmin":0,"ymin":0,"xmax":1,"ymax":1}"""),
+            ("relation", pattern));
+
+        Assert.Equal(expected, result.GetProperty("relations")[0].GetInt32());
+    }
+
+    /// <summary>
+    /// A malformed pattern is still rejected — by name, as an unsupported
+    /// relation, and not as an unrelated geometry problem: nine characters
+    /// that are not nine cells is not a pattern, and widening the grammar
+    /// must not turn the reject into an answer.
+    /// </summary>
+    [Theory]
+    [InlineData("XXXXXXXXX")]
+    [InlineData("T*T***T")]
+    public async Task Relation_rejects_a_value_that_is_neither_a_name_nor_a_pattern(string relation)
+    {
+        var error = await Assert.ThrowsAsync<EsriInteropException>(() => DispatchAsync("relation",
+            ("geometries", """[{"xmin":0,"ymin":0,"xmax":2,"ymax":2}]"""),
+            ("geometry", """{"xmin":0,"ymin":0,"xmax":1,"ymax":1}"""),
+            ("relation", relation)));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, error.Code);
+    }
+
     [Fact]
     public async Task Densify_subdivides_long_segments()
     {

@@ -135,8 +135,8 @@ internal sealed record RelationVerdicts(
 /// | square (5,5)-(15,15), overlapping | <c>TTTTTTTTT</c> | F | F | F | T | F | T |
 /// | square (0,0)-(4,4), sharing the corner and two edges | <c>TTTFTTFFT</c> | T | F | F | F | F | T |
 /// | square (0,10)-(10,20), sharing only an edge | <c>FFTFTTTTT</c> | F | F | T | F | F | T |
-/// | line (0,0)-(10,0), along the bottom edge | <c>FF2101102</c> | F | F | T | F | F | T |
-/// | line (-5,0)-(15,0), the edge and past both ends | <c>FF2101102</c> | F | F | T | F | F | T |
+/// | line (0,0)-(10,0), along the bottom edge | <c>FF2101FF2</c> | F | F | T | F | F | T |
+/// | line (-5,0)-(15,0), the edge and past both ends | <c>FF21F1102</c> | F | F | T | F | F | T |
 /// | line (5,0)-(20,0), along the edge and past it | <c>FF2101102</c> | F | F | T | F | F | T |
 /// | line (0,5)-(20,5), crossing | <c>TFTTTTTTT</c> | F | F | F | F | T | T |
 /// | line (2,2)-(8,8), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
@@ -146,13 +146,16 @@ internal sealed record RelationVerdicts(
 /// | point (20,20), outside | <c>FFTFFTTFT</c> | F | F | F | F | F | F |
 /// | square (20,20)-(30,30), disjoint | <c>FFTFFTTTT</c> | F | F | F | F | F | F |
 ///
-/// The three line rows whose matrix is <c>FF2101102</c> are the touch rows
-/// the envelope approximation and the single <c>F***T****</c> mask each got
-/// wrong in a different operand order: a line lying along the square's edge
-/// reaches the square's interior-to-query-boundary position, so its interior
-/// meets the query's boundary in dimension one rather than the two boundaries
-/// merely meeting. The Geometry Service pinned none of them, which is the
-/// reproduction for this bead.
+/// The three line rows along the bottom edge are the touch rows the envelope
+/// approximation and the single <c>F***T****</c> mask each got wrong in a
+/// different operand order: a line lying along the square's edge reaches the
+/// square's interior-to-query-boundary position, so its interior meets the
+/// query's boundary in dimension one rather than the two boundaries merely
+/// meeting. The Geometry Service pinned none of them, which is the
+/// reproduction for this bead. Their matrices are three different rows and
+/// only one of them is the row the table used to print for all three —
+/// <see cref="FeatureSpatialRelationTests"/> derives each one from the
+/// geometry and is what caught the two that were not (ADR-0156).
 /// </summary>
 internal static class SpatialRelationMatrix
 {
@@ -191,7 +194,11 @@ internal static class SpatialRelationMatrix
     /// is here because its matrix is one of the ones the table above states;
     /// the fixtures the pairs tables walk but the matrix does not cover
     /// (<c>point-vertex</c>) carry no verdict and are matched against the
-    /// reference implementation's own named predicates instead.
+    /// reference implementation's own named predicates instead. The
+    /// <see cref="De9im"/> column is checked against the derived matrix by
+    /// <c>FeatureSpatialRelationTests</c>, and a non-empty cell may be written
+    /// <c>T</c> rather than its dimension — the column states a row, not a
+    /// matcher (ADR-0156).
     /// </summary>
     public static IReadOnlyDictionary<string, RelationVerdicts> Verdicts { get; } =
         new Dictionary<string, RelationVerdicts>
@@ -201,8 +208,8 @@ internal static class SpatialRelationMatrix
             ["square-overlap"] = new("TTTTTTTTT", Contains: false, Within: false, Touches: false, Overlaps: true, Crosses: false, Intersects: true),
             ["square-corner"] = new("TTTFTTFFT", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
             ["square-above"] = new("FFTFTTTTT", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
-            ["line-edge"] = new("FF2101102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
-            ["line-collinear"] = new("FF2101102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
+            ["line-edge"] = new("FF2101FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
+            ["line-collinear"] = new("FF21F1102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-shifted-collinear"] = new("FF2101102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-crossing"] = new("TFTTTTTTT", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: true, Intersects: true),
             ["line-inside"] = new("TTTFFTFFT", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
