@@ -317,7 +317,10 @@ with pointer). Follow-up tasks must land the red test before the fix.
 ### T9. Silent-ignore audit: `sqlFormat`, `resultType`, `gdbVersion`, `historicMoment`, `datumTransformation`, `returnCentroid`, `distance`/`units`, `relationParam`, `text` (serve)
 
 > Closed for `returnCentroid` and `distance`/`units` (SpatialEngine-u2x.16,
-> ADR-0085): both are served. `text` is recorded as a wider feature (an
+> ADR-0085): both are served. The recorded
+> `?distance=100&units=esriSRUnit_Meter` is served in that spelling too
+> (SpatialEngine-m3q: the `esriSRUnit_*` names resolve onto the same curated
+> codes as the numbers). `text` is recorded as a wider feature (an
 > inverted index, not projection depth) and `gdbVersion`/`historicMoment`
 > likewise (versioned rows); the rest stay rejected by name.
 - Request: each of `…/0/query?sqlFormat=standard`, `?resultType=tile`,

@@ -316,6 +316,14 @@ Ordered by dependency:
   the `hasZ`/`hasM` flags the Esri coordinate arrays need. The layer resource
   advertises `hasZ`/`hasM` too, and only for the ordinates the store declares
   (ADR-0084, recorded in §7.1).
+- Serving status update (SpatialEngine-m3q): the unit parameter takes either
+  spelling a client sends — the numeric `esriSRUnitType` code (`units=9001`)
+  or the `esriSRUnit_*` symbolic name (`units=esriSRUnit_Meter`, the form the
+  REST JS allowlist research records in T9). The name resolves to the same
+  curated code, so the query `units` and the Geometry Service `unit` are
+  unchanged for a numeric client and stop being a typed `invalid.arguments`
+  for a symbolic one. Only the names of the curated codes are mapped; an
+  unknown name is a named failure whose message lists both spellings.
 - Serving status update: the layer resource advertises
   `supportsQuantization` (top level, where the ArcGIS REST JS gate reads it,
   and inside `advancedQueryCapabilities`) and

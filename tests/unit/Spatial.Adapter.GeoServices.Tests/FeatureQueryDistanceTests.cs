@@ -145,6 +145,37 @@ public sealed class FeatureQueryDistanceTests
         Assert.Contains("curated unit table", error.Message);
     }
 
+    [Theory]
+    // The REST JS allowlist research (conformance-sources.md T9) records a
+    // real request as `units=esriSRUnit_Meter`; it must measure the same
+    // band as the code it names, not fail the parse.
+    [InlineData("esriSRUnit_Meter", "9001", "250", 3)]
+    [InlineData("esriSRUnit_Kilometer", "9036", "0.25", 3)]
+    [InlineData("esriSRUnit_Mile_US", "9035", "0.0002", 1)]
+    public async Task A_symbolic_unit_name_measures_the_same_band_as_its_code(string units, string code, string distance, int expected)
+    {
+        var named = await ParseAsync(("geometry", "0,0"), ("distance", distance), ("units", units));
+        var numeric = await ParseAsync(("geometry", "0,0"), ("distance", distance), ("units", code));
+
+        var names = (await MatchAsync(named, Layer())).Select(match => match.Feature.Id.Value).ToArray();
+
+        Assert.Equal(expected, names.Length);
+        Assert.Equal(
+            (await MatchAsync(numeric, Layer())).Select(match => match.Feature.Id.Value).ToArray(),
+            names);
+    }
+
+    [Fact]
+    public async Task An_unknown_symbolic_unit_name_is_a_named_failure()
+    {
+        var error = await Assert.ThrowsAsync<EsriInteropException>(
+            () => ParseAsync(("geometry", "0,0"), ("distance", "1"), ("units", "esriSRUnit_Furlong")));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, error.Code);
+        Assert.Contains("'units' must be a numeric esriSRUnitType code or an esriSRUnit_* name", error.Message);
+        Assert.Contains("esriSRUnit_Meter", error.Message);
+    }
+
     [Fact]
     public async Task A_linear_unit_on_a_geographic_layer_names_the_reason()
     {
