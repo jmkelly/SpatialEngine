@@ -353,14 +353,36 @@ internal static class SqlServerQueries
     /// row per attachment with <c>varbinary(max)</c> content, keyed by dataset,
     /// feature identity and the per-feature attachment id. The table is a fixed
     /// provider-owned identifier, so every value the caller supplies stays a
-    /// bound parameter.
+    /// bound parameter. Its two identity columns declare the byte order the
+    /// contract compares them in, because this is the store's own table and
+    /// this is the one place that declaration has a consumer (ADR-0130).
     /// </summary>
     public static string EnsureAttachmentTable() =>
         "IF OBJECT_ID(N'spatial_attachments', N'U') IS NULL CREATE TABLE spatial_attachments "
-        + "(dataset nvarchar(300) NOT NULL, feature_id nvarchar(300) NOT NULL, attachment_id bigint NOT NULL, "
+        + "(dataset nvarchar(300) COLLATE Latin1_General_100_BIN2 NOT NULL, "
+        + "feature_id nvarchar(300) COLLATE Latin1_General_100_BIN2 NOT NULL, attachment_id bigint NOT NULL, "
         + "name nvarchar(200) NOT NULL, content_type nvarchar(100) NOT NULL, size_bytes bigint NOT NULL, "
         + "keywords nvarchar(400) NULL, content varbinary(max) NOT NULL, "
         + "PRIMARY KEY (dataset, feature_id, attachment_id))";
+
+    /// <summary>
+    /// Brings a sidecar created by an earlier version forward (ADR-0130):
+    /// <c>IF OBJECT_ID ... IS NULL CREATE TABLE</c> will not re-declare a table
+    /// that already exists, so a sidecar whose identity columns carry the
+    /// database's case-insensitive collation is re-declared here under
+    /// <see cref="SqlServerPredicateSql.ByteOrderCollation"/>. The step is
+    /// guarded by each column's own recorded collation, so it is a catalog
+    /// read and nothing more once the table carries the declaration.
+    /// </summary>
+    public static string RecollateAttachmentIdentity() =>
+        "IF OBJECT_ID(N'spatial_attachments', N'U') IS NOT NULL BEGIN "
+        + "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
+        + $"AND name = N'dataset' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}') "
+        + $"ALTER TABLE spatial_attachments ALTER COLUMN dataset nvarchar(300) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL; "
+        + "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'spatial_attachments') "
+        + $"AND name = N'feature_id' AND collation_name <> N'{SqlServerPredicateSql.ByteOrderCollation}') "
+        + $"ALTER TABLE spatial_attachments ALTER COLUMN feature_id nvarchar(300) COLLATE {SqlServerPredicateSql.ByteOrderCollation} NOT NULL; "
+        + "END";
 
     /// <summary>Reads the per-feature attachment high-water mark (the next id is one past it, starting at one).</summary>
     public static string MaxAttachmentId() =>

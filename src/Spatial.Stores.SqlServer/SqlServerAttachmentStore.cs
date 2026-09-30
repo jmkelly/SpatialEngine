@@ -15,7 +15,10 @@ namespace Spatial.Stores.SqlServer;
 /// provider-owned <c>spatial_attachments</c> sidecar table — one row per
 /// attachment with <c>varbinary(max)</c> content, keyed by dataset, feature
 /// identity and the per-feature attachment id starting at one — so blobs
-/// survive restarts alongside their datasets. Every statement is built in
+/// survive restarts alongside their datasets. That table's two identity
+/// columns are declared under a byte-order collation and a sidecar an earlier
+/// version created is re-collated on the way in, so an attachment belongs to
+/// the feature it was stored against and no other (ADR-0130). Every statement is built in
 /// <see cref="SqlServerQueries"/> from fixed identifiers and bound parameters;
 /// SqlClient types never cross the contract, which carries only core and BCL
 /// types.
@@ -213,6 +216,8 @@ public sealed class SqlServerAttachmentStore : IFeatureAttachmentStore
         await using var connection = await _store.OpenIngestConnectionAsync(cancellationToken);
         await SqlServerDataStore.ExecuteNonQueryAsync(
             connection, SqlServerQueries.EnsureAttachmentTable(), [], cancellationToken);
+        await SqlServerDataStore.ExecuteNonQueryAsync(
+            connection, SqlServerQueries.RecollateAttachmentIdentity(), [], cancellationToken);
     }
 
     private async Task<DatasetDescription> RequireAttachmentDatasetAsync(

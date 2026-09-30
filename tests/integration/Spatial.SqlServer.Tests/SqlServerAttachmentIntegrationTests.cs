@@ -1,7 +1,9 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Geometry;
 using Spatial.Stores.SqlServer;
+
 namespace Spatial.SqlServer.Tests;
 
 /// <summary>
@@ -14,6 +16,8 @@ namespace Spatial.SqlServer.Tests;
 public sealed class SqlServerAttachmentIntegrationTests : IClassFixture<SqlServerContainerFixture>
 {
     private const string Target = "dbo.attach_target";
+
+    private const string FoldTarget = "dbo.attach_ci";
 
     private readonly SqlServerContainerFixture _fixture;
 
@@ -224,6 +228,104 @@ public sealed class SqlServerAttachmentIntegrationTests : IClassFixture<SqlServe
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             context.Attachments.DeleteAsync(Target, new FeatureId("1"), [1], cancellation.Token));
     }
+
+    [SkippableFact]
+    public async Task An_attachment_of_delta_is_not_listed_or_deleted_for_Delta()
+    {
+        // The sidecar's own identity columns are the store's, and the contract
+        // compares them by bytes: an attachment that belongs to `delta` is not
+        // the attachment of `Delta` (ADR-0130). The database this container
+        // carries is the case-insensitive one SQL Server ships, so every one of
+        // these statements folds unless the sidecar says otherwise.
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = await FoldSeededAsync();
+        var added = await context.Attachments.AddAsync(
+            FoldTarget, new FeatureId("delta"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
+
+        Assert.Empty(await context.Attachments.ListAsync(FoldTarget, new FeatureId("Delta")));
+
+        var fetched = await Assert.ThrowsAsync<SpatialException>(() =>
+            context.Attachments.GetAsync(FoldTarget, new FeatureId("Delta"), added.Id));
+        Assert.Equal(SpatialException.NotFound, fetched.Code);
+
+        var outcomes = await context.Attachments.DeleteAsync(FoldTarget, new FeatureId("Delta"), [added.Id]);
+        Assert.False(Assert.Single(outcomes).Succeeded);
+
+        // The attachment of `delta` is untouched, and `Delta` starts from one:
+        // the next-id probe answered for the feature it was asked about.
+        Assert.Equal([added], await context.Attachments.ListAsync(FoldTarget, new FeatureId("delta")));
+        Assert.Equal(
+            1,
+            (await context.Attachments.AddAsync(
+                FoldTarget,
+                new FeatureId("Delta"),
+                new FeatureAttachmentWrite("b.bin", "application/octet-stream", [2]))).Id);
+    }
+
+    [SkippableFact]
+    public async Task A_sidecar_created_by_an_earlier_version_is_brought_forward()
+    {
+        // A sidecar that already exists is the half of the problem:
+        // `IF OBJECT_ID ... IS NULL CREATE TABLE` will not re-declare it, so a
+        // store that only fixed its create statement would leave a
+        // case-folding sidecar folding (ADR-0130).
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = await FoldSeededAsync();
+        await context.ExecuteAsync(
+            "IF OBJECT_ID('spatial_attachments', 'U') IS NOT NULL DROP TABLE spatial_attachments; "
+            + "CREATE TABLE spatial_attachments (dataset nvarchar(300) NOT NULL, feature_id nvarchar(300) NOT NULL, "
+            + "attachment_id bigint NOT NULL, name nvarchar(200) NOT NULL, content_type nvarchar(100) NOT NULL, "
+            + "size_bytes bigint NOT NULL, keywords nvarchar(400) NULL, content varbinary(max) NOT NULL, "
+            + "PRIMARY KEY (dataset, feature_id, attachment_id))");
+        var added = await context.Attachments.AddAsync(
+            FoldTarget, new FeatureId("delta"), new FeatureAttachmentWrite("a.bin", "application/octet-stream", [1]));
+
+        // The fold is gone from the table itself, not just from this statement.
+        Assert.Equal(0, await context.CountAsync(
+            "SELECT count(*) FROM sys.columns WHERE object_id = OBJECT_ID('spatial_attachments') "
+            + "AND name IN ('dataset', 'feature_id') AND collation_name <> 'Latin1_General_100_BIN2'"));
+        Assert.Empty(await context.Attachments.ListAsync(FoldTarget, new FeatureId("Delta")));
+        Assert.Equal([added], await context.Attachments.ListAsync(FoldTarget, new FeatureId("delta")));
+    }
+
+    /// <summary>
+    /// A dataset whose key column holds both cases — the escape hatch ADR-0126
+    /// §3 named — and an empty attachment sidecar, so ids begin at one.
+    /// </summary>
+    private async Task<SqlServerTestContext> FoldSeededAsync()
+    {
+        var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        try
+        {
+            await context.ExecuteAsync($"IF OBJECT_ID('{FoldTarget}', 'U') IS NOT NULL DROP TABLE {FoldTarget}");
+            await context.ExecuteAsync(
+                $"CREATE TABLE {FoldTarget} ([code] nvarchar(64) COLLATE Latin1_General_100_BIN2 NOT NULL PRIMARY KEY, "
+                + "[geometry] geometry NULL)");
+            await context.Store.WriteAsync(FoldTarget, new FeatureBatch(FoldSchema, [FoldFeature("delta"), FoldFeature("Delta")]));
+            await context.ExecuteAsync("IF OBJECT_ID('spatial_attachments', 'U') IS NOT NULL DROP TABLE spatial_attachments");
+            return context;
+        }
+        catch
+        {
+            await context.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static readonly FeatureSchema FoldSchema = new(
+    [
+        new FieldDefinition("code", AttributeKind.String, nullable: false),
+        new FieldDefinition("geometry", AttributeKind.Geometry, nullable: true),
+    ]);
+
+    private static Feature FoldFeature(string code) =>
+        new(
+            new FeatureId(code),
+            FoldSchema,
+            [
+                AttributeValue.FromString(code),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(1, 2, CoordinateReference.Epsg(4326))),
+            ]);
 
     /// <summary>
     /// A seeded target dataset and an empty attachment sidecar, so each test
