@@ -56,6 +56,9 @@ ARCHITECTURE = verify_scope.ARCHITECTURE_PROJECT
 #: check in every plan, which is the cheaper of the two repo-wide steps
 #: (ADR-0143) and is first for the same reason.
 DOC_GATE = "python3 tools/arch-index.py --check"
+# The conflict-marker check: every lane calls it directly rather than finding
+# it through the tools/**-only tooling suite, which is the hole ADR-0146 closes.
+CONFLICT_MARKER_GATE = "python3 tools/conflict_markers.py"
 
 #: A real project in this repository, and the test suites that reach it.
 CORE_PROJECT = "src/Spatial.Core/Spatial.Core.csproj"
@@ -589,6 +592,7 @@ class ScriptLaneTests(unittest.TestCase):
         """
         self.assertEqual(self.plan(), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
@@ -641,6 +645,7 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan(), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs "
             "tools/seed/fetch.py",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
@@ -653,6 +658,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_the_format_lane_is_scoped_to_the_changed_projects(self):
         self.assertEqual(self.plan("--format"), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
@@ -666,6 +672,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_the_full_lane_is_the_old_flat_gate(self):
         self.assertEqual(self.plan("--full"), [
             "python3 tools/trailing_whitespace.py",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
@@ -695,6 +702,7 @@ class ScriptLaneTests(unittest.TestCase):
         """
         self.assertEqual(self.plan(ci="true"), [
             "python3 tools/trailing_whitespace.py",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
@@ -709,6 +717,7 @@ class ScriptLaneTests(unittest.TestCase):
         """The split CI jobs each own half of --full, so --format stays --format."""
         self.assertEqual(self.plan("--format", ci="true"), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
@@ -723,6 +732,7 @@ class ScriptLaneTests(unittest.TestCase):
         """A scoping failure costs time; a silent under-run costs a defect."""
         self.assertEqual(self.plan(base="origin/does-not-exist"), [
             "python3 tools/trailing_whitespace.py",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -734,6 +744,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_an_unresolvable_base_falls_back_to_the_whole_formatter(self):
         self.assertEqual(self.plan("--format", base="origin/does-not-exist"), [
             "python3 tools/trailing_whitespace.py",
+            CONFLICT_MARKER_GATE,
             DOC_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
         ])

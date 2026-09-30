@@ -47,7 +47,11 @@ interop surface.
 - `eng/verify.sh --plan` prints what a lane would run and runs nothing.
   Every lane starts with `tools/trailing_whitespace.py`, because `dotnet
   format` does not enforce the `trim_trailing_whitespace` the `.editorconfig`
-  claims for `[*]` on a comment-only line (ADR-0143).
+  claims for `[*]` on a comment-only line (ADR-0143), and with
+  `tools/conflict_markers.py`, which reads every tracked file for an
+  unresolved merge-conflict marker — a rule that was a `tools/test_*.py` and so
+  ran only on a change set that touched `tools/**`, which is how a marker
+  reached `CHANGELOG.md` on main through a docs merge (ADR-0146).
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
   Every lane that runs `dotnet test` also fails a suite that skipped most of

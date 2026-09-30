@@ -72,6 +72,15 @@ jobs:
       - name: Trailing whitespace
         run: python3 tools/trailing_whitespace.py
 
+      # The rule used to be a `tools/test_*.py`, which only ran when the change
+      # set touched `tools/**`, so the fast merge gate never read it and a
+      # `<<<<<<< HEAD` line reached `CHANGELOG.md` on main through a docs merge
+      # (SpatialEngine-u2x.37). The lanes call `tools/conflict_markers.py`
+      # directly (ADR-0146); this job spells its steps out rather than calling
+      # the script, so it carries the step too.
+      - name: Conflict markers
+        run: python3 tools/conflict_markers.py
+
       - name: Build
         run: dotnet build SpatialEngine.slnx
 

@@ -288,7 +288,12 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    Every lane starts with `tools/trailing_whitespace.py` — a check, not a
    formatter, and there because `dotnet format` does not enforce the
    `trim_trailing_whitespace` the `.editorconfig` claims for `[*]` on a
-   comment-only line (ADR-0143).
+   comment-only line (ADR-0143), and with `tools/conflict_markers.py`, which
+   reads every tracked file for an unresolved merge-conflict marker (ADR-0146).
+   Both are checks the lanes call directly rather than tests a tooling lane
+   happens to discover — a rule that runs only when `tools/**` changed is not a
+   gate, which is how a `<<<<<<< HEAD` line reached `CHANGELOG.md` on main
+   through a docs merge the fast gate passed.
    `CI=true` with no lane named runs `--full`, so a workflow that calls the
    bare script gets the gate rather than the scoped lane.
 7. A suite that fails for a reason unrelated to your change: prove it was
