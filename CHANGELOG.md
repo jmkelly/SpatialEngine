@@ -72,6 +72,27 @@ this file together, then tag the release (`RELEASING.md`).
 
 ### Changed
 
+- **A paged read on SQL Server is a page, not a materialisation** (ADR-0124,
+  SpatialEngine-u2x.42): the provider pushed the restriction and then finished
+  the plan with the reference executor over every selected row, so an ordered,
+  capped plan over a large layer built all 200 000 features to answer with
+  1 000. It is now one statement — `ORDER BY … OFFSET n ROWS FETCH NEXT m ROWS
+  ONLY` — with the `COUNT(*)` that says whether more remains and the store's
+  own cursor. Writing the order into T-SQL meant writing the contract's two
+  ordering rules into it, because T-SQL states both the other way round: nulls
+  sort as the lowest value there is, so every term leads with a null-placement
+  key, and a text key inherits a case-insensitive locale collation, so every
+  text term is read under `Latin1_General_100_BIN2` (unless the database
+  already compares by code point, which the store probes once and caches) and
+  through a conversion, because a `text` column cannot be sorted at all. The
+  identity tie-break is the feature id *string*, rendered the way the store
+  renders it, so tied rows break the way the reference breaks them. Plans whose
+  order T-SQL cannot make total — no primary key, an identity this dialect
+  renders differently, or a composite order the shared reference does not yet
+  apply key by key — are still read whole and finished in process, and the SQL
+  Server provider now runs the shared conformance suite over a table that
+  carries one, which is the case that measures the pushdown at all.
+
 - **A stored feature's identity is the identity column's value** (ADR-0119,
   SpatialEngine-u2x.38): a GeoJSON ingested with
   `identity=source&identityField=id` now stores each row under the value of the

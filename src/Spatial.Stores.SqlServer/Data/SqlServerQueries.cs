@@ -258,6 +258,17 @@ internal static class SqlServerQueries
             + $"(SELECT TOP 1 {property}.STGeometryType() FROM {source}) AS geometry_type";
     }
 
+    /// <summary>
+    /// The collation this database's columns compare text under (ADR-0121,
+    /// ADR-0124): the default collation of the connected database, which is
+    /// what a <c>varchar</c>/<c>nvarchar</c> column carries unless it declares
+    /// its own. It is a property of the database rather than of a query, so the
+    /// store reads it once and writes a collation term into a pushed sort key
+    /// only when the database is not already a code-point comparison.
+    /// </summary>
+    public static string DatabaseCollation() =>
+        "SELECT CONVERT(nvarchar(128), DATABASEPROPERTYEX(DB_NAME(), 'Collation'))";
+
     /// <summary>Lists every spatial table (schema, table, its first spatial column, row estimate).</summary>
     public static string Catalogue(string? pattern)
     {

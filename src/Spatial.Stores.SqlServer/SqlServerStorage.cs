@@ -16,7 +16,18 @@ internal sealed class SqlServerStorage : IAsyncDisposable
 {
     private readonly Lazy<SqlServerDataStore> _data;
     private readonly SqlServerTransactions _transactions;
+    private readonly SemaphoreSlim _collationGate = new(1, 1);
     private readonly bool _createIndexes;
+
+    /// <summary>
+    /// The database's own collation, read once (ADR-0121, ADR-0124). A
+    /// <c>varchar</c>/<c>nvarchar</c> column carries it, so a pushed-down sort
+    /// key over one has to correct for it, and a property of the database is
+    /// read once rather than per query. Held as the value itself so a cancelled
+    /// or failed probe is retried rather than cached, and marked
+    /// <c>volatile</c> so a reader on another thread sees a published value.
+    /// </summary>
+    private volatile string? _databaseCollation;
 
     public SqlServerStorage(SqlServerConnectionConfiguration configuration, bool createIndexes = true)
     {
@@ -38,6 +49,58 @@ internal sealed class SqlServerStorage : IAsyncDisposable
     public Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken) =>
         _data.Value.OpenConnectionAsync(cancellationToken);
 
+    /// <summary>
+    /// The collation this database compares text under, or <c>null</c> when it
+    /// has none to report — in which case the caller treats the database as a
+    /// locale collation and says so in the <c>ORDER BY</c>, which is the
+    /// direction that costs a planner step rather than the answer (ADR-0121
+    /// §2). A probe that fails answers the same way: an unread collation is
+    /// never treated as a byte order, and a failure caches nothing, so the next
+    /// caller asks again.
+    /// </summary>
+    public async Task<string?> DatabaseCollationAsync(CancellationToken cancellationToken)
+    {
+        if (_databaseCollation is { } known)
+        {
+            return known;
+        }
+
+        await _collationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_databaseCollation is null)
+            {
+                _databaseCollation = await ProbeCollationAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            return _databaseCollation;
+        }
+        finally
+        {
+            _collationGate.Release();
+        }
+    }
+
+    private async Task<string?> ProbeCollationAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var connection = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            var rows = await SqlServerDataStore
+                .ReadRowsAsync(connection, SqlServerQueries.DatabaseCollation(), [], cancellationToken)
+                .ConfigureAwait(false);
+            return rows.Count == 0 ? null : (string?)rows[0][0];
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _transactions.DisposeAsync();
@@ -45,5 +108,7 @@ internal sealed class SqlServerStorage : IAsyncDisposable
         {
             _data.Value.Dispose();
         }
+
+        _collationGate.Dispose();
     }
 }
