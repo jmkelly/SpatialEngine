@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**135 records on disk.** `status` is the record's own word;
+**136 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -150,6 +150,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md) | The register is generated wholesale, and a hand-enriched row survives in the record | accepted | 2026-10-01 | ADR-0141 |
 | [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md) | the conflict-marker rule is a check every lane runs, not a test `tools/**` happens to run | accepted | 2026-09-30 | ADR-0134, ADR-0143 |
 | [0147](ADR-0147-a-created-dataset-is-clustered-on-a-key-the-engine-owns.md) | A created dataset is clustered on a key the engine owns | accepted | 2026-10-01 | ADR-0092 |
+| [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md) | The repository root carries no in-flight state, and the changelog is a release artefact | accepted | 2026-10-01 | ADR-0118, ADR-0134 |
 | [0149](ADR-0149-every-ingested-dataset-is-keyed.md) | Every ingested dataset is keyed | accepted | 2026-10-01 | ADR-0041, ADR-0140 |
 
 ## Superseded, by superseder

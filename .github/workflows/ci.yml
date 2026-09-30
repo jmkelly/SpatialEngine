@@ -81,6 +81,15 @@ jobs:
       - name: Conflict markers
         run: python3 tools/conflict_markers.py
 
+      # The root of the repository is the first thing every agent's file listing
+      # has to reason past, and a `HANDOFF.md` and a 1384-line `CHANGELOG.md`
+      # sat there for a month and a half (ADR-0148). The changelog is a release
+      # artefact at `docs/CHANGELOG.md` and in-flight state is the bead queue, so
+      # the lanes call this check directly rather than leaving it to the tooling
+      # suite, which only runs when the change set touches `tools/**`.
+      - name: Doc surface
+        run: python3 tools/doc_surface.py
+
       - name: Build
         run: dotnet build SpatialEngine.slnx
 
