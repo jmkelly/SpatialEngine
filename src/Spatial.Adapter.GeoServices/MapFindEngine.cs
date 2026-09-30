@@ -15,12 +15,14 @@ namespace Spatial.Adapter.GeoServices;
 ///
 /// <para>
 /// The search is narrowed by the store where the plan can narrow it soundly —
-/// a row can only match when a searched field carries a value — and the
-/// case-insensitive comparison of the text against that value stays here
-/// (ADR-0112). The text itself is not pushed: the vocabulary's only text
-/// comparison is <c>LIKE</c>, which is case-sensitive on some back ends and
-/// not on others, so a pushed pattern would drop rows this search has to
-/// match.
+/// the text itself, as a folded pattern per searched field, because the
+/// vocabulary's case-folding text comparison states the same case behaviour on
+/// every back end (ADR-0132) — while the case-insensitive comparison of the
+/// text against the values stays here and decides each row (ADR-0112). A search
+/// text outside the ASCII alphabet the comparison folds keeps the older
+/// restriction (a searched field is not null), because the served search folds
+/// case in Unicode and a plan whose fold is narrower than the search's would
+/// drop rows this search has to match.
 /// </para>
 /// </summary>
 internal static class MapFindEngine
@@ -70,7 +72,7 @@ internal static class MapFindEngine
             }
 
             var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Dataset.Srid);
-            var plan = MapMatchPushdown.Search(fields);
+            var plan = MapMatchPushdown.Search(fields, searchText, contains);
             var batches = (await store.QueryAsync(layer.Layer.Dataset, plan, cancellationToken)).Batches;
             foreach (var feature in batches.SelectMany(batch => batch.Features))
             {

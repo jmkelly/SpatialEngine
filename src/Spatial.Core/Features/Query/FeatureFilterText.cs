@@ -17,9 +17,17 @@ namespace Spatial.Core.Features.Query;
 /// and         := term (AND term)*
 /// term        := '(' or ')' | test
 /// test        := field op value | field IS [NOT] NULL | field [NOT] IN '(' value (',' value)* ')'
-/// op          := = != &lt;&gt; &lt; &lt;= &gt; &gt;= LIKE
+/// op          := = != &lt;&gt; &lt; &lt;= &gt; &gt;= LIKE | ILIKE
 /// value       := string | number | TRUE | FALSE | NULL | TIMESTAMP '…'
 /// </code>
+///
+/// <para>
+/// <c>ILIKE</c> is the vocabulary's case-folding text comparison (ADR-0132): the
+/// same whole-value pattern test as <c>LIKE</c>, over values and patterns
+/// folded with the ASCII alphabet. It is spelled here rather than inherited from
+/// a server's own case folding, so a pushed filter's answer does not depend on
+/// the collation the store's database was created with.
+/// </para>
 ///
 /// The grammar is deliberately tiny and closed: an unknown field is rejected
 /// later by the store's schema resolution, and every literal becomes a bound
@@ -155,6 +163,7 @@ public static class FeatureFilterText
             "NOT" => TokenKind.Not,
             "NULL" => TokenKind.Null,
             "LIKE" => TokenKind.Like,
+            "ILIKE" => TokenKind.LikeFolded,
             "TRUE" => TokenKind.True,
             "FALSE" => TokenKind.False,
             "IN" => TokenKind.In,
@@ -522,6 +531,7 @@ public static class FeatureFilterText
                 TokenKind.GreaterThan => ComparisonOperator.GreaterThan,
                 TokenKind.GreaterOrEqual => ComparisonOperator.GreaterOrEqual,
                 TokenKind.Like => ComparisonOperator.Like,
+                TokenKind.LikeFolded => ComparisonOperator.LikeFolded,
                 _ => (ComparisonOperator)(-1),
             };
             if ((int)comparison < 0)
@@ -618,6 +628,7 @@ public static class FeatureFilterText
         Not,
         Null,
         Like,
+        LikeFolded,
         In,
         True,
         False,

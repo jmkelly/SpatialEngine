@@ -2,6 +2,7 @@ using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.Esri.Codec;
+using Spatial.Querying;
 
 namespace Spatial.Adapter.GeoServices;
 
@@ -142,10 +143,21 @@ internal static class EsriPredicateEvaluator
     private static bool Compare(IFeature feature, Predicate.Compare compare, EsriFieldOverlay? overlay)
     {
         var value = Value(feature, compare.Field, overlay);
-        return !value.IsNull
-            && (compare.Operator == ComparisonOperator.Like
-                ? Like(value, compare.Value)
-                : Test(value, compare.Operator, compare.Value));
+        if (value.IsNull)
+        {
+            return false;
+        }
+
+        return compare.Operator switch
+        {
+            ComparisonOperator.Like => Like(value, compare.Value),
+            // The same fold the reference evaluator applies, reached through it
+            // rather than written again here: a second fold would be a second
+            // definition of the vocabulary's one case-folding comparison
+            // (ADR-0132).
+            ComparisonOperator.LikeFolded => Folded(value, compare.Value),
+            _ => Test(value, compare.Operator, compare.Value),
+        };
     }
 
     private static bool Like(AttributeValue value, Literal literal)
@@ -157,6 +169,11 @@ internal static class EsriPredicateEvaluator
 
         return EsriLikePattern.IsMatch(value.StringValue, literal.Text ?? string.Empty);
     }
+
+    private static bool Folded(AttributeValue value, Literal literal) =>
+        value.Kind == AttributeKind.String
+        && literal.Kind == LiteralKind.String
+        && ReferencePredicate.FoldedLike(value.StringValue, literal.Text ?? string.Empty);
 
     /// <summary>
     /// Compares an attribute value against a literal. A null literal and a

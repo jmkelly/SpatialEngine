@@ -23,6 +23,10 @@ namespace Spatial.Querying;
 /// <item>a literal of another kind never matches, rather than coercing;</item>
 /// <item><c>LIKE</c> is a whole-value pattern match where <c>%</c> is any
 /// run and <c>_</c> is one character.</item>
+/// <item><c>ILIKE</c> is the same whole-value pattern match with the value and
+/// the pattern folded over the ASCII alphabet first, and nothing else folded
+/// (ADR-0132) — the one text comparison whose case behaviour a pushed-down plan
+/// can state rather than inherit.</item>
 /// </list>
 /// <para>
 /// It is implementation code, never Core: evaluation is an implementation
@@ -40,6 +44,36 @@ public static class ReferencePredicate
 
     /// <summary>Whether the predicate holds for the feature; an unknown field is a typed invalid-argument failure.</summary>
     public static bool Matches(Predicate predicate, IFeature feature) => Evaluate(predicate, feature);
+
+    /// <summary>
+    /// Whether <paramref name="value"/> matches the case-folded
+    /// <paramref name="pattern"/>, the semantics of the vocabulary's folded text
+    /// comparison (ADR-0132). It is public because the facade's per-feature
+    /// evaluator is the same semantics written over the facade's field overlay,
+    /// and a second fold is a second definition.
+    /// </summary>
+    public static bool FoldedLike(string value, string pattern) =>
+        LikePattern.IsMatch(Fold(value), Fold(pattern));
+
+    /// <summary>
+    /// The fold: <c>A</c>–<c>Z</c> to <c>a</c>–<c>z</c>, and every other
+    /// character left exactly as it is. It is the ASCII alphabet and not
+    /// <c>ToLowerInvariant</c>'s Unicode simple case folding because it has to be
+    /// the one fold every provider states identically: a server's own case
+    /// folding is a locale's, a locale differs between deployments, and a
+    /// pushdown that answers differently on two deployments of the same
+    /// database is a pushdown that is not result-preserving (ADR-0074 §4).
+    /// </summary>
+    private static string Fold(string text)
+    {
+        var builder = new StringBuilder(text.Length);
+        foreach (var character in text)
+        {
+            builder.Append(character is >= 'A' and <= 'Z' ? (char)(character + ('a' - 'A')) : character);
+        }
+
+        return builder.ToString();
+    }
 
     private static bool Evaluate(Predicate predicate, IFeature feature) => predicate switch
     {
@@ -79,6 +113,13 @@ public static class ReferencePredicate
             return value.Kind == AttributeKind.String
                 && compare.Value.Kind == LiteralKind.String
                 && LikePattern.IsMatch(value.StringValue, compare.Value.Text!);
+        }
+
+        if (compare.Operator == ComparisonOperator.LikeFolded)
+        {
+            return value.Kind == AttributeKind.String
+                && compare.Value.Kind == LiteralKind.String
+                && FoldedLike(value.StringValue, compare.Value.Text!);
         }
 
         return Apply(value, compare.Operator, compare.Value);

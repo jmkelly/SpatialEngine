@@ -132,10 +132,15 @@ internal static class ArcGisRestMapper
     /// The remote <c>where</c> for a query plan's predicate (ADR-0074): the
     /// plan is rendered back into the remote service's own where syntax, so
     /// the filter is pushed to ArcGIS rather than applied to the pages the
-    /// service returns. A plan with no predicate asks for everything.
+    /// service returns. A plan with no predicate — and a plan none of whose
+    /// terms the Esri grammar has an operator for (ADR-0132) — asks the remote
+    /// for everything, and the reference executor finishes the plan over what
+    /// came back.
     /// </summary>
     public static string? RenderWhere(Spatial.Core.Features.Query.Predicate? where) =>
-        where is null ? null : EsriWhereText.Render(where);
+        where is null || EsriWhereText.Statable(where) is not { } statable
+            ? null
+            : EsriWhereText.Render(statable);
 
     public static string EnvelopeSpatialReference(int srid) =>
         WkidMap.TryFromEpsg(srid, out var wkid)

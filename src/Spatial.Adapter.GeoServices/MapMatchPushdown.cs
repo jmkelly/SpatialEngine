@@ -41,16 +41,18 @@ namespace Spatial.Adapter.GeoServices;
 ///     <c>layerDefs</c> and <c>dynamicLayers</c> paths exactly as they were.
 ///   </item>
 ///   <item>
-///     Find pushes the one restriction its vocabulary can state soundly: a row
-///     can only match when at least one of the searched string fields carries
-///     a value, so the plan is that disjunction of null tests. The text itself
-///     is deliberately <em>not</em> pushed. The predicate vocabulary's only
-///     text comparison is <c>LIKE</c>, and <c>LIKE</c> is case-sensitive on
-///     some back ends and case-insensitive on others while the served search
-///     is case-insensitive on all of them — so a pushed <c>LIKE</c> would drop
-///     rows the adapter has to match (a subset, where a pushdown has to be a
-///     superset), and the answer would depend on the store's collation. The
-///     adapter's own case-insensitive match stays the answer.
+///     Find pushes the search text itself, as one folded pattern per searched
+///     string field (ADR-0132): <c>%text%</c> for a contains search and
+///     <c>text%</c> for a startsWith one, over the vocabulary's case-folding
+///     text comparison — the one text comparison whose case behaviour every
+///     back end states the same way, so the plan is a restriction rather than
+///     an approximation of one. It used to be able to push only "a searched
+///     field is not null", because the vocabulary's <c>LIKE</c> is
+///     case-sensitive on some back ends and case-insensitive on others while
+///     the served search is case-insensitive on all of them, so a pushed
+///     <c>LIKE</c> would have dropped rows the adapter has to match (a subset,
+///     where a pushdown has to be a superset). The adapter's own
+///     case-insensitive match stays the answer.
 ///   </item>
 /// </list>
 /// </para>
@@ -74,17 +76,55 @@ internal static class MapMatchPushdown
             : null;
 
     /// <summary>
-    /// The plan the find search becomes: at least one of the searched string
-    /// fields must carry a value. That is the widest restriction the plan can
-    /// state without changing the answer — the adapter's match reads a value
-    /// out of one of those fields and skips a row that has none — and the
-    /// adapter's case-insensitive comparison of the text against that value is
-    /// what decides the row.
+    /// The plan the find search becomes: one folded pattern per searched string
+    /// field, so a row can only match when the text is in one of those fields.
+    /// The adapter's case-insensitive comparison of the text against that value
+    /// is still what decides the row — the plan is a pre-filter, never the
+    /// answer.
     /// </summary>
     /// <param name="fields">The string fields the search reads, in schema order.</param>
-    public static FeatureQuery Search(IReadOnlyList<string> fields) =>
-        new(Where: new Predicate.Some(
-            [.. fields.Select(field => new Predicate.IsNull(new FieldRef(field), Negated: true))]));
+    /// <param name="searchText">The text the request searches for.</param>
+    /// <param name="contains">Whether the search contains the text or starts with it.</param>
+    public static FeatureQuery Search(IReadOnlyList<string> fields, string searchText, bool contains)
+    {
+        var pattern = Pattern(searchText, contains);
+        if (pattern is null)
+        {
+            // The served search folds case in Unicode and the vocabulary's
+            // folded comparison folds the ASCII alphabet — the one fold every
+            // back end states identically (ADR-0132). A search text outside
+            // that alphabet is therefore not pushed as a pattern, and the plan
+            // falls back to the widest restriction it can state soundly: a row
+            // can only match when at least one searched field carries a value.
+            return new FeatureQuery(Where: new Predicate.Some(
+                [.. fields.Select(field => new Predicate.IsNull(new FieldRef(field), Negated: true))]));
+        }
+
+        return new FeatureQuery(Where: new Predicate.Some(
+            [.. fields.Select(field => new Predicate.Compare(
+                new FieldRef(field),
+                ComparisonOperator.LikeFolded,
+                Literal.FromText(pattern)))]));
+    }
+
+    /// <summary>
+    /// The pushed pattern for a search text, or null when the text carries a
+    /// character the pattern cannot state the same way on every provider.
+    /// <para>
+    /// Two do. A character outside the ASCII alphabet is outside the fold the
+    /// comparison applies, and a backslash is Postgres's <c>LIKE</c> escape
+    /// character and nothing at all in T-SQL — a search text ending in one is a
+    /// statement Postgres refuses (<c>LIKE pattern must not end with escape
+    /// character</c>) and a pattern T-SQL reads as two characters. The plan is
+    /// one tree for every store, so a text that either provider would read
+    /// differently is not pushed and the caller falls back to the widest
+    /// restriction that needs no reading.
+    /// </para>
+    /// </summary>
+    private static string? Pattern(string searchText, bool contains) =>
+        searchText.Any(character => character > 0x7f || character == '\\')
+            ? null
+            : contains ? $"%{searchText}%" : $"{searchText}%";
 
     /// <summary>
     /// Whether a layer's read can be restricted at all. It is a question about

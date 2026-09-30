@@ -290,10 +290,10 @@ public sealed class MapResourcePushdownTests
     // -------------------------------------------------------------------- find
 
     /// <summary>
-    /// The text search becomes a disjunction of <c>LIKE</c> tests the store
+    /// The text search becomes a folded pattern per searched field the store
     /// evaluates, and the adapter's own case-insensitive match still decides
     /// each candidate. The results are the ones the whole-layer read produced,
-    /// including the searches whose text a <c>LIKE</c> reads differently.
+    /// including the searches whose text the pattern reads differently.
     /// </summary>
     [Theory]
     [InlineData("alp", true, null, new[] { "alpha" })]
@@ -338,13 +338,14 @@ public sealed class MapResourcePushdownTests
     }
 
     /// <summary>
-    /// The plan is the one restriction that can be stated without changing the
-    /// answer: a row can only match when a searched field carries a value. The
-    /// text is not in the plan, because the vocabulary's <c>LIKE</c> is
-    /// case-sensitive on some stores and this search is not.
+    /// The plan carries the search text: one folded pattern per searched field,
+    /// because the vocabulary's case-folding comparison states the same case
+    /// behaviour on every back end (ADR-0132). The text is in the plan rather
+    /// than only in the adapter, and the adapter's own match is still the
+    /// answer over the rows the plan admitted.
     /// </summary>
     [Fact]
-    public async Task The_find_plan_excludes_the_rows_no_searched_field_can_match()
+    public async Task The_find_plan_carries_the_search_text_as_a_folded_pattern()
     {
         var store = new PushingStore(Rows);
         var parameters = await Parameters([("searchText", "alp"), ("returnGeometry", "false")]);
@@ -353,9 +354,33 @@ public sealed class MapResourcePushdownTests
 
         var plan = Assert.IsType<FeatureQuery>(store.LastPlan);
         var some = Assert.IsType<Predicate.Some>(plan.Where);
+        Assert.Equal(["name", "class"], some.Terms.Select(term => Assert.IsType<Predicate.Compare>(term).Field.Name));
+        Assert.All(some.Terms, term =>
+        {
+            var compare = Assert.IsType<Predicate.Compare>(term);
+            Assert.Equal(ComparisonOperator.LikeFolded, compare.Operator);
+            Assert.Equal("%alp%", compare.Value.Text);
+        });
+        Assert.Null(plan.BoundingBox);
+    }
+
+    /// <summary>
+    /// A search text outside the ASCII alphabet the comparison folds keeps the
+    /// wider restriction the plan could state before it could push the text: a
+    /// row can only match when a searched field carries a value. The served
+    /// answer is the same either way.
+    /// </summary>
+    [Fact]
+    public async Task A_find_text_outside_ascii_pushes_the_null_tests_instead()
+    {
+        var store = new PushingStore(Rows);
+        var parameters = await Parameters([("searchText", "é"), ("returnGeometry", "false")]);
+
+        await MapFindEngine.FindAsync(store, [Info(Layer())], parameters, Transforms, CancellationToken.None);
+
+        var some = Assert.IsType<Predicate.Some>(Assert.IsType<FeatureQuery>(store.LastPlan).Where);
         Assert.Equal(["name", "class"], some.Terms.Select(term => Assert.IsType<Predicate.IsNull>(term).Field.Name));
         Assert.All(some.Terms, term => Assert.True(Assert.IsType<Predicate.IsNull>(term).Negated));
-        Assert.Null(plan.BoundingBox);
     }
 
     /// <summary>

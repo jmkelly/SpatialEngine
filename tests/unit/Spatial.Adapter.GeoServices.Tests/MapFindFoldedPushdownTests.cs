@@ -116,7 +116,7 @@ public sealed class MapFindFoldedPushdownTests
         {
             var compare = Assert.IsType<Predicate.Compare>(term);
             Assert.Equal(ComparisonOperator.LikeFolded, compare.Operator);
-            Assert.Equal("%alp%", compare.Value.Text);
+            Assert.Equal("%ALP%", compare.Value.Text);
         });
         Assert.Null(plan.BoundingBox);
     }
@@ -150,6 +150,22 @@ public sealed class MapFindFoldedPushdownTests
     }
 
     [Fact]
+    public async Task A_search_text_the_two_dialects_read_differently_is_not_pushed_either()
+    {
+        // A backslash is Postgres's `LIKE` escape character and nothing at all
+        // in T-SQL, so a search text ending in one is a statement Postgres
+        // refuses and a pattern SQL Server reads as two characters. The plan is
+        // one tree for every store, so the text stays in the adapter.
+        var store = new RecordingStore(Rows);
+
+        var hits = await Find(store, @"bra\", contains: false, fields: null);
+
+        var some = Assert.IsType<Predicate.Some>(Assert.IsType<FeatureQuery>(store.LastPlan).Where);
+        Assert.All(some.Terms, term => Assert.IsType<Predicate.IsNull>(term));
+        Assert.Equal([], hits);
+    }
+
+    [Fact]
     public async Task The_adapter_still_matches_case_insensitively_over_the_rows_the_plan_admitted()
     {
         // The pushed rows are a pre-filter, not the answer: a store that answers
@@ -168,21 +184,27 @@ public sealed class MapFindFoldedPushdownTests
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
+        var parameters = await Parameters(("searchText", "alp"));
         var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => MapFindEngine.FindAsync(
-                store, [Info(Layer())], await Parameters("searchText", "alp"), Transforms, cancellation.Token));
+            () => MapFindEngine.FindAsync(store, [Info(Layer())], parameters, Transforms, cancellation.Token));
 
         Assert.Equal(cancellation.Token, failure.CancellationToken);
     }
 
     private static async Task<string[]> Find(IFeatureStore store, string text, bool contains, string? fields)
     {
-        var parameters = await Parameters(
+        var values = new List<(string Key, string Value)>
+        {
             ("searchText", text),
             ("contains", contains ? "true" : "false"),
             ("returnGeometry", "false"),
-            .. fields is null ? [] : [("searchFields", fields)]);
+        };
+        if (fields is not null)
+        {
+            values.Add(("searchFields", fields));
+        }
 
+        var parameters = await Parameters([.. values]);
         var body = await Text(await MapFindEngine.FindAsync(store, [Info(Layer())], parameters, Transforms, CancellationToken.None));
         return Hits(body);
     }

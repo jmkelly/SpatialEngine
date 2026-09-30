@@ -231,7 +231,20 @@ column binds as the instant it already is, and a pair that means nothing to
 the reference evaluator (`uuid = 5`, `bit < true`, `LIKE` on a non-text
 column) compiles to the constant the evaluator already answers rather than
 coercing or failing. Which pairs are answerable at all is one table,
-`PredicateCompatibility`, which is structural and lives in Core.
+`PredicateCompatibility`, which is structural and lives in Core. One text
+comparison **states** its case behaviour instead of inheriting one (ADR-0132):
+`ILIKE` is the same whole-value pattern test as `LIKE` with the value and the
+pattern folded over the ASCII alphabet, and each dialect writes that fold out —
+`translate` on Postgres, `TRANSLATE` under the binary collation on SQL Server —
+because `ILIKE` and a case-insensitive collation are each a *locale's*, and
+answer differently on a `C` database and a stock one. It is a separate
+comparison from `LIKE` because folding for a **search** is not folding for a
+**key**: `delta` and `Delta` remain two features under every byte-ordered
+comparison (ADR-0126). A plan whose only text comparison states its own fold
+does not read the database's collation at all, and the Esri `where` grammar does
+not grow the comparison — a plan carrying one narrows to what a remote service
+can be asked about, because the remote restriction is a pre-filter over a read
+the reference executor finishes.
 
 **The match envelope is a plan too (ADR-0110, implemented).** The GeoServices
 feature match compiles onto the same plan rather than reading the layer and
@@ -257,10 +270,13 @@ adapter moved onto a face the tree already had, and each keeps the part that
 has to stay: MapServer `identify` pushes only the query envelope's box (and
 only on a layer whose `OBJECTID` is store-derived — its `layerDefs` clause
 resolves the synthetic `OBJECTID` against the scan ordinal), so the
-intersection test and the filters stay the answer; MapServer `find` pushes only
-"a searched string field is not null", because the vocabulary's one text
-comparison (`LIKE`) is case-sensitive on some back ends and the served search
-is not, so a pushed pattern would *lose* matches rather than pre-filter them;
+intersection test and the filters stay the answer; MapServer `find` pushes the search text
+as one folded pattern per searched field (`%text%` for contains, `text%` for
+startsWith) on the vocabulary's case-folding comparison, whose fold every back
+end states identically, and keeps its own case-insensitive match as the answer —
+a text outside the ASCII alphabet that fold covers, or one carrying a
+backslash, keeps the narrower "a searched field is not null" restriction the
+`LIKE` it replaced could not beat (ADR-0132);
 `generateRenderer` asks `IFeatureAggregateStore` for the minimum and maximum
 behind the class breaks and for the distinct set behind the unique values,
 keeping the quantisation in the adapter, and keeps the scan when the `where`
