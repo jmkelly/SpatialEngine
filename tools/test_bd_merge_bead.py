@@ -21,6 +21,7 @@ pinned, not just the happy path.
 """
 import importlib.util
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -556,9 +557,22 @@ class DocumentedGateTests(unittest.TestCase):
         # the coordinator runs --full before a merge is sending the next
         # coordinator back to 20 minutes.
         text = self.read("AGENTS.md")
-        merge_bullet = self.bullet_about(text, "bd-merge-bead.py --bead")
+        merge_bullet = self.bullet_about(text, "- Merge and complete:")
         self.assertNotIn("runs `eng/verify.sh --full`", merge_bullet)
         self.assertIn("bd-merge-bead.py --bead", merge_bullet)
+
+    def test_the_agents_md_merge_anchor_is_the_labels_own_bullet(self):
+        # Anchoring on the tool's name alone lands on whichever bullet mentions
+        # it *first* — today the `--full` lane bullet's `--bead <id> --full`
+        # aside, which passed every assertion in the test above for the wrong
+        # reason. Anchor on the bullet's own label, and assert the locator is
+        # unambiguous rather than first-mention-wins.
+        sample = ("- `eng/verify.sh --full` — opt in per merge\n"
+                  "  (`bd-merge-bead.py --bead <id> --full`).\n"
+                  "- Merge and complete: `bd-merge-bead.py --bead <id>`.\n")
+        bullet = self.bullet_about(sample, "- Merge and complete:")
+        self.assertNotIn("--full", bullet)
+        self.assertIn("bd-merge-bead.py --bead <id>`.", bullet)
 
     def test_runbook_merge_step_names_the_tool_not_a_manual_lane(self):
         text = self.read("eng/swarm-runbook.md")
@@ -569,9 +583,23 @@ class DocumentedGateTests(unittest.TestCase):
         # The two bullets extend each other now rather than replacing: the
         # worker section still states what each lane is and who runs it.
         text = self.read("eng/swarm-runbook.md")
-        lanes = self.bullet_about(text, "5. Lanes.")
+        lanes = self.numbered_step_about(text, "Lanes.")
         self.assertIn("--full", lanes)
         self.assertIn("--fast", lanes)
+
+    def test_the_lane_step_anchor_survives_renumbering(self):
+        # The runbook's worker steps get inserted, not appended; a hard-coded
+        # ordinal turns the next inserted step into a red build (CI 36707727501).
+        # The locator is the step's title, whatever number precedes it.
+        sample = ("1. Do a thing.\n"
+                  "2. Lanes. --fast is the agent's lane and --full is CI's.\n"
+                  "   More about --fast.\n"
+                  "3. Hand off.\n")
+        lanes = self.numbered_step_about(sample, "Lanes.")
+        self.assertIn("--fast", lanes)
+        self.assertIn("--full", lanes)
+        self.assertIn("More about", lanes)
+        self.assertNotIn("Hand off", lanes)
 
     def test_agents_md_hands_off_on_the_fast_lane(self):
         text = self.read("AGENTS.md")
@@ -583,10 +611,24 @@ class DocumentedGateTests(unittest.TestCase):
         self.assertNotIn("eng/verify.sh --full", hand_off)
         self.assertNotIn("eng/verify.sh --format", hand_off)
 
+    def numbered_step_about(self, text, title):
+        """The numbered list item titled `title`, whatever number it wears.
+
+        Ordinals churn: a step inserted in the middle of a runbook renumbers
+        everything below it, so an anchor of "5. Lanes." is a renumbering
+        tripwire rather than a contract gate. Match the title instead.
+        """
+        pattern = re.compile(r"^\s*\d+\.\s+" + re.escape(title))
+        return self.bullet_about(text, pattern)
+
     def bullet_about(self, text, marker):
         """The line naming `marker` plus every continuation line below it."""
-        lines = text.splitlines()
-        start = next(n for n, line in enumerate(lines) if marker in line)
+        if hasattr(marker, "search"):
+            lines = text.splitlines()
+            start = next(n for n, line in enumerate(lines) if marker.search(line))
+        else:
+            lines = text.splitlines()
+            start = next(n for n, line in enumerate(lines) if marker in line)
         out = [lines[start]]
         for line in lines[start + 1:]:
             if not line.startswith((" ", "\t")) or not line.strip():
