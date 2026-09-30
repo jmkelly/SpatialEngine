@@ -144,10 +144,14 @@ about its accuracy limits (below).
 - Adding a CRS is adding its WKT. The reader is deliberately narrow — both WKT
   dialects, and a method map that holds a projection only where it has been
   measured against PROJ and agrees (SpatialEngine-u2x.26 measured the
-  candidates and widened the map to eight methods; the three that diverge are
-  out, and the decisions their repair would need are separate beads —
+  candidates and widened the map to eight methods; the three that diverged are
+  out, and the decisions their repair needed are separate beads —
   SpatialEngine-r4o for Hotine variant A's false-offset origin, SpatialEngine-ufn
   for Krovak's axes, SpatialEngine-g2m for Polar Stereographic variant B's
-  latitude of standard parallel).
+  latitude of standard parallel). ADR-0153 read the last of those: the reader
+  derives the pole and the scale factor at that pole from the latitude of
+  standard parallel, on the definition's own ellipsoid and by PROJ's own
+  expression, so the map now holds nine methods and the two that still
+  diverge are named failures.
 - The `$geometry` interchange carries transformed results unchanged; only the
   contract ids and the `$crs` description value are new on the wire.

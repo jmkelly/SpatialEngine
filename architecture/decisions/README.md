@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**138 records on disk.** `status` is the record's own word;
+**139 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -101,7 +101,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0083](ADR-0083-tile-cache-key-carries-the-data-version.md) | The tile cache key carries the data version | accepted | 2026-09-27 | — |
 | [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) | Advertise `hasZ`/`hasM` from the coordinate layout the store declares | accepted | 2026-09-28 | — |
 | [0085](ADR-0085-query-distance-centroid-and-ordinate-output.md) | The distance band, the per-feature centroid and the Z/M output selection are served | accepted | 2026-09-28 | — |
-| [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | — |
+| [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | ADR-0153 |
 | [0087](ADR-0087-datum-transformation-graph.md) | Datum transformations are values, and `findTransformations` is a search | accepted | 2026-09-28 | — |
 | [0088](ADR-0088-to-color-at-interpolate-and-cubic-bezier.md) | `to-color`, `at-interpolate` and `cubic-bezier` in the style dialect | accepted | 2026-09-28 | — |
 | [0089](ADR-0089-adr-numbers-are-reserved-before-the-record-is-written.md) | ADR numbers are reserved before the record is written | accepted | 2026-09-28 | — |
@@ -154,6 +154,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0149](ADR-0149-every-ingested-dataset-is-keyed.md) | Every ingested dataset is keyed | accepted | 2026-10-01 | ADR-0041, ADR-0140 |
 | [0150](ADR-0150-a-record-is-one-decision-and-its-shape-is-a-gate.md) | A record is one decision, and its shape is a gate | accepted | 2026-10-01 | — |
 | [0151](ADR-0151-the-sql-server-store-holds-its-description-too.md) | The SQL Server store holds its description too | accepted | 2026-10-01 | ADR-0122 |
+| [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md) | A polar stereographic's standard parallel is read as a scale factor | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 
 ## Amended by
 
@@ -168,7 +169,7 @@ not appear.
 - **0058** is amended by 0100
 - **0070** is amended by 0101
 - **0084** is amended by 0091, 0125
-- **0086** is amended by 0111
+- **0086** is amended by 0111, 0153
 - **0087** is amended by 0111
 - **0092** is amended by 0147
 - **0098** is amended by 0127, 0128, 0131, 0133

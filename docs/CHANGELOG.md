@@ -82,6 +82,28 @@ heading that is not above `<Version>`).
   carried most of it (`quality-waivers.json` for the CRAP waiver, ADR-0044 for
   the raster gotchas).
 
+- **Polar Stereographic (variant B) joins the WKT method map, so the Antarctic
+  and Arctic grids read** (ADR-0153, SpatialEngine-g2m). ProjNet's polar
+  stereographic is the EPSG variant A formulation — a pole and a scale factor
+  at it — and variant B states its scale factor as a latitude of standard
+  parallel instead, so EPSG:3031 was refused by name: left to its own
+  parameters the projection lands 527 km of northing from where PROJ puts it.
+  The reader now derives the two parameters variant B omits, the pole from the
+  sign of the standard parallel and the scale factor at that pole from the
+  parallel and the definition's own ellipsoid, by PROJ's own expression for
+  `+proj=stere +lat_ts=` (0.9727690128917972 for EPSG:3031, 0.9698581903263522
+  for EPSG:3413) — measured, not assumed, against twelve forward and twelve
+  inverse PROJ 9.8.1 control points over EPSG:3031, 3032 and 3413, both
+  hemispheres and 6,000 km of false offsets included, agreeing to 2e-9 m. The
+  standard parallel is turned into those two parameters rather than handed on
+  as one the projection does not read, and a definition that omits it, states
+  it as 0°, or states a scale factor as well is refused by name. Two of the
+  three divergences SpatialEngine-u2x.26 recorded are now repaired; Hotine
+  variant A's false-offset origin and Krovak's axes stay named failures
+  (SpatialEngine-r4o, SpatialEngine-ufn). Which codes the curated catalogue
+  vendors is not decided here: any of the six variant B polar grids reads the
+  moment a row exists.
+
 ### Fixed
 
 - **A SQL Server dataset created by `IDataCatalogue.CreateAsync` had no

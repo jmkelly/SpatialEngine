@@ -204,7 +204,7 @@ internal static class ProjWkt
             return false;
         }
 
-        var parameters = ReadParameters(name, node, resolved.Conversion, resolved.MethodNode, resolved.Class, out error);
+        var parameters = ReadParameters(name, node, geodetic, resolved, out error);
         if (parameters is null)
         {
             return false;
@@ -258,11 +258,23 @@ internal static class ProjWkt
             return false;
         }
 
-        method = new ResolvedMethod(conversion, methodNode, projectionClass);
+        method = new ResolvedMethod(conversion, methodNode, projectionClass, IsPolarStereographicVariantB(methodName));
         return true;
     }
 
-    private sealed record ResolvedMethod(WktNode Conversion, WktNode MethodNode, string Class);
+    /// <summary>
+    /// Whether the WKT's method is EPSG's Polar Stereographic (variant B) —
+    /// the parameterisation that states a latitude of standard parallel rather
+    /// than a scale factor at a pole. It is the same projection as variant A
+    /// and resolves to the same ProjNet class; it states its scale factor
+    /// differently, and <see cref="ReadParameters"/> reads it that way.
+    /// </summary>
+    private static bool IsPolarStereographicVariantB(string methodName) =>
+        Normalise(methodName) == PolarStereographicVariantBMethod;
+
+    private static readonly string PolarStereographicVariantBMethod = Normalise("Polar Stereographic (variant B)");
+
+    private sealed record ResolvedMethod(WktNode Conversion, WktNode MethodNode, string Class, bool PolarVariantB);
 
     /// <summary>
     /// The projection parameters, in the order the document lists them (the
@@ -271,15 +283,18 @@ internal static class ProjWkt
     /// WKT2 off the CONVERSION — and a few documents nest them inside the
     /// METHOD, so all three are read. A Pseudo-Mercator intercept gets the
     /// four standard parameters even when the document's dialect omits them,
-    /// which is what the ESRI spelling does.
+    /// which is what the ESRI spelling does; and the polar stereographic
+    /// variant B's latitude of standard parallel becomes the pole and the
+    /// scale factor at that pole, on the definition's own ellipsoid, rather
+    /// than a parameter the projection does not read.
     /// </summary>
     private static (string Name, double Value)[]? ReadParameters(
-        string crsName, WktNode crs, WktNode method, WktNode methodNode, string projectionClass, out string? error)
+        string crsName, WktNode crs, GeodeticDefinition geodetic, ResolvedMethod resolved, out string? error)
     {
         var parameters = new List<(string Name, double Value)>();
         var declared = Children(crs, "PARAMETER")
-            .Concat(Children(method, "PARAMETER"))
-            .Concat(Children(methodNode, "PARAMETER"));
+            .Concat(Children(resolved.Conversion, "PARAMETER"))
+            .Concat(Children(resolved.MethodNode, "PARAMETER"));
         foreach (var parameter in declared)
         {
             if (parameter.Text is not { } raw
@@ -297,8 +312,18 @@ internal static class ProjWkt
             parameters.Add((name, value.Value));
         }
 
+        if (resolved.PolarVariantB)
+        {
+            return PolarStereographicVariantB(crsName, parameters, geodetic, out error);
+        }
 
-        if (parameters.Count == 0 && IsPseudoMercator(projectionClass))
+        if (parameters.Exists(parameter => parameter.Name == StandardParallelParameter))
+        {
+            error = $"'{crsName}' states a latitude of standard parallel, which only the polar stereographic variant B method reads.";
+            return null;
+        }
+
+        if (parameters.Count == 0 && IsPseudoMercator(resolved.Class))
         {
             parameters.AddRange(PseudoMercatorDefaults);
         }
@@ -306,6 +331,77 @@ internal static class ProjWkt
         error = null;
         return [.. parameters];
     }
+
+    /// <summary>
+    /// EPSG's polar stereographic variant B, read as the variant A projection
+    /// ProjNet has: the pole the standard parallel's sign names, and the scale
+    /// factor at that pole, in place of the standard parallel itself — the
+    /// parameter ProjNet does not read, and one the reader must therefore not
+    /// hand on. Everything else the document states is left as it stands, so
+    /// a variant B definition's longitude of origin and false offsets are
+    /// read exactly as a variant A definition's are.
+    /// </summary>
+    private static (string Name, double Value)[]? PolarStereographicVariantB(
+        string crsName,
+        List<(string Name, double Value)> declared,
+        GeodeticDefinition geodetic,
+        out string? error)
+    {
+        var both = declared.FindIndex(parameter => parameter.Name is "scale_factor" or "latitude_of_origin");
+        if (both >= 0)
+        {
+            error = $"'{crsName}' states a scale factor at natural origin as well as a latitude of standard parallel, so it is a variant A and a variant B definition at once.";
+            return null;
+        }
+
+        var standardParallel = declared.FindIndex(parameter => parameter.Name == StandardParallelParameter);
+        if (standardParallel < 0)
+        {
+            error = $"'{crsName}' is a polar stereographic variant B definition with no latitude of standard parallel.";
+            return null;
+        }
+
+        var parallel = declared[standardParallel].Value;
+        if (parallel == 0)
+        {
+            error = $"'{crsName}' has a latitude of standard parallel of 0 degrees, which names no pole to project from.";
+            return null;
+        }
+
+        var parameters = new List<(string Name, double Value)>(declared.Count + 1);
+        parameters.AddRange(declared.Take(standardParallel));
+        parameters.Add(("latitude_of_origin", parallel < 0 ? -90.0 : 90.0));
+        parameters.Add(("scale_factor", PolarScaleFactor(Math.PI * parallel / 180.0, geodetic)));
+        parameters.AddRange(declared.Skip(standardParallel + 1));
+
+        error = null;
+        return [.. parameters];
+    }
+
+    /// <summary>
+    /// The scale factor at the pole that makes the polar stereographic's
+    /// scale true on the standard parallel, by PROJ's own expression for
+    /// <c>+proj=stere +lat_ts=</c> (<c>src/projections/stere.cpp</c> and
+    /// <c>src/tsfn.cpp</c>, PROJ 9.8.1): the variant A constant
+    /// <c>2/sqrt((1+e)^(1+e) (1-e)^(1-e))</c> divided into the
+    /// isometric-latitude expression PROJ substitutes for it, on the
+    /// definition's own ellipsoid and at the standard parallel's absolute
+    /// latitude — PROJ takes the hemisphere from the pole, and the reader
+    /// takes it from the sign of the same number.
+    /// </summary>
+    private static double PolarScaleFactor(double latitude, GeodeticDefinition geodetic)
+    {
+        var flattening = 1.0 / geodetic.InverseFlattening;
+        var e = Math.Sqrt(flattening * (2.0 - flattening));
+        var eSine = e * Math.Sin(Math.Abs(latitude));
+        var t = Math.Tan((Math.PI / 2.0 - Math.Abs(latitude)) / 2.0) * Math.Exp(e * Math.Atanh(eSine));
+        var variantA = Math.Sqrt(Math.Pow(1 + e, 1 + e) * Math.Pow(1 - e, 1 - e));
+
+        return Math.Cos(Math.Abs(latitude)) * variantA / (2 * t * Math.Sqrt(1 - (eSine * eSine)));
+    }
+
+    /// <summary>The name the latitude of standard parallel is read under, on the polar stereographic variant B method.</summary>
+    private const string StandardParallelParameter = "latitude_of_standard_parallel";
 
     /// <summary>
     /// Resolves the WKT's projection method to the ProjNet projection class,
@@ -519,8 +615,8 @@ internal static class ProjWkt
     /// <term>added by u2x.26: agrees to 1e-6 m; variant B is the no-rotation form</term>
     /// </item>
     /// <item>
-    /// <term>Polar Stereographic (variant B)</term><term>9829</term><term>EPSG:3031, EPSG:3032</term>
-    /// <term>left out: ProjNet has no latitude-of-standard-parallel parameter (527 km of error)</term>
+    /// <term>Polar Stereographic (variant B)</term><term>9829</term><term>EPSG:3031, EPSG:3032, EPSG:3413</term>
+    /// <term>added by g2m: the latitude of standard parallel is read as the variant A pole and scale factor, agreeing to 1e-6 m at both poles, 6,000 km offsets included</term>
     /// </item>
     /// <item>
     /// <term>Hotine Oblique Mercator (variant A)</term><term>9812</term><term>EPSG:3078, EPSG:3375</term>
@@ -548,6 +644,7 @@ internal static class ProjWkt
         [Normalise("Lambert_Azimuthal_Equal_Area")] = "Lambert_Azimuthal_Equal_Area",
         [Normalise("Polar Stereographic (variant A)")] = "Polar_Stereographic",
         [Normalise("Polar_Stereographic")] = "Polar_Stereographic",
+        [PolarStereographicVariantBMethod] = "Polar_Stereographic",
         [Normalise("Hotine Oblique Mercator (variant B)")] = "Hotine_Oblique_Mercator",
         [Normalise("Hotine_Oblique_Mercator")] = "Hotine_Oblique_Mercator",
     };
@@ -587,6 +684,12 @@ internal static class ProjWkt
         [Normalise("Latitude of second standard parallel")] = "standard_parallel_2",
         [Normalise("latitude_of_2nd_standard_parallel")] = "standard_parallel_2",
         [Normalise("Standard_Parallel_2")] = "standard_parallel_2",
+
+        // The polar stereographic variant B's own parameter, which the reader
+        // turns into the pole and the scale factor at that pole rather than
+        // handing on: ProjNet's polar stereographic is the variant A
+        // formulation, which has no standard parallel to read.
+        [Normalise("Latitude of standard parallel")] = StandardParallelParameter,
 
         // The oblique Mercator's own parameters, which EPSG 9815 states as
         // the azimuth of the initial line and the angle from the rectified to
