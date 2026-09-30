@@ -1,8 +1,12 @@
-# ADR-0030: The HTTP host API shares the SDK's contract shapes and value codec
+---
+status: superseded
+date: 2026-08-31
+deciders: maintainer + agent
+summary: The HTTP host API, the .NET SDK and the TypeScript SDK share the SDK's contract shapes and its canonical value codec; there is one public API, not three copies that drift.
+superseded-by: ADR-0033
+---
 
-- **Status:** accepted (Phase 9, Epic H)
-- **Date:** 2026-08-31
-- **Related:** ADR-0007, ADR-0013, ADR-0018, ADR-0020, ADR-0025, ADR-0028
+# ADR-0030: The HTTP host API shares the SDK's contract shapes and value codec
 
 ## Context
 

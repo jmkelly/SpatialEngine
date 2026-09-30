@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: The tile cache holds one entry per (tile, layer), keyed by a per-layer content version, and composites the layers at serve time.
 ---
 
 # ADR-0117: The tile cache holds per-layer tiles, composited at serve time

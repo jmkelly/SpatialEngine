@@ -1,6 +1,11 @@
-# ADR-0020: Canonical binary interchange is required
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Canonical binary interchange is the required wire format; JSON only for debugging/metadata.
+---
 
-Status: Accepted
+# ADR-0020: Canonical binary interchange is required
 
 ## Context
 

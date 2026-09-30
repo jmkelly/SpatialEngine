@@ -1,6 +1,12 @@
-# ADR-0016: Tauri 2 is the first desktop shell
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Tauri 2 is the desktop shell
+superseded-by: ADR-0039
+---
 
-Status: Superseded by ADR-0039 (desktop packaging abandoned).
+# ADR-0016: Tauri 2 is the first desktop shell
 
 ## Context
 

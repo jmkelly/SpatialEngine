@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: The store query surface is projection, order, paging, count, distinct and aggregate: the plan carries the shaping and the read answers a page.
 ---
 
 # ADR-0098: The store query surface — projection, order, paging, count, distinct and aggregate

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-15
 deciders: maintainer + agent
+summary: Namespace rigidity is advisory again and the architecture suite is out of the mutation gate; `.dependably` fails on `high`.
 ---
 
 # ADR-0069: Quality gates — namespace rigidity is advisory; architecture suite out of the mutation gate

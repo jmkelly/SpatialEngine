@@ -1,6 +1,12 @@
-# ADR-0008: Long operations use the job model
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Jobs for long operations (cancellable Tasks)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0008: Long operations use the job model
 
 ## Context
 

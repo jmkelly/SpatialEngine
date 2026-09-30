@@ -1,6 +1,12 @@
-# ADR-0025: Worker boundaries speak versioned line-delimited JSON with runtime-owned facilities
+---
+status: superseded
+date: 2026-08-31
+deciders: maintainer + agent
+summary: Line-delimited JSON worker wire
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0025: Worker boundaries speak versioned line-delimited JSON with runtime-owned facilities
 
 ## Context
 

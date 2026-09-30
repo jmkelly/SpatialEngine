@@ -1,6 +1,11 @@
-# ADR-0021: Native AOT requires measured benefit and compatibility evidence
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Native AOT only with measured benefit + compatibility evidence; main host stays JIT.
+---
 
-Status: Accepted
+# ADR-0021: Native AOT requires measured benefit and compatibility evidence
 
 ## Context
 

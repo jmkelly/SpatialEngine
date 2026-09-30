@@ -1,7 +1,9 @@
 ---
-status: superseded by ADR-0070
+status: superseded
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Vector tiles (MVT/`.vtpk`) and OGC API Tiles are documented non-goals (vector tiles back in scope)
+superseded-by: ADR-0070
 ---
 
 # ADR-0062: Vector tiles and OGC API Tiles are documented non-goals; raster tiles stay the surface

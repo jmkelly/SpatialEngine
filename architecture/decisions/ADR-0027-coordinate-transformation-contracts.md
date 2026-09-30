@@ -1,6 +1,12 @@
-# ADR-0027: Coordinate transformation contracts and the ProjNet adapter
+---
+status: superseded
+date: 2026-08-31
+deciders: maintainer + agent
+summary: Transformation contracts (`ICrsDirectory`/`ICoordinateTransforms`)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0027: Coordinate transformation contracts and the ProjNet adapter
 
 ## Context
 

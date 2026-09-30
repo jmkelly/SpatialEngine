@@ -134,4 +134,8 @@ only as the record of that mapping.
 
 - Architecture, contracts, host, Esri, ingest, rendering — route by task
   through `architecture/distilled/README.md`; the ADRs in
-  `architecture/decisions/` win on conflict.
+  `architecture/decisions/` win on conflict. `arch-index.md` is the
+  breadcrumb, and `architecture/decisions/README.md` is the index of every
+  record with its status, date and cross-references — both generated from the
+  records by `python3 tools/arch-index.py --write`, and every lane of
+  `eng/verify.sh` fails if the committed copy is stale (ADR-0141).

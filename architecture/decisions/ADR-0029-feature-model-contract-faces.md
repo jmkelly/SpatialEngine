@@ -1,6 +1,11 @@
-# ADR-0029: Feature model contract faces and the codec namespace
+---
+status: accepted
+date: 2026-08-31
+deciders: maintainer + agent
+summary: Feature model gains contract faces (`IFeature`…); `FeatureBatchCodec` → `Core.Features.Codec`.
+---
 
-Status: Accepted
+# ADR-0029: Feature model contract faces and the codec namespace
 
 ## Context
 

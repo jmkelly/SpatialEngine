@@ -1,6 +1,11 @@
-# ADR-0009: CRS identity is core; transformation is a plugin
+---
+status: accepted
+date: 2026-08-30
+deciders: maintainer + agent
+summary: CRS identity is core; transformation is a service.
+---
 
-Status: Accepted
+# ADR-0009: CRS identity is core; transformation is a plugin
 
 ## Context
 

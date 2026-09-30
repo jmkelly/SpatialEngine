@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: A discovered dataset description is held per store, keyed by dataset, so a walk of N pages costs one catalogue discovery rather than N; every write the store makes forgets what it could have changed (create, ingest, append, edit, the end of a transaction), a description that failed to be read is never remembered, and an entry expires (`PostgisOptions.DescriptionCacheTtl`, 30s, non-positive turns the cache off) so a schema changed outside the store is picked up rather than inherited.
 ---
 
 # ADR-0122: A discovered dataset description is held, and every write the store makes forgets it

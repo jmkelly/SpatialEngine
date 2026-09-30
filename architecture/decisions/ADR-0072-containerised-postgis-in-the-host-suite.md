@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-26
 deciders: maintainer + agent
+summary: The host integration suite starts its own PostGIS container and configures the store from it, so no `SPATIAL_POSTGIS_CONNECTION` is needed to run the tests.
 ---
 
 # ADR-0072: The host integration suite supplies its own PostGIS

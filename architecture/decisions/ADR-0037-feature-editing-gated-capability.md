@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-09-13
 deciders: maintainer + agent
+summary: Feature editing is a gated, per-feature `IFeatureEditStore` face.
 ---
 
 # ADR-0037: Feature editing is a gated, per-feature store capability

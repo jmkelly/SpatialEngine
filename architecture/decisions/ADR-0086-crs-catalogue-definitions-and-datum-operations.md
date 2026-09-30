@@ -1,6 +1,11 @@
-# ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition
+---
+status: accepted
+date: 2026-09-28
+deciders: maintainer + agent
+summary: The CRS catalogue is vendored EPSG WKT read by a reader of our own (ProjNet's cannot read WKT2, and reads the widely published `Mercator_1SP` spelling of 3857 as a plain Mercator); a definition carries the datum's shift, while the accuracy and area of use of that shift live in a separate registered-operation table, because WKT states neither.
+---
 
-Status: Accepted
+# ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition
 
 ## Context
 

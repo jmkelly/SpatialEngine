@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: The dataset description carries the coordinate layout its store declares, and the layer metadata advertises `hasZ`/`hasM` exactly to that extent.
 ---
 
 # ADR-0084: Advertise `hasZ`/`hasM` from the coordinate layout the store declares

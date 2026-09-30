@@ -2,6 +2,7 @@
 status: proposed
 date: 2026-09-13
 deciders: maintainer + agent
+summary: GeoServices REST is an adapter-owned boundary; ArcGIS REST is consumed as a provider.
 ---
 
 # ADR-0035: Esri GeoServices REST is a boundary adapter; ArcGIS REST is consumed as a provider

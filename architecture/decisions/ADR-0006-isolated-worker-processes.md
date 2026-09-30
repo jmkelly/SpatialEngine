@@ -1,6 +1,12 @@
-# ADR-0006: Isolated worker processes are the default plugin boundary
+---
+status: superseded
+date: 2026-08-30
+deciders: maintainer + agent
+summary: Isolated worker processes (in-process default)
+superseded-by: ADR-0033
+---
 
-Status: Accepted
+# ADR-0006: Isolated worker processes are the default plugin boundary
 
 ## Context
 

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: `to-color`, `at-interpolate` and `cubic-bezier` are style-dialect nodes; `to-color` is the one coercion and is asked for by name.
 ---
 
 # ADR-0088: `to-color`, `at-interpolate` and `cubic-bezier` in the style dialect

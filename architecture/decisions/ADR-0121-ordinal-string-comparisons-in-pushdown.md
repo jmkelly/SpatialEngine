@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+summary: Every string comparison a pushed plan writes says which order it wants — `COLLATE "C"` on a string column — and never inherits the database's.
 ---
 
 # ADR-0121: A pushed-down string comparison is a byte comparison — the database's collation is never inherited

@@ -1,7 +1,9 @@
 ---
-status: accepted
+status: superseded
 date: 2026-08-31
 deciders: implementation-plan §16/§17 (Phase 10)
+summary: Workbench hosting + plugin control (static serving stays, control endpoints removed)
+superseded-by: ADR-0033
 consulted: plugin-lifecycle.md, host-api.md
 ---
 

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The MapServer layer record advertises `hasZ`/`hasM` under ADR-0084's rule verbatim — the ordinates the store proves, and nothing else.
 amends: ADR-0084
 ---
 

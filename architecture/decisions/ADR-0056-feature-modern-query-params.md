@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: Feature modern query params (`returnEnvelope`, `resultPaginationToken`, `defaultSR`, `uniqueIds`) are an adapter projection; no SDK/Core change.
 ---
 
 # ADR-0056: Feature modern query params are an adapter projection

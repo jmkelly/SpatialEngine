@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: Every lane that runs `dotnet test` reads the per-suite skip counts back out of the run and fails a suite that skipped most of what it was asked to run.
 ---
 
 # ADR-0139: a mass-skipped suite is a red lane, not a green one

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-13
 deciders: maintainer + agent
+summary: The Spatial CLI is a dependency-free public-API client; a versioned declarative project file captures datasets + maps and lowers to maps.
 ---
 
 # ADR-0052: The Spatial CLI is a declarative public-API client

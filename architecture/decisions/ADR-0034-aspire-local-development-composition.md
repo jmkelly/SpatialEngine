@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-13
 deciders: maintainer + agent
+summary: Aspire DevHost composes the local development profile.
 ---
 
 # ADR-0034: Aspire AppHost for local development composition

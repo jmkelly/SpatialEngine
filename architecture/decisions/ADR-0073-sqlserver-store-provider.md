@@ -1,6 +1,11 @@
-# ADR-0073: SQL Server data store provider
+---
+status: accepted
+date: 2026-09-13
+deciders: maintainer + agent
+summary: SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests.
+---
 
-Status: Accepted
+# ADR-0073: SQL Server data store provider
 
 ## Context
 

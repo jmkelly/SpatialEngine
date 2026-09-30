@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-20
 deciders: maintainer + agent
+summary: `POST /api/seed` runs a seed document server-side in Development, so `tools/seed/manifest.mjs` stays the single source of truth.
 ---
 
 # ADR-0078: A development-only seed endpoint

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+summary: The map root advertises `supportsTimeRelation:false` because the engine applies the overlaps relation only; the contains/within relations are typed `invalid.arguments` on export and identify rather than served as overlaps (amends 0058).
 amends: ADR-0058
 ---
 

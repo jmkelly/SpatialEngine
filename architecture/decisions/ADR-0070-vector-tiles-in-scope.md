@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-16
 deciders: maintainer + agent
+summary: Vector tiles (MVT) and OGC API Tiles are in scope; live MVT, TileJSON and collection tile resources are implemented; `.vtpk` packaging still needs its own ADR.
 supersedes: ADR-0062
 ---
 

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-14
 deciders: maintainer + agent
+summary: ImageServer capability flags (raster-function/mosaic/mensuration/download honesty) plus reject-by-name for mensuration/multidimensional/catalog-write ops.
 ---
 
 # ADR-0059: ImageServer capability honesty — raster-function/mosaic/mensuration flags + named rejects

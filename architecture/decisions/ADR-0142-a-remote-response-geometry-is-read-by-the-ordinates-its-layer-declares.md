@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: A remote's response geometry is read by **the ordinate it names, and by the layout its dataset declares**: an Esri point's `z`/`m` property is the flag (it is named, not positional, so a real FeatureServer that omits `hasZ` does not lose its elevation), and a three-ordinate array — ambiguous on its own — falls back to `DatasetDescription.GeometryLayout` **only when the geometry states neither flag**, so a stated flag still wins and ADR-0085's writer/reader agreement holds. The recorded corpus settles the spec question: none of the 18 `hasZ: true` layers answers with a flagged geometry. Closes the coupling ADR-0084 required and ADR-0091 made real.
 ---
 
 # ADR-0142: A remote response geometry is read by the ordinates its layer declares

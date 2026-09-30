@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: The three verification lanes are implemented: `eng/verify.sh` builds and runs the test projects that reach the change, `--format` scopes `dotnet format` to the projects that own the changed files, and `--full` is the flat gate; `tools/verify_scope.py` computes the scope and refuses to guess, failing loud to the whole solution. The contract these lanes implement is decided in ADR-0118.
 ---
 
 # ADR-0109: the verification lanes, implemented

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
+summary: A pushed read names a row by the **identity columns' positions in what was read**, not by the columns appended to make the mapper's job possible: an ordinary read already carries the key, so an appended-set identity named every pushed row of a keyed table by its ordinal (ADR-0124 §8 applied to PostGIS). A pushed reduction of an empty selection is one group whose row count is a **zero** and whose other values are nulls, and a page of an ungrouped reduction past its one group is **no groups**. The shared conformance suite now runs over a keyed table on this provider too, which is the first time its pushed path has been measured (amends 0098, 0124, 0128).
 amends: ADR-0098, ADR-0124, ADR-0128
 ---
 
