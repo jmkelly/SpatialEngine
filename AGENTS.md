@@ -97,7 +97,11 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   ADR-0134; SpatialEngine-xbz, SpatialEngine-u2x.51).
   `--bead <id> --full` gates that one merge on the exhaustive lane instead,
   and `--skip-tests <substring>` leaves a named suite to CI on that merge — it
-  prints what it dropped and writes it into the close reason.
+  prints what it dropped and writes it into the close reason. After the close
+  it archives the bead's workspace and the agent that held it, so a finished
+  bead leaves no worktree behind; a paseo that cannot do it is a warning, not a
+  failed merge, and `--no-archive-workspace` keeps the workspace (a reopened
+  bead, say).
   `--check` is the top-of-tick gate (is `main` published?),
   `--publish` pushes it, and `--audit` finds closed beads whose work never
   reached `origin/main`.
