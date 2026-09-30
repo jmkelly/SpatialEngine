@@ -269,6 +269,16 @@ this file together, then tag the release (`RELEASING.md`).
   two-dimensional or unconstrained column advertises neither key rather than
   `false`. SQL Server (whose spatial types have no Z/M) and the ArcGIS REST
   provider report `xy` until they can prove more.
+- **The MapServer layer record carries the declared ordinates too**
+  (ADR-0125, SpatialEngine-fhf.3): `hasZ`/`hasM` were on the FeatureServer
+  layer resource only, so the same dataset described itself as 3D there and as
+  2D on the map surface — and a MapServer layer resource is that same document
+  with a `drawingInfo` attached, carrying the keys upstream serves. The map
+  layer record now projects the same `DatasetDescription.GeometryLayout`
+  through the same honesty rule, so a 2D or unconstrained column advertises
+  neither key rather than `false`, and a 3D one advertises exactly what the
+  store proves. A two-dimensional layer's response is byte-identical to what it
+  was.
 - **The ArcGIS REST store carries the remote layer's `hasZ`/`hasM`**
   (ADR-0091, SpatialEngine-fhf.2): the provider dropped the booleans off the
   Feature Server layer resource, so a proxied 3D layer was described as 2D and

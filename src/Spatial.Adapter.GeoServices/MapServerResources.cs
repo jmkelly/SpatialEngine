@@ -100,11 +100,19 @@ internal static class MapServerResources
         new(CurrentVersion, [.. layers.Select(layer => new EsriMapLayerRef(layer.Id, layer.Name, -1, true, null, 0, 0))], []);
 
     /// <summary>Builds one layer's metadata (spec §4.2), including its projected <c>drawingInfo</c>, labels and domains.</summary>
+    /// <remarks>
+    /// The layer advertises <c>hasZ</c>/<c>hasM</c> exactly as the Feature
+    /// Server layer resource does: what the store proves the geometry column
+    /// declares, and nothing else (ADR-0084, ADR-0125). Both surfaces read the
+    /// one <see cref="DatasetDescription"/>, so describing 3D data as 2D here
+    /// was a disagreement between them rather than a choice.
+    /// </remarks>
     public static EsriMapLayer Layer(MapLayerInfo info)
     {
         var dataset = info.Dataset;
         var drawing = MapStyleProjection.Project(info.Layer.Style, dataset);
         var domains = MapStyleProjection.Domains(drawing, dataset);
+        var layout = dataset.GeometryLayout;
         return new EsriMapLayer(
             CurrentVersion,
             info.Layer.Id,
@@ -123,7 +131,9 @@ internal static class MapServerResources
             true,
             false,
             "esriServerHTMLPopupTypeNone",
-            domains);
+            domains,
+            layout.HasZ() ? true : null,
+            layout.HasM() ? true : null);
     }
 
     private static EsriMapLayerRef Reference(MapLayerInfo info) =>

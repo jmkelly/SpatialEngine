@@ -418,7 +418,11 @@ is rejected by name (never silently ignored) and named here with its reason:
   trip while under-advertising is only a client that asks for less. The ArcGIS
   REST store proves the same thing from the remote layer's own `hasZ`/`hasM`
   declaration (ADR-0091) and asks the remote for exactly the ordinates it
-  advertises.
+  advertises. The **MapServer** layer record carries the same keys under the
+  same rule (ADR-0125), off the same `DatasetDescription` — a MapServer layer
+  resource is the FeatureServer document with a `drawingInfo` attached, and a
+  3D dataset described as 2D by the map surface while the FeatureServer
+  describes it as 3D is the same inconsistency in the opposite direction.
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.

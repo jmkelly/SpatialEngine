@@ -31,6 +31,7 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (routes), `MapServerOperationEndpoin
 | Service root (`mapName`, `layers[]`, `tables[]`, extents, `supportedImageFormatTypes`, `maxImageWidth/Height`, `supportsDynamicLayers`, `supportsTimeRelation`) | served | **Have** | `MapServerResources.cs:Root`; `GeoServicesEndpoints.Maps.cs`; every capability flag states what the served surface applies (ADR-0100) |
 | `layers` (all layers+tables) | served | **Have** | `MapAllLayers`, replay vs G1 `map-layers` |
 | `<layerId>` metadata + `drawingInfo`/`labelingInfo`/domains | served | **Have** | `MapServerResources.cs:Layer`; ADR-0050 projection |
+| `hasZ`/`hasM` on `<layerId>` metadata | served | **Have** | `MapServerResources.cs:Layer` advertises the ordinates the store proves the geometry column declares, off the same `DatasetDescription.GeometryLayout` the FeatureServer layer resource reads (ADR-0084, ADR-0125). A 2D or unconstrained column advertises neither key rather than `false`, exactly as the FeatureServer record does; a 3D upstream MapServer layer carries `hasZ: true` (G-capture `geonames-mapserver/layer-1.json`) and a 2D one carries neither (G-capture `canvas-world-dark-gray-base-mapserver/layer-0.json`) |
 | `<layerId>/query` (FeatureServer engine) | served | **Have** | `MapQuery` → `FeatureService.QueryAsync` |
 | `identify` (with `layerDefs` filtering) | served | **Have** | `MapIdentifyEngine.cs`; `layerDefs` honoured (T-015 update) |
 | `find` | served | **Have** | `MapFindEngine.cs` |

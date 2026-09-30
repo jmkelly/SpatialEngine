@@ -24,12 +24,17 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
     private const string Root = "/arcgis/rest/services";
     private const string Service = "hasz";
 
+    /// <summary>The second publication, map-only, that serves the same datasets through the MapServer surface.</summary>
+    private const string MapService = "haszmap";
+
     private const string Survey = "public.hasz_survey";
     private const string Station = "public.hasz_station";
     private const string Track = "public.hasz_track";
     private const string Unconstrained = "public.hasz_unconstrained";
 
-    private static readonly string[] FeatureService = ["feature"];
+    private static readonly string[] FeatureAndMapService = ["feature", "map"];
+
+    private static readonly string[] MapOnlyService = ["map"];
 
     private readonly List<string> _tables = [Survey, Station, Track, Unconstrained];
 
@@ -73,7 +78,7 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
                 {
                     name = Service,
                     store = "postgis",
-                    services = FeatureService,
+                    services = FeatureAndMapService,
                     layers = new object[]
                     {
                         new { dataset = Survey, layerId = 0 },
@@ -85,6 +90,29 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
                 Encoding.UTF8,
                 "application/json"));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // A second publication over the same datasets serves the same
+        // descriptions through the MapServer surface, which carries the same
+        // keys as the FeatureServer layer resource (SpatialEngine-fhf.3).
+        var mapResponse = await client.PutAsync(
+            $"/api/maps/{MapService}",
+            new StringContent(
+                JsonSerializer.Serialize(new
+                {
+                    name = MapService,
+                    store = "postgis",
+                    services = MapOnlyService,
+                    layers = new object[]
+                    {
+                        new { dataset = Survey, layerId = 0 },
+                        new { dataset = Station, layerId = 1 },
+                        new { dataset = Track, layerId = 2 },
+                        new { dataset = Unconstrained, layerId = 3 },
+                    },
+                }),
+                Encoding.UTF8,
+                "application/json"));
+        Assert.Equal(HttpStatusCode.OK, mapResponse.StatusCode);
     }
 
     public void Dispose() => _factory?.Dispose();
@@ -170,6 +198,30 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
         Assert.Equal("xy", await LayoutAsync(client, Unconstrained));
     }
 
+    [SkippableFact]
+    public async Task The_map_server_layer_advertises_the_same_ordinates_as_the_feature_server()
+    {
+        // The map surface describes the same datasets, so a 3D dataset must not
+        // describe itself as 2D there (SpatialEngine-fhf.3, ADR-0125).
+        Skip.If(!PostgisTestDatabase.Available, PostgisTestDatabase.SkipReason ?? "no reason");
+
+        var z = await MapLayerAsync(0);
+        Assert.True(z.GetProperty("hasZ").GetBoolean());
+        Assert.False(z.TryGetProperty("hasM", out _));
+
+        var zm = await MapLayerAsync(2);
+        Assert.True(zm.GetProperty("hasZ").GetBoolean());
+        Assert.True(zm.GetProperty("hasM").GetBoolean());
+
+        var twoDimensional = await MapLayerAsync(1);
+        Assert.False(twoDimensional.TryGetProperty("hasZ", out _));
+        Assert.False(twoDimensional.TryGetProperty("hasM", out _));
+
+        var unconstrained = await MapLayerAsync(3);
+        Assert.False(unconstrained.TryGetProperty("hasZ", out _));
+        Assert.False(unconstrained.TryGetProperty("hasM", out _));
+    }
+
     /// <summary>The layout the store learned from the declared column type, as the host API's lowercase enum.</summary>
     private static async Task<string> LayoutAsync(HttpClient client, string dataset)
     {
@@ -184,6 +236,16 @@ public sealed class GeoServicesLayerHasZTests : IAsyncLifetime, IDisposable
         using var client = _factory!.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
         var response = await client.GetAsync($"{Root}/{Service}/FeatureServer/{layerId}?f=json");
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"{response.StatusCode}: {text}");
+        return JsonDocument.Parse(text).RootElement;
+    }
+
+    private async Task<JsonElement> MapLayerAsync(int layerId)
+    {
+        using var client = _factory!.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+        var response = await client.GetAsync($"{Root}/{MapService}/MapServer/{layerId}?f=json");
         var text = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == HttpStatusCode.OK, $"{response.StatusCode}: {text}");
         return JsonDocument.Parse(text).RootElement;
