@@ -65,22 +65,60 @@ CLI_PROJECT = "clients/dotnet/Spatial.Cli/Spatial.Cli.csproj"
 CLI_TESTS = "tests/unit/Spatial.Cli.Tests/Spatial.Cli.Tests.csproj"
 
 
-def csproj(root: Path, path: str, references, is_test: bool) -> str:
+def csproj(root: Path, path: str, references, is_test: bool,
+           packages: tuple = ()) -> str:
     """A project file whose references point at the other projects by path."""
     project_dir = (root / path).parent
     reference_items = "\n".join(
         f'    <ProjectReference Include="{os.path.relpath(root / r, project_dir)}" />'
         for r in references)
+    package_items = "\n".join(f'    <PackageReference Include="{p}" />'
+                              for p in packages)
     test_property = "    <IsTestProject>true</IsTestProject>" if is_test else ""
     return f"""<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
 {test_property}
   </PropertyGroup>
   <ItemGroup>
+{package_items}
+  </ItemGroup>
+  <ItemGroup>
 {reference_items}
   </ItemGroup>
 </Project>
 """
+
+
+#: A container-backed suite that lives under tests/unit, which is the shape a
+#: hand-kept lane list cannot tell apart from a slow in-process suite.
+CONTAINER_UNIT_TESTS = ("tests/unit/Spatial.Fake.Container.Tests/"
+                        "Spatial.Fake.Container.Tests.csproj")
+
+
+def _repository_with_container_suite_under_tests_unit() -> "object":
+    """A throwaway repository whose unit folder holds a container-backed suite.
+
+    The repository is read eagerly, so the throwaway tree can be deleted as
+    soon as it has been read: what the lane is asked to classify afterwards is
+    a `Repository` of strings.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        for path, (references, is_test), packages in (
+                (CORE, ((), False), ()),
+                (CORE_TESTS, ((CORE,), True), ("xunit",)),
+                (CONTAINER_UNIT_TESTS, ((CORE,), True),
+                 ("xunit", "Testcontainers.PostgreSql"))):
+            target = root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(csproj(root, path, references, is_test, packages),
+                              encoding="utf-8")
+        (root / verify_scope.SOLUTION_FILE).write_text(
+            "<Solution>\n" + "".join(
+                f'  <Project Path="{p}" />\n'
+                for p in (CORE, CORE_TESTS, CONTAINER_UNIT_TESTS))
+            + "</Solution>\n", encoding="utf-8")
+        return verify_scope.load_repository(root)
 
 
 class FakeRepo:
@@ -358,9 +396,60 @@ class LaneTests(unittest.TestCase):
         self.assertIn(
             "tests/integration/Spatial.Host.Tests/Spatial.Host.Tests.csproj",
             self.integration)
-        self.assertIn(
-            "tests/unit/Spatial.Ingest.Codec.Tests/Spatial.Ingest.Codec.Tests.csproj",
-            self.integration)
+
+    def test_a_suite_that_starts_no_container_runs_in_the_unit_lane(self):
+        """The lane split is read off what a suite needs, not off how long it ran.
+
+        `Spatial.Ingest.Codec.Tests` was listed in the integration lane because
+        it was measured at 2m27 while the scoping work wrote ADR-0109
+        (SpatialEngine-0dx). It starts no container, opens no socket, reads no
+        file and reaches no process: eight classes, 103 cases, 3–6 s warm and
+        17 s from a cold `obj/` including the build, against 77 s for the other
+        18 unit projects combined. The cost was a fixture — a peak-heap sampler
+        that spun on `GC.GetTotalMemory` for the length of two 40,000-feature
+        decodes — and that fixture is gone (3308362, SpatialEngine-ivp): the
+        assertion is now reachability, which needs no sampler and no machine.
+
+        So the suite is a unit suite again, and the list it was in was a list of
+        measurements rather than of needs. `lane_projects` now derives the split
+        from each project's own `PackageReference`s, which is the property that
+        actually put a container on the runner in the first place, and this
+        fails until it does.
+        """
+        codec = "tests/unit/Spatial.Ingest.Codec.Tests/Spatial.Ingest.Codec.Tests.csproj"
+
+        self.assertNotIn(codec, self.integration)
+        self.assertIn(codec, self.unit)
+
+    def test_every_suite_in_the_integration_lane_starts_a_container(self):
+        """No suite reaches the integration lane without a container dependency.
+
+        The three suites that genuinely need a Docker daemon each take a
+        `Testcontainers*` package. Deriving the lane from that means a unit
+        project cannot drift into it by being slow once — which is how the
+        codec suite got there — and a new container-backed suite is placed by
+        adding the package it already needs, not by editing a list.
+        """
+        by_path = self.repository.by_path()
+
+        for path in self.integration:
+            with self.subTest(lane="integration", project=path):
+                packages = by_path[path].packages
+                self.assertTrue(
+                    any(p.startswith("Testcontainers") for p in packages),
+                    f"{path} runs in the integration lane but takes no "
+                    f"Testcontainers package: {packages}")
+
+    def test_a_suite_outside_tests_integration_that_takes_testcontainers_is_in_the_integration_lane(self):
+        """The rule cuts both ways: the dependency places the suite, not the folder."""
+        repository = _repository_with_container_suite_under_tests_unit()
+
+        self.assertIn("tests/unit/Spatial.Fake.Container.Tests/"
+                      "Spatial.Fake.Container.Tests.csproj",
+                      verify_scope.lane_projects(repository, "integration"))
+        self.assertNotIn("tests/unit/Spatial.Fake.Container.Tests/"
+                         "Spatial.Fake.Container.Tests.csproj",
+                         verify_scope.lane_projects(repository, "unit"))
 
     def test_every_reference_in_the_real_repository_resolves(self):
         """The guard that would have caught the backslash defect immediately.

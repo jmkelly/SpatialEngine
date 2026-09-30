@@ -80,16 +80,22 @@ IGNORED_DIR_NAMES = frozenset({"obj", "bin", "node_modules", ".git", "dist",
 SOLUTION_FILE = "SpatialEngine.slnx"
 
 #: How the test projects split across the two CI jobs. The integration lane
-#: holds the suites that start Testcontainers — the PostGIS and SQL Server
-#: stores and the host that composes them — plus the codec suite, which
-#: measures like an integration suite. The unit lane is everything else. The
-#: two lanes are disjoint and together cover every test project, so a pull
-#: request still gets the full signal, spread over two runners instead of one
-#: contended box.
+#: holds the suites that need a Docker daemon, and it holds them because their
+#: own `PackageReference`s say so: a project that takes a `Testcontainers*`
+#: package starts a container, and a container is what costs a lane its own
+#: runner. The folder it lives in decides the same thing by convention, so
+#: either signal places a suite and neither is a hand-kept list.
+#:
+#: The list this replaced was measurements. `Spatial.Ingest.Codec.Tests` was
+#: put in the integration lane on the strength of a 2m27 wall time
+#: (SpatialEngine-0dx) when it starts no container, opens no socket, reads no
+#: file and runs in 3–6 s; the cost was a per-test peak-heap sampler, since
+#: removed. A split read off how long a suite ran once re-derives itself after
+#: every unrelated change to a fixture, so it is read off what the suite needs
+#: instead.
 INTEGRATION_FOLDER = "tests/integration/"
-INTEGRATION_PROJECTS = frozenset({
-    "tests/unit/Spatial.Ingest.Codec.Tests/Spatial.Ingest.Codec.Tests.csproj",
-})
+#: The package prefix that puts a Docker daemon on the runner.
+CONTAINER_PACKAGE_PREFIX = "Testcontainers"
 LANES = ("unit", "integration")
 
 
@@ -105,6 +111,10 @@ class Project:
     #: `clients/dotnet` — is still in the graph, so a change to it is scoped,
     #: but it is not one of the solution's projects for the CI lanes.
     in_solution: bool = True
+    #: Its `PackageReference` names, sorted. A test project that takes a
+    #: `Testcontainers*` package is what puts a container on the CI runner, and
+    #: so is what puts it in the integration lane.
+    packages: tuple[str, ...] = ()
 
     @property
     def directory(self) -> str:
@@ -240,6 +250,9 @@ def load_repository(root: Path) -> Repository:
             is_test=is_test,
             references=tuple(sorted(references)),
             in_solution=in_solution,
+            packages=tuple(sorted(
+                node.get("Include") for node in tree.iter("PackageReference")
+                if node.get("Include"))),
         ))
 
     for project_file in sorted(project_files):
@@ -344,6 +357,23 @@ def plan_for_files(repository: Repository, files, base: str = "<given>") -> Plan
     )
 
 
+def is_integration_project(project: Project) -> bool:
+    """Whether one test project belongs in the container lane.
+
+    Two independent signals, either of which is enough: it lives under
+    `tests/integration/`, which is the convention this repository lays its
+    container-backed suites out by, or it takes a `Testcontainers*` package,
+    which is the dependency that actually starts the container. The second is
+    what makes the split survive: a wall-clock measurement is a property of the
+    machine and of the fixtures in the suite this week, and a suite that took
+    the integration lane for being slow once would keep it after the fixture
+    that made it slow was gone (SpatialEngine-0dx).
+    """
+    return (project.path.startswith(INTEGRATION_FOLDER)
+            or any(package.startswith(CONTAINER_PACKAGE_PREFIX)
+                   for package in project.packages))
+
+
 def lane_projects(repository: Repository, lane: str) -> tuple[str, ...]:
     """The test projects one CI lane runs.
 
@@ -354,13 +384,13 @@ def lane_projects(repository: Repository, lane: str) -> tuple[str, ...]:
     """
     if lane not in LANES:
         raise ValueError(f"unknown lane {lane!r}; expected one of {LANES}")
-    test_projects = sorted(p.path for p in repository.projects
-                           if p.is_test and p.in_solution)
+    test_projects = (p for p in repository.projects
+                     if p.is_test and p.in_solution)
     if lane == "integration":
-        return tuple(p for p in test_projects
-                     if p.startswith(INTEGRATION_FOLDER) or p in INTEGRATION_PROJECTS)
-    return tuple(p for p in test_projects
-                 if not p.startswith(INTEGRATION_FOLDER) and p not in INTEGRATION_PROJECTS)
+        return tuple(sorted(p.path for p in test_projects
+                            if is_integration_project(p)))
+    return tuple(sorted(p.path for p in test_projects
+                        if not is_integration_project(p)))
 
 
 def main(argv: list[str] | None = None) -> int:

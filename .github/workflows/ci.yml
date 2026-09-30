@@ -3,7 +3,11 @@ name: ci
 # The JavaScript suites, the two end-to-end scripts, and the .NET gate split
 # across two jobs: `verify` carries the formatter, the build, the unit and
 # architecture suites and the python tooling tests; `integration` carries the
-# Testcontainers suites (PostGIS, SQL Server, the host, the ingest codec).
+# Testcontainers suites (PostGIS, SQL Server, the host). The split is read off
+# each project's own `PackageReference`s — a suite that takes a
+# `Testcontainers*` package starts a container, so it needs a runner of its
+# own — by `tools/verify_scope.py`, not kept as a hand-maintained list
+# (SpatialEngine-0dx).
 # Together they are what `eng/verify.sh --full` runs, and since ADR-0134 that
 # is where the exhaustive gate lives: the merge gate itself is the scoped fast
 # lane (`eng/verify.sh --fast`), because at hundreds of merges a day a
@@ -75,7 +79,7 @@ jobs:
         run: python3 -m unittest discover --start-directory tools --pattern 'test_*.py'
 
   integration:
-    name: integration (host · postgis · sqlserver · ingest)
+    name: integration (host · postgis · sqlserver)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -93,7 +97,7 @@ jobs:
       # own rather than a share of one that is already running 22 test
       # projects. Together with the `verify` job this is the same set of
       # projects `dotnet test SpatialEngine.slnx` runs.
-      - name: Host, store and ingest suites
+      - name: Host and store suites
         run: |
           set -euo pipefail
           for project in $(python3 tools/verify_scope.py --list lane --lane integration); do
