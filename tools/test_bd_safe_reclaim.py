@@ -137,11 +137,47 @@ class RunningAgentTests(unittest.TestCase):
     def test_agent_id_recorded_in_the_notes_protects_the_lease(self):
         # Recovery is reversible only if the claim recorded which agent took
         # the bead, so the notes' agent id is a liveness signal in its own
-        # right — the worktree may already be gone.
+        # right — provided the agent it names is working *this* bead. The
+        # worktree is the half that says which bead, and a notes match alone
+        # protects whatever bead id happens to be in the notes (SpatialEngine-nwo).
         target = bead("SpatialEngine-u2x.7", lease_minutes_ago=45,
                       notes="agent 17f1626aaaa on branch bd/SpatialEngine-u2x.7")
+        agents = [agent("17f1626aaaa", cwd="~/.paseo/worktrees/1mmcart7/"
+                        "bd-spatialengine-u2x-7")]
         self.assertIsNotNone(self.module.protect_reason(
-            target, self.agents, []))
+            target, agents, [workspace(
+                "bd/SpatialEngine-u2x.7",
+                "~/.paseo/worktrees/1mmcart7/bd-spatialengine-u2x-7")]))
+
+    def test_an_epic_naming_its_workers_in_a_coordination_log_is_protected_by_nothing(self):
+        # The false positive that made every lane red for nine coordinator
+        # ticks (SpatialEngine-nwo): the parent epic has no worktree and never
+        # will, and its long-lived notes are the swarm's coordination log — they
+        # name every agent that has ever worked one of its children. The agent
+        # named is mid-turn in the *child's* worktree, holding the child's own
+        # lease, so the parent is unleased because nobody is working the parent.
+        # Reclaiming it would be harmless; finding it is not.
+        epic = {"id": "SpatialEngine-u2x", "status": "open",
+                "lease_expires_at": None, "notes":
+                "coordinator log: merged SpatialEngine-imz.4 agent "
+                "17f1626aaaa workspace wks_a1b2 on SpatialEngine-u2x.9"}
+        child = agent("17f1626aaaa",
+                      cwd="~/.paseo/worktrees/1mmcart7/bd-spatialengine-u2x-9")
+        self.assertIsNone(self.module.protect_reason(
+            epic, [child], [workspace(
+                "bd/SpatialEngine-u2x.9",
+                "~/.paseo/worktrees/1mmcart7/bd-spatialengine-u2x-9")]))
+
+    def test_the_loose_notes_read_is_available_for_a_reporting_only_caller(self):
+        # parked_lease_holds() prints rather than fails, so it asks for the
+        # notes-only read; the reclaiming caller never does, or the epic above
+        # would come back as a keep every tick.
+        epic = {"id": "SpatialEngine-u2x", "status": "open",
+                "lease_expires_at": None, "notes": "log agent 17f1626aaaa"}
+        child = agent("17f1626aaaa", cwd="~/.paseo/worktrees/1mmcart7/"
+                     "bd-spatialengine-u2x-9")
+        self.assertIsNotNone(self.module.protect_reason(
+            epic, [child], [], notes_only=True))
 
     def test_unknown_agent_id_in_the_notes_protects_nothing(self):
         target = bead("SpatialEngine-u2x.7", lease_minutes_ago=45,
