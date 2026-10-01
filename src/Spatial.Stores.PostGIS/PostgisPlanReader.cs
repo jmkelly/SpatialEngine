@@ -35,6 +35,17 @@ namespace Spatial.Stores.PostGIS;
 /// unordered or inexpressible order falls back, because a page whose rows are
 /// in no total order has no position an <c>OFFSET</c> can name.
 /// </para>
+///
+/// <para>
+/// The <em>reduction</em> faces are not subject to that, and the difference is
+/// deliberate (ADR-0184 §1): a count, a distinct set and a grouped reduction
+/// push their restriction on a dataset that declares no identity column, because
+/// they return values and no feature — there is no ordinal for a <c>WHERE</c>
+/// to renumber. What stays declined on such a dataset is the feature read
+/// itself, including its page: the features it returns are named by the
+/// ordinal of the read, and only a whole read keeps those ordinals the same
+/// across two pages (ADR-0184 §2).
+/// </para>
 /// </summary>
 internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue catalogue)
 {
@@ -110,7 +121,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var description = facts.Description;
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
+        var where = await ReductionAsync(facts, query, parameters, cancellationToken);
         return where is null
             ? FeatureReduction.CountFeatures(await SelectedAsync(facts, query, null, cancellationToken))
             : (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
@@ -133,7 +144,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var schema = (FeatureSchema)description.Schema;
         FeatureQueryValidation.ValidateDistinct(schema, distinct);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
+        var where = await ReductionAsync(facts, query, parameters, cancellationToken);
         var order = query.Order ?? [];
         var sql = PostgisPlanQueries.Distinct(
             name,
@@ -143,9 +154,9 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             await TextOrderAsync(facts, schema, distinct.Fields, order, cancellationToken),
             where,
             parameters);
-        // A restriction this table cannot carry (a dataset with no identity
-        // column names its features by the read's ordinal, so a `WHERE` would
-        // renumber them — ADR-0097) leaves `where` null for a plan that *does*
+        // A restriction this store cannot state (a dataset with no identity
+        // column asked for identities, so there is no expression to say it
+        // with — ADR-0184 §1) leaves `where` null for a plan that *does*
         // restrict. Deduplicating on that null would answer with the whole
         // table's set for a restricted plan, so the set is reduced over the
         // rows the reference selected instead.
@@ -195,11 +206,14 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
 
     /// <summary>
     /// The restriction a plan pushes, with the database's collation read only
-    /// when the restriction actually compares text (ADR-0123, ADR-0126). Every
-    /// face compiles its <c>WHERE</c> through here, so a plan read, a count, a
-    /// distinct set, a grouped reduction and a fallback selection all state
-    /// the same comparison — and a plan whose predicate is a bounding box and a
-    /// number never pays the catalog read that decides the term.
+    /// when the restriction actually compares text (ADR-0123, ADR-0126). The
+    /// read face compiles its <c>WHERE</c> through here, and so every face that
+    /// has to keep its restriction in the caller, so a plan read, a count, a
+    /// distinct set, a grouped reduction and a fallback selection all state the
+    /// same comparison — and a plan whose predicate is a bounding box and a
+    /// number never pays the catalog read that decides the term. A reduction
+    /// pushes through <see cref="ReductionAsync"/>, which is this restriction
+    /// with one dataset shape's decline lifted (ADR-0184 §1).
     /// </summary>
     private async Task<string?> RestrictionAsync(
         PostgisDatasetFacts facts,
@@ -213,6 +227,30 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             // A restriction that compares no text cannot be changed by the
             // collation — in either half of it, the id restriction and the
             // attribute clause — so the read is skipped and the answer unused.
+            ComparesText(facts.Description, query)
+                ? await storage.TextOrderAsync(facts, cancellationToken)
+                : PostgisTextOrder.Locale,
+            parameters);
+
+    /// <summary>
+    /// The restriction a <em>reduction</em> pushes, over the same plan and the
+    /// same catalog read as the read face's (ADR-0184 §1). It is the same
+    /// restriction on every dataset that declares an identity column, and on a
+    /// dataset that declares none it is the restriction the <em>read</em> face
+    /// declines — because a count, a distinct set and a grouped reduction return
+    /// values and no feature, so there is no ordinal for a <c>WHERE</c> to
+    /// renumber. Only an identity restriction the dataset cannot state keeps
+    /// the whole plan in the caller.
+    /// </summary>
+    private async Task<string?> ReductionAsync(
+        PostgisDatasetFacts facts,
+        FeatureQuery query,
+        List<object?> parameters,
+        CancellationToken cancellationToken) =>
+        PostgisPlanQueries.Reduction(
+            facts.Dataset,
+            facts.Description,
+            query,
             ComparesText(facts.Description, query)
                 ? await storage.TextOrderAsync(facts, cancellationToken)
                 : PostgisTextOrder.Locale,
@@ -250,17 +288,17 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var schema = (FeatureSchema)description.Schema;
         FeatureQueryValidation.ValidateAggregate(schema, aggregate);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
+        var where = await ReductionAsync(facts, query, parameters, cancellationToken);
         // An ungrouped reduction is one row, so the plan's order has nothing to
         // order: it is not written into the SQL at all (an `ORDER BY` over an
         // ungrouped aggregate's column is a query Postgres refuses).
         var order = aggregate.IsGrouped ? query.Order ?? [] : [];
-        // A restriction this table cannot carry (a dataset with no identity
-        // column names its features by the read's ordinal, so a `WHERE` would
-        // renumber them — ADR-0097) leaves `where` null for a plan that *does*
-        // restrict. Pushing on that null would aggregate the whole table for a
-        // restricted plan, so the reduction is finished over the selected rows
-        // instead. An unrestricted plan's null really is "every row".
+        // A restriction the dialect could not state (a dataset with no identity
+        // column asked for identities, ADR-0184 §1) leaves `where` null for a
+        // plan that *does* restrict. Pushing on that null would reduce the whole
+        // table for a restricted plan, so the reduction is finished over the
+        // selected rows instead. An unrestricted plan's null really is "every
+        // row".
         var pushed = where is not null || !PostgisPlanQueries.Restricts(query)
             ? await PushedGroupsAsync(
                 name, facts, aggregate, where, order, await TextOrderAsync(facts, cancellationToken), parameters, cancellationToken)

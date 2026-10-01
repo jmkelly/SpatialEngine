@@ -311,6 +311,21 @@ internal static class PostgisPlanQueries
             return null;
         }
 
+        return Restriction(description, query, text, parameters);
+    }
+
+    /// <summary>
+    /// The three halves of a plan's restriction, in the order they bind: the
+    /// identity restriction, the bounding-box pre-filter and the attribute
+    /// clause. One definition, so a read, a count, a distinct set, a grouped
+    /// reduction and a residual selection cannot state the same plan two ways.
+    /// </summary>
+    private static string? Restriction(
+        DatasetDescription description,
+        FeatureQuery query,
+        PostgisTextOrder text,
+        List<object?> parameters)
+    {
         var identity = Identity(description, query.Ids, text, parameters);
         var box = BoundingBox(description, query.BoundingBox, parameters);
         var clause = query.Where is { } where
@@ -318,6 +333,43 @@ internal static class PostgisPlanQueries
             : null;
         return Join(identity, Join(box, clause));
     }
+
+    /// <summary>
+    /// The restriction a <em>reduction</em> pushes: the same three halves as
+    /// <see cref="Predicate"/>, compiled by the same compiler, over the same
+    /// bound values — and with one difference, which is the whole of ADR-0184
+    /// §1: a dataset that declares no identity column keeps its restriction
+    /// here.
+    ///
+    /// <para>
+    /// The keyless decline is about <em>features</em>. A <c>WHERE</c> that
+    /// returned only the matching rows would renumber the features after the
+    /// first match, because a dataset with no identity column names them by the
+    /// ordinal of the read (ADR-0097 §1). A count, a distinct set and a grouped
+    /// reduction return values — no feature, and so no number a restriction
+    /// could renumber — and reading the whole table to compute one in managed
+    /// code was a cost with nothing behind it.
+    /// </para>
+    ///
+    /// <para>
+    /// The one restriction still declined is the identity one, and only where it
+    /// cannot be stated: <c>Ids</c> name features by their identity columns, and
+    /// a dataset that declares none has no such expression. A reduction that
+    /// pushed the rest of such a plan would count the wrong row set, so the whole
+    /// restriction stays in the caller — a half-pushed restriction is not a
+    /// smaller read, it is a different answer. An empty id list needs no
+    /// identity to state: it is <c>FALSE</c>.
+    /// </para>
+    /// </summary>
+    public static string? Reduction(
+        PostgisDatasetName dataset,
+        DatasetDescription description,
+        FeatureQuery query,
+        PostgisTextOrder text,
+        List<object?> parameters) =>
+        query.Ids is { Count: > 0 } && description.IdColumns.Count == 0
+            ? null
+            : Restriction(description, query, text, parameters);
 
     /// <summary>Whether the plan asks for anything other than every row.</summary>
     public static bool Restricts(FeatureQuery query) =>
