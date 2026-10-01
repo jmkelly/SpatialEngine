@@ -35,14 +35,16 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// JTS patterns <c>1********</c> / <c>0********</c>, which read a point
 /// strictly inside an area as <c>Crosses</c> (the interiors meet at dimension
 /// 0) and had to refuse the point/area case by hand to get that back. The
-/// kept reading is the OGC pair, selected by which side is the
-/// lower-dimensional geometry: <c>T*T******</c> (the lower-dimensional
-/// geometry's interior reaches the higher-dimensional one's boundary) when
-/// the query is the higher dimension, and <c>T**T*****</c> when the feature
-/// is. A point's own boundary is empty, so the point/area case falls out of
-/// the table as false without a dimension special case — and as
-/// <c>Within</c>, which is what a point inside an area is
-/// (<see cref="A_point_inside_an_area_is_within_it_and_not_crosses"/>).</para>
+/// kept reading is the OGC pair, keyed on the pair's <em>dimension pair</em>:
+/// <c>T*T******</c> (the lower-dimensional geometry's interior reaches the
+/// higher-dimensional one's boundary) when the query is the higher dimension,
+/// <c>T**T*****</c> when the feature is, and <c>0********</c> for two lines.
+/// A dimension pair OGC does not define <c>Crosses</c> over — a point against
+/// anything, or two surfaces — names no pattern, so none is asked and the
+/// verdict is false. A point inside an area is therefore <c>Within</c> it and
+/// not <c>Crosses</c> it, and the table gives that without a second rule to
+/// keep in step with the first
+/// (<see cref="A_point_pair_is_not_crosses_because_no_pattern_is_asked"/>).</para>
 /// </summary>
 public sealed class SpatialRelationReadingTests
 {
@@ -137,6 +139,10 @@ public sealed class SpatialRelationReadingTests
     /// and does not <c>Crosses</c> it: the interiors are disjoint.</description></item>
     /// <item><description>equal-dimensional and point/polygon pairs are never
     /// <c>Crosses</c>.</description></item>
+    /// <item><description>two crossing lines <c>Crosses</c>, two collinear
+    /// lines sharing a span <c>Overlap</c>, and a span lying wholly inside the
+    /// other line is neither — the line/line containment
+    /// (<see cref="A_line_pair_is_read_by_the_dimension_its_interiors_meet_in"/>).</description></item>
     /// </list>
     /// </summary>
     [Theory]
@@ -151,6 +157,9 @@ public sealed class SpatialRelationReadingTests
     [InlineData("area-around-point", false)]
     [InlineData("equal-areas", false)]
     [InlineData("straddle", false)]
+    [InlineData("lines-crossing", true)]
+    [InlineData("lines-sharing-a-span", false)]
+    [InlineData("line-within-span", false)]
     public async Task Crosses_is_the_ogc_pair_for_the_dimension_order(string pair, bool expected)
     {
         Assert.Equal(expected, await MatchesAsync(pair, EsriFeatureQuery.Crosses));
@@ -182,13 +191,12 @@ public sealed class SpatialRelationReadingTests
     /// matches <c>T*T******</c> — so asking the wrong member of the pair is
     /// what makes the discarded reading wrong.
     ///
-    /// The point/area case needs no special case of its own: a point's
-    /// boundary is empty, so matrix positions 2 and 4 cannot meet and the
-    /// pattern asked is false, in either operand order.
+    /// The point/area case is not in this table at all: OGC defines
+    /// <c>Crosses</c> over a mixed-dimension pair of a surface and a curve,
+    /// so the dimension pair (0, 2) names no pattern and none is asked
+    /// (<see cref="A_point_pair_is_not_crosses_because_no_pattern_is_asked"/>).
     /// </summary>
     [Theory]
-    [InlineData("point-in-area", "T*T******", false)]
-    [InlineData("area-around-point", "T**T*****", false)]
     [InlineData("line-inside-area", "T*T******", false)]
     [InlineData("line-crossing-area", "T*T******", true)]
     [InlineData("area-around-line", "T**T*****", false)]
@@ -198,16 +206,77 @@ public sealed class SpatialRelationReadingTests
         string expected,
         bool expectedMatch)
     {
-        var (feature, query) = Pair(pair);
         var asked = new RecordingRelations(Relations);
-        var parsed = await QueryAsync(query, EsriFeatureQuery.Crosses);
 
-        var matched = FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(parsed, Feature(feature), 1, query, asked),
-            CancellationToken.None);
-
+        Assert.Equal(expectedMatch, await MatchedAsync(pair, EsriFeatureQuery.Crosses, asked));
         Assert.Equal([expected], asked.Patterns);
-        Assert.Equal(expectedMatch, matched);
+    }
+
+    /// <summary>
+    /// The point/area case, and every other dimension pair OGC defines no
+    /// <c>Crosses</c> over, stated as the fact it is on the served path: the
+    /// dimension pair names no pattern, so the match asks <b>no pattern at
+    /// all</b> and answers false.
+    ///
+    /// <para>This is the divergence from the discarded reading, and it is the
+    /// half of it that the table alone cannot give. The discarded
+    /// implementation keyed <c>Crosses</c> on dimension masks
+    /// (<c>0********</c> / <c>1********</c>) rather than on the dimension
+    /// pair, so it did ask a pattern for a point against an area — and
+    /// <c>0********</c> is true of a point strictly inside a polygon, which is
+    /// why that reading had to carry a hand-written dimension switch to take
+    /// the answer back. Asking nothing is the same verdict without the second
+    /// rule to keep in step with the first.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("point-in-area")]
+    [InlineData("area-around-point")]
+    [InlineData("point-in-point")]
+    [InlineData("point-on-area-edge")]
+    [InlineData("equal-areas")]
+    public async Task A_point_pair_is_not_crosses_because_no_pattern_is_asked(string pair)
+    {
+        var asked = new RecordingRelations(Relations);
+
+        Assert.False(await MatchedAsync(pair, EsriFeatureQuery.Crosses, asked));
+        Assert.Empty(asked.Patterns);
+    }
+
+    /// <summary>
+    /// The line/line rows, which the served table gained after the discarded
+    /// reading was written and which pins them here rather than leaving them
+    /// to the ADR. <c>Crosses</c> asks <c>0********</c> over a line/line pair
+    /// and <c>Overlaps</c> asks <c>1*T***T**</c>, so the pair is settled by
+    /// the dimension the interiors meet in, and by whether the exteriors meet
+    /// as well: a crossing pair meets in dimension zero (<c>Crosses</c>), a
+    /// pair sharing a span meets in dimension one with the feature's exterior
+    /// reaching the query's interior (<c>Overlaps</c>), and a pair whose span
+    /// lies wholly inside the feature's is neither — it is the line/line
+    /// containment, because <c>1*T***T**</c> also asks position 7 (the
+    /// feature's exterior against the query's interior) to meet: a pair only
+    /// overlaps while *each* line reaches past the other
+    /// (SpatialEngine-u2x.56).
+    ///
+    /// <para>The discarded reading reached the first two verdicts only by
+    /// dimension masks with no containment case at all, so the third row is
+    /// the one that has no counterpart to compare against.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("lines-crossing", true, false)]
+    [InlineData("lines-sharing-a-span", false, true)]
+    [InlineData("line-within-span", false, false)]
+    public async Task A_line_pair_is_read_by_the_dimension_its_interiors_meet_in(
+        string pair,
+        bool expectedCrosses,
+        bool expectedOverlaps)
+    {
+        var crosses = new RecordingRelations(Relations);
+        Assert.Equal(expectedCrosses, await MatchedAsync(pair, EsriFeatureQuery.Crosses, crosses));
+        Assert.Equal(["0********"], crosses.Patterns);
+
+        var overlaps = new RecordingRelations(Relations);
+        Assert.Equal(expectedOverlaps, await MatchedAsync(pair, EsriFeatureQuery.Overlaps, overlaps));
+        Assert.Equal(["1*T***T**"], overlaps.Patterns);
     }
 
     /// <summary>The relation face that remembers the patterns it was asked.</summary>
@@ -243,12 +312,21 @@ public sealed class SpatialRelationReadingTests
             cancelled.Token));
     }
 
-    private static async Task<bool> MatchesAsync(string pair, string spatialRel)
+    private static async Task<bool> MatchesAsync(string pair, string spatialRel) =>
+        await MatchedAsync(pair, spatialRel, Relations);
+
+    /// <summary>
+    /// The one call every case here makes: run the served match path for a
+    /// pair under a named <c>spatialRel</c>, asking <paramref name="asked"/>
+    /// for the relation, so the patterns the path actually consulted can be
+    /// asserted and not merely the verdict.
+    /// </summary>
+    private static async Task<bool> MatchedAsync(string pair, string spatialRel, IGeometryRelations asked)
     {
         var (feature, query) = Pair(pair);
         return FeatureSpatialMatcher.Matches(
             new FeatureSpatialMatcher.MatchCandidate(
-                await QueryAsync(query, spatialRel), Feature(feature), 1, query, Relations),
+                await QueryAsync(query, spatialRel), Feature(feature), 1, query, asked),
             CancellationToken.None);
     }
 
@@ -286,6 +364,9 @@ public sealed class SpatialRelationReadingTests
         "area-around-line" => (Area(), Line(2, 2, 8, 8)),
         "area-across-line" => (Square(5, 0, 15, 10), Line(-5, 5, 15, 5)),
         "area-around-point" => (Area(), Point(5, 5)),
+        "lines-crossing" => (Line(-5, 5, 15, 5), Line(5, -5, 5, 15)),
+        "lines-sharing-a-span" => (Line(-5, 0, 15, 0), Line(0, 0, 20, 0)),
+        "line-within-span" => (Line(-5, 0, 15, 0), Line(0, 0, 5, 0)),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "unknown pair"),
     };
 

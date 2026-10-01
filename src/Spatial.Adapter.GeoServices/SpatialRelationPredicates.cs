@@ -11,6 +11,15 @@ namespace Spatial.Adapter.GeoServices;
 /// a cheap necessary-condition pre-filter, so the exact predicate runs only
 /// on candidates whose envelopes already agree.
 ///
+/// The patterns are the OGC Simple Features table read verbatim, the feature
+/// geometry as the left operand of the matrix (ADR-0106): the mask for the
+/// verb, keyed on the pair's dimension pair only for the two verbs OGC defines
+/// per dimension pair (<c>Overlaps</c>, <c>Crosses</c>), and a dimension pair
+/// OGC defines no mask over asks no pattern at all. One table serves both the
+/// Feature Service query path and the Geometry Service <c>relation</c>
+/// operation, so the two endpoints cannot answer a pair of geometries
+/// differently.
+///
 /// The matrix rows are the feature geometry's components and the columns the
 /// query geometry's, each in interior/boundary/exterior order, so
 /// position 1 is interior∩interior, position 2 boundary-of-feature ∩
@@ -20,10 +29,10 @@ namespace Spatial.Adapter.GeoServices;
 /// | Verb | Pattern | Reading |
 /// | --- | --- | --- |
 /// | <c>Contains</c> | <c>T*****FF*</c> | the interiors meet and the query's exterior reaches neither the feature's interior nor its boundary — so a containee lying *on* the container's boundary is not contained, and a containee sharing part of the boundary still is. |
-/// | <c>Within</c> | <c>T*F**F***</c> | the mirror, evaluated with the feature in the query's frame. |
+/// | <c>Within</c> | <c>T*F**F***</c> | the mirror, evaluated with the feature in the query's frame — the transpose of <c>Contains</c>, so the two are one predicate (ADR-0106). |
 /// | <c>Touches</c> | <c>FT*******</c> \| <c>F**T*****</c> \| <c>F***T****</c> | interiors disjoint, and the contact in position 2, 4 or 5: the OGC touches masks, unioned into one dimension-free predicate, so a point or line on the other geometry's boundary touches it whichever side of the matrix the boundary lands on. The union is not one nine-character pattern — <c>FT*******</c> alone drops the edge-sharing and boundary-meeting cases — so it costs up to three <see cref="IGeometryRelations.Relate"/> calls, as <c>Intersects</c> does for its four. |
 /// | <c>Overlaps</c> | <c>T*T***T**</c> (A/A), <c>1*T***T**</c> (L/L) | interiors meet, each boundary reaches the other interior, and the exteriors meet — a genuine partial overlap, never containment. The line/line reading asks the interiors to meet in dimension one, so a shared span overlaps and a crossing does not. |
-/// | <c>Crosses</c> | <c>T**T*****</c> (A/L), <c>T*T******</c> (L/A), <c>0********</c> (L/L) | interiors meet and the lower-dimensional geometry's interior reaches the higher-dimensional one's boundary; the mixed-dimension pattern is selected by which side is lower-dimensional (position 4 or position 2), and the line/line pattern asks for a dimension-zero meeting. |
+/// | <c>Crosses</c> | <c>T**T*****</c> (A/L), <c>T*T******</c> (L/A), <c>0********</c> (L/L) | interiors meet and the lower-dimensional geometry's interior reaches the higher-dimensional one's boundary; the pattern is selected by which side is lower-dimensional (position 4 or position 2). A point is never <c>Crosses</c> an area: its dimension pair names no pattern, so none is asked, and a point inside an area is <c>Within</c> it (ADR-0106). |
 /// | <c>Intersects</c> | <c>T********</c> or <c>*T*******</c> or <c>***T*****</c> or <c>****T****</c> | the OGC intersect union: the geometries meet if the interiors meet, or either interior reaches the other's boundary, or the boundaries meet. A pair shares nothing exactly when all four positions are <c>F</c>.
 ///
 /// <c>Overlaps</c> and <c>Crosses</c> are dimension-dependent, so both are
@@ -95,7 +104,7 @@ internal static class SpatialRelationPredicates
         pair.FeatureEnvelope.Contains(pair.QueryEnvelope)
         && relations.Relate(pair.Feature, pair.Query, ContainsPattern, cancellationToken);
 
-    /// <summary>The feature geometry lies within the query geometry (boundary-exact).</summary>
+    /// <summary>The feature geometry is within the query geometry: the transpose of <see cref="Contains"/>, spelled in the feature's frame (ADR-0106).</summary>
     internal static bool Within(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
         pair.QueryEnvelope.Contains(pair.FeatureEnvelope)
         && relations.Relate(pair.Feature, pair.Query, WithinPattern, cancellationToken);
@@ -156,9 +165,12 @@ internal static class SpatialRelationPredicates
 
     /// <summary>
     /// The <c>Crosses</c> pattern for the pair's dimension pair, or
-    /// <c>null</c> when the reference states none: a pair of equal
-    /// surfaces, a pair involving a point, and a disjoint pair's envelope
-    /// never cross.
+    /// <c>null</c> when the reference states none — a pair of equal
+    /// surfaces, and any pair involving a point, has no pattern to ask, so a
+    /// point inside an area is <c>Within</c> it and never <c>Crosses</c> it
+    /// (ADR-0106). The discarded dimension-masked reading asked
+    /// <c>0********</c> for that pair and answered true; see that record for
+    /// the measurement.
     ///
     /// The two mixed-dimension readings are the mirror images of one
     /// another — the lower-dimensional geometry's interior has to reach the
