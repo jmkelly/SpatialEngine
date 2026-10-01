@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Spatial.Contracts;
-using Spatial.Esri.Codec;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Spike.QueryBaseline;
 
@@ -50,11 +50,17 @@ internal static class Program
         Console.WriteLine($"# layer {loaded.Description.Id} rows={loaded.Resident.Count} srid={loaded.Description.Srid} " +
             $"geometry={loaded.Description.GeometryColumn} idColumns=[{string.Join(',', loaded.Description.IdColumns)}] " +
             $"iterations={options.Iterations} warmup={options.Warmup}");
-        Console.WriteLine($"# A=ScanAsync+in-adapter  B=QueryAsync pushdown  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)");
+        Console.WriteLine($"# A=ScanAsync+in-adapter  B=QueryAsync pushdown  Bp=QueryAsync paged plan (order+limit)  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)");
         Console.WriteLine();
         Console.WriteLine(SampleReport.Header);
 
         var reports = new List<SampleReport>();
+        var identityUnavailable = runner.IdentityUnavailable;
+        if (identityUnavailable is { } reason)
+        {
+            Console.WriteLine($"# path C (IFeatureLookup by identity) is unavailable here: {reason}");
+        }
+
         foreach (var request in QueryRequest.Scenarios)
         {
             var where = request.ParsedWhere();
@@ -66,9 +72,10 @@ internal static class Program
             foreach (var variant in QueryRequest.Variants)
             {
                 reports.Add(await MeasureAsync(options, "A-scan", request, variant, where, token => runner.ScanAsync(request, variant, where, token), cancellationToken));
-                reports.Add(await MeasureAsync(options, attributePushdown ? "B-push" : "B-bbox", request, variant, where, Pushdown(runner, request, variant, where, storeFilter), cancellationToken));
+                reports.Add(await MeasureAsync(options, attributePushdown ? "B-push" : "B-bbox", request, variant, where, Pushdown(runner, request, variant, where, storeFilter, paged: false), cancellationToken));
+                reports.Add(await MeasureAsync(options, "Bp-page", request, variant, where, Pushdown(runner, request, variant, where, storeFilter, paged: true), cancellationToken));
                 reports.Add(await MeasureAsync(options, "D-emul", request, variant, where, Emulated(runner, request, variant, where), cancellationToken));
-                if (!QueryRequest.IsCountOnly(variant) && !QueryRequest.IsStatistics(variant))
+                if (identityUnavailable is null && !QueryRequest.IsCountOnly(variant) && !QueryRequest.IsStatistics(variant))
                 {
                     reports.Add(await MeasureAsync(options, "C-lookup", request, variant, where, token => runner.IdentityAsync(request, token), cancellationToken));
                 }
@@ -97,15 +104,16 @@ internal static class Program
         QueryRunner runner,
         QueryRequest request,
         string variant,
-        EsriFilterClause? where,
-        string? storeFilter) =>
-        (token) => runner.PushdownAsync(request, variant, where, storeFilter, token);
+        Predicate? where,
+        Predicate? storeFilter,
+        bool paged) =>
+        (token) => runner.PushdownAsync(request, variant, where, storeFilter, paged, token);
 
     private static Func<CancellationToken, Task<Outcome>> Emulated(
         QueryRunner runner,
         QueryRequest request,
         string variant,
-        EsriFilterClause? where) =>
+        Predicate? where) =>
         (token) => runner.EmulatedPushdownAsync(request, variant, where, token);
 
     private static async Task<SampleReport> MeasureAsync(
@@ -113,7 +121,7 @@ internal static class Program
         string path,
         QueryRequest request,
         string variant,
-        EsriFilterClause? where,
+        Predicate? where,
         Func<CancellationToken, Task<Outcome>> operation,
         CancellationToken cancellationToken)
     {
@@ -132,9 +140,10 @@ internal static class Program
         IReadOnlyList<SampleReport> reports,
         CancellationToken cancellationToken)
     {
-        var http = await HttpBaseline.RunAsync(host, options.Warmup, options.Iterations, cancellationToken);
+        var http = await HttpBaseline.RunAsync(
+            host, options.HostService, options.HostLayer, options.Warmup, options.Iterations, cancellationToken);
         Console.WriteLine();
-        Console.WriteLine($"# end-to-end over HTTP at {host} (demo FeatureServer, {options.Iterations} iterations)");
+        Console.WriteLine($"# end-to-end over HTTP at {host} (FeatureServer service '{options.HostService}', {options.Iterations} iterations)");
         Console.WriteLine("scenario variant     p50_ms     p95_ms     bytes    rows");
         foreach (var report in http)
         {
@@ -155,7 +164,8 @@ internal static class Program
             Console.WriteLine($"# mirror fidelity, {report.Scenario} countOnly: {agrees}");
         }
 
-        var paging = await HttpBaseline.PageThroughAsync(host, options.Warmup, cancellationToken);
+        var paging = await HttpBaseline.PageThroughAsync(
+            host, options.HostService, options.HostLayer, options.Warmup, cancellationToken);
         Console.WriteLine();
         Console.WriteLine("# paging the whole matched set with resultOffset (the layer's maxRecordCount page)");
         Console.WriteLine("scenario     pages      bytes   total_ms  mean_page_ms  last_page");
@@ -178,9 +188,17 @@ internal sealed record Options(
     int Warmup,
     string Label,
     string? Host,
+    string HostService,
+    string HostLayer,
     string? Json)
 {
     private const string ConnectionVariable = "SPATIAL_POSTGIS_CONNECTION";
+
+    /// <summary>The service the <c>--host</c> mode reads: the demo catalogue by default.</summary>
+    internal const string DefaultHostService = "demo";
+
+    /// <summary>The layer name the <c>--host</c> mode resolves under that service.</summary>
+    internal const string DefaultHostLayer = "world_cities";
 
     internal static Options Parse(IReadOnlyList<string> args)
     {
@@ -188,6 +206,8 @@ internal sealed record Options(
         string? connection = null;
         string? host = null;
         string? json = null;
+        var hostService = DefaultHostService;
+        var hostLayer = DefaultHostLayer;
         var label = "default";
         var reuse = false;
         var iterations = 15;
@@ -204,6 +224,8 @@ internal sealed record Options(
                 case "--warmup": warmup = int.Parse(value ?? "3", CultureInfo.InvariantCulture); break;
                 case "--label": label = value ?? "default"; break;
                 case "--host": host = value; break;
+                case "--host-service": hostService = value ?? DefaultHostService; break;
+                case "--host-layer": hostLayer = value ?? DefaultHostLayer; break;
                 case "--json": json = value; break;
                 default: throw new ArgumentException($"unknown argument '{arg}'.");
             }
@@ -217,6 +239,8 @@ internal sealed record Options(
             warmup,
             label,
             host,
+            hostService,
+            hostLayer,
             json);
     }
 

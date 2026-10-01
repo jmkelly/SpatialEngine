@@ -1,7 +1,9 @@
 # Results — SpatialEngine-u2x.1
 
-The number the Tier 1 branch of `SpatialEngine-u2x` is justified by. Run on
-2026-09-28, 12-core Linux box, .NET 10, PostgreSQL 16 / PostGIS 3.4 in Docker.
+Re-measured on **2026-10-01/02** (the original run was 2026-09-28; its
+load-contaminated figures are kept in the [appendix](#appendix-the-2026-09-28-run)
+so the two can be compared).
+
 Layer: the committed GeoNames world-cities snapshot, **34,135 rows**
 (`demo.world_cities`, CC-BY 4.0), loaded through the store's own create/write
 faces into `public.spike_world_cities`.
@@ -13,139 +15,192 @@ grouped `outStatistics` (count + avg population, `groupBy=country`). Two bboxes:
 `europe` = −10,36,5,55 (**283** matches) and `global` = the world
 (**6,253** matches).
 
-**Caveat on wall time.** The measurement box was shared with a parallel agent
-swarm: load average was 100–120 on 12 cores throughout. Run-to-run p50 for the
-same path varied by **2–5×**. The `rows` and `result` columns are exact and
-identical in every run; the wall-time columns are not, and the in-process
-allocation figures move by up to ~30% run to run (JIT tiering inside the
-measured window) while the PostGIS ones — which are dominated by row mapping —
-are stable to the last decimal. Ratios below use the least-contended p50 of the
-four runs; the recorded run's raw output is committed under `results/`.
+## Method, and what is trustworthy
 
-## Headline — PostGIS, the store a real deployment uses
+The box is shared with a parallel agent swarm and was never idle: load average
+ranged **1.4 to 12.4** on 12 cores across these runs (the 2026-09-28 run sat at
+100–120). Every load reading is recorded in
+[`results/idle/LOAD.md`](results/idle/LOAD.md). What changed is the estimator:
 
-p50 ms, least-contended run, 30 iterations (`results/postgis-*.txt` has the
-recorded run; these p50s come from the quietest of the four).
+- **minimum p50 of three independent repeats**, not the p50 of one run. A
+  neighbour's load can only ever add time, so the minimum is the estimator that
+  survives it, and the spread of the three is reported next to it.
+- 30 iterations and 5 warmup for the in-process paths, 20 and 3 over HTTP.
+- the `rows`, `result` and `alloc_MB` columns are exact and identical in every
+  run of every repeat, as before.
 
-| scenario / variant | A `ScanAsync`+filter | B `QueryAsync` pushdown | D emulated full pushdown | C by identity |
-|---|---|---|---|---|
-| europe / page25 | **222 ms** | 73 ms | 7 ms | 36 ms (0 rows) |
-| europe / countOnly | **362 ms** | 66 ms | 6 ms | n/a |
-| europe / statistics | **444 ms** | 84 ms | 28 ms | n/a |
-| global / page25 | **1,049 ms** | 170 ms | 54 ms | 113 ms (0 rows) |
-| global / countOnly | **279 ms** | 121 ms | 4 ms | n/a |
-| global / statistics | **368 ms** | 125 ms | 9 ms | n/a |
+The 2026-09-28 run's own numbers were "the least-contended p50 of four runs"
+chosen by hand, with a run-to-run p50 spread of 2–5×. The spread here is
+**1.1–1.6× in-process and 1.1–2.2× over HTTP**, so these numbers are
+trustworthy to roughly ±20%, not ±250%.
 
-Exact, load-independent columns (identical in every run):
+## The harness moved, so the columns moved with it
 
-| path | rows materialised | managed alloc / call | europe result | global result |
-|---|---|---|---|---|
-| A `ScanAsync` + in-adapter filter | **34,135** (every row, every request) | **30.3–31.1 MB** (stable to the decimal across runs) | 25 / 283 / 8 | 25 / 6,253 / 171 |
-| B `QueryAsync` (bbox + where pushdown) | 283 (europe) / 6,253 (global) | 0.31 MB / 6.35 MB | 25 / 283 / 8 | 25 / 6,253 / 171 |
-| D emulated full pushdown | 25 (page) / 0 (count) / 8–171 (groups) | 0.00–0.53 MB | 25 / 283 / 8 | 25 / 6,253 / 171 |
-| C `IFeatureLookup.GetAsync` | **0** | 0.04–0.55 MB | 0 | 0 |
+The committed harness had not compiled since 2026-09-28 (`EsriFilterClause` is
+now `EsriWhere`, and `IFeatureStore.QueryAsync` takes a `FeatureQuery` plan and
+answers a `FeatureQueryPage`), so it was ported to today's contract before
+anything was measured. Two consequences for reading the tables:
 
-**The premise holds, and the ordering is A ≫ B > D in every single run:**
+- **`B` is no longer the same call it was.** On 2026-09-28 `B` was
+  `QueryAsync(dataset, bbox, filterString)` and every *matching* row came back
+  (ADR-0074/ADR-0116 did not exist). `B` below is the same intent — the bbox
+  and the attribute predicate pushed into the store, no page cap — and the
+  **rows** column is the same measurement. Its wall time is not comparable with
+  the old `B` cell for cell.
+- **`Bp` is new**: the plan a served request actually issues today, with the
+  ordering and the row cap in it (ADR-0074 §5, ADR-0116). It is the old `D`
+  ceiling as a shipped path, not an emulation, so it is reported separately and
+  `D` is kept beside it for continuity.
+- `C` is reported as **unavailable** rather than as a number: a dataset that
+  declares no identity column is refused with `invalid.arguments` by name
+  (ADR-0140), where on 2026-09-28 it answered empty.
 
-1. **Filter pushdown is a 3–6× win** (europe page25 222 → 73 ms; europe
-   statistics 444 → 84 ms; global page25 1,049 → 170 ms) and a **10–100×
-   allocation win** (30.3 MB → 0.31 MB for europe). `IFeatureStore.QueryAsync`
-   with the equivalent filter is genuinely faster, not a wash.
-2. **Pushdown is not the whole prize.** Going from B to D — pushing ordering,
-   `offset`/`limit` and aggregation into the store so only the rows the
-   response needs are materialised — is a further **2–13×** (europe page25
-   73 → 7 ms; global countOnly 121 → 4 ms). B still materialises every matching
-   row into `FeatureBatch` pages, exactly as the bead suspected. The Tier 1
-   store-query surface (`.9`) is worth more than the filter pushdown alone.
-3. **The production path's cost is the materialisation, and it is constant.**
-   A materialises 34,135 rows and ~30 MB whether the request is a 283-row
-   viewport or the whole world, and it does it again for *every page* of a
-   paged walk. `outStatistics` and `returnCountOnly` are the worst-affected
-   shapes: they throw away almost everything they built.
+## PostGIS, in-process — the store a real deployment uses
+
+p50 ms and MB/call over 30 iterations, indexed table (GiST geometry + btree on
+`population` and `country`, `ANALYZE`), minimum p50 of
+`results/idle/postgis-r{1,2,3}-indexed.txt`. The plan PostgreSQL chose is in
+[`results/idle/postgis-indexed-plan.txt`](results/idle/postgis-indexed-plan.txt)
+(a `BitmapAnd` of the GiST scan and the `population` btree).
+
+| scenario / variant | A `ScanAsync`+filter | B plan pushdown | Bp paged plan | D emulated ceiling | rows A / B / Bp |
+|---|---|---|---|---|---|
+| europe / page25 | 147 ms / 31.11 MB | 179 ms / 46.82 MB | 149 ms / 46.76 MB | 5.8 ms / 0.81 MB | 34135 / 283 / 25 |
+| europe / countOnly | 151 ms / 31.10 MB | 162 ms / 46.80 MB | 160 ms / 46.81 MB | 5.9 ms / 0.78 MB | 34135 / 283 / 283 |
+| europe / statistics | 159 ms / 31.09 MB | 164 ms / 46.82 MB | 161 ms / 46.78 MB | 6.8 ms / 0.78 MB | 34135 / 283 / 283 |
+| global / page25 | 156 ms / 31.91 MB | 180 ms / 48.02 MB | 202 ms / 47.56 MB | 18.1 ms / 1.31 MB | 34135 / 6253 / 25 |
+| global / countOnly | 155 ms / 31.91 MB | 158 ms / 48.02 MB | 180 ms / 48.72 MB | 6.5 ms / 0.78 MB | 34135 / 6253 / 6253 |
+| global / statistics | 155 ms / 31.58 MB | 147 ms / 47.71 MB | 151 ms / 48.37 MB | 6.1 ms / 0.79 MB | 34135 / 6253 / 6253 |
+
+Repeat spread on the p50: 147–202 ms (europe page25 A), 179–201 ms (europe
+page25 B), 149–214 ms (europe page25 Bp).
+
+**What this says, and what it revises.**
+
+1. **The rows argument stands and is stronger than the wall time.** The scan
+   builds 34,135 rows and ~31 MB for a 25-row page, every request, and again
+   for every page of a walk. The paged plan builds **25 rows** for the same
+   request. That is exact and load-independent.
+2. **On PostGIS the wall time is now a wash, and that is new.** On 2026-09-28
+   pushdown was a 3–6× wall-time win (europe page25 222 → 73 ms). Today A, B
+   and Bp all land in the same 150–200 ms band. The database is no longer the
+   bottleneck: ~150 ms of every cell is row mapping and `FeatureBatch`
+   construction, which the scan also pays. The honest summary is that the
+   **materialisation** argument is what the tier-1 work was justified by, and
+   the wall-clock argument on this layer no longer supports it on its own.
+3. **Allocation does not follow the rows.** `Bp` builds 25 rows and still
+   allocates **46–48 MB**, more than the full scan's 31 MB, and the figure does
+   not move with the page size. That is unexplained and is not a result this
+   spike can call correct; it is filed as its own bead rather than smoothed
+   into a conclusion here. (Suspected: work proportional to the match set that
+   is not the row mapping itself — the count the plan computes, or the sidecar
+   metadata the plan builds before it reads a page.)
 
 ## In-memory store (what `eng/seed.sh` and CI use)
 
-`results/memory.txt` (30 iterations, recorded run under load; the p50 below
-is the least-contended run, the allocations are the recorded run's). The
-in-process store is a much weaker case for the contract work, and the reason is
-structural:
+Minimum p50 of `results/idle/memory-r{1,2,3}.txt`, 30 iterations.
 
-| scenario / variant | A `ScanAsync`+filter | B `QueryAsync` pushdown | D emulated full pushdown | C by identity |
+| scenario / variant | A `ScanAsync`+filter | B plan pushdown | Bp paged plan | D emulated ceiling | rows A / B / Bp |
+|---|---|---|---|---|---|
+| europe / page25 | 11.8 ms / 1.36 MB | 7.5 ms / 0.86 MB | 7.6 ms / 0.83 MB | 6.6 ms / 0.81 MB | 34135 / 283 / 25 |
+| europe / countOnly | 9.4 ms / 1.36 MB | 7.3 ms / 0.86 MB | 7.5 ms / 0.89 MB | 6.6 ms / 0.78 MB | 34135 / 283 / 283 |
+| europe / statistics | 9.5 ms / 1.35 MB | 7.2 ms / 0.84 MB | 7.2 ms / 0.88 MB | 6.5 ms / 0.78 MB | 34135 / 283 / 283 |
+| global / page25 | 18.2 ms / 2.17 MB | 17.5 ms / 2.10 MB | 16.4 ms / 1.66 MB | 20.3 ms / 1.31 MB | 34135 / 6253 / 25 |
+| global / countOnly | 16.3 ms / 2.17 MB | 16.1 ms / 2.10 MB | 22.6 ms / 2.79 MB | 6.4 ms / 0.78 MB | 34135 / 6253 / 6253 |
+| global / statistics | 12.0 ms / 1.83 MB | 12.2 ms / 1.77 MB | 22.0 ms / 2.46 MB | 6.8 ms / 0.79 MB | 34135 / 6253 / 6253 |
+
+Two findings, both of which revise the 2026-09-28 story:
+
+- **"No in-process store accepts an attribute filter at all" is no longer
+  true.** `MemoryStore` answers the `FeatureQuery` plan itself and pushes the
+  predicate: the harness's probe reports attribute pushdown *supported* on the
+  memory store now, and `B` materialises 283 / 6,253 rows rather than the whole
+  table. The 2026-09-28 finding was true of the filter-string contract that
+  ADR-0074 replaced.
+- **The paged plan is a loss on the two shapes that reduce.** `Bp` for
+  `countOnly` and `statistics` is *unbounded* — the plan has no count and no
+  aggregate face yet — so it materialises every matching row and then the
+  adapter reduces it, which is slower than the scan (global `countOnly` 16 →
+  23 ms, `statistics` 12 → 22 ms). The ceiling those two shapes could reach is
+  the D column (6–8 ms), and nothing reaches it today.
+
+## End-to-end over HTTP — a host serving PostGIS
+
+`eng/spike-u2x-postgis-e2e.sh`: a throwaway PostGIS container, the snapshot
+loaded through the store's own write face, the deployment indexes, a host whose
+`postgis` store is that database, and the dataset published through the admin
+publish flow (`PUT /api/maps/spike`) as the FeatureServer layer
+`world_cities`. Same requests, same layer, 20 iterations, minimum p50 of
+`results/idle/e2e-r{1,2,3}.txt`.
+
+| scenario / variant | p50 | p95 | response bytes | rows returned |
 |---|---|---|---|---|
-| europe / page25 | 22 ms / 0.58 MB | 12 ms / 0.14 MB | 17 ms / 0.03 MB | 17 ms / 0.03 MB |
-| europe / countOnly | 22 ms / 0.58 MB | 13 ms / 0.11 MB | 12 ms / 0.00 MB | n/a |
-| europe / statistics | 16 ms / 0.57 MB | 14 ms / 0.12 MB | 11 ms / 0.00 MB | n/a |
-| global / page25 | 33 ms / 1.38 MB | **42 ms / 2.15 MB** | 22 ms / 0.53 MB | 22 ms / 0.54 MB |
-| global / countOnly | 18 ms / 1.38 MB | **38 ms / 2.14 MB** | 8 ms / 0.00 MB | n/a |
-| global / statistics | 20 ms / 1.06 MB | **24 ms / 1.60 MB** | 7 ms / 0.01 MB | n/a |
-
-Two findings the epic's framing does not assume:
-
-- **No in-process store accepts an attribute filter at all.** Both
-  `MemoryStore.QueryAsync` and `DemoStore.QueryAsync` throw
-  `invalid.arguments` for any `filter` and push the bbox only (the harness
-  probes this and labels the column `B-bbox`). So the `where` in a
-  FeatureService query is *always* evaluated in the adapter, on every store
-  that is not PostGIS or SQL Server.
-- **Where the pushdown cannot filter, it is a loss.** The global bbox matches
-  every row, so the "pushdown" is pure overhead: 33 ms → 42 ms and
-  0.58 → 2.15 MB, because the store re-walks and re-copies 34,135 rows and the
-  adapter then filters them anyway. A pushdown contract must be able to say
-  "not worth it" or push nothing.
-
-## End-to-end bytes and paging (`results/memory-with-http.txt`)
-
-Real HTTP against a running host's demo FeatureServer (layer `world_cities`),
-20 iterations, quietest run:
-
-| scenario / variant | p50 | response bytes | rows returned |
-|---|---|---|---|
-| europe / page25 | 155 ms | 4,661 | 25 |
-| europe / countOnly | 133 ms | **13** | 283 |
-| europe / statistics | 200 ms | 962 | 8 |
-| global / page25 | 198 ms | 4,702 | 25 |
-| global / countOnly | 217 ms | **14** | 6,253 |
-| global / statistics | 246 ms | 12,202 | 171 |
+| europe / page25 | 230 ms | 364 ms | 4,656 | 25 |
+| europe / countOnly | 221 ms | 273 ms | **13** | 283 |
+| europe / statistics | 219 ms | 248 ms | 962 | 8 |
+| global / page25 | 366 ms | 395 ms | 4,697 | 25 |
+| global / countOnly | 348 ms | 363 ms | **14** | 6,253 |
+| global / statistics | 415 ms | 428 ms | 12,202 | 171 |
 
 Walking the whole matched set with `resultOffset` at the layer's
 `maxRecordCount`:
 
 | scenario | pages | total bytes | total time | mean per page |
 |---|---|---|---|---|
-| europe (283 matches) | 1 | 46 KB | 92 ms | 92 ms |
-| global (6,253 matches) | **7** | **1.01 MB** | 1,165 ms | 166 ms |
+| europe (283 matches) | 1 | 46 KB | 233 ms | 233 ms |
+| global (6,253 matches) | **7** | **1.01 MB** | 2,624 ms | 375 ms |
 
-So a client retrieving 6,253 rows pays **7 full scan-and-materialise cycles**
-and moves ~1 MB. The wire bytes are small; the waste is on the server side, once
-per page, and only a store that can page (`D`) removes it.
+**Mirror fidelity: MATCH on both scenarios** — the in-adapter mirror's
+`returnCountOnly` answer equals the PostGIS host's, which is served by
+`FeatureSpatialMatcher`. So the decomposed path numbers above and the HTTP
+numbers below are the same request the facade runs, on the same store.
 
-**Mirror fidelity: MATCH on both scenarios.** The in-adapter mirror's
-`returnCountOnly` answer equals the real host's, which is served by
-`FeatureSpatialMatcher` — so the decomposed path-A/B numbers are the same
-request the facade actually runs.
+### The same host shape on the in-memory demo store
+
+So the store half is the only thing that differs. A default host (demo
+service, `demo.world_cities` — the same 34,135 rows from the same snapshot),
+20 iterations, minimum p50 of `results/idle/e2e-memory-r{1,2,3}.txt`:
+
+| scenario / variant | p50 (memory/demo host) | p50 (PostGIS host) |
+|---|---|---|
+| europe / page25 | 86 ms | 230 ms |
+| europe / countOnly | 85 ms | 221 ms |
+| europe / statistics | 85 ms | 219 ms |
+| global / page25 | 255 ms | 366 ms |
+| global / countOnly | 211 ms | 348 ms |
+| global / statistics | 215 ms | 415 ms |
+| europe walk (1 page) | 77 ms | 233 ms |
+| global walk (7 pages) | 1,678 ms (240 ms/page) | 2,624 ms (375 ms/page) |
+
+**This is the bead's answer.** The 2026-09-28 end-to-end numbers were a Debug
+host on the in-memory demo store, so they described a store no deployment uses.
+On the store a deployment uses, a 25-row viewport costs **230 ms instead of
+86 ms** and a full transfer of 6,253 rows costs **2.6 s instead of 1.7 s** — a
+1.6–2.7× penalty for the real store, paid on every request, and the penalty is
+in the store read, not in the wire bytes (13 bytes for a 283-match count on
+both).
+
+## Appendix: the 2026-09-28 run
+
+Kept for comparison; load 100–120 on 12 cores, run-to-run p50 spread 2–5×, and
+path B was a different call. Its PostGIS p50s were A 222 / B 73 / D 7 ms
+(europe page25) and A 1,049 / B 170 / D 54 ms (global page25), and its
+end-to-end numbers were 155 ms (europe page25) and 1,165 ms for the 7-page
+global walk, on the in-memory demo store. The rows and allocation columns there
+are the ones that still hold and are reproduced above.
 
 ## Caveats and gaps
 
-- Wall times are load-contaminated (see above). Re-run
-  `eng/spike-u2x-query-baseline.sh` on an idle box before quoting absolute
-  milliseconds; the ratios and the rows/allocation columns will not move.
-- The end-to-end HTTP numbers are a **Debug**-built host against the in-memory
-  demo store. A host serving PostGIS was not measured end-to-end; the store
-  half of that is what the PostGIS table above covers.
-- The PostGIS table was measured twice: as `PostgisStore.CreateAsync` leaves it
-  (no indexes, `Seq Scan`) and after adding the GiST geometry index, a btree on
-  `population` and one on `country` plus `ANALYZE`
-  (`BitmapAnd` of two index scans → 283 rows). Pushdown p50 improves 73 → 44 ms
-  (europe) and 170 → 109 ms (global) with the indexes; scan path A is
-  unchanged, because A never benefits from an index when it reads everything.
-  Plans are committed under `results/postgis-*-plan.txt`.
-- Path D is an **emulation** over the rows the store holds, not a store call.
-  It is deliberately two-sided: it shows the materialisation and allocation a
-  store-side pushdown would save, while still paying the in-process predicate
-  scan that a real database does with an index. A real store-side pushdown
-  would be at least as good.
-- Path C returns **0 rows** on both stores: `PostgisFeatures.ByIdentityAsync`
-  returns empty when the dataset declares no identity column, and
-  `MemoryStore.GetAsync` resolves ids. The world-cities layer has no integer
-  identity column, so on this layer the per-feature read face is unreachable —
-  the Esri `OBJECTID` is a scan ordinal, which is not a durable key.
+- The box is shared; every number here is a **minimum of three runs**, and the
+  load averages are recorded. Treat the milliseconds as ±20%, not as exact.
+- `Bp`'s 46–48 MB per call on PostGIS is unexplained and filed separately.
+- Path `D` remains an emulation over the rows the store holds. It is the only
+  column that reaches the count and grouped-aggregate shapes, and no store face
+  reaches it today (`IFeatureStore` has no count or aggregate plan;
+  `IFeatureAggregateStore` is the face that would).
+- The world-cities layer declares no identity column, so the per-feature read
+  face is unreachable on it on every store (ADR-0140). Path `C` cannot be
+  measured here at all.
+- The harness lives under `eng/` and is outside the solution and every gate,
+  which is how it drifted out of compilation unnoticed. See the bead filed with
+  this change.

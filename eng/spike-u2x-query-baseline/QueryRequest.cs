@@ -1,4 +1,5 @@
 using Spatial.Contracts;
+using Spatial.Core.Features.Query;
 using Spatial.Esri.Codec;
 
 namespace Spatial.Spike.QueryBaseline;
@@ -34,21 +35,38 @@ internal sealed record QueryRequest(
     ];
 
     /// <summary>
-    /// The equivalent pushdown filter for the store: the same predicate in the
-    /// store's own attribute-filter grammar (ADR-0028), which is the string
-    /// <c>IFeatureStore.QueryAsync</c> takes today.
+    /// The pushdown plan's attribute term: the store read is a
+    /// <see cref="FeatureQuery"/> plan (ADR-0074), so the store takes the
+    /// compiled predicate rather than a filter string.
     /// </summary>
-    internal string StoreFilter => Where;
+    internal Predicate? StoreFilter => ParsedWhere();
 
     /// <summary>The query envelope, as the matcher's envelope test sees it.</summary>
     internal Spatial.Core.Geometry.Envelope Envelope =>
         new(Bbox.MinX, Bbox.MinY, Bbox.MaxX, Bbox.MaxY);
 
     /// <summary>The parsed where clause, or a failure — the same parse the adapter does.</summary>
-    internal EsriFilterClause ParsedWhere() =>
-        EsriFilterClause.TryParse(Where, out var clause, out var error) && clause is { } parsed
-            ? parsed
+    internal Predicate? ParsedWhere() =>
+        EsriWhere.TryParse(Where, out var where, out var error) && where is { } parsed
+            ? parsed.Predicate
             : throw new InvalidOperationException($"the spike's own where clause does not parse: {error}");
+
+    /// <summary>
+    /// The plan the store read is asked for: the bbox pre-filter and the
+    /// attribute predicate, plus the ordering and the page cap when
+    /// <paramref name="paged"/> asks for the shape a served request wants
+    /// (ADR-0074 §5, ADR-0116). Without the cap it is the whole match set,
+    /// which is what path B measures.
+    /// </summary>
+    internal FeatureQuery Plan(bool paged, string variant)
+    {
+        var order = new[] { new OrderTerm(OrderByField, OrderDescending ? SortDirection.Descending : SortDirection.Ascending) };
+        return new FeatureQuery(
+            Where: StoreFilter,
+            BoundingBox: Bbox,
+            Order: paged ? order : null,
+            Limit: paged && !IsCountOnly(variant) && !IsStatistics(variant) ? Math.Min(ResultRecordCount, 1000) : null);
+    }
 
     /// <summary>Which result shape a variant name asks for.</summary>
     internal static bool IsCountOnly(string variant) => variant == "countOnly";

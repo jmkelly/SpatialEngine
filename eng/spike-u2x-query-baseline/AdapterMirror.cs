@@ -1,7 +1,8 @@
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
-using Spatial.Esri.Codec;
+using Spatial.Querying;
 
 namespace Spatial.Spike.QueryBaseline;
 
@@ -81,21 +82,20 @@ internal sealed class LayerModel
 /// A mirror of the in-adapter half of a Feature Service query, so the spike can
 /// time the production path without the adapter's internals (they are
 /// <c>internal</c>). It follows <c>FeatureSpatialMatcher.MatchAsync</c> (the
-/// ordinal object-id scheme, the real <see cref="EsriFilterClause"/>
-/// evaluator, the envelope-intersects test), <c>FeatureOrdering.Apply</c>, the
+/// ordinal object-id scheme, the real predicate evaluator, the
+/// envelope-intersects test), <c>FeatureOrdering.Apply</c>, the
 /// <c>FeaturePaging</c> cap (<c>min(resultRecordCount, 1000)</c>) and
 /// <c>FeatureStatisticsEngine</c>'s grouping. Fidelity is checked against the
 /// real host by the <c>--host</c> mode.
 /// </summary>
 internal static class AdapterMirror
 {
-    private const string ObjectIdField = "OBJECTID";
     private const int MaxRecordCount = 1000;
 
     internal static List<Row> Match(
         IReadOnlyList<FeatureBatch> batches,
         LayerModel model,
-        EsriFilterClause? where,
+        Predicate? where,
         Envelope? queryEnvelope,
         CancellationToken cancellationToken)
     {
@@ -106,7 +106,7 @@ internal static class AdapterMirror
             cancellationToken.ThrowIfCancellationRequested();
             ordinal++;
             var objectId = model.ResolveObjectId(feature, ordinal);
-            if (MatchesWhere(feature, objectId, where) && MatchesEnvelope(feature, model, queryEnvelope))
+            if (MatchesWhere(feature, where) && MatchesEnvelope(feature, model, queryEnvelope))
             {
                 matches.Add(new Row(objectId, feature));
             }
@@ -115,9 +115,16 @@ internal static class AdapterMirror
         return matches;
     }
 
-    private static bool MatchesWhere(Feature feature, long objectId, EsriFilterClause? where) =>
-        where is null
-        || where.Matches(feature, new EsriSyntheticField(ObjectIdField, AttributeValue.FromInt64(objectId)));
+    /// <summary>
+    /// The attribute test, through <c>Spatial.Querying.ReferencePredicate</c>:
+    /// the reference evaluator of the predicate vocabulary (ADR-0074 §4), which
+    /// is the semantics every store's pushdown has to agree with. A clause
+    /// naming the synthetic <c>OBJECTID</c> is not answerable here — the
+    /// overlay the facade adds is internal — and the spike's own clauses name
+    /// an attribute, never the id.
+    /// </summary>
+    internal static bool MatchesWhere(Feature feature, Predicate? where) =>
+        where is null || ReferencePredicate.Matches(where, feature);
 
     private static bool MatchesEnvelope(Feature feature, LayerModel model, Envelope? queryEnvelope)
     {

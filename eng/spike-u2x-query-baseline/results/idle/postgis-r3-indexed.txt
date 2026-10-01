@@ -1,0 +1,32 @@
+# SpatialEngine-u2x.1 query baseline — store=postgis label=idle-postgis-r3
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=30 warmup=5
+# A=ScanAsync+in-adapter  B=QueryAsync pushdown  Bp=QueryAsync paged plan (order+limit)  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# path C (IFeatureLookup by identity) is unavailable here: dataset 'public.spike_world_cities' declares no integer identity column, so the per-feature read face refuses it (ADR-0140).
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown supported
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown supported
+A-scan   europe  page25        129.139    181.061    233.229    186.874      31.11      17.73      34135         25
+B-push   europe  page25        165.697    178.565    209.184    185.297      46.82      20.78        283         25
+Bp-page  europe  page25        134.306    148.531    215.298    158.626      46.76      20.75         25         25
+D-emul   europe  page25          5.741      5.804      8.532      6.558       0.81       0.82         25         25
+A-scan   europe  countOnly     121.722    151.374    176.845    147.884      31.10      17.73      34135        283
+B-push   europe  countOnly     140.720    172.056    195.766    168.979      46.80      20.78        283        283
+Bp-page  europe  countOnly     136.891    159.612    193.188    162.198      46.81      20.81        283        283
+D-emul   europe  countOnly       5.518      5.897      6.960      6.072       0.78       0.79          0        283
+A-scan   europe  statistics    142.828    159.109    185.535    163.517      31.09      17.72      34135          8
+B-push   europe  statistics    153.633    173.475    194.585    174.106      46.78      20.77        283          8
+Bp-page  europe  statistics    141.301    160.699    203.168    164.670      46.78      20.30        283          8
+D-emul   europe  statistics      5.482      7.109      8.063      6.792       0.78       0.80          8          8
+A-scan   global  page25        143.708    155.603    190.545    158.314      31.91      18.61      34135         25
+B-push   global  page25        169.991    206.629    271.813    210.612      48.01      21.53       6253         25
+Bp-page  global  page25        172.010    206.427    249.500    208.562      47.58      21.58         25         25
+D-emul   global  page25         15.496     18.103     31.846     19.313       1.31       1.33         25         25
+A-scan   global  countOnly     126.731    163.310    187.887    158.319      31.91      18.59      34135       6253
+B-push   global  countOnly     143.443    157.640    182.424    158.737      48.02      22.02       6253       6253
+Bp-page  global  countOnly     159.317    201.411    224.083    198.592      48.73      22.71       6253       6253
+D-emul   global  countOnly       5.752      7.947     11.512      8.287       0.78       0.79          0       6253
+A-scan   global  statistics    130.162    167.702    208.845    171.356      31.58      18.26      34135        171
+B-push   global  statistics    143.382    179.098    241.643    185.013      47.72      21.69       6253        171
+Bp-page  global  statistics    162.943    194.530    232.827    197.551      48.37      21.89       6253        171
+D-emul   global  statistics      6.841      7.529     10.163      7.790       0.79       0.80        171        171
