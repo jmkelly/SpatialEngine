@@ -1,15 +1,16 @@
 using Spatial.Contracts;
+using Spatial.Core.Features;
 using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
 /// T-040: the export temporal parameters (S2 export-map/, research
-/// §2). <c>time</c> reuses the query grammar, <c>timeRelation</c> accepts the
-/// one relation the engine applies (<c>esriTimeRelationOverlaps</c>; the
-/// relations it does not apply are rejected by name — ADR-0100), and
-/// <c>layerTimeOptions</c> carries per-layer opt-out,
-/// cumulative display and (rejected) offsets.
+/// §2). <c>time</c> reuses the query grammar, <c>timeRelation</c> reads the
+/// three relations the temporal-extent model can serve and refuses the rest by
+/// name — as does a layer with no designation, which has no extent to compare
+/// a window against (ADR-0175 §6) — and <c>layerTimeOptions</c> carries
+/// per-layer opt-out, cumulative display and (rejected) offsets.
 /// </summary>
 public sealed class MapExportTimeTests
 {
@@ -23,16 +24,25 @@ public sealed class MapExportTimeTests
     [InlineData(null, null)]
     [InlineData("", null)]
     [InlineData("   ", null)]
-    [InlineData("esriTimeRelationOverlaps", "esriTimeRelationOverlaps")]
-    [InlineData("  esriTimeRelationOverlaps  ", "esriTimeRelationOverlaps")]
-    public void ParseTimeRelation_accepts_blank_and_the_applied_relation(string? value, string? expected)
+    public void ParseTimeRelation_reads_blank_as_no_relation(string? value, TemporalRelation? expected)
     {
         Assert.Equal(expected, MapExportTime.ParseTimeRelation(value));
     }
 
     [Theory]
-    [InlineData("esriTimeRelationContains")]
-    [InlineData("esriTimeRelationWithin")]
+    [InlineData("esriTimeRelationOverlaps", TemporalRelation.Overlaps)]
+    [InlineData("  esriTimeRelationOverlaps  ", TemporalRelation.Overlaps)]
+    [InlineData("esriTimeRelationContains", TemporalRelation.Contains)]
+    [InlineData("  esriTimeRelationContains  ", TemporalRelation.Contains)]
+    [InlineData("esriTimeRelationWithin", TemporalRelation.Within)]
+    [InlineData("esritimerelationwithin", TemporalRelation.Within)]
+    public void ParseTimeRelation_reads_the_three_relations_the_model_can_serve(
+        string value, TemporalRelation expected)
+    {
+        Assert.Equal(expected, MapExportTime.ParseTimeRelation(value));
+    }
+
+    [Theory]
     [InlineData("esriTimeRelationDisjoint")]
     [InlineData("overlaps")]
     [InlineData("yesterday")]
@@ -43,12 +53,64 @@ public sealed class MapExportTimeTests
     }
 
     [Fact]
-    public void ParseTimeRelation_names_the_relation_the_engine_does_apply()
+    public void ParseTimeRelation_names_the_relations_the_engine_does_apply()
     {
         var failure = Assert.Throws<EsriInteropException>(
-            () => MapExportTime.ParseTimeRelation("esriTimeRelationContains"));
+            () => MapExportTime.ParseTimeRelation("esriTimeRelationDisjoint"));
 
         Assert.Contains(MapExportTime.Overlaps, failure.Message, StringComparison.Ordinal);
+        Assert.Contains(MapExportTime.Contains, failure.Message, StringComparison.Ordinal);
+        Assert.Contains(MapExportTime.Within, failure.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The relation reaches the reader rather than being parsed and discarded
+    /// (ADR-0100's Context): it rides the resolved window the render contract
+    /// carries, so the matcher applies the one the client named.
+    /// </summary>
+    [Fact]
+    public void ResolveTimes_carries_the_relation_to_the_reader()
+    {
+        var resolved = MapExportTime.ResolveTimes(
+            Layers, new EsriTimeExtent(1000, 2000), null, TemporalRelation.Within);
+
+        Assert.NotNull(resolved);
+        Assert.Equal(TemporalRelation.Within, resolved[0].Relation);
+        Assert.Equal(TemporalRelation.Within, resolved[1].Relation);
+    }
+
+    [Fact]
+    public void ResolveTimes_reads_the_overlaps_relation_when_the_request_names_none()
+    {
+        var resolved = MapExportTime.ResolveTimes(Layers, new EsriTimeExtent(1000, 2000), null, null);
+
+        Assert.NotNull(resolved);
+        Assert.Equal(TemporalRelation.Overlaps, resolved[0].Relation);
+    }
+
+    /// <summary>
+    /// A layer with no designation has no extent to compare the window
+    /// against, so the two dependent relations are refused by name rather than
+    /// accepted and answered with the bag rule (ADR-0175 §6, ADR-0081).
+    /// </summary>
+    [Fact]
+    public void A_relation_needing_an_extent_is_refused_on_an_undesignated_layer()
+    {
+        var failure = Assert.Throws<EsriInteropException>(() => MapExportTime.RequireDesignated(
+            TemporalRelation.Contains, [new MapDesignation(0, "Cities", null), new MapDesignation(1, "Rivers", new TemporalExtentFields("begins", "ends"))]));
+
+        Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+        Assert.Contains(MapExportTime.Contains, failure.Message, StringComparison.Ordinal);
+        Assert.Contains("Cities", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Every_designated_layer_serves_every_relation()
+    {
+        MapExportTime.RequireDesignated(
+            TemporalRelation.Within, [new MapDesignation(0, "Cities", new TemporalExtentFields("begins", "ends"))]);
+
+        MapExportTime.RequireDesignated(TemporalRelation.Overlaps, [new MapDesignation(0, "Cities", null)]);
     }
 
     [Theory]

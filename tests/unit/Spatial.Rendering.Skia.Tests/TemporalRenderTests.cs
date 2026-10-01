@@ -109,10 +109,82 @@ public sealed class TemporalRenderTests
         Assert.Equal(onlyStraddling, timed);
     }
 
-    private static async Task<byte[]> RenderAsync(IFeatureStore store, MapTimeExtent? time)
+    /// <summary>
+    /// The export path serves the three relations on a designated layer
+    /// (ADR-0175 §6): a row whose extent covers the window answers
+    /// <c>contains</c>, a row the window covers answers <c>within</c>, and
+    /// both answer <c>overlaps</c> — so the relation is applied rather than
+    /// discarded (ADR-0100's Context).
+    /// </summary>
+    [Fact]
+    public async Task A_designated_layer_serves_contains_and_within_as_themselves()
+    {
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("name", AttributeKind.String),
+            new FieldDefinition("begins", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("ends", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("geometry", AttributeKind.Geometry),
+        ]);
+        Feature Event(string name, DateTimeOffset begins, DateTimeOffset ends) => new(
+            new FeatureId(name),
+            schema,
+            [
+                AttributeValue.FromString(name),
+                AttributeValue.FromDateTimeOffset(begins),
+                AttributeValue.FromDateTimeOffset(ends),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(0, 0, CoordinateReference.Epsg(4326))),
+            ]);
+
+        var covering = Event("covering", new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var inside = Event("inside", new DateTimeOffset(2024, 6, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2024, 7, 1, 0, 0, 0, TimeSpan.Zero));
+        var full = new FakeStore(schema, covering, inside);
+        var window = new MapTimeExtent(
+            new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds(),
+            new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds());
+        var designated = new FakeCatalogue(4326, timeFields: new TemporalExtentFields("begins", "ends"));
+
+        Task<byte[]> Served(TemporalRelation relation, params Feature[] served) => RenderAsync(
+            new FakeStore(schema, served), window with { Relation = relation }, designated);
+
+        Assert.Equal(await Served(TemporalRelation.Overlaps, covering, inside), await Served(TemporalRelation.Overlaps, covering, inside));
+        Assert.Equal(await Served(TemporalRelation.Overlaps, covering), await Served(TemporalRelation.Contains, covering, inside));
+        Assert.Equal(await Served(TemporalRelation.Overlaps, inside), await Served(TemporalRelation.Within, covering, inside));
+    }
+
+    /// <summary>
+    /// A layer with no designation has no extent to compare a window against,
+    /// so the two dependent relations are refused by name rather than served as
+    /// overlaps (ADR-0175 §6) — and refusing means throwing, never quietly
+    /// answering with the bag rule.
+    /// </summary>
+    [Fact]
+    public async Task A_relation_needing_an_extent_is_refused_on_an_undesignated_layer()
+    {
+        var store = new FakeStore(DatedSchema, Dated("inside", 0, Inside));
+        var window = new MapTimeExtent(
+            new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds(),
+            new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds())
+        {
+            Relation = TemporalRelation.Contains,
+        };
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => renderer.RenderAsync(Request(store, window)));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+    }
+
+    private static Task<byte[]> RenderAsync(IFeatureStore store, MapTimeExtent? time) =>
+        RenderAsync(store, time, new FakeCatalogue(4326));
+
+    private static async Task<byte[]> RenderAsync(IFeatureStore store, MapTimeExtent? time, IDataCatalogue catalogue)
     {
         var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
-        var image = await renderer.RenderAsync(Request(store, time));
+        var image = await renderer.RenderAsync(new MapRenderRequest(
+            new RasterViewport(new Envelope(-10, -10, 10, 10), 100, 100, "EPSG:4326"),
+            CircleStyle,
+            [new MapLayerSource("demo.places", store, catalogue, Time: time)]));
         return image.Content;
     }
 

@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**167 records on disk.** `status` is the record's own word;
+**168 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -183,6 +183,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0179](ADR-0179-the-published-bundle-agreement-with-proj-is-an-operator-run-deployment-exercise-that-reports-its-state.md) | The published-bundle agreement with PROJ is an operator-run deployment exercise that reports its state | accepted | 2026-10-02 | ADR-0105 |
 | [0180](ADR-0180-a-grid-operation-names-the-datum-it-reaches.md) | A grid operation names the datum it reaches, and NAD27 is the datum NADCON is registered against | accepted | 2026-10-08 | ADR-0105, ADR-0168 |
 | [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md) | A NADCON deployment states its longitudes positive west, and the reader is where that is answered | accepted | 2026-10-08 | ADR-0168, ADR-0105, ADR-0180 |
+| [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) | Serve the contains and within relations on a designated layer | accepted | 2026-10-04 | ADR-0100, ADR-0175, ADR-0081 |
 
 ## Reading order
 
@@ -197,7 +198,7 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 19 records, 35,833 words (19% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 19 records, 35,833 words (18% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md)
@@ -278,6 +279,12 @@ out: the "Amended by" row already says everything about a pair.
 2. [0082](ADR-0082-ingest-honours-the-source-crs-reports-and-streams.md)
 3. [0090](ADR-0090-an-upload-is-staged-then-loaded-resumable-ingest.md)
 
+### ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty — 3 records, 3,601 words (2% of the corpus)
+
+1. [0058](ADR-0058-map-export-time-dynamic-layers-layer-option-cached-root.md) *(narrowed by 0100)*
+2. [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) *(narrowed by 0182)*
+3. [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md)
+
 ### ADR-0084: Advertise `hasZ`/`hasM` from the coordinate layout the store declares — 3 records, 2,269 words (1% of the corpus)
 
 1. [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) *(narrowed by 0091, 0125)*
@@ -313,6 +320,7 @@ believed.
 - **0087** is amended by 0111, 0163
 - **0092** is amended by 0147
 - **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
+- **0100** is amended by 0182
 - **0105** is amended by 0107, 0168, 0179, 0180
 - **0106** is amended by 0169, 0171
 - **0109** is amended by 0134, 0141
@@ -344,7 +352,7 @@ believed.
 - **0160** is amended by 0161
 - **0168** is amended by 0180, 0181
 - **0172** is amended by 0174
-- **0175** is amended by 0178
+- **0175** is amended by 0178, 0182
 
 ## Superseded, by superseder
 

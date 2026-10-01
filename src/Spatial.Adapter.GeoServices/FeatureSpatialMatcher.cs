@@ -143,7 +143,7 @@ internal static class FeatureSpatialMatcher
             new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(match.ObjectId)));
 
     private static bool MatchesTimeWindow(MatchCandidate match) =>
-        match.Query.Time is not { } time || MatchesTime(match.Feature, time, match.TimeFields);
+        match.Query.Time is not { } time || MatchesTime(match.Feature, time, match.TimeFields, TemporalRelation.Overlaps);
 
     private static bool MatchesSpatial(MatchCandidate match, CancellationToken cancellationToken) =>
         match.QueryGeometry is null
@@ -166,12 +166,30 @@ internal static class FeatureSpatialMatcher
     /// rule.
     /// </para>
     /// </summary>
-    internal static bool MatchesTime(Feature feature, EsriTimeExtent time, TemporalExtentFields? fields = null)
+    /// <param name="relation">
+    /// The relation the request asked for. The query path and the image
+    /// catalogue have no <c>timeRelation</c> parameter, so they apply
+    /// <see cref="TemporalRelation.Overlaps"/>; the MapServer export and
+    /// identify paths pass the one the client named. A relation that needs a
+    /// feature extent on a layer that designates none is refused by name
+    /// rather than answered with the bag rule (ADR-0175 §6) — the
+    /// backstop behind the request edge that refuses it first.
+    /// </param>
+    internal static bool MatchesTime(
+        Feature feature, EsriTimeExtent time, TemporalExtentFields? fields = null, TemporalRelation relation = TemporalRelation.Overlaps)
     {
         var window = TemporalExtent.FromMilliseconds(time.StartMs, time.EndMs);
-        return fields is null
-            ? TemporalExtent.MatchesAnyDate(feature, window)
-            : TemporalExtent.From(feature, fields).Overlaps(window);
+        if (fields is null)
+        {
+            if (relation is not TemporalRelation.Overlaps)
+            {
+                throw MapExportTime.Undesignated(relation);
+            }
+
+            return TemporalExtent.MatchesAnyDate(feature, window);
+        }
+
+        return TemporalExtent.From(feature, fields).Matches(window, relation);
     }
 
     private static bool SpatialMatch(

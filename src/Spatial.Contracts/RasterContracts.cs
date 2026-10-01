@@ -1,3 +1,4 @@
+using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
@@ -104,7 +105,20 @@ public sealed record RasterCompositeRequest(
 /// an instant has equal bounds, a <c>null</c> bound is open (infinite).
 /// Core-typed (two longs), so it crosses the contract boundary.
 /// </summary>
-public sealed record MapTimeExtent(long? StartMs, long? EndMs);
+/// <param name="StartMs">The window's first instant, or <c>null</c> for open.</param>
+/// <param name="EndMs">The window's last instant, or <c>null</c> for open.</param>
+public sealed record MapTimeExtent(long? StartMs, long? EndMs)
+{
+    /// <summary>
+    /// The relation the reader applies between a feature's temporal extent
+    /// and this window (ADR-0175, ADR-0182). Additive and non-positional, so
+    /// an existing construction still reads as the overlaps relation the
+    /// parameter's default names. A relation other than overlaps requires a
+    /// layer that designates the dates bounding a feature; one that does not
+    /// is refused by name rather than answered with the bag rule.
+    /// </summary>
+    public TemporalRelation Relation { get; init; } = TemporalRelation.Overlaps;
+}
 
 /// <summary>
 /// One styled layer's resolved read services: the dataset key the style's

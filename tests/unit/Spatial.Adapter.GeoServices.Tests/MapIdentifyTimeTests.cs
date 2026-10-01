@@ -14,10 +14,10 @@ namespace Spatial.Adapter.GeoServices.Tests;
 
 /// <summary>
 /// T-059: MapServer identify honours the temporal surface (spec §4.0.5,
-/// ADR-0058). <c>time</c> reuses the query grammar, the one
-/// <c>timeRelation</c> the engine applies (<c>esriTimeRelationOverlaps</c>) is
-/// accepted and the relations it does not apply are rejected by name
-/// (ADR-0100), and <c>layerTimeOptions</c> carries per-layer
+/// ADR-0058). <c>time</c> reuses the query grammar, <c>timeRelation</c> is
+/// read and applied — all three relations on a designated layer, and the two
+/// that need an extent refused by name on a layer that designates none
+/// (ADR-0175 §6) — and <c>layerTimeOptions</c> carries per-layer
 /// opt-out and cumulative display. Red-first: the engine scans without a
 /// temporal predicate today, so every filtering test here fails while the
 /// parameters are ignored.
@@ -243,10 +243,65 @@ public sealed class MapIdentifyTimeTests
         Assert.Empty(Names(undesignated));
     }
 
+    /// <summary>
+    /// The identify path serves all three relations on a designated layer
+    /// (ADR-0175 §6): a row whose extent covers the window answers
+    /// <c>contains</c>, a row the window covers answers <c>within</c>, and
+    /// both answer <c>overlaps</c> — the parsed relation reaches the matcher
+    /// rather than being discarded (ADR-0100's Context).
+    /// </summary>
+    [Fact]
+    public async Task A_designated_layer_identifies_contains_and_within_as_themselves()
+    {
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("name", AttributeKind.String),
+            new FieldDefinition("begins", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("ends", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("geometry", AttributeKind.Geometry),
+        ]);
+        Feature Event(string name, long begins, long ends) => new(
+            new FeatureId(name),
+            schema,
+            [
+                AttributeValue.FromString(name),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(begins)),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(ends)),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(13.405, 52.52, Crs4326)),
+            ]);
+
+        var dataset = Cities(schema) with { TimeFields = new TemporalExtentFields("begins", "ends") };
+        var store = new MemoryStore(new Dictionary<string, Feature[]>
+        {
+            // The window is [Earlier, Instant], so a row reaching past it on
+            // either side is only a "contains" answer and a row strictly
+            // inside it is only a "within" answer.
+            ["demo.cities"] =
+            [
+                Event("covering", Earlier - 1, Instant + 1),
+                Event("inside", Earlier + 1, Instant - 1),
+            ],
+        });
+
+        async Task<string[]> Identified(string relation) => Names(await IdentifyBodyAsync(
+            store,
+            Infos(dataset),
+            PointParams(("time", $"{Earlier},{Instant}"), ("timeRelation", relation))));
+
+        Assert.Equal(["covering", "inside"], await Identified("esriTimeRelationOverlaps"));
+        Assert.Equal(["covering"], await Identified("esriTimeRelationContains"));
+        Assert.Equal(["inside"], await Identified("esriTimeRelationWithin"));
+    }
+
+    /// <summary>
+    /// A layer with no designation has no extent to compare a window against,
+    /// so it keeps refusing contains/within by name (ADR-0175 §6) — refused,
+    /// not served as overlaps.
+    /// </summary>
     [Theory]
     [InlineData("esriTimeRelationContains")]
     [InlineData("esriTimeRelationWithin")]
-    public async Task A_time_relation_the_engine_does_not_apply_is_a_typed_error(string relation)
+    public async Task A_relation_needing_an_extent_is_refused_on_an_undesignated_layer(string relation)
     {
         var store = new MemoryStore(new Dictionary<string, Feature[]> { ["demo.cities"] = [Dated("a", Instant)] });
         var parameters = await ParamsAsync(PointParams(("time", "1700000000000"), ("timeRelation", relation)));
@@ -256,6 +311,7 @@ public sealed class MapIdentifyTimeTests
                 Identify(store, Infos(Cities(Schema))), parameters, CancellationToken.None));
 
         Assert.Equal(EsriErrorCodes.InvalidParameters, failure.Code);
+        Assert.Contains(relation, failure.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(MapExportTime.Overlaps, failure.Message, StringComparison.Ordinal);
     }
 

@@ -28,14 +28,14 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (routes), `MapServerOperationEndpoin
 
 | ArcGIS capability | Ours | Status | Evidence |
 |---|---|---|---|
-| Service root (`mapName`, `layers[]`, `tables[]`, extents, `supportedImageFormatTypes`, `maxImageWidth/Height`, `supportsDynamicLayers`, `supportsTimeRelation`) | served | **Have** | `MapServerResources.cs:Root`; `GeoServicesEndpoints.Maps.cs`; every capability flag states what the served surface applies (ADR-0100) |
+| Service root (`mapName`, `layers[]`, `tables[]`, extents, `supportedImageFormatTypes`, `maxImageWidth/Height`, `supportsDynamicLayers`, `supportsTimeRelation`) | served | **Have** | `MapServerResources.cs:Root`; `GeoServicesEndpoints.Maps.cs`; every capability flag states what the served surface applies (ADR-0100, ADR-0182) |
 | `layers` (all layers+tables) | served | **Have** | `MapAllLayers`, replay vs G1 `map-layers` |
 | `<layerId>` metadata + `drawingInfo`/`labelingInfo`/domains | served | **Have** | `MapServerResources.cs:Layer`; ADR-0050 projection |
 | `hasZ`/`hasM` on `<layerId>` metadata | served | **Have** | `MapServerResources.cs:Layer` advertises the ordinates the store proves the geometry column declares, off the same `DatasetDescription.GeometryLayout` the FeatureServer layer resource reads (ADR-0084, ADR-0125). A 2D or unconstrained column advertises neither key rather than `false`, exactly as the FeatureServer record does; a 3D upstream MapServer layer carries `hasZ: true` (G-capture `geonames-mapserver/layer-1.json`) and a 2D one carries neither (G-capture `canvas-world-dark-gray-base-mapserver/layer-0.json`) |
 | `<layerId>/query` (FeatureServer engine) | served | **Have** | `MapQuery` → `FeatureService.QueryAsync` |
 | `identify` (with `layerDefs` filtering) | served | **Have** | `MapIdentifyEngine.cs`; `layerDefs` honoured (T-015 update) |
 | `find` | served | **Have** | `MapFindEngine.cs` |
-| `export` (png/jpg/webp/tiff; `bbox/bboxSR/imageSR/size/layers/layerOption/layerDefs/format/transparent/dpi`; `f=image` bytes or `{href}`) | served | **Have** | `GeoServicesEndpoints.MapExport.cs`; `MapRenderEngine.cs` (T-040: `time`/`layerTimeOptions`/`timeRelation` (ADR-0100), `dynamicLayers`, `layerOption`, ADR-0058) |
+| `export` (png/jpg/webp/tiff; `bbox/bboxSR/imageSR/size/layers/layerOption/layerDefs/format/transparent/dpi`; `f=image` bytes or `{href}`) | served | **Have** | `GeoServicesEndpoints.MapExport.cs`; `MapRenderEngine.cs` (T-040: `time`/`layerTimeOptions`/`timeRelation` (ADR-0100, ADR-0182), `dynamicLayers`, `layerOption`, ADR-0058) |
 | `tile/{z}/{y}/{x}` Web-Mercator tile | served | **Have** | `MapExportEndpoints`; `IMapRenderer`+`ITileScheme` (ADR-0046/0048) |
 | `<layerId>/images/<imageId>` (§4.7 picture-symbol images) | typed `not.found` | **Non-goal** | `GeoServicesEndpoints.Maps.cs:MapImage` (ADR-0050: no picture symbols) |
 | `legend` (per-layer symbology legend) | served | **Have** | `GeoServicesEndpoints.Maps.cs:29` → `MapServerLegendEndpoints.MapLegend` → `MapLegend.Legend`: one legend layer per published layer, projected from the persisted style so it always agrees with the layer metadata `drawingInfo`; replayed against G1 `map-legend.Census.json` (ADR-0055) |
@@ -50,7 +50,7 @@ Our surface: `GeoServicesEndpoints.Maps.cs` (routes), `MapServerOperationEndpoin
 | `htmlPopup` / attachments on map layers | — | **Missing** | no MapServer popup or attachment route is mounted, and the layer metadata is honest about it: `esriServerHTMLPopupTypeNone` and `hasAttachments: false` (`MapServerResources.Layer`). The served attachment surface is the FeatureServer, which advertises the face per store (ADR-0066); the map image resource is the separate typed-`not.found` row above |
 | Live vector tiles (`MapServer/vectorTile/{z}/{y}/{x}`, `VectorTileServer/tile/{z}/{y}/{x}`) | served | **Have** | `MapVectorTileEndpoints.cs`: a live MVT view over the same service/scheme/cache contracts as the raster tiles, plus the map-scoped OGC landing, collections, TileJSON and negotiated tile data (ADR-0070, which superseded ADR-0062's "no MVT" decision). Offline `.vtpk` packaging stays a non-goal (ADR-0033, ADR-0060) |
 | Async (`.../MapServer/jobs`, `map-service-job/result/input`) | mounted, honestly rejected | **Non-goal** | `.../MapServer/jobs` and `.../MapServer/jobs/{*rest}` (one job, its results, its inputs) reject by name: long-running work runs as cancellable tasks, not observable jobs, so there is nothing to poll and clients await the synchronous `export`/tile response (ADR-0033, ADR-0060 §4) |
-| `time` / `layerTimeOptions` on export and identify | served | **Have** | `export` serves the temporal selection (T-040, ADR-0058) and `identify` now plans the same one, reusing the export grammar, so dated hits filter exactly as `query` and `export` do (`MapIdentifyPlan.cs`, `MapIdentifyMatcher`); live roots advertise `supportsTimeRelation:false`, the relation the engine actually applies is `esriTimeRelationOverlaps`, and the relations it does not apply are typed rejects on both paths (ADR-0100) |
+| `time` / `layerTimeOptions` on export and identify | served | **Have** | `export` serves the temporal selection (T-040, ADR-0058) and `identify` now plans the same one, reusing the export grammar, so dated hits filter exactly as `query` and `export` do (`MapIdentifyPlan.cs`, `MapIdentifyMatcher`); live roots advertise `supportsTimeRelation:true` exactly when a served layer designates its start/end date fields and `false` otherwise; all three relations are read and applied on a designated layer, and `Contains`/`Within` are typed rejects on a layer that designates none, on both paths (ADR-0100, ADR-0182) |
 | `layerOption` (`all\|visible\|top`), `gdbVersion`, `mapRangeValues`, `datumTransformations` on export | partial | **Partial** | `layerOption` validated and served (T-040, ADR-0058); `gdbVersion`/`mapRangeValues`/`datumTransformations` still ignored (speculative per §2) |
 
 | Cached-service fields (`singleFusedMapCache`, `tileInfo` LODs, `storageInfo`, `exportTilesAllowed`) on root | served | **Have** | `singleFusedMapCache`+`tileInfo` per served scheme (LOD rows replayed vs G1, T-040), `exportTilesAllowed:false` (packaging is T-041); `storageInfo` honestly absent (no stored cache) |
@@ -72,24 +72,27 @@ flag rather than in the direction of applying the relation (ADR-0100).**
 relations and both call sites discarded the parsed value
 (`MapExportLayers.cs:38`, `MapIdentifyPlan.cs:31`), so
 `esriTimeRelationContains`/`Within` were served as overlaps while the root
-advertised `supportsTimeRelation: true`. It now accepts blank or
-`esriTimeRelationOverlaps` and rejects the rest with a typed
-`invalid.arguments` naming the applied relation, on both `export` and
-`identify`, and the root advertises `supportsTimeRelation: false`.
+advertised `supportsTimeRelation: true`. ADR-0100 refused them and turned the
+flag off; ADR-0182 applies them.
 
-Serving the other relations was the rejected alternative, and the reason is
-the model rather than the plumbing: they compare the requested window against
-a *feature's* time extent, and the engine models a feature's dates as a bag
-of instants matched by "any value inside the window" — there is no feature
-temporal extent to compare against, in the render pipeline, the identify
-matcher or the query path. **The model is now decided (ADR-0175):** a feature's
-temporal extent is the interval its layer's schema *designates* — a start date
-field and an end date field on the layer — not a min/max over whatever date
-attributes a row carries, and one rule in `Spatial.Core` evaluates all three
-relations against it for the query, identify and render readers alike. A layer
-with no designation (every layer today) keeps this bag rule and keeps the typed
-reject, so nothing served changes when the model lands; the implementation is
-filed as a follow-up, not done.
+Serving the other relations was deferred rather than rejected, and the reason
+was the model rather than the plumbing: they compare the requested window
+against a *feature's* time extent, and the engine models a feature's dates as
+a bag of instants matched by "any value inside the window" — there was no
+feature temporal extent to compare against, in the render pipeline, the
+identify matcher or the query path. **The model is decided (ADR-0175) and
+implemented (ADR-0178):** a feature's temporal extent is the interval its
+layer's schema *designates* — a start date field and an end date field on the
+layer — not a min/max over whatever date attributes a row carries, and one
+rule in `Spatial.Core` evaluates all three relations against it for the query,
+identify and render readers alike. **The relations are now served
+(ADR-0182):** the parsed relation rides the per-layer window to the matcher
+(`MapTimeExtent.Relation`) instead of being discarded, so `Contains` and
+`Within` answer as themselves on `export` and `identify`, and the root
+advertises `supportsTimeRelation: true` exactly when one of its layers
+designates its start/end date fields. A layer with no designation (every layer
+today, because no store sets one) keeps the bag rule and keeps the typed
+reject by name.
 
 ## 3. Follow-ups (filed)
 
@@ -98,12 +101,12 @@ filed as a follow-up, not done.
 - T-E Map export parity: `time`/`layerTimeOptions`, `dynamicLayers`, `layerOption`,
   cached-root fields honesty (`exportTilesAllowed`, `singleFusedMapCache`).
   **Done (ADR-0058).** The one row that did not close is the `timeRelation`
-  application noted in §2: **done in the flag direction (ADR-0100)** — the
-  unapplied relations are rejected by name and the root advertises
-  `supportsTimeRelation:false`; applying them needs a feature temporal
-  extent model, **decided in ADR-0175** (the layer designates its start/end
-  date fields, and one rule in `Spatial.Core` serves all three relations across
-  the query, identify and render readers) and not yet implemented.
+  application noted in §2: **done (ADR-0100, ADR-0182)** — the model is
+  decided (ADR-0175: the layer designates its start/end date fields, and one
+  rule in `Spatial.Core` serves all three relations across the query, identify
+  and render readers) and implemented (ADR-0178), the relation now reaches the
+  matcher on both `export` and `identify`, and the root advertises
+  `supportsTimeRelation` from whether a served layer designates its dates.
 - T-F Map offline/async surface: `exportTiles`+estimate, WMTS, KML, async jobs —
   scoping task (WMTS/KML detail spawns from `tiles.md` T-M). **Closed as
   documented non-goals, mounted and rejected by name (ADR-0060); vector tiles

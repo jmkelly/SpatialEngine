@@ -34,7 +34,8 @@ internal static class IdentifyFilters
         }
 
         if (extent is not null
-            && !FeatureSpatialMatcher.MatchesTime(feature, new EsriTimeExtent(extent.StartMs, extent.EndMs), dataset.TimeFields))
+            && !FeatureSpatialMatcher.MatchesTime(
+                feature, new EsriTimeExtent(extent.StartMs, extent.EndMs), dataset.TimeFields, extent.Relation))
         {
             return false;
         }

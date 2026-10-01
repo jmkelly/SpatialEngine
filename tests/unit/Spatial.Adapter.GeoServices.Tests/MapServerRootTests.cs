@@ -18,13 +18,16 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// </summary>
 public sealed class MapServerRootTests
 {
-    private static MapLayerInfo Layer() => new(
+    private static MapLayerInfo Layer(TemporalExtentFields? timeFields = null) => new(
         new PublishedLayer(0, "demo.cities", "Cities"),
         new DatasetDescription("demo.cities", "demo", "cities", "geometry", 4326, "Point", 0, [], new FeatureSchema(
         [
             new FieldDefinition("name", AttributeKind.String),
             new FieldDefinition("geometry", AttributeKind.Geometry),
-        ])),
+        ]))
+        {
+            TimeFields = timeFields,
+        },
         new Envelope(0, 0, 10, 10));
 
     private sealed class FakeScheme : ITileScheme
@@ -63,6 +66,28 @@ public sealed class MapServerRootTests
         Assert.False(root.ExportTilesAllowed);
         Assert.NotNull(root.TileInfo);
         Assert.Equal(2, root.TileInfo.Lods.Count);
+    }
+
+    /// <summary>
+    /// The flag is advertised exactly when the behaviour proves it
+    /// (ADR-0081, ADR-0175 §6): a layer that designates the dates bounding a
+    /// feature can answer all three relations, so the root says so, and a
+    /// service whose layers designate none keeps the honest reject.
+    /// </summary>
+    [Fact]
+    public void The_root_advertises_the_time_relation_only_when_a_layer_can_serve_it()
+    {
+        var designated = MapServerResources.Root(
+            "world", [Layer(new TemporalExtentFields("begins", "ends"))], null, null, null, new ProjNetTransforms(), CancellationToken.None);
+        var undesignated = MapServerResources.Root("world", [Layer()], null, null, null, new ProjNetTransforms(), CancellationToken.None);
+        var partly = MapServerResources.Root(
+            "world",
+            [Layer(), Layer(new TemporalExtentFields("begins", "ends"))],
+            null, null, null, new ProjNetTransforms(), CancellationToken.None);
+
+        Assert.True(designated.SupportsTimeRelation);
+        Assert.False(undesignated.SupportsTimeRelation);
+        Assert.True(partly.SupportsTimeRelation);
     }
 
     [Fact]

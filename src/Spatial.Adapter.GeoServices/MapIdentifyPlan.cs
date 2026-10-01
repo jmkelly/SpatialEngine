@@ -1,4 +1,5 @@
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features;
 using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices;
@@ -24,11 +25,14 @@ internal sealed record MapIdentifyPlan(IReadOnlyList<MapLayerInfo> Layers, Ident
             ? request.Operations.Buffer(geometry, tolerance, 8, cancellationToken)
             : geometry;
         var selected = MapLayerSelection.Select(request.Layers, parameters.Get("layers"));
+        var relation = MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
+        MapExportTime.RequireDesignated(relation ?? TemporalRelation.Overlaps,
+            [.. selected.Select(layer => new MapDesignation(layer.Layer.Id, layer.Layer.Name, layer.Dataset.TimeFields))]);
         var times = MapExportTime.ResolveTimes(
             [.. selected.Select(layer => layer.Layer)],
             EsriFeatureQuery.ParseTime(parameters.Get("time")),
-            MapExportTime.ParseLayerTimeOptions(parameters.Get("layerTimeOptions")));
-        MapExportTime.ParseTimeRelation(parameters.Get("timeRelation"));
+            MapExportTime.ParseLayerTimeOptions(parameters.Get("layerTimeOptions")),
+            relation);
         return new MapIdentifyPlan(
             selected,
             new IdentifyQuery(
