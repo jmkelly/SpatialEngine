@@ -473,6 +473,18 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// Every feature a plan's restriction selects, with the plan's shaping
     /// stripped: the reduction faces must see the whole selected set, so the
     /// row cap, the order and the projection are not applied to it.
+    ///
+    /// <para>
+    /// <paramref name="where"/> is the restriction the caller already resolved
+    /// — the read face's own for a fallback read, the reduction's for a count,
+    /// a distinct set or a grouped reduction — and it is <em>not</em> derived
+    /// here: both of the ways it arrives null mean the same thing to this
+    /// method, a restriction the dialect could not state, and re-deriving it
+    /// would compile the same predicate to learn nothing (SpatialEngine-v9x).
+    /// A null restriction is therefore a whole read whose rows this method
+    /// selects over, which is what keeps a feature's identity the ordinal the
+    /// whole read gave it (ADR-0097).
+    /// </para>
     /// </summary>
     private Task<List<Feature>> SelectedAsync(
         PostgisDatasetFacts facts,
@@ -488,12 +500,6 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         List<object?> parameters,
         CancellationToken cancellationToken)
     {
-        var pushed = where is not null;
-        if (!pushed)
-        {
-            where = await RestrictionAsync(facts, query, parameters, cancellationToken);
-        }
-
         // The store's own row order, never a SQL order of this store's choosing:
         // a reduction's row order is the plan's, and a plan that asked for no
         // order takes the order its scan would have returned.
@@ -503,9 +509,9 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // whole read, so a feature keeps the identity the full scan gave it
         // (ADR-0097). A plan with no restriction at all selects everything,
         // which is the same rows.
-        return pushed
-            ? rows
-            : FeaturePlanExecutor.Select((FeatureSchema)facts.Description.Schema, rows, query, cancellationToken);
+        return where is null
+            ? FeaturePlanExecutor.Select((FeatureSchema)facts.Description.Schema, rows, query, cancellationToken)
+            : rows;
     }
 
     private async Task<List<Feature>> WholeAsync(
@@ -587,14 +593,6 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             ? throw SpatialException.Unavailable("The database returned no row for a single-row aggregate query.")
             : Convert.ToInt64(rows[0][0], CultureInfo.InvariantCulture);
     }
-
-    /// <summary>
-    /// A plan with only its restriction: the reduction faces must see every
-    /// selected row, so the shaping members (projection, order, cap, cursor)
-    /// are stripped before the rows are selected.
-    /// </summary>
-    private static FeatureQuery Unbounded(FeatureQuery query) =>
-        query with { Projection = null, Order = null, Limit = null, Offset = null, Cursor = null };
 
     /// <summary>One pushed-down read's SQL shape: what is read, and what is returned.</summary>
     private sealed record Shape(
