@@ -93,6 +93,52 @@ public sealed class SpatialRelDirectionTests
             await GeometryServiceRelationAsync(Square(2, 2, 4, 4), UnitSquare(), EsriFeatureQuery.Contains));
     }
 
+    /// <summary>
+    /// The two edge semantics observed against a live FeatureServer rather
+    /// than read off the OGC table (SpatialEngine-msc), pinned in both
+    /// operand orders because both are about the <em>sizes</em> of the pair
+    /// and neither the direction test nor the pattern table states either.
+    ///
+    /// <para><b>A point query geometry strictly inside a polygon feature</b>
+    /// is <c>Within</c> the feature and not <c>Contained</c> in it, so the
+    /// point-in-polygon query a QGIS or REST JS client sends keeps working
+    /// and the strict mask <c>T*****FF*</c> is not rejected for it: a point
+    /// has no boundary and never reaches the area's exterior, so the only
+    /// cells the mask asks beyond the interior intersection are empty. The
+    /// live Counties layer says the same — a point at (-71.5, 41.6) answers
+    /// <c>esriSpatialRelWithin</c> → 1 and <c>esriSpatialRelContains</c> → 0.
+    /// </para>
+    ///
+    /// <para><b>A point strictly inside an area</b> is not <c>Crosses</c> it
+    /// in either order, which is the OGC reading (a dimension pair involving a
+    /// point names no crosses mask, ADR-0106) and not ArcGIS's
+    /// "partially inside, partially outside" wording, which a point cannot
+    /// satisfy. The live Cities layer says the same: an envelope around
+    /// <i>Ewa Beach</i> answers <c>esriSpatialRelCrosses</c> → 0 where
+    /// <c>esriSpatialRelContains</c> → 8, and a polygon input area holding the
+    /// point answers <c>Crosses</c> → 0. The line layer next to it still
+    /// crosses, so the verb is not simply dead: five of the seven highways
+    /// meeting the same envelope answer <c>esriSpatialRelCrosses</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_point_inside_an_area_is_within_it_and_never_crosses_it()
+    {
+        var area = UnitSquare();
+        var inside = Point(5, 5);
+
+        // Point query geometry inside a polygon feature: the polygon contains
+        // the point, and the point is inside the polygon.
+        Assert.True(await MatchesAsync(area, inside, EsriFeatureQuery.Within));
+        Assert.False(await MatchesAsync(area, inside, EsriFeatureQuery.Contains));
+        Assert.False(await MatchesAsync(inside, area, EsriFeatureQuery.Within));
+        Assert.True(await MatchesAsync(inside, area, EsriFeatureQuery.Contains));
+
+        // And the point is not a cross of the area in either order.
+        Assert.False(await MatchesAsync(area, inside, EsriFeatureQuery.Crosses));
+        Assert.False(await MatchesAsync(inside, area, EsriFeatureQuery.Crosses));
+    }
+
     private static Task<bool> MatchesAsync(IGeometry feature, IGeometry query, string spatialRel) =>
         GeometryServiceRelationAsync(feature, query, spatialRel);
 
@@ -135,6 +181,8 @@ public sealed class SpatialRelDirectionTests
 
     /// <summary>The outer fixture: the unit square the matrix table is read against.</summary>
     private static Polygon UnitSquare() => Square(0, 0, 10, 10);
+
+    private static Point Point(double x, double y) => GeometryFactory.CreatePoint(x, y);
 
     private static Polygon Square(double minX, double minY, double maxX, double maxY) =>
         GeometryFactory.CreatePolygon(

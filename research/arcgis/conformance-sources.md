@@ -421,3 +421,89 @@ High-value items spawned with `bd create -l interop.esri` (see
 T1→T-016, T2→T-017, T3→T-018, T4→T-019, T5→T-020, T6→T-021, T7→T-022,
 T7b+T8→T-023, T9→T-024, T10→T-025, T11→T-026, T13→T-027, T14→T-028.
 T12/T15 are dismissals recorded here, no tasks.
+
+## 5. Live observations — the two `spatialRel` edge semantics (SpatialEngine-msc)
+
+The two edge semantics ADR-0171 left open were settled by observation rather
+than by reading the OGC table. Endpoint: Esri's own public sample server,
+`sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer`
+(CurrentVersion 10.91), whose layers are `0` Cities (point), `1` Highways
+(line), `2` States (polygon), `3` Counties (polygon). Observed **2026-10-03**,
+`f=json`, `returnCountOnly=true`; every request below is reproducible verbatim.
+
+### 5.1 `esriSpatialRelContains` against a point query geometry
+
+`GET …/USA/MapServer/3/query?geometry={"x":-71.5,"y":41.6,…}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRel<REL>&returnCountOnly=true&f=json`
+— a point inside exactly one county (Providence, RI):
+
+| `spatialRel` | result |
+| --- | --- |
+| `esriSpatialRelContains` | `{"count":0}` |
+| `esriSpatialRelWithin` | `{"count":1}` |
+| `esriSpatialRelIntersects` | `{"count":1}` |
+| `esriSpatialRelTouches` | `{"count":0}` |
+| `esriSpatialRelCrosses` | `{"count":0}` |
+| `esriSpatialRelOverlaps` | `{"count":0}` |
+
+**Reading.** The strict contains mask `T*****FF*` is *not* rejected for a
+point: a point has no boundary of its own and never reaches the area's
+exterior, so every cell the mask asks beyond the interior intersection is
+empty. `Within` → 1 is the covers-like answer the bead expected, arrived at
+without loosening the mask, and the first row is ADR-0171's own point
+observation. **The served mask does not move.**
+
+### 5.2 A coincident edge is a touch, not a nesting
+
+`GET …/USA/MapServer/3/query?geometry=<the Providence county polygon, verbatim>&geometryType=esriGeometryPolygon&spatialRel=esriSpatialRel<REL>&outFields=name&f=json`:
+
+| `spatialRel` | result |
+| --- | --- |
+| `esriSpatialRelWithin` | `{"count":1}` — `['Providence']` |
+| `esriSpatialRelContains` | `{"count":1}` — `['Providence']` |
+| `esriSpatialRelTouches` | `{"count":6}` — `['Worcester', 'Norfolk', 'Bristol', 'Windham', 'Bristol', 'Kent']` |
+| `esriSpatialRelIntersects` | `{"count":7}` |
+| `esriSpatialRelCrosses` | `{"count":0}` |
+| `esriSpatialRelOverlaps` | `{"count":0}` |
+
+**Reading.** The six counties that share an edge with the query polygon are
+`touches`, not `within`: ArcGIS's contains is strict about a coincident edge
+and does not behave as `covers`. Two facts at once — an identical polygon is
+`within` the query geometry (interiors meet, neither exterior reaches the
+other interior), and an edge-sharing neighbour is not. This is the service
+answer; the engine's `relate` agrees cell for cell
+(`NtsRelateCellSemanticsTests.Two_areas_sharing_an_edge_are_a_touch_and_not_a_nesting`
+reads `FF2F11212` and both containment masks false), so the bead's report that
+NetTopologySuite resolves a coincident-edge rectangle pair as *covered* does
+not reproduce.
+
+### 5.3 `esriSpatialRelCrosses` for a point strictly inside an area
+
+`GET …/USA/MapServer/0/query?geometry={"xmin":-158.1,"ymin":21.25,"xmax":-157.85,"ymax":21.45,…}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRel<REL>&returnCountOnly=true&f=json`
+— an envelope holding eight city points including *Ewa Beach*
+(-158.00897733999997, 21.31569802000007), layer `0` Cities:
+
+| `spatialRel` | result |
+| --- | --- |
+| `esriSpatialRelIntersects` | `{"count":8}` |
+| `esriSpatialRelContains` | `{"count":8}` |
+| `esriSpatialRelWithin` | `{"count":0}` |
+| `esriSpatialRelCrosses` | `{"count":0}` |
+| `esriSpatialRelTouches` | `{"count":0}` |
+| `esriSpatialRelOverlaps` | `{"count":0}` |
+| `esriSpatialRelEnvelopeIntersects` | `{"count":8}` |
+
+The same with a polygon input area `{"rings":[[[-158.05,21.28],[-158.05,21.35],[-157.95,21.35],[-157.95,21.28],[-158.05,21.28]]]}`
+holding exactly that one point: `Contains` → `{"count":1}`, `Crosses` →
+`{"count":0}`, `Within`/`Touches`/`Overlaps` → 0.
+
+**Reading.** A point strictly inside an area is **not** `crosses` it. DE-9IM
+would read `T*****T**` true for the pair; ArcGIS's own wording ("partially
+inside, partially outside") is what it serves, and a point cannot be
+partially outside. The engine already served the ArcGIS answer (ADR-0106: a
+dimension pair involving a 0-D geometry names no crosses mask), so nothing
+moved — the bead's description, written before SpatialEngine-u2x.56, records a
+served answer the engine had already stopped giving.
+
+Control, so `Crosses` → 0 is a statement about points and not a dead verb: the
+same envelope against layer `1` Highways answers `Intersects` → `{"count":7}`
+and `Crosses` → `{"count":5}`.
