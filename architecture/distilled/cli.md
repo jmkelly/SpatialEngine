@@ -6,6 +6,17 @@ layers and styles, stores the workspace as a declarative project file, and
 reports the GeoServices endpoints each map projects to. It holds no
 spatial algorithm and calls no provider directly.
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Query by plan: `POST /api/features/query` takes the ADR-0074 `FeatureQuery` as
+  JSON under `plan` and answers a page; `bbox` and `filter` stay as sugar for
+  the plan's box and `where`. (SpatialEngine-gd2)
+<!-- orientation:end -->
+
 ## Running
 
 ```bash

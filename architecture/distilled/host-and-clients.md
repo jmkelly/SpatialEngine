@@ -2,6 +2,33 @@
 
 Implements ADR-0033 (replaces ADR-0030/0031 HTTP/workbench surfaces).
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Compile the feature-match envelope onto the store's plan all-or-nothing,
+  decided before the store is asked, and treat a null geometry in the box
+  pre-filter as not selected — that is what every SQL back end answers.
+  (SpatialEngine-u2x.11)
+- Push identify's envelope box and find's null test only: a pushed `LIKE` is a
+  subset of the served case-insensitive search (`searchText=ALP` returned
+  nothing), so pushing it made the answer depend on the store.
+  (SpatialEngine-u2x.12)
+- Declare a relationship on the map's layer and check it against the live
+  schemas at `PUT /api/maps`; `queryRelatedRecords` is the ordinary query path
+  with the origin key as one ANDed equality term. (SpatialEngine-u2x.22)
+- Read the declared source CRS in the decode (`crs` member, ND-GeoJSON first
+  record, CSV `# crs=`), and stream-test a JSON reader: a span past the valid
+  data reads pooled bytes, and a feature over the 64 KiB buffer reads as a
+  truncated document. (SpatialEngine-u2x.23)
+- Read a DE-9IM pattern by position — index 1 is position 2 — and union the
+  masks: a pattern is one nine-character matrix, and the single mask
+  `FT*******` disagreed with the reference on 23 of 225 ordered pairs.
+  (SpatialEngine-u2x.35)
+<!-- orientation:end -->
+
 ## Host API (`Spatial.Host`, ASP.NET Core minimal API, JIT)
 
 - One JSON contract: camelCase properties and enum names; options come from
