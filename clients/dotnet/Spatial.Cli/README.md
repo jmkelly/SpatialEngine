@@ -64,10 +64,18 @@ spatial host health                              # readiness and configured stor
 ```bash
 spatial dataset list --pattern 'public.%'        # datasets in the store
 spatial dataset describe public.world            # fields, geometry and identity
+spatial dataset query public.world --where "population > 1000000" --order name --limit 10
 spatial dataset add --file ./world.geojson --dataset public.world --srid 4326 --token "$TOKEN"
 spatial dataset add --url https://example.com/world.geojson --dataset public.world --srid 4326 \
   --source-srid 3857 --identity auto --publish World --token "$TOKEN"
 ```
+
+`dataset query` reads with a feature-query plan (ADR-0158) and reports the
+page: how many features came back, the total the plan matched, and the
+`--cursor` to continue it. `--where` (and its deprecated alias `--filter`) is
+the plan's predicate; `--bbox`, `--project`, `--order`, `--ids`, `--limit` and
+`--offset` are the rest of the plan. `--order` takes `field` or
+`field:asc`/`field:desc`.
 
 `dataset add` uploads one local file (`--file`) or remote `http(s)` URL
 (`--url`) through `POST /api/ingest`. Exactly one source is required.

@@ -111,10 +111,29 @@ export interface FeatureBatchesResponse {
   batches: string[];
 }
 
+export interface FeatureQueryDto {
+  ids?: null | string[];
+  where?: PredicateDto | null;
+  bbox?: BboxDto | null;
+  projection?: null | string[];
+  order?: null | OrderTermDto[];
+  limit?: null | number | string;
+  offset?: null | number | string;
+  cursor?: null | string;
+}
+
 export interface FeatureQueryRequest {
   dataset: string;
   bbox?: BboxDto | null;
   filter?: null | string;
+  plan?: FeatureQueryDto | null;
+}
+
+export interface FeatureQueryResponse {
+  batches: string[];
+  nextCursor?: null | string;
+  totalCount?: null | number | string;
+  hasMore?: boolean;
 }
 
 export type FeatureSchema = unknown;
@@ -162,6 +181,15 @@ export interface LayerRelationshipJoin {
   relatedKeyColumn: string;
 }
 
+export interface LiteralDto {
+  kind: LiteralKind;
+  text?: null | string;
+  number?: null | number | string;
+  boolean?: null | boolean;
+}
+
+export type LiteralKind = "string" | "integer" | "decimal" | "boolean" | "null" | "dateTime";
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -200,6 +228,22 @@ export interface MapRenderRequestDto {
 }
 
 export type MapServiceKind = "feature" | "map" | "tiles" | "wms" | "wfs" | "image";
+
+export interface OrderTermDto {
+  field: string;
+  direction?: SortDirection;
+}
+
+export interface PredicateDto {
+  op: string;
+  terms?: null | PredicateDto[];
+  field?: null | string;
+  operator?: null | string;
+  value?: LiteralDto | null;
+  values?: null | LiteralDto[];
+  truth?: null | boolean;
+  negated?: boolean;
+}
 
 export type RasterBlend = "over" | "multiply" | "screen" | "darken" | "lighten";
 
@@ -253,6 +297,8 @@ export interface SleepRequest {
 export interface SleepResponse {
   slept: number | string;
 }
+
+export type SortDirection = "ascending" | "descending";
 
 export interface TileBatchRequest {
   request: TileRenderRequest;

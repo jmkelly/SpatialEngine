@@ -33,7 +33,11 @@ GET    /api/catalogue?store=&pattern=   # DatasetSummary[]
 GET    /api/datasets/{id}?store=        # DatasetDescription
 POST   /api/datasets?store=             # {dataset, batch, srid} -> {dataset}
 POST   /api/features/scan?store=        # {dataset} -> {batches[]}
-POST   /api/features/query?store=       # {dataset, bbox?, filter?} -> {batches[]}
+POST   /api/features/query?store=       # {dataset, bbox?, filter?, plan?} -> {batches[], nextCursor?, totalCount?, hasMore}
+                                       #   the plan spelling is the FeatureQuery itself — ids, where, bbox,
+                                       #   projection, order, limit, offset, cursor — with filter/bbox as
+                                       #   deprecated sugar for where/bbox and both spellings of one member
+                                       #   required to agree (ADR-0158)
 POST   /api/features/write?store=       # {dataset, batch, transaction?} -> {appended}
 POST   /api/transactions/begin?store=   # -> {transaction}
 POST   /api/transactions/commit?store=  # {transaction} -> {ok}
@@ -246,7 +250,10 @@ injects its endpoint as `SPATIAL_SEQ_URL`; the host needs no Seq to run
   only when a token is configured, unmounted outside Development); older
   hosts get the legacy download → ingest → publish drive.
 - `clients/dotnet/Spatial.Cli` is a dependency-free console client of the same
-  public API (ADR-0052): datasets, maps/layers/styles and a declarative
+  public API (ADR-0052): datasets (`dataset list|describe|query|add`, where
+  `query` reads with a plan — `--where`/`--filter`, `--bbox`, `--project`,
+  `--order`, `--ids`, `--limit`, `--offset`, `--cursor` — and reports the page's
+  counts, ADR-0158), maps/layers/styles and a declarative
   `spatial.json` project file, with GeoServices endpoint output. See `cli.md`.
 
 ## Frontend boundary

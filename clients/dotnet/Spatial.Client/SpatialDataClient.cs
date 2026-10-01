@@ -3,6 +3,7 @@ using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Client;
 
@@ -57,16 +58,45 @@ public sealed class SpatialDataClient
         return response.Batches.Select(SpatialClientCodec.DecodeBatch).ToArray();
     }
 
-    /// <summary>Queries features by extent, filter expression and store.</summary>
+    /// <summary>
+    /// Queries features by extent, filter expression and store — the published
+    /// sugar spelling of the query route (ADR-0158 §1), deprecated in favour
+    /// of <see cref="QueryPlanAsync(string, FeatureQuery, string, CancellationToken)"/>,
+    /// which can express an ordering, a projection, a cap, an offset and a
+    /// cursor and answers the whole page rather than its batches.
+    /// </summary>
     public async Task<IReadOnlyList<FeatureBatch>> QueryAsync(
         string dataset, Contracts.BoundingBox? bbox = null, string? filter = null,
         string store = "demo", CancellationToken cancellationToken = default)
     {
-        var response = await _transport.PostAsync<FeatureBatchesResponse>(
+        var response = await _transport.PostAsync<FeatureQueryResponse>(
             $"/api/features/query?store={Uri.EscapeDataString(store)}",
             new FeatureQueryRequest(dataset, bbox is null ? null : new BboxDto(bbox.MinX, bbox.MinY, bbox.MaxX, bbox.MaxY), filter),
             cancellationToken);
         return response.Batches.Select(SpatialClientCodec.DecodeBatch).ToArray();
+    }
+
+    /// <summary>
+    /// Reads a dataset with a query plan (ADR-0158): ids, predicate tree,
+    /// bbox, projection, order, limit, offset and cursor, answered with the
+    /// page the store returned — the batches, the continuation when the plan
+    /// has more, the total it matched, and whether it has more. This is the
+    /// first client surface that can order, page or resume a feature read;
+    /// every store in the engine already answers those plan members.
+    /// </summary>
+    public async Task<FeatureQueryPage> QueryPlanAsync(
+        string dataset, FeatureQuery plan, string store = "demo", CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        var response = await _transport.PostAsync<FeatureQueryResponse>(
+            $"/api/features/query?store={Uri.EscapeDataString(store)}",
+            new FeatureQueryRequest(dataset, Plan: FeatureQueryWire.ToDto(plan)),
+            cancellationToken);
+        return new FeatureQueryPage(
+            [.. response.Batches.Select(SpatialClientCodec.DecodeBatch)],
+            response.NextCursor,
+            response.TotalCount,
+            response.HasMore);
     }
 
     /// <summary>Appends features to a dataset, optionally inside a transaction, and returns the count.</summary>

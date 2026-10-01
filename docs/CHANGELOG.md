@@ -104,6 +104,22 @@ heading that is not above `<Version>`).
   vendors is not decided here: any of the six variant B polar grids reads the
   moment a row exists.
 
+### Deprecated
+
+- **`filter` (and `bbox`) on `POST /api/features/query` are deprecated**
+  (ADR-0158, SpatialEngine-gd2): the route now accepts the query plan itself
+  as JSON under `plan` — ids, a predicate tree, bbox, projection, order,
+  limit/offset and cursor — and answers the page (`batches`, `nextCursor`,
+  `totalCount`, `hasMore`) rather than the batches alone. The published `filter`
+  text and top-level `bbox` keep working for **one more release** and are sugar
+  for the plan's `where` and `bbox`; sending both spellings of one member with
+  different values is `invalid.arguments`. The .NET client gains
+  `QueryPlanAsync` (the first client surface that can order, page or resume a
+  read) and the CLI gains `spatial dataset query`. **Removing the `filter`
+  text is a separate breaking change**, tracked as its own bead: it deletes the
+  top-level `filter` and `bbox` members, updates the TypeScript SDK and the
+  workbench to send `plan`, and is the change that closes ADR-0074's deferral.
+
 ### Fixed
 
 - **A DE-9IM pattern naming a dimension was rejected by name, and a pattern

@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**145 records on disk.** `status` is the record's own word;
+**146 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -160,6 +160,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) | Cap the suite's collection parallelism, and leave the shared host to a later bead | accepted | 2026-10-01 | ADR-0154 |
 | [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) | The DE-9IM patterns have two independent readers | accepted | 2026-10-02 | ADR-0036 |
 | [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md) | T-SQL has a geometry aggregate, and the rectangle it answers is not ours | accepted | 2026-10-02 | ADR-0133, ADR-0137 |
+| [0158](ADR-0158-json-query-plan-on-the-http-query-route.md) | The query plan crosses the HTTP boundary as JSON, and the filter text stays as sugar | accepted | 2026-10-02 | ADR-0074 |
 | [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) | One host per class, and a per-test map name to keep the dataset private | accepted | 2026-10-02 | ADR-0155 |
 
 ## Amended by
@@ -175,6 +176,7 @@ not appear.
 - **0041** is amended by 0082, 0090, 0149
 - **0058** is amended by 0100
 - **0070** is amended by 0101
+- **0074** is amended by 0158
 - **0084** is amended by 0091, 0125
 - **0086** is amended by 0111, 0153
 - **0087** is amended by 0111

@@ -32,6 +32,14 @@ public interface ISpatialGateway : IDisposable
     /// <summary>Describes one dataset.</summary>
     Task<DatasetDescription> DescribeDatasetAsync(string dataset, string store, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reads a dataset with a feature-query plan and answers the page
+    /// (ADR-0158): the batches, the continuation, the total and the "one more"
+    /// signal.
+    /// </summary>
+    Task<Core.Features.Query.FeatureQueryPage> QueryFeaturesAsync(
+        string dataset, FeatureQuery plan, string store, CancellationToken cancellationToken = default);
+
     /// <summary>Ingests a local file or URL into a dataset (requires the admin token).</summary>
     Task<IngestOutcome> IngestAsync(string source, IngestUpload upload, string? adminToken, CancellationToken cancellationToken = default);
 

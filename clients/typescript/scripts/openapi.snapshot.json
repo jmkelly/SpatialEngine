@@ -546,7 +546,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FeatureBatchesResponse"
+                  "$ref": "#/components/schemas/FeatureQueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -6201,6 +6211,82 @@
           }
         }
       },
+      "FeatureQueryDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "where": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PredicateDto"
+              }
+            ]
+          },
+          "bbox": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BboxDto"
+              }
+            ]
+          },
+          "projection": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "order": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OrderTermDto"
+            }
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "offset": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "FeatureQueryRequest": {
         "required": [
           "dataset"
@@ -6225,6 +6311,49 @@
               "null",
               "string"
             ]
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FeatureQueryDto"
+              }
+            ]
+          }
+        }
+      },
+      "FeatureQueryResponse": {
+        "required": [
+          "batches"
+        ],
+        "type": "object",
+        "properties": {
+          "batches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasMore": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -6377,6 +6506,48 @@
             "type": "string"
           }
         }
+      },
+      "LiteralDto": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LiteralKind"
+          },
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "number": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "boolean": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "LiteralKind": {
+        "enum": [
+          "string",
+          "integer",
+          "decimal",
+          "boolean",
+          "null",
+          "dateTime"
+        ]
       },
       "LoginRequest": {
         "required": [
@@ -6557,6 +6728,81 @@
           "wfs",
           "image"
         ]
+      },
+      "OrderTermDto": {
+        "required": [
+          "field"
+        ],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/SortDirection"
+          }
+        }
+      },
+      "PredicateDto": {
+        "required": [
+          "op"
+        ],
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string"
+          },
+          "terms": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PredicateDto"
+            }
+          },
+          "field": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "operator": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LiteralDto"
+              }
+            ]
+          },
+          "values": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/LiteralDto"
+            }
+          },
+          "truth": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "negated": {
+            "type": "boolean",
+            "default": false
+          }
+        }
       },
       "RasterBlend": {
         "enum": [
@@ -6791,6 +7037,13 @@
             "format": "int64"
           }
         }
+      },
+      "SortDirection": {
+        "enum": [
+          "ascending",
+          "descending"
+        ],
+        "default": "ascending"
       },
       "TileBatchRequest": {
         "required": [

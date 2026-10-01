@@ -3,6 +3,7 @@ using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
 using Spatial.Contracts.Transformations;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Client;
@@ -133,11 +134,24 @@ public sealed class SpatialClient
         string dataset, string store = "demo", CancellationToken cancellationToken = default) =>
         Data.ScanAsync(dataset, store, cancellationToken);
 
-    /// <summary>Queries features by extent, filter expression and store.</summary>
+    /// <summary>
+    /// Queries features by extent, filter expression and store — the published
+    /// sugar spelling of the query route, deprecated in favour of
+    /// <see cref="QueryPlanAsync(string, FeatureQuery, string, CancellationToken)"/>.
+    /// </summary>
     public Task<IReadOnlyList<FeatureBatch>> QueryAsync(
         string dataset, Contracts.BoundingBox? bbox = null, string? filter = null,
         string store = "demo", CancellationToken cancellationToken = default) =>
         Data.QueryAsync(dataset, bbox, filter, store, cancellationToken);
+
+    /// <summary>
+    /// Reads a dataset with a query plan and answers the page — ids, predicate
+    /// tree, bbox, projection, order, limit, offset and cursor, with the
+    /// continuation, the total and the "one more" signal (ADR-0158).
+    /// </summary>
+    public Task<FeatureQueryPage> QueryPlanAsync(
+        string dataset, FeatureQuery plan, string store = "demo", CancellationToken cancellationToken = default) =>
+        Data.QueryPlanAsync(dataset, plan, store, cancellationToken);
 
     /// <summary>Appends features to a dataset, optionally inside a transaction, and returns the count.</summary>
     public Task<int> WriteAsync(

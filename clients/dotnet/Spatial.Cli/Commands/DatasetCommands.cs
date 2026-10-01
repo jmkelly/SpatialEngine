@@ -1,6 +1,9 @@
 using System.Text;
 using Spatial.Client;
+using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Cli;
 
@@ -16,6 +19,18 @@ public static class DatasetCommands
         new("dataset", "list", "List spatial datasets in a store", "[--pattern LIKE]",
             [new("pattern", "LIKE", "Filter dataset ids with a SQL LIKE pattern")]),
         new("dataset", "describe", "Describe one dataset's fields and geometry", "<dataset>", []),
+        new("dataset", "query", "Read a dataset with a feature-query plan and report the page", "<dataset>",
+        [
+            new("where", "TEXT", "Attribute filter text for the plan's where (one predicate grammar, ADR-0074)"),
+            new("filter", "TEXT", "Deprecated alias of --where, the spelling clients sent before ADR-0158"),
+            new("bbox", "X,Y,X,Y", "Bounding-box pre-filter, minx,miny,maxx,maxy"),
+            new("project", "A,B", "Comma-separated schema fields the returned features carry"),
+            new("order", "FIELD[:asc|:desc],…", "Sort keys, comma separated; the identity is the tie-break"),
+            new("ids", "ID,ID,…", "Comma-separated feature identities to select"),
+            new("limit", "N", "Maximum number of features in the page"),
+            new("offset", "N", "Number of features to skip"),
+            new("cursor", "TOKEN", "Continuation token from a previous page's nextCursor"),
+        ]),
         new("dataset", "add", "Ingest a file or URL into a new dataset", "",
         [
             new("file", "PATH", "Local file to upload (mutually exclusive with --url)"),
@@ -35,6 +50,7 @@ public static class DatasetCommands
     {
         "list" => ListAsync(context),
         "describe" => DescribeAsync(context),
+        "query" => QueryAsync(context),
         "add" => AddAsync(context),
         _ => throw new CliUsageException($"Unknown command '{context.Command}'."),
     };
@@ -58,6 +74,117 @@ public static class DatasetCommands
         var description = await context.Gateway.DescribeDatasetAsync(dataset, store);
         context.Output.Result(context.Command, new { store, description }, DescribeHuman(description));
         return ExitCodes.Success;
+    }
+
+    private static async Task<int> QueryAsync(CliContext context)
+    {
+        var dataset = context.Arguments.RequirePositional(0, "a dataset id (schema.table)");
+        var store = context.Arguments.Optional("store") ?? context.Settings.Store;
+        var plan = BuildPlan(context.Arguments);
+
+        var page = await context.Gateway.QueryFeaturesAsync(dataset, plan, store);
+
+        var features = page.Features.Count();
+        context.Output.Result(
+            context.Command,
+            new
+            {
+                store,
+                dataset,
+                Features = features,
+                page.TotalCount,
+                page.HasMore,
+                page.NextCursor,
+            },
+            QueryHuman(features, page));
+        return ExitCodes.Success;
+    }
+
+    /// <summary>
+    /// The plan the options spell (ADR-0158 §6). <c>--where</c> and the
+    /// deprecated <c>--filter</c> compile the same text into the same predicate
+    /// through the one boundary parser (ADR-0074 §3), so a script that used the
+    /// old option keeps asking the same question.
+    /// </summary>
+    private static FeatureQuery BuildPlan(CliArguments arguments)
+    {
+        var where = FeatureFilter.Parse(arguments.Optional("where") ?? arguments.Optional("filter"));
+        var bbox = ParseBbox(arguments.Optional("bbox"));
+        var projection = Split(arguments.Optional("project"));
+        var order = Split(arguments.Optional("order"))?.Select(OrderTerm).ToArray();
+        var ids = Split(arguments.Optional("ids"))?.Select(id => new FeatureId(id)).ToArray();
+        var limit = arguments.Optional("limit") is { Length: > 0 } cap ? arguments.RequireInt("limit") : (int?)null;
+        var offset = arguments.Optional("offset") is { Length: > 0 } skip ? arguments.RequireInt("offset") : (int?)null;
+        return new FeatureQuery(ids, where, bbox, projection, order, limit, offset, arguments.Optional("cursor"));
+    }
+
+    private static BoundingBox? ParseBbox(string? text)
+    {
+        var parts = Split(text);
+        if (parts is null)
+        {
+            return null;
+        }
+
+        if (parts.Length != 4)
+        {
+            throw new CliUsageException("Option --bbox expects minx,miny,maxx,maxy — four numbers.");
+        }
+
+        var values = new double[4];
+        for (var index = 0; index < values.Length; index++)
+        {
+            if (!double.TryParse(parts[index], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out values[index])
+                || double.IsNaN(values[index])
+                || double.IsInfinity(values[index]))
+            {
+                throw new CliUsageException($"Option --bbox expects four finite numbers, got '{text}'.");
+            }
+        }
+
+        return new BoundingBox(values[0], values[1], values[2], values[3]);
+    }
+
+    private static OrderTerm OrderTerm(string term)
+    {
+        var parts = term.Split(':', 2);
+        var direction = parts.Length == 1 ? "asc" : parts[1].Trim().ToLowerInvariant();
+        if (parts[0].Length == 0)
+        {
+            throw new CliUsageException($"Option --order expects 'field' or 'field:asc'/'field:desc', got '{term}'.");
+        }
+
+        return direction switch
+        {
+            "asc" or "ascending" => new OrderTerm(parts[0], SortDirection.Ascending),
+            "desc" or "descending" => new OrderTerm(parts[0], SortDirection.Descending),
+            _ => throw new CliUsageException(
+                $"Option --order expects 'asc' or 'desc' as the direction, got '{parts[1]}' in '{term}'."),
+        };
+    }
+
+    /// <summary>A comma-separated option's trimmed values, or <c>null</c> when it was not sent.</summary>
+    private static string[]? Split(string? text) =>
+        string.IsNullOrWhiteSpace(text)
+            ? null
+            : [.. text.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)];
+
+    private static string QueryHuman(int features, FeatureQueryPage page)
+    {
+        var text = new StringBuilder()
+            .Append(features).Append(" feature(s)");
+        if (page.TotalCount is { } total)
+        {
+            text.Append(" of ").Append(total).Append(" matched");
+        }
+
+        if (page.HasMore)
+        {
+            text.Append("; more remain — continue with --cursor ")
+                .Append(page.NextCursor ?? "(no token was issued)");
+        }
+
+        return text.ToString();
     }
 
     private static async Task<int> AddAsync(CliContext context)

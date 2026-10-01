@@ -2,6 +2,7 @@ using Spatial.Cli;
 using Spatial.Client;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Cli.Tests;
 
@@ -25,6 +26,10 @@ public sealed class FakeSpatialGateway : ISpatialGateway
     public Exception? Failure { get; set; }
 
     public List<(string Source, IngestUpload Upload, string? Token)> IngestCalls { get; } = [];
+
+    public List<(string Dataset, FeatureQuery Plan, string Store)> QueryCalls { get; } = [];
+
+    public FeatureQueryPage Page { get; set; } = FeatureQueryPage.Empty;
 
     public List<(Map Map, string? Token)> PutCalls { get; } = [];
 
@@ -66,6 +71,13 @@ public sealed class FakeSpatialGateway : ISpatialGateway
         ThrowIfConfigured();
         IngestCalls.Add((source, upload, adminToken));
         return Task.FromResult(new IngestOutcome(upload.Dataset, 3, upload.Srid, "id"));
+    }
+
+    public Task<FeatureQueryPage> QueryFeaturesAsync(string dataset, FeatureQuery plan, string store, CancellationToken cancellationToken = default)
+    {
+        ThrowIfConfigured();
+        QueryCalls.Add((dataset, plan, store));
+        return Task.FromResult(Page);
     }
 
     public Task<IReadOnlyList<Map>> ListMapsAsync(CancellationToken cancellationToken = default)

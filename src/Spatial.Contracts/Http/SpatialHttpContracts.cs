@@ -27,8 +27,44 @@ public sealed record CreateDatasetResponse(string Dataset);
 
 public sealed record ScanRequest(string Dataset);
 public sealed record BboxDto(double MinX, double MinY, double MaxX, double MaxY);
-public sealed record FeatureQueryRequest(string Dataset, BboxDto? Bbox = null, string? Filter = null);
+
+/// <summary>
+/// The body of <c>POST /api/features/query</c> (ADR-0158): a dataset and the
+/// plan to read it with, in either of two spellings.
+/// <para>
+/// <paramref name="Plan"/> is the plan — ids, predicate tree, bbox,
+/// projection, order, limit, offset, cursor. <paramref name="Bbox"/> and
+/// <paramref name="Filter"/> are the published sugar for its bounding box and
+/// its predicate, kept for one more release because clients still send them
+/// (ADR-0074 §3); a request that sends both spellings of one member must
+/// agree, and one that disagrees is <c>invalid.arguments</c> naming it.
+/// </para>
+/// </summary>
+/// <param name="Dataset">The dataset to read.</param>
+/// <param name="Bbox">A bounding-box pre-filter, or <c>null</c>.</param>
+/// <param name="Filter">Attribute filter text, or <c>null</c>.</param>
+/// <param name="Plan">The query plan, or <c>null</c> to read with the sugar alone.</param>
+public sealed record FeatureQueryRequest(
+    string Dataset, BboxDto? Bbox = null, string? Filter = null, FeatureQueryDto? Plan = null);
+
 public sealed record FeatureBatchesResponse(IReadOnlyList<string> Batches);
+
+/// <summary>
+/// The answer to <c>POST /api/features/query</c> (ADR-0158 §3): one page of
+/// the plan's read — the batches the plan selected, the continuation when the
+/// plan has more, the total the plan matched, and the "one more" signal.
+/// <para>
+/// <see cref="Batches"/> is unchanged in name, shape and encoding, so every
+/// client that reads the route today reads this answer unchanged; the other
+/// three members are what the route used to drop.
+/// </para>
+/// </summary>
+/// <param name="Batches">The selected features as canonical SFBAT Base64, in plan order.</param>
+/// <param name="NextCursor">The continuation token, or <c>null</c> when the page is the last.</param>
+/// <param name="TotalCount">The number of features the plan matched, or <c>null</c> when not computed.</param>
+/// <param name="HasMore">Whether the plan has features beyond this page.</param>
+public sealed record FeatureQueryResponse(
+    IReadOnlyList<string> Batches, string? NextCursor = null, int? TotalCount = null, bool HasMore = false);
 public sealed record FeatureWriteRequest(string Dataset, string Batch, string? Transaction = null);
 public sealed record FeatureWriteResponse(int Appended);
 

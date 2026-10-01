@@ -51,8 +51,11 @@ internal static class StoreEndpoints
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
         app.MapPost("/api/features/scan", Scan)
             .Produces<FeatureBatchesResponse>();
+        // The one structured filter in the neutral API (ADR-0158): the plan
+        // answers a page, and the published filter text is sugar for its where.
         app.MapPost("/api/features/query", Query)
-            .Produces<FeatureBatchesResponse>();
+            .Produces<FeatureQueryResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
         app.MapPost("/api/features/write", (HttpContext context, FeatureWriteRequest request, string? store, IStoreRegistry stores, CancellationToken token) =>
             Write(Route(context, store, stores, admin, authOptions, auth), request))
             .Produces<FeatureWriteResponse>()
@@ -140,18 +143,37 @@ internal static class StoreEndpoints
         }
     }
 
+    /// <summary>
+    /// Reads a dataset with a feature-query plan (ADR-0158). The body is a
+    /// <see cref="FeatureQueryRequest"/>: the ADR-0074 <see cref="FeatureQuery"/>
+    /// plan under <c>plan</c> — ids, predicate tree, bbox, projection, order,
+    /// limit, offset, cursor — with the published top-level <c>bbox</c> and
+    /// <c>filter</c> still accepted as sugar for the plan's bounding box and
+    /// predicate. The answer is the page the store returned: the canonical
+    /// SFBAT Base64 batches, the continuation token when the plan has more, the
+    /// total the plan matched, and whether it has more.
+    ///
+    /// <para>
+    /// The plan is validated against the dataset's schema by the store that
+    /// compiles it, so a plan naming a field the dataset lacks is
+    /// <c>invalid.arguments</c> here (ADR-0074 §1), and a request whose two
+    /// spellings of one member disagree is refused here rather than answered
+    /// from one of them (ADR-0158 §2).
+    /// </para>
+    /// </summary>
     private static async Task<IResult> Query(
         FeatureQueryRequest request, string? store, IStoreRegistry stores, CancellationToken token)
     {
         try
         {
             var features = ResolveFeatures(stores, store ?? Demo);
-            BoundingBox? bbox = request.Bbox is null
-                ? null
-                : new BoundingBox(request.Bbox.MinX, request.Bbox.MinY, request.Bbox.MaxX, request.Bbox.MaxY);
-            var batches = (await features.QueryAsync(
-                request.Dataset, new FeatureQuery(BoundingBox: bbox, Where: FeatureFilter.Parse(request.Filter)), token)).Batches;
-            return Results.Ok(new FeatureBatchesResponse(batches.Select(CodecWire.EncodeBatch).ToArray()));
+            var plan = FeatureQueryWire.ToQuery(request.Plan, request.Filter, request.Bbox);
+            var page = await features.QueryAsync(request.Dataset, plan, token);
+            return Results.Ok(new FeatureQueryResponse(
+                [.. page.Batches.Select(CodecWire.EncodeBatch)],
+                page.NextCursor,
+                page.TotalCount,
+                page.HasMore));
         }
         catch (Exception exception)
         {
