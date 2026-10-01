@@ -23,6 +23,14 @@ interop surface.
 
 ## Commands
 
+The gate is `eng/verify.sh`, and only `eng/verify.sh`: it builds and runs the
+tooling tests too, so it is what "before done" means here. Everything else here
+reports *into* it or is a hand-off, never a substitute: `eng/e2e-web.sh` and
+`eng/workbench-e2e.sh` are separate evidence for a change that reaches a
+delivered client, and the `quality-loop` skill's five audits and
+`eng/quality-audit.sh` are reporting lanes whose queues sit beside the build.
+Take this as the answer whenever another file or another agent offers another.
+
 - `eng/verify.sh` — the **fast gate**, and the default: builds the projects
   this branch's change reaches (a generated scoped solution, not all fifty) and
   runs the test projects that reach it over `ProjectReference`, plus
@@ -71,8 +79,15 @@ interop surface.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
 - `eng/seed.sh` — on-demand realistic dataset: fetch public data, ingest
   (with engine-side reprojection) and publish styled feature/map services.
-- Quality loop: read the `quality-loop` skill first; repo policy is
-  `.dependably` and `coverage-policy.json`. `eng/quality-audit.sh` aggregates
+- Quality loop: read the `quality-loop` skill first — it is the five code audits
+  (CRAP, coverage, metrics, Stryker, warnings), and by the definition above it
+  reports into `eng/verify.sh` rather than replacing it, so a red audit queue is
+  something to drain there, not a second verdict on the branch. Two repo policy
+  files decide what those audits report: `.dependably` — coupling and
+  complexity rules plus the grandfathered exceptions; open it when a metrics
+  finding reads as a judgement rather than a defect. `coverage-policy.json` —
+  the branch-coverage floor and what counts as authored; open it before
+  arguing about a coverage delta. `eng/quality-audit.sh` aggregates
   the code audits with the documentation audit (`tools/doc-freshness.py`,
   SpatialEngine-imz.2) into one answer, and every lane runs it with `--report`:
   it fills `doc-queue.md` / `doc-report.json` and cannot fail a lane. Its queue
@@ -121,7 +136,8 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   see the coverage. One line per bead — orientation is a coverage play, and
   volume is its failure mode (`SpatialEngine-rzq`).
 - Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
-  expires — never bare `bd reclaim`. `bd reclaim` keys on lease age alone and a
+  expires — never bare `bd reclaim`, which keys on lease age alone and so cannot
+  tell a crashed agent from one that simply has not heartbeated.
   long-running worker does not heartbeat, so an expired lease only means "this
   agent has not run `bd heartbeat` lately": one coordinator tick released eight
   leases whose agents were all still running, dropping live work back into
@@ -142,10 +158,10 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
 
 Records: a bead that will write a decision record **reserves** its number with
 `python3 tools/adr-next-number.py --reserve --bead <id>` at the start of the
-branch, and re-runs `--check NNNN` immediately before writing — the number is
-read from `origin/main` and the reservation is held in the repository's shared
-git dir, so a parallel branch that takes the same number is turned away at
-allocation instead of at merge (ADR-0090). `--list` shows who holds what,
+branch — it reads the number off `origin/main` and holds the reservation in the
+repository's shared git dir, so a parallel branch that takes the same number is
+turned away at allocation instead of at merge — and re-runs `--check NNNN`
+immediately before writing (ADR-0090). `--list` shows who holds what,
 `--release NNNN` gives a number back after a renumber. Copy
 `architecture/decisions/TEMPLATE.md` to write one: a record is one decision,
 `amends:` names the record it refines, and the section set, the reading order
