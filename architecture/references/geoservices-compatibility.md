@@ -554,11 +554,40 @@ is rejected by name (never silently ignored) and named here with its reason:
   with it, because both surfaces resolve the verb out of the one pattern
   table (ADR-0106 §4); the online GeometryServer's own `relate` returns an
   empty body for every named relation, so its direction is settled by that
-  shared table rather than by observation. What this does *not* settle is
-  `Contains` against a point input geometry (strict mask or `covers` —
-  SpatialEngine-aqy) or `Crosses` for a point strictly inside an area
-  (SpatialEngine-msc); both are edge semantics, and both still want an
-  observation.
+  shared table rather than by observation.
+- The two **edge semantics** ADR-0171 left open, settled by observation
+  (SpatialEngine-msc; requests, results and dates in
+  `research/arcgis/conformance-sources.md` §5, against Esri's own
+  `sampleserver6.arcgisonline.com/.../USA/MapServer`, 2026-10-03). Neither
+  moved the served mask; both are pinned so the choice is deliberate rather
+  than inherited.
+  - **`Contains` against a point input geometry** — the strict mask
+    `T*****FF*` is *not* rejected for a point, and no `covers` reading is
+    needed. A point contributes no boundary of its own and never reaches the
+    area's exterior, so every cell the strict mask asks beyond the interior
+    intersection is empty. Live, a point at (-71.5, 41.6) inside one county
+    answers `Within` → 1 and `Contains` → 0: the point-in-polygon query a
+    QGIS or REST JS client sends keeps working, on the mask as written.
+  - **A coincident edge is a `Touches`, not a nesting.** Querying the same
+    Counties layer with the *Providence* county polygon verbatim answers
+    `Within` → 1 (the county itself) and `Touches` → 6 (its edge-sharing
+    neighbours), so ArcGIS's contains is strict about a shared boundary and is
+    not `covers`; an identical polygon is `within`, an edge-sharing neighbour
+    is not. The engine's `relate` agrees cell for cell —
+    `NtsRelateCellSemanticsTests` reads `FF2F11212` for a coincident-edge
+    rectangle pair with both containment masks false, so a shared boundary
+    buys a position-5 cell and never a position-1 one. (The bead reported
+    NetTopologySuite resolving that pair as *covered*; it does not, and the
+    measurement is the record.)
+  - **`Crosses` for a point strictly inside an area** is `false`, in both
+    operand orders. Live, an envelope holding eight city points answers
+    `Contains` → 8 and `Crosses` → 0, and a polygon input area holding one
+    point answers `Crosses` → 0; the same envelope against the *Highways*
+    layer answers `Crosses` → 5, so the verb is served and it is the 0-D
+    operand that is excluded. DE-9IM would read `T*****T**` true; ArcGIS's
+    wording ("partially inside, partially outside") is what it serves and a
+    point cannot satisfy it. This is the ADR-0106 reading the engine already
+    served, so nothing moved — a point pair names no `Crosses` mask at all.
 - `quantizationParameters`/`maxAllowableOffset` (T8): no longer a non-goal.
   Both are served through `IGeometryOperations.Generalize`, the verb that
   states a deviation allowance rather than an algorithm tolerance

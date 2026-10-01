@@ -30,6 +30,13 @@ namespace Spatial.Operations.NetTopologySuite.Tests;
 /// reported one way by the rendering and another by the pattern: they are
 /// equal cell for cell over every ordered pair of this file's fixtures
 /// (<see cref="The_pattern_path_and_the_matrix_path_are_one_computation"/>).</description></item>
+/// <item><description><b>Neither containment mask is loosened for a
+/// coincident edge.</b> The bead reported that a rectangle pair sharing an
+/// edge is resolved as <em>covered</em>, so the strict mask would read true;
+/// the interiors are disjoint, so position 1 is empty and both masks read
+/// false, in both orders (<see cref="Two_areas_sharing_an_edge_are_a_touch_and_not_a_nesting"/>).
+/// A live FeatureServer answers the same way round
+/// (SpatialEngine-msc).</description></item>
 /// </list>
 ///
 /// What is left is the cross-check the bead said the served surface could
@@ -278,6 +285,62 @@ public sealed class NtsRelateCellSemanticsTests
             Assert.Equal('F', matrix[0]);
             Assert.Equal('F', matrix[3]);
         }
+    }
+
+    /// <summary>
+    /// A point strictly inside an area (SpatialEngine-msc): the containment
+    /// masks read true, in the order that names the point as contained and
+    /// in the transpose that names the area as containing it. A point has no
+    /// boundary of its own and does not reach the area's exterior, so the
+    /// only cell either mask asks beyond the interior intersection is
+    /// empty on both sides and the strict mask is not rejected.
+    /// </summary>
+    [Fact]
+    public void A_point_strictly_inside_an_area_reads_contained_in_both_orders()
+    {
+        var area = Square(0, 0, 10, 10);
+        var inside = Point(5, 5);
+
+        Assert.True(_relations.Relate(area, inside, "T*****FF*", CancellationToken.None));
+        Assert.True(_relations.Relate(inside, area, "T*F**F***", CancellationToken.None));
+    }
+
+    /// <summary>
+    /// The same edge pair the bead named, asked the containment masks the
+    /// query path serves — and the answer is that neither mask is loosened
+    /// for it. The bead reported that NetTopologySuite resolves the pair as
+    /// <em>covered</em>, so <c>T*****FF*</c> would read true for two
+    /// rectangles sharing an edge; the verb does not. The interiors are
+    /// disjoint, so position 1 is empty and both masks read false however
+    /// much boundary the pair shares, and the pair is a <c>Touches</c> in
+    /// position 5 rather than a nesting in position 1. The provider's own
+    /// named predicate agrees, which is why the pair does not appear in
+    /// <see cref="DocumentedDivergences"/>.
+    ///
+    /// <para>A live FeatureServer says the same, so this is not a reading the
+    /// engine could be drifting from: querying the <i>Counties</i> layer of
+    /// <c>sampleserver6.arcgisonline.com/.../USA/MapServer/3</c> with the
+    /// <i>Providence</i> county polygon answers
+    /// <c>esriSpatialRelWithin</c> → 1 (the county itself) and
+    /// <c>esriSpatialRelTouches</c> → 6 (the edge-sharing neighbours), so the
+    /// strict contains mask is what ArcGIS serves for a coincident edge
+    /// (SpatialEngine-msc).</para>
+    /// </summary>
+    [Fact]
+    public void Two_areas_sharing_an_edge_are_a_touch_and_not_a_nesting()
+    {
+        var left = Square(0, 0, 10, 10);
+        var right = Square(10, 0, 20, 10);
+
+        // Neither containment mask, in either order: the interiors are apart.
+        Assert.False(_relations.Relate(left, right, "T*****FF*", CancellationToken.None));
+        Assert.False(_relations.Relate(right, left, "T*F**F***", CancellationToken.None));
+        Assert.False(_relations.Relate(left, right, "T*F**F***", CancellationToken.None));
+        Assert.False(_relations.Relate(right, left, "T*****FF*", CancellationToken.None));
+
+        // The contact the pair does have is boundary against boundary.
+        Assert.True(_relations.Relate(left, right, "F***T****", CancellationToken.None));
+        Assert.Equal("FF2F11212", MatrixFor(left, right));
     }
 
     /// <summary>
