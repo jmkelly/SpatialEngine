@@ -75,6 +75,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task An_ungrouped_reduction_is_one_aggregate_row_and_agrees_with_the_reference()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -100,6 +101,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task A_grouped_reduction_is_a_group_by_and_agrees_with_the_reference_in_group_key_order()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -129,6 +131,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task A_restriction_reaches_the_aggregate_and_a_group_that_does_not_exist_is_never_a_row()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -170,6 +173,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task A_group_clause_and_a_group_page_are_a_having_and_a_limit_and_agree_with_the_reference()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var plan = new FeatureQuery(Order: [new OrderTerm("city")]);
@@ -227,6 +231,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task A_layer_extent_is_one_extent_aggregate_and_no_row_is_read()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -254,6 +259,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task An_envelope_of_no_geometry_is_null_and_not_the_origin()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -275,6 +281,7 @@ public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<Po
     [SkippableFact]
     public async Task A_reduction_of_no_rows_is_one_row_of_nulls_ungrouped_and_no_rows_grouped()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
