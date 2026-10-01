@@ -233,7 +233,7 @@ out: the "Amended by" row already says everything about a pair.
 6. [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) *(narrowed by 0174)*
 7. [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md)
 
-### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (7% of the corpus)
+### ADR-0109: the verification lanes, implemented — 7 records, 12,781 words (7% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
 2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*

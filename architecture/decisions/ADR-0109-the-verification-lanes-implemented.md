@@ -177,7 +177,11 @@ repo) is therefore **not** evaluated here and **not** adopted: adopting one
 means a whole-repo reformat diff and a style decision, which is its own bead
 with its own ADR. The measurement, the style-divergence blast radius and the
 licensing/pinning story belong there; the reasoning for not doing it here is
-recorded in SpatialEngine-4h0.
+recorded in SpatialEngine-4h0. That evaluation is now written up in
+`research/formatting/csharpier-evaluation.md`, and it recommends the same answer:
+3-10x faster and sub-minute, against a 92%-of-files, ~87,000-line reformat and
+four gate call sites — and a merge gate that, since ADR-0134, runs no formatter
+at all.
 
 ## Consequences
 
@@ -252,6 +256,18 @@ broken test: **red**, with the failure named in the changed project's suite
 (`Failed! - Failed: 1 ... Spatial.Maps.Tests.dll`), and then **green** with a
 deliberately broken test still sitting in an unchanged project's suite
 (`Spatial.Stores.Memory.Tests`) that scoping did not select.
+
+The formatter comparison SpatialEngine-4h0 measured on 2026-10-01, same box,
+same command line, interleaved at load 11-53: `csharpier` 1.3.0 checks the whole
+repository in 18.5-37.7 s wall / 1 m 53 s-2 m 44 s CPU against 3 m 02 s wall /
+11 m 22 s CPU for `dotnet format SpatialEngine.slnx --verify-no-changes
+--no-restore`, and would rewrite 966 of the 1046 files it reads (+64,507 /
+-22,639 lines). The rewrite is mechanical — no token but a comma moves, no
+runtime string value changes, and the reformatted tree builds the solution with 0
+warnings — and it is still a repository-wide diff, which is what the ADR above
+declines. The 677-786 s above did not reproduce on a quieter box: the same
+whole-solution command cost 2 m 19 s-8 m 39 s wall there, so read the older
+figure as the contended end of that range.
 
 The merge gate was proven to catch a formatting violation, not assumed: with a
 code-line whitespace violation injected, the whole-solution `dotnet format`
