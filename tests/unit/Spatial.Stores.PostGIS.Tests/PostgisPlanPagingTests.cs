@@ -1,4 +1,5 @@
 using Spatial.Contracts;
+using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
 using Spatial.Stores.PostGIS.Core;
@@ -114,6 +115,59 @@ public sealed class PostgisPlanPagingTests
             "SELECT \"id\", \"city\", \"population\", ST_AsEWKB(\"geom\") FROM \"public\".\"places\""
             + " ORDER BY \"id\" ASC NULLS LAST",
             sql);
+        Assert.Empty(parameters);
+    }
+
+    /// <summary>
+    /// The two halves of the same rule on a dataset that declares no identity
+    /// column: its features are named by the ordinal of the read, so the store
+    /// may not push a restriction into SQL (a <c>WHERE</c> renumbers every
+    /// feature after the first match, ADR-0097 §1) and may not address a page
+    /// (no identity tie-break, so the plan's order is not one an
+    /// <c>OFFSET</c> can name, ADR-0116 §1). Both declines mean the same thing
+    /// to a caller: the plan is answered over the whole read, which is a
+    /// correct answer and a table-sized read.
+    ///
+    /// <para>
+    /// Pinned here because the cost is invisible from the answer. A layer
+    /// created by <c>CreateAsync</c> from a schema with no integer identity
+    /// field has no primary key, and every plan against it reads the whole
+    /// table: the query baseline measured exactly that (46–48 MB per capped
+    /// call against 31 MB for the full scan, and neither figure moves with the
+    /// page size — SpatialEngine-d20). Nothing in the store decides this per
+    /// call; it is decided by the dataset's description, here.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void A_dataset_with_no_identity_column_declines_both_the_restriction_and_the_page()
+    {
+        // The same places schema, described without a primary key — what the
+        // store's own create leaves when the sampled schema has no integer
+        // identity field (PostgisQueries.CreateTable emits no PRIMARY KEY).
+        var keyless = new DatasetDescription(
+            "public.places",
+            "public",
+            "places",
+            "geom",
+            4326,
+            "POINT",
+            3,
+            [],
+            Schema);
+        var plan = new FeatureQuery(
+            BoundingBox: new BoundingBox(0, 0, 10, 10),
+            Where: new Predicate.Compare(new FieldRef("population"), ComparisonOperator.GreaterOrEqual, Literal.FromInteger("200")),
+            Order: [new OrderTerm("population", SortDirection.Descending)],
+            Limit: 25);
+        var parameters = new List<object?>();
+
+        Assert.Null(PostgisPlanQueries.Predicate(Dataset, keyless, plan, PostgisTextOrder.Locale, parameters));
+        Assert.NotNull(plan.Order);
+        Assert.Null(PostgisPlanQueries.Order(plan.Order, keyless.IdColumns, keyless.Schema, PostgisTextOrder.Locale));
+        Assert.False(PostgisPlanReader.Pushed(where: null, plan, order: null));
+
+        // Nothing was bound for a fragment that was never written: the read
+        // that follows is the whole table, with no parameters on it.
         Assert.Empty(parameters);
     }
 }

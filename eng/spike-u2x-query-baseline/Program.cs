@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Spatial.Contracts;
 using Spatial.Core.Features.Query;
+using Spatial.Contracts.Providers;
 
 namespace Spatial.Spike.QueryBaseline;
 
@@ -61,6 +62,11 @@ internal static class Program
             Console.WriteLine($"# path C (IFeatureLookup by identity) is unavailable here: {reason}");
         }
 
+        if (NoPushdown(loaded.Description, options.Store) is { } declined)
+        {
+            Console.WriteLine($"# paths B and Bp are not pushdowns on this layer: {declined}");
+        }
+
         foreach (var request in QueryRequest.Scenarios)
         {
             var where = request.ParsedWhere();
@@ -99,6 +105,46 @@ internal static class Program
             Console.WriteLine($"# json written to {json}");
         }
     }
+
+    /// <summary>
+    /// Why paths B and Bp are not pushdowns on the layer under test, or
+    /// <c>null</c> when they are. Only the SQL stores can decline a pushdown
+    /// this way: an in-process store evaluates the plan over the rows it
+    /// already holds and names them by the ordinal of <em>that</em> set, so
+    /// nothing it does renumbers anything.
+    ///
+    /// <para>
+    /// A store may only push a restriction, or address a page, where the push
+    /// is identity-preserving: a dataset that declares no identity column names
+    /// its features by the ordinal of the read, so a <c>WHERE</c> reaching SQL
+    /// would renumber them, and an <c>ORDER BY</c> with no identity tie-break is
+    /// an order an <c>OFFSET</c> cannot name (ADR-0097 §1, ADR-0116 §1). Both
+    /// stores therefore keep such a plan whole and finish it with the reference
+    /// executor over the whole read — the answer is right, the read is the
+    /// table.
+    /// </para>
+    ///
+    /// <para>
+    /// The report says this at the point of measurement because the columns do
+    /// not: <c>rows</c> counts the rows a call <em>returned</em>, which for a
+    /// capped plan is the page rather than the layer the database read to
+    /// produce it, and <c>alloc_MB</c> follows the whole read. Read without this
+    /// line, a paged plan that built 25 rows and allocated more than the full
+    /// scan looks like a store doing work proportional to its match set
+    /// (SpatialEngine-d20). The world-cities snapshot has no integer identity
+    /// field, so every store-created table of it is in this state — measured
+    /// by <c>CreateAsync</c>, which creates no primary key.
+    /// </para>
+    /// </summary>
+    private static string? NoPushdown(DatasetDescription description, string storeKind) =>
+        description.IdColumns.Count > 0 || !SqlStores.Contains(storeKind, StringComparer.Ordinal)
+            ? null
+            : $"dataset '{description.Id}' declares no identity column, so a plan on it is answered by the "
+                + "whole-layer read plus the reference executor: rows counts what the plan returned, not what the "
+                + "database read. Measure a pushdown on a layer that declares an identity column.";
+
+    /// <summary>The stores that answer a plan against a database rather than in process.</summary>
+    private static readonly string[] SqlStores = ["postgis"];
 
     private static Func<CancellationToken, Task<Outcome>> Pushdown(
         QueryRunner runner,

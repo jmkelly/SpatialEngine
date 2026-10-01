@@ -50,7 +50,9 @@ anything was measured. Two consequences for reading the tables:
 - **`Bp` is new**: the plan a served request actually issues today, with the
   ordering and the row cap in it (ADR-0074 §5, ADR-0116). It is the old `D`
   ceiling as a shipped path, not an emulation, so it is reported separately and
-  `D` is kept beside it for continuity.
+  `D` is kept beside it for continuity. On the PostGIS rows it is *not* a
+  ceiling, because this layer cannot carry the plan: see
+  [below](#the-postgis-rows-column-is-not-what-the-database-read).
 - `C` is reported as **unavailable** rather than as a number: a dataset that
   declares no identity column is refused with `invalid.arguments` by name
   (ADR-0140), where on 2026-09-28 it answered empty.
@@ -62,6 +64,13 @@ p50 ms and MB/call over 30 iterations, indexed table (GiST geometry + btree on
 `results/idle/postgis-r{1,2,3}-indexed.txt`. The plan PostgreSQL chose is in
 [`results/idle/postgis-indexed-plan.txt`](results/idle/postgis-indexed-plan.txt)
 (a `BitmapAnd` of the GiST scan and the `population` btree).
+
+> The `rows` column on the SQL stores counts what the call **returned**. On
+> this layer the database read the whole table to answer every one of them,
+> because the layer declares no identity column and a plan on such a dataset
+> is answered by the whole read (ADR-0097 §1, ADR-0116 §1). Read
+> [the section on it](#the-postgis-rows-column-is-not-what-the-database-read)
+> before quoting these cells as a pushdown.
 
 | scenario / variant | A `ScanAsync`+filter | B plan pushdown | Bp paged plan | D emulated ceiling | rows A / B / Bp |
 |---|---|---|---|---|---|
@@ -80,7 +89,9 @@ page25 B), 149–214 ms (europe page25 Bp).
 1. **The rows argument stands and is stronger than the wall time.** The scan
    builds 34,135 rows and ~31 MB for a 25-row page, every request, and again
    for every page of a walk. The paged plan builds **25 rows** for the same
-   request. That is exact and load-independent.
+   request. That is exact and load-independent — as a count of rows
+   *returned*. See the next section for what the PostGIS store actually read to
+   produce those 25.
 2. **On PostGIS the wall time is now a wash, and that is new.** On 2026-09-28
    pushdown was a 3–6× wall-time win (europe page25 222 → 73 ms). Today A, B
    and Bp all land in the same 150–200 ms band. The database is no longer the
@@ -88,13 +99,58 @@ page25 B), 149–214 ms (europe page25 Bp).
    construction, which the scan also pays. The honest summary is that the
    **materialisation** argument is what the tier-1 work was justified by, and
    the wall-clock argument on this layer no longer supports it on its own.
-3. **Allocation does not follow the rows.** `Bp` builds 25 rows and still
-   allocates **46–48 MB**, more than the full scan's 31 MB, and the figure does
-   not move with the page size. That is unexplained and is not a result this
-   spike can call correct; it is filed as its own bead rather than smoothed
-   into a conclusion here. (Suspected: work proportional to the match set that
-   is not the row mapping itself — the count the plan computes, or the sidecar
-   metadata the plan builds before it reads a page.)
+3. **Allocation does not follow the rows, and the reason is the layer, not the
+   match set.** `Bp` builds 25 rows and still allocates **46–48 MB**, more than
+   the full scan's 31 MB, and the figure does not move with the page size. That
+   was unexplained when this table was written (it is filed as its own bead,
+   SpatialEngine-d20) and is now answered: **on PostGIS these two columns are
+   not measuring a pushdown at all.** See
+   [the next section](#the-postgis-rows-column-is-not-what-the-database-read).
+
+## The PostGIS `rows` column is not what the database read
+
+The world-cities snapshot carries no integer identity field, so a table the
+store's own `CreateAsync` builds from it declares no primary key
+(`idColumns=[]` in the header of every PostGIS run above). A dataset like that
+names its features by **the ordinal of the read**, and two rules follow from
+that, both deliberate:
+
+- a pushdown is allowed only where it is identity-preserving, so a `WHERE`
+  that reached SQL would renumber every feature after the first match
+  (ADR-0097 §1, and its consequence for both SQL stores);
+- a page is addressable in SQL only when the plan's order is an `ORDER BY` the
+  table can make total, identity tie-break included, so a plan on such a table
+  is read whole and finished by the reference executor (ADR-0116 §1).
+
+So `B` and `Bp` on this layer are answered by **a whole-layer read plus an
+in-memory select, sort and page** — the same 34,135 rows `A` reads, mapped a
+second time into features and then narrowed. That is why:
+
+- `rows` is 25 for `Bp` (rows *returned* to the adapter) while `alloc_MB` is
+  46–48 (rows *read*, plus the second materialisation), and why the two do not
+  move together;
+- `countOnly` and `statistics` cost the same as `page25` — the plan has no
+  cap on those variants and nothing is reduced in SQL either, because the
+  count and the grouped aggregate are pushed under the same identity rule;
+- the in-process `MemoryStore` numbers below *do* follow the rows (Bp 0.83 MB
+  for 25 rows): an in-process store evaluates the plan over rows it already
+  holds and names them by the ordinal of that same set, so nothing it does
+  renumbers anything, and there is no database read to be spared.
+
+The measurements were reproduced on 2026-10-05 (SpatialEngine-d20,
+`eng/spike-u2x-query-baseline.sh --store=postgis --iterations=10 --warmup=3`):
+46.74–48.75 MB on every `B`/`Bp` cell, 31.11–31.91 MB on every `A` cell — the
+figures above, unchanged. Bisecting one call with `GC.GetTotalAllocatedBytes`
+around each stage put the whole figure in the fallback read: the description is
+cached (0.00 MB), the predicate compiles in 0.00 MB, and the same statement
+through raw Npgsql allocates 0.01 MB. The cost is the store reading the table,
+which is the documented answer for a keyless dataset, not a leak in the plan.
+
+**What would measure a real pushdown:** a PostGIS layer that declares an
+identity column. Nothing in the store needs to change for that — the same plan
+on such a layer takes the `ORDER BY`/`LIMIT` path (`PostgisPlanPagingTests`
+pins which plans those are). The harness now says this in the report itself,
+so the number cannot be read the wrong way again.
 
 ## In-memory store (what `eng/seed.sh` and CI use)
 
