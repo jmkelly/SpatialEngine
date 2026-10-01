@@ -53,6 +53,14 @@
 # call directly rather than a `tools/test_*.py`, because reintroducing a root
 # session note is a docs or `src` change.
 #
+# Every lane also runs `tools/changelog.py --check`, which fails on a
+# hand-merged `## [Unreleased]` section in `docs/CHANGELOG.md`: that section was
+# 1038 lines hand-merged from merge to merge by a rule no gate touched, and the
+# release section is generated now, once per release, from the `Task:` trailers
+# and the narrative the work commits already carry (ADR-0173). The rule is the
+# one that is true on every merge — a hand-merge is the defect, not a stale
+# comparison — so it cannot red a merge that hand-merged nothing.
+#
 # Every lane then runs the doc gate — `tools/arch-index.py --check` over the
 # generated ADR register and index, plus a dangling `ADR-NNNN` citation read
 # (ADR-0141). It is a second or two, it is about the repository rather than
@@ -526,6 +534,34 @@ package_agents_step() {
   step python3 tools/package_agents.py
 }
 
+# --- the changelog check ---------------------------------------------------
+# `docs/CHANGELOG.md` carried an `## [Unreleased]` section of 1038 lines that
+# was hand-merged from merge to merge by a rule no gate touched: 79 commits
+# touched it in the 17 days after `v0.3.0`, and 107 merges landed in that span.
+# The release section is generated instead — once per release, by
+# `python3 tools/changelog.py --range <previous>..HEAD --date <date> --write`,
+# which is `RELEASING.md` step 3 — out of the inputs a merge already writes
+# down: the `Task:` trailer, the bead title, the `ADR-NNNN` ids the change cites
+# and the narrative the commit carries.
+#
+# Generation is a release-time step and nothing else, which is what keeps it off
+# the merge path: a merge-scoped generated section would be a `--write`, a
+# follow-up commit and a red lane in between on every merge, the cost ADR-0134
+# removed from the merge path on purpose, and a check that fails whenever the
+# committed text differs from the generated text fails on every merge for the
+# same reason. So the rule a lane can afford is the one that is true on every
+# merge: nothing hand-merges the release section between releases, and
+# `git log v<previous>..HEAD` answers what shipped until the next release
+# writes its own.
+#
+# Like the two checks above it is called directly rather than left to the
+# `tools/**`-only tooling suite, because hand-merging is a **docs** change
+# (ADR-0146). It reads one file, so it is milliseconds and needs no .NET SDK.
+changelog_step() {
+  echo "== changelog: nothing hand-merges the release section =="
+  step python3 tools/changelog.py --check
+}
+
 # --- the doc gate, on every lane -------------------------------------------
 # The ADR register and the ADR index are generated from the records themselves
 # (ADR-0141), so "is the documentation current" is a comparison rather than a
@@ -630,6 +666,7 @@ if [[ "$LANE" == "format" ]]; then
   conflict_marker_step
   doc_surface_step
   package_agents_step
+  changelog_step
   doc_gate
   beads_gate_step
   spike_harness_step
@@ -652,6 +689,7 @@ if [[ "$LANE" == "full" ]]; then
   conflict_marker_step
   doc_surface_step
   package_agents_step
+  changelog_step
   doc_gate
   beads_gate_step
   spike_harness_step
@@ -683,6 +721,7 @@ final_newline_step
 conflict_marker_step
 doc_surface_step
 package_agents_step
+changelog_step
 doc_gate
 beads_gate_step
 spike_harness_step

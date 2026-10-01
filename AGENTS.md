@@ -68,6 +68,10 @@ Take this as the answer whenever another file or another agent offers another.
   bead whose agent `paseo` still reports *running* is a finding, ADR-0162; a
   run that can read neither the queue nor `paseo` — CI — judges those as *not
   judged*, and `--strict` fails instead).
+  It also runs `tools/changelog.py --check`, which fails on a hand-merged
+  `## [Unreleased]` section: there is none, because a release section is
+  generated from the `Task:` trailers and the narratives the work commits
+  already carry, once per release (`RELEASING.md` step 3, ADR-0173).
 - `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
@@ -197,4 +201,6 @@ only as the record of that mapping.
 - In-flight state is `bd`, not a document in the repository root: no root file
   answers "what is happening now" (`tools/doc_surface.py`, every lane,
   ADR-0148). `docs/CHANGELOG.md` is a release artefact rather than a context
-  source — for what changed on a path, read `git log -- <path>` and the bead.
+  source, and its release sections are generated from the history
+  (`tools/changelog.py`, ADR-0173) — for what changed on a path, read
+  `git log -- <path>` and the bead.
