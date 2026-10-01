@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**151 records on disk.** `status` is the record's own word;
+**152 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -167,6 +167,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0162](ADR-0162-the-reclaim-race-is-enforced-from-the-damage-not-by-a-hook.md) | The reclaim race is enforced from the damage, not by a hook | accepted | 2026-10-02 | ADR-0152, ADR-0118, ADR-0141 |
 | [0163](ADR-0163-registered-null-operation-is-published.md) | A registered null operation is an operation, and it is published | accepted | 2026-10-08 | ADR-0087, ADR-0111 |
 | [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md) | Discovery reads the geometry type only from a value the server calls valid | accepted | 2026-10-01 | ADR-0157, ADR-0151 |
+| [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md) | The De9im column is the matrix, not a display of it | accepted | 2026-10-02 | ADR-0156 |
 
 ## Reading order
 
@@ -226,6 +227,12 @@ out: the "Amended by" row already says everything about a pair.
 2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
 3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
 4. [0163](ADR-0163-registered-null-operation-is-published.md)
+
+### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 3 records, 3,670 words (2% of the corpus)
+
+1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0156)*
+2. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
+3. [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md)
 
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
@@ -299,6 +306,7 @@ believed.
 - **0152** is amended by 0162
 - **0154** is amended by 0155
 - **0155** is amended by 0160
+- **0156** is amended by 0165
 - **0157** is amended by 0164
 - **0160** is amended by 0161
 

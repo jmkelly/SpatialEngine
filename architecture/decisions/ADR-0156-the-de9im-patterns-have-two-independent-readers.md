@@ -88,11 +88,9 @@ reasons below, not because merging them was difficult.
 
 ## Not decided
 
-Whether the `De9im` column should be normalised to digits throughout now that
-it has a reader, or left in its `T`-for-non-empty spelling because that is how
-the OGC's own dimension-free relations read. What would settle it: a decision on
-whether the column is a display of the matrix or the matrix itself. Tracked as
-its own bead; it changes no verdict.
+> **Update (2026-10-02):** the first entry is closed by ADR-0165: the
+> `De9im` column is the exact matrix, not a display of it, so every cell
+> carries its dimension and the oracle compares the column outright.
 
 Whether the oracle should walk the pairs whose vertices touch exactly, where
 DE-9IM's own conventions about boundary contact are the interesting part. It
