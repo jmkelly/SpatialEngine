@@ -26,6 +26,15 @@ namespace Spatial.SqlServer.Tests;
 /// percentile between two rows), a descending rank, and a text key that folds
 /// under the database's own collation.
 /// </para>
+///
+/// <para>
+/// The <em>envelope</em> is the one statistic this store does not push, and
+/// the two tests at the end of the class are why (ADR-0157). They are guards
+/// rather than measurements of a pushdown: each asserts the value T-SQL's
+/// <c>geometry::</c> geometry aggregates would <em>not</em> answer, so a
+/// branch that pushes the candidate expression fails here — the one-point group
+/// by 1e-8 of tolerance, the invalid polygon by an error from the server.
+/// </para>
 /// </summary>
 public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerContainerFixture>
 {
@@ -245,6 +254,123 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
 
         Assert.Equal(0, counting.Scans);
     }
+
+    /// <summary>
+    /// The envelope of a group is the reference's rectangle <em>exactly</em>,
+    /// and the group whose members are a single point is the case that says
+    /// why: SQL Server's <c>geometry::</c> aggregate does exist, and
+    /// <c>UnionAggregate([geom]).STEnvelope()</c> is one expression, but on a
+    /// box with a zero-width or zero-height side it answers a rectangle grown
+    /// by the server's 1e-8 tolerance rather than the degenerate one the
+    /// reference reports — so every single-member group would come back as a
+    /// slightly larger box, and the shared conformance suite (whose fixture is
+    /// points on a diagonal, and therefore degenerate in both axes for every
+    /// group) would compare 1e-8 against 0 (ADR-0157 §Measurements).
+    ///
+    /// <para>
+    /// So the reduction is finished in process here, with the reference's own
+    /// bounds. This test is the guard that says so: the bounds are the ones the
+    /// pushed statement would not answer, and
+    /// <c>SqlServerReductionPushdownTests</c> pins the statement that is
+    /// declined.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task An_envelope_is_the_reference_rectangle_and_a_one_point_group_is_not_the_server_s_tolerance()
+    {
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = await SeedAsync(context);
+        var counting = new CountingStore(context.Store);
+        var aggregate = new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, "geom", "box")], ["city"]);
+        var plan = new FeatureQuery(Order: [new OrderTerm("city")]);
+        var page = await counting.AggregateAsync(dataset, plan, aggregate);
+
+        var reference = await ReferenceAsync(context.Store, dataset, plan, aggregate);
+        Assert.Equal(Render(reference.Groups), Render(page.Groups));
+
+        // "charlie" is one row, whose geometry is the point (4, 4): the
+        // reference's rectangle is that point, degenerate in both axes, and the
+        // server's envelope of the same group is POLYGON((3.99999992 3.99999992,
+        // … 4.00000008 4.00000008, …)).
+        var one = Assert.Single(page.Groups, group => !group.Key[0].IsNull && group.Key[0].StringValue == "charlie");
+        var box = one.Values[0].EnvelopeValue;
+        Assert.Equal(4d, box.MinX);
+        Assert.Equal(4d, box.MinY);
+        Assert.Equal(4d, box.MaxX);
+        Assert.Equal(4d, box.MaxY);
+    }
+
+    /// <summary>
+    /// A group that holds a geometry the server considers <em>invalid</em> — a
+    /// self-intersecting ring, which nothing in this store refuses to write and
+    /// nothing in the shared reference refuses to reduce — still reduces, and
+    /// its envelope is the reference's. It is the second half of ADR-0157: both
+    /// <c>geometry::</c> geometry aggregates — <c>UnionAggregate</c> and
+    /// <c>EnvelopeAggregate</c> — raise a .NET error the moment a group
+    /// contains one ("24144: … the instance is not valid"), so pushing the
+    /// envelope would turn a statistics request that answers today into a
+    /// failed one for every layer that holds a self-intersecting polygon, which
+    /// real data does.
+    ///
+    /// <para>
+    /// The valid point comes first on purpose: the store discovers a dataset by
+    /// sampling one row's <c>STSrid</c> and <c>STGeometryType()</c>, and a
+    /// table whose <em>sampled</em> geometry is the invalid one cannot be
+    /// described at all. The case that is new — the one this test pins — is the
+    /// table that describes and reads fine, and only the pushed reduction would
+    /// refuse it.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task A_group_holding_an_invalid_geometry_still_reduces()
+    {
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"dbo.invalid_{Guid.NewGuid().ToString("N")[..8]}";
+        await context.ExecuteAsync($"CREATE TABLE {dataset} (id bigint NOT NULL PRIMARY KEY, geom geometry NULL)");
+        // The bowtie: a ring that crosses itself, written through the store's
+        // own WKB path, which stores it as it is, after a valid row so the
+        // dataset's one-row sample lands on that one.
+        await context.Store.WriteAsync(
+            dataset,
+            new FeatureBatch(GeometrySchema, [Geometry(1, GeometryFactory.CreatePoint(1, 1, Crs)), Bowtie(2)]));
+
+        var page = await context.Store.AggregateAsync(
+            dataset,
+            FeatureQuery.All,
+            new AggregateQuery([new AggregateSpec(AggregateStatistic.Envelope, "geom", "box")]));
+
+        var group = Assert.Single(page.Groups);
+        var box = group.Values[0].EnvelopeValue;
+        Assert.Equal(0d, box.MinX);
+        Assert.Equal(0d, box.MinY);
+        Assert.Equal(2d, box.MaxX);
+        Assert.Equal(2d, box.MaxY);
+    }
+
+    private static readonly FeatureSchema GeometrySchema = new(
+    [
+        new FieldDefinition("id", AttributeKind.Int64, nullable: false),
+        new FieldDefinition("geom", AttributeKind.Geometry, nullable: true)]);
+
+    private static readonly CoordinateReference Crs = CoordinateReference.Epsg(4326);
+
+    /// <summary>A self-intersecting ring in a dataset's own CRS: data to this store, invalid to the server.</summary>
+    private static Feature Bowtie(long id) => Geometry(
+        id,
+        GeometryFactory.CreatePolygon(
+        [
+            new Coordinate(0, 0),
+            new Coordinate(2, 2),
+            new Coordinate(2, 0),
+            new Coordinate(0, 2),
+            new Coordinate(0, 0),
+        ],
+        coordinateReference: Crs));
+
+    private static Feature Geometry(long id, IGeometry geometry) => new(
+        new FeatureId(id.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        GeometrySchema,
+        [AttributeValue.FromInt64(id), AttributeValue.FromGeometry(geometry)]);
 
     private static Feature Row(long id, string? city, long? population, bool? active) => new(
         new FeatureId(id.ToString(System.Globalization.CultureInfo.InvariantCulture)),

@@ -4,7 +4,7 @@ date: 2026-09-30
 deciders: maintainer + agent
 summary: The SQL Server store pushes its three reduction faces rather than reading a layer to fold it in process: a `COUNT(*)` over the pushed restriction, a `GROUP BY` whose group order is written before the `OFFSET`/`FETCH NEXT` that cuts it, and a `DISTINCT` on **both** providers — pushed exactly where the plan's order is *total over the deduplicated fields*, which is the same rule `FeatureReduction.Distinct` applies to the reference, so a distinct set under an ordered plan answers in the plan's order instead of first-seen. T-SQL states both of the contract's rules the other way round (nulls lowest, a case-insensitive collation), so every group key, group order, extreme and deduplicated text value is written under `Latin1_General_100_BIN2` with an explicit null-placement key; a mean is `SUM(…)/COUNT(…)` because `AVG` over an integer column is integer division. A percentile, an envelope, a `having` clause, a boolean `MIN`/`MAX` and a geometry key are declined by name and finished with the shared reference (amends 0098, 0115, 0124).
 amends: ADR-0098, ADR-0115, ADR-0124
-amended-by: ADR-0137
+amended-by: ADR-0137, ADR-0157
 ---
 
 # ADR-0133: The SQL Server store pushes its reductions, and a distinct set is pushed only where the plan's order is total over it

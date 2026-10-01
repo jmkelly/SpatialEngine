@@ -144,9 +144,10 @@ internal static class SqlServerPlanQueries
     /// reference does not (a geometry, which groups by its stored bytes here and
     /// by its value in the reference); a statistic T-SQL cannot state at all —
     /// a percentile over a field it cannot rank against another, or an envelope,
-    /// because a rectangle is four reduced coordinates and a polygon rather than
-    /// one aggregate expression; and a clause over the reduced groups, which
-    /// this store does not compile for this dialect.
+    /// which the dialect <em>does</em> have an aggregate for and this store
+    /// still does not push, because the rectangle that aggregate answers is not
+    /// the rectangle the reference reports (ADR-0157); and a clause over the
+    /// reduced groups, which this store does not compile for this dialect.
     /// </para>
     ///
     /// <para>
@@ -518,9 +519,13 @@ internal static class SqlServerPlanQueries
                 // could state.
                 AggregateStatistic.Minimum => Extreme(kind, spec.Field, schema, byteOrderText, "MIN", qualifier),
                 AggregateStatistic.Maximum => Extreme(kind, spec.Field, schema, byteOrderText, "MAX", qualifier),
-                // The envelope is four reduced coordinates and a polygon rather
-                // than an expression, and the percentiles are written as windows
-                // over the derived table instead.
+                // The envelope is the one statistic this dialect has an
+                // aggregate for that this store does not push: `STEnvelope`
+                // answers a rectangle grown by the server's 1e-8 tolerance
+                // where the reference reports a degenerate one, and the
+                // aggregate raises on a group holding an invalid geometry
+                // (ADR-0157). The percentiles are written as windows over the
+                // derived table instead.
                 _ => null,
             };
         }
