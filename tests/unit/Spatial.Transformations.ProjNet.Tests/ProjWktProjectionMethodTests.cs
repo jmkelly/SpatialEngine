@@ -85,12 +85,51 @@ public sealed class ProjWktProjectionMethodTests
 
     /// <summary>
     /// EPSG:3078 NAD83 / Michigan Oblique Mercator, Hotine Oblique Mercator
-    /// (variant A, EPSG method 9812) — the one variant-A definition whose
-    /// false offsets PROJ applies at the natural origin rather than at the
-    /// projection centre.
+    /// (variant A, EPSG method 9812) — a variant-A definition, whose false
+    /// offsets are applied at the natural origin rather than at the
+    /// projection centre. Its offsets carry the extra digits the ESRI and
+    /// NAD27-era definitions give (EPSG's own registry states them to six
+    /// decimals), which is why PROJ's coordinates for it and for the ESRI
+    /// WKT1 spelling of the same grid differ in the fourth decimal of a
+    /// metre.
     /// </summary>
     private const string MichiganObliqueMercator = """
         PROJCRS["NAD83 / Michigan Oblique Mercator",BASEGEOGCRS["NAD83",DATUM["North American Datum 1983",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4269]],CONVERSION["Michigan Oblique Mercator (meter)",METHOD["Hotine Oblique Mercator (variant A)",ID["EPSG",9812]],PARAMETER["Latitude of projection centre",45.3091666666667,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8811]],PARAMETER["Longitude of projection centre",-86,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8812]],PARAMETER["Azimuth of initial line",337.25556,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8813]],PARAMETER["Angle from Rectified to Skew Grid",337.25556,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8814]],PARAMETER["Scale factor at projection centre",0.9996,SCALEUNIT["unity",1],ID["EPSG",8815]],PARAMETER["Easting at projection centre",2546731.4967949,LENGTHUNIT["metre",1],ID["EPSG",8816]],PARAMETER["Northing at projection centre",-4354009.8168466,LENGTHUNIT["metre",1],ID["EPSG",8817]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3078]]
+        """;
+
+    /// <summary>
+    /// EPSG:29874 Timbalai 1948 / RSO Sarawak LSD (m), Hotine Oblique
+    /// Mercator (variant A) — the same datum and the same Everest ellipsoid
+    /// as the Borneo variant B definition above, and almost the same oblique
+    /// parameters, so a reader that treated the two variants as one would
+    /// land these two grids on each other. Its false offsets are stated the
+    /// way EPSG states them for variant A — "False easting" and "False
+    /// northing", not the variant B "Easting at projection centre" — and
+    /// they are 2,000 km and 5,000 km of it.
+    /// </summary>
+    private const string SarawakObliqueMercator = """
+        PROJCRS["Timbalai 1948 / RSO Sarawak LSD (m)",BASEGEOGCRS["Timbalai 1948",DATUM["Timbalai 1948",ELLIPSOID["Everest 1830 (1967 Definition)",6377298.556,300.8017,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4298]],CONVERSION["Rectified Skew Orthomorphic Sarawak LSD (metre)",METHOD["Hotine Oblique Mercator (variant A)",ID["EPSG",9812]],PARAMETER["Latitude of projection centre",4,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8811]],PARAMETER["Longitude of projection centre",115,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8812]],PARAMETER["Azimuth at projection centre",53.3158204722222,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8813]],PARAMETER["Angle from Rectified to Skew Grid",53.1301023611111,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8814]],PARAMETER["Scale factor at projection centre",0.99984,SCALEUNIT["unity",1],ID["EPSG",8815]],PARAMETER["False easting",2000000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",5000000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",29874]]
+        """;
+
+    /// <summary>
+    /// ESRI:102544 OCRS Oregon Coast NAD 1983 CORS96 OM (metre), Hotine
+    /// Oblique Mercator (variant A) — the 5°-azimuth case, whose projection
+    /// centre is nowhere near the origin of the axes and whose offsets are
+    /// both negative, so the false offsets cannot be read as "somewhere near
+    /// (0, 0)" by a reader that has only seen positive ones.
+    /// </summary>
+    private const string OregonCoastObliqueMercator = """
+        PROJCRS["OCRS_Oregon_Coast_NAD_1983_CORS96_OM_Meters",BASEGEOGCRS["NAD83(CORS96)",DATUM["NAD83 (Continuously Operating Reference Station 1996)",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",6783]],CONVERSION["OCRS_Oregon_Coast_NAD_1983_CORS96_OM_Meters",METHOD["Hotine Oblique Mercator (variant A)",ID["EPSG",9812]],PARAMETER["Latitude of projection centre",44.75,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8811]],PARAMETER["Longitude of projection centre",-124.05,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8812]],PARAMETER["Azimuth at projection centre",5,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8813]],PARAMETER["Angle from Rectified to Skew Grid",5,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8814]],PARAMETER["Scale factor at projection centre",1,SCALEUNIT["unity",1],ID["EPSG",8815]],PARAMETER["False easting",-300000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",-4600000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["ESRI",102544]]
+        """;
+
+    /// <summary>
+    /// ESRI:102366 NAD 1983 CORS96 StatePlane Alaska 1 FIPS 5001, Hotine
+    /// Oblique Mercator (variant A) — the 5,000 km of false offset in each
+    /// axis, the largest the variant A definitions carry, so the translation
+    /// the convention moves cannot be confused with the offset itself.
+    /// </summary>
+    private const string AlaskaObliqueMercator = """
+        PROJCRS["NAD_1983_CORS96_StatePlane_Alaska_1_FIPS_5001",BASEGEOGCRS["NAD83(CORS96)",DATUM["NAD83 (Continuously Operating Reference Station 1996)",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",6783]],CONVERSION["NAD1983_CORS96_StatePlane_Alaska_1_FIPS_5001",METHOD["Hotine Oblique Mercator (variant A)",ID["EPSG",9812]],PARAMETER["Latitude of projection centre",57,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8811]],PARAMETER["Longitude of projection centre",-133.666666666667,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8812]],PARAMETER["Azimuth at projection centre",-36.8698976458333,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8813]],PARAMETER["Angle from Rectified to Skew Grid",-36.8698976458333,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8814]],PARAMETER["Scale factor at projection centre",0.9999,SCALEUNIT["unity",1],ID["EPSG",8815]],PARAMETER["False easting",5000000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",-5000000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(E)",east,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(N)",north,ORDER[2],LENGTHUNIT["metre",1]],ID["ESRI",102366]]
         """;
 
     /// <summary>
@@ -179,6 +218,10 @@ public sealed class ProjWktProjectionMethodTests
     [InlineData(UpsNorth, "Polar Stereographic (variant A)", "Polar_Stereographic")]
     [InlineData(SwissObliqueMercator, "Hotine Oblique Mercator (variant B)", "Hotine_Oblique_Mercator")]
     [InlineData(BorneoObliqueMercator, "Hotine Oblique Mercator (variant B)", "Hotine_Oblique_Mercator")]
+    [InlineData(MichiganObliqueMercator, "Hotine Oblique Mercator (variant A)", "Oblique_Mercator")]
+    [InlineData(SarawakObliqueMercator, "Hotine Oblique Mercator (variant A)", "Oblique_Mercator")]
+    [InlineData(OregonCoastObliqueMercator, "Hotine Oblique Mercator (variant A)", "Oblique_Mercator")]
+    [InlineData(AlaskaObliqueMercator, "Hotine Oblique Mercator (variant A)", "Oblique_Mercator")]
     [InlineData(AntarcticPolarStereographic, "Polar Stereographic (variant B)", "Polar_Stereographic")]
     [InlineData(AustralianAntarcticPolarStereographic, "Polar Stereographic (variant B)", "Polar_Stereographic")]
     [InlineData(SeaIcePolarStereographicNorth, "Polar Stereographic (variant B)", "Polar_Stereographic")]
@@ -201,6 +244,10 @@ public sealed class ProjWktProjectionMethodTests
     /// stereographic variant B points are the two hemispheres and the
     /// 6,000 km of false offset, because the scale factor the reader derives
     /// from the standard parallel is what puts them where PROJ puts them.
+    /// The oblique Mercator variant A points are four grids — Michigan,
+    /// Sarawak, the Oregon Coast and south-east Alaska — whose false offsets
+    /// run from both-negative to 5,000 km in each axis, because where those
+    /// offsets are applied is the whole of what separates the two variants.
     /// </summary>
     public static TheoryData<string, double, double, double, double> ProjControlPoints()
     {
@@ -258,6 +305,38 @@ public sealed class ProjWktProjectionMethodTests
         data.Add(SeaIcePolarStereographicNorth, -60.0, 72.0, -508693.4760589377, -1898469.8981307785);
         data.Add(SeaIcePolarStereographicNorth, -45.0, 89.0, 0.0, -108329.9596389848);
 
+        // EPSG:3078, NAD83 / Michigan Oblique Mercator — variant A, whose
+        // projection centre is at (499840.2532, 528600.3025) and not on the
+        // false easting and northing.
+        data.Add(MichiganObliqueMercator, -86.0, 45.30916666666666, 499840.25318077067, 528600.3025232237);
+        data.Add(MichiganObliqueMercator, -85.0, 45.5, 577967.3317124837, 550286.5097277928);
+        data.Add(MichiganObliqueMercator, -83.0, 44.0, 740335.1552843612, 387567.53180114273);
+        data.Add(MichiganObliqueMercator, -87.5, 46.0, 383695.8075449546, 606443.3146708356);
+        data.Add(MichiganObliqueMercator, -84.5, 43.5, 621114.091316483, 328757.8137546247);
+
+        // EPSG:29874, Timbalai 1948 / RSO Sarawak LSD — variant A on the
+        // Everest ellipsoid, on the same oblique parameters as the Borneo
+        // variant B definition above and 5,000 km of false northing.
+        data.Add(SarawakObliqueMercator, 110.35, 1.53, 2073943.2630482286, 5169163.515648381);
+        data.Add(SarawakObliqueMercator, 111.5, 2.2, 2201856.689242917, 5243254.074131392);
+        data.Add(SarawakObliqueMercator, 112.5, 3.0, 2312986.25057334, 5331764.441868048);
+        data.Add(SarawakObliqueMercator, 114.0, 4.5, 2479343.4127676655, 5497845.229681412);
+
+        // ESRI:102544, OCRS Oregon Coast — variant A with both offsets
+        // negative, so the origin of the axes is nowhere near the
+        // projection centre in either direction.
+        data.Add(OregonCoastObliqueMercator, -124.03, 44.45, 136335.2694881804, 335802.03086002637);
+        data.Add(OregonCoastObliqueMercator, -124.5, 44.2, 98771.98987737397, 308120.80072116293);
+        data.Add(OregonCoastObliqueMercator, -123.9, 44.6, 146652.35913570295, 352481.15665734746);
+        data.Add(OregonCoastObliqueMercator, -124.4, 45.0, 107146.92354373506, 396980.9767032238);
+
+        // ESRI:102366, StatePlane Alaska 1 — variant A with 5,000 km of
+        // false offset in each axis, and a negative azimuth.
+        data.Add(AlaskaObliqueMercator, -133.6666666666667, 57.0, 818676.7335827854, 575097.6885584872);
+        data.Add(AlaskaObliqueMercator, -132.0, 58.0, 917223.3000086262, 687673.6321787294);
+        data.Add(AlaskaObliqueMercator, -135.0, 56.0, 735492.0077300686, 464556.91681919154);
+        data.Add(AlaskaObliqueMercator, -134.5, 59.0, 770757.1318007791, 798129.3967899391);
+
         return data;
     }
 
@@ -306,7 +385,6 @@ public sealed class ProjWktProjectionMethodTests
     /// CRS with quietly wrong numbers.
     /// </summary>
     [Theory]
-    [InlineData(MichiganObliqueMercator, "Hotine Oblique Mercator (variant A)")]
     [InlineData(Krovak, "Krovak")]
     public void A_method_that_diverges_from_PROJ_is_refused_by_name(string wkt, string method)
     {
@@ -317,43 +395,53 @@ public sealed class ProjWktProjectionMethodTests
     }
 
     /// <summary>
-    /// The Hotine variant A divergence, sized. ProjNet's Hotine Oblique
-    /// Mercator puts the projection centre on the false easting and northing —
-    /// Snyder's <c>Alternate B</c> convention, where the false offsets are
-    /// read as the coordinates of the centre — while PROJ's EPSG:3078 applies
-    /// them at the natural origin, so the centre lands 2,046,891 m west and
-    /// 4,882,610 m south of where EPSG publishes it and every other point
-    /// with it. Measured at the centre: ProjNet gives the false origin
-    /// exactly, PROJ gives (499840.25238587055, 528600.3033698238).
+    /// Where a Hotine variant A definition's false offsets are applied.
+    /// EPSG applies them at the *natural origin* and Snyder's Alternate B —
+    /// which is what ProjNet's <c>Hotine_Oblique_Mercator</c> computes —
+    /// applies them at the *projection centre*, so that the centre lands on
+    /// the false easting and northing exactly. The two are one translation
+    /// apart, and it is 2,047 km on the Michigan grid: the projection centre
+    /// is 2,046,891 m west and 4,882,610 m north of where PROJ puts it under
+    /// the variant A reading, and so is every other point of the definition.
+    /// <para>
+    /// The reader resolves variant A to <c>Oblique_Mercator</c>, ProjNet's
+    /// projection that does apply the offsets at the natural origin
+    /// (ADR-0172), and this pins what that is worth: PROJ 9.8.1 puts the
+    /// centre at (499840.25318077067, 528600.3025232237) on this definition's
+    /// parameters, and the engine now puts it there to 1e-9 m.
+    /// </para>
     /// </summary>
     [Fact]
-    public void The_Hotine_variant_A_divergence_is_two_thousand_kilometres_of_false_offset()
+    public void The_Hotine_variant_A_false_offsets_are_applied_at_the_natural_origin()
     {
+        IReadOnlyCollection<ProjCs.ProjectionParameter> Parameters() =>
+        [
+            Parameter("latitude_of_center", 45.30916666666666),
+            Parameter("longitude_of_center", -86.0),
+            Parameter("azimuth", 337.25556),
+            Parameter("rectified_grid_angle", 337.25556),
+            Parameter("scale_factor", 0.9996),
+            Parameter("false_easting", 2546731.4967949),
+            Parameter("false_northing", -4354009.8168466),
+        ];
+
         var (centreEasting, centreNorthing) = Direct(
-            "Hotine_Oblique_Mercator",
-            [
-                Parameter("latitude_of_center", 45.30916666666666),
-                Parameter("longitude_of_center", -86.0),
-                Parameter("azimuth", 337.25556),
-                Parameter("rectified_grid_angle", 337.25556),
-                Parameter("scale_factor", 0.9996),
-                Parameter("false_easting", 2546731.4967949),
-                Parameter("false_northing", -4354009.8168466),
-            ],
-            6378137.0,
-            298.257222101,
-            -86.0,
-            45.30916666666666);
+            "Oblique_Mercator", Parameters(), 6378137.0, 298.257222101, -86.0, 45.30916666666666);
 
-        // ProjNet's convention puts the centre on the false easting and
-        // northing exactly...
-        Assert.Equal(2546731.4967949, centreEasting, 6);
-        Assert.Equal(-4354009.8168466, centreNorthing, 6);
+        // PROJ 9.8.1, on the same definition, applying the offsets at the
+        // natural origin.
+        Assert.Equal(499840.25318077067, centreEasting, 6);
+        Assert.Equal(528600.3025232237, centreNorthing, 6);
 
-        // ...where PROJ's puts it 2,046,891 m west and 4,882,610 m north of
-        // that. Every point of the definition inherits the same error.
-        Assert.InRange(centreEasting - 499840.25238587055, 2_046_000.0, 2_048_000.0);
-        Assert.InRange(centreNorthing - 528600.3033698238, -4_884_000.0, -4_882_000.0);
+        // The Alternate B reading puts the centre on the offsets themselves,
+        // which is 2,046,891 m east and 4,882,610 m south of PROJ's centre.
+        var (alternateBEasting, alternateBNorthing) = Direct(
+            "Hotine_Oblique_Mercator", Parameters(), 6378137.0, 298.257222101, -86.0, 45.30916666666666);
+
+        Assert.Equal(2546731.4967949, alternateBEasting, 6);
+        Assert.Equal(-4354009.8168466, alternateBNorthing, 6);
+        Assert.InRange(alternateBEasting - centreEasting, 2_046_000.0, 2_048_000.0);
+        Assert.InRange(alternateBNorthing - centreNorthing, -4_884_000.0, -4_882_000.0);
     }
 
     /// <summary>
