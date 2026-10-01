@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**146 records on disk.** `status` is the record's own word;
+**147 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -101,15 +101,15 @@ front matter, so a record's reach is a row rather than a search.
 | [0083](ADR-0083-tile-cache-key-carries-the-data-version.md) | The tile cache key carries the data version | accepted | 2026-09-27 | — |
 | [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) | Advertise `hasZ`/`hasM` from the coordinate layout the store declares | accepted | 2026-09-28 | — |
 | [0085](ADR-0085-query-distance-centroid-and-ordinate-output.md) | The distance band, the per-feature centroid and the Z/M output selection are served | accepted | 2026-09-28 | — |
-| [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | ADR-0153 |
+| [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | ADR-0111, ADR-0153 |
 | [0087](ADR-0087-datum-transformation-graph.md) | Datum transformations are values, and `findTransformations` is a search | accepted | 2026-09-28 | — |
 | [0088](ADR-0088-to-color-at-interpolate-and-cubic-bezier.md) | `to-color`, `at-interpolate` and `cubic-bezier` in the style dialect | accepted | 2026-09-28 | — |
 | [0089](ADR-0089-adr-numbers-are-reserved-before-the-record-is-written.md) | ADR numbers are reserved before the record is written | accepted | 2026-09-28 | — |
 | [0090](ADR-0090-an-upload-is-staged-then-loaded-resumable-ingest.md) | An upload is staged, then loaded — resumable ingest | accepted | 2026-09-28 | ADR-0041 |
 | [0091](ADR-0091-the-arcgis-rest-store-proves-ordinates-from-the-layer-declaration.md) | The ArcGIS REST store proves its ordinates from the layer's own declaration | accepted | 2026-09-28 | ADR-0084 |
 | [0092](ADR-0092-a-created-dataset-carries-its-own-indexes.md) | A created dataset carries its own indexes | accepted | 2026-09-28 | — |
-| [0097](ADR-0097-pushdown-identity-and-literal-binding.md) | A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind | accepted | 2026-09-28 | — |
-| [0098](ADR-0098-store-query-surface.md) | The store query surface — projection, order, paging, count, distinct and aggregate | accepted | 2026-09-28 | — |
+| [0097](ADR-0097-pushdown-identity-and-literal-binding.md) | A pushdown is allowed only where it is identity-preserving, and a literal binds as its column's kind | accepted | 2026-09-28 | ADR-0074 |
+| [0098](ADR-0098-store-query-surface.md) | The store query surface — projection, order, paging, count, distinct and aggregate | accepted | 2026-09-28 | ADR-0074 |
 | [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) | The map root advertises the time relation the engine actually applies | accepted | 2026-09-28 | ADR-0058 |
 | [0101](ADR-0101-a-tile-without-extent-is-rejected-not-narrowed.md) | A tile with no extent on an axis is rejected, not narrowed | accepted | 2026-09-28 | ADR-0070 |
 | [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) | Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback | accepted | 2026-09-28 | ADR-0107 |
@@ -123,27 +123,27 @@ front matter, so a record's reach is a row rather than a search.
 | [0117](ADR-0117-per-layer-tile-cache-composited-at-serve-time.md) | The tile cache holds per-layer tiles, composited at serve time | accepted | 2026-09-29 | — |
 | [0118](ADR-0118-the-default-verify-lane-is-a-build-gate-and-the-full-lane-is-enforced-at-the-merge.md) | the default verify lane is a build gate, and the full lane is enforced at the merge | superseded | 2026-09-30 | ADR-0134 |
 | [0119](ADR-0119-feature-id-is-the-identity-column-value.md) | A store's `Feature.Id` is the identity column's value | accepted | 2026-09-29 | — |
-| [0120](ADR-0120-an-envelope-statistic-reduces-a-layer-extent.md) | An envelope statistic, so a layer's extent is reduced at the store | accepted | 2026-09-29 | — |
-| [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) | A pushed-down string comparison is a byte comparison — the database's collation is never inherited | accepted | 2026-09-29 | — |
+| [0120](ADR-0120-an-envelope-statistic-reduces-a-layer-extent.md) | An envelope statistic, so a layer's extent is reduced at the store | accepted | 2026-09-29 | ADR-0112 |
+| [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) | A pushed-down string comparison is a byte comparison — the database's collation is never inherited | accepted | 2026-09-29 | ADR-0098 |
 | [0122](ADR-0122-a-discovered-dataset-description-is-held-and-every-write-forgets-it.md) | A discovered dataset description is held, and every write the store makes forgets it | accepted | 2026-09-30 | ADR-0151 |
-| [0123](ADR-0123-a-pushed-comparison-states-the-order-it-wants.md) | A pushed-down comparison says which order it wants — the database's collation is never inherited in a `WHERE` either | accepted | 2026-09-29 | — |
+| [0123](ADR-0123-a-pushed-comparison-states-the-order-it-wants.md) | A pushed-down comparison says which order it wants — the database's collation is never inherited in a `WHERE` either | accepted | 2026-09-29 | ADR-0121 |
 | [0124](ADR-0124-sql-server-pushes-the-plans-order-and-page.md) | The SQL Server store pushes the plan's order and page, and writes the reference's two ordering rules into the `ORDER BY` | accepted | 2026-09-29 | ADR-0116, ADR-0121 |
 | [0125](ADR-0125-the-mapserver-layer-record-carries-the-same-declared-ordinates.md) | The MapServer layer record carries the same declared ordinates | accepted | 2026-09-30 | ADR-0084 |
-| [0126](ADR-0126-a-text-identity-is-a-byte-identity.md) | A text identity is a byte identity — the comparison that names a feature states the order it wants | accepted | 2026-09-30 | — |
+| [0126](ADR-0126-a-text-identity-is-a-byte-identity.md) | A text identity is a byte identity — the comparison that names a feature states the order it wants | accepted | 2026-09-30 | ADR-0123 |
 | [0127](ADR-0127-a-composite-order-applies-every-requested-key.md) | A composite order applies every requested key in turn | accepted | 2026-09-30 | ADR-0098, ADR-0124 |
 | [0128](ADR-0128-the-group-page-and-having-belong-to-the-reduction.md) | The group page and the `having` clause belong to the reduction, and a store that implements the face answers both | accepted | 2026-09-30 | ADR-0098, ADR-0115 |
-| [0129](ADR-0129-durable-store-content-version.md) | A durable store's content version is a row in its own database | accepted | 2026-09-30 | — |
+| [0129](ADR-0129-durable-store-content-version.md) | A durable store's content version is a row in its own database | accepted | 2026-09-30 | ADR-0083 |
 | [0130](ADR-0130-a-sidecar-identity-is-a-byte-identity.md) | The attachment sidecar's own identity is a byte identity — declared, not restated | accepted | 2026-09-30 | ADR-0126 |
 | [0131](ADR-0131-a-pushed-read-names-a-row-by-the-key-it-read.md) | A pushed read names a row by the key it read, and an empty selection reduces to a zero count and no groups | accepted | 2026-09-30 | ADR-0098, ADR-0124, ADR-0128 |
-| [0132](ADR-0132-a-text-search-compares-under-a-stated-fold.md) | A text search compares under a fold the store states — case folding is a comparison of its own, and it is not an identity | accepted | 2026-09-30 | — |
-| [0133](ADR-0133-the-sql-server-store-pushes-its-reductions.md) | The SQL Server store pushes its reductions, and a distinct set is pushed only where the plan's order is total over it | accepted | 2026-09-30 | ADR-0098, ADR-0115, ADR-0124, ADR-0137, ADR-0157 |
-| [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) | the merge gate is the fast lane, and formatting leaves the merge path | accepted | 2026-09-30 | — |
+| [0132](ADR-0132-a-text-search-compares-under-a-stated-fold.md) | A text search compares under a fold the store states — case folding is a comparison of its own, and it is not an identity | accepted | 2026-09-30 | ADR-0074, ADR-0098, ADR-0112, ADR-0123, ADR-0126 |
+| [0133](ADR-0133-the-sql-server-store-pushes-its-reductions.md) | The SQL Server store pushes its reductions, and a distinct set is pushed only where the plan's order is total over it | accepted | 2026-09-30 | ADR-0098, ADR-0115, ADR-0124, ADR-0136, ADR-0137, ADR-0157 |
+| [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) | the merge gate is the fast lane, and formatting leaves the merge path | accepted | 2026-09-30 | ADR-0109, ADR-0118 |
 | [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) | The host integration suite's clients wait five minutes, not one hundred seconds | accepted | 2026-09-30 | — |
-| [0136](ADR-0136-a-text-order-follows-the-columns-collation.md) | A pushed-down text order follows the collation the column carries, not the collation the database has | accepted | 2026-09-30 | — |
+| [0136](ADR-0136-a-text-order-follows-the-columns-collation.md) | A pushed-down text order follows the collation the column carries, not the collation the database has | accepted | 2026-09-30 | ADR-0121, ADR-0123, ADR-0126, ADR-0133 |
 | [0137](ADR-0137-a-tsql-percentile-is-a-window-over-the-partition-a-group-is.md) | A T-SQL percentile is a window over the partition a group is, and a boolean extreme is an extreme over its integers | accepted | 2026-09-30 | ADR-0133, ADR-0157 |
 | [0139](ADR-0139-a-mass-skipped-suite-is-a-red-lane-not-a-green-one.md) | a mass-skipped suite is a red lane, not a green one | accepted | 2026-09-30 | — |
-| [0140](ADR-0140-a-read-by-identity-needs-a-declared-identity-column.md) | A read-by-identity needs a declared identity column | accepted | 2026-09-30 | — |
-| [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) | The ADR register, the ADR index and the ADR metadata are generated, and every lane gates them | accepted | 2026-09-30 | ADR-0109, ADR-0118, ADR-0145 |
+| [0140](ADR-0140-a-read-by-identity-needs-a-declared-identity-column.md) | A read-by-identity needs a declared identity column | accepted | 2026-09-30 | ADR-0038 |
+| [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) | The ADR register, the ADR index and the ADR metadata are generated, and every lane gates them | accepted | 2026-09-30 | ADR-0109, ADR-0118, ADR-0145, ADR-0159 |
 | [0142](ADR-0142-a-remote-response-geometry-is-read-by-the-ordinates-its-layer-declares.md) | A remote response geometry is read by the ordinates its layer declares | accepted | 2026-09-30 | — |
 | [0143](ADR-0143-the-trailing-whitespace-rule-is-checked-not-formatted.md) | the trailing-whitespace rule is checked, not formatted | accepted | 2026-09-30 | — |
 | [0144](ADR-0144-a-sub-two-point-linestring-is-a-position-not-a-segment.md) | A sub-2-point LineString is a position, not a segment | accepted | 2026-10-01 | — |
@@ -161,44 +161,126 @@ front matter, so a record's reach is a row rather than a search.
 | [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) | The DE-9IM patterns have two independent readers | accepted | 2026-10-02 | ADR-0036 |
 | [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md) | T-SQL has a geometry aggregate, and the rectangle it answers is not ours | accepted | 2026-10-02 | ADR-0133, ADR-0137 |
 | [0158](ADR-0158-json-query-plan-on-the-http-query-route.md) | The query plan crosses the HTTP boundary as JSON, and the filter text stays as sugar | accepted | 2026-10-02 | ADR-0074 |
+| [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md) | The family is a reading order, derived from the `amends:` links | accepted | 2026-10-02 | ADR-0141, ADR-0150 |
 | [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) | One host per class, and a per-test map name to keep the dataset private | accepted | 2026-10-02 | ADR-0155 |
+
+## Reading order
+
+The families the `amends:` links describe, **derived from them** like
+the two sections below. A record that refines another says so once, in
+its own front matter; this is the other end with an order on it — the
+root first, then by number, which is the order the decisions were
+taken in, because a refiner narrows what it reads. A record marked
+*narrowed by* has been refined further down the list, so read it
+before its own refiners and not instead of them. A record belongs to
+the family of the earliest record it refines, so no record is listed
+twice, and a family of fewer than 3 records is left
+out: the "Amended by" row already says everything about a pair.
+
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 17 records, 32,016 words (20% of the corpus)
+
+1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158)*
+2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md)
+3. [0098](ADR-0098-store-query-surface.md) *(narrowed by 0121, 0127, 0128, 0131, 0132, 0133)*
+4. [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) *(narrowed by 0123, 0124, 0136)*
+5. [0123](ADR-0123-a-pushed-comparison-states-the-order-it-wants.md) *(narrowed by 0126, 0132, 0136)*
+6. [0124](ADR-0124-sql-server-pushes-the-plans-order-and-page.md) *(narrowed by 0127, 0131, 0133)*
+7. [0126](ADR-0126-a-text-identity-is-a-byte-identity.md) *(narrowed by 0130, 0132, 0136)*
+8. [0127](ADR-0127-a-composite-order-applies-every-requested-key.md)
+9. [0128](ADR-0128-the-group-page-and-having-belong-to-the-reduction.md) *(narrowed by 0131)*
+10. [0130](ADR-0130-a-sidecar-identity-is-a-byte-identity.md)
+11. [0131](ADR-0131-a-pushed-read-names-a-row-by-the-key-it-read.md)
+12. [0132](ADR-0132-a-text-search-compares-under-a-stated-fold.md)
+13. [0133](ADR-0133-the-sql-server-store-pushes-its-reductions.md) *(narrowed by 0136, 0137, 0157)*
+14. [0136](ADR-0136-a-text-order-follows-the-columns-collation.md)
+15. [0137](ADR-0137-a-tsql-percentile-is-a-window-over-the-partition-a-group-is.md) *(narrowed by 0157)*
+16. [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md)
+17. [0158](ADR-0158-json-query-plan-on-the-http-query-route.md)
+
+### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (8% of the corpus)
+
+1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
+2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*
+3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159)*
+4. [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md)
+5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
+6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
+7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
+
+### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 4 records, 6,769 words (4% of the corpus)
+
+1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
+2. [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) *(narrowed by 0155)*
+3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160)*
+4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md)
+
+### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
+
+1. [0038](ADR-0038-read-by-identity-store-capability.md) *(narrowed by 0140)*
+2. [0140](ADR-0140-a-read-by-identity-needs-a-declared-identity-column.md) *(narrowed by 0149)*
+3. [0149](ADR-0149-every-ingested-dataset-is-keyed.md)
+
+### ADR-0041: Ingest and publications are protocol-neutral capabilities — 3 records, 4,283 words (3% of the corpus)
+
+1. [0041](ADR-0041-ingest-and-publications-are-protocol-neutral.md) *(narrowed by 0082, 0090, 0149)*
+2. [0082](ADR-0082-ingest-honours-the-source-crs-reports-and-streams.md)
+3. [0090](ADR-0090-an-upload-is-staged-then-loaded-resumable-ingest.md)
+
+### ADR-0084: Advertise `hasZ`/`hasM` from the coordinate layout the store declares — 3 records, 2,269 words (1% of the corpus)
+
+1. [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) *(narrowed by 0091, 0125)*
+2. [0091](ADR-0091-the-arcgis-rest-store-proves-ordinates-from-the-layer-declaration.md)
+3. [0125](ADR-0125-the-mapserver-layer-record-carries-the-same-declared-ordinates.md)
+
+### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 3 records, 4,305 words (3% of the corpus)
+
+1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153)*
+2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md)
+3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
+
 
 ## Amended by
 
 The refiners of each record, **derived from their own `amends:` fields**
 rather than maintained by hand. A record that refines another says so
-once, in its own front matter, and this list is the other end of it — so
-a family over one topic is a row here rather than a reading order the
-reader has to assemble across eleven files. A record nobody amends does
-not appear.
+once, in its own front matter, and this list is the other end of it —
+the reading order above is these same links with an order on them. A
+record nobody amends does not appear, and a record that carries a
+hand-written `amended-by:` is checked against this list rather than
+believed.
 
 - **0036** is amended by 0156
+- **0038** is amended by 0140
 - **0041** is amended by 0082, 0090, 0149
 - **0058** is amended by 0100
 - **0070** is amended by 0101
-- **0074** is amended by 0158
+- **0074** is amended by 0097, 0098, 0132, 0158
+- **0083** is amended by 0129
 - **0084** is amended by 0091, 0125
 - **0086** is amended by 0111, 0153
 - **0087** is amended by 0111
 - **0092** is amended by 0147
-- **0098** is amended by 0127, 0128, 0131, 0133
+- **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
 - **0105** is amended by 0107
-- **0109** is amended by 0141
+- **0109** is amended by 0134, 0141
+- **0112** is amended by 0120, 0132
 - **0115** is amended by 0128, 0133
 - **0116** is amended by 0124
-- **0118** is amended by 0141, 0148, 0152
-- **0121** is amended by 0124
+- **0118** is amended by 0134, 0141, 0148, 0152
+- **0121** is amended by 0123, 0124, 0136
 - **0122** is amended by 0151
+- **0123** is amended by 0126, 0132, 0136
 - **0124** is amended by 0127, 0131, 0133
-- **0126** is amended by 0130
+- **0126** is amended by 0130, 0132, 0136
 - **0128** is amended by 0131
-- **0133** is amended by 0137, 0157
+- **0133** is amended by 0136, 0137, 0157
 - **0134** is amended by 0146, 0148
 - **0135** is amended by 0154
 - **0137** is amended by 0157
 - **0140** is amended by 0149
-- **0141** is amended by 0145
+- **0141** is amended by 0145, 0159
 - **0143** is amended by 0146
+- **0150** is amended by 0159
 - **0154** is amended by 0155
 - **0155** is amended by 0160
 

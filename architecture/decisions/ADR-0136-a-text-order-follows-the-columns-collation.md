@@ -3,6 +3,7 @@ status: accepted
 date: 2026-09-30
 deciders: maintainer + agent
 summary: A pushed-down text order follows the collation **the column actually carries**, not the collation the database has: a column that declares one keeps it, a column that declares none inherits the database's, and the store writes `COLLATE "C"` when *that* is not already byte order (so an authored `COLLATE "de-x-icu"` column on a `C` database states the order, and an authored `COLLATE "C"` column on a locale one does not). The declared collations come from `information_schema.columns.collation_name` — **not** from `format_type`, which renders a collated `text` as plain `text` — join the column metadata the discovery already reads, and are held with the description they were read for (ADR-0122), outside the contract type (ADR-0028). SQL Server needs no counterpart: it always writes `Latin1_General_100_BIN2`, which overrides whatever a column carries (amends 0121, 0123, 0126, 0133).
+amends: ADR-0121, ADR-0123, ADR-0126, ADR-0133
 ---
 
 # ADR-0136: A pushed-down text order follows the collation the column carries, not the collation the database has
