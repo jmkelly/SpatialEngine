@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**142 records on disk.** `status` is the record's own word;
+**143 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -157,6 +157,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0152](ADR-0152-the-bead-protocol-is-a-gate.md) | The bead protocol is a gate, not prose | accepted | 2026-10-01 | ADR-0118, ADR-0141, ADR-0146, ADR-0150 |
 | [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md) | A polar stereographic's standard parallel is read as a scale factor | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 | [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) | The two-minute in-process request is CPU starvation, not store contention | accepted | 2026-10-01 | ADR-0135 |
+| [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) | Cap the suite's collection parallelism, and leave the shared host to a later bead | accepted | 2026-10-01 | ADR-0154 |
 | [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) | The DE-9IM patterns have two independent readers | accepted | 2026-10-02 | ADR-0036 |
 
 ## Amended by
@@ -193,6 +194,7 @@ not appear.
 - **0140** is amended by 0149
 - **0141** is amended by 0145
 - **0143** is amended by 0146
+- **0154** is amended by 0155
 
 ## Superseded, by superseder
 
