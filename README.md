@@ -60,10 +60,10 @@ interfaces you can swap without disturbing the value model.
 structured codes (`invalid.arguments`, `not.found`, `store.unavailable`,
 `auth.*`) that map to real HTTP statuses.
 
-**It is genuinely inspectable.** `eng/verify.sh` gates the build and the tests
-a change can reach in your loop, and `eng/verify.sh --full` is the flat gate CI
-runs on every pull request and after every merge — format, build and the full
-test suite; quality gates enforce zero warnings, branch coverage,
+**It is genuinely inspectable.** One gate, `eng/verify.sh`: it builds and runs
+the tests a change can reach in your loop, and `eng/verify.sh --full` is the
+flat gate CI runs on every pull request and after every merge — format, build
+and the full test suite; quality gates enforce zero warnings, branch coverage,
 complexity and CRAP thresholds; and end-to-end suites drive a real host
 from the SDKs, the CLI and a real browser.
 
@@ -110,10 +110,17 @@ workbench from the host as above.
 
 ### Verify the whole thing
 
+`eng/verify.sh` is the gate: it is what CI runs and what a change is merged
+behind. The three `e2e` scripts below are not part of the gate — they drive a
+real host with a delivered client, are minutes rather than seconds, and run when
+a change reaches that client (or when you want the evidence for a release),
+not on every iteration.
+
 ```bash
 ./eng/verify.sh          # build gate: build + the tests the change reaches
 ./eng/verify.sh --format # format check, scoped to the projects you changed
 ./eng/verify.sh --full   # format + build + the full test run (what CI runs)
+# separate evidence, not the gate:
 ./eng/e2e-web.sh         # real host, driven by the TypeScript SDK over HTTP
 ./eng/workbench-e2e.sh   # real host + built workbench + Playwright
 ./eng/cli-e2e.sh         # real host driven by the Spatial CLI
