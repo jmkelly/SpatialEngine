@@ -79,10 +79,14 @@ internal enum FixtureShape
 /// one fixture row against the unit square feature.
 /// </summary>
 /// <param name="De9im">
-/// The matrix read with the feature on the left: the rows are the feature's
-/// interior/boundary/exterior and the columns the query's, so position 1 is
-/// interior∩interior, position 2 feature-boundary∩query-interior, position 4
-/// feature-interior∩query-boundary and position 5 boundary∩boundary.
+/// The pair's exact intersection matrix, read with the feature on the left:
+/// the rows are the feature's interior/boundary/exterior and the columns the
+/// query's, so position 1 is interior∩interior, position 2
+/// feature-boundary∩query-interior, position 4 feature-interior∩query-boundary
+/// and position 5 boundary∩boundary. Every cell carries its dimension — <c>F</c>
+/// for empty, <c>T</c>, <c>0</c>, <c>1</c> or <c>2</c> for a point, a curve or
+/// an area — because the column is the matrix and not a display of it
+/// (ADR-0165).
 /// </param>
 internal sealed record RelationVerdicts(
     string De9im,
@@ -130,21 +134,21 @@ internal sealed record RelationVerdicts(
 ///
 /// | Query geometry | DE-9IM | Contains | Within | Touches | Overlaps | Crosses | Intersects |
 /// | --- | --- | --- | --- | --- | --- | --- | --- |
-/// | the square itself | <c>TFFFTFFFT</c> | T | T | F | F | F | T |
-/// | square (2,2)-(4,4), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
-/// | square (5,5)-(15,15), overlapping | <c>TTTTTTTTT</c> | F | F | F | T | F | T |
-/// | square (0,0)-(4,4), sharing the corner and two edges | <c>TTTFTTFFT</c> | T | F | F | F | F | T |
-/// | square (0,10)-(10,20), sharing only an edge | <c>FFTFTTTTT</c> | F | F | T | F | F | T |
+/// | the square itself | <c>2FFF1FFF2</c> | T | T | F | F | F | T |
+/// | square (2,2)-(4,4), inside | <c>212FF1FF2</c> | T | F | F | F | F | T |
+/// | square (5,5)-(15,15), overlapping | <c>212101212</c> | F | F | F | T | F | T |
+/// | square (0,0)-(4,4), sharing the corner and two edges | <c>212F11FF2</c> | T | F | F | F | F | T |
+/// | square (0,10)-(10,20), sharing only an edge | <c>FF2F11212</c> | F | F | T | F | F | T |
 /// | line (0,0)-(10,0), along the bottom edge | <c>FF2101FF2</c> | F | F | T | F | F | T |
 /// | line (-5,0)-(15,0), the edge and past both ends | <c>FF21F1102</c> | F | F | T | F | F | T |
 /// | line (5,0)-(20,0), along the edge and past it | <c>FF2101102</c> | F | F | T | F | F | T |
-/// | line (0,5)-(20,5), crossing | <c>TFTTTTTTT</c> | F | F | F | F | T | T |
-/// | line (2,2)-(8,8), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
-/// | line (0,0)-(0,10), lying on the boundary | <c>FFTTTTFFT</c> | F | F | T | F | F | T |
-/// | point (5,5), inside | <c>TFTFFTFFT</c> | T | F | F | F | F | T |
-/// | point (0,5), on the boundary | <c>FFTTFTFFT</c> | F | F | T | F | F | T |
-/// | point (20,20), outside | <c>FFTFFTTFT</c> | F | F | F | F | F | F |
-/// | square (20,20)-(30,30), disjoint | <c>FFTFFTTTT</c> | F | F | F | F | F | F |
+/// | line (0,5)-(20,5), crossing | <c>1F2001102</c> | F | F | F | F | T | T |
+/// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | T | F | F | F | F | T |
+/// | line (0,0)-(0,10), lying on the boundary | <c>FF2101FF2</c> | F | F | T | F | F | T |
+/// | point (5,5), inside | <c>0F2FF1FF2</c> | T | F | F | F | F | T |
+/// | point (0,5), on the boundary | <c>FF20F1FF2</c> | F | F | T | F | F | T |
+/// | point (20,20), outside | <c>FF2FF10F2</c> | F | F | F | F | F | F |
+/// | square (20,20)-(30,30), disjoint | <c>FF2FF1212</c> | F | F | F | F | F | F |
 ///
 /// The three line rows along the bottom edge are the touch rows the envelope
 /// approximation and the single <c>F***T****</c> mask each got wrong in a
@@ -153,7 +157,8 @@ internal sealed record RelationVerdicts(
 /// query's boundary in dimension one rather than the two boundaries merely
 /// meeting. The Geometry Service pinned none of them, which is the
 /// reproduction for this bead. Their matrices are three different rows and
-/// only one of them is the row the table used to print for all three —
+/// only one of them is the row the table used to print for all three, which
+/// the digits now show at a glance:
 /// <see cref="FeatureSpatialRelationTests"/> derives each one from the
 /// geometry and is what caught the two that were not (ADR-0156).
 /// </summary>
@@ -195,29 +200,29 @@ internal static class SpatialRelationMatrix
     /// the fixtures the pairs tables walk but the matrix does not cover
     /// (<c>point-vertex</c>) carry no verdict and are matched against the
     /// reference implementation's own named predicates instead. The
-    /// <see cref="De9im"/> column is checked against the derived matrix by
-    /// <c>FeatureSpatialRelationTests</c>, and a non-empty cell may be written
-    /// <c>T</c> rather than its dimension — the column states a row, not a
-    /// matcher (ADR-0156).
+    /// <see cref="De9im"/> column is the exact intersection matrix, cell for
+    /// cell, and is compared outright against the matrix
+    /// <c>FeatureSpatialRelationTests</c> derives from the geometry
+    /// (ADR-0156, ADR-0165).
     /// </summary>
     public static IReadOnlyDictionary<string, RelationVerdicts> Verdicts { get; } =
         new Dictionary<string, RelationVerdicts>
         {
-            ["square-equal"] = new("TFFFTFFFT", Contains: true, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
-            ["square-inner"] = new("TTTFFTFFT", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
-            ["square-overlap"] = new("TTTTTTTTT", Contains: false, Within: false, Touches: false, Overlaps: true, Crosses: false, Intersects: true),
-            ["square-corner"] = new("TTTFTTFFT", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
-            ["square-above"] = new("FFTFTTTTT", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
+            ["square-equal"] = new("2FFF1FFF2", Contains: true, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["square-inner"] = new("212FF1FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["square-overlap"] = new("212101212", Contains: false, Within: false, Touches: false, Overlaps: true, Crosses: false, Intersects: true),
+            ["square-corner"] = new("212F11FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["square-above"] = new("FF2F11212", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-edge"] = new("FF2101FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-collinear"] = new("FF21F1102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-shifted-collinear"] = new("FF2101102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
-            ["line-crossing"] = new("TFTTTTTTT", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: true, Intersects: true),
-            ["line-inside"] = new("TTTFFTFFT", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
-            ["line-on-boundary"] = new("FFTTTTFFT", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
-            ["point-inside"] = new("TFTFFTFFT", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
-            ["point-on-boundary"] = new("FFTTFTFFT", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
-            ["point-outside"] = new("FFTFFTTFT", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: false),
-            ["square-outside"] = new("FFTFFTTTT", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: false),
+            ["line-crossing"] = new("1F2001102", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: true, Intersects: true),
+            ["line-inside"] = new("102FF1FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["line-on-boundary"] = new("FF2101FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
+            ["point-inside"] = new("0F2FF1FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["point-on-boundary"] = new("FF20F1FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
+            ["point-outside"] = new("FF2FF10F2", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: false),
+            ["square-outside"] = new("FF2FF1212", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: false),
         };
 
     /// <summary>The fixture the matrix is read against: the unit square.</summary>

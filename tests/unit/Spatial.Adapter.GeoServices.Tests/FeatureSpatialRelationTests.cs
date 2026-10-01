@@ -19,23 +19,24 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// interior/boundary/exterior order, so position 1 is interior∩interior,
 /// position 2 feature-boundary∩query-interior, position 4
 /// feature-interior∩query-boundary, position 5 boundary∩boundary and
-/// position 9 exterior∩exterior; <c>T</c> below is "non-empty", and
-/// <c>F</c> is "disjoint".
+/// position 9 exterior∩exterior; <c>F</c> is "empty" and <c>T</c>, <c>0</c>,
+/// <c>1</c> and <c>2</c> name the dimension of a point, a curve or an area
+/// (ADR-0165).
 ///
 /// | Query geometry | DE-9IM | Contains <c>T*****FF*</c> | Within <c>T*F**F***</c> | Touches | Overlaps | Crosses | Intersects |
 /// | --- | --- | --- | --- | --- | --- | --- | --- |
-/// | the square itself | <c>TFFFTFFFT</c> | T | T | F | F | F | T |
-/// | square (2,2)-(4,4), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
-/// | square (5,5)-(15,15), overlapping | <c>TTTTTTTTT</c> | F | F | F | T | F | T |
-/// | square (0,0)-(4,4), sharing the corner and two edges | <c>TTTFTTFFT</c> | T | F | F | F | F | T |
-/// | square (0,10)-(10,20), sharing only an edge | <c>FFTFTTTTT</c> | F | F | T | F | F | T |
-/// | line (0,5)-(20,5), crossing | <c>TFTTTTTTT</c> | F | F | F | F | T | T |
-/// | line (2,2)-(8,8), inside | <c>TTTFFTFFT</c> | T | F | F | F | F | T |
-/// | line (0,0)-(0,10), lying on the boundary | <c>FFTTTTFFT</c> | F | F | T | F | F | T |
-/// | point (5,5), inside | <c>TFTFFTFFT</c> | T | F | F | F | F | T |
-/// | point (0,5), on the boundary | <c>FFTTFTFFT</c> | F | F | T | F | F | T |
-/// | point (20,20), outside | <c>FFTFFTTFT</c> | F | F | F | F | F | F |
-/// | square (20,20)-(30,30), disjoint | <c>FFTFFTTTT</c> | F | F | F | F | F | F |
+/// | the square itself | <c>2FFF1FFF2</c> | T | T | F | F | F | T |
+/// | square (2,2)-(4,4), inside | <c>212FF1FF2</c> | T | F | F | F | F | T |
+/// | square (5,5)-(15,15), overlapping | <c>212101212</c> | F | F | F | T | F | T |
+/// | square (0,0)-(4,4), sharing the corner and two edges | <c>212F11FF2</c> | T | F | F | F | F | T |
+/// | square (0,10)-(10,20), sharing only an edge | <c>FF2F11212</c> | F | F | T | F | F | T |
+/// | line (0,5)-(20,5), crossing | <c>1F2001102</c> | F | F | F | F | T | T |
+/// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | T | F | F | F | F | T |
+/// | line (0,0)-(0,10), lying on the boundary | <c>FF2101FF2</c> | F | F | T | F | F | T |
+/// | point (5,5), inside | <c>0F2FF1FF2</c> | T | F | F | F | F | T |
+/// | point (0,5), on the boundary | <c>FF20F1FF2</c> | F | F | T | F | F | T |
+/// | point (20,20), outside | <c>FF2FF10F2</c> | F | F | F | F | F | F |
+/// | square (20,20)-(30,30), disjoint | <c>FF2FF1212</c> | F | F | F | F | F | F |
 /// | line (5,0)-(20,0), along the edge and past it | <c>FF2101102</c> | F | F | T | F | F | T |
 ///
 /// The three reproduction cases the envelope approximation failed are the
@@ -558,11 +559,10 @@ public sealed class FeatureSpatialRelationTests
     /// whose matrix the reference's own named predicates answer instead — is
     /// not walked here, so the test states only what the table states.
     ///
-    /// The comparison reads the column the way the table documents it: a
-    /// non-empty cell is written <c>T</c> whatever its dimension, not the
-    /// dimension itself, so <c>2FFF1FFF2</c> and <c>TFFFTFFFT</c> are the
-    /// same recorded row. Comparing the strings outright would fail on
-    /// every row and say nothing about the column being right.
+    /// The comparison is strict: the column is the matrix, so every cell is
+    /// written as its dimension — <c>T</c>, <c>F</c>, <c>0</c>, <c>1</c> or
+    /// <c>2</c> — and <c>2FFF1FFF2</c> is not the same recorded row as
+    /// <c>TFFFTFFFT</c> (ADR-0165).
     /// </summary>
     [Theory]
     [MemberData(nameof(MatrixQueries))]
@@ -571,19 +571,8 @@ public sealed class FeatureSpatialRelationTests
         var recorded = SpatialRelationMatrix.Verdicts[query].De9im;
         var derived = ExactMatrix(SpatialRelationMatrix.Feature, query);
 
-        Assert.True(
-            Records(recorded, derived),
-            $"the recorded row {recorded} is not the derived matrix {derived} for {query}");
+        Assert.Equal(derived, recorded);
     }
-
-    /// <summary>
-    /// Whether a recorded matrix column and a derived one are the same row,
-    /// with <c>T</c> standing for a non-empty cell of any dimension — the
-    /// reading the table's own header states.
-    /// </summary>
-    private static bool Records(string recorded, string derived) =>
-        recorded.Length == derived.Length
-        && recorded.Zip(derived, (said, cell) => said == 'T' ? cell != 'F' : said == cell).All(holds => holds);
 
     /// <summary>
     /// The query fixtures the matrix carries a verdict row for, by name: the
