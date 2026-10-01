@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**147 records on disk.** `status` is the record's own word;
+**148 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -163,6 +163,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0158](ADR-0158-json-query-plan-on-the-http-query-route.md) | The query plan crosses the HTTP boundary as JSON, and the filter text stays as sugar | accepted | 2026-10-02 | ADR-0074 |
 | [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md) | The family is a reading order, derived from the `amends:` links | accepted | 2026-10-02 | ADR-0141, ADR-0150 |
 | [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) | One host per class, and a per-test map name to keep the dataset private | accepted | 2026-10-02 | ADR-0155 |
+| [0162](ADR-0162-the-reclaim-race-is-enforced-from-the-damage-not-by-a-hook.md) | The reclaim race is enforced from the damage, not by a hook | accepted | 2026-10-02 | ADR-0152, ADR-0118, ADR-0141 |
 
 ## Reading order
 
@@ -238,6 +239,12 @@ out: the "Amended by" row already says everything about a pair.
 2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md)
 3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
 
+### ADR-0118: the default verify lane is a build gate, and the full lane is enforced at the merge — 3 records, 5,644 words (4% of the corpus)
+
+1. [0118](ADR-0118-the-default-verify-lane-is-a-build-gate-and-the-full-lane-is-enforced-at-the-merge.md) *(narrowed by 0134, 0141, 0148, 0152)*
+2. [0152](ADR-0152-the-bead-protocol-is-a-gate.md) *(narrowed by 0162)*
+3. [0162](ADR-0162-the-reclaim-race-is-enforced-from-the-damage-not-by-a-hook.md)
+
 
 ## Amended by
 
@@ -281,6 +288,7 @@ believed.
 - **0141** is amended by 0145, 0159
 - **0143** is amended by 0146
 - **0150** is amended by 0159
+- **0152** is amended by 0162
 - **0154** is amended by 0155
 - **0155** is amended by 0160
 

@@ -514,6 +514,7 @@ def report_for(root: Path, beads, gate_from: str) -> str:
         [sys.executable, str(SCRIPT), "--root", str(root),
          "--base", gate_from,
          "--watermark", gate_from,
+         "--no-paseo",
          "--beads", write_beads(root, beads)],
         capture_output=True, text=True)
     return (done.stdout or "") + (done.stderr or "")
@@ -533,11 +534,12 @@ class ShippedRepositoryTests(unittest.TestCase):
         # gets disabled. Run over the range the gate itself introduced, with
         # no queue: the wall check is judged and check 1 says out loud that it
         # had no bead list to read rather than passing silently. (`--no-queue`
-        # rather than letting the test shell out to `bd`, which
+        # rather than letting the test shell out to `bd`, and `--no-paseo`
+        # rather than letting it shell out to `paseo`, which
         # `tools/test_no_real_queue.py` forbids for the whole tooling suite.)
         done = subprocess.run(
             [sys.executable, str(SCRIPT), "--root", str(REPO_ROOT),
-             "--base", "HEAD", "--no-queue"],
+             "--base", "HEAD", "--no-queue", "--no-paseo"],
             capture_output=True, text=True)
         output = (done.stdout or "") + (done.stderr or "")
         self.assertEqual(done.returncode, 0, output[-4000:])
