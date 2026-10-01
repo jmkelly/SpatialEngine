@@ -54,6 +54,8 @@ public sealed class PostgisKeylessPlanReadAllocationTests : IClassFixture<Postgi
     [SkippableFact]
     public async Task A_capped_plan_read_on_a_keyless_layer_costs_no_more_than_the_scan_it_had_to_do()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var plan = new FeatureQuery(Order: [new OrderTerm("city")], Limit: 25);
@@ -83,6 +85,8 @@ public sealed class PostgisKeylessPlanReadAllocationTests : IClassFixture<Postgi
     [SkippableFact]
     public async Task A_reduction_over_a_keyless_layer_reads_the_table_once_and_not_twice()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
+
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
 
