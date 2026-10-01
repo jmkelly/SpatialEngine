@@ -25,8 +25,28 @@ Nine checks, all deterministic:
   6. `dead-doc-link`         every relative link in a doc resolves
   7. `skill-reference`       every path a SKILL.md cites resolves
   8. `context-bloat`         >200 lines in an AGENTS.md or a SKILL.md
-  9. `init-fossil`           a hand-written doc with a single commit
- 10. `instruction-conflict`  one gate noun with two referents; lint leakage
+  9. `instruction-conflict`  one gate noun with two referents
+ 10. `lint-leakage`          a doc *contradicts* a wall a gate already fails on
+
+and two the report carries as **signals** rather than findings (ADR-0177):
+
+  * `init-fossil`           a hand-written doc with a single commit
+  * `lint-restatement`      a doc restating a wall a gate already fails on
+
+**A finding is something a reader could be wrong about; a signal is a fact
+about the corpus** (ADR-0177). The distinction is the whole contract of this
+report, and it was drawn by a queue that could not be drained: `lint-leakage`
+reported six accurate restatements of the architecture walls — in `AGENTS.md`'s
+own required hard-walls section among them — and `init-fossil` reported four
+documents with one commit, every one of them verified accurate. An accurate
+restatement is a census of where a wall is written down, and "one commit" is a
+maintenance fact; neither is drainable by editing a document, and a queue whose
+rows can only be cleared by an edit manufactured to move a counter is a churn
+treadmill. So both are reported, in their own section, and neither is a
+finding. What *is* a finding is the detectable negation of the same wall — a doc
+that says `Spatial.Contracts` references Npgsql, or that `Spatial.Core` depends
+on NetTopologySuite — because that is the shape of a reader who is confidently
+wrong.
 
 Checks 1-4 are **read out of `tools/arch-index.py`**, not reimplemented: the
 register row, the record schema, the record's shape (ADR-0150) and the dangling
@@ -188,27 +208,85 @@ ENTRY_POINTS = (
 )
 ENTRY_POINT = re.compile("|".join(re.escape(name) for name in ENTRY_POINTS))
 
-#: Check 9, part two: Lint Leakage — a doc restating a rule a gate already fails
-#: on, at 62% prevalence in the wild. This repository is structurally exposed
-#: because it enforces its style walls in `tests/architecture`, so a doc that
-#: repeats a wall is a second place to drift and no place to be authoritative.
-#: Each entry is the prose a doc would restate, and the gate that owns it.
+#: The assembly names `ArchitectureGuardTests` refuses inside
+#: `src/Spatial.Contracts` and the edges it refuses on either project, read out
+#: of the guard test rather than re-guessed here (ADR-0177). `Vips` alone is in
+#: the guard's list, and `Spatial.Core`'s own guard is zero packages and zero
+#: project references, so this vocabulary is what a *denial* of one of those
+#: walls is spelled with.
+FORBIDDEN_TYPES = (
+    r"NetVips|Vips|SkiaSharp|Npgsql|Microsoft\.Data\.SqlClient|"
+    r"NetTopologySuite|ProjNET|Microsoft\.AspNetCore|NTS"
+)
+
+#: Check 9, part two: Lint Leakage — a wall a gate already fails on, at 62%
+#: prevalence in the wild. This repository is structurally exposed because it
+#: enforces its style walls in `tests/architecture`, so a doc that repeats a
+#: wall is a second place to drift.
+#:
+#: Each entry names the gate that owns the wall and two vocabularies over it:
+#: the prose that **restates** it (reported as the `lint-restatement` signal —
+#: where the walls are written down, which is a census and not a defect,
+#: ADR-0177) and the prose that **denies** it (the `lint-leakage` finding: a
+#: document that says a wall is not there is a reader who is confidently wrong,
+#: which is the only defect class this audit claims to find).
 LINT_WALLS = (
     (
-        re.compile(r"third[- ]party types?", re.I),
         "tests/architecture/Spatial.Architecture.Tests → "
         "ArchitectureGuardTests.Contracts_source_names_no_raster_or_third_party_type",
+        re.compile(r"third[- ]party types?", re.I),
+        (
+            # The guard reads the *source* of `src/Spatial.Contracts`; a
+            # document naming a forbidden type on the contracts project is
+            # asserting the thing the guard fails on, in either order on the
+            # line.
+            re.compile(rf"(?:{FORBIDDEN_TYPES})\b[^\n]{{0,160}}`?Spatial\.Contracts\b"),
+            re.compile(rf"`?Spatial\.Contracts\b[^\n]{{0,160}}(?:{FORBIDDEN_TYPES})\b"),
+            # ...and the wall as a package edge rather than a type name.
+            re.compile(
+                r"`?Spatial\.Contracts(?:\.csproj)?`?\s+"
+                r"(?:references?|referencing|depends on|takes|uses|links? to|"
+                r"linked to)\b[^\n]{0,80}\b(?:PackageReference|Serilog|"
+                r"Microsoft\.Extensions|Microsoft\.Data)\b", re.I
+            ),
+        ),
     ),
     (
-        re.compile(r"contracts? (?:reference|references|carry|carries|stay|stays) "
-                   r"only .{0,20}\bcore\b", re.I),
         "tests/architecture/Spatial.Architecture.Tests → "
         "ArchitectureGuardTests.Contracts_references_only_core",
+        re.compile(r"contracts? (?:reference|references|carry|carries|stay|stays) "
+                   r"only .{0,20}\bcore\b", re.I),
+        (
+            # A dependency edge out of the SDK to anything but `Spatial.Core`.
+            re.compile(
+                r"`?Spatial\.Contracts(?:\.csproj)?`?\s+"
+                r"(?:references?|referencing|depends on|takes|uses|links? to|"
+                r"linked to)\b[^\n]{0,80}\b(?:Spatial\.(?!Core\b)|PackageReference|"
+                + FORBIDDEN_TYPES + r"|Serilog|Microsoft\.Extensions)\b", re.I
+            ),
+        ),
     ),
     (
-        re.compile(r"`?Spatial\.Core`? (?:stays|remains) structural", re.I),
         "tests/architecture/Spatial.Architecture.Tests → "
         "ArchitectureGuardTests.Core_has_no_dependencies",
+        re.compile(r"`?Spatial\.Core`? (?:stays|remains) structural", re.I),
+        (
+            # A dependency edge out of Core, which the guard reads off its
+            # `.csproj`: "zero packages, zero references" is a restatement,
+            # "depends on NetTopologySuite" is a denial.
+            re.compile(
+                r"`?Spatial\.Core(?:\.csproj)?`?\s+"
+                r"(?:references?|referencing|depends on|takes|uses|links? to|"
+                r"linked to)\b[^\n]{0,80}\b(?:Spatial\.(?!Core\b)|PackageReference|"
+                + FORBIDDEN_TYPES + r"|Serilog|Microsoft\.Extensions)\b", re.I
+            ),
+            # ...and the shape ADR-0001 denies: the algorithms beside the values.
+            re.compile(
+                r"\b(?:algorithms?|verbs?)\b[^\n]{0,40}\b(?:live|are|sit|belong|"
+                r"stay)\b[^\n]{0,20}\b(?:in|inside|with|under)\b[^\n]{0,20}"
+                r"`?Spatial\.Core\b", re.I
+            ),
+        ),
     ),
 )
 
@@ -225,6 +303,16 @@ def finding(check: str, file: str, line: int, message: str, severity: str, **ext
     }
     record.update(extra)
     return record
+
+
+def signal(check: str, file: str, line: int, message: str, severity: str) -> dict:
+    """A finding-shaped row that is a fact about the corpus, not a defect.
+
+    `signal: True` is the only difference, and it is the difference the report
+    is read by: findings go in the queue, signals go in their own section
+    (ADR-0177).
+    """
+    return finding(check, file, line, message, severity, signal=True)
 
 
 # --- the shared checks ------------------------------------------------------
@@ -754,10 +842,19 @@ def _instruction_files(root: Path) -> list[Path]:
 def init_fossil(root: Path, counts: dict | None = None) -> list[dict]:
     """A hand-written doc with a single commit: written by `/init`, never revised.
 
-    Deterministic through `git log`. The point is the *new* nested AGENTS.md a
-    generation bead adds once and never touches again: nothing in it is wrong on
-    the day it lands, and a year later it is a set of rules that were true once.
-    Generated files are excluded — one commit is what a generator looks like.
+    A **signal, not a finding** (ADR-0177). The point was always the *new*
+    nested AGENTS.md a generation bead adds once and never touches again:
+    nothing in it is wrong on the day it lands, and a year later it is a set of
+    rules that were true once. Generated files are excluded — one commit is what
+    a generator looks like — and a doc with zero commits is a transient.
+
+    It is reported rather than deleted from the report because the one doc this
+    check was the right tool for was wrong: a spike's baseline note claimed the
+    pre-pushdown store was "the production path today" (SpatialEngine-7o0). But
+    it was wrong in its *content*, which is not what this measures, and the
+    four rows it leaves are all verified accurate — for which the only available
+    "fix" is an edit manufactured to move a commit counter. A signal asks for a
+    look; a finding asks for a rewrite, and this one had nothing to rewrite.
     """
     candidates = [
         path for path in iter_doc_files(root)
@@ -771,19 +868,19 @@ def init_fossil(root: Path, counts: dict | None = None) -> list[dict]:
         return []
     resolved = commit_counts(root, candidates)
     resolved.update(as_absolute(root, counts))
-    findings: list[dict] = []
+    signals: list[dict] = []
     for path in candidates:
         count = resolved.get(str(path))
         if count != 1:
             # Zero commits is a file the working tree has not committed yet,
             # which is a transient, not a doc that was never revised.
             continue
-        findings.append(finding(
+        signals.append(signal(
             "init-fossil", str(path.relative_to(root)), 0,
             "one commit: written by /init (or copied) and never revised since",
             "low",
         ))
-    return findings
+    return signals
 
 
 # --- check 9: conflicting instructions, lint leakage ------------------------
@@ -844,28 +941,86 @@ def instruction_conflict(root: Path) -> list[dict]:
                 "low",
                 reportingOnly=True,
             ))
+    return findings
 
+
+def _wall_lines(root: Path):
+    """Every authored line of every routed document, with its gate matches.
+
+    The two halves of check 9's second part — the restatement census and the
+    denial that is the finding — read the same lines, so they read them once.
+    Yields `(path, number, line, restated, denied)`, where each of the last two
+    is the gate that owns the wall, or `""`.
+    """
     for path in agent_docs(root):
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeDecodeError):
             continue
-        relative = str(path.relative_to(root))
         for number, line in enumerate(lines, start=1):
             if _is_generated_line(path, number):
                 continue
-            for pattern, gate in LINT_WALLS:
-                if not pattern.search(line):
+            restated = denied = ""
+            for gate, restatement, denials in LINT_WALLS:
+                if restated or denied:
                     continue
-                findings.append(finding(
-                    "lint-leakage", relative, number,
-                    f"restates a wall a gate already fails on ({gate}): "
-                    f"\"{line.strip()[:120]}\" — reporting only; the gate is "
-                    "the authority, the doc is the second place to drift",
-                    "low",
-                    reportingOnly=True,
-                ))
+                if restatement.search(line):
+                    restated = gate
+                for denial in denials:
+                    if denial.search(line):
+                        denied = gate
+                        break
+            yield path, number, line, restated, denied
+
+
+def lint_leakage(root: Path) -> list[dict]:
+    """A document that **denies** a wall a gate already fails on: a finding.
+
+    This is the only shape of lint leakage that is a defect (ADR-0177). The
+    check as it was written reported every document that *restated* one of the
+    architecture walls, which on this corpus is `AGENTS.md`'s own required
+    hard-walls section and five more — all accurate, all undrainable by editing
+    the prose, and none of them a reader who is wrong. A doc that says
+    `Spatial.Contracts` references Npgsql, or that `Spatial.Core` depends on
+    NetTopologySuite, is the negation of a wall `ArchitectureGuardTests` fails
+    on, and that is confidently wrong.
+    """
+    findings: list[dict] = []
+    for path, number, line, _, denied in _wall_lines(root):
+        if not denied:
+            continue
+        findings.append(finding(
+            "lint-leakage", str(path.relative_to(root)), number,
+            f"denies a wall the gate already fails on ({denied}): "
+            f"\"{line.strip()[:120]}\" — reporting only; the gate is the "
+            "authority, and this line tells a reader the opposite",
+            "low",
+            reportingOnly=True,
+        ))
     return findings
+
+
+def wall_restatements(root: Path) -> list[dict]:
+    """A document that **restates** a wall: a signal, not a finding (ADR-0177).
+
+    Worth having and not drainable: it is the census of where each wall is
+    written down, which is what a reader asks when a doc and a gate disagree,
+    and the count is the number of places a moved wall would have to be revised.
+    It is reported in its own section because an accurate restatement is not a
+    defect, and a queue carrying rows that only an edit manufactured to move a
+    counter could clear is a treadmill.
+    """
+    signals: list[dict] = []
+    for path, number, line, restated, _ in _wall_lines(root):
+        if not restated:
+            continue
+        signals.append(signal(
+            "lint-restatement", str(path.relative_to(root)), number,
+            f"restates a wall the gate already fails on ({restated}): "
+            f"\"{line.strip()[:120]}\"",
+            "low",
+        ))
+    return signals
 
 
 def agent_docs(root: Path) -> list[Path]:
@@ -946,9 +1101,15 @@ CHECKS = (
     ("dead-doc-link", "every relative link between docs resolves", "medium", False),
     ("skill-reference", "every path a SKILL.md cites resolves", "high", False),
     ("context-bloat", f"an instruction file is at most {BLOAT_CEILING} lines", "medium", False),
-    ("init-fossil", "a hand-written doc has been revised", "low", False),
     ("instruction-conflict", "one gate noun has one referent", "low", False),
-    ("lint-leakage", "a doc does not restate what a gate already fails on", "low", False),
+    ("lint-leakage", "a doc does not contradict a wall the gate fails on", "low", False),
+)
+
+#: The reported-but-not-queued half (ADR-0177). Same shape as a check, counted
+#: from `signals` rather than `findings`, and rendered in its own section.
+SIGNAL_CHECKS = (
+    ("init-fossil", "a hand-written doc has been revised", "low"),
+    ("lint-restatement", "where a gated wall is restated, word for word", "low"),
 )
 
 NOTES = (
@@ -959,6 +1120,18 @@ NOTES = (
     "instruction-conflict and lint-leakage are reporting-only by construction, "
     "never a gate: both need judgement and this repository's judgement lives in "
     "the ADRs.",
+    "A **finding** is something a reader could be wrong about, and an edit "
+    "drains it. A **signal** — `init-fossil`, `lint-restatement` — is a fact "
+    "about the corpus that cannot be drained by editing a document: a doc with "
+    "one commit is unrevised, not wrong, and an accurate restatement of a wall "
+    "is the wall being carried to the reader rather than a second opinion on "
+    "it. They are reported in their own section and are not counted as "
+    "findings, so the queue is only ever rows somebody can close (ADR-0177).",
+    "The lint-leakage finding is the **denial** of a wall "
+    "`ArchitectureGuardTests` fails on (`Spatial.Contracts` references Npgsql; "
+    "`Spatial.Core` depends on NetTopologySuite). The restatement census beside "
+    "it is the signal, and reporting the census as the defect is what made six "
+    "undrainable rows of `AGENTS.md`'s own hard-walls section (ADR-0177).",
     "`.agents/skills` is a vendored copy of the published skills, so it is out "
     "of scope for every check: its debt is upstream's, and reporting it would "
     "bury this repository's own findings under ~1500 lines of documentation "
@@ -984,13 +1157,16 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
     findings.extend(dead_doc_links(root))
     findings.extend(skill_references(root))
     findings.extend(context_bloat(root))
-    findings.extend(init_fossil(root, commit_counts))
     findings.extend(instruction_conflict(root))
+    findings.extend(lint_leakage(root))
 
-    findings.sort(key=lambda item: (
-        SEVERITY_ORDER.get(item["severity"], 9), item["check"], item["file"],
-        -item["line"],
-    ))
+    signals: list[dict] = []
+    signals.extend(init_fossil(root, commit_counts))
+    signals.extend(wall_restatements(root))
+
+    findings.sort(key=_order)
+    signals.sort(key=_order)
+
     checks = []
     for identifier, title, severity, shared in CHECKS:
         mine = [item for item in findings if item["check"] == identifier]
@@ -1000,6 +1176,18 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
             "severity": severity,
             "shared": shared,
             "sharedWith": "tools/arch-index.py" if shared else "",
+            "kind": "finding",
+            "count": len(mine),
+        })
+    for identifier, title, severity in SIGNAL_CHECKS:
+        mine = [item for item in signals if item["check"] == identifier]
+        checks.append({
+            "id": identifier,
+            "title": title,
+            "severity": severity,
+            "shared": False,
+            "sharedWith": "",
+            "kind": "signal",
             "count": len(mine),
         })
     return {
@@ -1008,8 +1196,10 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
         "root": str(root),
         "checks": checks,
         "findings": findings,
+        "signals": signals,
         "stats": {
             "findings": len(findings),
+            "signals": len(signals),
             "high": sum(1 for item in findings if item["severity"] == "high"),
             "medium": sum(1 for item in findings if item["severity"] == "medium"),
             "low": sum(1 for item in findings if item["severity"] == "low"),
@@ -1019,6 +1209,14 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
         "notes": list(NOTES),
         "warnings": [],
     }
+
+
+def _order(item: dict) -> tuple:
+    """Worst first, then by check, file and line — findings and signals alike."""
+    return (
+        SEVERITY_ORDER.get(item["severity"], 9), item["check"], item["file"],
+        -item["line"],
+    )
 
 
 # --- the artefacts ----------------------------------------------------------
@@ -1037,7 +1235,9 @@ def render_queue(report: dict) -> str:
         f"{report['stats']['docs']} documentation file(s) and "
         f"{report['stats']['adrs']} decision record(s): "
         f"{report['stats']['high']} high, {report['stats']['medium']} medium, "
-        f"{report['stats']['low']} low.",
+        f"{report['stats']['low']} low — plus "
+        f"{report['stats']['signals']} signal(s), reported below and not "
+        "queued (ADR-0177).",
         "",
         "| check | severity | finding |",
         "| --- | --- | --- |",
@@ -1050,12 +1250,33 @@ def render_queue(report: dict) -> str:
         )
     if not report["findings"]:
         lines.append("| — | — | nothing: the corpus audits clean |")
-    lines += ["", "## By check", "", "| check | what it asks | findings |", "| --- | --- | --- |"]
+    lines += [
+        "", "## Signals", "",
+        "Not defects, and not drainable by editing a document: a fact about the "
+        "corpus (ADR-0177). Reported rather than dropped, because a reader "
+        "asking where a wall is written down wants the census, and a doc nobody "
+        "has revised wants a look.",
+        "",
+        "| signal | severity | where |",
+        "| --- | --- | --- |",
+    ]
+    for item in report.get("signals", []):
+        where = item["file"] + (f":{item['line']}" if item["line"] else "")
+        lines.append(
+            f"| `{item['check']}` | {item['severity']} | "
+            f"**{where}** — {item['message']} |"
+        )
+    if not report.get("signals"):
+        lines.append("| — | — | none: no unrevised doc, no restated wall |")
+    lines += ["", "## By check", "",
+              "| check | what it asks | findings | signals |",
+              "| --- | --- | --- | --- |"]
     for check in report["checks"]:
         lines.append(
             f"| `{check['id']}` | {check['title']}"
             + (f" (shared with {check['sharedWith']})" if check["shared"] else "")
-            + f" | {check['count']} |"
+            + f" | {check['count'] if check['kind'] == 'finding' else '—'} "
+            + f"| {check['count'] if check['kind'] == 'signal' else '—'} |"
         )
     lines += ["", "## What this is not", ""]
     lines += [f"- {note}" for note in report["notes"]]
@@ -1107,6 +1328,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"doc-freshness: {stats['findings']} finding(s) "
             f"({stats['high']} high, {stats['medium']} medium, {stats['low']} low) "
+            f"+ {stats['signals']} signal(s) "
             f"→ {QUEUE_NAME}, {REPORT_NAME}"
         )
     else:
@@ -1119,7 +1341,8 @@ def main(argv: list[str] | None = None) -> int:
             if not check["count"]:
                 continue
             shared = f" [shared with {check['sharedWith']}]" if check["shared"] else ""
-            print(f"  {check['count']:>3}  {check['id']}{shared}")
+            kind = "" if check["kind"] == "finding" else " [signal]"
+            print(f"  {check['count']:>3}  {check['id']}{shared}{kind}")
         print(f"  queue: {QUEUE_NAME}   report: {REPORT_NAME}")
     return 0
 
