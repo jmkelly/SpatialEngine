@@ -4,6 +4,24 @@ The typed contracts in `Spatial.Contracts`. Implements ADR-0033
 (replaces the ADR-0026/0027/0028 versioned worker contracts). Shared error codes:
 `invalid.arguments`, `not.found`, `store.unavailable` (see `runtime.md`).
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Bind a literal as its column's kind, in the one predicate grammar: a text
+  parameter against a `uuid` column compiled to `uuid = @p0` and Postgres
+  answered 42883. (SpatialEngine-u2x.8)
+- Spend `maxAllowableOffset` and `quantizationParameters` through
+  `IGeometryOperations.Generalize`, a deviation allowance; `Simplify`'s
+  tolerance is a different verb and is not a fallback for it.
+  (SpatialEngine-u2x.3)
+- Advertise a capability flag only where behaviour proves it: a REST JS client
+  gates on `supportsQuantization`, so the flag is what makes a served parameter
+  reachable at all. (SpatialEngine-u2x.25)
+<!-- orientation:end -->
+
 ## Vector tiles (`IVectorTileService`, MVT)
 
 | Method | Input | Output | Behaviour |

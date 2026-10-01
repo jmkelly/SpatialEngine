@@ -8,6 +8,28 @@ ADR for the decision and the research at
 `../../research/rendering/README.md` for the measured baseline and the
 libvips traps; this is the as-built shape.
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Start at `Spatial.Rendering.Skia/StyleExpression.cs` and
+  `ExpressionReader.cs`: the tree is read, validated and interned there, and a
+  number is never coerced into a colour. (SpatialEngine-u2x.19)
+- Label placement is candidates, then priority, in `SymbolSceneBuilder`: point
+  offsets or repeated positions along a line, `symbol-sort-key` beating
+  document order across layers, and the face registry's fallback chain.
+  (SpatialEngine-u2x.20)
+- Fold the dataset's content version into all six tile key paths (neutral
+  single and batch, map raster, map MVT, Esri tile, Esri vector tile, OGC API
+  tiles) or an edit serves stale tiles until a manual flush.
+  (SpatialEngine-u2x.21)
+- Read that content version fresh from a row in the store's own database,
+  bumped inside the write's transaction: a per-process counter invalidates only
+  the tiles of the host that wrote. (SpatialEngine-u2x.21.1)
+<!-- orientation:end -->
+
 ## Contract surface (`Spatial.Contracts`)
 
 Core/framework types only — no Skia, no NetVips (ADR-0005). The value types

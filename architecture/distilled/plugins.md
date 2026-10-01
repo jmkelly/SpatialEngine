@@ -2,6 +2,41 @@
 
 Implements ADR-0033 (replaces ADR-0006/0013/0025 worker boundaries).
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Hold the discovered description per store, keyed by dataset, and treat the
+  write methods as the invalidation set: a walk of N pages costs one discovery,
+  and every write the store makes forgets what it could have changed.
+  (SpatialEngine-u2x.41)
+- State the byte order on every pushed string term (`COLLATE "C"` on Postgres,
+  `Latin1_General_100_BIN2` on SQL Server): the database's own collation is a
+  locale, and an all-lower-case fixture cannot see the difference.
+  (SpatialEngine-u2x.43)
+- Compile a pushed text predicate through the same `Ordered` helper the sort
+  keys use, so a `WHERE` and an `ORDER BY` cannot disagree about the order.
+  (SpatialEngine-u2x.48)
+- Declare the order on the sidecar columns the store itself owns; a
+  case-folding key cannot hold both codes at all, so restating the collation
+  per statement cannot fix it. (SpatialEngine-u2x.57)
+- Name a pushed row by the identity columns' positions in what was read, not by
+  the columns appended for the mapper: the appended set named every pushed row
+  of a keyed table by its ordinal. (SpatialEngine-u2x.55)
+- Apply each sort key as a then-key in `FeaturePlanExecutor.Order`; a fresh
+  `OrderBy` per key made a composite order its last key's, and the SQL
+  pushdowns were narrowed to the orders both sides agreed on.
+  (SpatialEngine-u2x.54)
+- Read CRS definitions through `ProjWkt`, our own WKT reader: ProjNet's path
+  lost 33,931 m of northing on the widely published `Mercator_1SP` spelling of
+  EPSG:3857. (SpatialEngine-u2x.28)
+- Key every ingested dataset (`Auto` or `Source`) and refuse `identity=none` by
+  name on both ingest routes and the CLI; `CreateAsync` stays keyless on
+  purpose, and each path says why they differ. (SpatialEngine-2cm)
+<!-- orientation:end -->
+
 ## Composition model
 
 Implementations are linked .NET projects composed by `Spatial.Host` with

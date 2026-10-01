@@ -4,6 +4,21 @@ Covers `Spatial.Contracts` interfaces and their in-process implementations.
 Implements ADR-0033 (replaces ADR-0002/0003/0006/0007/0008/0013/0022/0023/0024/0025
 worker machinery).
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Write a fixture and its expected spatialRel verdict down once, in
+  `SpatialRelationMatrix`: the Feature Service query path and the Geometry
+  Service `relation` operation are then held to the same row.
+  (SpatialEngine-dih)
+- Derive each pair's matrix from nine single-cell questions rather than reading
+  the table's `De9im` column; that read is what found two of three
+  line-along-the-edge rows wrong. (SpatialEngine-imj)
+<!-- orientation:end -->
+
 ## Service shape
 
 A service = a plain C# interface over core types, implemented once per

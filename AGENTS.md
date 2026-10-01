@@ -126,7 +126,12 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   reached `origin/main`.
 - Complete: `bd close <id> --reason="…"` — only after CI's run for that merge
   is green on `main`, never on the branch. The fast gate is never the only
-  thing that ran.
+  thing that ran. In the close, answer **where the first hour went**: if the
+  answer names a file, a subsystem, a trap, or a search that was dead, add one
+  imperative line under `## Orientation` in the digest that owns the area,
+  ending in `(SpatialEngine-<id>)`, and run `python3 tools/orientation.py` to
+  see the coverage. One line per bead — orientation is a coverage play, and
+  volume is its failure mode (`SpatialEngine-rzq`).
 - Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
   expires — never bare `bd reclaim`. `bd reclaim` keys on lease age alone and a
   long-running worker does not heartbeat, so an expired lease only means "this
@@ -142,7 +147,10 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   `python3 tools/bd-safe-reclaim.py --heartbeat <id>` (a plain `bd heartbeat
   <id>` does the same). Reclaim stays reversible: record the agent id and
   branch in the notes when you claim, and treat "reclaimed N" as a prompt to
-  check `paseo ls` before those beads re-enter `bd ready`.
+  check `paseo ls` before those beads re-enter `bd ready`. Keep in-flight work
+  on a WIP commit rather than in the stash: the stash is shared across this
+  repository's worktrees and has clobbered a worker mid-task
+  (SpatialEngine-u2x.29).
 
 Records: a bead that will write a decision record **reserves** its number with
 `python3 tools/adr-next-number.py --reserve --bead <id>` at the start of the

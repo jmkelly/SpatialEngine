@@ -2,6 +2,18 @@
 
 Covers `Spatial.Core` only. Implements ADR-0001/0004/0009/0020/0029/0032.
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
+
+- Treat a LineString under two positions as a value, not a segment: the
+  zero-position one is the empty LineString and the one-position one is
+  neither — and keep it out of the planar clip, which bounds extent.
+  (SpatialEngine-a74.2)
+<!-- orientation:end -->
+
 ## The inclusion test (all three must hold)
 
 1. Almost every spatial plugin must exchange it.

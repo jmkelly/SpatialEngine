@@ -6,6 +6,29 @@ small for fast LLM/human consumption. **Precedence when documents disagree:**
 diverging from an ADR. The ADRs are dated decision records — their prose
 reflects the state at decision time.
 
+<!-- orientation:begin -->
+
+## Orientation
+
+One line per closed bead: where the first hour went. Facts that cost time when
+they are absent — a file, a subsystem, a trap, a dead search — never a rule an
+agent would have followed anyway (`SpatialEngine-rzq`).
+
+- Start a store-query bead from the measured baseline, not from reading the
+  adapter: the cost was materialisation, not filtering, and the ratios are in
+  `eng/spike-u2x-query-baseline/RESULTS.md`. (SpatialEngine-u2x.1)
+- Re-run the lane after the rebase onto `origin/main`, not before it: a green
+  lane on a stale base is green against a tree that no longer exists, and
+  `AdrNumberingTests` failing alone is inherited redness.
+  (SpatialEngine-u2x.21)
+- Reserve the record number with `tools/adr-next-number.py --reserve --bead
+  <id>` before writing and re-`--check` it immediately before: main moves under
+  a branch, so a collision only appears at rebase. (SpatialEngine-u2x.24)
+- Settle a conflict in `architecture/decisions/README.md` or the register by
+  re-running `tools/arch-index.py --write` over the merged record set; both are
+  generated, so the merge is a generator question. (SpatialEngine-vl1)
+<!-- orientation:end -->
+
 ## Route by task
 
 | Task | Read | Related ADRs |
