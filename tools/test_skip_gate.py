@@ -333,11 +333,14 @@ class LaneExitCodeTests(unittest.TestCase):
         for name in ("eng/verify.sh", "eng/quality-audit.sh", "tools/verify_scope.py",
                      "tools/skip_gate.py", "tools/trailing_whitespace.py",
                      "tools/conflict_markers.py", "tools/doc_surface.py",
-                     "tools/arch-index.py", "tools/doc-freshness.py",
-                     "tools/beads_gate.py"):
+                     "tools/changelog.py", "tools/arch-index.py",
+                     "tools/doc-freshness.py", "tools/beads_gate.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
+        # The changelog check reads the same file (ADR-0173), and the fixture's
+        # changelog carries no `## [Unreleased]` section, which is the shape the
+        # repository now ships.
         # The root check reads the version and the changelog, so the fixture
         # carries a root that passes it: a product version and the one
         # changelog at the documented path (ADR-0148).

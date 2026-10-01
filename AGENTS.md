@@ -54,7 +54,10 @@ interop surface.
   reached `CHANGELOG.md` on main through a docs merge (ADR-0146). It also runs
   `tools/doc_surface.py`: the repository root carries no document answering
   "what is happening now", and the changelog is at `docs/CHANGELOG.md`
-  (ADR-0148).
+  (ADR-0148). It also runs `tools/changelog.py --check`, which fails on a
+  hand-merged `## [Unreleased]` section: there is none, because a release
+  section is generated from the `Task:` trailers and the narratives the work
+  commits already carry, once per release (`RELEASING.md` step 3, ADR-0173).
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
   Every lane that runs `dotnet test` also fails a suite that skipped most of
@@ -189,4 +192,6 @@ only as the record of that mapping.
 - In-flight state is `bd`, not a document in the repository root: no root file
   answers "what is happening now" (`tools/doc_surface.py`, every lane,
   ADR-0148). `docs/CHANGELOG.md` is a release artefact rather than a context
-  source — for what changed on a path, read `git log -- <path>` and the bead.
+  source, and its release sections are generated from the history
+  (`tools/changelog.py`, ADR-0173) — for what changed on a path, read
+  `git log -- <path>` and the bead.

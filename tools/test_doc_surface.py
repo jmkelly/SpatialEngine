@@ -154,9 +154,13 @@ class VersionTests(unittest.TestCase):
             self.assertTrue(any("0.4.0" in finding for finding in findings(path)))
 
     def test_the_current_version_and_unreleased_work_are_not_findings(self):
-        # The shape the file is in today: a released heading at the product
-        # version, and an `## [Unreleased]` section above it that is not a
-        # release and so is not compared.
+        # A released heading at the product version, and an `## [Unreleased]`
+        # section above it that is not a release and so is not compared. There
+        # is no such section in the file any more — `tools/changelog.py` is
+        # the check on the hand-merge (ADR-0173) — but an `## [Unreleased]` is
+        # this check's business only in that it must not be *compared*, and a
+        # rule that compared it would fail a merge that had nothing to do with
+        # it.
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(findings(make_repo(Path(root))), [])
 

@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**159 records on disk.** `status` is the record's own word;
+**160 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -175,6 +175,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md) | The mixed-dimension `Crosses` row stays the OGC alternation | accepted | 2026-10-02 | ADR-0106, ADR-0166, ADR-0156, ADR-0036 |
 | [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md) | The projected axis convention does not bend | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 | [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md) | `spatialRel` is the feature's relation to the input geometry | accepted | 2026-10-03 | ADR-0106, ADR-0169, ADR-0166, ADR-0156, ADR-0036 |
+| [0173](ADR-0173-the-changelog-release-sections-are-generated-from-the-history.md) | The changelog's release sections are generated from the history | accepted | 2026-10-01 | ADR-0148 |
 
 ## Reading order
 
@@ -211,6 +212,17 @@ out: the "Amended by" row already says everything about a pair.
 18. [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md)
 19. [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md)
 
+### ADR-0109: the verification lanes, implemented — 8 records, 14,396 words (8% of the corpus)
+
+1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
+2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*
+3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159)*
+4. [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md)
+5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
+6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md) *(narrowed by 0173)*
+7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
+8. [0173](ADR-0173-the-changelog-release-sections-are-generated-from-the-history.md)
+
 ### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (6% of the corpus)
 
 1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156, 0166)*
@@ -220,16 +232,6 @@ out: the "Amended by" row already says everything about a pair.
 5. [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md)
 6. [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md)
 7. [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md)
-
-### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (7% of the corpus)
-
-1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
-2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*
-3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159)*
-4. [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md)
-5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
-6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
-7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
 ### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 5 records, 7,633 words (4% of the corpus)
 
@@ -321,6 +323,7 @@ believed.
 - **0140** is amended by 0149
 - **0141** is amended by 0145, 0159
 - **0143** is amended by 0146
+- **0148** is amended by 0173
 - **0150** is amended by 0159
 - **0151** is amended by 0164
 - **0152** is amended by 0162
