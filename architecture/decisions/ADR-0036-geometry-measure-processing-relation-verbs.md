@@ -152,6 +152,32 @@ carry both without the two being swapped at a call site.
   name the served protocols define asks it. Inventing a verb to answer a
   question DE-9IM does not have would be a second, looser notion of "meets"
   next to the exact one (SpatialEngine-imj).
+- The verb's **fidelity to the reference implementation** is characterised
+  over the point, line and area combinations the Esri surfaces serve, and no
+  served predicate depends on a deviation. NetTopologySuite 2.6 renders the
+  canonical nine-cell matrix for every one of them — a point on a polygon's
+  boundary is `FF20F1FF2` and a point in its interior `0F2FF1FF2`, cell for
+  cell what the matrix is — and renders a pair's matrix in one operand order
+  as the transpose of the other, which the query path needs because it
+  compares a feature with a query in whichever order the caller wrote them.
+  A pattern is answered over that matrix cell by cell, so the two readings
+  cannot drift. The served dimension-keyed table and the reference's own
+  named predicates (`Contains`, `Within`, `Touches`, `Overlaps`, `Crosses`,
+  `Intersects`) agree on all six verbs over every ordered pair of the served
+  fixtures (SpatialEngine-1dg). Two reports of a divergence do not survive
+  that sweep, and both were readings rather than behaviour: a rendered matrix
+  read as a non-canonical one (the strings reported, `F0FFFF212` and
+  `0FFFFF212`, are not the matrices of the pairs named, and the hand-computed
+  columns they were compared against — `FTFFFFFFT` and `0FFTFFTTT` — are not
+  matrices either, since a point's own boundary is empty and every cell of its
+  boundary row is `F` whatever the other geometry does); and the reference's
+  typed predicates read against a *dimension-blind union* of the OGC
+  alternation, which asks a question the standard does not ask a pair that
+  involves a point. That union is what this record's dimension gate exists to
+  prevent: a crossing line against a polygon overlaps under it, and reads as
+  both `Overlaps` and `Crosses` (SpatialEngine-u2x.56).
+  `NtsGeometryRelationsFidelityTests` holds the hand-computed table, the
+  transpose property and the agreement sweep.
 
 ## References
 
