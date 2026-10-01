@@ -4,6 +4,7 @@ date: 2026-10-06
 deciders: maintainer + agent
 summary: **A reduction pushes its restriction on a dataset that declares no identity column; a feature read still does not.** The ADR-0097 §1 decline is about *features* — a `WHERE` that returns only the matching rows renumbers a dataset whose features are named by the ordinal of the read — and a count, a distinct set and a grouped reduction return values and no feature, so there is nothing to renumber. `PostgisPlanQueries.Reduction` is that restriction, the same compiler and the same bound values as the read's, with the keyless decline lifted and one exception: an identity restriction a dataset cannot state (`Ids` on a dataset with no identity columns) still keeps the whole plan in the caller, because a half-pushed restriction is not a smaller read but a different answer. The feature read on such a dataset stays a whole read, page and all, because the ordinals a page's rows are named by are the ordinals of that page (amends 0097).
 amends: ADR-0097
+amended-by: ADR-0185
 related: ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149
 ---
 
@@ -120,11 +121,14 @@ measurement harness already prints the note.
   the way out is an identity, and §1 above says what that costs. A keyed
   `CreateAsync` would reopen ADR-0147 §2 and ADR-0149 §3 together, for both
   providers, and should be argued as one decision.
-- **The residual selection's allocation on that read.** A keyless plan read
-  still materialises the whole layer and then selects over it, so the capped
-  read costs more than a full scan (46.7 MB against 31.1 MB in § Measurements).
-  That is `FeaturePlanExecutor` doing the residual, and a store-local fix to it
-  would hide the cost rather than remove it.
+- ~~**The residual selection's allocation on that read.**~~ **Decided by
+  ADR-0185**, and the attribution above was wrong: the whole read stays, but
+  the cost was not `FeaturePlanExecutor`'s residual. `Select` copies
+  references; the 15 MB was both SQL stores' row mapping building a second
+  feature per row, and the executor's full sort on top of it. Both are
+  removed, one definition for the mapping and one bounded selection for the
+  order, and a capped read of a keyless layer now costs what the scan it had to
+  do costs.
 
 ## Consequences
 

@@ -533,6 +533,10 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// </summary>
     private static Shape Columns(PostgisDatasetFacts facts, IReadOnlyList<string>? projection)
     {
+        // The projection is decided once per read, not once per row: a read
+        // that appended nothing to drop returns each row's own feature
+        // (FeatureRowProjection), which is what a whole read of a keyless layer
+        // does on every row it reads (SpatialEngine-yup).
         var description = facts.Description;
         var fields = (projection is null or { Count: 0 }
             ? description.Schema.Fields
@@ -552,7 +556,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // the identity, and taking the appended ones as the identity would name
         // every pushed row by its ordinal instead of its key (ADR-0131).
         var indexes = description.IdColumns.Select(column => read.IndexOf(column)).Where(index => index >= 0).ToArray();
-        return new Shape(PostgisPlanQueries.Columns(read, null), read, result, indexes);
+        return new Shape(PostgisPlanQueries.Columns(read, null), read, new FeatureRowProjection(read, result), indexes);
     }
 
     private async Task<FeatureBatch[]> BatchesAsync(
@@ -565,7 +569,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         while (await reader.ReadAsync(cancellationToken))
         {
             var row = PostgisDataStore.ReadRow(reader, reader.FieldCount);
-            features.Add(shape.Project(shape.Read, PostgisRowMapper.MapRow(shape.Read, shape.Identity, row, ordinal++)));
+            features.Add(shape.Projection.Apply(PostgisRowMapper.MapRow(shape.Read, shape.Identity, row, ordinal++)));
         }
 
         return features.Count == 0
@@ -598,19 +602,10 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     private sealed record Shape(
         IReadOnlyList<string> Columns,
         FeatureSchema Read,
-        FeatureSchema Result,
+        FeatureRowProjection Projection,
         IReadOnlyList<int> Identity)
     {
-        /// <summary>Drops the identity columns a read needed and keeps the plan's projection.</summary>
-        public Feature Project(FeatureSchema read, Feature feature)
-        {
-            var values = new AttributeValue[Result.Count];
-            for (var i = 0; i < values.Length; i++)
-            {
-                values[i] = ReferenceEquals(read, Result) ? feature[i] : feature[read.IndexOf(Result[i].Name)];
-            }
-
-            return new Feature(feature.Id, Result, values);
-        }
+        /// <summary>The schema the page is answered with: the plan's projection.</summary>
+        public FeatureSchema Result => Projection.Result;
     }
 }

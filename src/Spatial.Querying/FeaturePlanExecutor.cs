@@ -78,9 +78,14 @@ public static class FeaturePlanExecutor
     {
         ArgumentNullException.ThrowIfNull(selected);
         FeatureQueryValidation.Validate(schema, query);
-        var ordered = Order(schema, selected.ToList(), query);
         var start = FeaturePageCursor.StartOffset(query);
-        var page = Page(ordered, start, query.Limit, out var consumed, out var hasMore);
+
+        // The order is taken over the page's window rather than over every row:
+        // a whole read finished here (a keyless layer's plan, ADR-0097 §1) must
+        // not sort 34,135 rows to name the 25 of them the page answers with
+        // (SpatialEngine-yup).
+        var ordered = Order(schema, selected, query, start, query.Limit);
+        var page = Page(ordered, selected.Count, start, query.Limit, out var consumed, out var hasMore);
         var projected = Project(schema, page, query.Projection, cancellationToken);
         var batches = Batches(projected.Schema, projected.Features);
         var cursor = hasMore
@@ -162,61 +167,172 @@ public static class FeaturePlanExecutor
     /// requested keys tie are always separated, and a page boundary can never
     /// fall between two rows the next page would re-order. With no requested
     /// order the store's own order is the plan's order.
+    ///
+    /// <para>
+    /// A capped plan is ordered only as far as its page reaches: the window is
+    /// the page start plus the cap, and the <em>same</em> first
+    /// <c>start + limit</c> rows the full order would name, selected without
+    /// sorting the rows behind them. The order is total — the identity
+    /// tie-break, and the read's own order behind it — so the window of the
+    /// bounded selection and the window of the full sort are one answer, and
+    /// which one a store reaches is a cost, never an answer
+    /// (SpatialEngine-yup).
+    /// </para>
     /// </summary>
-    private static List<Feature> Order(IFeatureSchema schema, List<Feature> features, FeatureQuery query)
+    private static List<Feature> Order(
+        IFeatureSchema schema, IReadOnlyList<Feature> features, FeatureQuery query, int start, int? limit)
     {
         if (query.Order is not { Count: > 0 } order)
         {
-            return features;
+            return features as List<Feature> ?? features.ToList();
         }
 
-        var keys = order.Select(term => Key(schema, term)).ToArray();
-        IOrderedEnumerable<Feature> ordered = Sort(features, feature => feature[keys[0].Index], keys[0].Term);
-        for (var i = 1; i < keys.Length; i++)
+        var comparer = new PlanOrder(schema, order);
+        var window = limit is { } cap && start <= int.MaxValue - cap ? start + cap : int.MaxValue;
+        if (window >= features.Count)
         {
-            var index = keys[i].Index;
-            ordered = ThenSort(ordered, feature => feature[index], keys[i].Term.IsDescending);
+            var all = new int[features.Count];
+            for (var i = 0; i < all.Length; i++)
+            {
+                all[i] = i;
+            }
+
+            return ByIndex(all, features, comparer);
         }
 
-        return ThenSort(ordered, Identity, descending: false).ToList();
+        return Window(features, comparer, window);
     }
 
-    private static Func<Feature, AttributeValue> Identity => feature => AttributeValue.FromString(feature.Id.Value);
+    /// <summary>
+    /// The first <paramref name="window"/> rows of the plan's order, by a
+    /// bounded selection: a max-heap of that size over the whole read, so the
+    /// rows behind the page are compared but never held. Its memory is the
+    /// page's window and its time is one comparison per row against the heap's
+    /// root — a sort of the read is neither.
+    /// </summary>
+    private static List<Feature> Window(IReadOnlyList<Feature> features, PlanOrder order, int window)
+    {
+        var heap = new int[window];
+        for (var index = 0; index < window; index++)
+        {
+            heap[index] = index;
+        }
 
-    private static IOrderedEnumerable<Feature> Sort(
-        IEnumerable<Feature> features, Func<Feature, AttributeValue> selector, OrderTerm term) =>
-        term.IsDescending
-            ? features.OrderByDescending(selector, AttributeValueComparer.Instance)
-            : features.OrderBy(selector, AttributeValueComparer.Instance);
+        for (var position = (window / 2) - 1; position >= 0; position--)
+        {
+            SiftDown(heap, features, order, position);
+        }
+
+        for (var index = window; index < features.Count; index++)
+        {
+            // The root is the largest row held; a row that beats it displaces it.
+            if (Compares(features, order, index, heap[0]) >= 0)
+            {
+                continue;
+            }
+
+            heap[0] = index;
+            SiftDown(heap, features, order, 0);
+        }
+
+        return ByIndex(heap, features, order);
+    }
+
+    /// <summary>The rows the given read positions hold, in the plan's order.</summary>
+    private static List<Feature> ByIndex(int[] indexes, IReadOnlyList<Feature> features, PlanOrder order)
+    {
+        Array.Sort(indexes, (left, right) => Compares(features, order, left, right));
+        var ordered = new List<Feature>(indexes.Length);
+        foreach (var index in indexes)
+        {
+            ordered.Add(features[index]);
+        }
+
+        return ordered;
+    }
+
+    /// <summary>Restores the max-heap property over the row at <paramref name="position"/>.</summary>
+    private static void SiftDown(int[] heap, IReadOnlyList<Feature> features, PlanOrder order, int position)
+    {
+        while (true)
+        {
+            var left = (2 * position) + 1;
+            if (left >= heap.Length)
+            {
+                return;
+            }
+
+            var right = left + 1;
+            var largest = right < heap.Length && Compares(features, order, heap[right], heap[left]) > 0 ? right : left;
+            if (Compares(features, order, heap[position], heap[largest]) >= 0)
+            {
+                return;
+            }
+
+            (heap[position], heap[largest]) = (heap[largest], heap[position]);
+            position = largest;
+        }
+    }
 
     /// <summary>
-    /// Appends one key to an existing order, descending when the term says so.
-    /// It has to be a <em>then</em>-key: an <c>OrderBy</c> here would discard the
-    /// keys already applied, and a composite order would collapse to whichever
-    /// key was applied last (ADR-0127).
+    /// Two rows of the read, in the plan's order and — when the order cannot
+    /// separate them, which only two rows of one identity can — in the order
+    /// the read returned them. That last key is what makes the order total, so
+    /// a bounded selection and a full sort name the same window.
     /// </summary>
-    private static IOrderedEnumerable<Feature> ThenSort(
-        IOrderedEnumerable<Feature> ordered, Func<Feature, AttributeValue> selector, bool descending) =>
-        descending
-            ? ordered.ThenByDescending(selector, AttributeValueComparer.Instance)
-            : ordered.ThenBy(selector, AttributeValueComparer.Instance);
+    private static int Compares(IReadOnlyList<Feature> features, PlanOrder order, int left, int right) =>
+        order.Compare(features[left], features[right]) is var byOrder && byOrder != 0 ? byOrder : left.CompareTo(right);
 
-    private static SortKey Key(IFeatureSchema schema, OrderTerm term) =>
-        new(schema.IndexOf(term.Field), term);
+    /// <summary>
+    /// The plan's total order over whole features: every requested key in the
+    /// order the plan names them, each a tie-break over the keys before it
+    /// (ADR-0127), then the contract's mandatory feature-identity tie-break,
+    /// then the order the read returned. That last key is what makes the order
+    /// total even when a read names two features alike, so a bounded selection
+    /// and a full sort cannot disagree about a window.
+    /// </summary>
+    private sealed class PlanOrder(IFeatureSchema schema, IReadOnlyList<OrderTerm> order)
+    {
+        private readonly Key[] _keys = [.. order.Select(term => new Key(schema.IndexOf(term.Field), term.IsDescending))];
 
-    private readonly record struct SortKey(int Index, OrderTerm Term);
+        public int Compare(Feature left, Feature right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return 0;
+            }
+
+            foreach (var key in _keys)
+            {
+                var order = AttributeValueComparer.Instance.Compare(left[key.Index], right[key.Index]);
+                if (order != 0)
+                {
+                    return key.Descending ? -order : order;
+                }
+            }
+
+            return string.CompareOrdinal(left.Id.Value, right.Id.Value);
+        }
+
+        private readonly record struct Key(int Index, bool Descending);
+    }
 
     /// <summary>
     /// The page: the rows from the page start, capped. Reports how many rows
     /// the page consumed and whether more remain, which is what decides
-    /// whether a continuation cursor is issued.
+    /// whether a continuation cursor is issued. The rows come from
+    /// <paramref name="ordered"/>, which holds the page's window and may be
+    /// shorter than <paramref name="total"/> — the rows behind the window were
+    /// compared and dropped, not read (SpatialEngine-yup) — so exhaustion is
+    /// decided against the total, never against the window.
     /// </summary>
-    private static List<Feature> Page(List<Feature> ordered, int start, int? limit, out int consumed, out bool hasMore)
+    private static List<Feature> Page(
+        List<Feature> ordered, int total, int start, int? limit, out int consumed, out bool hasMore)
     {
-        var available = Math.Max(ordered.Count - start, 0);
+        var available = Math.Max(total - start, 0);
         var taken = limit is { } cap ? Math.Min(cap, available) : available;
         consumed = taken;
-        hasMore = start + taken < ordered.Count;
+        hasMore = start + taken < total;
         return taken == 0 ? [] : ordered.GetRange(Math.Min(start, ordered.Count), taken);
     }
 

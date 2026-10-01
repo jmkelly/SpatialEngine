@@ -260,8 +260,11 @@ are the ones that still hold and are reproduced above.
   load averages are recorded. Treat the milliseconds as ±20%, not as exact.
 - `Bp`'s 46–48 MB per call on PostGIS was unexplained when this file was
   written; it is now explained (the whole read a keyless layer's feature page
-  still takes, ADR-0184 §2) and half of it is fixed (the reduction variants,
-  ADR-0184 §1). The cells above still show the pre-fix figures.
+  still takes, ADR-0184 §2) and all of it is fixed: the reduction variants by
+  ADR-0184 §1, and the residual the whole read was paying over its own scan —
+  a second feature per row in both SQL stores' row mapping, and a sort of every
+  row to name a page (ADR-0185). A re-run of these tables should show `B`/`Bp`
+  within a few per cent of `A`. The cells above still show the pre-fix figures.
 - Path `D` remains an emulation over the rows the store holds. It is the only
   column that reaches the count and grouped-aggregate shapes, and no store face
   reaches it today (`IFeatureStore` has no count or aggregate plan;
