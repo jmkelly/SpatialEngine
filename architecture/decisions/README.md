@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**155 records on disk.** `status` is the record's own word;
+**156 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -171,6 +171,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md) | The De9im column is the matrix, not a display of it | accepted | 2026-10-02 | ADR-0156 |
 | [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md) | The engine's `Relate` is the DE-9IM matrix, read as JTS reads it | accepted | 2026-10-01 | ADR-0036, ADR-0106, ADR-0156, ADR-0165 |
 | [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md) | Keep the topology verbs adapter-side; the plan's spatial component is the envelope | accepted | 2026-10-02 | ADR-0074, ADR-0036, ADR-0106, ADR-0110, ADR-0156, ADR-0166 |
+| [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md) | The mixed-dimension `Crosses` row stays the OGC alternation | accepted | 2026-10-02 | ADR-0106, ADR-0166, ADR-0156, ADR-0036 |
 
 ## Reading order
 
@@ -217,13 +218,14 @@ out: the "Amended by" row already says everything about a pair.
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
-### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 5 records, 7,659 words (4% of the corpus)
+### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 6 records, 9,197 words (5% of the corpus)
 
 1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156, 0166)*
-2. [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md)
+2. [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md) *(narrowed by 0169)*
 3. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
 4. [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md)
 5. [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md)
+6. [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md)
 
 ### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (5% of the corpus)
 
@@ -288,6 +290,7 @@ believed.
 - **0092** is amended by 0147
 - **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
 - **0105** is amended by 0107
+- **0106** is amended by 0169
 - **0109** is amended by 0134, 0141
 - **0111** is amended by 0163
 - **0112** is amended by 0120, 0132
