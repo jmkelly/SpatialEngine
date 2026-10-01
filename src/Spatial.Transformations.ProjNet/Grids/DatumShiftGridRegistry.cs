@@ -45,6 +45,7 @@ internal sealed class DatumShiftGridRegistry
     private readonly string[] _directories;
     private readonly IReadOnlyList<EpsgGridShiftOperations.GridShiftOperation> _operations;
     private readonly ConcurrentDictionary<string, DatumShiftGrid?> _loaded = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, EpsgGridShiftOperations.GridShiftOperation?> _served = new(StringComparer.Ordinal);
     private readonly List<GridLoadFailure> _failures = [];
 
     private DatumShiftGridRegistry(
@@ -125,6 +126,29 @@ internal sealed class DatumShiftGridRegistry
     }
 
     /// <summary>
+    /// The grid serving a datum together with the published operation it came
+    /// from, so a caller can read what the row says and not only what the file
+    /// holds — in particular the datum the bundle's shifts land in, which is
+    /// not always the pivot (ADR-0180). A grid is only half the claim; the row
+    /// is the other half, and a caller that composes a path has to honour both
+    /// or it publishes one the registry did not.
+    /// </summary>
+    public bool TryGet(
+        string datumName,
+        [NotNullWhen(true)] out DatumShiftGrid? grid,
+        [NotNullWhen(true)] out EpsgGridShiftOperations.GridShiftOperation? operation)
+    {
+        if (!TryGet(datumName, out grid))
+        {
+            operation = null;
+            return false;
+        }
+
+        operation = _served[datumName];
+        return operation is not null;
+    }
+
+    /// <summary>
     /// Resolves one datum's grid from the first directory holding its bundle.
     /// A directory that cannot supply it — because the file is absent, or
     /// because it is present and unreadable — is passed over so that a later
@@ -155,6 +179,7 @@ internal sealed class DatumShiftGridRegistry
 
                 if (read.Grid is not null)
                 {
+                    _served[datumName] = operation;
                     return read.Grid;
                 }
 

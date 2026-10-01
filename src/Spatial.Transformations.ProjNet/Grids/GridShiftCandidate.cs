@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Spatial.Contracts.TransformationSearch;
 
 namespace Spatial.Transformations.ProjNet.Grids;
@@ -24,6 +25,9 @@ internal static class GridShiftCandidate
 {
     private const string Interpolation = "bilinear";
 
+    /// <summary>The method the registry publishes for a registered null operation (ADR-0163).</summary>
+    private const string TranslationMethod = "Geocentric translations (geog2D domain)";
+
     /// <summary>
     /// The grid-backed candidate between two datums, or null when neither is
     /// served by a deployed bundle — in which case the Helmert candidates are
@@ -31,15 +35,34 @@ internal static class GridShiftCandidate
     /// </summary>
     public static CrsTransformation? Build(DatumNode from, DatumNode to, DatumShiftGridRegistry registry)
     {
-        var fromGrid = registry.TryGet(from.Code, out var forwardGrid) ? forwardGrid : null;
-        var toGrid = registry.TryGet(to.Code, out var backwardGrid) ? backwardGrid : null;
+        var fromGrid = registry.TryGet(from.Code, out var forwardGrid, out var fromOperation) ? forwardGrid : null;
+        var toGrid = registry.TryGet(to.Code, out var backwardGrid, out var toOperation) ? backwardGrid : null;
         if (fromGrid is null && toGrid is null)
         {
             return null;
         }
 
-        var legs = Legs(from, to, fromGrid, toGrid);
-        return new CrsTransformation(
+        // A row names the datum its bundle's shifts land in, and that is not
+        // always the pivot: NADCON is registered for NAD27 to NAD83
+        // (EPSG:1241), so the path continues from NAD83 rather than from WGS
+        // 84. A row naming a datum the catalogue does not serve cannot be
+        // published at all, because the only way to carry on from a datum this
+        // engine has no node for is to pretend the bundle reached the pivot —
+        // which is the invented claim the catalogue exists to avoid. The
+        // Helmert candidates stand instead, and say so themselves.
+        DatumNode? fromTarget = null;
+        DatumNode? toTarget = null;
+        if (fromGrid is not null && !TargetOf(fromOperation, out fromTarget))
+        {
+            return null;
+        }
+
+        if (toGrid is not null && !TargetOf(toOperation, out toTarget))
+        {
+            return null;
+        }
+
+        var legs = Legs(from, to, fromGrid, toGrid, fromTarget, toTarget);        return new CrsTransformation(
             $"{from.Code}_To_{to.Code}_Grid_{fromGrid?.Name ?? toGrid!.Name}",
             Method(legs),
             [.. legs.Select(leg => leg.Step)],
@@ -47,8 +70,24 @@ internal static class GridShiftCandidate
             Math.Sqrt(legs.Sum(leg => leg.AccuracyMetres * leg.AccuracyMetres)),
             // A candidate is only as exact as its least exact leg, and a
             // Helmert leg is the approximation; a pure grid-to-world shift is
-            // the published operation itself.
+            // the published operation itself. The registered null operation
+            // behind a grid that reaches a datum rather than the pivot moves
+            // nothing, so it is not an approximation either — it is the
+            // operation EPSG registers for that pair, priced at the accuracy
+            // it states (ADR-0163, ADR-0180).
             Approximate: legs.Any(leg => leg.IsHelmert));
+    }
+
+    /// <summary>
+    /// The node for the datum a grid operation's shifts land in, or false when
+    /// the catalogue does not serve it.
+    /// </summary>
+    private static bool TargetOf(
+        EpsgGridShiftOperations.GridShiftOperation? operation,
+        [NotNullWhen(true)] out DatumNode? target)
+    {
+        target = null;
+        return operation is not null && ProjEpsgCatalog.TryGetDatum(operation.TargetDatumCode, out target);
     }
 
     /// <summary>
@@ -57,14 +96,32 @@ internal static class GridShiftCandidate
     /// Helmert where it does not, and a datum that is WGS 84 itself has no leg
     /// and contributes no accuracy at all — which is what makes a grid against
     /// WGS 84 as accurate as the grid's own worst node.
+    /// <para>
+    /// A grid that lands on a datum other than the pivot is followed by that
+    /// datum's own leg: the path a NADCON row publishes is NAD27 by the pair
+    /// to NAD83, and then from NAD83 to WGS 84 by whatever EPSG registers for
+    /// that pair — for NAD83, a shift of nothing worth 4.0 m (ADR-0163). The
+    /// leg is published whether it moves or not, because an accuracy with no
+    /// operation behind it is a number nobody published (ADR-0180).
+    /// </para>
     /// </summary>
-    private static List<Leg> Legs(DatumNode from, DatumNode to, DatumShiftGrid? fromGrid, DatumShiftGrid? toGrid)
+    private static List<Leg> Legs(
+        DatumNode from,
+        DatumNode to,
+        DatumShiftGrid? fromGrid,
+        DatumShiftGrid? toGrid,
+        DatumNode? fromTarget,
+        DatumNode? toTarget)
     {
         var world = DatumTransformationGraph.WorldCode;
         var legs = new List<Leg>();
         if (fromGrid is not null)
         {
-            legs.Add(Leg.FromGrid(fromGrid, from.Code, world, transformForward: true));
+            legs.Add(Leg.FromGrid(fromGrid, from.Code, fromTarget!.Code, transformForward: true));
+            if (Leg.FromTarget(fromTarget, world) is { } fromBehind)
+            {
+                legs.Add(fromBehind);
+            }
         }
         else if (!HelmertAlgebra.IsNull(from.ToWgs84))
         {
@@ -73,7 +130,11 @@ internal static class GridShiftCandidate
 
         if (toGrid is not null)
         {
-            legs.Add(Leg.FromGrid(toGrid, world, to.Code, transformForward: false));
+            legs.Add(Leg.FromGrid(toGrid, toTarget!.Code, to.Code, transformForward: false));
+            if (Leg.FromTarget(toTarget, world) is { } toBehind)
+            {
+                legs.Add(toBehind);
+            }
         }
         else if (!HelmertAlgebra.IsNull(to.ToWgs84))
         {
@@ -127,10 +188,10 @@ internal static class GridShiftCandidate
         var described = grids.Length == 1
             ? $"{GridFormats.Standard(grids[0].Format)} grid shift, sub-grid {names} from bundle {grids[0].FileName}, {Interpolation}ly interpolated over {blocks}"
             : $"{Standard(grids)} grid shift concatenated through WGS 84, sub-grids {names} from bundles {string.Join(" and ", grids.Select(grid => grid.FileName))}, {Interpolation}ly interpolated over {blocks}";
-        var composed = legs.Any(leg => leg.IsHelmert)
-            ? $"{described}, with a classic Helmert on the leg no grid serves"
-            : described;
-        return $"{composed} (the transform verb applies the grid per coordinate where it covers the ground, and the Helmert elsewhere)";
+        var composed = legs.Where(leg => leg.Grid is null).Select(leg => leg.Described).ToArray();
+        return composed.Length == 0
+            ? $"{described} (the transform verb applies the grid per coordinate where it covers the ground, and the Helmert elsewhere)"
+            : $"{described}, with {string.Join(" and ", composed)} on the leg no grid serves (the transform verb applies the grid per coordinate where it covers the ground, and the Helmert elsewhere)";
     }
 
     /// <summary>
@@ -149,9 +210,44 @@ internal static class GridShiftCandidate
         CrsTransformationStep Step,
         CrsAreaOfUse AreaOfUse,
         double AccuracyMetres,
-        DatumShiftGrid? Grid)
+        DatumShiftGrid? Grid,
+        bool RegisteredNull = false)
     {
-        public bool IsHelmert => Grid is null;
+        public bool IsHelmert => Grid is null && !RegisteredNull;
+
+        /// <summary>
+        /// How this leg is described in the method text, which is the sentence
+        /// a client reads to know what is standing behind the grid.
+        /// </summary>
+        public string Described => RegisteredNull
+            ? $"the registered null operation {Step.Name}"
+            : "a classic Helmert";
+
+        /// <summary>
+        /// The leg from a datum a grid lands on to the pivot, or null when that
+        /// datum is the pivot and the grid is the whole of the path. A datum
+        /// that realises WGS 84 without moving is not the absence of a leg: it
+        /// is the operation EPSG registers for the pair, published with the
+        /// accuracy that record states (ADR-0163) and with the parameters that
+        /// record carries, all of them zero.
+        /// </summary>
+        public static Leg? FromTarget(DatumNode target, string world)
+        {
+            if (string.Equals(target.Code, world, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var name = $"{target.Code}_To_{world}_Geocentric_Translation";
+            return HelmertAlgebra.IsNull(target.ToWgs84)
+                ? new Leg(
+                    new CrsTransformationStep(name, true, TranslationMethod, target.ToWgs84),
+                    target.AreaOfUse,
+                    target.AccuracyMetres,
+                    Grid: null,
+                    RegisteredNull: true)
+                : FromHelmert(from: null, target, HelmertAlgebra.Invert(target.ToWgs84));
+        }
 
         /// <summary>
         /// A grid leg. The published coverage is the grid's own block rather

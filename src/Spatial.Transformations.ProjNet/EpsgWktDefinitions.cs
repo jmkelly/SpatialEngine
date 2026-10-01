@@ -34,6 +34,26 @@ internal static class EpsgWktDefinitions
         GEOGCRS["NAD83",DATUM["North American Datum 1983",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4269]]
         """;
 
+    /// <summary>
+    /// EPSG:4267, the one datum NADCON is registered against (ADR-0180). The
+    /// <c>TOWGS84</c> node is EPSG:1173 "NAD27 to WGS 84 (4)" — three
+    /// translations of -8, 160 and 176 metres and nothing else, registered
+    /// over the USA - CONUS - onshore at 10.0 m, which is the operation
+    /// <see cref="EpsgDatumOperations"/> carries the accuracy and the bounds
+    /// of. It is the honest grid-free approximation ADR-0027 §accuracy asks
+    /// for and it is also only part of the story: the grid-free path is a
+    /// fallback, and the operation a NADCON deployment serves is the row in
+    /// <see cref="EpsgGridShiftOperations"/> rather than this one.
+    /// <para>
+    /// The seven parameters are this repository's only copy, read out of the
+    /// operation record rather than of the CRS (ADR-0086): WKT states no
+    /// accuracy, and the accuracy is what makes the fallback worth publishing.
+    /// </para>
+    /// </summary>
+    private const string Nad27 = """
+        GEOGCRS["NAD27",DATUM["North American Datum 1927",ELLIPSOID["Clarke 1866",6378206.4,294.978698213898,LENGTHUNIT["metre",1]],TOWGS84[-8,160,176,0,0,0,0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4267]]
+        """;
+
     private const string OsGb36 = """
         GEOGCRS["OSGB36",DATUM["Ordnance Survey of Great Britain 1936",ELLIPSOID["Airy 1830",6377563.396,299.3249646,LENGTHUNIT["metre",1]],TOWGS84[446.448,-125.157,542.06,0.15,0.247,0.842,-20.489]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4277]]
         """;
@@ -141,6 +161,7 @@ internal static class EpsgWktDefinitions
         (4326, Wgs84),
         (4258, Etrs89),
         (4269, Nad83),
+        (4267, Nad27),
         (4277, OsGb36),
         (4171, Rgf93V1),
         (4167, NzGd2000),

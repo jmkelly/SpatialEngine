@@ -200,9 +200,11 @@ public sealed class DatumTransformationGraphTests
     {
         // "No transformation needed" and "no such CRS" are different answers,
         // and only the first is a result.
-        var unknown = Assert.Throws<SpatialException>(() => Search("EPSG:4326", "EPSG:4267"));
+        // EPSG:4267 was this test's unreadable CRS until ADR-0180 catalogued
+        // NAD27; 9999 is a code the registry does not define at all.
+        var unknown = Assert.Throws<SpatialException>(() => Search("EPSG:4326", "EPSG:9999"));
         Assert.Equal(SpatialException.InvalidArguments, unknown.Code);
-        Assert.Contains("4267", unknown.Message);
+        Assert.Contains("9999", unknown.Message);
 
         var malformed = Assert.Throws<SpatialException>(() => Search("EPSG:4326", "not-an-identity"));
         Assert.Equal(SpatialException.InvalidArguments, malformed.Code);

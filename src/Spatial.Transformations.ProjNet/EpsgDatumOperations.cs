@@ -79,6 +79,21 @@ internal static class EpsgDatumOperations
         // not what a row about a published operation may carry. Extent 1325
         // "North America - Canada and USA (CONUS, Alaska mainland)".
         new(6269, "NAD83", "North American Datum 1983", 4.0, "North America", [[-172.54, 23.81, -47.74, 86.46]], 1188, 1325, "North America - Canada and USA (CONUS, Alaska mainland)"),
+        // EPSG:1173 "NAD27 to WGS 84 (4)", source CRS EPSG:4267 - the
+        // vendored NAD27 definition, and the operation whose three
+        // translations are exactly the definition's TOWGS84 node (-8, 160,
+        // 176 and no rotation or scale), so it is the one this row describes.
+        // Ten metres, and deliberately so: EPSG registers twenty-eight
+        // NAD27 to WGS 84 Helmerts, one per region, and the three-parameter
+        // one it registers over the conus is the tenth-metre of them (1175 is
+        // 7 m west of the Mississippi, 1174 is 11 m east of it). None is
+        // better than that over the whole country, and the region NADCON
+        // covers is the conus, so this is the row that names the ground the
+        // grid row is registered over. Extent 1323 "USA - CONUS - onshore",
+        // which is narrower than the grid operation's own extent 2374
+        // "USA - CONUS including EEZ": the fallback is the onshore operation
+        // and the grid is what a point offshore is answered by.
+        new(6267, "NAD27", "North American Datum 1927", 10.0, "CONUS", [[-124.79, 24.41, -66.91, 49.38]], 1173, 1323, "USA - CONUS - onshore"),
         // EPSG:1314 "OSGB36 to WGS 84 (6)", source CRS EPSG:4277 - the vendored
         // OSGB36 definition, and the operation whose seven parameters are
         // exactly the definition's TOWGS84 node (446.448, -125.157, 542.06,

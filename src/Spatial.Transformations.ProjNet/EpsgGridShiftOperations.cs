@@ -31,10 +31,27 @@ internal static class EpsgGridShiftOperations
     /// <summary>The EPSG code of the datum every catalogued grid reaches: the catalogue's WGS 84 pivot.</summary>
     private const int WorldDatumCode = 4326;
 
+    /// <summary>The published NADCON pair for the conus, as EPSG:1241 names the two files.</summary>
+    public const string ConusLatitudeFile = "conus.las";
+
+    public const string ConusLongitudeFile = "conus.los";
+
     private static readonly GridShiftOperation[] Operations =
     [
         new("OSGB36", OsgbBundle, WorldDatumCode, "Great Britain"),
         new("NAD83", "NAD83_to_WGS84_NTv2.gsb", WorldDatumCode, "North America"),
+        // EPSG:1241 "NAD27 to NAD83 (1)", method EPSG:9613 NADCON, source CRS
+        // EPSG:4267 and target CRS EPSG:4269 - so this row does not reach the
+        // pivot and does not say that it does. It is the only NADCON
+        // operation the catalogue serves, and the accuracy it states (0.15 m)
+        // is the figure the row publishes, because a NADCON shift record
+        // states none of its own (ADR-0168 §4). Extent 2374 "USA - CONUS
+        // including EEZ" is a cross-check on the block; what the operation is
+        // valid over is read off the file. What happens between NAD83 and the
+        // pivot is ADR-0163's null operation, at the 4.0 m it states - the
+        // row does not restate it, and the graph does not guess it either
+        // (ADR-0180).
+        new("NAD27", ConusLatitudeFile, 4269, "CONUS", ConusLongitudeFile, 0.15),
     ];
 
     /// <summary>Every published grid operation, across every datum the registry serves.</summary>
@@ -78,6 +95,17 @@ internal static class EpsgGridShiftOperations
     /// carries it, the datum it reaches, and the region it is registered over.
     /// The area is a cross-check on the grid's own block, not a substitute for
     /// it: what the operation is actually valid over is read off the file.
+    /// <para>
+    /// <paramref name="TargetDatumCode"/> is the EPSG coordinate reference
+    /// system the bundle's shifts land in, which is the code the EPSG
+    /// operation behind the row states as its target CRS. It is not always the
+    /// catalogue's pivot: NADCON is registered for NAD27 to NAD83 (EPSG:1241),
+    /// so a row that said 4326 would publish a claim about a file's target
+    /// datum that no EPSG record supports. The graph reads this code and
+    /// continues from the datum it names along that datum's own registered
+    /// path, rather than reading every grid as though it reached WGS 84
+    /// (ADR-0180).
+    /// </para>
     /// <para>
     /// <paramref name="LongitudeFileName"/> is the <c>.los</c> half of a NADCON
     /// pair, whose <paramref name="FileName"/> is the <c>.las</c> half. NADCON

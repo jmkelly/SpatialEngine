@@ -71,8 +71,8 @@ internal sealed class GridShiftPlan
         DatumNode to,
         DatumShiftGridRegistry registry)
     {
-        var fromGrid = registry.TryGet(from.Code, out var forwardGrid) ? forwardGrid : null;
-        var toGrid = registry.TryGet(to.Code, out var backwardGrid) ? backwardGrid : null;
+        var fromGrid = registry.TryGet(from.Code, out var forwardGrid, out var fromOperation) ? forwardGrid : null;
+        var toGrid = registry.TryGet(to.Code, out var backwardGrid, out var toOperation) ? backwardGrid : null;
         if (fromGrid is null && toGrid is null)
         {
             return null;
@@ -90,10 +90,35 @@ internal sealed class GridShiftPlan
         return new GridShiftPlan(
             Transformations.CreateFromCoordinateSystems(
                 Required(ProjEpsgCatalog.ShiftFreeOf(sourceCode), sourceCode), sourceGeographic).MathTransform,
-            new DatumShift(fromGrid, Helmert(sourceReal, pivot)),
-            new DatumShift(toGrid, Helmert(pivot, targetReal)),
+            new DatumShift(fromGrid, Helmert(sourceReal, pivot), Behind(fromOperation)),
+            new DatumShift(toGrid, Helmert(pivot, targetReal), null),
             Transformations.CreateFromCoordinateSystems(
                 targetGeographic, Required(ProjEpsgCatalog.ShiftFreeOf(targetCode), targetCode)).MathTransform);
+    }
+
+    /// <summary>
+    /// The shift from the datum a grid lands on to the pivot, where that datum
+    /// is not the pivot itself. A NADCON pair takes NAD27 to NAD83 and not to
+    /// WGS 84, so the leg behind it is NAD83's own registered path — a shift of
+    /// nothing for NAD83, which the pairing declines to build because both
+    /// ends already agree (ADR-0163, ADR-0180).
+    /// <para>
+    /// A row naming a datum this catalogue does not serve contributes nothing
+    /// here rather than being read as though the bundle reached the pivot; the
+    /// search does not publish that candidate either, so the two answers
+    /// cannot disagree.
+    /// </para>
+    /// </summary>
+    private static ProjTf.MathTransform? Behind(EpsgGridShiftOperations.GridShiftOperation? operation)
+    {
+        if (operation is null
+            || operation.TargetDatumCode == WorldDatumCode
+            || ProjEpsgCatalog.GeographicBaseOf(operation.TargetDatumCode) is not { } reached)
+        {
+            return null;
+        }
+
+        return Helmert(reached, ProjEpsgCatalog.ShiftFreeGeographicBaseOf(WorldDatumCode));
     }
 
     /// <summary>
@@ -141,9 +166,11 @@ internal sealed class GridShiftPlan
     /// One side of the pivot: the grid deployed for that datum and the classic
     /// Helmert standing behind it. Either may be absent — a datum the
     /// catalogue publishes no grid for has only the Helmert, and the pivot has
-    /// neither.
+    /// neither. A grid that lands on a datum other than the pivot carries the
+    /// shift from <em>that</em> datum on as well, because a NADCON pair
+    /// reaches NAD83 and not WGS 84.
     /// </summary>
-    private sealed record DatumShift(DatumShiftGrid? Grid, ProjTf.MathTransform? Helmert)
+    private sealed record DatumShift(DatumShiftGrid? Grid, ProjTf.MathTransform? Helmert, ProjTf.MathTransform? Behind)
     {
         /// <summary>
         /// The shift from the datum to the pivot. The grid answers only where
@@ -155,7 +182,7 @@ internal sealed class GridShiftPlan
         {
             if (Grid is not null && Grid.TryShiftForward(longitude, latitude, out var latitudeShift, out var longitudeShift))
             {
-                return (longitudeShift, latitudeShift);
+                return Behind is null ? (longitudeShift, latitudeShift) : Shifted(Behind, longitudeShift, latitudeShift);
             }
 
             return Helmert is null ? (longitude, latitude) : Shifted(Helmert, longitude, latitude);
@@ -166,7 +193,7 @@ internal sealed class GridShiftPlan
         {
             if (Grid is not null && Grid.TryShiftInverse(longitude, latitude, out var latitudeShift, out var longitudeShift))
             {
-                return (longitudeShift, latitudeShift);
+                return Behind is null ? (longitudeShift, latitudeShift) : Shifted(Behind, longitudeShift, latitudeShift);
             }
 
             return Helmert is null ? (longitude, latitude) : Shifted(Helmert, longitude, latitude);
