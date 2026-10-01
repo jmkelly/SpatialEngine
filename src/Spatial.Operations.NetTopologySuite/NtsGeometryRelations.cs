@@ -23,6 +23,19 @@ namespace Spatial.Operations.NetTopologySuite;
 /// <c>T*T***T**</c>. Both are the same defect seen from two sides — a
 /// malformed pattern answered instead of rejected — and the grammar is
 /// checked once, here, in the one implementation every consumer reaches.
+///
+/// The cells themselves are the provider's, and ADR-0166 records what they
+/// are rather than recomputing them: <c>Relate(g)</c> and
+/// <c>Relate(g, pattern)</c> are one computation in NetTopologySuite 2.6, so
+/// a pattern and the rendered matrix cannot disagree; a 0-D operand
+/// contributes no boundary, so a point on a line's endpoint meets it in the
+/// line's <em>boundary</em> row and the pair is not disjoint; and a
+/// vertex-only contact is dimension 0 in position 5, one cell from the
+/// dimension 1 of an edge-sharing one. None of those is wrapped here, and the
+/// one place the served pattern table and the provider's own named predicates
+/// do disagree — <c>Crosses</c> for a line lying wholly inside an area and
+/// touching its boundary — is named, measured and pinned in
+/// <c>NtsRelateCellSemanticsTests</c> rather than papered over.
 /// </summary>
 public sealed class NtsGeometryRelations : IGeometryRelations
 {

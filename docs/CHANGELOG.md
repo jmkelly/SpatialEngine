@@ -19,6 +19,26 @@ heading that is not above `<Version>`).
 
 ### Changed
 
+- **The engine's `Relate` is characterised cell by cell, and the one place it
+  diverges from the provider's own predicates is named** (ADR-0166,
+  SpatialEngine-aqy). The bead reported three divergences between
+  `Relate(a, b, pattern)` and `Relate(a, b)` in NetTopologySuite 2.6 and none
+  of the three reproduces: a point on a line's endpoint reads `FF10F0FF2` —
+  the contact is in the line's boundary row, the pair is not disjoint, and an
+  empty point boundary is JTS's own reading (and PostGIS's); two squares
+  touching at a corner read `FF2F01212` against the edge-sharing `FF2F11212`,
+  one cell apart in position 5; and the two paths are one computation, equal
+  cell for cell over 256 ordered fixture pairs and 41,439 valid random ones.
+  What does diverge is the served table against NetTopologySuite's own named
+  predicates, on `Crosses` alone and in two measured classes: a line lying
+  wholly inside a polygon and touching its boundary reads `true` here and
+  `false` there, and a pair with a `MultiPoint` on one side reads `false` here
+  because the served table names no mask for it (ADR-0106) and `true` there.
+  All 16 of 1,536 checks that disagree are listed in
+  `NtsRelateCellSemanticsTests` and the list is asserted closed, so a
+  divergence that starts or stops fails a test. NetTopologySuite is not
+  wrapped, and its version is still pinned in `Directory.Packages.props`.
+
 - **The served `spatialRel` reading is the OGC DE-9IM pattern table, stated
   and pinned** (ADR-0106, SpatialEngine-onj): a duplicate-agent collision left
   two complete implementations of the `spatialRel` verbs on the table and they
