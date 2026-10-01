@@ -117,6 +117,17 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   seam is split rather than sorted into one interval. The area's name stays a
   short label — the registry's verbatim wording stays with the row, because
   half the areas in a listing are composed ones that name no extent.
+- **A registered null datum operation is published** (ADR-0163). EPSG registers
+  ETRS89 (1149), NAD83 (1188), RGF93 v1 (1671) and NZGD2000 (1565) against
+  WGS 84 as three zero translations at a published accuracy of 1.0, 4.0, 1.0
+  and 1.0 m — a shift that moves nothing, and a statement that the two
+  realizations agree to within that. So a pair whose composed shift is the
+  identity returns one candidate: the direct registered operation, one step of
+  zero parameters, the registry's method, and the combined registered accuracy,
+  over the intersection of the two areas of use. Nothing is published for a
+  datum against itself, for a leg no registry record backs, or for a null pair
+  sharing no ground. The null operation is published alone: the concatenated
+  form would have no steps and the reduced form a wider area at the same price.
 - **A deployed datum shift grid is applied per coordinate** (ADR-0105,
   ADR-0107). Grids are configured, not embedded (`Spatial:Grids:Directories`,
   a priority order), read as NTv2, and cached once found. Where a grid covers a

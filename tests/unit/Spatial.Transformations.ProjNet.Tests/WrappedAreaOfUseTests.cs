@@ -22,13 +22,11 @@ namespace Spatial.Transformations.ProjNet.Tests;
 /// The operations are read off the catalogue rather than restated, so a row
 /// that is transcribed wrongly fails here too. NZGD2000 is registered against
 /// WGS 84 as a null translation (EPSG:1565 is three zero translations, not a
-/// seven-parameter Helmert), so the service publishes no candidate for
-/// 4326->4167 whatever the vendored WKT carries — the identity pair has no
-/// operation to publish (ADR-0087 §2, pinned by
-/// <c>EpsgDatumOperationsTests.NZGD2000_is_registered_against_WGS84</c>). That
-/// is nothing to do with its extent, and this record is about the extent, so
-/// the node is built here with a stand-in shift rather than read from the
-/// definition.
+/// seven-parameter Helmert), so the service publishes that registered
+/// operation for 4326->4167 at the accuracy the registry states for it
+/// (ADR-0163) — with no shift to apply, where a node has to be built from a
+/// stand-in one to put two datums on either side of the antimeridian at all.
+/// That is nothing to do with its extent, and this record is about the extent.
 /// </para>
 /// </summary>
 public class WrappedAreaOfUseTests
@@ -54,9 +52,9 @@ public class WrappedAreaOfUseTests
     /// <summary>The New Zealand datum as the graph runs on: the shift, the
     /// accuracy and the area of use of the row that stands for it. The shift
     /// is a stand-in — the registered operation for this datum is three zero
-    /// translations, so the real shift is the pivot's own and the pair
-    /// publishes nothing; the shape of the operation, not its parameters, is
-    /// what this record tests.</summary>
+    /// translations, so a pair built from the real shift would publish that
+    /// null operation rather than exercise the set algebra; the shape of the
+    /// operation, not its parameters, is what this record tests.</summary>
     private static DatumNode NewZealandNode()
     {
         var row = EpsgDatumOperations.ReadForTest(NewZealandDatum)!;

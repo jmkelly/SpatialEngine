@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-28
 deciders: maintainer + agent
+amended-by: ADR-0111, ADR-0163
 summary: Datum transformations are contract values with area of use, accuracy and parameters; `findTransformations` is a ranked, area-filtered search and `project` accepts the operation it applies.
 ---
 
@@ -62,8 +63,11 @@ adapter could check them.
    the engine actually applies), the **concatenated** path through the WGS 84
    pivot (each datum's own step, in order), and the same shift **reduced to
    three translations** for toolchains that cannot carry rotations or scale. A
-   pair whose composed shift is the identity (ETRS89 against NAD83) yields
-   nothing, because there is no operation to publish.
+   pair whose composed shift is the identity yields nothing, because there is
+   no operation to publish — amended by ADR-0163, which holds that a
+   registered null operation *is* published, carrying the accuracy the
+   registry states for it, and that only a datum against itself, a leg no
+   registry record backs, or a pair sharing no ground publishes nothing.
 3. **Accuracies are derived, not asserted.** The two datums' accuracies
    combine in quadrature, as independent errors do. The reduced form adds the
    first-order bound on what its dropped rotations and scale cost —

@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-09-29
 deciders: maintainer + agent
+amended-by: ADR-0163
 summary: An area of use is a set of rectangles, so an extent that crosses the antimeridian (EPSG 1175, 2157) is the two rectangles it is rather than an empty one; the graph's intersection and union are rectangle algebra over that set and never merge, and `findTransformations` publishes `areaOfUse` as a list of envelopes (amends 0086, 0087).
 amends: ADR-0086, ADR-0087
 ---
@@ -147,11 +148,17 @@ that keeps both halves under ordinary algebra.
   core types, and a list of records of doubles still does), so any future
   provider implementing `ICrsDirectory` writes the set algebra itself.
   That is the intended pressure: the rules are EPSG's, not the adapter's.
-- NZGD2000 still serves no transformation through the service, because
-  its vendored WKT carries no `TOWGS84` and the graph composes shifts out
-  of definitions. That is a gap in the *parameters* of EPSG:1565, not in
-  its extent, and it is not fixed here — the extent is now right, and the
-  parameters are a separate record to make.
+- NZGD2000 still served no transformation through the service, and this
+  record gave the wrong reason: it said the vendored WKT carries no
+  `TOWGS84` and the graph composes shifts out of definitions, as though
+  the registry recorded parameters the catalogue had lost. It does not.
+  EPSG:1565 registers NZGD2000 against WGS 84 as three zero translations
+  at 1.0 m, so there is no `TOWGS84` node to vend because there are no
+  parameters to carry, and nothing is missing. What was missing was the
+  decision of whether a registered null operation is published —
+  ADR-0163, which publishes it, at the accuracy the registry states. The
+  extent is right here and the operation is published there; the second
+  was not this record's business and its reason for it was wrong.
 - The union change narrows published areas in cases nobody has measured.
   A client that drew the published rectangle drew more ground than the
   operation stands for; it now draws what the operation stands for.

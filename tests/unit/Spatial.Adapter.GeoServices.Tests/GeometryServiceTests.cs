@@ -865,6 +865,54 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
+    public async Task Find_transformations_publishes_the_registered_null_operation_for_a_datum_that_realises_WGS84_without_moving()
+    {
+        // 4326 to 4258 (ETRS89) and 4326 to 4269 (NAD83). EPSG:1149 registers
+        // the first against WGS 84 as three zero translations at 1.0 m and
+        // EPSG:1188 the second at 4.0 m, and the listing now publishes those
+        // operations rather than coming back empty (ADR-0163): a client told
+        // there is no transformation is told less than the registry knows, and
+        // a client told the operation is told what it costs.
+        foreach (var (target, name, accuracy) in new[]
+                 {
+                     ("4258", "WGS84_To_ETRS89_Geocentric_Translation", 1.0),
+                     ("4269", "WGS84_To_NAD83_Geocentric_Translation", 4.0),
+                 })
+        {
+            var result = await DispatchAsync("findTransformations",
+                ("inSR", "4326"),
+                ("outSR", target));
+
+            var published = Assert.Single(result.EnumerateArray());
+            Assert.Equal(name, published.GetProperty("name").GetString());
+            Assert.Equal(accuracy, published.GetProperty("accuracy").GetDouble(), 3);
+            Assert.False(published.GetProperty("approximate").GetBoolean());
+            var step = published.GetProperty("geoTransforms")[0];
+            Assert.Contains("translations", step.GetProperty("method").GetString(), StringComparison.OrdinalIgnoreCase);
+            var helmert = step.GetProperty("helmert");
+            Assert.Equal(0.0, helmert.GetProperty("tx").GetDouble(), 9);
+            Assert.Equal(0.0, helmert.GetProperty("scale").GetDouble(), 9);
+            // The area of use is the datum's registered extent, one envelope
+            // for both of these (ADR-0111).
+            Assert.Equal(1, published.GetProperty("areaOfUse").GetArrayLength());
+
+            // And project honours naming it, as it does any other operation
+            // it applies: the shift is the identity, so the point comes back
+            // where it went in — to within the geocentric round trip every
+            // projection takes, which is centimetres rather than nothing.
+            var projected = await DispatchAsync("project",
+                ("geometries", """[{"x":2.3522,"y":48.8566,"spatialReference":{"wkid":4326}}]"""),
+                ("inSR", "4326"),
+                ("outSR", target),
+                ("datumTransformation", name));
+
+            var point = projected.GetProperty("geometries")[0];
+            Assert.Equal(2.3522, point.GetProperty("x").GetDouble(), 6);
+            Assert.Equal(48.8566, point.GetProperty("y").GetDouble(), 6);
+        }
+    }
+
+    [Fact]
     public async Task An_extent_of_interest_across_the_antimeridian_is_not_sorted_into_one_envelope()
     {
         // A client asking about ground either side of the seam sends a west
