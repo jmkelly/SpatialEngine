@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**154 records on disk.** `status` is the record's own word;
+**155 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -170,6 +170,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md) | Discovery reads the geometry type only from a value the server calls valid | accepted | 2026-10-01 | ADR-0157, ADR-0151 |
 | [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md) | The De9im column is the matrix, not a display of it | accepted | 2026-10-02 | ADR-0156 |
 | [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md) | The engine's `Relate` is the DE-9IM matrix, read as JTS reads it | accepted | 2026-10-01 | ADR-0036, ADR-0106, ADR-0156, ADR-0165 |
+| [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md) | Keep the topology verbs adapter-side; the plan's spatial component is the envelope | accepted | 2026-10-02 | ADR-0074, ADR-0036, ADR-0106, ADR-0110, ADR-0156, ADR-0166 |
 
 ## Reading order
 
@@ -184,9 +185,9 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 18 records, 33,818 words (20% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 19 records, 35,675 words (21% of the corpus)
 
-1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158)*
+1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md)
 3. [0098](ADR-0098-store-query-surface.md) *(narrowed by 0121, 0127, 0128, 0131, 0132, 0133)*
 4. [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) *(narrowed by 0123, 0124, 0136)*
@@ -204,6 +205,7 @@ out: the "Amended by" row already says everything about a pair.
 16. [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md) *(narrowed by 0164)*
 17. [0158](ADR-0158-json-query-plan-on-the-http-query-route.md)
 18. [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md)
+19. [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md)
 
 ### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (7% of the corpus)
 
@@ -244,7 +246,7 @@ out: the "Amended by" row already says everything about a pair.
 2. [0140](ADR-0140-a-read-by-identity-needs-a-declared-identity-column.md) *(narrowed by 0149)*
 3. [0149](ADR-0149-every-ingested-dataset-is-keyed.md)
 
-### ADR-0041: Ingest and publications are protocol-neutral capabilities — 3 records, 4,283 words (3% of the corpus)
+### ADR-0041: Ingest and publications are protocol-neutral capabilities — 3 records, 4,283 words (2% of the corpus)
 
 1. [0041](ADR-0041-ingest-and-publications-are-protocol-neutral.md) *(narrowed by 0082, 0090, 0149)*
 2. [0082](ADR-0082-ingest-honours-the-source-crs-reports-and-streams.md)
@@ -278,7 +280,7 @@ believed.
 - **0041** is amended by 0082, 0090, 0149
 - **0058** is amended by 0100
 - **0070** is amended by 0101
-- **0074** is amended by 0097, 0098, 0132, 0158
+- **0074** is amended by 0097, 0098, 0132, 0158, 0167
 - **0083** is amended by 0129
 - **0084** is amended by 0091, 0125
 - **0086** is amended by 0111, 0153

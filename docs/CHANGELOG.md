@@ -19,6 +19,24 @@ heading that is not above `<Version>`).
 
 ### Changed
 
+- **The feature-query plan carries no spatial-relation term: the DE-9IM
+  `spatialRel` verbs get no store pushdown face** (ADR-0167, SpatialEngine-8ab).
+  ADR-0074 §8 left this open and this answers it. The rule is that a pushdown
+  face is admissible only when it cannot change an answer: the query
+  geometry's `BoundingBox` qualifies — it is a superset for every served verb
+  and the adapter still decides each row — while a store's own spatial
+  predicate does not, because it is a different reading of the same OGC row.
+  Measured: the served table and the provider's named predicates agree on all
+  1,536 single-part fixture checks and diverge on 16 multi-part ones, all
+  `Crosses` (ADR-0166), and the served reading itself is still open on
+  SpatialEngine-7qk, -msc and -2ve. The record states what the term would have
+  to satisfy to become admissible later. No contract, store or client changes;
+  `SpatialRelationPushdownTests` pins the plan's shape and the box's superset
+  property over 256 ordered fixture pairs × 6 verbs, the measured divergence,
+  and the cost the decision leaves: a topology request's `returnCountOnly`,
+  statistics and paging stay in the adapter, because a count of the rows in the
+  box is not a count of the matches.
+
 - **The engine's `Relate` is characterised cell by cell, and the one place it
   diverges from the provider's own predicates is named** (ADR-0166,
   SpatialEngine-aqy). The bead reported three divergences between
