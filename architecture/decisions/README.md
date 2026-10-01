@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**160 records on disk.** `status` is the record's own word;
+**161 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -176,6 +176,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md) | The projected axis convention does not bend | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 | [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md) | `spatialRel` is the feature's relation to the input geometry | accepted | 2026-10-03 | ADR-0106, ADR-0169, ADR-0166, ADR-0156, ADR-0036 |
 | [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) | A Hotine variant A's false offsets are applied at the natural origin | accepted | 2026-10-01 | ADR-0086, ADR-0027, ADR-0153, ADR-0170 |
+| [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md) | The ESRI WKT1 Hotine variant A takes its skew angle from its azimuth | accepted | 2026-10-01 | ADR-0172, ADR-0027, ADR-0086, ADR-0170 |
 
 ## Reading order
 
@@ -222,6 +223,16 @@ out: the "Amended by" row already says everything about a pair.
 6. [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md)
 7. [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md)
 
+### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 7 records, 11,165 words (6% of the corpus)
+
+1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153, 0170, 0172)*
+2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
+3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
+4. [0163](ADR-0163-registered-null-operation-is-published.md)
+5. [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md)
+6. [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) *(narrowed by 0174)*
+7. [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md)
+
 ### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (7% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
@@ -231,15 +242,6 @@ out: the "Amended by" row already says everything about a pair.
 5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
-
-### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 6 records, 9,404 words (5% of the corpus)
-
-1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153, 0170, 0172)*
-2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
-3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
-4. [0163](ADR-0163-registered-null-operation-is-published.md)
-5. [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md)
-6. [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md)
 
 ### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (5% of the corpus)
 
@@ -331,6 +333,7 @@ believed.
 - **0156** is amended by 0165
 - **0157** is amended by 0164
 - **0160** is amended by 0161
+- **0172** is amended by 0174
 
 ## Superseded, by superseder
 
