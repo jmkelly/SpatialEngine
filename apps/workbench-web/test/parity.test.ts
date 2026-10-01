@@ -211,7 +211,9 @@ test("the relation sample names geometries1/geometries2 with the polygon contain
   const params = new URLSearchParams(GeometrySamples.relation);
   assert.ok(params.get("geometries1")!.includes("rings"), "geometries1 holds the containing square");
   assert.ok(params.get("geometries2")!.includes('"x":-117'), "geometries2 holds the inside point");
-  assert.equal(params.get("relation"), "esriSpatialRelContains");
+  // ADR-0171: 'spatialRel' is the first geometry's relation to the second,
+  // so a square containing the point is 'Within' the point, not 'Contains'.
+  assert.equal(params.get("relation"), "esriSpatialRelWithin");
 });
 
 test("the measure samples omit unit params so both sides read sr units", () => {

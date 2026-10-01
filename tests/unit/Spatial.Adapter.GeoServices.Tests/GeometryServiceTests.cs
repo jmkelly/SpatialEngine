@@ -149,16 +149,29 @@ public sealed class GeometryServiceTests
     {
         // Esri-docs verbatim: geometries1/geometries2 with sr1/sr2 and a
         // named esriSpatialRel* relation. The point sits clearly inside the
-        // square (never on its boundary) so both sides answer 1.
+        // square (never on its boundary), and 'spatialRel' names the first
+        // geometry's relation to the second (ADR-0171), so 'Contains' here
+        // asks whether the square is contained in the point — which it is
+        // not, and which is what ArcGIS Server answers for the same request.
+        // The docs' own example is answered with 'Within', the mirror.
         var result = await DispatchAsync("relation",
+            ("geometries1", """[{"rings":[[[-118,33],[-116,33],[-116,35],[-118,35],[-118,33]]]}]"""),
+            ("geometries2", """[{"x":-117,"y":34}]"""),
+            ("sr1", "4326"),
+            ("sr2", "4326"),
+            ("relation", "esriSpatialRelWithin"));
+
+        var relations = result.GetProperty("relations").EnumerateArray().Select(value => value.GetInt32()).ToArray();
+        Assert.Equal([1], relations);
+
+        var contained = await DispatchAsync("relation",
             ("geometries1", """[{"rings":[[[-118,33],[-116,33],[-116,35],[-118,35],[-118,33]]]}]"""),
             ("geometries2", """[{"x":-117,"y":34}]"""),
             ("sr1", "4326"),
             ("sr2", "4326"),
             ("relation", "esriSpatialRelContains"));
 
-        var relations = result.GetProperty("relations").EnumerateArray().Select(value => value.GetInt32()).ToArray();
-        Assert.Equal([1], relations);
+        Assert.Equal([0], contained.GetProperty("relations").EnumerateArray().Select(value => value.GetInt32()));
     }
 
     /// <summary>

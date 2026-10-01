@@ -239,14 +239,21 @@ public sealed class SpatialRelationPushdownTests
     /// provider's own named predicate — what <c>ST_Contains</c>,
     /// <c>STCrosses</c> and their T-SQL equivalents are, and what a mask the
     /// provider reads off its own matrix is one reading away from.
+    ///
+    /// <para><c>Contains</c> and <c>Within</c> are read in the protocol's
+    /// frame, so a store implementing the same <c>spatialRel</c> asks the
+    /// provider's <c>Within</c> for a served <c>Contains</c> and its
+    /// <c>Contains</c> for a served <c>Within</c> (ADR-0171). A store that
+    /// forwarded the name to a real FeatureServer inherits exactly this
+    /// mapping, because that is the direction the provider itself serves.</para>
     /// </summary>
     private static bool StoreSideVerdict(RelationFixture feature, RelationFixture query, string spatialRel)
     {
         var (left, right) = (feature.ReferenceGeometry, query.ReferenceGeometry);
         return spatialRel switch
         {
-            EsriFeatureQuery.Contains => left.Contains(right),
-            EsriFeatureQuery.Within => left.Within(right),
+            EsriFeatureQuery.Contains => left.Within(right),
+            EsriFeatureQuery.Within => left.Contains(right),
             EsriFeatureQuery.Touches => left.Touches(right),
             EsriFeatureQuery.Overlaps => left.Overlaps(right),
             EsriFeatureQuery.Crosses => left.Crosses(right),
@@ -267,15 +274,16 @@ public sealed class SpatialRelationPushdownTests
         var store = new RecordingStore(CountRows);
         var body = await ServedAsync(Layer(), store, await ParseAsync(
             ("geometry", "2,2,4,4"),
-            ("spatialRel", "esriSpatialRelWithin"),
+            ("spatialRel", "esriSpatialRelContains"),
             ("returnCountOnly", "true"),
             ("f", "json")));
 
         Assert.Equal(1, store.Queries);
         Assert.Equal(0, store.Scans);
-        // The box admits both points inside it; the relation accepts only the
-        // one the query square contains, and the corner point lies on its
-        // boundary.
+        // The box admits both points inside it; the served 'Contains' names
+        // the input geometry's relation to the feature (ADR-0171), so it
+        // accepts the one point the query square contains and refuses the
+        // corner point lying on its boundary.
         Assert.Equal(2, store.BoxAdmitted);
         Assert.Equal(1, body.GetProperty("count").GetInt32());
     }
@@ -287,7 +295,7 @@ public sealed class SpatialRelationPushdownTests
     [Fact]
     public async Task A_cancelled_topology_query_cancels_rather_than_answers()
     {
-        var query = await ParseAsync(("geometry", "2,2,4,4"), ("spatialRel", "esriSpatialRelWithin"));
+        var query = await ParseAsync(("geometry", "2,2,4,4"), ("spatialRel", "esriSpatialRelContains"));
         var spec = new FeatureSpatialMatcher.QuerySpec(
             Layer(),
             new RecordingStore(CountRows),

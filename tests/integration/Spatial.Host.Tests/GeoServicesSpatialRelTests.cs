@@ -5,10 +5,16 @@ namespace Spatial.Host.Tests;
 
 /// <summary>
 /// T-023: remaining spatialRel predicates + quantization/geometryPrecision policy.
-/// Points (cities) against envelope queries: Within/Intersects find Berlin,
-/// Contains (point contains envelope) is empty, Overlaps/Crosses are false
+/// Points (cities) against envelope queries: Contains/Intersects find Berlin,
+/// Within (a point contains an envelope) is empty, Overlaps/Crosses are false
 /// for point-vs-polygon, Touches needs a boundary case. Quantization
 /// quantizes; geometryPrecision rounds; maxAllowableOffset is honoured.
+///
+/// <para><c>spatialRel</c> names the feature's relation to the input
+/// geometry, so the envelope query containing Berlin is
+/// <c>esriSpatialRelContains</c> and <c>esriSpatialRelWithin</c> is the mirror
+/// (ADR-0171). The same pair answered against a live ArcGIS Server — a point
+/// query geometry over a polygon layer — gives the same way round.</para>
 /// </summary>
 public sealed class GeoServicesSpatialRelTests : IClassFixture<PostgisHostFactory>
 {
@@ -35,18 +41,18 @@ public sealed class GeoServicesSpatialRelTests : IClassFixture<PostgisHostFactor
         + $"&geometryType=esriGeometryEnvelope&spatialRel={spatialRel}&outFields=name&f=json";
 
     [Fact]
-    public async Task Within_finds_berlin_in_a_small_envelope()
+    public async Task Contains_finds_berlin_in_a_small_envelope()
     {
-        var result = await GetJsonAsync(EnvelopeQuery("esriSpatialRelWithin"));
+        var result = await GetJsonAsync(EnvelopeQuery("esriSpatialRelContains"));
         var names = result.GetProperty("features").EnumerateArray()
             .Select(feature => feature.GetProperty("attributes").GetProperty("name").GetString()).ToArray();
         Assert.Contains("Berlin", names);
     }
 
     [Fact]
-    public async Task Contains_is_empty_for_points_against_an_envelope()
+    public async Task Within_is_empty_for_points_against_an_envelope()
     {
-        var result = await GetJsonAsync(EnvelopeQuery("esriSpatialRelContains"));
+        var result = await GetJsonAsync(EnvelopeQuery("esriSpatialRelWithin"));
         Assert.Empty(result.GetProperty("features").EnumerateArray());
     }
 

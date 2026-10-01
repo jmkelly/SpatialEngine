@@ -249,10 +249,13 @@ export const GeometrySamples: Record<GeometryOperation, string> = {
     `&sr=4326&geodesic=false&f=json`,
   labelPoints:
     `polygons=[{"rings":[[[-117,34],[-116,34],[-116,33],[-117,34]]]}]&sr=4326&f=json`,
+  // 'spatialRel' names the first geometry's relation to the second
+  // (ADR-0171), so a square containing a point is 'Within' — the mirror,
+  // 'Contains', asks whether the square is inside the point.
   relation:
     `geometries1=[{"rings":[[[-118,33],[-116,33],[-116,35],[-118,35],[-118,33]]]}]` +
     `&geometries2=[{"x":-117,"y":34}]` +
-    `&sr1=4326&sr2=4326&relation=esriSpatialRelContains&f=json`,
+    `&sr1=4326&sr2=4326&relation=esriSpatialRelWithin&f=json`,
   findTransformations: `inSR=4326&outSR=27700&f=json`,
 };
 
