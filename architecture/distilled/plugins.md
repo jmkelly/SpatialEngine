@@ -32,11 +32,10 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
 - Read CRS definitions through `ProjWkt`, our own WKT reader: ProjNet's path
   lost 33,931 m of northing on the widely published `Mercator_1SP` spelling of
   EPSG:3857. (SpatialEngine-u2x.28)
-- Before reading a projection's arithmetic, check whether ProjNet has the other
-  convention already: `Hotine_Oblique_Mercator` and `Oblique_Mercator` are one
-  oblique Mercator differing only in where the false offsets go, keyed on an
-  `AuthorityCode` of 9812 or 9815, so variant A needed a map entry and no
-  maths. (SpatialEngine-r4o)
+- Check ProjNet for the projection's convention before writing its arithmetic:
+  `Hotine_Oblique_Mercator` and `Oblique_Mercator` are one oblique Mercator
+  differing only in where the false offsets go, so variant A needed a map entry.
+  (SpatialEngine-r4o)
 - Key every ingested dataset (`Auto` or `Source`) and refuse `identity=none` by
   name on both ingest routes and the CLI; `CreateAsync` stays keyless on
   purpose, and each path says why they differ. (SpatialEngine-2cm)
