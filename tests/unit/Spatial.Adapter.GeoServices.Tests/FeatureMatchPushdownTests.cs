@@ -364,6 +364,59 @@ public sealed class FeatureMatchPushdownTests
         Assert.Equal([3L, 4L], matches.Select(match => match.ObjectId));
     }
 
+    /// <summary>
+    /// A designated layer's pushed <c>time</c> clause is the extent rule's
+    /// overlaps shape over the designated pair, so it stays a superset of every
+    /// relation the matcher can apply (ADR-0175 §5). The straddling row is the
+    /// proof: the extent rule accepts it — the window falls inside the row's
+    /// extent — so a clause that asked each designated field to be *inside* the
+    /// window would have dropped a row the matcher serves.
+    /// </summary>
+    [Fact]
+    public async Task A_designated_layers_pushed_time_clause_is_a_superset_of_the_extent_rule()
+    {
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("id", AttributeKind.Int64),
+            new FieldDefinition("begins", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("ends", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("geometry", AttributeKind.Geometry, nullable: true),
+        ]);
+        Feature Event(long id, long? begins, long? ends) => new(
+            new FeatureId(id.ToString(CultureInfo.InvariantCulture)),
+            schema,
+            [
+                AttributeValue.FromInt64(id),
+                begins is { } from ? AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(from)) : AttributeValue.Null,
+                ends is { } to ? AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(to)) : AttributeValue.Null,
+                AttributeValue.FromGeometry(Point(id, id)),
+            ]);
+
+        var rows = new[]
+        {
+            Event(1, Earlier - 1, Later + 1),
+            Event(2, Earlier, null),
+            Event(3, null, Later),
+            Event(4, null, null),
+            Event(5, Later + 1, Later + 2),
+        };
+        var layer = new DatasetDescription("demo.events", "demo", "events", "geometry", 4326, "Point", rows.Length, ["id"], schema)
+        {
+            TimeFields = new TemporalExtentFields("begins", "ends"),
+        };
+        var store = new RecordingStore(rows, schema);
+        var query = await ParseAsync(("objectIds", "1,2,3,4,5"), ("time", $"{Earlier},{Later}"));
+
+        var pushed = await FeatureSpatialMatcher.MatchAsync(Spec(layer, store, query), CancellationToken.None);
+        Assert.Equal(0, store.Scans);
+        Assert.Equal(1, store.Queries);
+
+        var scanned = await FeatureSpatialMatcher.ScanAndMatchAsync(Spec(layer, store, query), CancellationToken.None);
+
+        Assert.Equal(scanned.Select(match => match.ObjectId), pushed.Select(match => match.ObjectId));
+        Assert.Equal([1L, 2L, 3L, 4L], pushed.Select(match => match.ObjectId));
+    }
+
     [Fact]
     public async Task A_cancelled_match_cancels_rather_than_answers()
     {

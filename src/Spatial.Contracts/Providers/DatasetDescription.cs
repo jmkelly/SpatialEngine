@@ -42,4 +42,20 @@ public sealed record DatasetDescription(
     CoordinateLayout GeometryLayout = CoordinateLayout.Xy)
 {
     public override string ToString() => $"{Id}: {Schema}";
+
+    /// <summary>
+    /// Which of the row's date fields bound it — the schema-level designation
+    /// of a feature temporal extent (ADR-0175). <c>null</c> (the default) means
+    /// the layer designates nothing, so its <c>time</c> is answered by the
+    /// bag rule every layer has always been answered by.
+    /// </summary>
+    /// <remarks>
+    /// Additive and non-positional on purpose: a member a positional record
+    /// constructor takes would move every construction of this type and enter
+    /// its equality, so a layer that merely gained a designation would compare
+    /// unequal to the same layer described before — and the append-only
+    /// column-evolution check (<c>FeatureSchema.IsDecodableFrom</c>) reads
+    /// those descriptions.
+    /// </remarks>
+    public TemporalExtentFields? TimeFields { get; init; }
 }

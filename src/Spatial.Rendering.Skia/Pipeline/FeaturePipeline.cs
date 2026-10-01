@@ -36,7 +36,7 @@ internal sealed class FeaturePipeline
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var feature in batch.Features)
             {
-                if (source.Time is null || MatchesTime(feature, source.Time))
+                if (source.Time is null || MatchesTime(feature, source.Time, description.TimeFields))
                 {
                     features.Add(feature);
                 }
@@ -47,33 +47,22 @@ internal sealed class FeaturePipeline
     }
 
     /// <summary>
-    /// Applies the render <see cref="MapTimeExtent"/> to one feature: it
-    /// matches when any date value falls inside the (inclusive) bounds, where
-    /// a <c>null</c> bound is infinite. A feature with no date values matches
-    /// unconditionally. This mirrors the query path's temporal rule
-    /// (<c>FeatureQueryEngine.MatchesTime</c> in the GeoServices adapter,
-    /// which the renderer must not reference); the two are intentionally the
-    /// same rule in the two places the engine reads features.
+    /// Applies the render <see cref="MapTimeExtent"/> to one feature: a layer
+    /// with a temporal designation is matched against its feature temporal
+    /// extent (ADR-0175), and a layer without one matches when any date value
+    /// falls inside the (inclusive) bounds, where a <c>null</c> bound is
+    /// infinite, with a feature that has no date values matching
+    /// unconditionally. Both rules are the query path's rules
+    /// (<c>FeatureSpatialMatcher.MatchesTime</c> in the GeoServices adapter,
+    /// which the renderer must not reference), so the render path and the query
+    /// path cannot drift: the rule itself lives once in
+    /// <see cref="TemporalExtent"/>.
     /// </summary>
-    private static bool MatchesTime(Feature feature, MapTimeExtent time)
+    private static bool MatchesTime(Feature feature, MapTimeExtent time, TemporalExtentFields? fields)
     {
-        var dated = false;
-        foreach (var attribute in feature.Attributes)
-        {
-            if (attribute.Kind != AttributeKind.DateTimeOffset)
-            {
-                continue;
-            }
-
-            dated = true;
-            var milliseconds = attribute.DateTimeOffsetValue.ToUnixTimeMilliseconds();
-            if ((time.StartMs is null || milliseconds >= time.StartMs)
-                && (time.EndMs is null || milliseconds <= time.EndMs))
-            {
-                return true;
-            }
-        }
-
-        return !dated;
+        var window = TemporalExtent.FromMilliseconds(time.StartMs, time.EndMs);
+        return fields is null
+            ? TemporalExtent.MatchesAnyDate(feature, window)
+            : TemporalExtent.From(feature, fields).Overlaps(window);
     }
 }

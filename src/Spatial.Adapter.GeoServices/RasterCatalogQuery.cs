@@ -59,7 +59,7 @@ internal static class RasterCatalogQuery
             cancellationToken.ThrowIfCancellationRequested();
             var feature = ImageService.Feature(item, schema);
             var uniqueId = EsriUniqueIdScheme.ResolveFor(query, dataset, feature);
-            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, services.Relations, uniqueId), cancellationToken))
+            if (FeatureSpatialMatcher.Matches(new FeatureSpatialMatcher.MatchCandidate(query, feature, item.ObjectId, queryGeometry, services.Relations, uniqueId, TimeFields: dataset.TimeFields), cancellationToken))
             {
                 matches.Add(new MatchedFeature(item.ObjectId, feature));
             }
