@@ -913,6 +913,38 @@ public sealed class GeometryServiceTests
     }
 
     [Fact]
+    public async Task Find_transformations_reaches_NZGD2000_through_its_Esri_WKID()
+    {
+        // 4326 to 4167. The graph published the registered null operation for
+        // this pair in ADR-0163, but WKID 4167 was not in the curated map, so
+        // a client naming New Zealand's own spatial reference failed at
+        // parameter parsing and never saw it (SpatialEngine-392).
+        var result = await DispatchAsync("findTransformations",
+            ("inSR", "4326"),
+            ("outSR", "4167"));
+
+        var published = Assert.Single(result.EnumerateArray());
+        Assert.Equal("WGS84_To_NZGD2000_Geocentric_Translation", published.GetProperty("name").GetString());
+        Assert.Equal(1.0, published.GetProperty("accuracy").GetDouble(), 3);
+        Assert.False(published.GetProperty("approximate").GetBoolean());
+        // Two rectangles, not one: the registered extent 1175 crosses the
+        // antimeridian, and ADR-0111 keeps each half a rectangle rather than
+        // ordering them into the whole Pacific.
+        Assert.Equal(2, published.GetProperty("areaOfUse").GetArrayLength());
+
+        // And a geometry can be projected over it by WKID, which is how the
+        // client gets here in the first place.
+        var projected = await DispatchAsync("project",
+            ("geometries", """[{"x":174.7633,"y":-36.8485,"spatialReference":{"wkid":4326}}]"""),
+            ("inSR", "4326"),
+            ("outSR", "4167"));
+
+        var point = projected.GetProperty("geometries")[0];
+        Assert.Equal(174.7633, point.GetProperty("x").GetDouble(), 6);
+        Assert.Equal(-36.8485, point.GetProperty("y").GetDouble(), 6);
+    }
+
+    [Fact]
     public async Task An_extent_of_interest_across_the_antimeridian_is_not_sorted_into_one_envelope()
     {
         // A client asking about ground either side of the seam sends a west
