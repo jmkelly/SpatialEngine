@@ -228,7 +228,7 @@ out: the "Amended by" row already says everything about a pair.
 3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
 4. [0163](ADR-0163-registered-null-operation-is-published.md)
 
-### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 3 records, 3,670 words (2% of the corpus)
+### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 3 records, 3,962 words (2% of the corpus)
 
 1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0156)*
 2. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
