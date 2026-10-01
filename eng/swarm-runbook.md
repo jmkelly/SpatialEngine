@@ -12,7 +12,7 @@ a dead coordinator, a crashed agent, or a human edit.
 | Provider / model | `pi/opencode-go/space-bunny-free` |
 | Thinking | `medium` |
 | Mode | none — the `pi` provider has no modes, and passing one fails the spawn |
-| Concurrency cap | **3** workers in flight (the coordinator is not a worktree and does not count) |
+| Concurrency cap | **3** workers in flight, and a ceiling of 4 until the derived file-overlap lock has held for a full drain cycle with its incident counts falling (`python3 tools/swarm_lock.py metrics`) (the coordinator is not a worktree and does not count) |
 | Cron | every 20 minutes |
 | Max runs | 200 (a runaway backstop, ~66 h of ticks — never a target) |
 | Goal | **run to exhaustion** — no wave limit, no nightly target |
@@ -65,8 +65,11 @@ You are the swarm coordinator for the SpatialEngine repo, driving the epic
 `AGENTS.md`, then `bd prime`. Work only in the beads queue — do not implement
 anything yourself.
 
-The cap is 3 worker worktrees. You are not one of them — you run in the main
-worktree — and you never count toward the cap.
+The cap is 3 worker worktrees, and it does not go above a ceiling of 4 until
+the derived lock below has held for a full drain cycle and
+`tools/swarm_lock.py metrics` shows the incident counts falling. You are not
+one of those worktrees — you run in the main worktree — and you never count
+toward the cap.
 
 Each tick, do exactly this, in order, and stop early if you hit a stop condition:
 
@@ -190,9 +193,30 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
      DE-9IM/spatialRel reading (`SpatialEngine-onj`); that list has gone stale
      as beads closed under it, so re-check each entry rather than trusting the
      note, and do not treat the block as permanent
-   - respect the file-overlap order in the epic's coordination note:
-     **`.2` before `.16`, `.4` before `.21`**. If one of those two is claimed or
-     in progress, skip its partner and pick another ready bead.
+   - **THE FILE-OVERLAP LOCK IS DERIVED, NEVER HAND-LISTED.** Run
+     `python3 tools/swarm_lock.py` and read it before you spawn: it prints
+     every ready bead, the files each one names in its own description, and
+     the in-flight beads it collides with. Spawn the top bead it reports
+     `free`; skip every one it reports `BLOCKED`, and the reason it prints is
+     the in-flight bead and the file they share — do not re-derive it and do
+     not write the pair down anywhere. To gate one bead on its own, run
+     `python3 tools/swarm_lock.py --bead <id>`, which exits non-zero when that
+     bead is blocked. A bead that names no file is reported as *order this one
+     by hand*: the lock cannot invent a file set, so you decide, and you say so
+     in the report. If DRAIN has nothing free, report the blocked list and
+     spawn nothing this tick: a queue whose every ready bead collides with an
+     in-flight one is a queue that drains one bead at a time, and spawning an
+     overlap anyway is the merge conflict this exists to prevent. This
+     replaces the pair ordering the runbook used to
+     hand-write here, which was stale the moment the next overlapping bead
+     landed — new overlaps appear every run, which is why recovery kept being
+     needed, and a rule only the coordinator remembered is a rule a replaced
+     coordinator loses.
+   - **RESOLVE THE READ LIST ONCE, HERE.** Run
+     `python3 tools/swarm_lock.py read <id>` for each bead you are about to
+     spawn and paste its output into that worker prompt (the worker's step 2).
+     Routing happens once per bead, at the coordinator, instead of eight times
+     in eight worktrees from an index each worker resolves differently.
    - `bd update <id> --claim` (atomic; if it fails, someone else got it — move on)
    - `paseo workspace create --isolation worktree --mode branch-off
      --new-branch bd/<id> --base origin/main`
@@ -223,7 +247,16 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
 5. REPORT. One short line per bead touched this tick, and the output of
    `python3 tools/bd-merge-bead.py --check` — a tick that did not finish
    `published: main is at origin/main` did something unrecoverable, and the
-   report is where a human sees it. If nothing was ready and
+   report is where a human sees it. Add
+   `python3 tools/swarm_lock.py metrics` once per drain cycle: it counts the
+   mis-dispatches and the WIP-preservation commits git records, and names the
+   reclaim race as what `tools/beads_gate.py` reads instead. Those counts,
+   before and after, are the only evidence that the lock is doing its job —
+   a lock that cannot be measured is a lock nobody can tell is working, and
+   the cap stays at 4 or below until they fall over a full cycle. Count the
+   non-trivial merge conflicts yourself: git does not record them, the merge
+   tool aborts a rebase conflict rather than resolving one, and the tick
+   report is where it surfaces. If nothing was ready and
    nothing is in flight, say "queue drained" and stop doing work. Do not poll,
    do not wait, do not sleep — the cron brings you back.
 
@@ -371,12 +404,17 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
   ingest suites; the local re-run before merge is still the coordinator's, and
   it is the one that wants an idle box to mean anything.
 - The PostGIS and SQL Server integration suites start their own containers
-  (ADR-0072, ADR-0073). The cap is 3 for that reason: at 8 this box was
+  (ADR-0072, ADR-0073). The cap is 3 for that reason, and the lock holds it
+  under a ceiling of 4: at 8 this box was
   measured at load average 93–113, and container contention is what turns a
   green fast gate into a skip-laden one (`Spatial.SqlServer.Tests` reporting
   10 passed / 104 skipped under load, on the bead that existed to fix those
-  tests). Drop the cap further if memory pressure shows up and say so in the
-  tick report. The cap is a tuning knob, not a scope limit — the run still
+  tests). Raise it above 4 only once `python3 tools/swarm_lock.py metrics`
+  shows the mis-dispatches, the reclaim races, the non-trivial merge conflicts
+  and the WIP-preservation commits falling across a full drain cycle
+  (SpatialEngine-imz.6): the cap was raised 4 → 8 once before this, and the
+  incident count rose after it. Drop the cap further if memory pressure shows up
+  and say so in the tick report. The cap is a tuning knob, not a scope limit — the run still
   goes to exhaustion at a lower cap.
 - The tier-1 chain is four serial steps (`.7` → `.8`/`.9` → `.11` → `.12`/`.13`).
   Those four are the long pole; everything else can proceed in parallel around

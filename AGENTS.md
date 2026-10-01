@@ -80,6 +80,14 @@ interop surface.
   judges the rest; `--strict` fails instead.
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
+- `python3 tools/swarm_lock.py` — the swarm's file-overlap lock, derived from
+  what each ready bead names in its own description rather than hand-listed
+  in the runbook: `--bead <id>` gates one bead on it, `read <id>` resolves a
+  bead's ADR list once so the worker is handed records rather than an index,
+  and `metrics` counts the mis-dispatches and WIP commits a drain cycle
+  produced. Before taking a bead that another worker is already on, run
+  `--bead <id>`; the runbook's cap stays at 4 or below until those counts
+  fall (SpatialEngine-imz.6).
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
 - `eng/seed.sh` — on-demand realistic dataset: fetch public data, ingest
   (with engine-side reprojection) and publish styled feature/map services.
