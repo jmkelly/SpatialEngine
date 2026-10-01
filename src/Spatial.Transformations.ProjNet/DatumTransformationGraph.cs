@@ -97,12 +97,17 @@ internal static class DatumTransformationGraph
         DatumShiftGridRegistry grids)
     {
         var direct = HelmertAlgebra.Compose(from.ToWgs84, HelmertAlgebra.Invert(to.ToWgs84));
+        var grid = GridShiftCandidate.Build(from, to, grids);
         if (HelmertAlgebra.IsNull(direct))
         {
-            return [];
+            // A composed shift of nothing is not the absence of an operation:
+            // it is the operation EPSG registers when a datum realises WGS 84
+            // without moving, and the registry states what that realisation is
+            // worth. See ADR-0163 and NullOperation below.
+            return IsRegisteredNullPair(from, to)
+                ? grid is null ? [NullOperation(from, to, direct)] : [grid, NullOperation(from, to, direct)]
+                : grid is null ? [] : [grid];
         }
-
-        var grid = GridShiftCandidate.Build(from, to, grids);
         var candidates = new List<CrsTransformation> { Direct(from, to, direct, grid is not null) };
         if (grid is not null)
         {
@@ -116,6 +121,49 @@ internal static class DatumTransformationGraph
         candidates.Add(Concatenated(from, to));
         candidates.Add(Reduced(from, to, direct));
         return [.. candidates];
+    }
+
+    /// <summary>
+    /// Whether a pair whose composed shift moves nothing is a pair the registry
+    /// registers an operation for. Two datums that both realise WGS 84 without
+    /// moving are published as one registered null operation carrying the
+    /// accuracy EPSG states for them (ADR-0163); a datum against itself is not
+    /// a pair at all, and a pair whose legs are both the unregistered pivot has
+    /// nothing behind it.
+    /// </summary>
+    private static bool IsRegisteredNullPair(DatumNode from, DatumNode to) =>
+        !string.Equals(from.Code, to.Code, StringComparison.Ordinal) && CombinedAccuracy(from, to) > 0.0;
+
+    /// <summary>
+    /// The registered null operation: one geocentric-translations step whose
+    /// composed parameters are all zero, published with the accuracy the two
+    /// datums' registered operations state between them, over the ground both
+    /// apply (ADR-0163).
+    /// <para>
+    /// It is published alone, and that is the whole of the decision. The
+    /// concatenated form would have no steps at all — both legs are null — and
+    /// the reduced form would restate the same three zero translations with a
+    /// wider area of use at the same accuracy, which is a broader claim for no
+    /// extra ground of applicability. Three names for a shift that moves
+    /// nothing is three claims about the same ground.
+    /// </para>
+    /// <para>
+    /// The method is the registry's own for these operations (EPSG:9603
+    /// geocentric translations in the geog2D domain), not the position-vector
+    /// method the Helmert candidates carry: there are no rotations and no scale
+    /// difference to apply, and a method string naming them would be decoration.
+    /// </para>
+    /// </summary>
+    private static CrsTransformation NullOperation(DatumNode from, DatumNode to, HelmertParameters parameters)
+    {
+        var name = $"{from.Code}_To_{to.Code}_Geocentric_Translation";
+        return new CrsTransformation(
+            name,
+            TranslationMethod,
+            [new CrsTransformationStep(name, true, TranslationMethod, parameters)],
+            Intersect(from.AreaOfUse, to.AreaOfUse),
+            CombinedAccuracy(from, to),
+            Approximate: false);
     }
 
     /// <summary>

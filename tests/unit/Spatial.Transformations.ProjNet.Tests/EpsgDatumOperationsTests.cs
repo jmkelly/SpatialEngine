@@ -167,7 +167,7 @@ public sealed class EpsgDatumOperationsTests
     }
 
     [Fact]
-    public void NZGD2000_is_registered_against_WGS84_as_a_null_translation_so_the_pair_publishes_nothing()
+    public void NZGD2000_is_registered_against_WGS84_as_a_null_translation_and_the_search_publishes_it()
     {
         // The registry record behind this, read from the same PROJ database
         // every other row here was read from:
@@ -184,12 +184,13 @@ public sealed class EpsgDatumOperationsTests
         // whose parameters were invented to fill it would both be fabrications
         // of a record that is not there.
         //
-        // What follows from that is ADR-0087 §2: a pair whose composed shift is
-        // the identity yields nothing, because there is no operation to
-        // publish. NZGD2000 is therefore served exactly as ETRS89 and NAD83
-        // are, and this pins that the difference between those rows and
-        // OSGB36's is the parameters the registry publishes, not an oversight
-        // in one definition.
+        // What follows from that changed once: ADR-0087 §2 read the identity
+        // as "there is no operation to publish" and the pair came back empty,
+        // and ADR-0163 amended that — a registered null operation is published
+        // carrying the accuracy the registry states for it. New Zealand is
+        // therefore served exactly as ETRS89 and NAD83 are, and this pins that
+        // the difference between those rows and OSGB36's is the parameters the
+        // registry publishes, not an oversight in one definition.
         var definition = Geodetic(4167);
         Assert.Equal([0, 0, 0, 0, 0, 0, 0], definition.ToWgs84);
         Assert.True(EpsgDatumOperations.TryGetNode(definition, out var node));
@@ -200,10 +201,19 @@ public sealed class EpsgDatumOperationsTests
         Assert.Equal(2, node.AreaOfUse.Boxes.Count);
 
         // The service's own answer, in both directions and through the
-        // projected CRS that stands on the datum.
-        Assert.Empty(GraphInvoker.Search("EPSG:4326", "EPSG:4167"));
-        Assert.Empty(GraphInvoker.Search("EPSG:4167", "EPSG:4326"));
-        Assert.Empty(GraphInvoker.Search("EPSG:2193", "EPSG:4326"));
+        // projected CRS that stands on the datum: the registered operation,
+        // at the registered accuracy, over both halves of extent 1175.
+        foreach (var (source, target) in new[]
+                 {
+                     ("EPSG:4326", "EPSG:4167"),
+                     ("EPSG:4167", "EPSG:4326"),
+                     ("EPSG:2193", "EPSG:4326"),
+                 })
+        {
+            var candidate = Assert.Single(GraphInvoker.Search(source, target));
+            Assert.Equal("WGS84_To_NZGD2000_Geocentric_Translation", candidate.Name);
+            Assert.Equal(1.0, candidate.AccuracyMetres, 9);
+        }
     }
 
     [Fact]

@@ -24,11 +24,15 @@ public sealed class DatumTransformationGraphTests
     }
 
     [Fact]
-    public void A_null_datum_pair_needs_no_transformation()
+    public void A_null_datum_pair_that_shares_no_ground_publishes_nothing()
     {
         // ETRS89 and NAD83 are distinct datums that both realise WGS 84 with
-        // a zero shift, so the composed operation is the identity: there is
-        // nothing to list rather than a fictitious zero-parameter candidate.
+        // a zero shift, so the composed operation is the identity and the
+        // registry registers one between them — but Europe and North America
+        // share no ground, so that operation is valid nowhere and ADR-0087
+        // §4's empty intersection drops it. That is not the identity rule:
+        // against WGS 84 each of these datums publishes the registered null
+        // operation at the accuracy EPSG states (ADR-0163).
         var candidates = Search("EPSG:4258", "EPSG:26910");
 
         Assert.Empty(candidates);

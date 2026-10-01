@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**148 records on disk.** `status` is the record's own word;
+**149 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -102,7 +102,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) | Advertise `hasZ`/`hasM` from the coordinate layout the store declares | accepted | 2026-09-28 | — |
 | [0085](ADR-0085-query-distance-centroid-and-ordinate-output.md) | The distance band, the per-feature centroid and the Z/M output selection are served | accepted | 2026-09-28 | — |
 | [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | ADR-0111, ADR-0153 |
-| [0087](ADR-0087-datum-transformation-graph.md) | Datum transformations are values, and `findTransformations` is a search | accepted | 2026-09-28 | — |
+| [0087](ADR-0087-datum-transformation-graph.md) | Datum transformations are values, and `findTransformations` is a search | accepted | 2026-09-28 | ADR-0111, ADR-0163 |
 | [0088](ADR-0088-to-color-at-interpolate-and-cubic-bezier.md) | `to-color`, `at-interpolate` and `cubic-bezier` in the style dialect | accepted | 2026-09-28 | — |
 | [0089](ADR-0089-adr-numbers-are-reserved-before-the-record-is-written.md) | ADR numbers are reserved before the record is written | accepted | 2026-09-28 | — |
 | [0090](ADR-0090-an-upload-is-staged-then-loaded-resumable-ingest.md) | An upload is staged, then loaded — resumable ingest | accepted | 2026-09-28 | ADR-0041 |
@@ -116,7 +116,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md) | The transform verb applies a deployed datum shift grid per coordinate, over the classic Helmert | accepted | 2026-09-29 | ADR-0105 |
 | [0109](ADR-0109-the-verification-lanes-implemented.md) | the verification lanes, implemented | accepted | 2026-09-30 | — |
 | [0110](ADR-0110-match-envelope-pushdown.md) | The feature-match envelope is compiled onto the store's plan, and the in-memory matcher is what verifies it | accepted | 2026-09-29 | — |
-| [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) | An area of use is a set of rectangles, so a wrapped extent is not an empty one | accepted | 2026-09-29 | ADR-0086, ADR-0087 |
+| [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) | An area of use is a set of rectangles, so a wrapped extent is not an empty one | accepted | 2026-09-29 | ADR-0086, ADR-0087, ADR-0163 |
 | [0112](ADR-0112-map-and-per-feature-read-pushdown.md) | The MapServer and per-feature read surfaces push what the store can answer, and the adapter keeps what it must | accepted | 2026-09-29 | — |
 | [0115](ADR-0115-the-statistics-reduction-is-the-stores-aggregate.md) | The statistics reduction is the store's aggregate, and the reference says what a group of one answers | accepted | 2026-09-29 | — |
 | [0116](ADR-0116-paged-store-reads.md) | A paged read is a page, a position and a "one more" — never a materialised match set | accepted | 2026-09-29 | — |
@@ -164,6 +164,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md) | The family is a reading order, derived from the `amends:` links | accepted | 2026-10-02 | ADR-0141, ADR-0150 |
 | [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) | One host per class, and a per-test map name to keep the dataset private | accepted | 2026-10-02 | ADR-0155 |
 | [0162](ADR-0162-the-reclaim-race-is-enforced-from-the-damage-not-by-a-hook.md) | The reclaim race is enforced from the damage, not by a hook | accepted | 2026-10-02 | ADR-0152, ADR-0118, ADR-0141 |
+| [0163](ADR-0163-registered-null-operation-is-published.md) | A registered null operation is an operation, and it is published | accepted | 2026-10-08 | ADR-0087, ADR-0111 |
 
 ## Reading order
 
@@ -208,6 +209,13 @@ out: the "Amended by" row already says everything about a pair.
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
+### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 4 records, 6,125 words (4% of the corpus)
+
+1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153)*
+2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
+3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
+4. [0163](ADR-0163-registered-null-operation-is-published.md)
+
 ### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 4 records, 6,769 words (4% of the corpus)
 
 1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
@@ -233,13 +241,7 @@ out: the "Amended by" row already says everything about a pair.
 2. [0091](ADR-0091-the-arcgis-rest-store-proves-ordinates-from-the-layer-declaration.md)
 3. [0125](ADR-0125-the-mapserver-layer-record-carries-the-same-declared-ordinates.md)
 
-### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 3 records, 4,305 words (3% of the corpus)
-
-1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153)*
-2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md)
-3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
-
-### ADR-0118: the default verify lane is a build gate, and the full lane is enforced at the merge — 3 records, 5,644 words (4% of the corpus)
+### ADR-0118: the default verify lane is a build gate, and the full lane is enforced at the merge — 3 records, 5,644 words (3% of the corpus)
 
 1. [0118](ADR-0118-the-default-verify-lane-is-a-build-gate-and-the-full-lane-is-enforced-at-the-merge.md) *(narrowed by 0134, 0141, 0148, 0152)*
 2. [0152](ADR-0152-the-bead-protocol-is-a-gate.md) *(narrowed by 0162)*
@@ -265,11 +267,12 @@ believed.
 - **0083** is amended by 0129
 - **0084** is amended by 0091, 0125
 - **0086** is amended by 0111, 0153
-- **0087** is amended by 0111
+- **0087** is amended by 0111, 0163
 - **0092** is amended by 0147
 - **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
 - **0105** is amended by 0107
 - **0109** is amended by 0134, 0141
+- **0111** is amended by 0163
 - **0112** is amended by 0120, 0132
 - **0115** is amended by 0128, 0133
 - **0116** is amended by 0124
