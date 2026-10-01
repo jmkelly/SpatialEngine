@@ -3,6 +3,7 @@ using Spatial.Contracts;
 using Spatial.Core.Features;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite;
+using Nts = NetTopologySuite.Geometries;
 
 namespace Spatial.Adapter.GeoServices.Tests;
 
@@ -49,6 +50,13 @@ namespace Spatial.Adapter.GeoServices.Tests;
 public sealed class SpatialRelationReadingTests
 {
     private static readonly NtsGeometryRelations Relations = new();
+
+    /// <summary>
+    /// The provider's own factory, so this file can read the matrix and the
+    /// named predicate the engine's answers are measured against (ADR-0166)
+    /// without importing the served constants it is pinning.
+    /// </summary>
+    private static readonly Nts.GeometryFactory Provider = new();
 
     private static readonly FeatureSchema Schema = new(
         [new FieldDefinition("shape", AttributeKind.Geometry, nullable: true)]);
@@ -279,6 +287,68 @@ public sealed class SpatialRelationReadingTests
         Assert.Equal(["1*T***T**"], overlaps.Patterns);
     }
 
+    /// <summary>
+    /// The one pair where the served table and the provider's own
+    /// <c>Crosses</c> disagree, pinned as a decision rather than left to the
+    /// characterisation battery: a line lying wholly inside the closed area
+    /// and touching its boundary from inside. The served alternation asks the
+    /// interiors to meet and the line's interior to reach the area's boundary
+    /// (positions 1 and 4) and says nothing about the line leaving the area,
+    /// so with the area on the left it answers true; the provider's predicate
+    /// also requires position 7 — the area's exterior against the line's
+    /// interior — and answers false. This engine serves the alternation
+    /// (ADR-0106) and the divergence stays documented (ADR-0166, ADR-0169).
+    ///
+    /// <para>The pin also states the half of it that is easy to miss: the
+    /// alternation's answer depends on the frame. With the line on the left
+    /// the mask is <c>T*T******</c>, whose position 3 (the line's exterior
+    /// against the area's interior) is <c>F</c> for this pair, so the served
+    /// answer is false there — the same pair, one answer each way. That is a
+    /// consequence of ADR-0106's frame (the feature on the left, the direction
+    /// SpatialEngine-2ve owns) rather than a second rule, and it is the
+    /// strongest argument for the reading this record keeps, so it is stated
+    /// where a client can find it.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_line_inside_an_area_that_touches_its_boundary_is_served_the_ogc_alternation()
+    {
+        // The area on the left: the served mask is T**T***** and it answers true.
+        var areaFirst = new RecordingRelations(Relations);
+        Assert.True(await MatchedAsync("area-touch-line-inside", EsriFeatureQuery.Crosses, areaFirst));
+        Assert.Equal(["T**T*****"], areaFirst.Patterns);
+
+        // The line on the left: the mask is T*T*****, whose position 3 is F
+        // for this pair, so the same pair answers false.
+        var lineFirst = new RecordingRelations(Relations);
+        Assert.False(await MatchedAsync("line-touch-area-boundary-inside", EsriFeatureQuery.Crosses, lineFirst));
+        Assert.Equal(["T*T******"], lineFirst.Patterns);
+
+        // The matrix behind both, rendered by the engine's own provider:
+        // position 4 non-empty and position 7 empty in the area's frame, and
+        // the transpose that says the same thing with the line on the left.
+        var providerArea = Provider.CreatePolygon(
+        [
+            new Nts.Coordinate(0, 0),
+            new Nts.Coordinate(10, 0),
+            new Nts.Coordinate(10, 10),
+            new Nts.Coordinate(0, 10),
+            new Nts.Coordinate(0, 0),
+        ]);
+        var providerLine = Provider.CreateLineString(
+        [
+            new Nts.Coordinate(5, 2),
+            new Nts.Coordinate(10, 5),
+            new Nts.Coordinate(5, 8),
+        ]);
+        Assert.Equal("1020F1FF2", providerArea.Relate(providerLine).ToString());
+        Assert.Equal("10F0FF212", providerLine.Relate(providerArea).ToString());
+
+        // The provider's own predicate answers false in both frames, which is
+        // the divergence ADR-0166 names and this record keeps.
+        Assert.False(providerArea.Crosses(providerLine));
+        Assert.False(providerLine.Crosses(providerArea));
+    }
+
     /// <summary>The relation face that remembers the patterns it was asked.</summary>
     private sealed class RecordingRelations(IGeometryRelations inner) : IGeometryRelations
     {
@@ -362,6 +432,8 @@ public sealed class SpatialRelationReadingTests
         "line-crossing-area" => (Line(-5, 5, 15, 5), Area()),
         "line-on-area-edge" => (Line(-5, 0, 15, 0), Area()),
         "area-around-line" => (Area(), Line(2, 2, 8, 8)),
+        "area-touch-line-inside" => (Area(), TouchingLine()),
+        "line-touch-area-boundary-inside" => (TouchingLine(), Area()),
         "area-across-line" => (Square(5, 0, 15, 10), Line(-5, 5, 15, 5)),
         "area-around-point" => (Area(), Point(5, 5)),
         "lines-crossing" => (Line(-5, 5, 15, 5), Line(5, -5, 5, 15)),
@@ -386,4 +458,13 @@ public sealed class SpatialRelationReadingTests
 
     private static LineString Line(double x1, double y1, double x2, double y2) =>
         GeometryFactory.CreateLineString([new Coordinate(x1, y1), new Coordinate(x2, y2)]);
+
+    /// <summary>
+    /// The line the divergence class is made of: it lies wholly inside the
+    /// closed unit square and touches the boundary at its own interior vertex
+    /// (10,5), so the line's interior reaches the area's boundary and never
+    /// its exterior. Matrix <c>1020F1FF2</c> with the area on the left.
+    /// </summary>
+    private static LineString TouchingLine() =>
+        GeometryFactory.CreateLineString([new Coordinate(5, 2), new Coordinate(10, 5), new Coordinate(5, 8)]);
 }
