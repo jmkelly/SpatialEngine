@@ -91,7 +91,7 @@ internal static class MapServerResources
             [.. layers.Select(Reference)],
             [],
             SupportsDynamicLayers: true,
-            SupportsTimeRelation: false,
+            SupportsTimeRelation: layers.Any(layer => layer.Dataset.TimeFields is { IsEmpty: false }),
             ExportTilesAllowed: false);
     }
 

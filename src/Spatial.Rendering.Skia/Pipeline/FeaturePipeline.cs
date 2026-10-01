@@ -36,7 +36,7 @@ internal sealed class FeaturePipeline
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var feature in batch.Features)
             {
-                if (source.Time is null || MatchesTime(feature, source.Time, description.TimeFields))
+                if (source.Time is null || MatchesTime(feature, source.Dataset, source.Time, description.TimeFields))
                 {
                     features.Add(feature);
                 }
@@ -58,11 +58,20 @@ internal sealed class FeaturePipeline
     /// path cannot drift: the rule itself lives once in
     /// <see cref="TemporalExtent"/>.
     /// </summary>
-    private static bool MatchesTime(Feature feature, MapTimeExtent time, TemporalExtentFields? fields)
+    private static bool MatchesTime(IFeature feature, string dataset, MapTimeExtent time, TemporalExtentFields? fields)
     {
         var window = TemporalExtent.FromMilliseconds(time.StartMs, time.EndMs);
-        return fields is null
-            ? TemporalExtent.MatchesAnyDate(feature, window)
-            : TemporalExtent.From(feature, fields).Overlaps(window);
+        if (fields is null)
+        {
+            if (time.Relation is not TemporalRelation.Overlaps)
+            {
+                throw SpatialException.BadArguments(
+                    $"The temporal relation '{time.Relation}' is not supported for dataset '{dataset}': it designates no start/end date field, so a feature has no temporal extent to compare the requested window against.");
+            }
+
+            return TemporalExtent.MatchesAnyDate(feature, window);
+        }
+
+        return TemporalExtent.From(feature, fields).Matches(window, time.Relation);
     }
 }

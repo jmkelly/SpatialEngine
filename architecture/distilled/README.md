@@ -258,8 +258,9 @@ date and cross-reference)
 | 0179 | The published-bundle agreement with PROJ is an **operator-run deployment exercise** — gated on a bundle in `SPATIALENGINE_GRID_DIR` and an installed PROJ, never a CI gate, and never silently absent: every run reports which bundle it covered, which it did not, and which of the two it is missing. |
 | 0180 | NAD27 is catalogued and its NADCON pair published as EPSG:1241 names it, and a grid operation now names the datum its shifts land in rather than assuming every bundle reaches WGS 84 (amends 0105, 0168). |
 | 0181 | The NADCON reader converts the container's positive-west longitudes — the header's edges and the .los half's shifts — into the datums' positive-east convention as the pair is read, so a deployed North American grid shifts a coordinate the way the file tabulates it (amends 0168). |
+| 0182 | The map root advertises `supportsTimeRelation:true` exactly when one of its layers designates the dates bounding a feature, and on such a layer export and identify serve `esriTimeRelationContains` and `esriTimeRelationWithin` as themselves — the parsed relation rides the window to the matcher instead of being discarded; a layer that designates none keeps refusing them by name (amends 0100, 0175). |
 
-167 records on disk. The full index — status, date and every
+168 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
