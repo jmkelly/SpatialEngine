@@ -107,6 +107,28 @@ public sealed class TestHostShapeTests
     }
 
     [Fact]
+    public void The_auth_endpoint_tests_share_one_host_and_the_expiry_test_has_its_own()
+    {
+        // ADR-0161's verdict on AuthEndpointTests was Split: four of its five
+        // tests share the class's configuration, and the one that injects
+        // Spatial:Auth:TokenLifetime cannot join a shared host. The split is
+        // done when the four take their host from a class fixture and the
+        // fifth is a class of its own, so both halves are named here.
+        Assert.True(
+            SharedHostPolicy.IsConverted(typeof(AuthEndpointTests)),
+            "AuthEndpointTests is not on the shared-host register, so it still boots a host per test "
+            + "for four tests that share one configuration.");
+        Assert.Null(SharedHostPolicy.WhyNotOneHostPerClass(typeof(AuthEndpointTests)));
+
+        var expiry = typeof(TestHostShapeTests).Assembly.GetTypes()
+            .SingleOrDefault(type => type.Name == "AuthTokenExpiryTests");
+        Assert.NotNull(expiry);
+        Assert.Equal(
+            SharedHostPolicy.HostVerdict.Leave,
+            SharedHostPolicy.VerdictFor(expiry!)!.Value.Verdict);
+    }
+
+    [Fact]
     public void A_class_that_constructs_its_own_factory_is_named_as_the_reason()
     {
         // The read the gate is built on, checked against a class that is
