@@ -15,6 +15,8 @@ questions that go stale between sessions:
     `bd` is where every workflow already starts;
 *   **`CHANGELOG.md`**, 1384 lines at the root, of which 1038 were an
     `## [Unreleased]` section hand-merged from merge to merge by a rule no gate
+    touched (a check and a generator now read them: `tools/changelog.py`,
+    ADR-0173)
     touched. A release artefact is not context: an agent making a change wants
     `git log` over the path it is touching, and the release checklist is the
     only thing that needs the whole history. It now lives at
@@ -35,7 +37,10 @@ stopped them landing in the first place. This is the three rules that hold:
 3.  **`<Version>` and the changelog agree.** `RELEASING.md` steps 2 and 3 are
     one edit: a `## [x.y.z]` heading above the product version is a release
     whose version was never bumped, so the tag and the built assembly disagree.
-    `## [Unreleased]` is not a release and is not compared. Versions are
+    `## [Unreleased]` is not a release and is not compared — and there is no
+    `## [Unreleased]` section any more: `tools/changelog.py --check` is the
+    check on the hand-merge, and it runs beside this one on every lane
+    (ADR-0173). Versions are
     compared as numbers, so `0.10.0` is above `0.9.0`.
 
 **This is a check the lanes call directly**, next to
