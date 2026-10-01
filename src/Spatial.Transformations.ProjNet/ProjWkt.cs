@@ -714,8 +714,8 @@ internal static class ProjWkt
     /// <term>added by g2m: the latitude of standard parallel is read as the variant A pole and scale factor, agreeing to 1e-6 m at both poles, 6,000 km offsets included; the six grids are the ones the catalogue serves (n58)</term>
     /// </item>
     /// <item>
-    /// <term>Hotine Oblique Mercator (variant A)</term><term>9812</term><term>EPSG:3078, EPSG:3375</term>
-    /// <term>left out: ProjNet applies the false offsets at the projection centre, PROJ at the natural origin (2,047 km)</term>
+    /// <term>Hotine Oblique Mercator (variant A)</term><term>9812</term><term>EPSG:3078, EPSG:29874, ESRI:102366, ESRI:102544</term>
+    /// <term>added by r4o: resolves to <c>Oblique_Mercator</c>, ProjNet's projection that applies the false offsets at the natural origin as EPSG states them, agreeing to 1e-6 m on four grids over two ellipsoids (ADR-0171); <c>Hotine_Oblique_Mercator</c> is the variant B (Snyder Alternate B) reading and is 2,047 km away</term>
     /// </item>
     /// <item>
     /// <term>Krovak</term><term>9819</term><term>EPSG:5513, EPSG:2065</term>
@@ -742,6 +742,7 @@ internal static class ProjWkt
         [PolarStereographicVariantBMethod] = "Polar_Stereographic",
         [Normalise("Hotine Oblique Mercator (variant B)")] = "Hotine_Oblique_Mercator",
         [Normalise("Hotine_Oblique_Mercator")] = "Hotine_Oblique_Mercator",
+        [Normalise("Hotine Oblique Mercator (variant A)")] = "Oblique_Mercator",
     };
 
     /// <summary>
@@ -786,16 +787,14 @@ internal static class ProjWkt
         // formulation, which has no standard parallel to read.
         [Normalise("Latitude of standard parallel")] = StandardParallelParameter,
 
-        // The oblique Mercator's own parameters, which EPSG 9815 states as
+        // The oblique Mercator's own parameters, which both variants state:
         // the azimuth of the initial line and the angle from the rectified to
-        // the skew grid. They are read because the no-rotation (variant B)
-        // form is the one ProjNet and PROJ agree on; the variant A
-        // definitions are not in the method map, so nothing that reaches
-        // here depends on the difference between the two conventions.
-        // EPSG spells parameter 8813 two ways — "Azimuth of initial line" on
-        // the Swiss grids and "Azimuth at projection centre" on the Borneo
-        // ones (EPSG:29873) — and both are the same number, so both are
-        // read; taking only one leaves the Borneo grid unreadable.
+        // the skew grid. EPSG spells parameter 8813 two ways — "Azimuth of
+        // initial line" on the Swiss grids and "Azimuth at projection centre"
+        // on the Borneo ones (EPSG:29873) — and both are the same number, so
+        // both are read; taking only one leaves the Borneo grid unreadable.
+        // The two variants differ in where the false offsets are applied and
+        // not in any of these, so the same names serve both (ADR-0171).
         [Normalise("Azimuth of initial line")] = "azimuth",
         [Normalise("Azimuth at projection centre")] = "azimuth",
         [Normalise("azimuth")] = "azimuth",

@@ -187,6 +187,28 @@ heading that is not above `<Version>`).
   vendors is not decided here: any of the six variant B polar grids reads the
   moment a row exists.
 
+- **Hotine Oblique Mercator (variant A) joins the WKT method map: a variant A
+  definition's false offsets are applied at the natural origin, as EPSG states
+  them** (ADR-0171, SpatialEngine-r4o). ProjNet's `Hotine_Oblique_Mercator`
+  applies them at the *projection centre* — Snyder's Alternate B, the EPSG
+  variant B reading — which put every variant A definition 2,047 km from where
+  PROJ puts it and out of the map as a named failure. The decision was which
+  reading the engine follows, and it is EPSG's: **ProjNet already had the
+  other convention**, under the name `Oblique_Mercator`, keyed on the same
+  9812/9815 method codes PROJ keys `+no_uoff` on. So this needed a map entry
+  and no arithmetic — no parameter is derived, translated or moved, and a
+  variant A definition's false offsets are handed on exactly as stated whether
+  the document spells them `Easting at projection centre` or `False easting`.
+  Measured against PROJ 9.8.1 on four grids over two ellipsoids (the Michigan,
+  Sarawak LSD, Oregon Coast and south-east Alaska oblique Mercators, with false
+  offsets from both-negative to 5,000 km in each axis): agreement to 2.6e-8 m,
+  forward and inverse, asserted at 1e-6 m. One of the three divergences
+  SpatialEngine-u2x.26 recorded is now repaired; Krovak's axes are the last,
+  and those are refused on their axes (ADR-0170). The ESRI WKT1 spelling of
+  variant A is still refused: it states no angle from rectified to skew grid,
+  and reading it by default would serve an unrotated grid under a skew-grid
+  definition (SpatialEngine-9r3).
+
 ### Deprecated
 
 - **`filter` (and `bbox`) on `POST /api/features/query` are deprecated**
