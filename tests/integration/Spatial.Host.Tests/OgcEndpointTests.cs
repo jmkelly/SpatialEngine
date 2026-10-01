@@ -13,7 +13,14 @@ namespace Spatial.Host.Tests;
 /// <c>ServiceExceptionReport</c>; maps that do not, or unknown names, are
 /// 404.
 /// </summary>
-public sealed class OgcEndpointTests : IDisposable
+/// <remarks>
+/// One host for the class, one map name per test (ADR-0160). A warm host boot
+/// is 0.55 s and this class used to pay it fifty-three times; the shared host
+/// is safe here because the dataset identity stayed per test, and
+/// <see cref="A_test_publishes_under_a_map_name_no_other_test_holds"/> is what
+/// says so.
+/// </remarks>
+public sealed class OgcEndpointTests : IClassFixture<OgcEndpointTests.OgcHost>
 {
     private const string Token = "test-admin-token";
 
@@ -23,25 +30,22 @@ public sealed class OgcEndpointTests : IDisposable
     private static readonly XNamespace Wms = "http://www.opengis.net/wms";
     private static readonly XNamespace Wfs = "http://www.opengis.net/wfs/2.0";
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-ogc-").FullName;
+    private readonly OgcHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
+    public OgcEndpointTests(OgcHost host) => _host = host;
 
-    private OgcFactory Factory() => new OgcFactory(Path.Combine(_directory, "maps.json"));
+    private Task PublishAsync(string name, params string[] services) =>
+        PutMapAsync(_host.Client, name, services, new[] { new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style } });
 
-    private static async Task<HttpClient> MapAsync(SpatialHostFactory factory, string name, params string[] services) =>
-        await PutMapAsync(factory, name, services, new[] { new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style } });
-
-    private static async Task<HttpClient> Map2Async(SpatialHostFactory factory, string name, params string[] services) =>
-        await PutMapAsync(factory, name, services, new[]
+    private Task Publish2Async(string name, params string[] services) =>
+        PutMapAsync(_host.Client, name, services, new[]
         {
             new { dataset = "demo.cities", layerId = 0, name = "cities", style = Style },
             new { dataset = "demo.points", layerId = 1, name = "towns", style = Style },
         });
 
-    private static async Task<HttpClient> PutMapAsync(SpatialHostFactory factory, string name, string[] services, object layers)
+    private static async Task PutMapAsync(HttpClient client, string name, string[] services, object layers)
     {
-        var client = factory.CreateClient();
         var body = JsonSerializer.Serialize(new
         {
             name,
@@ -56,7 +60,6 @@ public sealed class OgcEndpointTests : IDisposable
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
         var response = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return client;
     }
 
     private static async Task<XDocument> XmlAsync(HttpResponseMessage response)
@@ -73,12 +76,29 @@ public sealed class OgcEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task A_test_publishes_under_a_map_name_no_other_test_holds()
+    {
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+
+        // The host is the class's, so this name is the only thing keeping this
+        // test's dataset its own. Before it is published nothing in the class
+        // has published it, whatever order the tests ran in.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/maps/{world}")).StatusCode);
+
+        await PublishAsync(world, "wms");
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/maps/{world}")).StatusCode);
+    }
+
+    [Fact]
     public async Task Wms_get_capabilities_returns_the_service_document()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
-        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities");
+        var response = await client.GetAsync($"/ogc/{world}/wms?service=WMS&request=GetCapabilities");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/xml", response.Content.Headers.ContentType?.MediaType);
@@ -90,10 +110,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_capabilities_111_serves_the_legacy_dialect()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
-        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities&version=1.1.1");
+        var response = await client.GetAsync($"/ogc/{world}/wms?service=WMS&request=GetCapabilities&version=1.1.1");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/xml", response.Content.Headers.ContentType?.MediaType);
@@ -107,11 +128,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_rejects_sld_body()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&SLD_BODY=%3CStyledLayerDescriptor%2F%3E");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&SLD_BODY=%3CStyledLayerDescriptor%2F%3E");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("OperationNotSupported", await ReportCodeAsync(response));
@@ -120,13 +142,14 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_applies_high_dpi_without_changing_the_frame()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var plain = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE");
         var dense = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE&DPI=192&MAP_RESOLUTION=192&FORMAT_OPTIONS=dpi:192");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE&DPI=192&MAP_RESOLUTION=192&FORMAT_OPTIONS=dpi:192");
 
         Assert.Equal(HttpStatusCode.OK, plain.StatusCode);
         Assert.Equal(HttpStatusCode.OK, dense.StatusCode);
@@ -139,11 +162,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_renders_the_requested_bbox()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=true");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=true");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -154,13 +178,15 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_returns_text_and_json()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
         const string Base =
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76";
+            "/ogc/PLACEHOLDER/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76";
+        var url = Base.Replace("PLACEHOLDER", world);
 
-        var text = await client.GetAsync(Base + "&info_format=text/plain");
-        var json = await client.GetAsync(Base + "&info_format=application/json");
+        var text = await client.GetAsync(url + "&info_format=text/plain");
+        var json = await client.GetAsync(url + "&info_format=application/json");
 
         Assert.Equal(HttpStatusCode.OK, text.StatusCode);
         Assert.Equal("text/plain", text.Content.Headers.ContentType?.MediaType);
@@ -178,11 +204,12 @@ public sealed class OgcEndpointTests : IDisposable
     [InlineData("application/vnd.ogc.gml", "application/vnd.ogc.gml")]
     public async Task Wms_get_feature_info_serves_each_info_format(string infoFormat, string mediaType)
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format="
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format="
             + Uri.EscapeDataString(infoFormat));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -193,11 +220,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_rejects_an_unknown_info_format()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format=UnknownFormat");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format=UnknownFormat");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("InvalidFormat", await ReportCodeAsync(response));
@@ -206,13 +234,14 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_honours_feature_count()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // The MapServer trace-D shape (research/interop/wms-conformance.md
         // G8): FEATURE_COUNT travels on the identify request and caps the rows.
         var capped = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain&feature_count=5");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain&feature_count=5");
 
         Assert.Equal(HttpStatusCode.OK, capped.StatusCode);
         Assert.Contains("Amsterdam", await capped.Content.ReadAsStringAsync());
@@ -221,11 +250,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_rejects_a_bad_feature_count()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain&feature_count=abc");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain&feature_count=abc");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("InvalidParameterValue", await ReportCodeAsync(response));
@@ -234,14 +264,15 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_tolerates_the_qgis_dpi_triple()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // QGIS sends DPI + MAP_RESOLUTION + FORMAT_OPTIONS together by default
         // (dpiMode=7; research/interop/wms-conformance.md G9, trace A). The
         // service renders at its own scale today; the triple must never 400.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE&DPI=90&MAP_RESOLUTION=90&FORMAT_OPTIONS=dpi:90");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&transparent=TRUE&DPI=90&MAP_RESOLUTION=90&FORMAT_OPTIONS=dpi:90");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -250,13 +281,14 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_legend_graphic_tolerates_dpi()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // QGIS appends DPI to the layer-tree legend request (trace C); it is
         // accepted and ignored — the legend keeps its fixed frame.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.3.0&sld_version=1.1.0&request=GetLegendGraphic&format=image/png&layer=cities&style=&transparent=true&DPI=90");
+            $"/ogc/{world}/wms?service=WMS&version=1.3.0&sld_version=1.1.0&request=GetLegendGraphic&format=image/png&layer=cities&style=&transparent=true&DPI=90");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -265,13 +297,14 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_jpeg_with_transparent_stays_lenient()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // JPEG carries no alpha and QGIS never sends this combination, but a
         // client that does must get an image, never a 500.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/jpeg&transparent=TRUE");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/jpeg&transparent=TRUE");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);
@@ -280,14 +313,15 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_accepts_an_explicit_bgcolor()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // CITE basic:blue-bgcolor (research/interop/wms-conformance.md G11):
         // an explicit BGCOLOR is honoured; without one the renderer paints
         // the opaque-white default.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&bgcolor=0x0000FF");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&bgcolor=0x0000FF");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -296,14 +330,15 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_identifies_a_click_within_the_marker()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // The cities style paints an 8px circle; Amsterdam is at (4.9041, 52.3676)
         // and pixel column 49. A click six pixels east (i=55) is still inside the
         // rendered marker and must identify the city, not report an empty result.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=55&j=76&info_format=text/plain");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Amsterdam", await response.Content.ReadAsStringAsync());
@@ -312,8 +347,9 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_misses_a_click_outside_the_marker()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // The 85cabcc band: the identify tolerance is the rendered marker
         // radius (8px) plus half a pixel, i.e. 0.85 viewport units here.
@@ -321,9 +357,9 @@ public sealed class OgcEndpointTests : IDisposable
         // x=4.05, just outside the box, so the click must miss while the
         // neighbouring column 41 (x=4.15) still hits.
         var miss = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=40&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=40&j=76&info_format=text/plain");
         var hit = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=41&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=41&j=76&info_format=text/plain");
 
         Assert.Equal(HttpStatusCode.OK, miss.StatusCode);
         Assert.DoesNotContain("Amsterdam", await miss.Content.ReadAsStringAsync());
@@ -334,12 +370,13 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_epsg4326_bbox_is_latitude_first()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // minLat,minLon,maxLat,maxLon is the same viewport as CRS:84's 0,50,10,60.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=EPSG:4326&bbox=50,0,60,10&width=100&height=100&i=49&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=EPSG:4326&bbox=50,0,60,10&width=100&height=100&i=49&j=76&info_format=text/plain");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Amsterdam", await response.Content.ReadAsStringAsync());
@@ -348,11 +385,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_rejects_an_unknown_format()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=UnknownFormat");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=UnknownFormat");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("InvalidFormat", await ReportCodeAsync(response));
@@ -361,11 +399,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_rejects_a_non_numeric_pixel()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=abc&j=10&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=abc&j=10&info_format=text/plain");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("InvalidPoint", await ReportCodeAsync(response));
@@ -376,11 +415,12 @@ public sealed class OgcEndpointTests : IDisposable
     [InlineData("5,5,5,10")]
     public async Task Wms_get_map_rejects_a_degenerate_bbox(string bbox)
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            $"/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
@@ -389,10 +429,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_capabilities_advertise_a_default_style_per_layer()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
-        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities");
+        var response = await client.GetAsync($"/ogc/{world}/wms?service=WMS&request=GetCapabilities");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var document = await XmlAsync(response);
@@ -404,11 +445,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_accepts_the_advertised_default_style()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&styles=default&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&styles=default&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -417,13 +459,14 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_accepts_an_empty_styles_value()
     {
-        using var factory = Factory();
-        var client = await Map2Async(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await Publish2Async(world, "wms");
 
         // QGIS sends one empty STYLES for an all-default selection even over
         // several layers; the count is lenient but every layer still renders.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities,towns&styles=&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities,towns&styles=&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -432,11 +475,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_rejects_a_styles_count_mismatch()
     {
-        using var factory = Factory();
-        var client = await Map2Async(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await Publish2Async(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities,towns&styles=s1&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities,towns&styles=s1&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("StyleNotDefined", await ReportCodeAsync(response));
@@ -445,12 +489,13 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_inimage_returns_an_image_on_failure()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // CITE getmap:exceptions-inimage-mime and the MapServer EXCEPTIONS=INIMAGE trace.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions=INIMAGE");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions=INIMAGE");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -461,11 +506,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_inimage_accepts_the_mime_vocabulary()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions="
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions="
             + Uri.EscapeDataString("application/vnd.ogc.se_inimage"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -475,12 +521,13 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_blank_returns_a_transparent_image()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // CITE getmap:exceptions-blank-transparent.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=64&height=64&format=image/png&transparent=TRUE&exceptions=BLANK");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=64&height=64&format=image/png&transparent=TRUE&exceptions=BLANK");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -502,11 +549,12 @@ public sealed class OgcEndpointTests : IDisposable
     [InlineData("application/vnd.ogc.se_xml")]
     public async Task Wms_get_map_xml_exceptions_stay_xml(string exceptions)
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions="
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=ghost&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png&exceptions="
             + Uri.EscapeDataString(exceptions));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -516,12 +564,13 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_legend_graphic_renders_the_layer_style()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // The QGIS layer-tree request shape (research/interop/wms-conformance.md trace C).
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.3.0&sld_version=1.1.0&request=GetLegendGraphic&format=image/png&layer=cities&style=&transparent=true");
+            $"/ogc/{world}/wms?service=WMS&version=1.3.0&sld_version=1.1.0&request=GetLegendGraphic&format=image/png&layer=cities&style=&transparent=true");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -532,11 +581,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_legend_graphic_requires_a_layer()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("MissingParameterValue", await ReportCodeAsync(response));
@@ -545,11 +595,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_legend_graphic_rejects_an_unknown_layer()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=ghost&style=");
+            $"/ogc/{world}/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=ghost&style=");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("LayerNotDefined", await ReportCodeAsync(response));
@@ -558,11 +609,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_legend_graphic_rejects_an_unknown_style()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=cities&style=bogus");
+            $"/ogc/{world}/wms?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=cities&style=bogus");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("StyleNotDefined", await ReportCodeAsync(response));
@@ -571,10 +623,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_capabilities_advertise_a_legend_url_per_style()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
-        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetCapabilities");
+        var response = await client.GetAsync($"/ogc/{world}/wms?service=WMS&request=GetCapabilities");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var document = await XmlAsync(response);
@@ -590,11 +643,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_rejects_an_unknown_style()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&styles=bogus&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&styles=bogus&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("StyleNotDefined", await ReportCodeAsync(response));
@@ -603,11 +657,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_rejects_an_unknown_query_layer()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=ghost&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=ghost&crs=CRS:84&bbox=0,50,10,60&width=100&height=100&i=49&j=76&info_format=text/plain");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("LayerNotDefined", await ReportCodeAsync(response));
@@ -616,14 +671,15 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_111_epsg4326_bbox_stays_x_first()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // The same geography: 1.1.1 lon/lat via SRS versus 1.3.0 lat/lon via CRS.
         var legacy = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.1.1&request=GetMap&srs=EPSG:4326&bbox=-10,35,30,60&format=image/png&width=200&height=200&styles=&layers=cities");
+            $"/ogc/{world}/wms?service=WMS&version=1.1.1&request=GetMap&srs=EPSG:4326&bbox=-10,35,30,60&format=image/png&width=200&height=200&styles=&layers=cities");
         var current = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&version=1.3.0&request=GetMap&crs=EPSG:4326&bbox=35,-10,60,30&format=image/png&width=200&height=200&styles=&layers=cities");
+            $"/ogc/{world}/wms?service=WMS&version=1.3.0&request=GetMap&crs=EPSG:4326&bbox=35,-10,60,30&format=image/png&width=200&height=200&styles=&layers=cities");
 
         Assert.Equal(HttpStatusCode.OK, legacy.StatusCode);
         Assert.Equal(HttpStatusCode.OK, current.StatusCode);
@@ -633,11 +689,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_map_without_a_version_is_a_typed_report()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&layers=cities&crs=CRS:84&bbox=-10,35,30,60&width=200&height=200&format=image/png");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("MissingParameterValue", await ReportCodeAsync(response));
@@ -648,12 +705,13 @@ public sealed class OgcEndpointTests : IDisposable
     [InlineData("5,5,10,5")]
     public async Task Wms_get_map_rejects_an_inverted_y_bbox(string bbox)
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // CITE getmap:bbox-miny-gt-maxy / bbox-miny-eq-maxy.
         var response = await client.GetAsync(
-            $"/ogc/world/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.3.0&layers=cities&crs=CRS:84&bbox={bbox}&width=200&height=200&format=image/png");
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
@@ -662,14 +720,15 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_111_gdal_shaped_get_map_still_renders()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // The GDAL 1.1.1 KVP shape (research/interop/wms-conformance.md trace E):
         // SRS (not CRS), lon/lat bbox, trailing empty STYLES. T-031's
         // VERSION gating must keep this traffic rendering.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetMap&version=1.1.1&layers=cities&styles=&srs=EPSG:4326&bbox=-10,35,30,60&format=image/png&width=200&height=200");
+            $"/ogc/{world}/wms?service=WMS&request=GetMap&version=1.1.1&layers=cities&styles=&srs=EPSG:4326&bbox=-10,35,30,60&format=image/png&width=200&height=200");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -678,13 +737,14 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_without_a_version_keeps_the_130_reading()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         // GetMap without VERSION is MissingParameterValue, but GetFeatureInfo
         // stays lenient and reads the bbox the 1.3.0 way.
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=EPSG:4326&bbox=50,0,60,10&width=100&height=100&i=49&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=EPSG:4326&bbox=50,0,60,10&width=100&height=100&i=49&j=76&info_format=text/plain");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Amsterdam", await response.Content.ReadAsStringAsync());
@@ -693,11 +753,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_get_feature_info_rejects_a_degenerate_bbox()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.GetAsync(
-            "/ogc/world/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=10,10,5,5&width=100&height=100&i=49&j=76&info_format=text/plain");
+            $"/ogc/{world}/wms?service=WMS&request=GetFeatureInfo&query_layers=cities&crs=CRS:84&bbox=10,10,5,5&width=100&height=100&i=49&j=76&info_format=text/plain");
 
         Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("ServiceExceptionReport", (await XmlAsync(response)).Root!.Name.LocalName);
@@ -706,11 +767,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wms_accepts_a_form_post()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
         var response = await client.PostAsync(
-            "/ogc/world/wms",
+            $"/ogc/{world}/wms",
             new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["SERVICE"] = "WMS",
@@ -724,11 +786,12 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task An_unknown_map_or_disabled_service_is_a_not_found_report()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "draft");
+        var draft = _host.NextMapName("draft");
+        var client = _host.Client;
+        await PublishAsync(draft);
 
         var absent = await client.GetAsync("/ogc/absent/wms?service=WMS&request=GetCapabilities");
-        var disabled = await client.GetAsync("/ogc/draft/wms?service=WMS&request=GetCapabilities");
+        var disabled = await client.GetAsync($"/ogc/{draft}/wms?service=WMS&request=GetCapabilities");
 
         Assert.Equal(HttpStatusCode.NotFound, absent.StatusCode);
         Assert.Equal("LayerNotDefined", await ReportCodeAsync(absent));
@@ -739,10 +802,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task A_missing_parameter_is_a_typed_report()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wms");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wms");
 
-        var response = await client.GetAsync("/ogc/world/wms?service=WMS&request=GetMap&layers=cities");
+        var response = await client.GetAsync($"/ogc/{world}/wms?service=WMS&request=GetMap&layers=cities");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("MissingParameterValue", await ReportCodeAsync(response));
@@ -751,10 +815,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wfs_get_capabilities_lists_the_feature_type()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wfs");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wfs");
 
-        var response = await client.GetAsync("/ogc/world/wfs?service=WFS&request=GetCapabilities");
+        var response = await client.GetAsync($"/ogc/{world}/wfs?service=WFS&request=GetCapabilities");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var document = await XmlAsync(response);
@@ -765,10 +830,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wfs_describe_feature_type_returns_an_xsd()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wfs");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wfs");
 
-        var response = await client.GetAsync("/ogc/world/wfs?service=WFS&request=DescribeFeatureType&typeNames=cities");
+        var response = await client.GetAsync($"/ogc/{world}/wfs?service=WFS&request=DescribeFeatureType&typeNames=cities");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/xml", response.Content.Headers.ContentType?.MediaType);
@@ -780,10 +846,11 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wfs_get_feature_returns_geojson()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wfs");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wfs");
 
-        var response = await client.GetAsync("/ogc/world/wfs?service=WFS&request=GetFeature&TYPENAMES=cities&count=5&bbox=0,50,10,60");
+        var response = await client.GetAsync($"/ogc/{world}/wfs?service=WFS&request=GetFeature&TYPENAMES=cities&count=5&bbox=0,50,10,60");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/geo+json", response.Content.Headers.ContentType?.MediaType);
@@ -797,23 +864,34 @@ public sealed class OgcEndpointTests : IDisposable
     [Fact]
     public async Task Wfs_rejects_gml_output()
     {
-        using var factory = Factory();
-        var client = await MapAsync(factory, "world", "wfs");
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(world, "wfs");
 
         var response = await client.GetAsync(
-            "/ogc/world/wfs?service=WFS&request=GetFeature&typeNames=cities&outputFormat=application/gml+xml");
+            $"/ogc/{world}/wfs?service=WFS&request=GetFeature&typeNames=cities&outputFormat=application/gml+xml");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("InvalidParameterValue", await ReportCodeAsync(response));
     }
 
-    /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class OgcFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The host is the class's; the map name is the test's, issued
+    /// by <see cref="ClassHostFixture.NextMapName"/> and never reused, which is
+    /// the identity a per-test host used to provide for free.
+    /// </summary>
+    public sealed class OgcHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public OgcHost()
+            : base("spatial-ogc")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }
