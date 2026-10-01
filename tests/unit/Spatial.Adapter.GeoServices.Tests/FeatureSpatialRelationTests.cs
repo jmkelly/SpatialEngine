@@ -21,19 +21,23 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// feature-interior∩query-boundary, position 5 boundary∩boundary and
 /// position 9 exterior∩exterior; <c>F</c> is "empty" and <c>T</c>, <c>0</c>,
 /// <c>1</c> and <c>2</c> name the dimension of a point, a curve or an area
-/// (ADR-0165).
+/// (ADR-0165). The columns are the served <c>esriSpatialRel</c> verbs, which
+/// name the feature's relation to the input geometry, so <c>Contains</c> and
+/// <c>Within</c> are read in the query's frame and are the transpose of the
+/// feature-frame masks below (ADR-0171, pinned both ways in
+/// <see cref="SpatialRelDirectionTests"/>).
 ///
-/// | Query geometry | DE-9IM | Contains <c>T*****FF*</c> | Within <c>T*F**F***</c> | Touches | Overlaps | Crosses | Intersects |
+/// | Query geometry | DE-9IM | Contains <c>T*F**F***</c> | Within <c>T*****FF*</c> | Touches | Overlaps | Crosses | Intersects |
 /// | --- | --- | --- | --- | --- | --- | --- | --- |
 /// | the square itself | <c>2FFF1FFF2</c> | T | T | F | F | F | T |
-/// | square (2,2)-(4,4), inside | <c>212FF1FF2</c> | T | F | F | F | F | T |
+/// | square (2,2)-(4,4), inside | <c>212FF1FF2</c> | F | T | F | F | F | T |
 /// | square (5,5)-(15,15), overlapping | <c>212101212</c> | F | F | F | T | F | T |
-/// | square (0,0)-(4,4), sharing the corner and two edges | <c>212F11FF2</c> | T | F | F | F | F | T |
+/// | square (0,0)-(4,4), sharing the corner and two edges | <c>212F11FF2</c> | F | T | F | F | F | T |
 /// | square (0,10)-(10,20), sharing only an edge | <c>FF2F11212</c> | F | F | T | F | F | T |
 /// | line (0,5)-(20,5), crossing | <c>1F2001102</c> | F | F | F | F | T | T |
-/// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | T | F | F | F | F | T |
+/// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | F | T | F | F | F | T |
 /// | line (0,0)-(0,10), lying on the boundary | <c>FF2101FF2</c> | F | F | T | F | F | T |
-/// | point (5,5), inside | <c>0F2FF1FF2</c> | T | F | F | F | F | T |
+/// | point (5,5), inside | <c>0F2FF1FF2</c> | F | T | F | F | F | T |
 /// | point (0,5), on the boundary | <c>FF20F1FF2</c> | F | F | T | F | F | T |
 /// | point (20,20), outside | <c>FF2FF10F2</c> | F | F | F | F | F | F |
 /// | square (20,20)-(30,30), disjoint | <c>FF2FF1212</c> | F | F | F | F | F | F |
@@ -409,7 +413,7 @@ public sealed class FeatureSpatialRelationTests
         await cancelled.CancelAsync();
 
         Assert.Throws<OperationCanceledException>(() => FeatureSpatialMatcher.Matches(
-            new FeatureSpatialMatcher.MatchCandidate(query, Feature(UnitSquare()), 1, Square(0, 0, 5, 5), Services.Relations),
+            new FeatureSpatialMatcher.MatchCandidate(query, Feature(UnitSquare()), 1, Square(0, 0, 20, 20), Services.Relations),
             cancelled.Token));
     }
 
@@ -527,8 +531,8 @@ public sealed class FeatureSpatialRelationTests
         var matrix = ExactMatrix(feature, query);
         var expectations = new (string SpatialRel, bool Expected)[]
         {
-            (EsriFeatureQuery.Contains, Reads(matrix, ContainsPattern)),
-            (EsriFeatureQuery.Within, Reads(matrix, WithinPattern)),
+            (EsriFeatureQuery.Contains, Reads(matrix, WithinMask)),
+            (EsriFeatureQuery.Within, Reads(matrix, ContainsMask)),
             (EsriFeatureQuery.Touches, OgcTouchesMasks.Any(mask => Reads(matrix, mask))),
             (EsriFeatureQuery.Overlaps, ReferenceMasks(OgcOverlapsMasks, Dimension(feature), Dimension(query))
                 .Any(pattern => Reads(matrix, pattern))),
@@ -590,14 +594,17 @@ public sealed class FeatureSpatialRelationTests
     }
 
     /// <summary>
-    /// The served <c>Contains</c> and <c>Within</c> patterns, spelled out
-    /// here as the OGC states them so the cross-check above reads the served
-    /// constants' intent rather than importing them.
+    /// The OGC <c>within</c> and <c>contains</c> masks, spelled out here as the
+    /// OGC states them so the cross-check above reads the served constants'
+    /// intent rather than importing them. They are the masks in the FEATURE's
+    /// frame, which is the frame the matrix above is written in; the served
+    /// <c>Contains</c> and <c>Within</c> name the query geometry's relations to
+    /// the feature and so read each other's mask here (ADR-0171).
     /// </summary>
-    private const string ContainsPattern = "T*****FF*";
+    private const string WithinMask = "T*F**F***";
 
-    /// <summary>The <c>Within</c> reading: the mirror of <see cref="ContainsPattern"/>.</summary>
-    private const string WithinPattern = "T*F**F***";
+    /// <summary>The <c>contains</c> reading: the mirror of <see cref="WithinMask"/>.</summary>
+    private const string ContainsMask = "T*****FF*";
 
     /// <summary>
     /// The pair's exact intersection matrix, reconstructed from nine

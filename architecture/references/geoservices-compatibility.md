@@ -92,7 +92,7 @@ an operation the dispatcher does not serve only by calling it Missing.
 | `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results and is refused when the inputs resolve to different references; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged; vertices follow NTS quadrant segmentation, not Esri's |
 | `areasAndLengths` | `IGeometryMeasures.Area` + `IGeometryMeasures.Length` | **Partial** — the docs name the array `polygons` (older docs/samples `polys`); both aliases and `geometries` are accepted for the same value. `{areas, lengths}` in the units of `sr`. Planar only: `calculationType` absent or `planar` answers, and `geodesic`/`preserveShape` are refused by name (no geodesic measure verb) |
 | `lengths` | `IGeometryMeasures.Length` | **Partial** — as `areasAndLengths`, with the docs' `polylines` alias and the same planar-only `calculationType` |
-| `relation` (DE-9IM `relationParam`) | `IGeometryRelations.Relate` | **Partial** — a `relation` naming `esriSpatialRelIntersects`/`Disjoint`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`/`Equals`, a bare DE-9IM pattern, or `esriSpatialRelRelation` with a `relationParam` pattern (including the `RELATE(G1, G2, 'pattern')` spelling) is served; the dimension-dependent `esriSpatialRelTouches`/`Overlaps`/`Crosses` are served too, and `esriSpatialRelIntersects` is answered by the OGC intersect pattern union (`T********`/`*T*******`/`***T*****`/`****T****`) rather than by building the intersection (SpatialEngine-51k) — all out of the same pattern table the query path reads (ADR-0036), read as the OGC table verbatim with the feature geometry as the matrix's left operand (ADR-0106), with the left geometry in the feature's role and the right in the query's, so the two endpoints answer one way. `Contains` and `Within` read that table too, so no DE-9IM pattern is restated on this path (SpatialEngine-dih); `Overlaps` and `Crosses` are dimension-dependent here exactly as on the query path — the pattern is keyed on the pair's dimensions, with the left geometry in the feature's role. Inputs are the docs-verbatim `geometries1`/`geometries2` with `sr1`/`sr2` (one shared `sr` also accepted; differing `sr1`/`sr2` are refused) and the legacy `geometries`/`geometry` pair. One flag per `geometries1` geometry, 1 when any `geometries2` geometry relates; an unrecognised name is rejected by name. The cells the matrix reports are the provider's and are what DE-9IM means: `Relate(a,b)` and `Relate(a,b,pattern)` are one computation, a point operand contributes no boundary (a point on a line's endpoint meets it in the line's boundary row and the pair is not disjoint), and a vertex-only contact is dimension 0 in position 5 rather than the dimension 1 of an edge-sharing contact (ADR-0166). Where the served table and the reference implementation's own named predicates disagree it is on `Crosses` alone, in two measured classes: a line lying wholly inside a polygon and touching its boundary reads `true` here and `false` there — the served alternation asks that the interiors meet and that the lower-dimensional interior reach the higher-dimensional boundary, and says nothing about the line leaving the area, which the reference implementation's predicate additionally requires; that class reads `true` only in the frame where the surface is the left geometry, and `false` when the line is, so the same pair asked the other way round is not `Crosses` (ADR-0106, ADR-0166, ADR-0169) — and a pair with a `MultiPoint` on one side reads `false` here because no served mask is named for it (ADR-0106) and `true` there. Every pair either way is named in the engine's characterisation suite |
+| `relation` (DE-9IM `relationParam`) | `IGeometryRelations.Relate` | **Partial** — a `relation` naming `esriSpatialRelIntersects`/`Disjoint`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`/`Equals`, a bare DE-9IM pattern, or `esriSpatialRelRelation` with a `relationParam` pattern (including the `RELATE(G1, G2, 'pattern')` spelling) is served; the dimension-dependent `esriSpatialRelTouches`/`Overlaps`/`Crosses` are served too, and `esriSpatialRelIntersects` is answered by the OGC intersect pattern union (`T********`/`*T*******`/`***T*****`/`****T****`) rather than by building the intersection (SpatialEngine-51k) — all out of the same pattern table the query path reads (ADR-0036), read as the OGC table verbatim with the feature geometry as the matrix's left operand (ADR-0106) — with `Contains` and `Within` read in the protocol's frame, the feature's relation to the input geometry (ADR-0171) — with the left geometry in the feature's role and the right in the query's, so the two endpoints answer one way. `Contains` and `Within` read that table too, so no DE-9IM pattern is restated on this path (SpatialEngine-dih); `Overlaps` and `Crosses` are dimension-dependent here exactly as on the query path — the pattern is keyed on the pair's dimensions, with the left geometry in the feature's role. Inputs are the docs-verbatim `geometries1`/`geometries2` with `sr1`/`sr2` (one shared `sr` also accepted; differing `sr1`/`sr2` are refused) and the legacy `geometries`/`geometry` pair. One flag per `geometries1` geometry, 1 when any `geometries2` geometry relates; an unrecognised name is rejected by name. The cells the matrix reports are the provider's and are what DE-9IM means: `Relate(a,b)` and `Relate(a,b,pattern)` are one computation, a point operand contributes no boundary (a point on a line's endpoint meets it in the line's boundary row and the pair is not disjoint), and a vertex-only contact is dimension 0 in position 5 rather than the dimension 1 of an edge-sharing contact (ADR-0166). Where the served table and the reference implementation's own named predicates disagree it is on `Crosses` alone, in two measured classes: a line lying wholly inside a polygon and touching its boundary reads `true` here and `false` there — the served alternation asks that the interiors meet and that the lower-dimensional interior reach the higher-dimensional boundary, and says nothing about the line leaving the area, which the reference implementation's predicate additionally requires; that class reads `true` only in the frame where the surface is the left geometry, and `false` when the line is, so the same pair asked the other way round is not `Crosses` (ADR-0106, ADR-0166, ADR-0169) — and a pair with a `MultiPoint` on one side reads `false` here because no served mask is named for it (ADR-0106) and `true` there. Every pair either way is named in the engine's characterisation suite |
 | `labelPoints` | `IGeometryMeasures.LabelPoint` | **Partial** — one interior point per input; the array is the docs' `polygons` (`polys`) alias or `geometries`. The point is guaranteed interior, which agrees with Esri's centre for convex shapes; for a concave shape Esri's representative point may differ (out of scope, fixture delta) |
 | `distance` | `IGeometryMeasures.Distance` | **Partial** — the docs' singular `geometry1`/`geometry2` (not the `geometries1`/`geometries2` of `relation`), answered as `{distance}`: the planar minimum distance in the units of `sr`. No `unit` conversion and no geodesic measure |
 | `densify` | `IGeometryProcessing.Densify` | **Partial** — `maxSegmentLength` is required and is in the units of `sr`; every segment longer than it is subdivided. The array is `geometries`, one result per input |
@@ -145,7 +145,7 @@ dissolves the per-input buffers into one geometry.
 | Catalog (§3): folders + `services[{name,type}]` | `GET /api/catalogue`: spatial `DatasetSummary[]` | Different concept |
 | `FeatureServer` root: `layers[]`, `tables[]` (§9.0) | — | **Served** — spatial datasets under `layers`, datasets without a geometry field under `tables` (stable ids from the single id space; table metadata reports `type: Table` and supports the safe query subset) |
 | Layer metadata (§9.1): fields, `geometryType`, `objectIdField`, `drawingInfo`, `templates`, `capabilities`, relationships, `timeInfo`, `hasAttachments` | `GET /api/datasets/{id}`: fields, geometry column/SRID/type, identity columns | Partial; different JSON |
-| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served — all but the first as exact DE-9IM patterns over `IGeometryRelations.Relate` (ADR-0036), read as the OGC table verbatim with the feature geometry as the matrix's left operand — `Within` the transpose of `Contains`, `Crosses` keyed on the dimension pair, and a point never `Crosses` an area (ADR-0106) — envelope-prefiltered, with `Intersects` answered by the OGC intersect pattern union rather than by building the intersection geometry (SpatialEngine-51k), and only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate). The service-level `FeatureServer/query` (S1) fans the same subset across layers and tables with `layerDefs` (all three syntaxes) and returns one feature set, count, or id list per layer (ADR-0061); layer-only shapes (extent, distinct, statistics, unique ids) name the layer route instead |
+| `query` (§9.1.4): `objectIds`, `where`, `geometry`+`geometryType`+`spatialRel`, `outFields`, `returnGeometry`, `outSR`, `returnIdsOnly`, `resultOffset`/`resultRecordCount`, `returnCountOnly`, `returnExtentOnly`, `returnDistinctValues`, `time` | `POST /api/features/query`: `dataset`, `bbox`, `filter` | **Partial** — bbox ≈ envelope-intersects; the facade implements `where` (closed grammar, including `TIMESTAMP`/`CURRENT_TIMESTAMP ± INTERVAL` date literals), field projection, `outSR`, paging, ids/count/extent-only and distinct values, and `time` (instant or start,end extent with `null` infinity bounds, filtered against the layer's date fields and ignored when the layer has none); `EnvelopeIntersects`/`Intersects`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses` are served — all but the first as exact DE-9IM patterns over `IGeometryRelations.Relate` (ADR-0036), read as the OGC table verbatim with the feature geometry as the matrix's left operand, and with `Contains`/`Within` named in the protocol's frame — the relation of the feature to the input geometry, so the served `Contains` is the feature contained *in* the query geometry (ADR-0171) — `Within` its transpose, `Crosses` keyed on the dimension pair, and a point never `Crosses` an area (ADR-0106) — envelope-prefiltered, with `Intersects` answered by the OGC intersect pattern union rather than by building the intersection geometry (SpatialEngine-51k), and only `esriSpatialRelIndexIntersects` stays rejected (it names an index optimisation, not a predicate). The service-level `FeatureServer/query` (S1) fans the same subset across layers and tables with `layerDefs` (all three syntaxes) and returns one feature set, count, or id list per layer (ADR-0061); layer-only shapes (extent, distinct, statistics, unique ids) name the layer route instead |
 | `generateRenderer` (S4, feature-service layer) | — | **Served** — the single T-039 classifier (`MapGenerateRenderer`, ADR-0055) reused on the FeatureServer surface; byte-identical renderers on both surfaces (ADR-0061) |
 | `validateSQL` (S4, feature-service layer) | — | **Served** — server-side WHERE validation returning the S4 `isValidSQL` shape with 3001/3002/3008 codes; `expression`/`statement` validate as not-supported, never run (ADR-0061) |
 | `queryBins` / `queryTopFeatures` / `queryAnalytic` (S4) | — | Honestly rejected — mounted typed `invalid.arguments` naming the served alternative (`outStatistics`+`groupByFieldsForStatistics`; `orderByFields`+`resultRecordCount`); unadvertised (ADR-0061) |
@@ -230,7 +230,9 @@ Ordered by dependency:
    as exact DE-9IM intersection patterns over `IGeometryRelations.Relate`
    (ADR-0036) behind the query path's envelope pre-filter, read as the OGC
    table verbatim with the feature geometry as the matrix's left operand
-   (ADR-0106).
+   (ADR-0106), and in the protocol's frame for the two antisymmetric verbs:
+   `spatialRel` names the feature's relation to the input geometry
+   (ADR-0171).
 4. Array/parameter conventions and `outFields`/`returnGeometry`/`outSR`
    projection (engine query has none today).
 5. A safe `where` subset (translate to the existing parameterised filter,
@@ -385,21 +387,25 @@ Ordered by dependency:
   the OGC Simple Features patterns served verbatim, the feature geometry as
   the matrix's left operand, and the pattern keyed on the pair's dimension
   pair rather than on a dimension mask. So:
-  - `Within` is `T*F**F***`, the transpose of the served `Contains`
-    (`T*****FF*`) and therefore the same predicate in the other frame. A
-    feature straddling the query geometry's edge is not `Within` it (its
-    interior reaches the query's exterior); a feature sharing part of the
-    query's *boundary* is, because the mask excludes the feature's boundary
-    against the query's exterior and not its interior.
+  - `Contains` is `T*F**F***` and `Within` is `T*****FF*` — each the
+    other's transpose, so the pair is one predicate asked both ways, in the
+    frame the protocol asks for (ADR-0171: `spatialRel` names the feature's
+    relation to the input geometry, so `Within` is "the feature contains the
+    query geometry"). A feature straddling the query geometry's edge contains
+    neither it nor anything else (its interior reaches the query's exterior);
+    a feature sharing part of the query's *boundary* is `Within` it, because
+    the mask excludes the feature's boundary against the query's exterior and
+    not its interior.
   - `Crosses` is the dimension-pair triple above. **A point is never
     `Crosses` an area** — that dimension pair names no pattern, so none is
-    asked; a point inside an area is `Within` it and a point on its boundary
-    is `Touches`. The reading that was discarded asked `0********` there and
-    answered true, which is the case its own dimension switch existed to take
-    back.
-  - Which geometry is the left operand is not settled by that record and is
-    tracked as SpatialEngine-2ve; the reading is pinned in the feature's
-    frame, which is what the query path has always used.
+    asked; a point inside an area is `Contained` in it by the served
+    `Contains` and a point on its boundary is `Touches`. The reading that was
+    discarded asked `0********` there and answered true, which is the case its
+    own dimension switch existed to take back.
+  - The frame itself is settled by ADR-0171, measured against a live
+    FeatureServer rather than argued: see §7.1 for the observation and the
+    direction it settles. The other four verbs are closed under
+    transposition, so it moved neither.
 - Serving status update: the DE-9IM pattern grammar is one type
   (`Spatial.Core.Geometry.De9imPattern`) read on both sides of the relation
   call, and the boundary no longer recognises only part of it: `relation`
@@ -510,6 +516,45 @@ is rejected by name (never silently ignored) and named here with its reason:
 - `esriSpatialRelIndexIntersects` (T7b): names an index optimisation, not a
   predicate — rejected with `esriSpatialRelEnvelopeIntersects` as the named
   alternative.
+- The **direction** of `esriSpatialRelContains` / `esriSpatialRelWithin`
+  (SpatialEngine-2ve, ADR-0171): the one reading this surface got wrong for
+  two years, decided against a live ArcGIS Server rather than against the OGC
+  table alone. `spatialRel` is documented as *the spatial relationship to be
+  applied to the **input geometry***, so the named relation is the input
+  geometry's: `Within` is "the feature contains the input geometry" and
+  `Contains` is "the feature is contained in the input geometry" — the OGC
+  names of the *query* geometry, not of the feature. A live FeatureServer
+  agrees, and says so on both operand sizes
+  (`sampleserver6.arcgisonline.com/.../USA/MapServer/3/query`, layer
+  *Counties*, 2026-10-03, `returnCountOnly=true`):
+
+  | input geometry | `esriSpatialRelContains` | `esriSpatialRelWithin` |
+  | --- | --- | --- |
+  | point at (-71.5, 41.6), inside one county | `{"count":0}` | `{"count":1}` |
+  | ring (-71.9,41.2)-(-71.2,42.1), covering six counties | `{"count":6}` | `{"count":0}` |
+
+  The facade now answers the same way round: served `Contains` is `T*F**F***`
+  (the feature inside the query geometry, envelope-prefiltered the same way)
+  and served `Within` is `T*****FF*`, each the other's transpose. The other
+  four verbs did **not** move, and could not: OGC defines `Touches`,
+  `Overlaps`, `Crosses` and `Intersects` as symmetric and their served masks
+  are closed under transposition, so the frame cannot change a verdict of
+  any of them — which is why an inverted frame survives every test that only
+  asks symmetric verbs. Both operand orders of a nesting are pinned for every
+  served verb (`SpatialRelDirectionTests`), so the direction is a test and not
+  a reading of whichever table is in the tree. This is a **breaking change to
+  the served surface**: a client that used `esriSpatialRelWithin` to find the
+  features containing an input geometry now gets the features it contains,
+  and one that used `esriSpatialRelContains` for the common point-in-polygon
+  query starts working. The Geometry Service's `relation` operation moves
+  with it, because both surfaces resolve the verb out of the one pattern
+  table (ADR-0106 §4); the online GeometryServer's own `relate` returns an
+  empty body for every named relation, so its direction is settled by that
+  shared table rather than by observation. What this does *not* settle is
+  `Contains` against a point input geometry (strict mask or `covers` —
+  SpatialEngine-aqy) or `Crosses` for a point strictly inside an area
+  (SpatialEngine-msc); both are edge semantics, and both still want an
+  observation.
 - `quantizationParameters`/`maxAllowableOffset` (T8): no longer a non-goal.
   Both are served through `IGeometryOperations.Generalize`, the verb that
   states a deviation allowance rather than an algorithm tolerance

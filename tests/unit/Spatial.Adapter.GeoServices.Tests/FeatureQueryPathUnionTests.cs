@@ -125,12 +125,15 @@ public sealed class FeatureQueryPathUnionTests
     // The exact DE-9IM relations (SpatialEngine-u2x.2) all run over the band,
     // so a band that bypassed them would answer every one of these wrongly.
     [InlineData("esriSpatialRelIntersects", 3)]
-    [InlineData("esriSpatialRelWithin", 3)]
+    [InlineData("esriSpatialRelContains", 3)]
     [InlineData("esriSpatialRelEnvelopeIntersects", 3)]
     public async Task The_distance_band_composes_with_every_spatial_relation(string spatialRel, int expected)
     {
         // A 300 m band keeps the stations at 0, 1 and 250 m and drops the one
-        // at 400 m, clear of the boundary so Within and Intersects agree.
+        // at 400 m, clear of the boundary so Contains and Intersects agree.
+        // 'Contains' is the relation of the feature to the input geometry
+        // (ADR-0171): the stations are the features, the origin point the
+        // input geometry.
         var features = await FeaturesAsync(
             StationLayer(),
             ("geometry", "0,0"),

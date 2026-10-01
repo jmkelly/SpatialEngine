@@ -19,6 +19,30 @@ heading that is not above `<Version>`).
 
 ### Changed
 
+- **`esriSpatialRelContains` and `esriSpatialRelWithin` now mean what the
+  protocol means: the relation of the feature to the input geometry**
+  (ADR-0171, SpatialEngine-2ve). **This inverts both verbs on the served
+  surface.** `spatialRel` is documented as "the spatial relationship to be
+  applied to the input geometry", so `Within` is "the feature contains the
+  input geometry" and `Contains` is "the feature is contained in it" — the
+  OGC names of the *query* geometry, not of the feature. Measured against a
+  live FeatureServer (`sampleserver6.arcgisonline.com/.../USA/MapServer/3`,
+  layer *Counties*): a point at (-71.5, 41.6) answers `Within` → 1 and
+  `Contains` → 0, and a ring covering six counties answers `Contains` → 6 and
+  `Within` → 0. The facade now answers the same way round, on both the
+  Feature Service query path and the Geometry Service `relation` operation
+  (one shared pattern table, ADR-0106 §4). A client using
+  `esriSpatialRelWithin` to find the features containing an input geometry now
+  gets the features it contains instead; one using `esriSpatialRelContains`
+  for the common point-in-polygon query starts working. The other four served
+  verbs did not move and cannot: OGC defines `Touches`, `Overlaps`, `Crosses`
+  and `Intersects` as symmetric and their masks are closed under
+  transposition. Both operand orders of a nesting are pinned for every served
+  verb (`SpatialRelDirectionTests`), so the direction is a test and not a
+  reading of the table. Not settled here: `Contains` against a point input
+  geometry (SpatialEngine-aqy) and `Crosses` for a point strictly inside an
+  area (SpatialEngine-msc).
+
 - **The feature-query plan carries no spatial-relation term: the DE-9IM
   `spatialRel` verbs get no store pushdown face** (ADR-0167, SpatialEngine-8ab).
   ADR-0074 §8 left this open and this answers it. The rule is that a pushdown

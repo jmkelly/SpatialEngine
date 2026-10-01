@@ -127,25 +127,29 @@ internal sealed record RelationVerdicts(
 ///
 /// The feature is the unit square (0,0)-(10,10) — <c>square-equal</c> — and
 /// every row is a query geometry against it. The verdict columns are the
-/// exact DE-9IM relations the engine serves (ADR-0036): <c>Contains</c>
-/// <c>T*****FF*</c>, <c>Within</c> <c>T*F**F***</c>, <c>Touches</c> the three
-/// OGC masks as one union, <c>Overlaps</c> and <c>Crosses</c> keyed on the
-/// pair's dimension pair, and <c>Intersects</c> the four-pattern union.
+/// exact DE-9IM relations the engine serves (ADR-0036) read in the protocol's
+/// frame: <c>spatialRel</c> names the feature's relation to the input
+/// geometry, so <c>Contains</c> and <c>Within</c> are the query geometry's
+/// OGC relations to the feature and their columns are the transpose of the
+/// feature-frame reading (ADR-0171). <c>Touches</c> is the three OGC masks
+/// as one union, <c>Overlaps</c> and <c>Crosses</c> are keyed on the pair's
+/// dimension pair, and <c>Intersects</c> is the four-pattern union — all four
+/// closed under transposition, so the frame does not move them.
 ///
 /// | Query geometry | DE-9IM | Contains | Within | Touches | Overlaps | Crosses | Intersects |
 /// | --- | --- | --- | --- | --- | --- | --- | --- |
 /// | the square itself | <c>2FFF1FFF2</c> | T | T | F | F | F | T |
-/// | square (2,2)-(4,4), inside | <c>212FF1FF2</c> | T | F | F | F | F | T |
+/// | square (2,2)-(4,4), inside | <c>212FF1FF2</c> | F | T | F | F | F | T |
 /// | square (5,5)-(15,15), overlapping | <c>212101212</c> | F | F | F | T | F | T |
-/// | square (0,0)-(4,4), sharing the corner and two edges | <c>212F11FF2</c> | T | F | F | F | F | T |
+/// | square (0,0)-(4,4), sharing the corner and two edges | <c>212F11FF2</c> | F | T | F | F | F | T |
 /// | square (0,10)-(10,20), sharing only an edge | <c>FF2F11212</c> | F | F | T | F | F | T |
 /// | line (0,0)-(10,0), along the bottom edge | <c>FF2101FF2</c> | F | F | T | F | F | T |
 /// | line (-5,0)-(15,0), the edge and past both ends | <c>FF21F1102</c> | F | F | T | F | F | T |
 /// | line (5,0)-(20,0), along the edge and past it | <c>FF2101102</c> | F | F | T | F | F | T |
 /// | line (0,5)-(20,5), crossing | <c>1F2001102</c> | F | F | F | F | T | T |
-/// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | T | F | F | F | F | T |
+/// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | F | T | F | F | F | T |
 /// | line (0,0)-(0,10), lying on the boundary | <c>FF2101FF2</c> | F | F | T | F | F | T |
-/// | point (5,5), inside | <c>0F2FF1FF2</c> | T | F | F | F | F | T |
+/// | point (5,5), inside | <c>0F2FF1FF2</c> | F | T | F | F | F | T |
 /// | point (0,5), on the boundary | <c>FF20F1FF2</c> | F | F | T | F | F | T |
 /// | point (20,20), outside | <c>FF2FF10F2</c> | F | F | F | F | F | F |
 /// | square (20,20)-(30,30), disjoint | <c>FF2FF1212</c> | F | F | F | F | F | F |
@@ -209,17 +213,17 @@ internal static class SpatialRelationMatrix
         new Dictionary<string, RelationVerdicts>
         {
             ["square-equal"] = new("2FFF1FFF2", Contains: true, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
-            ["square-inner"] = new("212FF1FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["square-inner"] = new("212FF1FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
             ["square-overlap"] = new("212101212", Contains: false, Within: false, Touches: false, Overlaps: true, Crosses: false, Intersects: true),
-            ["square-corner"] = new("212F11FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["square-corner"] = new("212F11FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
             ["square-above"] = new("FF2F11212", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-edge"] = new("FF2101FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-collinear"] = new("FF21F1102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-shifted-collinear"] = new("FF2101102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-crossing"] = new("1F2001102", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: true, Intersects: true),
-            ["line-inside"] = new("102FF1FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["line-inside"] = new("102FF1FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
             ["line-on-boundary"] = new("FF2101FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
-            ["point-inside"] = new("0F2FF1FF2", Contains: true, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
+            ["point-inside"] = new("0F2FF1FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
             ["point-on-boundary"] = new("FF20F1FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["point-outside"] = new("FF2FF10F2", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: false),
             ["square-outside"] = new("FF2FF1212", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: false, Intersects: false),

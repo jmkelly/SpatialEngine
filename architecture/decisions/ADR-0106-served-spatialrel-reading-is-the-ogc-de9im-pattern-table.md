@@ -92,6 +92,13 @@ crosses and overlaps) are corrections *of* this reading, made against it.
   *direction*, feature against query or the reverse. The served path has always
   been feature-left, and this record pins the reading in that frame without
   claiming the frame is the right one (SpatialEngine-2ve).
+  > **Update (2026-10-03):** decided by ADR-0171, against a live
+  > FeatureServer rather than against the OGC table: `spatialRel` names the
+  > feature's relation to the input geometry, so the served `Contains` is
+  > `T*F**F***` and the served `Within` is `T*****FF*` — each the transpose of
+  > what this record served. The frame itself (feature on the left) stands;
+  > the two masks swap between the names, and the four symmetric verbs do not
+  > move.
 - **Whether the engine's `Relate` computes the matrix the standard means.** This
   record decides which pattern answers which verb; it does not decide that
   asking the pattern computes the matrix. That is ADR-0156's subject, and the

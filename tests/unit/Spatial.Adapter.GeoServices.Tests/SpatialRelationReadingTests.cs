@@ -27,9 +27,13 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// transpose-symmetric, so the two spellings are the same predicate.
 /// <see cref="Within_is_the_transpose_of_contains"/> is that claim as a test
 /// rather than a claim, so a later change that reads <c>Within</c> any other
-/// way fails here. The reading is pinned at the edge that matters: a feature
-/// that straddles the query geometry's edge is not <c>Within</c> it, whether
-/// the comparison is written in the feature's frame or the query's
+/// way fails here. Which of the two spellings each served name carries is
+/// ADR-0171's: <c>spatialRel</c> names the feature's relation to the input
+/// geometry, so the served <c>Within</c> is the feature-frame
+/// <c>T*****FF*</c> and the served <c>Contains</c> is <c>T*F**F***</c>. The
+/// reading is pinned at the edge that matters: a feature that straddles the
+/// query geometry's edge contains neither it nor anything else, whether the
+/// comparison is written in the feature's frame or the query's
 /// (<see cref="A_feature_straddling_the_query_edge_is_not_within"/>).</para>
 ///
 /// <para><b>Crosses.</b> The discarded implementation used the dimension-masked
@@ -62,13 +66,17 @@ public sealed class SpatialRelationReadingTests
         [new FieldDefinition("shape", AttributeKind.Geometry, nullable: true)]);
 
     /// <summary>
-    /// The two spellings of <c>Within</c>: the kept table's own pattern, and
-    /// the discarded implementation's <c>Contains</c> pattern with the operands
-    /// swapped. Equal for every pair, because a DE-9IM matrix read in the
-    /// other frame is its transpose and the pattern set is closed under
-    /// transposition. If this ever goes red, the served <c>Within</c> is no
-    /// longer the transpose of the served <c>Contains</c> and the direction
-    /// (SpatialEngine-2ve) has changed underneath it.
+    /// The two spellings of the containment pair: the OGC <c>within</c> mask in
+    /// the query's frame and the OGC <c>contains</c> mask in the feature's
+    /// frame, which are each other's transpose. Equal for every pair,
+    /// because a DE-9IM matrix read in the other frame is its transpose and
+    /// the pattern set is closed under transposition. This is a property of
+    /// the matrix, not of the direction: it holds whichever of the two the
+    /// served <c>Within</c> carries, and it held before ADR-0171 moved the
+    /// served pair to the protocol's frame. What it does *not* pin is which
+    /// name carries which mask — that is
+    /// <see cref="SpatialRelDirectionTests"/>, which asks both operand orders
+    /// of a nesting.
     /// </summary>
     [Theory]
     [InlineData("point-in-area")]
@@ -92,32 +100,36 @@ public sealed class SpatialRelationReadingTests
     }
 
     /// <summary>
-    /// The pinned <c>Within</c> reading at the query edge. The feature is the
-    /// left operand, so "within" reads as *the feature lies inside the query
-    /// geometry*:
+    /// The pinned <c>Within</c> reading at the query edge. <c>spatialRel</c>
+    /// names the feature's relation to the input geometry, so the served
+    /// <c>Within</c> reads as *the feature contains the query geometry*
+    /// (ADR-0171) — the same DE-9IM mask the OGC calls <c>contains</c>, asked
+    /// with the feature on the left:
     ///
     /// <list type="bullet">
     /// <item><description>a feature that straddles the query's edge has interior
-    /// outside the query, so it is not <c>Within</c> — position 3 (the
+    /// outside the query, so it does not <c>Within</c> it — position 3 (the
     /// feature's interior against the query's exterior) is not
     /// <c>F</c>.</description></item>
-    /// <item><description>a feature sharing part of the query's <em>boundary</em>
-    /// is <c>Within</c>: position 6 (the feature's boundary against the
-    /// query's exterior) is what has to be <c>F</c>, and a feature boundary
-    /// lying on the query's boundary is in the query's boundary, not its
-    /// exterior.</description></item>
-    /// <item><description>a feature containing the query is not
-    /// <c>Within</c> it, and a feature whose interior misses the query's
-    /// interior is not <c>Within</c> it.</description></item>
+    /// <item><description>a feature surrounding the query geometry
+    /// <c>Within</c> it, and a feature sharing part of the query's
+    /// <em>boundary</em> is <c>Within</c> it too: position 6 (the feature's
+    /// boundary against the query's exterior) is what has to be <c>F</c>, and a
+    /// feature boundary lying on the query's boundary is in the query's
+    /// boundary, not its exterior.</description></item>
+    /// <item><description>a feature inside the query geometry is not
+    /// <c>Within</c> it — that is the served <c>Contains</c> — and a feature
+    /// whose interior misses the query's interior is not <c>Within</c>
+    /// it.</description></item>
     /// </list>
     /// </summary>
     [Theory]
-    [InlineData("small-in-big", true)]
-    [InlineData("corner-in-big", true)]
-    [InlineData("point-in-area", true)]
+    [InlineData("small-in-big", false)]
+    [InlineData("corner-in-big", false)]
+    [InlineData("point-in-area", false)]
     [InlineData("equal-areas", true)]
     [InlineData("straddle", false)]
-    [InlineData("big-around-small", false)]
+    [InlineData("big-around-small", true)]
     [InlineData("point-on-area-edge", false)]
     [InlineData("point-outside", false)]
     [InlineData("line-crossing-area", false)]
@@ -133,14 +145,14 @@ public sealed class SpatialRelationReadingTests
     /// <c>Crosses</c> the line, and the same line <c>Crosses</c> the area.
     ///
     /// <list type="bullet">
-    /// <item><description>a point inside an area is <c>Within</c> it, not
-    /// <c>Crosses</c> it — a point has no extent to cross, and its own
+    /// <item><description>a point inside an area query is <c>Contained</c> in
+    /// it, not <c>Crosses</c> it — a point has no extent to cross, and its own
     /// boundary is empty, so neither crosses pattern can meet.</description></item>
     /// <item><description>a point on an area's boundary <c>Touches</c> it,
     /// and does not <c>Crosses</c> it: the interiors are disjoint.</description></item>
-    /// <item><description>a line strictly inside an area is <c>Within</c> it,
-    /// not <c>Crosses</c> it: the line's interior never reaches the area's
-    /// boundary.</description></item>
+    /// <item><description>a line strictly inside an area query is
+    /// <c>Contained</c> in it, not <c>Crosses</c> it: the line's interior
+    /// never reaches the area's boundary.</description></item>
     /// <item><description>a line that runs out of the area both ways
     /// <c>Crosses</c> it, and so does the area.</description></item>
     /// <item><description>a line lying along an area's edge <c>Touches</c> it
@@ -179,14 +191,16 @@ public sealed class SpatialRelationReadingTests
     /// <c>Crosses</c> (<c>0********</c> — the interiors meet at dimension 0)
     /// and had to carry a dimension switch to refuse the point/area case by
     /// hand. The served reading answers it out of the table, and answers
-    /// <c>Within</c> true, which is what a point inside a polygon is.
+    /// <c>Contains</c> true, which is what a point inside an input geometry is:
+    /// the served <c>Contains</c> names the input geometry's relation to the
+    /// feature (ADR-0171).
     /// </summary>
     [Fact]
-    public async Task A_point_inside_an_area_is_within_it_and_not_crosses()
+    public async Task A_point_inside_an_area_query_is_contained_by_it_and_not_crosses()
     {
         Assert.False(await MatchesAsync("point-in-area", EsriFeatureQuery.Crosses));
-        Assert.True(await MatchesAsync("point-in-area", EsriFeatureQuery.Within));
-        Assert.False(await MatchesAsync("point-in-area", EsriFeatureQuery.Contains));
+        Assert.True(await MatchesAsync("point-in-area", EsriFeatureQuery.Contains));
+        Assert.False(await MatchesAsync("point-in-area", EsriFeatureQuery.Within));
         Assert.True(await MatchesAsync("point-in-area", EsriFeatureQuery.Intersects));
     }
 
@@ -304,8 +318,9 @@ public sealed class SpatialRelationReadingTests
     /// the mask is <c>T*T******</c>, whose position 3 (the line's exterior
     /// against the area's interior) is <c>F</c> for this pair, so the served
     /// answer is false there — the same pair, one answer each way. That is a
-    /// consequence of ADR-0106's frame (the feature on the left, the direction
-    /// SpatialEngine-2ve owns) rather than a second rule, and it is the
+    /// consequence of ADR-0106's frame (the feature on the left — the
+    /// direction ADR-0171 names: <c>spatialRel</c> is the feature's relation
+    /// to the input geometry) rather than a second rule, and it is the
     /// strongest argument for the reading this record keeps, so it is stated
     /// where a client can find it.</para>
     /// </summary>

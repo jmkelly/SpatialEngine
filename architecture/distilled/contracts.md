@@ -260,7 +260,7 @@ decides each row, while a store's own spatial predicate is a different reading
 of the same OGC row — measured to agree on all 1,536 single-part fixture
 checks and to diverge on 16 multi-part ones, all `Crosses` (ADR-0166). A
 topology request's *reductions* therefore stay in the adapter too: a
-`returnCountOnly` over `esriSpatialRelWithin` counts the matches rather than
+`returnCountOnly` over `esriSpatialRelContains` counts the matches rather than
 the rows in the box, because a store-side count of the box is a different
 question. Predicate *evaluation* is implementation code and
 never enters `Spatial.Core`.

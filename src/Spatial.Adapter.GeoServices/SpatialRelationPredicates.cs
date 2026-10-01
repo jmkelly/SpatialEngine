@@ -11,14 +11,19 @@ namespace Spatial.Adapter.GeoServices;
 /// a cheap necessary-condition pre-filter, so the exact predicate runs only
 /// on candidates whose envelopes already agree.
 ///
-/// The patterns are the OGC Simple Features table read verbatim, the feature
-/// geometry as the left operand of the matrix (ADR-0106): the mask for the
-/// verb, keyed on the pair's dimension pair only for the two verbs OGC defines
-/// per dimension pair (<c>Overlaps</c>, <c>Crosses</c>), and a dimension pair
-/// OGC defines no mask over asks no pattern at all. One table serves both the
-/// Feature Service query path and the Geometry Service <c>relation</c>
-/// operation, so the two endpoints cannot answer a pair of geometries
-/// differently.
+/// The patterns are the OGC Simple Features table read verbatim (ADR-0106), in
+/// the frame the protocol asks for: <c>spatialRel</c> names the relation of
+/// the <b>feature</b> to the <b>input (query) geometry</b>, so the matrix is
+/// read with the feature on the left and the two antisymmetric verbs name the
+/// OGC relations of the <em>query</em> geometry to the feature — the query
+/// geometry's frame, not the feature's (ADR-0171). The other four are closed
+/// under transposition, so the frame does not move them. The mask for the
+/// verb is keyed on the pair's dimension pair only for the two verbs OGC
+/// defines per dimension pair (<c>Overlaps</c>, <c>Crosses</c>), and a
+/// dimension pair OGC defines no mask over asks no pattern at all. One table
+/// serves both the Feature Service query path and the Geometry Service
+/// <c>relation</c> operation, so the two endpoints cannot answer a pair of
+/// geometries differently.
 ///
 /// The matrix rows are the feature geometry's components and the columns the
 /// query geometry's, each in interior/boundary/exterior order, so
@@ -28,8 +33,8 @@ namespace Spatial.Adapter.GeoServices;
 ///
 /// | Verb | Pattern | Reading |
 /// | --- | --- | --- |
-/// | <c>Contains</c> | <c>T*****FF*</c> | the interiors meet and the query's exterior reaches neither the feature's interior nor its boundary — so a containee lying *on* the container's boundary is not contained, and a containee sharing part of the boundary still is. |
-/// | <c>Within</c> | <c>T*F**F***</c> | the mirror, evaluated with the feature in the query's frame — the transpose of <c>Contains</c>, so the two are one predicate (ADR-0106). |
+/// | <c>Contains</c> | <c>T*F**F***</c> | the FEATURE is contained in the input geometry: the interiors meet and the feature's exterior reaches neither the query's interior nor its boundary, so a feature lying *on* the query's boundary is not contained and a feature sharing part of it still is. The verb names the query geometry's OGC relation to the feature, which is the direction ArcGIS Server serves (ADR-0171). |
+/// | <c>Within</c> | <c>T*****FF*</c> | the FEATURE contains the input geometry — the transpose of <c>Contains</c> read in the query's frame, so the two are one predicate asked both ways (ADR-0106, ADR-0171). |
 /// | <c>Touches</c> | <c>FT*******</c> \| <c>F**T*****</c> \| <c>F***T****</c> | interiors disjoint, and the contact in position 2, 4 or 5: the OGC touches masks, unioned into one dimension-free predicate, so a point or line on the other geometry's boundary touches it whichever side of the matrix the boundary lands on. The union is not one nine-character pattern — <c>FT*******</c> alone drops the edge-sharing and boundary-meeting cases — so it costs up to three <see cref="IGeometryRelations.Relate"/> calls, as <c>Intersects</c> does for its four. |
 /// | <c>Overlaps</c> | <c>T*T***T**</c> (A/A), <c>1*T***T**</c> (L/L) | interiors meet, each boundary reaches the other interior, and the exteriors meet — a genuine partial overlap, never containment. The line/line reading asks the interiors to meet in dimension one, so a shared span overlaps and a crossing does not. |
 /// | <c>Crosses</c> | <c>T**T*****</c> (A/L), <c>T*T******</c> (L/A), <c>0********</c> (L/L) | interiors meet and the lower-dimensional geometry's interior reaches the higher-dimensional one's boundary; the pattern is selected by which side is lower-dimensional (position 4 or position 2). A point is never <c>Crosses</c> an area: its dimension pair names no pattern, so none is asked, and a point inside an area is <c>Within</c> it (ADR-0106). |
@@ -56,8 +61,8 @@ namespace Spatial.Adapter.GeoServices;
 /// </summary>
 internal static class SpatialRelationPredicates
 {
-    private const string ContainsPattern = "T*****FF*";
-    private const string WithinPattern = "T*F**F***";
+    private const string ContainsPattern = "T*F**F***";
+    private const string WithinPattern = "T*****FF*";
     private const string OverlapsSurfacePattern = "T*T***T**";
     private const string OverlapsCurvePattern = "1*T***T**";
     private const string CrossesFeatureSurfacePattern = "T**T*****";
@@ -99,14 +104,23 @@ internal static class SpatialRelationPredicates
         "****T****",
     ];
 
-    /// <summary>The feature geometry contains the query geometry (boundary-exact).</summary>
+    /// <summary>
+    /// The feature geometry is contained in the query geometry — the
+    /// protocol's <c>esriSpatialRelContains</c>, which names the input
+    /// geometry's relation to the feature and so is the OGC <c>within</c>
+    /// reading (ADR-0171). Boundary-exact.
+    /// </summary>
     internal static bool Contains(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
-        pair.FeatureEnvelope.Contains(pair.QueryEnvelope)
+        pair.QueryEnvelope.Contains(pair.FeatureEnvelope)
         && relations.Relate(pair.Feature, pair.Query, ContainsPattern, cancellationToken);
 
-    /// <summary>The feature geometry is within the query geometry: the transpose of <see cref="Contains"/>, spelled in the feature's frame (ADR-0106).</summary>
+    /// <summary>
+    /// The feature geometry contains the query geometry — the protocol's
+    /// <c>esriSpatialRelWithin</c>, the transpose of <see cref="Contains"/>
+    /// read in the query's frame (ADR-0106, ADR-0171).
+    /// </summary>
     internal static bool Within(GeometryPair pair, IGeometryRelations relations, CancellationToken cancellationToken) =>
-        pair.QueryEnvelope.Contains(pair.FeatureEnvelope)
+        pair.FeatureEnvelope.Contains(pair.QueryEnvelope)
         && relations.Relate(pair.Feature, pair.Query, WithinPattern, cancellationToken);
 
     /// <summary>
