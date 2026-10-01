@@ -17,6 +17,10 @@ agent would have followed anyway (`SpatialEngine-rzq`).
 - Start a store-query bead from the measured baseline, not from reading the
   adapter: the cost was materialisation, not filtering, and the ratios are in
   `eng/spike-u2x-query-baseline/RESULTS.md`. (SpatialEngine-u2x.1)
+- Do not hand-merge a changelog entry: `tools/changelog.py --range
+  <prev>..HEAD --print` renders the release section from the `Task:` trailers
+  and the commit narratives, and the bead queue is not in a CI clone but the
+  commits are (SpatialEngine-v47)
 - Re-run the lane after the rebase onto `origin/main`, not before it: a green
   lane on a stale base is green against a tree that no longer exists, and
   `AdrNumberingTests` failing alone is inherited redness.
@@ -247,9 +251,11 @@ date and cross-reference)
 | 0170 | The engine's projected axis convention does not bend: a WKT definition whose own coordinate system declares axes other than easting then northing is **refused by name, on any method**, so EPSG:5513, EPSG:2065 and the Slovak Krovak variants stay out of the catalogue rather than being served as coordinates under a description that contradicts them; Krovak's arithmetic was never the problem, and the refusal now rests on the axes rather than on the method map. |
 | 0171 | **Serve `esriSpatialRelContains` and `esriSpatialRelWithin` in the protocol's frame — the relation of the feature to the input geometry — so the served `Contains` is the feature contained in the query geometry (`T*F**F***`) and the served `Within` is the feature containing it (`T*****FF*`), the transpose of what the table served before.** ArcGIS Server is the authority and it serves it this way round: a point query geometry over a county layer answers `Within` → 1 and `Contains` → 0. The other four verbs do not move, because the OGC masks for `Touches`, `Overlaps`, `Crosses` and `Intersects` are closed under transposition. |
 | 0172 | EPSG's reading wins: a Hotine Oblique Mercator (variant A, method 9812) definition's false easting and northing are applied at the **natural origin**, and the reader resolves variant A to ProjNet's `Oblique_Mercator`, which is the projection that does that — agreeing with PROJ 9.8.1 to 1e-6 m on four grids over two ellipsoids. `Hotine_Oblique_Mercator` is the variant B (Snyder Alternate B) reading, where the centre lands on the offsets, and is 2,047 km away; nothing is derived and no number is moved. |
+| 0173 | The release sections of `docs/CHANGELOG.md` are **generated**, from the history alone, by `tools/changelog.py` — one entry per bead from its `Task:` trailer, its title, the `ADR-NNNN` ids its commits cite and the narrative they carry — and there is no `## [Unreleased]` section at all, so no merge is charged for a `--write` and no lane is red in between. Generation is a release-time step (`RELEASING.md` step 3) and nothing else; the check every lane and the CI `verify` job run is `tools/changelog.py --check`, which fails on the one thing that rotted, a hand-merged `## [Unreleased]` heading. |
 | 0174 | The ESRI WKT1 spelling of Hotine Oblique Mercator (variant A) resolves to the same projection as the EPSG spelling and reads the skew grid angle it does not state as the azimuth of the initial line, PROJ's own reading of that dialect; the refusal of a document that states the angle anyway is gated on that spelling alone, so an EPSG variant A definition is still read exactly as it states (ADR-0172). |
+| 0176 | When the generated-changelog branch (SpatialEngine-v47, ADR-0173) rebases, main's hand-merged `## [Unreleased]` section is **dropped, not carried forward** — the resolution takes the branch's `docs/CHANGELOG.md` whole and regenerates the three index files with `tools/arch-index.py --write`, because a resolution that preserved main's bullets fails the branch's own `tools/changelog.py --check`, and because the prose a human hand-wrote for past merges is rendered back from the commits at the next release. |
 
-161 records on disk. The full index — status, date and every
+163 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
