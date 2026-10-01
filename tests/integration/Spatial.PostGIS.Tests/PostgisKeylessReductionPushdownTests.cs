@@ -62,6 +62,7 @@ public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<Postgis
     [SkippableFact]
     public async Task A_count_on_a_dataset_with_no_identity_column_is_the_reference_s_count()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
 
@@ -77,6 +78,7 @@ public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<Postgis
     [SkippableFact]
     public async Task A_grouped_reduction_on_a_dataset_with_no_identity_column_is_the_reference_s_reduction()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var plan = Million with { Order = [new OrderTerm("city")] };
@@ -104,6 +106,7 @@ public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<Postgis
     [SkippableFact]
     public async Task A_distinct_set_on_a_dataset_with_no_identity_column_is_the_reference_s_set()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         // The plan's order names the requested field, so the set is total over
@@ -141,6 +144,7 @@ public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<Postgis
     [SkippableFact]
     public async Task A_plan_restricted_by_ids_on_a_dataset_with_no_identity_column_is_the_reference_s_answer()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var every = await ReadAllAsync(context, dataset);
@@ -184,6 +188,7 @@ public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<Postgis
     [SkippableFact]
     public async Task A_reduction_over_a_dataset_whose_features_cannot_be_read_is_still_answered()
     {
+        Skip.If(!_fixture.DockerAvailable, _fixture.SkipReason ?? "no reason");
         await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context, unreadableGeometry: true);
 
