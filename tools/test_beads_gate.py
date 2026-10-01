@@ -444,6 +444,44 @@ class ReclaimedLeaseTests(unittest.TestCase):
         bead = self.unleased(notes="687eb2e bd/SpatialEngine-aaa.1")
         self.assertEqual(self.findings([bead], agents=agents), [])
 
+    def test_an_epic_whose_notes_are_a_coordination_log_holds_nothing(self):
+        # The false positive, and the one that made every lane red for nine
+        # coordinator ticks (SpatialEngine-nwo): the parent epic has no
+        # worktree and never will, its long-lived notes are the swarm's log
+        # naming every agent that ever worked one of its ~70 children, and the
+        # agent named was mid-turn in the *child's* worktree holding the
+        # *child's* own lease. The parent is unleased because no agent is
+        # working the parent, which is correct queue state — a bare agent id in
+        # a bead's notes is not a hold on that bead.
+        child = self.agent(cwd="~/worktrees/bd-spatialengine-jy1")
+        epic = self.unleased(
+            bead_id="SpatialEngine-u2x",
+            notes="coordinator log: merged SpatialEngine-imz.4 agent "
+                  f"{self.AGENT_ID} workspace wks_a1b2 on SpatialEngine-jy1")
+        self.assertEqual(self.findings([epic], agents=[child]), [])
+        self.assertEqual(self.findings([epic, self.unleased()], agents=[child]),
+                         [f for f in self.findings([self.unleased()], agents=[child])])
+
+    def test_the_epic_is_still_reported_by_the_informational_read(self):
+        # parked_lease_holds() prints rather than fails, so the loose notes
+        # match is kept there: an answer a reader wants, on a path where
+        # over-reporting costs a line and not a merge.
+        idle_child = self.agent(status="idle",
+                                cwd="~/worktrees/bd-spatialengine-jy1")
+        epic = self.unleased(
+            bead_id="SpatialEngine-u2x",
+            notes=f"coordinator log: agent {self.AGENT_ID} on SpatialEngine-jy1")
+        self.assertEqual(parked_lease_holds([epic], [idle_child], []),
+                         ["SpatialEngine-u2x"])
+        self.assertEqual(self.findings([epic], agents=[idle_child]), [])
+
+    def test_a_bead_naming_its_own_worker_is_still_a_finding(self):
+        # The other side of the boundary, and the reclaim protection the check
+        # exists for: the notes name the holder, the holder is running, and it
+        # is running *this* bead's worktree. Dropping that finding would lose
+        # the protection silently.
+        self.assertTrue(self.findings([self.unleased()]))
+
     def test_the_hold_is_decided_by_the_reclaim_wrapper_not_a_second_answer(self):
         # One answer to "is this agent live", read through the tool that is the
         # documented fix, or the gate and the wrapper drift apart.

@@ -30,7 +30,8 @@ Liveness is matched two ways, both of which the runbook already produces:
     as an exact path segment, so `bd-spatialengine-u2x-2` never matches a bead
     id of `SpatialEngine-u2x.21`.
   * the agent id the coordinator recorded in the bead's notes (`agent <id>`),
-    matched against `paseo ls`. This survives the worktree being deleted.
+    which narrows the same worktree test to the agent that claimed this bead
+    rather than to any agent id the notes happen to carry.
 
 Anything else is reported, not guessed: the beads side is the authority on
 staleness, and this tool never extends a lease it did not read as expired.
@@ -182,8 +183,14 @@ def _agent_matches_id(agent, wanted):
                for _ in [0])
 
 
-def protect_reason(bead, agents, workspaces):
+def protect_reason(bead, agents, workspaces, notes_only=False):
     """Why this bead must not be reclaimed, or None when nothing holds it.
+
+    `notes_only` loosens the second arm to the notes' agent id alone, for the
+    reporting-only reader: `parked_lease_holds()` in tools/beads_gate.py prints
+    what it finds rather than failing it, so a parent epic whose notes are the
+    swarm's coordination log is worth a reader's attention there and nowhere
+    else (SpatialEngine-nwo).
 
     Raises nothing: a bead this cannot vouch for is reported as unprotected so
     a human sees it, rather than silently skipped for ever.
@@ -200,9 +207,17 @@ def protect_reason(bead, agents, workspaces):
                     f"in {_path_of(agent.get('cwd'))}")
     recorded = _notes_agent_ids(bead)
     for agent in alive:
-        if any(_agent_matches_id(agent, wanted) for wanted in recorded):
+        if not any(_agent_matches_id(agent, wanted) for wanted in recorded):
+            continue
+        # The notes name *which* agent claimed this bead; the worktree is what
+        # makes it *this* bead. A bare agent id in the notes is not a hold:
+        # a parent epic's notes are the swarm's coordination log and name every
+        # agent that ever worked one of its children, so matching the id alone
+        # fires whenever any named agent is mid-turn anywhere (SpatialEngine-nwo).
+        if notes_only or _agent_covers_cwd(agent, cwd, slug):
             return (f"paseo agent {agent.get('id')} is {agent.get('status')} "
-                    f"and this bead's notes name it as the holder")
+                    f"in {_path_of(agent.get('cwd'))}, and this bead's notes "
+                    f"name it as the holder")
     return None
 
 

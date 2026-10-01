@@ -333,7 +333,8 @@ def load_reclaim(root: Path):
     The wrapper is the documented fix for the lease race (SpatialEngine-u2x.30)
     and it already answers the only question this check has to ask — is the
     agent holding that bead's branch live? — through two inputs: the worktree
-    the agent's cwd is, and the agent id the claim recorded in the notes.
+    the agent's cwd is, narrowed to the holder by the agent id the claim
+    recorded in the notes.
     Reimplementing that here would be a second answer to one question, and the
     second answer is the one nobody runs (the reason checks 4 and 5 are read
     through arch-index rather than written again).
@@ -410,11 +411,12 @@ def _default_protect():
     return load_reclaim(Path(__file__).resolve().parent.parent).protect_reason
 
 
-def _holding(bead, agents, workspaces, status, protect):
+def _holding(bead, agents, workspaces, status, protect, notes_only=False):
     """What holds this bead, counting only agents in one `paseo` status."""
     return protect(bead,
                    [a for a in agents if str(a.get("status", "")).lower() == status],
-                   workspaces)
+                   workspaces,
+                   notes_only=notes_only)
 
 
 def reclaimed_lease_findings(beads, agents, workspaces, protect=None) -> list[str]:
@@ -456,11 +458,17 @@ def parked_lease_holds(beads, agents, workspaces, protect=None) -> list[str]:
     found — and it is not a finding because the work behind it is usually
     finished or superseded, and a lane that failed it would have been a lane
     nobody could merge from.
+
+    `notes_only` here and not in the failing read: a parent epic whose notes
+    are the swarm's coordination log names every agent that ever worked one of
+    its children, and matching that bare id is a queue-wide line of noise in a
+    gate while it is a line a reader wants here (SpatialEngine-nwo).
     """
     protect = protect or _default_protect()
     held_beads = []
     for bead in unleased_beads(beads):
-        if _holding(bead, agents, workspaces, PARKED_STATUS, protect):
+        if _holding(bead, agents, workspaces, PARKED_STATUS, protect,
+                    notes_only=True):
             held_beads.append(str(bead.get("id")))
     return held_beads
 
