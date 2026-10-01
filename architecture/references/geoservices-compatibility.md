@@ -29,9 +29,16 @@ capability-incompatible today.** The spec is a REST *serving* contract
 (GET + `f=json`, Esri JSON geometries/features, WKID spatial references);
 the engine is a typed in-process *engine* exposed over a small JSON POST
 API carrying canonical binary (`SGEOM`/`SFBAT`). Nothing here is
-unbridgeable, but today roughly **3 of 19 Geometry Service operations map
-(and one of those has conflicting semantics)** and **1 of 6 Feature
-Service operations has an analogue** (append-only, different shape).
+unbridgeable. The Geometry Service surface is no longer the 3-of-19 this
+verdict recorded at the 2026-09-11 baseline: today **14 of 19 Geometry
+Service operations map** onto an engine verb and the other five (`offset`,
+`trimExtend`, `autoComplete`, `cut`, `reshape`) are refused by name with a
+typed `invalid.arguments` — §2's table is the current per-operation answer,
+and a served operation there is *partial*, not exact, because its parameter
+shapes differ from the spec's. The Feature Service clause is still stated
+as that baseline read it: **1 of 6 Feature Service operations had an
+analogue** then (append-only, different shape), and §3 is the table to read
+for the surface served since.
 
 Two directions must not be confused:
 

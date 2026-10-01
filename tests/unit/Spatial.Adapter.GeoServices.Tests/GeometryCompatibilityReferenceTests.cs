@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,6 +46,59 @@ public sealed class GeometryCompatibilityReferenceTests
         Assert.Empty(overstated);
         Assert.Empty(understated);
     }
+
+    [Fact]
+    public void The_verdict_does_not_contradict_the_section_two_table()
+    {
+        // The Verdict is the first thing a client-parity reader reads, and it
+        // used to state "roughly 3 of 19 Geometry Service operations map" —
+        // the 2026-09-11 baseline, restated as if it were current, which the
+        // section 2 table a few lines below contradicts (SpatialEngine-qhw).
+        //
+        // A count in the Verdict is allowed to be stale only if the sentence
+        // says so: read as a live claim it has to agree with the table, which
+        // is read against the dispatch table rather than restated.
+        var rows = SectionTwoRows();
+        var served = rows.Count(row => !row.Missing);
+
+        var claims = CountClaims();
+
+        Assert.NotEmpty(claims);
+        foreach (var claim in claims)
+        {
+            var datedAsBaseline = claim.Sentence.Contains("baseline", StringComparison.OrdinalIgnoreCase);
+
+            Assert.True(
+                datedAsBaseline || (claim.Mapped == served && claim.Of == rows.Length),
+                $"The Verdict claims '{claim.Mapped} of {claim.Of} Geometry Service operations map' as a current count; "
+                + $"the section 2 table has {served} served rows of {rows.Length}. Restate the count or mark it as a dated baseline.");
+        }
+    }
+
+    private static IEnumerable<CountClaim> CountClaims()
+    {
+        var verdict = Verdict();
+
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+            // Whitespace-tolerant between the words: the claim is wrapped
+            // across lines in the prose, and reflowing it must not turn the
+            // check off.
+            verdict, @"(\d+)\s+of\s+(\d+)\s+Geometry\s+Service\s+operations", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            // The sentence carrying the count: from the previous sentence end
+            // to the next one, so a baseline marker anywhere in it counts.
+            var start = verdict.LastIndexOfAny(['.', '\n'], match.Index) + 1;
+            var tail = verdict[match.Index..].IndexOf('.');
+            var sentence = verdict[start..(tail < 0 ? verdict.Length : match.Index + tail)];
+
+            yield return new CountClaim(
+                int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture),
+                sentence);
+        }
+    }
+
+    private sealed record CountClaim(int Mapped, int Of, string Sentence);
 
     [Fact]
     public void The_section_two_preamble_points_at_the_verb_inventory()
@@ -143,6 +197,15 @@ public sealed class GeometryCompatibilityReferenceTests
     {
         var document = Read();
         var start = document.IndexOf("## 2. Geometry Service", StringComparison.Ordinal);
+        var end = document.IndexOf("\n## ", start, StringComparison.Ordinal);
+        return document[start..end];
+    }
+
+    /// <summary>The markdown of <c>## Verdict</c>, up to the next heading.</summary>
+    private static string Verdict()
+    {
+        var document = Read();
+        var start = document.IndexOf("## Verdict", StringComparison.Ordinal);
         var end = document.IndexOf("\n## ", start, StringComparison.Ordinal);
         return document[start..end];
     }
