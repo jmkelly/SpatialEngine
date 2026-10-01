@@ -535,6 +535,50 @@ class LaneExitCodeTests(unittest.TestCase):
                     f"a valueless --skip-tests was accepted:\n{result.stdout}")
                 self.assertIn("--skip-tests needs a substring", result.stderr)
 
+    def test_a_skip_tests_that_normalises_to_nothing_is_rejected(self):
+        """A value that trims and drops to no pattern at all is a valueless
+        `--skip-tests` wearing a costume, and the same rejection is owed it.
+
+        `add_skip_patterns` splits on commas, strips whitespace from each
+        element and drops the empty ones, so `" "`, `",,"` and `", ,"` all
+        arrive at the lane as a *present* argument that leaves `SKIP_PATTERNS`
+        empty: the flag is accepted, the lane runs, and nothing is dropped —
+        a parameter accepted and ignored, against the hard wall. It matters
+        because `tools/bd-merge-bead.py` passes `--skip-tests=<substring>` on
+        the merge gate, so a caller whose suite filter matched nothing gets a
+        merge that silently runs the suite it meant to leave to CI, with no
+        `skipped by --skip-tests` line to say so in the close reason.
+
+        (Before the fix the worst case was quieter than ignored: because the
+        helper's last command was the `[[ -n "$pattern" ]]` test, a value whose
+        *final* element was empty failed under `set -e` and took the whole
+        script down with it, exit 1 and no message at all.)
+        """
+        for value in (" ", ",", ", ,", ",,,"):
+            for form in (("--skip-tests=",), ("--skip-tests",)):
+                with self.subTest(value=value, form=form):
+                    result = self.lane(*form, value, "--plan",
+                                       skip_counts="")
+
+                    self.assertEqual(
+                        2, result.returncode,
+                        f"a --skip-tests of {value!r} was accepted and did "
+                        f"nothing:\n{result.stdout}\n{result.stderr}")
+                    self.assertIn("--skip-tests needs a substring",
+                                  result.stderr)
+
+    def test_a_skip_tests_whose_empty_element_is_not_last_still_runs(self):
+        """The rejection is for a value that normalises to *nothing*, not for
+        a value with a stray separator in it: `--skip-tests=,SqlServer` is one
+        pattern with an empty element before it, and it has to be honoured
+        (SpatialEngine-drb)."""
+        result = self.lane("--skip-tests=,SqlServer", "--plan", skip_counts="")
+
+        self.assertEqual(0, result.returncode,
+                         f"a separator-prefixed list was rejected:\n{result.stderr}")
+        self.assertIn("skipped by --skip-tests SqlServer", result.stdout)
+        self.assertIn(SQLSERVER_TESTS, result.stdout)
+
     def test_both_spellings_can_be_combined_and_mixed_with_a_lane(self):
         """One pass, both forms, and the lane flag in between — the arguments
         have to be read wherever they appear, not as a leading pair only.
