@@ -114,7 +114,8 @@ internal sealed class FakeCatalogue(int srid, string geometryColumn = "geometry"
             new FieldDefinition(geometryColumn, AttributeKind.Geometry),
         ]);
         return Task.FromResult(new DatasetDescription(
-            dataset, "public", dataset, geometryColumn, srid, "Point", 1, ["id"], schema) { TimeFields = timeFields });
+            dataset, "public", dataset, geometryColumn, srid, "Point", 1, ["id"], schema)
+        { TimeFields = timeFields });
     }
 
     public Task<string> CreateAsync(string dataset, FeatureBatch sample, int srid, CancellationToken cancellationToken = default) =>

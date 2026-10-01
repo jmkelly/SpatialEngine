@@ -112,7 +112,11 @@
 # Every lane also runs `tools/trailing_whitespace.py` first, which is a check
 # rather than a formatter: `dotnet format` does not enforce the
 # `trim_trailing_whitespace` the .editorconfig claims for `[*]` on a
-# comment-only line, so the lanes check the rule themselves (ADR-0143).
+# comment-only line, so the lanes check the rule themselves (ADR-0143). Next to
+# it, `tools/final_newline.py`, for the same reason at the cost of the same two
+# seconds: `dotnet format` is not on the merge path at all since ADR-0134, so a
+# C# file with no final newline would otherwise reach `main` and be found by CI
+# after the merge (ADR-0186).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -399,6 +403,42 @@ whitespace_step() {
   fi
 }
 
+# --- the final-newline check ----------------------------------------------
+# `.editorconfig` claims `insert_final_newline = true` for `[*]`, and `dotnet
+# format` does enforce it on C# source — `error FINALNEWLINE: Fix final newline.
+# Insert '\n'`, exit 2 — but since ADR-0134 the formatter is not on the merge
+# path, so nothing between an edit and `main` read that rule. Measured at
+# `origin/main` eb909b5c on 2026-10-01, a clean tree failed
+# `dotnet format SpatialEngine.slnx --verify-no-changes` with 22 violations in 16
+# files, 14 of them this rule, and the detector was CI on the far side of the
+# merge (SpatialEngine-744). So the lanes check it themselves, at the cost
+# ADR-0143 measured for its sibling: about two seconds, no .NET SDK, and it is
+# first because a violation found after an eleven-minute format step is eleven
+# minutes wasted.
+#
+# The scoping is `whitespace_step`'s exactly, and for the same two reasons: the
+# scoped lanes read the change set and the exhaustive lane reads the repository,
+# because it is the detector rather than a check on a branch; and an unreadable
+# change set falls back to the whole repository rather than to a guess. A
+# deleted file is dropped rather than reported — the change set names it, and
+# there is nothing in it to read.
+final_newline_step() {
+  local scope="${1:-changed}"
+  local files=()
+  if [[ "$scope" != "all" && "$EXHAUSTIVE" != "1" ]]; then
+    for file in "${CHANGED_FILES[@]}"; do
+      [[ -e "$file" ]] && files+=("$file")
+    done
+  fi
+  if [[ "${#files[@]}" == "0" ]]; then
+    echo "== final newline: every file the repository ships =="
+    step python3 tools/final_newline.py
+  else
+    echo "== final newline: the ${#files[@]} changed file(s) =="
+    step python3 tools/final_newline.py "${files[@]}"
+  fi
+}
+
 # --- the conflict-marker check ---------------------------------------------
 # An unresolved merge-conflict marker is not a merge failure the tooling
 # notices: git reports a clean tree, the build compiles (a marker in a
@@ -542,6 +582,7 @@ beads_gate_step() {
 if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
   whitespace_step
+  final_newline_step
   conflict_marker_step
   doc_surface_step
   package_agents_step
@@ -562,6 +603,7 @@ fi
 # --- the full lane ---------------------------------------------------------
 if [[ "$LANE" == "full" ]]; then
   whitespace_step all
+  final_newline_step all
   conflict_marker_step
   doc_surface_step
   package_agents_step
@@ -591,6 +633,7 @@ fi
 # --- the default lane: the fast build gate --------------------------------
 echo "== fast build gate (base $BASE) =="
 whitespace_step
+final_newline_step
 conflict_marker_step
 doc_surface_step
 package_agents_step

@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**170 records on disk.** `status` is the record's own word;
+**171 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -186,6 +186,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) | Serve the contains and within relations on a designated layer | accepted | 2026-10-04 | ADR-0100, ADR-0175, ADR-0081 |
 | [0183](ADR-0183-the-designation-is-authored-on-the-published-map-layer.md) | The designation is authored on the published map layer | accepted | 2026-10-05 | ADR-0175, ADR-0182, ADR-0053, ADR-0077 |
 | [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) | A reduction pushes its restriction on a dataset with no identity column | accepted | 2026-10-06 | ADR-0097, ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149 |
+| [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) | the final-newline rule is a check every lane runs | accepted | 2026-10-01 | ADR-0134, ADR-0143, ADR-0109, ADR-0146 |
 
 ## Reading order
 
@@ -223,6 +224,17 @@ out: the "Amended by" row already says everything about a pair.
 19. [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md)
 20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md)
 
+### ADR-0109: the verification lanes, implemented — 8 records, 14,700 words (7% of the corpus)
+
+1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
+2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148, 0186)*
+3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159)*
+4. [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md)
+5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
+6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
+7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
+8. [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md)
+
 ### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (6% of the corpus)
 
 1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156, 0166)*
@@ -242,16 +254,6 @@ out: the "Amended by" row already says everything about a pair.
 5. [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md)
 6. [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) *(narrowed by 0174)*
 7. [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md)
-
-### ADR-0109: the verification lanes, implemented — 7 records, 12,781 words (6% of the corpus)
-
-1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
-2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*
-3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159)*
-4. [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md)
-5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
-6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
-7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
 ### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 6 records, 11,035 words (6% of the corpus)
 
@@ -341,12 +343,12 @@ believed.
 - **0126** is amended by 0130, 0132, 0136
 - **0128** is amended by 0131
 - **0133** is amended by 0136, 0137, 0157
-- **0134** is amended by 0146, 0148
+- **0134** is amended by 0146, 0148, 0186
 - **0135** is amended by 0154
 - **0137** is amended by 0157
 - **0140** is amended by 0149
 - **0141** is amended by 0145, 0159
-- **0143** is amended by 0146
+- **0143** is amended by 0146, 0186
 - **0150** is amended by 0159
 - **0151** is amended by 0164
 - **0152** is amended by 0162

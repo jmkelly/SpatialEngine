@@ -1,6 +1,6 @@
-using Nts = NetTopologySuite.Geometries;
 using Spatial.Core.Geometry;
 using Spatial.Operations.NetTopologySuite.Adapters;
+using Nts = NetTopologySuite.Geometries;
 
 namespace Spatial.Operations.NetTopologySuite.Tests;
 
