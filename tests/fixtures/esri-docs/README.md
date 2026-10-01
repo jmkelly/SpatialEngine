@@ -116,10 +116,11 @@ read-only catalog (ingest is the write path).
 ## Honest deltas (no parity chasing in this slice)
 
 - `areasAndLengths` / `lengths`: the docs name the inputs `polygons` /
-  `polylines`; our Geometry Service requires `geometries` (like the other
-  verbs). The fixtures replay the doc-verbatim query and pin the honest
-  `400`/`invalid.arguments` reject instead of aliasing new params here.
-  Follow-up: `eng/tasks add` alias task (filed by T-064).
+  `polylines`, and since T-083 the Geometry Service accepts those aliases
+  (plus `polys`) leniently alongside `geometries`, through `InputGeometries`.
+  The fixtures replay the doc-verbatim query and pin a `200` with Esri's own
+  numbers, with `knownDeltas` saying so. `geometries` still works — the alias
+  is additive, not a rename.
 - `buffer` vertices differ from Esri (NTS quadrant segmentation vs PE);
   the replay pins structure + area/length semantics, not vertex equality.
 - `simplify` is generalization like `generalize`, parameterised by
