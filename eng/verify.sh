@@ -123,7 +123,11 @@ PLAN_ONLY=0
 # matching test projects from the scoped lane, loudly. It exists for the
 # container-backed suites, which cost minutes each on a contended box and are
 # covered by CI on `main` whatever a merge does (ADR-0134 §3): a merge that
-# skips them is a merge that leaned on CI, and the close reason says so.
+# skips them is a merge that leaned on CI, and the close reason says so. A
+# value that normalises to no pattern at all — a space, a comma, `", ,"` — is
+# rejected by name with the same `--skip-tests needs a substring` error, in
+# both spellings and in the environment variable: a flag that drops nothing is
+# a parameter accepted and ignored (SpatialEngine-drb).
 #
 # VERIFY_NO_QUEUE=1 tells the bead-protocol gate below not to read the beads
 # queue, nor the live paseo agents (the lease check's second input, ADR-0162).
@@ -148,8 +152,35 @@ add_skip_patterns() {
     pattern="$(echo "$pattern" | tr -d '[:space:]')"
     [[ -n "$pattern" ]] && SKIP_PATTERNS+=("$pattern")
   done
+  # The `[[ -n … ]]` above is the last command the loop runs when the final
+  # element is empty, so without this the *function* returns 1 and `set -e`
+  # takes the whole lane down with it — an exit 1 with no message, from a
+  # `--skip-tests=SqlServer,` (SpatialEngine-drb). The caller below judges
+  # emptiness against the count, so the helper says what it is: I appended, or
+  # I did not.
+  return 0
 }
-add_skip_patterns "${VERIFY_SKIP_TESTS:-}"
+#: A value that normalises to no pattern at all — a space, a comma, `", ,"` —
+#: is the valueless flag wearing a costume, and it is rejected *by name*, with
+#: the same error a missing value gets, rather than accepted and dropped on the
+#: floor: a parameter is either honoured or rejected, never accepted and
+#: ignored. It matters because `tools/bd-merge-bead.py` passes
+#: `--skip-tests=<substring>` on the merge gate, so a caller whose suite filter
+#: computed an empty or separator-only list — a filter that matched nothing —
+#: got a merge that silently ran the suite it meant to leave to CI, with no
+#: `skipped by --skip-tests` line in the plan or the close reason to say so
+#: (SpatialEngine-drb).
+add_skip_patterns_or_die() {
+  local value="$1" before="${#SKIP_PATTERNS[@]}"
+  add_skip_patterns "$value"
+  if [[ "${#SKIP_PATTERNS[@]}" == "$before" ]]; then
+    echo "--skip-tests needs a substring" >&2
+    exit 2
+  fi
+}
+if [[ -n "${VERIFY_SKIP_TESTS:-}" ]]; then
+  add_skip_patterns_or_die "$VERIFY_SKIP_TESTS"
+fi
 # One pass, both spellings. `--skip-tests <substring>` is the form the header
 # help, AGENTS.md, the runbook and ADR-0134 §3 all print, and
 # `--skip-tests=<substring>` is the form tools/bd-merge-bead.py passes; a
@@ -166,11 +197,7 @@ while [[ $# -gt 0 ]]; do
     --fast) LANE=default; LANE_NAMED=1; shift ;;
     --quick) LANE=default; LANE_NAMED=1; shift ;;
     --skip-tests=*)
-      [[ -n "${1#--skip-tests=}" ]] || {
-        echo "--skip-tests needs a substring" >&2
-        exit 2
-      }
-      add_skip_patterns "${1#--skip-tests=}"
+      add_skip_patterns_or_die "${1#--skip-tests=}"
       shift
       ;;
     --skip-tests)
@@ -178,7 +205,7 @@ while [[ $# -gt 0 ]]; do
         echo "--skip-tests needs a substring" >&2
         exit 2
       fi
-      add_skip_patterns "$2"
+      add_skip_patterns_or_die "$2"
       shift 2
       ;;
     --plan) PLAN_ONLY=1; shift ;;
