@@ -45,6 +45,34 @@ internal sealed class DeployedGrid : IDisposable
         return directory;
     }
 
+    /// <summary>
+    /// A directory holding a bundle under the file name the catalogue itself
+    /// publishes, so the harness and the registry agree on what "deployed"
+    /// means without the test having to spell the name out.
+    /// </summary>
+    public string Named(
+        string fileName,
+        string subGridName = "OSTN15",
+        float latitudeSeconds = 1.0f,
+        float longitudeSeconds = 2.0f)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"spatialengine-grid-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        _directories.Add(directory);
+        File.WriteAllBytes(
+            Path.Combine(directory, fileName),
+            Ntv2Fixture.ToBytes(Ntv2Fixture.Constant(
+                subGridName,
+                49.5,
+                52.5,
+                -9.0,
+                1.0,
+                0.25,
+                0.25,
+                new Ntv2Fixture.Shift(latitudeSeconds, longitudeSeconds, 0.05f, 0.05f))));
+        return directory;
+    }
+
     public void Dispose()
     {
         foreach (var directory in _directories)

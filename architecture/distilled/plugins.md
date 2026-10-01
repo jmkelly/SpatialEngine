@@ -39,6 +39,11 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
 - Key every ingested dataset (`Auto` or `Source`) and refuse `identity=none` by
   name on both ingest routes and the CLI; `CreateAsync` stays keyless on
   purpose, and each path says why they differ. (SpatialEngine-2cm)
+- Read the grid exercise's environment rather than assuming it: a bundle
+  deployed under `SPATIALENGINE_GRID_DIR` and a `cs2cs` that opened it are two
+  separate facts, and PROJ answers from a Helmert when the grid it wanted is
+  missing — so a run that prints neither is green for the wrong reason.
+  (SpatialEngine-yt2)
 <!-- orientation:end -->
 
 ## Composition model

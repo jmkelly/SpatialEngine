@@ -4,8 +4,9 @@ The PROJ.NET adapter: the CRS catalogue reader, the coordinate transforms and
 the datum-shift grid registry. Two records bind it: **ADR-0105** (grids are
 *deployed*, not embedded; the classic Helmert is the stated fallback) and
 **ADR-0087** (transformations are contract values with area of use and
-accuracy, and `findTransformations` is a ranked, area-filtered search). Route
-by task: `architecture/distilled/plugins.md`.
+accuracy, `findTransformations` a ranked, area-filtered search), with
+**ADR-0179** on the published-bundle comparison being an operator-run exercise
+rather than a CI gate. Route by task: `architecture/distilled/plugins.md`.
 
 ## Never
 
@@ -27,5 +28,8 @@ by task: `architecture/distilled/plugins.md`.
 
 - `dotnet test tests/unit/Spatial.Transformations.ProjNet.Tests` — the graph,
   the grid registry and the round-trip battery.
+- `eng/grid-agreement.sh` — the published-bundle control points: deploy a bundle
+  in `SPATIALENGINE_GRID_DIR`, install PROJ with its own copy of it, and the
+  suite compares and reports.
 - `dotnet test tests/conformance/Spatial.QueryConformance/Spatial.QueryConformance.csproj` — the query conformance cases the host and every client share.
 - `eng/verify.sh --fast` — the lane a change here is handed off on.

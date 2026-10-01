@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**164 records on disk.** `status` is the record's own word;
+**165 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -112,7 +112,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0098](ADR-0098-store-query-surface.md) | The store query surface — projection, order, paging, count, distinct and aggregate | accepted | 2026-09-28 | ADR-0074 |
 | [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) | The map root advertises the time relation the engine actually applies | accepted | 2026-09-28 | ADR-0058 |
 | [0101](ADR-0101-a-tile-without-extent-is-rejected-not-narrowed.md) | A tile with no extent on an axis is rejected, not narrowed | accepted | 2026-09-28 | ADR-0070 |
-| [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) | Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback | accepted | 2026-09-28 | ADR-0107, ADR-0168 |
+| [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) | Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback | accepted | 2026-09-28 | ADR-0107, ADR-0168, ADR-0179 |
 | [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md) | The served `spatialRel` reading is the OGC DE-9IM pattern table | accepted | 2026-10-02 | ADR-0036, ADR-0156 |
 | [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md) | The transform verb applies a deployed datum shift grid per coordinate, over the classic Helmert | accepted | 2026-09-29 | ADR-0105 |
 | [0109](ADR-0109-the-verification-lanes-implemented.md) | the verification lanes, implemented | accepted | 2026-09-30 | — |
@@ -180,6 +180,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0175](ADR-0175-a-features-temporal-extent-is-what-the-layer-designates.md) | A feature's temporal extent is what the layer designates | accepted | 2026-10-02 | ADR-0058, ADR-0100 |
 | [0177](ADR-0177-the-doc-audit-queues-defects-and-reports-the-rest-as-signals.md) | The doc audit queues defects and reports the rest as signals | accepted | 2026-10-01 | 0150 |
 | [0178](ADR-0178-land-the-feature-temporal-extent-the-way-adr-0175-decided-it.md) | Land the feature temporal extent the way ADR-0175 decided it | accepted | 2026-10-04 | ADR-0175, ADR-0100, ADR-0110 |
+| [0179](ADR-0179-the-published-bundle-agreement-with-proj-is-an-operator-run-deployment-exercise-that-reports-its-state.md) | The published-bundle agreement with PROJ is an operator-run deployment exercise that reports its state | accepted | 2026-10-02 | ADR-0105 |
 
 ## Reading order
 
@@ -254,6 +255,13 @@ out: the "Amended by" row already says everything about a pair.
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
 
+### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 4 records, 7,547 words (4% of the corpus)
+
+1. [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) *(narrowed by 0107, 0168, 0179)*
+2. [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md)
+3. [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md)
+4. [0179](ADR-0179-the-published-bundle-agreement-with-proj-is-an-operator-run-deployment-exercise-that-reports-its-state.md)
+
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
 1. [0038](ADR-0038-read-by-identity-store-capability.md) *(narrowed by 0140)*
@@ -271,12 +279,6 @@ out: the "Amended by" row already says everything about a pair.
 1. [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) *(narrowed by 0091, 0125)*
 2. [0091](ADR-0091-the-arcgis-rest-store-proves-ordinates-from-the-layer-declaration.md)
 3. [0125](ADR-0125-the-mapserver-layer-record-carries-the-same-declared-ordinates.md)
-
-### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 3 records, 5,839 words (3% of the corpus)
-
-1. [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) *(narrowed by 0107, 0168)*
-2. [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md)
-3. [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md)
 
 ### ADR-0118: the default verify lane is a build gate, and the full lane is enforced at the merge — 3 records, 5,644 words (3% of the corpus)
 
@@ -307,7 +309,7 @@ believed.
 - **0087** is amended by 0111, 0163
 - **0092** is amended by 0147
 - **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
-- **0105** is amended by 0107, 0168
+- **0105** is amended by 0107, 0168, 0179
 - **0106** is amended by 0169, 0171
 - **0109** is amended by 0134, 0141
 - **0111** is amended by 0163
