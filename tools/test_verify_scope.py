@@ -362,6 +362,37 @@ class PlanTests(unittest.TestCase):
         self.assertTrue(plan.run_python_tooling,
                         "a fallback to the full gate runs the tooling tests")
 
+    def test_a_root_editorconfig_refuses_to_scope(self):
+        """A style change for every project is as solution-wide as a props file.
+
+        `Path('.editorconfig').suffix` is `''` — pathlib reads a leading-dot
+        filename as having no extension — so the suffix arm of the
+        solution-wide test never matched this file, and the documented
+        fallback (`_is_solution_wide`) silently scoped a branch that restyles
+        the whole solution to the architecture suite alone.
+        """
+        self.repo.commit(".editorconfig", "root = true\n")
+
+        plan = self.repo.plan()
+
+        self.assertTrue(plan.exhaustive)
+        self.assertTrue(plan.run_python_tooling,
+                        "a fallback to the full gate runs the tooling tests")
+
+    def test_an_editorconfig_below_the_root_stays_scoped(self):
+        """Only the root one reaches every project, so only it is solution-wide.
+
+        A `.editorconfig` in a project directory is that project's own, and
+        conflating the two spellings would turn every project-level style
+        change into the whole-solution gate.
+        """
+        self.repo.commit("src/Spatial.Maps/.editorconfig", "root = true\n")
+
+        plan = self.repo.plan()
+
+        self.assertFalse(plan.exhaustive)
+        self.assertIn(MAPS, plan.build_projects)
+
     def test_an_unreadable_change_set_refuses_to_scope(self):
         """A base that does not resolve must not read as 'nothing changed'."""
         plan = verify_scope.plan_quick(

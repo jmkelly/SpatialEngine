@@ -71,6 +71,9 @@ SOLUTION_WIDE_FILES = frozenset({
     "SpatialEngine.slnx", "global.json", "Directory.Build.props",
     "Directory.Build.targets", "Directory.Packages.props", "NuGet.config",
     "Directory.Build.props.template",
+    # `Path('.editorconfig').suffix` is `''`, so the suffix arm below never
+    # matched this one; the root file is named here instead.
+    ".editorconfig",
 })
 
 #: Directories that never hold a project of their own.
