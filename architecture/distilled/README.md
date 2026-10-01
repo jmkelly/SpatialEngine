@@ -216,7 +216,7 @@ date and cross-reference)
 | 0163 | A registered datum operation that moves nothing is published as a candidate carrying its published accuracy, so ETRS89, NAD83 and NZGD2000 against WGS 84 answer with the operation EPSG registers rather than with nothing (amends 0087, 0111). |
 | 0164 | Discovery reads a dataset's SRID unconditionally and its geometry type only from a value the server calls valid, because `STGeometryType()` raises error 24144 on an invalid value — so the sample answers nothing for the type rather than failing the whole statement. A dataset whose sampled geometry is a self-intersecting ring is described and read today (its type falls back to the default, the answer an empty table already gives) instead of being undescribable, and one such dataset no longer fails the whole catalogue listing (amends ADR-0157, ADR-0151). |
 
-150 records on disk. The full index — status, date and every
+151 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
