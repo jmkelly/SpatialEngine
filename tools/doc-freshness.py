@@ -21,7 +21,7 @@ Nine checks, all deterministic:
   2. `front-matter`          one metadata schema, well formed, on all (shared)
   3. `adr-shape`             a record is one decision, in shape and in budget (shared)
   4. `adr-citation`          every `ADR-NNNN` cited resolves         (shared)
-  5. `digest-staleness`      a `distilled/*.md` older than a record it cites
+  5. `digest-staleness`      a digest older than the *decision* it cites
   6. `dead-doc-link`         every relative link in a doc resolves
   7. `skill-reference`       every path a SKILL.md cites resolves
   8. `context-bloat`         >200 lines in an AGENTS.md or a SKILL.md
@@ -43,6 +43,18 @@ checks need judgement to act on and their first queue is not empty, so a gate
 over them would be a red lane nobody could clear in the time they had. There
 is no `--check` mode here on purpose; `eng/verify.sh` calls this with
 `--report`, which prints the count and never fails.
+
+**A finding is a re-read, and a re-read is worth something.** Check 5 asks
+whether the *prose* of a cited record changed after the digest's last commit,
+because a digest that states a decision as it stood before the record changed
+it is the one case this corpus cannot have (the record wins on conflict, and
+the reader does not know there is a conflict). It used to compare commit
+*times*, and on this corpus that reported 99 findings of which 2 were real: a
+digest is normally written before the records it later cites, and 60 records
+gained a `summary:` line in one commit (ADR-0141/ADR-0145) and 33 more had
+their `Status:` line moved into front matter by the same one. The two defects
+that emptied the queue are in `digest_staleness` and `git_history`, and
+`tools/test_doc_freshness.py` pins both.
 
 What this is *not* claiming: a green `doc-report.json` is not a correctness
 improvement. arXiv 2607.27250 ran 288 agent runs across two frontier agents and
@@ -111,6 +123,15 @@ ROOT_DOCS = (
 #: hand-written doc that was never revised.
 GENERATED_DOCS = ("arch-index.md", "architecture/decisions/README.md")
 
+#: Documents that record what was rather than what to do, and so are not read
+#: as instructions (check 9). The changelog quotes the lanes as they were named
+#: when the entry was written — ADR-0118's `--full` is quoted in the entry that
+#: reports the merge tool running the wrong lane, and ADR-0134 has since renamed
+#: them — and a reader does not take a command out of a release note. Reading
+#: it as an agent doc reports history as a contradiction, which is the one kind
+#: of finding a queue cannot be drained of: the past does not take edits.
+HISTORY_DOCS = ("docs/CHANGELOG.md",)
+
 #: The skill trees check 6 walks. `.agents/skills` is vendored (see
 #: SKIP_DIRECTORIES), so the skill-relative resolution question is asked of the
 #: skills this repository wrote and runs.
@@ -148,10 +169,14 @@ NOT_A_PATH = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//|#|/)", re.I)
 #: Check 9, part one. A line that claims what the gate *is*: the phrase plus,
 #: somewhere on the line, the entry point it names. Conflicting Instructions ran
 #: at 28% prevalence in the wild and a model resolves a contradiction between
-#: two instructions arbitrarily rather than asking.
+#: two instructions arbitrarily rather than asking. The requirement half of the
+#: pattern (`must run`, `must pass`) is anchored to the gate noun it belongs to:
+#: "must run in a normal browser — Playwright (`eng/workbench-e2e.sh`)" is a
+#: requirement about where the workbench runs, and reading it as a claim about
+#: *the gate* puts a document in the queue for saying nothing about gates.
 GATE_CLAIM = re.compile(
     r"\b(?:the|this|that|a|our)\s+gate\b|\bgate before\b|\bbefore (?:you )?done\b"
-    r"|\bmust (?:run|pass)\b|\bhand[- ]?off step\b|\bmerge gate\b",
+    r"|\bmust (?:run|pass)\s+(?:the\s+)?gate\b|\bhand[- ]?off step\b|\bmerge gate\b",
     re.I,
 )
 #: The entry points a doc may call the gate. Listed rather than discovered, so
@@ -249,42 +274,63 @@ def _first_path(root: Path, message: str) -> str:
 # --- check 4: digest staleness ---------------------------------------------
 
 
-def git_history(root: Path, paths: list[Path]) -> dict[str, tuple[int | None, int]]:
-    """The last commit time and the commit count of each path, in one pass.
+def git_history(root: Path, paths: list[Path]) -> dict[str, tuple[int | None, int, str]]:
+    """The newest commit of each path — its time, its commit count, its hash.
 
     One `git log` per answer rather than one per file: the corpus is ~150
     documents and 150 subprocesses is a second of the audit's budget spent on
     asking git the same question. Commit time rather than filesystem mtime,
     because a checkout rewrites mtime — an mtime reading reports a fresh tree
     as stale on one host and an old one as current on another. A path with no
-    history (untracked, or a synthetic tree) is `(None, 0)`, and every check
+    history (untracked, or a synthetic tree) is `(None, 0, "")`, and every check
     that needs history skips it rather than guessing.
+
+    The hash is here because check 4 asks git a second question about the
+    *contents* at that commit, and the question is only answerable if the
+    commit this returns is the newest one rather than any one of them.
     """
-    answers: dict[str, tuple[int | None, int]] = {str(path): (None, 0) for path in paths}
+    answers: dict[str, tuple[int | None, int, str]] = {
+        str(path): (None, 0, "") for path in paths
+    }
     # Relative to the root, because that is what a git pathspec is: an absolute
     # path is not a pathspec, and `git log -- /tmp/.../AGENTS.md` matches
     # nothing and says so by finding nothing.
     names = {str(path): _git_name(root, path) for path in paths}
     output, code, _ = _git(root, [
-        "log", "--format=%x00%ct", "--name-only", "--",
+        "log", "--format=%x00%H %ct", "--name-only", "--",
     ] + [name for name in names.values()])
     if code != 0 or not output:
         return answers
-    commit_time: int | None = None
-    # `git log` is newest-first, so the LAST time a path appears in this stream
-    # is its most recent commit: the assignment overwrites as it goes and the
-    # final value is the answer.
+    commit_hash, commit_time = "", None
+    # `git log` is newest-first, so the FIRST time a path appears in this
+    # stream is its most recent commit and the LAST is the commit that created
+    # it. Taking the last one — which the assignment below did until the check
+    # that pinned it — makes every answer here the path's *first* commit, and a
+    # check that means "changed after" silently becomes "written before".
     for raw in output.splitlines():
         if raw.startswith("\x00"):
+            fields = raw[1:].split()
+            commit_hash = fields[0] if fields else ""
             try:
-                commit_time = int(raw[1:])
-            except ValueError:  # a commit with no resolvable date
+                commit_time = int(fields[1])
+            except (IndexError, ValueError):  # a commit with no resolvable date
                 commit_time = None
             continue
         if raw in names.values():
             for key, name in names.items():
-                if name == raw:
-                    answers[key] = (commit_time, answers[key][1] + 1)
+                if name != raw:
+                    continue
+                seen_time, seen_count, seen_hash = answers[key]
+                # Every appearance counts — the count is how many commits
+                # touched the path, and skipping the older ones would report
+                # every revised document as written once and never revised.
+                # The time and the hash are the *newest* commit's, so they are
+                # written once, on the first appearance.
+                answers[key] = (
+                    commit_time if seen_count == 0 else seen_time,
+                    seen_count + 1,
+                    seen_hash or commit_hash,
+                )
     return answers
 
 
@@ -324,6 +370,26 @@ def digest_staleness(root: Path, times: dict | None = None) -> list[dict]:
     summarizes is a digest stating a superseded decision as a live one, which is
     the confidently-wrong case again — the record wins on conflict, and the
     reader does not know there is a conflict.
+
+    **Staleness is the record's decision changing, not its file changing.** The
+    question is therefore asked of the *prose*: the record's body as it stood
+    at the digest's last commit, against the body now. The two things that
+    differ and are not a changed decision are both answered by asking it that
+    way rather than by comparing commit times:
+
+    * a record's front matter is metadata *about* the decision — `summary:`
+      (ADR-0141/ADR-0145 moved the register's hand-enriched prose into it, so
+      one commit gave 60 records a new line), `amended-by:`, `date:`. A digest
+      that states the decision correctly is not stale because a metadata line
+      moved;
+    * a digest is normally *written before* the records it later cites — it is
+      re-committed to mention a record that did not exist when it was first
+      written, which is what a routing layer is for. Comparing when each file
+      was *created* reports that ordinary case on every citation.
+
+    Where the history cannot be read (an untracked tree, a synthetic tree in a
+    test), the commit-time comparison is the fallback and it stands: an
+    unreadable answer is not a clean bill of health.
     """
     findings: list[dict] = []
     digests = sorted((root / "architecture" / "distilled").glob("*.md"))
@@ -331,13 +397,17 @@ def digest_staleness(root: Path, times: dict | None = None) -> list[dict]:
         return findings
     decisions = {path.name: path for path in (root / "architecture" / "decisions").glob("ADR-*.md")}
     needed = list(digests) + list(decisions.values())
-    resolved = commit_times(root, needed)
+    history = git_history(root, needed)
+    resolved = {key: value[0] for key, value in history.items()}
     resolved.update(as_absolute(root, times))
-    pairs: dict[tuple[str, str], list[int]] = {}
+    commits = {key: value[2] for key, value in history.items()}
+
+    # (digest, record, lines citing it), and the body each cited record had at
+    # the commit that last touched the digest.
+    pairs: dict[tuple[Path, Path], list[int]] = {}
+    wanted: list[str] = []
     for digest in digests:
-        digest_time = resolved.get(str(digest))
-        if digest_time is None:
-            continue
+        digest_commit = commits.get(str(digest), "")
         try:
             lines = digest.read_text(encoding="utf-8").splitlines()
         except (OSError, UnicodeDecodeError):
@@ -357,31 +427,144 @@ def digest_staleness(root: Path, times: dict | None = None) -> list[dict]:
                 )
                 if record is None:
                     continue  # check 3's finding, not this one
-                record_time = resolved.get(str(record))
-                if record_time is None or record_time <= digest_time:
-                    continue
-                # One finding per (digest, record), not per line: a digest that
-                # cites a record on 67 lines has one thing to re-read, and 67
-                # rows of it would bury the seven that are real.
-                pairs.setdefault((str(digest.relative_to(root)), cited), []).append(
-                    number
-                )
+                pairs.setdefault((digest, record), []).append(number)
+                if digest_commit:
+                    wanted.append(
+                        f"{digest_commit}:{_git_name(root, record)}"
+                    )
+    bodies = _git_bodies(root, wanted)
 
-    for (relative, cited), lines in sorted(pairs.items()):
+    for (digest, record), lines in sorted(pairs.items(), key=lambda item: str(item[0])):
+        digest_commit = commits.get(str(digest), "")
+        cited = record.name.split("-", 2)[1]
+        before = bodies.get(f"{digest_commit}:{_git_name(root, record)}")
+        if before is not None:
+            try:
+                now = record.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if _record_body(before) == _record_body(now):
+                continue
+        else:
+            # No prose to compare: the record did not exist at the digest's
+            # last commit, or the tree has no history to read. The latter is
+            # the case a test injects commit times for, and it answers on the
+            # times rather than passing in silence.
+            digest_time = resolved.get(str(digest))
+            record_time = resolved.get(str(record))
+            if digest_time is None or record_time is None or record_time <= digest_time:
+                continue
         repeats = (
             f" (and {len(lines) - 1} more line(s) citing it)" if len(lines) > 1 else ""
         )
-        record = next(
-            (name for name in decisions if name.startswith(f"ADR-{cited}-")), ""
-        )
         findings.append(finding(
-            "digest-staleness", relative, lines[0],
-            f"this digest's last commit predates ADR-{cited} ({record}), so it "
-            f"states the decision as it stood before that record changed"
-            f"{repeats}; re-read the record and restate the digest",
+            "digest-staleness", str(digest.relative_to(root)), lines[0],
+            f"the decision in ADR-{cited} ({record.name}) changed after this "
+            f"digest's last commit, so the digest states it as it stood before "
+            f"that change{repeats}; re-read the record and restate the digest",
             "medium",
         ))
     return findings
+
+
+def _record_body(text: str) -> str:
+    """A record's prose: what a digest restates, and nothing else.
+
+    The front matter is a schema `tools/arch-index.py` gates on, and it
+    describes the decision (its status, its date, the summary the register
+    renders, the record that amends it). A digest states the decision, so a
+    change to either half of the record is one question: did the prose move.
+
+    The schema keys are also dropped where they appear as *prose*, because
+    ADR-0141's migration moved `Status: Accepted` out of 33 record bodies and
+    into front matter, and a digest citing one of those records had not been
+    restated by that migration. Whitespace runs are dropped for the same
+    reason: they are not prose, and a diff that deletes one blank line is not a
+    decision that changed. The key list is read out of `arch-index.py` rather
+    than re-declared here, so there is one schema.
+    """
+    lines = text.splitlines()
+    if lines and lines[0].strip() == "---":
+        for index, line in enumerate(lines[1:], start=1):
+            if line.strip() in ("---", "..."):
+                lines = lines[index + 1:]
+                break
+    kept: list[str] = []
+    for line in lines:
+        if _METADATA_LINE.match(line):
+            continue
+        if any(pattern.search(line) for pattern in arch_index.RETIRED_STATUS_PATTERNS):
+            continue
+        kept.append(line.rstrip())
+    collapsed: list[str] = []
+    for line in kept:
+        if not line and (not collapsed or not collapsed[-1]):
+            continue
+        collapsed.append(line)
+    while collapsed and not collapsed[-1]:
+        collapsed.pop()
+    return "\n".join(collapsed)
+
+
+#: A record's metadata key at the head of a line, in the front-matter spelling
+#: or the retired in-body one (`Status: Accepted`).
+_METADATA_LINE = re.compile(
+    r"^\s*(?:%s)\s*:" % "|".join(re.escape(field) for field in arch_index.FIELDS),
+    re.I,
+)
+
+
+def _git_bodies(root: Path, specs: list[str]) -> dict[str, str | None]:
+    """The contents of `<commit>:<path>` for each spec, in one `cat-file`.
+
+    One process for the whole audit: a subprocess per cited record is a hundred
+    of them on a tree this size, and `cat-file --batch` reads a list of them
+    from stdin. A spec git cannot resolve is `None` — the record did not exist
+    at that commit — which the caller reads as "nothing to compare".
+
+    `git cat-file --batch` answers in the order it was asked, naming a found object
+    by its own hash and an absent one as `<spec> missing`, so the answers are
+    read positionally against the list that was written — the list as written,
+    duplicates and all. Deduplicating it first is the one mistake that makes
+    this silently wrong: git answers the specs it was given, one line each, and
+    walking a shorter list against them pairs every answer with somebody else's
+    spec, which reads as "this record had no history" on half the corpus.
+
+    The stream is bytes, and the sizes in it are byte counts. Decoding first and
+    indexing the text is the same mistake with a different symptom: one em dash
+    in a record's prose puts every later answer a character out, and the parser
+    goes on finding headers inside record bodies.
+    """
+    wanted = list(specs)
+    if not wanted:
+        return {}
+    try:
+        completed = subprocess.run(
+            ["git", "cat-file", "--batch"], cwd=root,
+            input=("\n".join(wanted) + "\n").encode("utf-8"),
+            capture_output=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    bodies: dict[str, str | None] = {spec: None for spec in wanted}
+    stream, position, answered = completed.stdout, 0, 0
+    while position < len(stream) and answered < len(wanted):
+        newline = stream.find(b"\n", position)
+        if newline < 0:
+            break
+        header = stream[position:newline].decode("utf-8", "replace").split()
+        position = newline + 1
+        spec = wanted[answered]
+        answered += 1
+        if len(header) < 3 or header[1] == "missing":
+            continue  # the object is not in this tree: nothing to compare
+        try:
+            size = int(header[2])
+        except ValueError:
+            continue
+        bodies[spec] = stream[position:position + size].decode("utf-8", "replace")
+        position += size + 1  # the blob, then the newline git writes after it
+    return bodies
 
 
 # --- check 5: dead relative links between docs ------------------------------
@@ -630,7 +813,7 @@ def instruction_conflict(root: Path) -> list[dict]:
             continue
         relative = str(path.relative_to(root))
         for number, line in enumerate(lines, start=1):
-            if _is_generated_line(path, line):
+            if _is_generated_line(path, number):
                 continue
             if not GATE_CLAIM.search(line):
                 continue
@@ -669,7 +852,7 @@ def instruction_conflict(root: Path) -> list[dict]:
             continue
         relative = str(path.relative_to(root))
         for number, line in enumerate(lines, start=1):
-            if _is_generated_line(path, line):
+            if _is_generated_line(path, number):
                 continue
             for pattern, gate in LINT_WALLS:
                 if not pattern.search(line):
@@ -692,10 +875,13 @@ def agent_docs(root: Path) -> list[Path]:
     states a wall is *quoting* the decision behind the wall, not keeping a
     second copy of a gate, so check 9 does not read it. Everything a reader is
     actually pointed at — the digests, README.md, the skills, AGENTS.md — is.
+    A release note is not in that set either (HISTORY_DOCS): it is what the
+    lanes were called, not what to run.
     """
     return [
         path for path in iter_doc_files(root)
         if "decisions" not in Path(path).parts
+        and str(path.relative_to(root)) not in HISTORY_DOCS
     ]
 
 
@@ -756,7 +942,7 @@ CHECKS = (
     ("front-matter", "one metadata schema, well formed, on every record", "high", True),
     ("adr-shape", "a record is one decision: closed sections, in order, in budget", "high", True),
     ("adr-citation", "every `ADR-NNNN` cited resolves to a record", "high", True),
-    ("digest-staleness", "a distilled digest is not older than a record it cites", "medium", False),
+    ("digest-staleness", "a digest states the decision as it stands now", "medium", False),
     ("dead-doc-link", "every relative link between docs resolves", "medium", False),
     ("skill-reference", "every path a SKILL.md cites resolves", "high", False),
     ("context-bloat", f"an instruction file is at most {BLOAT_CEILING} lines", "medium", False),

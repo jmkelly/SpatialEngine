@@ -1,5 +1,15 @@
 # SpatialEngine-u2x.1 measurement spike — feature query baseline
 
+> **A baseline, measured 2026-09-28, not a description of today.** The store
+> faces this harness measured as absent have since landed — the query plan
+> (ADR-0074), pushdown of identity and literals (ADR-0097), the store's own
+> aggregates (ADR-0115), paged store reads (ADR-0116) and the reduction's group
+> and having (ADR-0128) — so path D below is no longer an emulation of
+> something unreachable, and "the production path today" in the table is the
+> path as it stood on the day of the run. What is still current is the
+> measurement: the numbers in [`RESULTS.md`](RESULTS.md) are what ADR-0092
+> and ADR-0143 cite, and the harness still runs against the same snapshot.
+
 **The numbers this spike produced are in [`RESULTS.md`](RESULTS.md)**, with the
 raw harness output under [`results/`](results).
 
@@ -18,10 +28,10 @@ uses) and reports, per path:
 
 | # | Path | What it does |
 |---|------|--------------|
-| A | `ScanAsync` + in-adapter filter | the production path today: `FeatureSpatialMatcher.MatchAsync` materialises every row and filters in the adapter, then `FeatureOrdering` / `FeaturePaging` / `FeatureStatisticsEngine` run over the matched set |
+| A | `ScanAsync` + in-adapter filter | the production path **as measured**: `FeatureSpatialMatcher.MatchAsync` materialises every row and filters in the adapter, then `FeatureOrdering` / `FeaturePaging` / `FeatureStatisticsEngine` run over the matched set |
 | B | `IFeatureStore.QueryAsync` (bbox + filter pushdown) | the same request with the predicate pushed into the store. **This is what the store can do today**: it filters, but `PostgisFeatures.ReadBatchesAsync` has no row cap or cursor, so every *matching* row is still materialised |
 | C | `IFeatureLookup.GetAsync` (by identity) | the per-feature read path: resolve a page of 25 by id instead of scanning |
-| D | emulated full pushdown | the **ceiling**, not reachable today: predicate, ordering and `offset`/`limit` all applied in the store, so only the page (or the group rows, or the count) is materialised. `IFeatureStore` has no ordering/limit/projection/aggregation face, which is what `SpatialEngine-u2x.9` proposes |
+| D | emulated full pushdown | the **ceiling** as measured then: predicate, ordering and `offset`/`limit` all applied in the store, so only the page (or the group rows, or the count) is materialised. `IFeatureStore` had no ordering/limit/projection/aggregation face, which is what `SpatialEngine-u2x.9` proposed and what ADR-0074/0115/0116/0128 have since delivered |
 
 Path D is an emulation over the same rows the store holds, not a store call —
 it is labelled as such in the output so nobody mistakes it for a shipped path.
