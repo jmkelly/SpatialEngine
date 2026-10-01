@@ -121,6 +121,60 @@ public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<Postgis
     }
 
     /// <summary>
+    /// A plan restricted by <em>ids</em> on a dataset that declares no identity
+    /// column: the one restriction neither face can state, because a dataset
+    /// with no identity column has no column to say it with (ADR-0184 §1), and
+    /// the one case a whole read is the <em>only</em> correct answer for — the
+    /// features are named by the ordinal of the read, so a <c>WHERE</c> that
+    /// returned two rows would name them 1 and 2 whatever the plan asked for
+    /// (ADR-0097 §1).
+    ///
+    /// <para>
+    /// Every face is here, because the ids are the restriction that reaches all
+    /// four of them with nothing pushed: the page, the count, the distinct set
+    /// and the grouped reduction each select over the whole read and finish in
+    /// process, and each is asserted against the reference over that same
+    /// whole read rather than against a literal — a store that answered with a
+    /// different row set would still pass a number.
+    /// </para>
+    /// </summary>
+    [SkippableFact]
+    public async Task A_plan_restricted_by_ids_on_a_dataset_with_no_identity_column_is_the_reference_s_answer()
+    {
+        await using var context = PostgisTestContext.Create(_fixture.ConnectionString);
+        var dataset = await SeedAsync(context);
+        var every = await ReadAllAsync(context, dataset);
+        // The identities are the whole read's, which is the only numbering such
+        // a dataset has: two of them, and the plan asks for them by that name.
+        var wanted = new[] { every[1].Id, every[3].Id };
+        // The order names a requested field, so it is total over the distinct
+        // rows and the set is reported in it whatever order the whole read
+        // returned its rows in (ADR-0133 §6) — the assertion below is about the
+        // restriction, not about the read's row order.
+        var plan = new FeatureQuery(Ids: wanted, Order: [new OrderTerm("city", SortDirection.Descending)]);
+
+        var page = await context.Store.QueryAsync(dataset, plan);
+        Assert.Equal(
+            FeaturePlanExecutor.Execute(Schema, every, plan, CancellationToken.None).Features.Select(feature => feature.Id),
+            page.Features.Select(feature => feature.Id));
+
+        // The three reduction faces over the same plan, each one a count or a
+        // set over the rows the whole read selected.
+        Assert.Equal(2, await context.Store.CountAsync(dataset, plan));
+        var distinct = await context.Store.DistinctAsync(dataset, plan, new DistinctQuery(["city"]));
+        Assert.Equal(
+            [.. FeatureReduction.Distinct(
+                Schema,
+                FeaturePlanExecutor.Select(Schema, every, plan, CancellationToken.None),
+                new DistinctQuery(["city"]),
+                plan.Order).Rows.Select(row => row[0].StringValue)],
+            distinct.Rows.Select(row => row[0].StringValue));
+        var aggregate = await context.Store.AggregateAsync(
+            dataset, plan, new AggregateQuery([new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "rows")]));
+        Assert.Equal(2, Assert.Single(aggregate.Groups).Values[0].Int64Value);
+    }
+
+    /// <summary>
     /// The cost claim as a fact rather than a figure: a reduction over a table
     /// the store cannot read a feature from is still answered, because the
     /// reduction reads no feature. Both faces that return a number are here,
