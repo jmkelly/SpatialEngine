@@ -61,30 +61,44 @@ engine is x-first for every CRS (`contracts.md`).
 
 ## 2. Geometry Service (spec §7)
 
-19 operations. `IGeometryOperations` ships four verbs
-(`Buffer`, `Intersection`, `Validate`, `Simplify`).
+19 operations. The engine verb inventory behind them is
+`architecture/distilled/contracts.md` — `IGeometryOperations` (Buffer,
+Intersection, Validate, Simplify, Generalize), `IGeometryMeasures` (Area,
+Length, Distance, LabelPoint, Centroid), `IGeometryProcessing` (Union,
+Difference, ConvexHull, Densify, Repair), `IGeometryRelations` (Relate),
+`ICoordinateTransforms` (Transform, FindTransformations) and
+`IGeodesicBuffering` (Buffer); four verbs was never the surface, and the
+adapter reaches for the rest. The dispatcher serves **14 of the 19**, maps
+each onto a named engine verb, and refuses the remaining five by name with
+`invalid.arguments` (recorded non-goals, ADR-0035). Beyond the spec's 19 the
+dispatcher also serves the 10.x `findTransformations` (ADR-0087) and carries
+`fromGeoCoordinateString`/`toGeoCoordinateString` as explicit rejects — no
+coordinate-notation codec — which is why the advertised `capabilities` string
+lists 15 names and not the 18 dispatch entries. The table below is read against
+that dispatch table by `GeometryCompatibilityReferenceTests`, so a row may name
+an operation the dispatcher does not serve only by calling it Missing.
 
 | GeoServices op | Engine | Status |
 | --- | --- | --- |
 | `project` | `ICoordinateTransforms.Transform` | **Partial** — one geometry vs array; `inSR`/`outSR` wkid vs `source`/`target` `EPSG:` string; `datumTransformation` is accepted only when it names the ranked operation project applies (ADR-0087) |
-| `simplify` (generalization; §7.0.5) | `Simplify` | **Present** — tolerance from `deviation`, or mutually exclusively from `value`; one of the two is required |
-| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged |
-| `areasAndLengths` | — | Missing (core excludes area/length, `core.md`) |
-| `lengths` | — | Missing (same) |
-| `relation` (DE-9IM `relationParam`) | `IGeometryRelations.Relate` | **Partial** — a `relation` naming `esriSpatialRelIntersects`/`Disjoint`/`Contains`/`Within`/`Equals`, a bare DE-9IM pattern, or `esriSpatialRelRelation` with a `relationParam` pattern (including the `RELATE(G1, G2, 'pattern')` spelling) is served; the dimension-dependent `esriSpatialRelTouches`/`Overlaps`/`Crosses` are served too, and `esriSpatialRelIntersects` is answered by the OGC intersect pattern union (`T********`/`*T*******`/`***T*****`/`****T****`) rather than by building the intersection (SpatialEngine-51k) — all out of the same pattern table the query path reads (ADR-0036), with the left geometry in the feature's role and the right in the query's, so the two endpoints answer one way. `Contains` and `Within` read that table too, so no DE-9IM pattern is restated on this path (SpatialEngine-dih); `Overlaps` and `Crosses` are dimension-dependent here exactly as on the query path — the pattern is keyed on the pair's dimensions, with the left geometry in the feature's role. An unrecognised name is still rejected by name. One flag per `geometries1` geometry, 1 when any `geometries2` geometry relates |
-| `labelPoints` | — | Missing |
-| `distance` | — | Missing |
-| `densify` | — | Missing |
-| `generalize` (Douglas-Peucker; §7.0.13) | `Simplify` | **Present** — tolerance from `maxDeviation` |
-| `convexHull` | — | Missing |
-| `offset` | — | Missing |
-| `trimExtend` | — | Missing |
-| `autoComplete` | — | Missing |
-| `cut` | — | Missing |
-| `difference` | — | Missing |
-| `intersect` | `Intersection` | **Partial** — `(array, geometry)` vs `(left, right)`; engine disjoint→empty (spec-compatible) |
-| `reshape` | — | Missing |
-| `union` | `IGeometryProcessing.Union` | **Present** — a single CRS for the inputs, as the operation assumes |
+| `simplify` (generalization; §7.0.5) | `IGeometryOperations.Simplify` | **Present** — tolerance from `deviation`, or mutually exclusively from `value`; one of the two is required. It is generalization, not repair (see below) |
+| `buffer` | `IGeometryOperations.Buffer` + `ICoordinateTransforms` + `IGeodesicBuffering` + `IGeometryProcessing.Union` | **Partial** — a linear `unit` against a geographic buffer CRS is a ground distance and is served by `IGeodesicBuffering` (reproject-and-buffer, 0.05% relative tolerance for a working radius up to 300 km, ADR-0075), so `distances=1000&unit=9001` against a 4326 geometry needs no `bufferSR`; `geodesic` is served on that path and refused by name elsewhere; `unionResults=true` dissolves the per-input results and is refused when the inputs resolve to different references; planar `unit` (curated table), `bufferSR`/`outSR`/`inSR` chaining, multi-`distances` and `quadrantSegments` are unchanged; vertices follow NTS quadrant segmentation, not Esri's |
+| `areasAndLengths` | `IGeometryMeasures.Area` + `IGeometryMeasures.Length` | **Partial** — the docs name the array `polygons` (older docs/samples `polys`); both aliases and `geometries` are accepted for the same value. `{areas, lengths}` in the units of `sr`. Planar only: `calculationType` absent or `planar` answers, and `geodesic`/`preserveShape` are refused by name (no geodesic measure verb) |
+| `lengths` | `IGeometryMeasures.Length` | **Partial** — as `areasAndLengths`, with the docs' `polylines` alias and the same planar-only `calculationType` |
+| `relation` (DE-9IM `relationParam`) | `IGeometryRelations.Relate` | **Partial** — a `relation` naming `esriSpatialRelIntersects`/`Disjoint`/`Contains`/`Within`/`Touches`/`Overlaps`/`Crosses`/`Equals`, a bare DE-9IM pattern, or `esriSpatialRelRelation` with a `relationParam` pattern (including the `RELATE(G1, G2, 'pattern')` spelling) is served; the dimension-dependent `esriSpatialRelTouches`/`Overlaps`/`Crosses` are served too, and `esriSpatialRelIntersects` is answered by the OGC intersect pattern union (`T********`/`*T*******`/`***T*****`/`****T****`) rather than by building the intersection (SpatialEngine-51k) — all out of the same pattern table the query path reads (ADR-0036), with the left geometry in the feature's role and the right in the query's, so the two endpoints answer one way. `Contains` and `Within` read that table too, so no DE-9IM pattern is restated on this path (SpatialEngine-dih); `Overlaps` and `Crosses` are dimension-dependent here exactly as on the query path — the pattern is keyed on the pair's dimensions, with the left geometry in the feature's role. Inputs are the docs-verbatim `geometries1`/`geometries2` with `sr1`/`sr2` (one shared `sr` also accepted; differing `sr1`/`sr2` are refused) and the legacy `geometries`/`geometry` pair. One flag per `geometries1` geometry, 1 when any `geometries2` geometry relates; an unrecognised name is rejected by name |
+| `labelPoints` | `IGeometryMeasures.LabelPoint` | **Partial** — one interior point per input; the array is the docs' `polygons` (`polys`) alias or `geometries`. The point is guaranteed interior, which agrees with Esri's centre for convex shapes; for a concave shape Esri's representative point may differ (out of scope, fixture delta) |
+| `distance` | `IGeometryMeasures.Distance` | **Partial** — the docs' singular `geometry1`/`geometry2` (not the `geometries1`/`geometries2` of `relation`), answered as `{distance}`: the planar minimum distance in the units of `sr`. No `unit` conversion and no geodesic measure |
+| `densify` | `IGeometryProcessing.Densify` | **Partial** — `maxSegmentLength` is required and is in the units of `sr`; every segment longer than it is subdivided. The array is `geometries`, one result per input |
+| `generalize` (Douglas-Peucker; §7.0.13) | `IGeometryOperations.Generalize` | **Present** — the deviation allowance from `maxDeviation` (ADR-0079), which returns input vertices only and spends the allowance conservatively; `Simplify` serves the same generalization under `simplify`'s own parameter names |
+| `convexHull` | `IGeometryProcessing.ConvexHull` | **Partial** — the hull of the whole `geometries` array as a single result geometry; ring orientation and vertex order follow NTS, not Esri (fixture delta) |
+| `offset` | — | **Missing** — no engine verb; the dispatcher rejects it by name (`invalid.arguments`, recorded non-goal, ADR-0035) |
+| `trimExtend` | — | **Missing** — as `offset` |
+| `autoComplete` | — | **Missing** — as `offset` |
+| `cut` | — | **Missing** — as `offset` |
+| `difference` | `IGeometryProcessing.Difference` | **Partial** — `geometries` (an array) minus one `geometry`, the mirror image of `intersect`'s argument shapes; engine disjoint→empty is spec-compatible |
+| `intersect` | `IGeometryOperations.Intersection` | **Partial** — `(array, geometry)` vs `(left, right)`; engine disjoint→empty (spec-compatible) |
+| `reshape` | — | **Missing** — as `offset` |
+| `union` | `IGeometryProcessing.Union` | **Partial** — a single CRS for the inputs, as the operation assumes, dissolved into one result geometry; ring orientation and vertex order follow NTS, not Esri (fixture delta) |
 
 **Generalization:** both `generalize` (§7.0.13) and `simplify` (§7.0.5)
 are Douglas-Peucker generalization, so both map to the engine's `Simplify`

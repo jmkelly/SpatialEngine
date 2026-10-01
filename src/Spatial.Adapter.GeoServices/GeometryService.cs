@@ -62,6 +62,14 @@ internal static class GeometryService
                 "(MGRS/USNG/UTM/GeoRef/GARS/DMS/DDM/DD) and half-parsing notations is a deliberate non-goal."),
         };
 
+    /// <summary>
+    /// The operation names the dispatch table serves, read from the table
+    /// itself so no second list can drift from it. Published for the
+    /// compatibility reference's section 2 table, which is checked against it
+    /// rather than restated from it (SpatialEngine-q33).
+    /// </summary>
+    internal static IReadOnlyCollection<string> ServedOperations => Operations.Keys;
+
     /// <summary>The Geometry Service resource metadata (spec §7.0.1).</summary>
     public static IResult Info() =>
         EsriJson.Value(new GeometryServerInfo(
