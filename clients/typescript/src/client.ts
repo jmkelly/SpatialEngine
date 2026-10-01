@@ -6,6 +6,7 @@ import type {
   CrsDescription,
   DatasetDescription,
   FeatureBatchesResponse,
+  FeatureQueryResponse,
   FeatureWriteResponse,
   GeometryResponse,
   Map,
@@ -261,14 +262,19 @@ export class SpatialClient {
     return response.batches.map((bytes) => decodeFeatureBatch(fromBase64(bytes)));
   }
 
-  /** Queries a dataset by bbox and/or attribute filter as decoded batches. */
+  /**
+   * Queries a dataset by bbox and/or attribute filter as decoded batches — the
+   * published sugar spelling of the route, deprecated in favour of the plan
+   * (ADR-0158). The response is the page (`batches`, `nextCursor`,
+   * `totalCount`, `hasMore`); this method answers its batches.
+   */
   async query(
     dataset: string,
     options?: { bbox?: { minX: number; minY: number; maxX: number; maxY: number }; filter?: string },
     store = "demo",
     signal?: AbortSignal,
   ): Promise<FeatureBatch[]> {
-    const response = await this.post<FeatureBatchesResponse>(`/api/features/query?store=${encodeURIComponent(store)}`, {
+    const response = await this.post<FeatureQueryResponse>(`/api/features/query?store=${encodeURIComponent(store)}`, {
       dataset,
       bbox: options?.bbox ?? null,
       filter: options?.filter ?? null,

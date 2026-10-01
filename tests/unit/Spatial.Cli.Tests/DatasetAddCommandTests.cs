@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Spatial.Cli;
 using Spatial.Client;
+using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Cli.Tests;
 
@@ -266,6 +268,9 @@ public sealed class DatasetAddCommandTests
 
         public Task<DatasetDescription> DescribeDatasetAsync(string dataset, string store, CancellationToken cancellationToken = default) =>
             inner.DescribeDatasetAsync(dataset, store, cancellationToken);
+
+        public Task<FeatureQueryPage> QueryFeaturesAsync(string dataset, FeatureQuery plan, string store, CancellationToken cancellationToken = default) =>
+            inner.QueryFeaturesAsync(dataset, plan, store, cancellationToken);
 
         public Task<IngestOutcome> IngestAsync(string source, IngestUpload upload, string? adminToken, CancellationToken cancellationToken = default) =>
             Task.FromResult(new IngestOutcome(

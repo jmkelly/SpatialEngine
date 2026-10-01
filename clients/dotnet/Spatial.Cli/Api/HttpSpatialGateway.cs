@@ -3,6 +3,7 @@ using Spatial.Client;
 using Spatial.Contracts;
 using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Cli;
 
@@ -68,6 +69,10 @@ public sealed class HttpSpatialGateway : ISpatialGateway
     /// <inheritdoc />
     public Task<DatasetDescription> DescribeDatasetAsync(string dataset, string store, CancellationToken cancellationToken = default) =>
         _client.DescribeDatasetAsync(dataset, store, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<FeatureQueryPage> QueryFeaturesAsync(string dataset, FeatureQuery plan, string store, CancellationToken cancellationToken = default) =>
+        _client.QueryPlanAsync(dataset, plan, store, cancellationToken);
 
     /// <inheritdoc />
     public async Task<IngestOutcome> IngestAsync(string source, IngestUpload upload, string? adminToken, CancellationToken cancellationToken = default)

@@ -211,8 +211,13 @@ that received it. The one filter text in the system
 is the published `filter` query parameter on `GET /api/features/query`, parsed
 once at the boundary into a `Predicate`; the per-provider filter lexers,
 parsers and SQL builders are retired, and the Esri `where` grammar compiles to
-the same tree instead of evaluating features. The plan's spatial component
-stays the `BoundingBox` pre-filter: the DE-9IM `spatialRel` verbs remain an
+the same tree instead of evaluating features. That route also takes the plan
+itself as JSON — `plan` beside the `filter`/`bbox` sugar, answered with the page
+(`batches`, `nextCursor`, `totalCount`, `hasMore`) — with the predicate tree as
+a node discriminated by `op` and every member an `op` does not carry refused by
+name (ADR-0158); the text is deprecated, not removed. The plan's spatial
+component stays the `BoundingBox` pre-filter: the DE-9IM `spatialRel` verbs
+remain an
 adapter-side verb (ADR-0036). Predicate *evaluation* is implementation code
 and never enters `Spatial.Core`.
 

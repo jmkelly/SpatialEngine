@@ -6,6 +6,7 @@ using Spatial.Contracts.Http;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Codec;
+using Spatial.Core.Features.Query;
 using Spatial.Core.Geometry;
 using Spatial.Core.Geometry.Codec;
 
@@ -435,6 +436,58 @@ public sealed class SpatialClientTests
         var exchange = Assert.Single(stub.Handler.Exchanges);
         Assert.Equal(HttpMethod.Post, exchange.Request.Method);
         Assert.Equal("/api/seed", exchange.Request.RequestUri?.AbsolutePath);
+    }
+
+    /// <summary>
+    /// The plan spelling of the query route (ADR-0158): the SDK posts the whole
+    /// plan under <c>plan</c> — ids, predicate tree, bbox, projection, order,
+    /// limit, offset and cursor — and decodes the page the route answers with,
+    /// not just its batches.
+    /// </summary>
+    [Fact]
+    public async Task QueryPlan_posts_the_plan_and_decodes_the_page()
+    {
+        var batch = new FeatureBatch(
+            new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]),
+            [new Feature(new FeatureId("a"), new FeatureSchema([new FieldDefinition("name", AttributeKind.String)]), [AttributeValue.FromString("a")])]);
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json(
+            $$$"""{"batches":["{{{Convert.ToBase64String(FeatureBatchCodec.Encode(batch))}}}"],"nextCursor":"tok","totalCount":7,"hasMore":true}""")));
+
+        var page = await stub.Client.QueryPlanAsync("demo.points", new FeatureQuery(
+            Where: new Predicate.Compare(new FieldRef("name"), ComparisonOperator.Equals, Literal.FromText("a")),
+            Order: [new OrderTerm("name", SortDirection.Descending)],
+            Limit: 2,
+            Offset: 1), "memory");
+
+        Assert.Equal(7, page.TotalCount);
+        Assert.True(page.HasMore);
+        Assert.Equal("tok", page.NextCursor);
+        var exchange = Assert.Single(stub.Handler.Exchanges);
+        var body = JsonDocument.Parse(await exchange.Request.Content!.ReadAsStringAsync());
+        var plan = body.RootElement.GetProperty("plan");
+        Assert.Equal("name", plan.GetProperty("where").GetProperty("field").GetString());
+        Assert.Equal("equals", plan.GetProperty("where").GetProperty("operator").GetString());
+        Assert.Equal("a", plan.GetProperty("where").GetProperty("value").GetProperty("text").GetString());
+        Assert.Equal("descending", plan.GetProperty("order")[0].GetProperty("direction").GetString());
+        Assert.Equal(2, plan.GetProperty("limit").GetInt32());
+        Assert.Equal(1, plan.GetProperty("offset").GetInt32());
+        Assert.Null(body.RootElement.GetProperty("filter").GetString());
+    }
+
+    /// <summary>
+    /// The sugar spelling is still published and still what the client sends by
+    /// default (ADR-0158 §1): <c>filter</c> at the top level, no plan.
+    /// </summary>
+    [Fact]
+    public async Task Query_posts_the_filter_sugar_and_decodes_the_batches()
+    {
+        using var stub = new StubClient(new StubHttpHandler(_ => StubHttpHandler.Json("""{"batches":[]}""")));
+
+        await stub.Client.QueryAsync("demo.points", filter: "name = 'a'", store: "memory");
+
+        var body = JsonDocument.Parse(await Assert.Single(stub.Handler.Exchanges).Request.Content!.ReadAsStringAsync());
+        Assert.Equal("name = 'a'", body.RootElement.GetProperty("filter").GetString());
+        Assert.Null(body.RootElement.GetProperty("plan").GetString());
     }
 
     private static HttpResponseMessage Image(byte[] bytes, string mediaType, int width, int height)

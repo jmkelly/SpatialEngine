@@ -42,6 +42,7 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
 | `auth` | `login` / `logout` | Login with `--username` and `--password`; cache the opaque bearer in `~/.spatial/token` (mode `0600`), or revoke/remove it |
 | `dataset` | `list` | `GET /api/catalogue` for a store (`--pattern` filters) |
 | `dataset` | `describe <dataset>` | `GET /api/datasets/{id}` (fields, geometry, identity) |
+| `dataset` | `query <dataset>` | `POST /api/features/query` with a query plan; reports the page (ADR-0158) |
 | `dataset` | `add` | `POST /api/ingest` a local file (`--file`) or URL (`--url`) |
 | `map` | `list` | List maps |
 | `map` | `show <name>` | One map with layers + parsed styles |
@@ -54,6 +55,19 @@ Exit codes: `0` success, `2` invalid arguments, `3` not found,
 | `project` | `plan` | Dry-run an apply; print what would change |
 | `project` | `apply` | Ingest datasets + publish maps from the file (idempotent) |
 | `project` | `export` | Serialise the host's datasets + maps to the file |
+
+### `dataset query`
+
+```
+--where <text>          attribute filter text (the plan's where)
+--filter <text>         deprecated alias of --where, the spelling before ADR-0158
+--bbox <x,y,x,y>        bounding-box pre-filter
+--project <a,b>         schema fields the returned features carry
+--order <field[:asc|:desc],…>  sort keys; the identity is the tie-break
+--ids <id,id,…>         feature identities to select
+--limit <n> / --offset <n>      the page
+--cursor <token>        continue a previous page's nextCursor
+```
 
 ### `dataset add`
 
