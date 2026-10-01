@@ -17,7 +17,13 @@ namespace Spatial.Host.Tests;
 /// mercator bounding box to the projection's domain. Before that, both fail
 /// with "Transformation cannot be computed at the poles."
 /// </summary>
-public sealed class PolarRenderTests : IDisposable
+/// <remarks>
+/// One host for the class, one dataset and one map name per test (ADR-0160,
+/// ADR-0161). The polar GeoJSON is ingested into the shared memory store, so
+/// the dataset id — not the map name — is what keeps one test's band out of
+/// another's tile.
+/// </remarks>
+public sealed class PolarRenderTests : IClassFixture<PolarRenderTests.PolarHost>
 {
     private const string Token = "test-admin-token";
 
@@ -33,19 +39,16 @@ public sealed class PolarRenderTests : IDisposable
     private const string Style =
         """[{"type":"fill","layout":{"visibility":"visible"},"paint":{"fill-color":"#3366ff","fill-opacity":1.0}}]""";
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-polar-").FullName;
+    private readonly PolarHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
-    private PolarFactory Factory() => new PolarFactory(Path.Combine(_directory, "maps.json"));
+    public PolarRenderTests(PolarHost host) => _host = host;
 
     [Fact]
     public async Task Web_mercator_tiles_render_a_dataset_that_reaches_the_pole()
     {
-        using var factory = Factory();
-        var client = await PublishAsync(factory);
+        var (client, map) = await PublishAsync();
 
-        var response = await client.GetAsync("/api/maps/polar/tiles/0/0/0.png");
+        var response = await client.GetAsync($"/api/maps/{map}/tiles/0/0/0.png");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -54,10 +57,9 @@ public sealed class PolarRenderTests : IDisposable
     [Fact]
     public async Task GeoServices_map_tiles_render_a_dataset_that_reaches_the_pole()
     {
-        using var factory = Factory();
-        var client = await PublishAsync(factory);
+        var (client, map) = await PublishAsync();
 
-        var response = await client.GetAsync("/arcgis/rest/services/polar/MapServer/tile/0/0/0");
+        var response = await client.GetAsync($"/arcgis/rest/services/{map}/MapServer/tile/0/0/0");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -66,10 +68,9 @@ public sealed class PolarRenderTests : IDisposable
     [Fact]
     public async Task Wms_capabilities_clamp_the_mercator_bounding_box_to_the_projection_domain()
     {
-        using var factory = Factory();
-        var client = await PublishAsync(factory);
+        var (client, map) = await PublishAsync();
 
-        var response = await client.GetAsync("/ogc/polar/wms?service=WMS&request=GetCapabilities");
+        var response = await client.GetAsync($"/ogc/{map}/wms?service=WMS&request=GetCapabilities");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var document = XDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -82,25 +83,31 @@ public sealed class PolarRenderTests : IDisposable
             $"the mercator bounding box must stay inside the projection's domain, got {mercator}.");
     }
 
-    private static async Task<HttpClient> PublishAsync(SpatialHostFactory factory)
+    /// <summary>
+    /// Ingests the polar band under a dataset id and publishes it as a map,
+    /// both of them this test's own.
+    /// </summary>
+    private async Task<(HttpClient Client, string Map)> PublishAsync()
     {
-        var client = factory.CreateClient();
+        var client = _host.Client;
+        var dataset = _host.NextDatasetName("test.polar");
+        var map = _host.NextMapName("polar");
         var ingest = await client.SendAsync(Authorized(
             HttpMethod.Post,
-            "/api/ingest?store=memory&dataset=test.polar&srid=4326&format=geojson",
+            $"/api/ingest?store=memory&dataset={dataset}&srid=4326&format=geojson",
             new StringContent(PolarGeoJson, Encoding.UTF8, "application/geo+json")));
         Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
 
         var body = $$"""
-            {"name":"polar","store":"memory","services":["tiles","map","wms"],
-             "layers":[{"dataset":"test.polar","layerId":0,"name":"polar","style":{{JsonSerializer.Serialize(Style)}}}]}
+            {"name":"{{map}}","store":"memory","services":["tiles","map","wms"],
+             "layers":[{"dataset":"{{dataset}}","layerId":0,"name":"polar","style":{{JsonSerializer.Serialize(Style)}}}]}
             """;
         var put = await client.SendAsync(Authorized(
             HttpMethod.Put,
-            "/api/maps/polar",
+            $"/api/maps/{map}",
             new StringContent(body, Encoding.UTF8, "application/json")));
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-        return client;
+        return (client, map);
     }
 
     private static HttpRequestMessage Authorized(HttpMethod method, string path, HttpContent? content = null)
@@ -110,13 +117,21 @@ public sealed class PolarRenderTests : IDisposable
         return request;
     }
 
-    /// <summary>A host with an admin token, a per-test map file and the ephemeral memory store.</summary>
-    private sealed class PolarFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The dataset and the map name are the test's.
+    /// </summary>
+    public sealed class PolarHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public PolarHost()
+            : base("spatial-polar")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }

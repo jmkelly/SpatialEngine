@@ -26,8 +26,9 @@ namespace Spatial.Host.Tests;
 /// <para>What this does <em>not</em> give a test is a private store: a
 /// singleton store, cache or ingestion in the host is still shared by the
 /// class, and a test that mutates one needs per-test identity of its own kind
-/// (a keyed dataset, a uniquely named service) or a class of its own. That is
-/// the audit ADR-0160 records, and it is why the register in
+/// (<see cref="NextDatasetName"/> for the memory store, a uniquely named service
+/// for anything else) or a class of its own. ADR-0161's audit is the per-class
+/// list of which is which, and it is why the register in
 /// <see cref="SharedHostPolicy"/> is a list and not a sweep.</para>
 /// </remarks>
 public abstract class ClassHostFixture : IAsyncLifetime
@@ -35,6 +36,7 @@ public abstract class ClassHostFixture : IAsyncLifetime
     private readonly HashSet<string> _issued = new(StringComparer.Ordinal);
     private readonly string _directory;
     private int _issuedCount;
+    private int _issuedDatasetCount;
     private FixtureFactory? _factory;
     private HttpClient? _client;
 
@@ -70,6 +72,25 @@ public abstract class ClassHostFixture : IAsyncLifetime
         if (!_issued.Add(name))
         {
             throw new InvalidOperationException($"map name '{name}' was already issued in this class.");
+        }
+
+        return name;
+    }
+
+    /// <summary>
+    /// A dataset id no other test in this class has been given — the keyed
+    /// dataset form of the same identity rule, for a test whose data lives in
+    /// the shared memory store rather than in the map registry (ADR-0161). The
+    /// label carries the dataset's namespace, because the store refuses an id
+    /// with no table separator: <c>NextDatasetName("test.polar")</c> hands out
+    /// <c>test.polar_01</c>, <c>test.polar_02</c>, ….
+    /// </summary>
+    public string NextDatasetName(string label)
+    {
+        var name = $"{label}_{_issuedDatasetCount++ + 1:D2}";
+        if (!_issued.Add(name))
+        {
+            throw new InvalidOperationException($"dataset name '{name}' was already issued in this class.");
         }
 
         return name;

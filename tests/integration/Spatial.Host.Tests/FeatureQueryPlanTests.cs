@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Spatial.Client;
 using Spatial.Contracts;
 using Spatial.Contracts.Http;
@@ -15,12 +16,17 @@ namespace Spatial.Host.Tests;
 /// <c>POST /api/features/query</c>, the page it answers with, and the filter
 /// text that still answers the same page beside it — driven through the .NET
 /// client SDK against the real host and the always available memory store.
-/// Each test boots a fresh host so the singleton memory store never leaks
-/// datasets between tests.
-/// </summary>
-public sealed class FeatureQueryPlanTests
+/// Each test seeds its own <c>public.plan_&lt;guid&gt;</c> dataset, so one
+/// host serves the whole class (ADR-0160, ADR-0161) without the shared memory
+/// store leaking a dataset between tests.
+/// </remarks>
+public sealed class FeatureQueryPlanTests : IClassFixture<FeatureQueryPlanTests.QueryHost>
 {
     private const string Store = "memory";
+
+    private readonly QueryHost _host;
+
+    public FeatureQueryPlanTests(QueryHost host) => _host = host;
 
     private static readonly FeatureSchema Schema = new(
     [
@@ -55,7 +61,7 @@ public sealed class FeatureQueryPlanTests
                 AttributeValue.FromGeometry(GeometryFactory.CreatePoint(x, y)),
             ]);
 
-    private static SpatialClient Client(SpatialHostFactory factory) => new(factory.CreateClient());
+    private static SpatialClient Client(HttpClient http) => new(http);
 
     private static async Task<string> SeedAsync(SpatialClient client)
     {
@@ -68,8 +74,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task The_plan_spelling_orders_pages_and_reports_the_page()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
 
         var page = await client.QueryPlanAsync(dataset, new FeatureQuery(
@@ -85,8 +90,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task The_plan_spelling_filters_by_a_predicate_tree_and_projects()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
 
         var page = await client.QueryPlanAsync(dataset, new FeatureQuery(
@@ -102,8 +106,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task The_cursor_continues_the_same_plan()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
         var plan = new FeatureQuery(Order: [new OrderTerm("name")], Limit: 2);
 
@@ -121,8 +124,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task The_filter_text_and_the_plan_return_the_same_page()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
 
         var text = await client.QueryAsync(dataset, filter: "population > 1000000", store: Store);
@@ -139,8 +141,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task The_bbox_sugar_and_the_plan_bbox_return_the_same_page()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
 
         var sugar = await client.QueryAsync(dataset, new Contracts.BoundingBox(0, 0, 10, 61), null, Store);
@@ -158,8 +159,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task The_two_spellings_of_where_must_agree()
     {
-        using var factory = new SpatialHostFactory();
-        var http = factory.CreateClient();
+        var http = _host.Client;
         var dataset = await SeedAsync(new SpatialClient(http));
 
         using var conflict = await http.PostAsJsonAsync(
@@ -184,8 +184,7 @@ public sealed class FeatureQueryPlanTests
     [InlineData("""{"op":"constant","value":{"kind":"boolean","boolean":true}}""")]
     public async Task A_node_that_spells_its_op_wrongly_is_invalid_arguments(string where)
     {
-        using var factory = new SpatialHostFactory();
-        var http = factory.CreateClient();
+        var http = _host.Client;
         var dataset = await SeedAsync(new SpatialClient(http));
 
         var response = await http.PostAsJsonAsync(
@@ -200,8 +199,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task A_plan_naming_a_field_the_dataset_lacks_is_invalid_arguments()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
 
         var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
@@ -214,10 +212,8 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task A_query_over_a_dataset_that_does_not_exist_is_not_found()
     {
-        using var factory = new SpatialHostFactory();
-
         var exception = await Assert.ThrowsAsync<SpatialClientException>(() =>
-            Client(factory).QueryPlanAsync("public.nowhere", FeatureQuery.All, Store));
+            Client(_host.Client).QueryPlanAsync("public.nowhere", FeatureQuery.All, Store));
 
         Assert.Equal(404, exception.StatusCode);
         Assert.Equal("not.found", exception.Code);
@@ -226,8 +222,7 @@ public sealed class FeatureQueryPlanTests
     [Fact]
     public async Task A_cancelled_query_is_cancelled()
     {
-        using var factory = new SpatialHostFactory();
-        var client = Client(factory);
+        var client = Client(_host.Client);
         var dataset = await SeedAsync(client);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
@@ -238,4 +233,21 @@ public sealed class FeatureQueryPlanTests
 
     private static IReadOnlyList<string?> Names(FeatureQueryPage page) =>
         [.. page.Features.Select(feature => feature.Attributes[0].StringValue)];
+
+    /// <summary>
+    /// One host for the class, configured as the tests configure it today:
+    /// no settings at all, because every dataset is the test's own.
+    /// </summary>
+    public sealed class QueryHost : ClassHostFixture
+    {
+        public QueryHost()
+            : base("spatial-query-plan")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
+        {
+            // The class's settings are the host's defaults.
+        }
+    }
 }

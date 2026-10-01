@@ -11,24 +11,26 @@ namespace Spatial.Host.Tests;
 /// every mounted route and every published map's exposed services, read live
 /// from the routing table and the map registry.
 /// </summary>
-public sealed class DiscoveryPageTests : IDisposable
+/// <remarks>
+/// One host for the class, one map name per test (ADR-0160, ADR-0161): the
+/// page is read for the map the test itself published, and the negative
+/// assertions name that map rather than any name at all.
+/// </remarks>
+public sealed class DiscoveryPageTests : IClassFixture<DiscoveryPageTests.RoutesHost>
 {
     private const string Token = "test-admin-token";
 
     private const string Style =
         """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":6}}]""";
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-routes-").FullName;
+    private readonly RoutesHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
-    private RoutesFactory Factory() => new RoutesFactory(Path.Combine(_directory, "maps.json"));
+    public DiscoveryPageTests(RoutesHost host) => _host = host;
 
     [Fact]
     public async Task Routes_page_is_html_and_lists_the_mounted_endpoints()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
 
         var response = await client.GetAsync("/routes");
 
@@ -45,39 +47,38 @@ public sealed class DiscoveryPageTests : IDisposable
     [Fact]
     public async Task Routes_page_links_each_published_map_service()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PublishAsync(client, "world", ["feature", "map", "tiles", "wms", "wfs"]);
+        var world = _host.NextMapName("world");
+        var client = _host.Client;
+        await PublishAsync(client, world, ["feature", "map", "tiles", "wms", "wfs"]);
 
         var body = await (await client.GetAsync("/routes")).Content.ReadAsStringAsync();
 
-        Assert.Contains("/arcgis/rest/services/world/FeatureServer", body);
-        Assert.Contains("/arcgis/rest/services/world/MapServer", body);
-        Assert.Contains("/ogc/world/wms", body);
-        Assert.Contains("/ogc/world/wfs", body);
-        Assert.Contains("/api/maps/world/tiles/{z}/{x}/{y}.png", body);
+        Assert.Contains($"/arcgis/rest/services/{world}/FeatureServer", body);
+        Assert.Contains($"/arcgis/rest/services/{world}/MapServer", body);
+        Assert.Contains($"/ogc/{world}/wms", body);
+        Assert.Contains($"/ogc/{world}/wfs", body);
+        Assert.Contains($"/api/maps/{world}/tiles/{{z}}/{{x}}/{{y}}.png", body);
         Assert.Contains("request=GetMap", body);
     }
 
     [Fact]
     public async Task Routes_page_does_not_link_a_service_the_map_does_not_expose()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PublishAsync(client, "draft", ["feature"]);
+        var draft = _host.NextMapName("draft");
+        var client = _host.Client;
+        await PublishAsync(client, draft, ["feature"]);
 
         var body = await (await client.GetAsync("/routes")).Content.ReadAsStringAsync();
 
-        Assert.Contains("/arcgis/rest/services/draft/FeatureServer", body);
-        Assert.DoesNotContain("/arcgis/rest/services/draft/MapServer", body);
-        Assert.DoesNotContain("/ogc/draft/wms", body);
+        Assert.Contains($"/arcgis/rest/services/{draft}/FeatureServer", body);
+        Assert.DoesNotContain($"/arcgis/rest/services/{draft}/MapServer", body);
+        Assert.DoesNotContain($"/ogc/{draft}/wms", body);
     }
 
     [Fact]
     public async Task Root_advertises_the_routes_page()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
 
         var body = await (await client.GetAsync("/")).Content.ReadAsStringAsync();
 
@@ -102,13 +103,21 @@ public sealed class DiscoveryPageTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class RoutesFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The map name is the test's.
+    /// </summary>
+    public sealed class RoutesHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public RoutesHost()
+            : base("spatial-routes")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }

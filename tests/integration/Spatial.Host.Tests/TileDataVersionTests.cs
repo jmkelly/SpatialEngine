@@ -20,7 +20,12 @@ namespace Spatial.Host.Tests;
 /// no <c>DELETE /api/render/cache</c> needed — while an unchanged request, or
 /// one over an untouched dataset, still hits it.
 /// </summary>
-public sealed class TileDataVersionTests : IDisposable
+/// <remarks>
+/// One host for the class, one map name and one dataset per test (ADR-0160,
+/// ADR-0161). The tile cache is a host singleton, and its key folds in both,
+/// so no other test's render can answer a first-request-miss assertion here.
+/// </remarks>
+public sealed class TileDataVersionTests : IClassFixture<TileDataVersionTests.DataVersionHost>
 {
     private const string Token = "test-admin-token";
 
@@ -40,12 +45,9 @@ public sealed class TileDataVersionTests : IDisposable
         new FieldDefinition("geometry", AttributeKind.Geometry),
     ]);
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-tile-versions-").FullName;
+    private readonly DataVersionHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
-    private DataVersionFactory Factory() =>
-        new DataVersionFactory(Path.Combine(_directory, $"maps-{Guid.NewGuid():N}.json"));
+    public TileDataVersionTests(DataVersionHost host) => _host = host;
 
     private static string NewDataset() => $"public.places_{Guid.NewGuid():N}";
 
@@ -114,20 +116,20 @@ public sealed class TileDataVersionTests : IDisposable
     [Fact]
     public async Task A_write_misses_the_cache_and_re_renders_the_affected_tile()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var versioned = _host.NextMapName("versioned");
         var dataset = await DatasetWithPointAsync(client, "Berlin");
-        await PutMapAsync(client, "versioned", dataset);
-        using var first = await client.GetAsync(Tile("versioned"));
+        await PutMapAsync(client, versioned, dataset);
+        using var first = await client.GetAsync(Tile(versioned));
         Assert.Equal("false", Cached(first));
         var before = await first.Content.ReadAsByteArrayAsync();
 
-        using var second = await client.GetAsync(Tile("versioned"));
+        using var second = await client.GetAsync(Tile(versioned));
         Assert.Equal("true", Cached(second));
         Assert.Equal(before, await second.Content.ReadAsByteArrayAsync());
 
         await WriteAsync(client, dataset, Point("Perth", 115.86, -31.95));
-        using var third = await client.GetAsync(Tile("versioned"));
+        using var third = await client.GetAsync(Tile(versioned));
 
         Assert.Equal("false", Cached(third));
         Assert.NotEqual(before, await third.Content.ReadAsByteArrayAsync());
@@ -136,38 +138,39 @@ public sealed class TileDataVersionTests : IDisposable
     [Fact]
     public async Task A_write_leaves_another_datasets_tile_cached()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        var watched = await DatasetWithPointAsync(client, "Berlin");
-        var other = await DatasetWithPointAsync(client, "Paris");
-        await PutMapAsync(client, "watched", watched);
-        await PutMapAsync(client, "other", other);
-        using var warm = await client.GetAsync(Tile("other"));
+        var client = _host.Client;
+        var watched = _host.NextMapName("watched");
+        var other = _host.NextMapName("other");
+        var watchedDataset = await DatasetWithPointAsync(client, "Berlin");
+        var otherDataset = await DatasetWithPointAsync(client, "Paris");
+        await PutMapAsync(client, watched, watchedDataset);
+        await PutMapAsync(client, other, otherDataset);
+        using var warm = await client.GetAsync(Tile(other));
         Assert.Equal("false", Cached(warm));
 
-        await WriteAsync(client, watched, Point("Perth", 115.86, -31.95));
+        await WriteAsync(client, watchedDataset, Point("Perth", 115.86, -31.95));
 
-        using var response = await client.GetAsync(Tile("other"));
+        using var response = await client.GetAsync(Tile(other));
         Assert.Equal("true", Cached(response));
     }
 
     [Fact]
     public async Task A_write_misses_the_vector_tile_cache_too()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var vectors = _host.NextMapName("vectors");
         var dataset = await DatasetWithPointAsync(client, "Berlin");
-        await PutMapAsync(client, "vectors", dataset);
-        using var first = await client.GetAsync(VectorTile("vectors"));
+        await PutMapAsync(client, vectors, dataset);
+        using var first = await client.GetAsync(VectorTile(vectors));
         Assert.Equal("false", Cached(first));
         var before = await first.Content.ReadAsByteArrayAsync();
 
-        using var second = await client.GetAsync(VectorTile("vectors"));
+        using var second = await client.GetAsync(VectorTile(vectors));
         Assert.Equal("true", Cached(second));
         Assert.Equal(before, await second.Content.ReadAsByteArrayAsync());
 
         await WriteAsync(client, dataset, Point("Perth", 115.86, -31.95));
-        using var third = await client.GetAsync(VectorTile("vectors"));
+        using var third = await client.GetAsync(VectorTile(vectors));
 
         Assert.Equal("false", Cached(third));
         Assert.NotEqual(before, await third.Content.ReadAsByteArrayAsync());
@@ -176,49 +179,49 @@ public sealed class TileDataVersionTests : IDisposable
     [Fact]
     public async Task A_style_save_on_a_layer_still_invalidates_that_maps_tiles()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var restyled = _host.NextMapName("restyled");
         var dataset = await DatasetWithPointAsync(client, "Berlin");
-        await PutMapAsync(client, "restyled", dataset);
-        using var warm = await client.GetAsync(Tile("restyled"));
+        await PutMapAsync(client, restyled, dataset);
+        using var warm = await client.GetAsync(Tile(restyled));
         Assert.Equal("false", Cached(warm));
 
-        await PutMapAsync(client, "restyled", dataset, BigCircle);
+        await PutMapAsync(client, restyled, dataset, BigCircle);
 
-        using var response = await client.GetAsync(Tile("restyled"));
+        using var response = await client.GetAsync(Tile(restyled));
         Assert.Equal("false", Cached(response));
     }
 
     [Fact]
     public async Task A_cancelled_tile_request_caches_nothing()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var cancelled = _host.NextMapName("cancelled");
         var dataset = await DatasetWithPointAsync(client, "Berlin");
-        await PutMapAsync(client, "cancelled", dataset);
+        await PutMapAsync(client, cancelled, dataset);
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => client.GetAsync(Tile("cancelled"), cancellation.Token));
+            () => client.GetAsync(Tile(cancelled), cancellation.Token));
 
-        using var response = await client.GetAsync(Tile("cancelled"));
+        using var response = await client.GetAsync(Tile(cancelled));
         Assert.Equal("false", Cached(response));
     }
 
     [Fact]
     public async Task A_store_without_a_content_version_still_caches()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var fallback = _host.NextMapName("fallback");
         var body = JsonSerializer.Serialize(new
         {
-            name = "fallback",
+            name = fallback,
             store = "demo",
             services = TileServices,
             layers = new[] { new { dataset = "demo.cities", layerId = 0, name = "cities", style = (string?)null } },
         });
-        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/maps/fallback")
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/maps/{fallback}")
         {
             Content = new StringContent(body, Encoding.UTF8, "application/json"),
         };
@@ -226,8 +229,8 @@ public sealed class TileDataVersionTests : IDisposable
         using var saved = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
 
-        using var first = await client.GetAsync(Tile("fallback"));
-        using var second = await client.GetAsync(Tile("fallback"));
+        using var first = await client.GetAsync(Tile(fallback));
+        using var second = await client.GetAsync(Tile(fallback));
 
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         Assert.Equal("false", Cached(first));
@@ -237,28 +240,36 @@ public sealed class TileDataVersionTests : IDisposable
     [Fact]
     public async Task A_tile_reports_the_content_version_it_was_rendered_at()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var reported = _host.NextMapName("reported");
         var dataset = await DatasetWithPointAsync(client, "Berlin");
-        await PutMapAsync(client, "reported", dataset);
+        await PutMapAsync(client, reported, dataset);
 
-        using var first = await client.GetAsync(Tile("reported"));
+        using var first = await client.GetAsync(Tile(reported));
         var before = first.Headers.GetValues("X-Tile-Version").Single();
         Assert.Equal(64, before.Length);
 
         await WriteAsync(client, dataset, Point("Perth", 115.86, -31.95));
-        using var second = await client.GetAsync(Tile("reported"));
+        using var second = await client.GetAsync(Tile(reported));
 
         Assert.NotEqual(before, second.Headers.GetValues("X-Tile-Version").Single());
     }
 
-    /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class DataVersionFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The map name and the dataset are the test's.
+    /// </summary>
+    public sealed class DataVersionHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public DataVersionHost()
+            : base("spatial-tile-versions")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }

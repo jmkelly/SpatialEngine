@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**149 records on disk.** `status` is the record's own word;
+**150 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -163,6 +163,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0158](ADR-0158-json-query-plan-on-the-http-query-route.md) | The query plan crosses the HTTP boundary as JSON, and the filter text stays as sugar | accepted | 2026-10-02 | ADR-0074 |
 | [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md) | The family is a reading order, derived from the `amends:` links | accepted | 2026-10-02 | ADR-0141, ADR-0150 |
 | [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) | One host per class, and a per-test map name to keep the dataset private | accepted | 2026-10-02 | ADR-0155 |
+| [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md) | A per-class verdict on the shared host, and the eight classes it converts | accepted | 2026-10-02 | ADR-0160 |
 | [0162](ADR-0162-the-reclaim-race-is-enforced-from-the-damage-not-by-a-hook.md) | The reclaim race is enforced from the damage, not by a hook | accepted | 2026-10-02 | ADR-0152, ADR-0118, ADR-0141 |
 | [0163](ADR-0163-registered-null-operation-is-published.md) | A registered null operation is an operation, and it is published | accepted | 2026-10-08 | ADR-0087, ADR-0111 |
 
@@ -209,19 +210,20 @@ out: the "Amended by" row already says everything about a pair.
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
+### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (5% of the corpus)
+
+1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
+2. [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) *(narrowed by 0155)*
+3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160)*
+4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
+5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
+
 ### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 4 records, 6,125 words (4% of the corpus)
 
 1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153)*
 2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
 3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
 4. [0163](ADR-0163-registered-null-operation-is-published.md)
-
-### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 4 records, 6,769 words (4% of the corpus)
-
-1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
-2. [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) *(narrowed by 0155)*
-3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160)*
-4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md)
 
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
@@ -294,6 +296,7 @@ believed.
 - **0152** is amended by 0162
 - **0154** is amended by 0155
 - **0155** is amended by 0160
+- **0160** is amended by 0161
 
 ## Superseded, by superseder
 
