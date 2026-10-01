@@ -623,6 +623,28 @@ heading that is not above `<Version>`).
 
 ### Added
 
+- **The ESRI WKT1 spelling of Hotine Oblique Mercator (variant A) reads, and
+  the skew grid angle it does not state is the azimuth** (SpatialEngine-9r3).
+  ESRI names EPSG method 9812
+  `Hotine_Oblique_Mercator_Azimuth_Natural_Origin` — what `projinfo -o
+  WKT1_ESRI` emits for EPSG:3078 — and that dialect has no parameter for the
+  angle from the rectified to the skew grid, which EPSG's own registry states
+  for the same grid (337.25556, the same number as the azimuth). Mapping the
+  name and reading no angle would hand the projection a skew angle of zero,
+  which is not a default but a different grid: 2,046,891 m of easting on the
+  Michigan projection centre. The spelling is therefore out of the method map
+  today, and now in it: it resolves to the same projection as the EPSG name it
+  abbreviates, and the angle is read as the azimuth of the initial line —
+  PROJ's own reading of the dialect (`+gamma` defaults to `+alpha` in
+  `+proj=omerc`, and PROJ 9.8.1 imports the document to `+alpha=-22.74444
+  +gamma=-22.74444`), so the WKT1 document lands on PROJ's coordinates and
+  agrees with the WKT2 of the same grid. Five forward and five inverse PROJ
+  9.8.1 control points on the Michigan grid, forward and inverse, agreeing to
+  1e-6 m. A document in this dialect that states a skew angle anyway is
+  refused by name, because PROJ reads that parameter and ignores it and the
+  engine will not choose silently between the grid the name and the azimuth
+  describe and the grid the stated angle describes.
+
 - **The Geometry Service's `Overlaps` and `Crosses` are measured against the
   reference implementation's own named predicates** (ADR-0036,
   SpatialEngine-61g): SpatialEngine-u2x.56 fixed the one served

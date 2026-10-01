@@ -353,7 +353,12 @@ internal static class ProjWkt
             return false;
         }
 
-        method = new ResolvedMethod(conversion, methodNode, projectionClass, IsPolarStereographicVariantB(methodName));
+        method = new ResolvedMethod(
+            conversion,
+            methodNode,
+            projectionClass,
+            IsPolarStereographicVariantB(methodName),
+            Normalise(methodName) == HotineAzimuthNaturalOriginMethod);
         return true;
     }
 
@@ -369,7 +374,16 @@ internal static class ProjWkt
 
     private static readonly string PolarStereographicVariantBMethod = Normalise("Polar Stereographic (variant B)");
 
-    private sealed record ResolvedMethod(WktNode Conversion, WktNode MethodNode, string Class, bool PolarVariantB);
+    /// <summary>
+    /// The ESRI WKT1 name for EPSG's Hotine Oblique Mercator (variant A), and
+    /// the spelling <c>projinfo -o WKT1_ESRI</c> emits for EPSG:3078. It
+    /// resolves to the same projection as the EPSG name it abbreviates, and
+    /// states one parameter fewer: see <see cref="ReadParameters"/>.
+    /// </summary>
+    private static readonly string HotineAzimuthNaturalOriginMethod = Normalise("Hotine_Oblique_Mercator_Azimuth_Natural_Origin");
+
+    private sealed record ResolvedMethod(
+        WktNode Conversion, WktNode MethodNode, string Class, bool PolarVariantB, bool AzimuthNaturalOrigin);
 
     /// <summary>
     /// The projection parameters, in the order the document lists them (the
@@ -404,7 +418,18 @@ internal static class ProjWkt
                 return null;
             }
 
+            if (name == "rectified_grid_angle" && resolved.AzimuthNaturalOrigin)
+            {
+                error = $"'{crsName}' states a '{raw}' angle, which the ESRI oblique Mercator's own WKT1 dialect has no parameter for: the dialect's skew grid angle is its azimuth of the initial line, and the two are read as the same number.";
+                return null;
+            }
+
             parameters.Add((name, value.Value));
+        }
+
+        if (resolved.AzimuthNaturalOrigin && !AzimuthIsTheSkewGridAngle(crsName, parameters, out error))
+        {
+            return null;
         }
 
         if (resolved.PolarVariantB)
@@ -497,6 +522,39 @@ internal static class ProjWkt
 
     /// <summary>The name the latitude of standard parallel is read under, on the polar stereographic variant B method.</summary>
     private const string StandardParallelParameter = "latitude_of_standard_parallel";
+
+    /// <summary>
+    /// The skew grid angle of an ESRI WKT1 oblique Mercator, which the
+    /// dialect does not state: it is the azimuth of the initial line, the
+    /// same number EPSG's registry states as parameter 8814 for the grids
+    /// this spelling is published for (337.25556 for EPSG:3078, which the
+    /// dialect writes -22.74444), and the reading PROJ gives the document —
+    /// <c>+gamma</c> defaults to <c>+alpha</c> in <c>+proj=omerc</c>, so
+    /// PROJ 9.8.1 imports it to <c>+alpha=-22.74444 +gamma=-22.74444</c>.
+    /// <para>
+    /// Without it the projection is handed a skew angle of zero, which is not
+    /// a default but a different grid: 2,046,891 m of easting on the Michigan
+    /// centre (sized in
+    /// <c>ProjWktEsriObliqueMercatorTests.A_skew_angle_of_zero_is_two_thousand
+    /// _kilometres_away</c>). A document in this dialect that states an angle
+    /// of its own is refused above rather than read this way, so the parameter
+    /// is either supplied by the convention or refused by name.
+    /// </para>
+    /// </summary>
+    private static bool AzimuthIsTheSkewGridAngle(
+        string crsName, List<(string Name, double Value)> parameters, out string? error)
+    {
+        var azimuth = parameters.FindIndex(parameter => parameter.Name == "azimuth");
+        if (azimuth < 0)
+        {
+            error = $"'{crsName}' is an ESRI oblique Mercator definition with no azimuth, which is where its skew grid angle is read from.";
+            return false;
+        }
+
+        parameters.Add(("rectified_grid_angle", parameters[azimuth].Value));
+        error = null;
+        return true;
+    }
 
     /// <summary>
     /// Resolves the WKT's projection method to the ProjNet projection class,
@@ -718,6 +776,10 @@ internal static class ProjWkt
     /// <term>left out: ProjNet applies the false offsets at the projection centre, PROJ at the natural origin (2,047 km)</term>
     /// </item>
     /// <item>
+    /// <term>Hotine_Oblique_Mercator_Azimuth_Natural_Origin</term><term>9812</term><term>EPSG:3078 as ESRI WKT1</term>
+    /// <term>added by 9r3: the ESRI spelling of the same method, which the dialect states without a skew grid angle — the angle is read as the azimuth of the initial line, the reading PROJ's own <c>+proj=omerc</c> gives it (<c>+gamma</c> defaults to <c>+alpha</c>), so the WKT1 document lands on PROJ's coordinates and agrees with the WKT2 of the same grid; a document in this dialect that states the angle anyway is refused by name, because PROJ reads it and ignores it</term>
+    /// </item>
+    /// <item>
     /// <term>Krovak</term><term>9819</term><term>EPSG:5513, EPSG:2065</term>
     /// <term>left out twice over: the arithmetic agrees, but the axes are the south-oriented ones and the catalogue serves easting/northing, so the definition is refused on its axes whatever method it names (ADR-0170)</term>
     /// </item>
@@ -742,6 +804,7 @@ internal static class ProjWkt
         [PolarStereographicVariantBMethod] = "Polar_Stereographic",
         [Normalise("Hotine Oblique Mercator (variant B)")] = "Hotine_Oblique_Mercator",
         [Normalise("Hotine_Oblique_Mercator")] = "Hotine_Oblique_Mercator",
+        [HotineAzimuthNaturalOriginMethod] = "Oblique_Mercator",
     };
 
     /// <summary>
@@ -760,6 +823,7 @@ internal static class ProjWkt
         [Normalise("Longitude of false origin")] = "central_meridian",
         [Normalise("Longitude of origin")] = "central_meridian",
         [Normalise("longitude_of_center")] = "central_meridian",
+        [Normalise("latitude_of_center")] = "latitude_of_origin",
         [Normalise("Longitude of projection centre")] = "central_meridian",
         [Normalise("scale_factor")] = "scale_factor",
         [Normalise("Scale factor at natural origin")] = "scale_factor",
@@ -799,6 +863,12 @@ internal static class ProjWkt
         [Normalise("Azimuth of initial line")] = "azimuth",
         [Normalise("Azimuth at projection centre")] = "azimuth",
         [Normalise("azimuth")] = "azimuth",
+        // The skew grid angle is read on the EPSG spellings only. The ESRI
+        // WKT1 dialect's oblique Mercator has no parameter for it, so
+        // <see cref="ReadParameters"/> supplies it from the azimuth there
+        // (the name is what marks the ESRI spelling, and a document in that
+        // dialect that states the angle is refused rather than read one way
+        // and served the other).
         [Normalise("Angle from Rectified to Skew Grid")] = "rectified_grid_angle",
         [Normalise("rectified_grid_angle")] = "rectified_grid_angle",
         [Normalise("Scale factor at projection centre")] = "scale_factor",
