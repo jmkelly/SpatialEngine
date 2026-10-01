@@ -64,7 +64,7 @@ internal static class GeoServicesResolution
         {
             return layers
                 .OrderBy(layer => layer.LayerId)
-                .Select(layer => new PublishedLayer(layer.LayerId, layer.Dataset, layer.Name ?? Table(layer.Dataset), layer.Style))
+                .Select(layer => new PublishedLayer(layer.LayerId, layer.Dataset, layer.Name ?? Table(layer.Dataset), layer.Style, layer.TimeFields))
                 .ToArray();
         }
 
@@ -102,8 +102,25 @@ internal static class GeoServicesResolution
         var layer = layers.FirstOrDefault(candidate => candidate.Id == layerId)
             ?? throw GeoServicesErrors.NotFound($"Layer {layerId} does not exist in the service.");
         var catalogue = stores.Catalogue(resolved.Store);
-        return await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
+        return Designated(await catalogue.DescribeAsync(layer.Dataset, cancellationToken), layer);
     }
+
+    /// <summary>
+    /// The description a served layer is read under, carrying the start/end
+    /// date fields its publication designates (ADR-0183). The designation is
+    /// publication state stamped onto the store's description at the serving
+    /// edge, so <c>GET /api/datasets/{id}</c> still reports what the store
+    /// holds and every reader — the root, export, identify, the query plan —
+    /// sees the same one. A layer that designates nothing leaves the
+    /// description exactly as the store reported it.
+    /// </summary>
+    internal static DatasetDescription Designated(DatasetDescription description, PublishedLayer layer) =>
+        layer.TimeFields is { } fields ? description with { TimeFields = fields } : description;
+
+    /// <summary>Describes one published layer under its publication's designation.</summary>
+    internal static async Task<DatasetDescription> DescribeAsync(
+        IStoreRegistry stores, ResolvedService resolved, PublishedLayer layer, CancellationToken cancellationToken) =>
+        Designated(await stores.Catalogue(LayerStore(resolved, layer.Id)).DescribeAsync(layer.Dataset, cancellationToken), layer);
 
     /// <summary>Whether the service is editable: the store exposes the keyed editing face (ADR-0037).</summary>
     internal static bool IsEditable(IStoreRegistry stores, string store) =>

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features;
 
 namespace Spatial.Maps;
 
@@ -371,7 +372,22 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
                 $"Declared map '{mapName}' layer '{layer.Dataset}' has unknown kind '{layer.Kind}'.");
         }
 
-        return new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, kind, layer.Store, Relationships(mapName, layer));
+        return new MapLayer(layer.Dataset, layer.LayerId, layer.Name, layer.Style, kind, layer.Store, Relationships(mapName, layer))
+        {
+            TimeFields = TimeFields(mapName, layer),
+        };
+    }
+
+    /// <summary>
+    /// The declared layer's start/end designation (ADR-0183), or <c>null</c>
+    /// when it names neither: two absent bounds are no designation, which is
+    /// what a layer that never declared one serves.
+    /// </summary>
+    private static TemporalExtentFields? TimeFields(string mapName, DeclaredLayerOptions layer)
+    {
+        var start = string.IsNullOrWhiteSpace(layer.StartDateField) ? null : layer.StartDateField;
+        var end = string.IsNullOrWhiteSpace(layer.EndDateField) ? null : layer.EndDateField;
+        return start is null && end is null ? null : new TemporalExtentFields(start, end);
     }
 
     private static LayerRelationship[]? Relationships(string mapName, DeclaredLayerOptions layer)

@@ -1,3 +1,5 @@
+using Spatial.Core.Features;
+
 namespace Spatial.Contracts.Providers;
 
 /// <summary>
@@ -96,6 +98,23 @@ public sealed record MapLayer(
     IReadOnlyList<LayerRelationship>? Relationships = null)
 {
     public override string ToString() => $"{LayerId}: {Dataset}";
+
+    /// <summary>
+    /// Which of the row's date fields bound it — the designation of this
+    /// layer's feature temporal extent (ADR-0183). <c>null</c> (the default)
+    /// means the publication designates nothing, so the layer is served by
+    /// ADR-0100's typed refusals however the store describes the dataset.
+    /// </summary>
+    /// <remarks>
+    /// Publication state, like <see cref="Relationships"/>: the same dataset
+    /// publishes with a designation in one map and without one in another, and
+    /// neither declaration reaches the store. Additive and non-positional for
+    /// the reason <see cref="DatasetDescription.TimeFields"/> is: a positional
+    /// member would move every construction and enter this record's equality.
+    /// Validated structurally by <c>MapValidator</c> and against the live
+    /// schema where the map is declared.
+    /// </remarks>
+    public TemporalExtentFields? TimeFields { get; init; }
 }
 
 /// <summary>

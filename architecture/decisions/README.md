@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**168 records on disk.** `status` is the record's own word;
+**169 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -184,6 +184,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0180](ADR-0180-a-grid-operation-names-the-datum-it-reaches.md) | A grid operation names the datum it reaches, and NAD27 is the datum NADCON is registered against | accepted | 2026-10-08 | ADR-0105, ADR-0168 |
 | [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md) | A NADCON deployment states its longitudes positive west, and the reader is where that is answered | accepted | 2026-10-08 | ADR-0168, ADR-0105, ADR-0180 |
 | [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) | Serve the contains and within relations on a designated layer | accepted | 2026-10-04 | ADR-0100, ADR-0175, ADR-0081 |
+| [0183](ADR-0183-the-designation-is-authored-on-the-published-map-layer.md) | The designation is authored on the published map layer | accepted | 2026-10-05 | ADR-0175, ADR-0182, ADR-0053, ADR-0077 |
 
 ## Reading order
 
@@ -267,6 +268,13 @@ out: the "Amended by" row already says everything about a pair.
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
 
+### ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty — 4 records, 4,927 words (3% of the corpus)
+
+1. [0058](ADR-0058-map-export-time-dynamic-layers-layer-option-cached-root.md) *(narrowed by 0100)*
+2. [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) *(narrowed by 0182)*
+3. [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) *(narrowed by 0183)*
+4. [0183](ADR-0183-the-designation-is-authored-on-the-published-map-layer.md)
+
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
 1. [0038](ADR-0038-read-by-identity-store-capability.md) *(narrowed by 0140)*
@@ -278,12 +286,6 @@ out: the "Amended by" row already says everything about a pair.
 1. [0041](ADR-0041-ingest-and-publications-are-protocol-neutral.md) *(narrowed by 0082, 0090, 0149)*
 2. [0082](ADR-0082-ingest-honours-the-source-crs-reports-and-streams.md)
 3. [0090](ADR-0090-an-upload-is-staged-then-loaded-resumable-ingest.md)
-
-### ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty — 3 records, 3,601 words (2% of the corpus)
-
-1. [0058](ADR-0058-map-export-time-dynamic-layers-layer-option-cached-root.md) *(narrowed by 0100)*
-2. [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) *(narrowed by 0182)*
-3. [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md)
 
 ### ADR-0084: Advertise `hasZ`/`hasM` from the coordinate layout the store declares — 3 records, 2,269 words (1% of the corpus)
 
@@ -352,7 +354,8 @@ believed.
 - **0160** is amended by 0161
 - **0168** is amended by 0180, 0181
 - **0172** is amended by 0174
-- **0175** is amended by 0178, 0182
+- **0175** is amended by 0178, 0182, 0183
+- **0182** is amended by 0183
 
 ## Superseded, by superseder
 

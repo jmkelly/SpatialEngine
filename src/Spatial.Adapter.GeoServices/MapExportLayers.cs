@@ -62,7 +62,8 @@ internal sealed record MapExportLayers(
         var designations = new List<MapDesignation>(layers.Count);
         foreach (var layer in layers)
         {
-            var description = await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
+            var description = GeoServicesResolution.Designated(
+                await catalogue.DescribeAsync(layer.Dataset, cancellationToken), layer);
             designations.Add(new MapDesignation(layer.Id, layer.Name, description.TimeFields));
         }
 

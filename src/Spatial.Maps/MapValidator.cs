@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features;
 
 namespace Spatial.Maps;
 
@@ -273,6 +274,37 @@ internal static class MapValidator
         }
 
         ValidateStyle(map, layer);
+        ValidateTimeFields(map, layer);
+    }
+
+    /// <summary>
+    /// Structural designation validation (ADR-0183): the named fields are
+    /// ordinary attribute names, the designation is on a feature layer, and two
+    /// absent bounds are no designation at all. Whether the fields exist and
+    /// are date-typed is a live-schema fact, checked where the map is declared
+    /// by <see cref="MapTimeFieldSchemas"/>.
+    /// </summary>
+    private static void ValidateTimeFields(Map map, MapLayer layer)
+    {
+        if (layer.TimeFields is not { } designation || designation.IsEmpty)
+        {
+            return;
+        }
+
+        if (layer.Kind != MapLayerKind.Feature)
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' layer {layer.LayerId} designates start/end date fields, but it is an image layer.");
+        }
+
+        foreach (var field in new[] { designation.StartField, designation.EndField })
+        {
+            if (field is not null && !IsValidColumn(field))
+            {
+                throw SpatialException.BadArguments(
+                    $"Map '{map.Name}' layer {layer.LayerId} designates date field '{field}': expected an identifier [A-Za-z_][A-Za-z0-9_]*.");
+            }
+        }
     }
 
     /// <summary>

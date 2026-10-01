@@ -83,6 +83,18 @@ public sealed class DeclaredLayerOptions
     /// registry seeds the map.
     /// </summary>
     public IReadOnlyList<DeclaredRelationshipOptions> Relationships { get; set; } = [];
+
+    /// <summary>
+    /// The date field holding each row's start instant, and the one holding its
+    /// end (ADR-0183): the designation of this layer's feature temporal
+    /// extent. Either may be absent; both absent designates nothing, and a
+    /// layer that designates nothing is served by ADR-0100's typed refusals.
+    /// Validated structurally when the registry seeds the map.
+    /// </summary>
+    public string? StartDateField { get; set; }
+
+    /// <summary>The date field holding each row's end instant, or absent.</summary>
+    public string? EndDateField { get; set; }
 }
 
 /// <summary>One declared relationship of a declared map layer (ADR-0077).</summary>

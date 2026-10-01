@@ -30,7 +30,8 @@ internal static class MapServerResources
     public static async Task<MapLayerInfo> ReadLayerAsync(
         IFeatureStore store, IDataCatalogue catalogue, PublishedLayer layer, CancellationToken cancellationToken)
     {
-        var dataset = await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
+        var dataset = GeoServicesResolution.Designated(
+            await catalogue.DescribeAsync(layer.Dataset, cancellationToken), layer);
         var extent = await ExtentAsync(store, dataset, cancellationToken);
         return new MapLayerInfo(layer, dataset, extent);
     }

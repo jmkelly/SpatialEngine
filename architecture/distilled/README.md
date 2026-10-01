@@ -259,8 +259,9 @@ date and cross-reference)
 | 0180 | NAD27 is catalogued and its NADCON pair published as EPSG:1241 names it, and a grid operation now names the datum its shifts land in rather than assuming every bundle reaches WGS 84 (amends 0105, 0168). |
 | 0181 | The NADCON reader converts the container's positive-west longitudes — the header's edges and the .los half's shifts — into the datums' positive-east convention as the pair is read, so a deployed North American grid shifts a coordinate the way the file tabulates it (amends 0168). |
 | 0182 | The map root advertises `supportsTimeRelation:true` exactly when one of its layers designates the dates bounding a feature, and on such a layer export and identify serve `esriTimeRelationContains` and `esriTimeRelationWithin` as themselves — the parsed relation rides the window to the matcher instead of being discarded; a layer that designates none keeps refusing them by name (amends 0100, 0175). |
+| 0183 | A map layer carries its own designation of the dates bounding a feature — `timeFields` on the published layer, in configuration or over the map API — validated structurally when the map is stored and against the live schema where a declaration happens, and projected onto the dataset description at the serving edge; no store infers one and no request may supply one (amends 0175, 0182). |
 
-168 records on disk. The full index — status, date and every
+169 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->

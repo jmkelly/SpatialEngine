@@ -32,7 +32,14 @@ internal static class MapRenderEngine
         var catalogue = stores.Catalogue(store);
         return layers
             .Select(layer => new MapLayerSource(
-                layer.Dataset, features, catalogue, definitions?.GetValueOrDefault(layer.Id)?.Predicate, times?.GetValueOrDefault(layer.Id)))
+                layer.Dataset, features, catalogue, definitions?.GetValueOrDefault(layer.Id)?.Predicate, times?.GetValueOrDefault(layer.Id))
+            {
+                // The layer's designation is publication state (ADR-0183), so
+                // it rides the source rather than being read back from the
+                // store: the renderer applies the same rule the request edges
+                // judged the request by.
+                TimeFields = layer.TimeFields,
+            })
             .ToArray();
     }
 
