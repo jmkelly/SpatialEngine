@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**162 records on disk.** `status` is the record's own word;
+**163 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -178,6 +178,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) | A Hotine variant A's false offsets are applied at the natural origin | accepted | 2026-10-01 | ADR-0086, ADR-0027, ADR-0153, ADR-0170 |
 | [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md) | The ESRI WKT1 Hotine variant A takes its skew angle from its azimuth | accepted | 2026-10-01 | ADR-0172, ADR-0027, ADR-0086, ADR-0170 |
 | [0175](ADR-0175-a-features-temporal-extent-is-what-the-layer-designates.md) | A feature's temporal extent is what the layer designates | accepted | 2026-10-02 | ADR-0058, ADR-0100 |
+| [0177](ADR-0177-the-doc-audit-queues-defects-and-reports-the-rest-as-signals.md) | The doc audit queues defects and reports the rest as signals | accepted | 2026-10-01 | 0150 |
 
 ## Reading order
 

@@ -55,9 +55,10 @@ if TOOL.is_file():
 else:  # the tool is written after this suite, so the failure is legible
     doc_freshness = None
 
-#: The checks, by the id the report uses. `shared` names the check
-#: `tools/arch-index.py` already owns and gates on, so it is read rather than
-#: reimplemented (SpatialEngine-imz.2 acceptance).
+#: The checks the report queues as **findings** — the defect class ADR-0177
+#: keeps: something a reader could be *wrong* about, and that an edit drains.
+#: `shared` names the check `tools/arch-index.py` already owns and gates on, so
+#: it is read rather than reimplemented (SpatialEngine-imz.2 acceptance).
 CHECK_IDS = (
     "adr-register",
     "front-matter",
@@ -67,10 +68,15 @@ CHECK_IDS = (
     "dead-doc-link",
     "skill-reference",
     "context-bloat",
-    "init-fossil",
     "instruction-conflict",
     "lint-leakage",
 )
+
+#: The checks the report carries as **signals** (ADR-0177): facts about the
+#: corpus rather than defects. `init-fossil` is one commit, and the restatement
+#: census is where the walls are written down — neither is drainable by editing
+#: a document, so neither is a row in a queue that has to empty.
+SIGNAL_IDS = ("init-fossil", "lint-restatement")
 
 SHARED_IDS = ("adr-register", "front-matter", "adr-shape", "adr-citation")
 
@@ -188,7 +194,8 @@ class DocFreshnessTest(unittest.TestCase):
         clean_tree(self.root)
         report = doc_freshness.audit(self.root)
         self.assertEqual(
-            set(CHECK_IDS), {check["id"] for check in report["checks"]}
+            set(CHECK_IDS) | set(SIGNAL_IDS),
+            {check["id"] for check in report["checks"]}
         )
 
     # --- each check fires on the defect it is named for --------------------
@@ -233,11 +240,14 @@ class DocFreshnessTest(unittest.TestCase):
         write(self.root / "src" / "Spatial.Contracts" / "AGENTS.md",
               "# contracts\n\nTwo layers, one direction.\n")
         # 9: two docs naming the gate with different commands, and a doc
-        # restating a wall the architecture tests already fail on.
+        # *contradicting* a wall the architecture tests already fail on — the
+        # defect shape of `lint-leakage` (ADR-0177); the restatement beside it
+        # is a signal, not a finding, and the dirty tree carries one of each.
         write(
             self.root / "RELEASING.md",
             "The gate before done is eng/verify.sh --full, and no third-party "
-            "type crosses a public contract.\n",
+            "type crosses a public contract. Spatial.Contracts references "
+            "Npgsql, so a contract carries its own store types.\n",
         )
         # 10: a record outside the shape rule (ADR-0150) — a number at or above
         # `SHAPE_FROM`, a free-form heading, and a narrative over the budget.
@@ -265,6 +275,8 @@ class DocFreshnessTest(unittest.TestCase):
         )
         fired = {finding["check"] for finding in report["findings"]}
         self.assertEqual(set(CHECK_IDS), fired, json.dumps(report["findings"], indent=2))
+        signalled = {item["check"] for item in report["signals"]}
+        self.assertEqual(set(SIGNAL_IDS), signalled, json.dumps(report["signals"], indent=2))
 
     # --- check 4: staleness is the decision changing, not the file --------
 
@@ -396,8 +408,9 @@ class DocFreshnessTest(unittest.TestCase):
         )
         report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
         offending = [
-            f for f in report["findings"]
-            if f["check"] in ("instruction-conflict", "lint-leakage")
+            f for f in report["findings"] + report["signals"]
+            if f["check"] in ("instruction-conflict", "lint-leakage",
+                              "lint-restatement")
             and f["file"].endswith("distilled/README.md")
         ]
         self.assertEqual(
@@ -462,6 +475,118 @@ class DocFreshnessTest(unittest.TestCase):
         self.assertTrue(
             [f for f in report["findings"] if f["check"] == "instruction-conflict"]
         )
+
+    # --- check 9, part two: a wall restated is a census, a wall denied is a
+    # --- defect (SpatialEngine-3kk, ADR-0177) -----------------------------
+
+    def test_a_restated_wall_is_a_signal_and_never_a_finding(self):
+        # The six rows SpatialEngine-3kk inherited: every one is an accurate
+        # restatement of a wall in a document whose job is to carry that wall
+        # to the agent that must obey it. AGENTS.md's hard-walls section is
+        # required by the repository's own instructions, so the row cannot be
+        # drained by deleting prose. The check as written was a census of where
+        # the walls are restated, reporting on a green corpus.
+        clean_tree(self.root)
+        write(
+            self.root / "src" / "Spatial.Contracts" / "AGENTS.md",
+            "# contracts\n\nPublic contracts carry only `Spatial.Core` types "
+            "(ADR-0005). No third-party type crosses a contract.\n",
+        )
+        report = doc_freshness.audit(self.root, commit_times={}, commit_counts={})
+        self.assertEqual(
+            [], [f for f in report["findings"] if f["check"] == "lint-leakage"],
+            "an accurate restatement of a gated wall is queued as a defect",
+        )
+        restated = [f for f in report["signals"] if f["check"] == "lint-restatement"]
+        self.assertTrue(restated, "the restatement census is not reported at all")
+        self.assertIn("ArchitectureGuardTests", restated[0]["message"])
+
+    def test_a_doc_denying_a_gated_wall_is_the_defect_this_audit_finds(self):
+        # The detectable shape the bead asks for: a doc that *contradicts* a
+        # wall a gate already fails on is a reader who is confidently wrong,
+        # which is the only defect class this audit claims to find.
+        for line in (
+            "The contract layer is Spatial.Contracts, and it references Npgsql.",
+            "`Spatial.Core` depends on NetTopologySuite for its geometry types.",
+            "Algorithms live in `Spatial.Core` beside the values.",
+            "`Spatial.Contracts.csproj` takes a PackageReference for Serilog.",
+        ):
+            with self.subTest(line=line):
+                clean_tree(self.root)
+                write(self.root / "architecture" / "distilled" / "cli.md",
+                      f"# CLI\n\n{line}\n")
+                report = doc_freshness.audit(
+                    self.root, commit_times={}, commit_counts={}
+                )
+                denied = [
+                    f for f in report["findings"] if f["check"] == "lint-leakage"
+                ]
+                self.assertEqual(1, len(denied), f"not reported: {line}")
+                self.assertIn("Spatial.Architecture.Tests", denied[0]["message"])
+
+    def test_a_one_commit_doc_is_a_signal_rather_than_a_defect(self):
+        # Question 2 of the same bead: is "one commit" a defect a revision
+        # drains, or a maintenance signal? The four rows SpatialEngine-7o0
+        # verified are all currently accurate, and the only fix on offer for an
+        # accurate one is an edit manufactured to move a counter — the churn
+        # treadmill 7o0 just removed from digest-staleness.
+        clean_tree(self.root)
+        report = doc_freshness.audit(
+            self.root, commit_times={}, commit_counts={"AGENTS.md": 1}
+        )
+        self.assertEqual(
+            [], [f for f in report["findings"] if f["check"] == "init-fossil"],
+            "a doc with one commit is queued as a defect nothing but an edit drains",
+        )
+        fossils = [f for f in report["signals"] if f["check"] == "init-fossil"]
+        self.assertEqual(1, len(fossils), "the maintenance signal is not reported")
+        self.assertIn("one commit", fossils[0]["message"])
+
+    def test_the_live_corpus_reports_the_census_and_denies_nothing(self):
+        # The state this decision leaves the corpus in: the six restatements and
+        # the four one-commit docs are signals, and no document in the
+        # repository contradicts a gated wall.
+        report = doc_freshness.audit(REPO_ROOT)
+        self.assertEqual(
+            [], [f for f in report["findings"] if f["check"] == "lint-leakage"],
+            "a document contradicts a wall ArchitectureGuardTests fails on: "
+            + json.dumps(
+                [f for f in report["findings"] if f["check"] == "lint-leakage"],
+                indent=2),
+        )
+        signalled = {item["check"] for item in report["signals"]}
+        self.assertEqual(set(SIGNAL_IDS), signalled, json.dumps(report["signals"], indent=2))
+        self.assertTrue(
+            [f for f in report["signals"] if f["check"] == "lint-restatement"],
+            "the six restatements were dropped rather than reported as a census",
+        )
+
+    def test_the_queue_says_which_half_is_drainable(self):
+        clean_tree(self.root)
+        write(
+            self.root / "src" / "Spatial.Contracts" / "AGENTS.md",
+            "# contracts\n\nPublic contracts carry only `Spatial.Core` types.\n",
+        )
+        report = doc_freshness.audit(
+            self.root, commit_times={}, commit_counts={"AGENTS.md": 1}
+        )
+        rendered = doc_freshness.render_queue(report)
+        self.assertIn("Signals", rendered)
+        self.assertIn("lint-restatement", rendered)
+        # A signal is never counted as a finding, and a finding is never filed
+        # under the signals.
+        for item in report["signals"]:
+            self.assertNotIn(item, report["findings"])
+        self.assertEqual(
+            report["stats"]["findings"], len(report["findings"]),
+        )
+        self.assertEqual(report["stats"]["signals"], len(report["signals"]))
+
+    def test_the_report_says_what_it_is_finding(self):
+        clean_tree(self.root)
+        notes = " ".join(doc_freshness.audit(self.root)["notes"]).lower()
+        self.assertIn("signal", notes)
+        self.assertIn("cannot be drained", notes)
 
     def test_the_changelog_is_history_and_not_an_instruction(self):
         # `docs/CHANGELOG.md` records what a release said, including the lanes
@@ -534,13 +659,14 @@ class DocFreshnessTest(unittest.TestCase):
 
     def test_generated_files_are_not_init_fossilization(self):
         # architecture/decisions/README.md and arch-index.md are generated, so a
-        # single commit is not a hand-written doc that was never revised.
+        # single commit is not a hand-written doc that was never revised. It is
+        # a *signal* either way (ADR-0177), so this reads `signals`.
         clean_tree(self.root)
         report = doc_freshness.audit(
             self.root, commit_times={}, commit_counts={"arch-index.md": 1}
         )
         self.assertEqual(
-            [], [f for f in report["findings"] if f["check"] == "init-fossil"]
+            [], [f for f in report["signals"] if f["check"] == "init-fossil"]
         )
 
     # --- the three shared checks are read, not reimplemented ---------------
@@ -645,11 +771,21 @@ class DocFreshnessTest(unittest.TestCase):
         self.assertEqual("doc-freshness", report["audit"])
         self.assertTrue(report["findings"])
         self.assertIn("doc-queue.md", queue)
-        # Every finding in the report is in the queue, worst-first.
+        # Every finding in the report is in the queue, worst-first — counted
+        # over the findings half only, since the signals table below it has the
+        # same row shape and is not part of the queue (ADR-0177).
+        findings_half = queue.split("## Signals", 1)[0]
         self.assertEqual(
             len(report["findings"]),
-            len(re.findall(r"^\| `[a-z-]+` \| (?:high|medium|low) \|", queue, re.M)),
+            len(re.findall(r"^\| `[a-z-]+` \| (?:high|medium|low) \|",
+                           findings_half, re.M)),
             "the queue and the report disagree on how many findings there are",
+        )
+        self.assertEqual(
+            len(report["signals"]),
+            len(re.findall(r"^\| `[a-z-]+` \| (?:high|medium|low) \|",
+                           queue, re.M)) - len(report["findings"]),
+            "the signals section and the report disagree on how many there are",
         )
         severities = [
             finding["severity"] for finding in report["findings"]
@@ -676,10 +812,13 @@ class DocFreshnessTest(unittest.TestCase):
 
     def test_the_repository_audits_without_crashing(self):
         report = doc_freshness.audit(REPO_ROOT)
-        self.assertTrue(report["findings"], "the tree is documented as dirty")
-        for finding in report["findings"]:
-            self.assertIn(finding["check"], CHECK_IDS)
-            self.assertFalse(Path(finding["file"]).is_absolute())
+        # The corpus is audited clean of *findings* after SpatialEngine-7o0, and
+        # stays that way under ADR-0177: what it still carries is signals, which
+        # this asserts as the other half rather than as a dirty tree.
+        self.assertTrue(report["signals"], "the corpus carries no signals at all")
+        for item in report["findings"] + report["signals"]:
+            self.assertIn(item["check"], CHECK_IDS + SIGNAL_IDS)
+            self.assertFalse(Path(item["file"]).is_absolute())
 
     def test_the_live_skill_pointer_is_drained(self):
         # SpatialEngine-imz.2 named this defect and it stayed in the tree:

@@ -27,6 +27,10 @@ agent would have followed anyway (`SpatialEngine-rzq`).
 - Settle a conflict in `architecture/decisions/README.md` or the register by
   re-running `tools/arch-index.py --write` over the merged record set; both are
   generated, so the merge is a generator question. (SpatialEngine-vl1)
+- Ask what a doc-audit row is *for* before draining it: a finding a reader can
+  be wrong about is fixed by an edit, and one that only an edit manufactured to
+  move a counter could clear is a census — report it as a signal and leave the
+  queue empty rather than churning a document (SpatialEngine-3kk)
 <!-- orientation:end -->
 
 ## Route by task
@@ -249,8 +253,9 @@ date and cross-reference)
 | 0172 | EPSG's reading wins: a Hotine Oblique Mercator (variant A, method 9812) definition's false easting and northing are applied at the **natural origin**, and the reader resolves variant A to ProjNet's `Oblique_Mercator`, which is the projection that does that — agreeing with PROJ 9.8.1 to 1e-6 m on four grids over two ellipsoids. `Hotine_Oblique_Mercator` is the variant B (Snyder Alternate B) reading, where the centre lands on the offsets, and is 2,047 km away; nothing is derived and no number is moved. |
 | 0174 | The ESRI WKT1 spelling of Hotine Oblique Mercator (variant A) resolves to the same projection as the EPSG spelling and reads the skew grid angle it does not state as the azimuth of the initial line, PROJ's own reading of that dialect; the refusal of a document that states the angle anyway is gated on that spelling alone, so an EPSG variant A definition is still read exactly as it states (ADR-0172). |
 | 0175 | A feature's temporal extent is the interval its layer's schema designates as the start and end date fields — not a min/max over whatever date attributes a row happens to carry — and one rule in `Spatial.Core` evaluates all three relations against it for the query, identify and render readers alike; a layer with no designation keeps ADR-0100's typed reject. |
+| 0177 | The documentation audit's **queue carries defects and its report carries signals**, and the line between them is whether a reader could be *wrong*: `lint-leakage` becomes a defect class with a detectable shape — a doc that **denies** a wall `ArchitectureGuardTests` already fails on — while the restatement census it was actually measuring moves to `signals` as `lint-restatement`, and `init-fossil` moves with it, because "one commit" is a maintenance fact and its only available fix is an edit manufactured to move a counter. Neither signal is queued, so `doc-queue.md` is rows somebody can close; neither is dropped, so the census survives. No lane's verdict changes (SpatialEngine-3kk). |
 
-162 records on disk. The full index — status, date and every
+163 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->

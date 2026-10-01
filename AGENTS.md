@@ -98,11 +98,11 @@ interop surface.
 - Quality loop: read the `quality-loop` skill first; repo policy is
   `.dependably` and `coverage-policy.json`. `eng/quality-audit.sh` aggregates
   the code audits with the documentation audit (`tools/doc-freshness.py`,
-  SpatialEngine-imz.2) into one answer, and every lane runs it with
-  `--report`: it fills `doc-queue.md` / `doc-report.json` and cannot fail a
-  lane. The three cheap exact doc checks (register row, record schema,
-  dangling `ADR-NNNN` citation) are read from `tools/arch-index.py` and *are*
-  gates, through the doc gate above.
+  SpatialEngine-imz.2) into one answer, and every lane runs it with `--report`:
+  it fills `doc-queue.md` / `doc-report.json` and cannot fail a lane. Its queue
+  holds findings only; what no edit drains is reported beside it
+  as a **signal** (ADR-0177). The three cheap exact doc checks are
+  read from `tools/arch-index.py` and *are* gates (the doc gate above).
 
 ## Task queue
 
