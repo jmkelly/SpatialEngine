@@ -75,6 +75,85 @@ public sealed class GeometryCompatibilityReferenceTests
         }
     }
 
+    [Fact]
+    public void The_verdict_feature_service_clause_is_readable_against_the_section_three_table()
+    {
+        // The Feature Service clause of the same Verdict carried "1 of 6
+        // Feature Service operations has an analogue" — the 2026-09-11
+        // baseline, never restated and never naming which six it counted, so
+        // it was neither a current count nor auditable against anything
+        // (SpatialEngine-cll; dated as a baseline by SpatialEngine-qhw).
+        //
+        // Unlike the geometry count, which is allowed to say "baseline" and
+        // move on, a Feature Service count has to be readable: it names the
+        // operations it counts and agrees with what section 3's table says
+        // about them. The six are the layer operations the spec numbers in
+        // section 9.1 — which is what the table's own rows cite, so the set is
+        // read from the markdown rather than restated here — and a historical
+        // count belongs in the prose as a hyphenated aside ("1-of-6"), not as
+        // a claim this check has to reconcile.
+        var rows = SectionThreeNumberedOperations();
+        var served = rows.Count(row => !row.Refused);
+        var claims = FeatureServiceClaims();
+
+        Assert.Equal(6, rows.Length);
+        Assert.NotEmpty(claims);
+        foreach (var claim in claims)
+        {
+            Assert.True(
+                claim.Mapped == served && claim.Of == rows.Length,
+                $"The Verdict claims '{claim.Mapped} of {claim.Of} Feature Service operations' as a current count; "
+                + $"the section 3 table has {served} served rows of {rows.Length}.");
+
+            var unnamed = rows
+                .Select(row => row.Operation)
+                .Where(operation => !claim.Sentence.Contains($"`{operation}`", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            Assert.True(
+                unnamed.Length == 0,
+                $"The Verdict counts Feature Service operations without naming {string.Join(", ", unnamed)}; "
+                + "a count whose operations are unnamed cannot be read against the section 3 table.");
+        }
+    }
+
+    private static IEnumerable<CountClaim> FeatureServiceClaims()
+    {
+        var verdict = Verdict();
+
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(
+            verdict, @"(\d+)\s+of\s+(\d+)\s+Feature\s+Service\s+operations", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            yield return new CountClaim(
+                int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture),
+                Sentence(verdict, match.Index));
+        }
+    }
+
+    /// <summary>
+    /// The rows of the compatibility reference's section 3 table that name a
+    /// layer operation the spec numbers in section 9.1 — the six the Verdict
+    /// counts. Rows citing a resource rather than an operation (the catalog,
+    /// the FeatureServer root, layer metadata) carry no section 9.1 subsection
+    /// and are out of the count.
+    /// </summary>
+    private static (string Operation, bool Refused)[] SectionThreeNumberedOperations() =>
+        TableRows(Section("## 3. Feature Service"))
+            .Where(cells => cells[0].Contains("§9.1.", StringComparison.Ordinal))
+            .Select(cells =>
+            {
+                var status = string.Join(' ', cells.Skip(2));
+                var operation = cells[0].Split('(')[0].Trim().Trim('`');
+                var end = operation.IndexOfAny([' ', ',', '/']);
+                return (
+                    Operation: (end < 0 ? operation : operation[..end]).ToLowerInvariant(),
+                    Refused: status.Contains("Missing", StringComparison.OrdinalIgnoreCase)
+                        || status.Contains("Non-goal", StringComparison.OrdinalIgnoreCase)
+                        || status.Contains("Honestly rejected", StringComparison.OrdinalIgnoreCase));
+            })
+            .ToArray();
+
     private static IEnumerable<CountClaim> CountClaims()
     {
         var verdict = Verdict();
@@ -85,17 +164,22 @@ public sealed class GeometryCompatibilityReferenceTests
             // check off.
             verdict, @"(\d+)\s+of\s+(\d+)\s+Geometry\s+Service\s+operations", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
         {
-            // The sentence carrying the count: from the previous sentence end
-            // to the next one, so a baseline marker anywhere in it counts.
-            var start = verdict.LastIndexOfAny(['.', '\n'], match.Index) + 1;
-            var tail = verdict[match.Index..].IndexOf('.');
-            var sentence = verdict[start..(tail < 0 ? verdict.Length : match.Index + tail)];
-
             yield return new CountClaim(
                 int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture),
                 int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture),
-                sentence);
+                Sentence(verdict, match.Index));
         }
+    }
+
+    /// <summary>
+    /// The sentence carrying a count: from the previous sentence end to the
+    /// next one, so a baseline marker anywhere in it counts.
+    /// </summary>
+    private static string Sentence(string verdict, int index)
+    {
+        var start = verdict.LastIndexOfAny(['.', '\n'], index) + 1;
+        var tail = verdict[index..].IndexOf('.');
+        return verdict[start..(tail < 0 ? verdict.Length : index + tail)];
     }
 
     private sealed record CountClaim(int Mapped, int Of, string Sentence);
@@ -188,15 +272,20 @@ public sealed class GeometryCompatibilityReferenceTests
             .ToArray();
 
     private static string SectionTwoPreamble() =>
-        Section().Split("| GeoServices op", 2, StringSplitOptions.None)[0];
+        Section("## 2. Geometry Service").Split("| GeoServices op", 2, StringSplitOptions.None)[0];
 
-    private static string SectionTwoTable() => Section().Split("| GeoServices op", 2)[1];
+    private static string SectionTwoTable() => Section("## 2. Geometry Service").Split("| GeoServices op", 2)[1];
 
-    /// <summary>The markdown of <c>## 2. Geometry Service</c>, up to the next heading.</summary>
-    private static string Section()
+    /// <summary>The markdown of a <c>##</c> section, up to the next heading.</summary>
+    private static string Section(string heading)
     {
         var document = Read();
-        var start = document.IndexOf("## 2. Geometry Service", StringComparison.Ordinal);
+        var start = document.IndexOf(heading, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            throw new InvalidOperationException($"The compatibility reference has no '{heading}' section.");
+        }
+
         var end = document.IndexOf("\n## ", start, StringComparison.Ordinal);
         return document[start..end];
     }
