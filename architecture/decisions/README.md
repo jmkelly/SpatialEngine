@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**143 records on disk.** `status` is the record's own word;
+**144 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -136,11 +136,11 @@ front matter, so a record's reach is a row rather than a search.
 | [0130](ADR-0130-a-sidecar-identity-is-a-byte-identity.md) | The attachment sidecar's own identity is a byte identity — declared, not restated | accepted | 2026-09-30 | ADR-0126 |
 | [0131](ADR-0131-a-pushed-read-names-a-row-by-the-key-it-read.md) | A pushed read names a row by the key it read, and an empty selection reduces to a zero count and no groups | accepted | 2026-09-30 | ADR-0098, ADR-0124, ADR-0128 |
 | [0132](ADR-0132-a-text-search-compares-under-a-stated-fold.md) | A text search compares under a fold the store states — case folding is a comparison of its own, and it is not an identity | accepted | 2026-09-30 | — |
-| [0133](ADR-0133-the-sql-server-store-pushes-its-reductions.md) | The SQL Server store pushes its reductions, and a distinct set is pushed only where the plan's order is total over it | accepted | 2026-09-30 | ADR-0098, ADR-0115, ADR-0124, ADR-0137 |
+| [0133](ADR-0133-the-sql-server-store-pushes-its-reductions.md) | The SQL Server store pushes its reductions, and a distinct set is pushed only where the plan's order is total over it | accepted | 2026-09-30 | ADR-0098, ADR-0115, ADR-0124, ADR-0137, ADR-0157 |
 | [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) | the merge gate is the fast lane, and formatting leaves the merge path | accepted | 2026-09-30 | — |
 | [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) | The host integration suite's clients wait five minutes, not one hundred seconds | accepted | 2026-09-30 | — |
 | [0136](ADR-0136-a-text-order-follows-the-columns-collation.md) | A pushed-down text order follows the collation the column carries, not the collation the database has | accepted | 2026-09-30 | — |
-| [0137](ADR-0137-a-tsql-percentile-is-a-window-over-the-partition-a-group-is.md) | A T-SQL percentile is a window over the partition a group is, and a boolean extreme is an extreme over its integers | accepted | 2026-09-30 | ADR-0133 |
+| [0137](ADR-0137-a-tsql-percentile-is-a-window-over-the-partition-a-group-is.md) | A T-SQL percentile is a window over the partition a group is, and a boolean extreme is an extreme over its integers | accepted | 2026-09-30 | ADR-0133, ADR-0157 |
 | [0139](ADR-0139-a-mass-skipped-suite-is-a-red-lane-not-a-green-one.md) | a mass-skipped suite is a red lane, not a green one | accepted | 2026-09-30 | — |
 | [0140](ADR-0140-a-read-by-identity-needs-a-declared-identity-column.md) | A read-by-identity needs a declared identity column | accepted | 2026-09-30 | — |
 | [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) | The ADR register, the ADR index and the ADR metadata are generated, and every lane gates them | accepted | 2026-09-30 | ADR-0109, ADR-0118, ADR-0145 |
@@ -159,6 +159,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) | The two-minute in-process request is CPU starvation, not store contention | accepted | 2026-10-01 | ADR-0135 |
 | [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) | Cap the suite's collection parallelism, and leave the shared host to a later bead | accepted | 2026-10-01 | ADR-0154 |
 | [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) | The DE-9IM patterns have two independent readers | accepted | 2026-10-02 | ADR-0036 |
+| [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md) | T-SQL has a geometry aggregate, and the rectangle it answers is not ours | accepted | 2026-10-02 | ADR-0133, ADR-0137 |
 
 ## Amended by
 
@@ -188,9 +189,10 @@ not appear.
 - **0124** is amended by 0127, 0131, 0133
 - **0126** is amended by 0130
 - **0128** is amended by 0131
-- **0133** is amended by 0137
+- **0133** is amended by 0137, 0157
 - **0134** is amended by 0146, 0148
 - **0135** is amended by 0154
+- **0137** is amended by 0157
 - **0140** is amended by 0149
 - **0141** is amended by 0145
 - **0143** is amended by 0146

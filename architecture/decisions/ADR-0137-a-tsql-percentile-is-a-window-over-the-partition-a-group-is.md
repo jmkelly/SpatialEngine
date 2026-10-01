@@ -4,6 +4,7 @@ date: 2026-09-30
 deciders: maintainer + agent
 summary: A **T-SQL percentile is a window function over a derived table**, `PARTITION BY` the group key, which the grouped statement then reduces with a `MAX` — so the last statistic the dialect has no *aggregate* for is pushed as the window it is, and a `PERCENTILE_CONT/DISC` over a field T-SQL cannot rank against another is still declined (error 402); a **boolean extreme is an extreme over the `bit`'s own integers**, so the missing `MIN`/`MAX` was a missing spelling and not a missing statistic. The fraction is a bound value and the window's alias is its own position, never a client result name; the group row is reported **in the request's order**, which the flat statement got wrong and the conformance suite could not see. Supersedes ADR-0133 §3's percentile and boolean refusals, and its `having` obstruction with them — this store compiles no `having` for this dialect, so it never shared a statement (amends 0133).
 amends: ADR-0133
+amended-by: ADR-0157
 ---
 
 # ADR-0137: A T-SQL percentile is a window over the partition a group is, and a boolean extreme is an extreme over its integers

@@ -314,9 +314,17 @@ public sealed class SqlServerReductionPushdownTests
     }
 
     /// <summary>
-    /// The rectangle of a geometry column is four reduced coordinates and a
-    /// polygon built out of them; there is no aggregate expression that answers
-    /// it, so a reduction that asks for one is finished here (ADR-0133 §5).
+    /// The envelope is the one statistic this dialect <em>does</em> have an
+    /// aggregate for and this store does not push. ADR-0133 §3 declined it
+    /// because “a rectangle is four reduced coordinates and a polygon rather
+    /// than one aggregate expression”, which is the wrong reason — the
+    /// expression exists, and this test is what the measured reason looks like
+    /// in the code: <c>geometry::EnvelopeAggregate</c> and
+    /// <c>UnionAggregate(…).STEnvelope()</c> answer a rectangle grown by the
+    /// server's 1e-8 tolerance where the reference reports a degenerate one,
+    /// and both raise on a group holding an invalid geometry (ADR-0157). The
+    /// values that say so are asserted against a live server in
+    /// <c>SqlServerStatisticsPushdownTests</c>.
     /// </summary>
     [Fact]
     public void An_envelope_is_reduced_here()
