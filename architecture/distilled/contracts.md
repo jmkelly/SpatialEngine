@@ -154,7 +154,10 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   ADR-0107, ADR-0168). Grids are configured, not embedded (`Spatial:Grids:Directories`,
   a priority order), read as NTv2 or as a NADCON `.las`/`.los` pair into the
   same grid value, and cached once found. The standard that served a datum is
-  published with the operation. Where a grid covers a
+  published with the operation, and a NADCON pair's positive-west longitudes
+  are converted to the datums' positive-east convention as it is read, so
+  nothing downstream of the reader carries the container's sign (ADR-0181).
+  Where a grid covers a
   coordinate the shift is the grid's; where it does not — off its block, or for
   a datum no bundle serves — the classic Helmert stands, bit for bit as before.
   The choice is per coordinate, not per request, so a geometry crossing a

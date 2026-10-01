@@ -15,6 +15,16 @@ namespace Spatial.Transformations.ProjNet.Tests;
 /// SpatialEngine-yt2's to establish, and a bundle this reader refuses is
 /// refused loudly rather than half-read.
 /// </para>
+/// <para>
+/// The fixture writes what a deployed pair holds, which is positive west
+/// throughout its longitudes (ADR-0181): the header's edges and the .los
+/// half's shifts. A <c>NadconFixture.Constant</c> value is therefore the shift
+/// <em>the file states</em>, and the expected results below are stated in
+/// degrees east-positive, which is where the conversion belongs. The two tests
+/// named for the convention are the ones that pin it; the rest use a pair of
+/// one grid and would pass either way round, which is why they are not what
+/// this file's reader defect is tested by.
+/// </para>
 /// </summary>
 public sealed class NadconGridReaderTests
 {
@@ -48,6 +58,67 @@ public sealed class NadconGridReaderTests
         Assert.Equal(26.0, grids[0].YMax, 9);
         Assert.Equal(-84.0, grids[0].XMin, 9);
         Assert.Equal(-82.0, grids[0].XMax, 9);
+    }
+
+    [Fact]
+    public void The_containers_positive_west_longitudes_are_read_as_positive_east()
+    {
+        // The reproduction, stated in the container's own terms. A NADCON
+        // deployment states every longitude positive west, in the header and
+        // in the .los half, because the method was built for NAD27's
+        // positive-west longitudes: EPSG's own note on operations 1241, 1243
+        // and 15864 says the NADCON method "expects longitudes positive west"
+        // while the datums it serves are positive east, and PROJ 9.8.1 negates
+        // the header extents and the node values for the .los half for
+        // exactly that reason. So a .los holding +1.5 at every node is a
+        // shift of one and a half seconds *towards the west*, and a header
+        // stating 84 and 82 is the block whose eastern edge is 82°W.
+        //
+        // Read as positive east, the coordinate moves the other way and the
+        // block lands in the eastern hemisphere, where there is nothing to
+        // interpolate: a wrong coordinate rather than a missing one.
+        //
+        // The fixture takes what the file states, so the .los half is asked
+        // for -1.5 to hold +1.5 on disk, and the .las half — positive north,
+        // like every other latitude here — is asked for +1.5.
+        var latitudes = NadconFixture.Constant("CONUS", 24.0, 26.0, -84.0, -82.0, 1.0, 1.0, 1.5f);
+        var longitudes = NadconFixture.Constant("CONUS", 24.0, 26.0, -84.0, -82.0, 1.0, 1.0, -1.5f);
+        var (latitude, longitude) = Pair(latitudes, longitudes);
+
+        Assert.True(NadconGridReader.TryRead(latitude, LatitudeName, longitude, LongitudeName, StatedAccuracy, out var grids, out var error), error);
+
+        // The header's longitudes are east-positive once read, so the block is
+        // the one the datums are tabulated over.
+        Assert.Equal(-84.0, grids![0].XMin, 9);
+        Assert.Equal(-82.0, grids[0].XMax, 9);
+
+        // The .las half is unchanged by the convention and the .los half is
+        // not: +1.5 on disk is 1.5 seconds towards the west, so the longitude
+        // moves down and the latitude up.
+        Assert.True(grids[0].TryShiftForward(-83.5, 25.5, out var shiftedLatitude, out var shiftedLongitude));
+        Assert.Equal(25.5 + (1.5 * ArcSecond), shiftedLatitude, 9);
+        Assert.Equal(-83.5 - (1.5 * ArcSecond), shiftedLongitude, 9);
+    }
+
+    [Fact]
+    public void A_longitude_shift_either_side_of_the_east_positive_zero_both_survive()
+    {
+        // The container states a sign either way round, so a reader that
+        // negates one file's numbers is right for both and a reader that
+        // ignored the convention is wrong for both. This is the whole of the
+        // defect: a NAD27 point west of Greenwich needs its longitude moved
+        // by whatever the file tabulates, and which way that is has to come
+        // out of the same negation rather than out of the sign of the number.
+        var latitudes = NadconFixture.Constant("CONUS", 24.0, 26.0, -84.0, -82.0, 1.0, 1.0, 1.5f);
+        var longitudes = NadconFixture.Constant("CONUS", 24.0, 26.0, -84.0, -82.0, 1.0, 1.0, 1.5f);
+        var (latitude, longitude) = Pair(latitudes, longitudes);
+
+        Assert.True(NadconGridReader.TryRead(latitude, LatitudeName, longitude, LongitudeName, StatedAccuracy, out var grids, out var error), error);
+        Assert.True(grids![0].TryShiftForward(-83.5, 25.5, out var shiftedLatitude, out var shiftedLongitude));
+
+        // The .los holds -1.5 here, so the shift is towards the east.
+        Assert.Equal(25.5 + (1.5 * ArcSecond), shiftedLatitude, 9);
+        Assert.Equal(-83.5 + (1.5 * ArcSecond), shiftedLongitude, 9);
     }
 
     [Fact]

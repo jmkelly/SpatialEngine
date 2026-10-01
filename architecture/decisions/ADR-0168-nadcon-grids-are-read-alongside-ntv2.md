@@ -4,6 +4,7 @@ date: 2026-10-08
 deciders: maintainer + agent
 summary: NADCON (.las/.los) grids are read alongside NTv2, behind the same DatumShiftGrid, so a deployed North American pair reaches the same graph and the published operation names the standard that served it (amends 0105).
 amends: ADR-0105
+amended-by: ADR-0180, ADR-0181
 ---
 
 # ADR-0168: NADCON datum shift grids are read alongside NTv2, and the standard is published with the operation

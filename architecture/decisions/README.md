@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**166 records on disk.** `status` is the record's own word;
+**167 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -171,7 +171,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md) | The De9im column is the matrix, not a display of it | accepted | 2026-10-02 | ADR-0156 |
 | [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md) | The engine's `Relate` is the DE-9IM matrix, read as JTS reads it | accepted | 2026-10-01 | ADR-0036, ADR-0106, ADR-0156, ADR-0165 |
 | [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md) | Keep the topology verbs adapter-side; the plan's spatial component is the envelope | accepted | 2026-10-02 | ADR-0074, ADR-0036, ADR-0106, ADR-0110, ADR-0156, ADR-0166 |
-| [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md) | NADCON datum shift grids are read alongside NTv2, and the standard is published with the operation | accepted | 2026-10-08 | ADR-0105 |
+| [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md) | NADCON datum shift grids are read alongside NTv2, and the standard is published with the operation | accepted | 2026-10-08 | ADR-0105, ADR-0180, ADR-0181 |
 | [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md) | The mixed-dimension `Crosses` row stays the OGC alternation | accepted | 2026-10-02 | ADR-0106, ADR-0166, ADR-0156, ADR-0036 |
 | [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md) | The projected axis convention does not bend | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 | [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md) | `spatialRel` is the feature's relation to the input geometry | accepted | 2026-10-03 | ADR-0106, ADR-0169, ADR-0166, ADR-0156, ADR-0036 |
@@ -182,6 +182,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0178](ADR-0178-land-the-feature-temporal-extent-the-way-adr-0175-decided-it.md) | Land the feature temporal extent the way ADR-0175 decided it | accepted | 2026-10-04 | ADR-0175, ADR-0100, ADR-0110 |
 | [0179](ADR-0179-the-published-bundle-agreement-with-proj-is-an-operator-run-deployment-exercise-that-reports-its-state.md) | The published-bundle agreement with PROJ is an operator-run deployment exercise that reports its state | accepted | 2026-10-02 | ADR-0105 |
 | [0180](ADR-0180-a-grid-operation-names-the-datum-it-reaches.md) | A grid operation names the datum it reaches, and NAD27 is the datum NADCON is registered against | accepted | 2026-10-08 | ADR-0105, ADR-0168 |
+| [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md) | A NADCON deployment states its longitudes positive west, and the reader is where that is answered | accepted | 2026-10-08 | ADR-0168, ADR-0105, ADR-0180 |
 
 ## Reading order
 
@@ -248,15 +249,16 @@ out: the "Amended by" row already says everything about a pair.
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
-### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 5 records, 9,613 words (5% of the corpus)
+### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 6 records, 11,035 words (6% of the corpus)
 
 1. [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) *(narrowed by 0107, 0168, 0179, 0180)*
 2. [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md)
-3. [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md) *(narrowed by 0180)*
+3. [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md) *(narrowed by 0180, 0181)*
 4. [0179](ADR-0179-the-published-bundle-agreement-with-proj-is-an-operator-run-deployment-exercise-that-reports-its-state.md)
 5. [0180](ADR-0180-a-grid-operation-names-the-datum-it-reaches.md)
+6. [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md)
 
-### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (5% of the corpus)
+### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (4% of the corpus)
 
 1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
 2. [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) *(narrowed by 0155)*
@@ -340,7 +342,7 @@ believed.
 - **0156** is amended by 0165
 - **0157** is amended by 0164
 - **0160** is amended by 0161
-- **0168** is amended by 0180
+- **0168** is amended by 0180, 0181
 - **0172** is amended by 0174
 - **0175** is amended by 0178
 

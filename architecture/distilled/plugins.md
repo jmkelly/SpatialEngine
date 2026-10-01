@@ -44,6 +44,11 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
   separate facts, and PROJ answers from a Helmert when the grid it wanted is
   missing — so a run that prints neither is green for the wrong reason.
   (SpatialEngine-yt2)
+- Write a grid fixture in the convention the container publishes, not the one
+  the engine computes in: a NADCON pair states every longitude positive west,
+  so a fixture written east-positive pins a reader against a file NADCON does
+  not publish, and the sign defect it hid is one no refusal rule catches.
+  (SpatialEngine-90n)
 <!-- orientation:end -->
 
 ## Composition model
