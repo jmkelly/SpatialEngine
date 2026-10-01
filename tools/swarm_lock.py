@@ -24,6 +24,11 @@ So the ordering is read out of what the beads say:
   * `plan` answers the only question the coordinator actually has — may this
     bead start — and answers it with the bead it collides with and the files
     they share, so the skip is a decision rather than an instinct;
+  * a bead labelled `human` holds nothing and is never spawnable: it is
+    waiting on a maintainer, so no worker is on it and none may start, and a
+    reserved file set for a bead that cannot run is what turns one human
+    block into a swarm halt (SpatialEngine-u2x.64). It is still listed, as
+    awaiting a maintainer, so a worker told `free` sees the file;
   * a bead that names no file is reported as *order this one by hand*: the
     lock cannot invent a file set, and saying so beats guessing.
 
@@ -188,6 +193,17 @@ def shared_paths(left, right) -> list[str]:
 
 IN_FLIGHT_LABEL = "in-flight"
 
+#: The coordinator's label for a bead awaiting a maintainer decision
+#: (`eng/swarm-runbook.md`: never reclaim one, never spawn one). No agent
+#: works it and no worker may take it, so its files are not occupied by the
+#: swarm — see `is_in_flight`.
+HUMAN_LABEL = "human"
+
+
+def _labels(bead: dict) -> list[str]:
+    labels = bead.get("labels") or []
+    return [labels] if isinstance(labels, str) else list(labels)
+
 
 def is_in_flight(bead: dict) -> bool:
     """Whether this bead is being worked right now.
@@ -200,12 +216,22 @@ def is_in_flight(bead: dict) -> bool:
     A closed bead holds nothing, whatever labels it carries: `bd list --all`
     is every bead the swarm ever ran and a label from its time is never taken
     off, which read 122 beads as in flight on the day this was written.
+
+    A `human` bead holds nothing either, for the same kind of reason: it is
+    waiting on a maintainer, so no worker is on it and none may start. Its
+    claim is left in place deliberately — `tools/bd-safe-reclaim.py` will not
+    take a maintainer decision back — but the claim was never occupancy, and
+    reading it as occupancy reserved the whole file set of a bead that cannot
+    run. On 2026-10-04 one such bead blocked all 13 ready beads for a seventh
+    consecutive tick (SpatialEngine-u2x.64, on `SpatialEngine-u2x.63`). The
+    lock reports such a bead as awaiting a maintainer rather than dropping it,
+    so a worker told `free` still sees the file a maintainer holds.
     """
     if str(bead.get("status", "")).lower() == "closed":
         return False
-    labels = bead.get("labels") or []
-    if isinstance(labels, str):
-        labels = [labels]
+    labels = _labels(bead)
+    if HUMAN_LABEL in labels:
+        return False
     return (str(bead.get("status", "")).lower() == "in_progress"
             or IN_FLIGHT_LABEL in labels)
 
@@ -528,12 +554,15 @@ def _verdict_dict(verdict: Verdict) -> dict:
             "ordered_by_hand": verdict.ordered_by_hand}
 
 
-def _report(verdicts, flying, out) -> None:
+def _report(verdicts, flying, awaiting, out) -> None:
     say = lambda line: print(line, file=out)
     say(f"swarm-lock: {len(flying)} bead(s) in flight, "
         f"{len(verdicts)} ready")
     for bead_id, files in flying:
         say(f"  in flight  {bead_id}  {', '.join(files) if files else '(no file named)'}")
+    for bead_id, files in awaiting:
+        say(f"  maintainer {bead_id}  {', '.join(files) if files else '(no file named)'} "
+            "(labelled human: holds nothing here, but a maintainer is editing it)")
     for verdict in verdicts:
         if verdict.ordered_by_hand:
             say(f"  by hand    {verdict.bead_id}  {verdict.title} "
@@ -613,7 +642,9 @@ def main(argv=None, run=None, out=None) -> int:
 
     if args.plan:
         print(f"swarm-lock: would read every bead's own title and description, "
-              f"and report which ready bead shares a file with one in flight")
+              f"and report which ready bead shares a file with one in flight "
+              f"(a bead labelled human holds nothing, and is listed as awaiting "
+              f"a maintainer instead)")
         if mode == "read":
             print("swarm-lock: would resolve each named bead's ADR list from "
                   "its citations and the routing rows it matches")
@@ -671,11 +702,19 @@ def main(argv=None, run=None, out=None) -> int:
                 _print_read(bead_id, read_list(record, routing), out)
         return 0
 
-    in_flight = [bead for bead in beads if isinstance(bead, dict)
-                 and is_in_flight(bead)]
+    records = [bead for bead in beads if isinstance(bead, dict)]
+    in_flight = [bead for bead in records if is_in_flight(bead)]
     flying = [(str(bead.get("id", "")), bead_files(bead)) for bead in in_flight]
-    ready = [bead for bead in beads if isinstance(bead, dict)
-             and not is_in_flight(bead)
+    # A bead awaiting a maintainer holds nothing (see `is_in_flight`) and is
+    # never spawnable either: `eng/swarm-runbook.md` tells the coordinator to
+    # skip anything labelled `human`, so excluding it from occupancy must not
+    # hand it out as ready.
+    awaiting = [(str(bead.get("id", "")), bead_files(bead))
+                for bead in records if HUMAN_LABEL in _labels(bead)
+                and str(bead.get("status", "")).lower() != "closed"]
+    ready = [bead for bead in records
+             if not is_in_flight(bead)
+             and HUMAN_LABEL not in _labels(bead)
              and str(bead.get("status", "")).lower() == "open"]
     verdicts = plan(ready, in_flight)
 
@@ -691,12 +730,14 @@ def main(argv=None, run=None, out=None) -> int:
 
     payload = {
         "in_flight": [{"id": bead_id, "files": files} for bead_id, files in flying],
+        "awaiting_maintainer": [{"id": bead_id, "files": files}
+                                for bead_id, files in awaiting],
         "verdicts": [_verdict_dict(verdict) for verdict in verdicts],
     }
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True), file=out)
     else:
-        _report(verdicts, flying, out)
+        _report(verdicts, flying, awaiting, out)
     return 1 if any(verdict.blocked for verdict in verdicts) else 0
 
 

@@ -227,6 +227,23 @@ class PlanTests(unittest.TestCase):
                                            status="closed",
                                            labels=["in-flight"])))
 
+    def test_a_human_bead_holds_nothing_whatever_its_status(self):
+        # `human` is the coordinator's label for a bead awaiting a maintainer
+        # decision: no agent works it and no worker may take it, so its file
+        # set is not occupied. Reading it as occupancy is what turned one
+        # human bead into a queue-wide block — 13 ready beads behind it for
+        # seven consecutive ticks (SpatialEngine-u2x.64). The claim stays, so
+        # `tools/bd-safe-reclaim.py` still leaves it alone.
+        self.assertFalse(is_in_flight(bead("SpatialEngine-u2x.63",
+                                           status="in_progress",
+                                           labels=["human"])))
+        self.assertFalse(is_in_flight(bead("SpatialEngine-u2x.64",
+                                           status="in_progress",
+                                           labels=["human", "in-flight"])))
+        self.assertFalse(is_in_flight(bead("SpatialEngine-u2x.65",
+                                           status="open",
+                                           labels=["human"])))
+
     def test_a_bead_labelled_in_flight_is_in_flight_whatever_its_status(self):
         self.assertTrue(is_in_flight(bead("SpatialEngine-q.1",
                                           labels=["in-flight"])))
@@ -397,6 +414,49 @@ class MainTests(unittest.TestCase):
         self.assertEqual(payload["verdicts"][0]["id"], "SpatialEngine-x.2")
         self.assertEqual(payload["verdicts"][0]["blocked_by"],
                          ["SpatialEngine-x.1"])
+
+    def test_a_ready_bead_sharing_a_file_with_a_human_bead_may_start(self):
+        self._write([
+            bead("SpatialEngine-u2x.63", status="in_progress",
+                 labels=["human"],
+                 description="edit docs/CHANGELOG.md and eng/verify.sh"),
+            bead("SpatialEngine-u2x.70", description="docs/CHANGELOG.md"),
+        ])
+        buffer = io.StringIO()
+        code = main(["--beads", str(self.beads_file), "--root", str(self.root),
+                     "--bead", "SpatialEngine-u2x.70", "--json"], out=buffer)
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(buffer.getvalue())["verdicts"][0]["blocked"],
+                         False)
+
+    def test_a_human_bead_is_reported_awaiting_a_maintainer_not_dropped(self):
+        # Holding nothing is not the same as being invisible: a worker told
+        # `free` still has to see that a maintainer holds the same file.
+        self._write([
+            bead("SpatialEngine-u2x.63", status="in_progress",
+                 labels=["human"], description="docs/CHANGELOG.md"),
+            bead("SpatialEngine-u2x.70", description="docs/CHANGELOG.md"),
+        ])
+        buffer = io.StringIO()
+        main(["--beads", str(self.beads_file), "--root", str(self.root),
+              "--json"], out=buffer)
+        payload = json.loads(buffer.getvalue())
+        self.assertEqual([entry["id"] for entry in payload["awaiting_maintainer"]],
+                         ["SpatialEngine-u2x.63"])
+
+    def test_a_human_bead_is_never_spawnable_even_when_it_is_open(self):
+        # The lock no longer reads a human bead as occupied; it must not then
+        # hand it out as ready, or the fix would trade a stall for a worker
+        # making an editorial call that is the maintainer's to make.
+        self._write([
+            bead("SpatialEngine-u2x.63", status="open", labels=["human"],
+                 description="docs/CHANGELOG.md"),
+        ])
+        buffer = io.StringIO()
+        code = main(["--beads", str(self.beads_file), "--root", str(self.root),
+                     "--bead", "SpatialEngine-u2x.63"], out=buffer)
+        self.assertEqual(code, 0)
+        self.assertIn("not in the ready set", buffer.getvalue())
 
     def test_the_read_mode_prints_the_resolved_list_for_a_named_bead(self):
         self._write([bead("SpatialEngine-x.1", "tighten the gate",
