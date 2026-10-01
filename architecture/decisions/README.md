@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**144 records on disk.** `status` is the record's own word;
+**145 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -160,6 +160,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) | Cap the suite's collection parallelism, and leave the shared host to a later bead | accepted | 2026-10-01 | ADR-0154 |
 | [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) | The DE-9IM patterns have two independent readers | accepted | 2026-10-02 | ADR-0036 |
 | [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md) | T-SQL has a geometry aggregate, and the rectangle it answers is not ours | accepted | 2026-10-02 | ADR-0133, ADR-0137 |
+| [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) | One host per class, and a per-test map name to keep the dataset private | accepted | 2026-10-02 | ADR-0155 |
 
 ## Amended by
 
@@ -197,6 +198,7 @@ not appear.
 - **0141** is amended by 0145
 - **0143** is amended by 0146
 - **0154** is amended by 0155
+- **0155** is amended by 0160
 
 ## Superseded, by superseder
 
